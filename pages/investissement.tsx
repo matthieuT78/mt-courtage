@@ -121,7 +121,8 @@ export default function InvestissementPage() {
 
   // Résultats
   const [resultRendementTexte, setResultRendementTexte] = useState<string>("");
-  const [resumeRendement, setResumeRendement] = useState<ResumeRendement | null>(null);
+  const [resumeRendement, setResumeRendement] =
+    useState<ResumeRendement | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
 
   // --- Gestion des champs ---
@@ -289,7 +290,9 @@ export default function InvestissementPage() {
     const texte = [
       `Projet locatif avec ${nbApparts} lot(s), combinant éventuellement location longue durée et location saisonnière (type Airbnb).`,
       `Loyers mensuels cumulés (équivalents) : ${formatEuro(loyerTotalMensuel)}.`,
-      `Coût total du projet (bien + notaire + travaux + agence) : ${formatEuro(coutTotal)}.`,
+      `Coût total du projet (bien + notaire + travaux + agence) : ${formatEuro(
+        coutTotal
+      )}.`,
       `Loyers annuels bruts : ${formatEuro(loyersAnnuels)}.`,
       `Rendement brut : ${formatPct(rendementBrut)}.`,
       `Charges annuelles (copropriété, taxe foncière, assurance PNO / habitation, gestion / conciergerie) : ${formatEuro(
@@ -302,7 +305,7 @@ export default function InvestissementPage() {
       `Mensualité de crédit (capital + intérêts, hors assurance emprunteur) : ${formatEuro(
         mensualiteCreditNue
       )}.`,
-      `Mensualité d&apos;assurance emprunteur (approx.) : ${formatEuro(
+      `Mensualité d'assurance emprunteur (approx.) : ${formatEuro(
         mensualiteAssuranceEmp
       )}.`,
       `Mensualité totale crédit + assurance emprunteur : ${formatEuro(
@@ -336,6 +339,7 @@ export default function InvestissementPage() {
       dureeCredLoc,
     });
 
+    // 🔑 On force l'onglet Résultats après calcul
     setOnglet("resultats");
   };
 
@@ -432,7 +436,7 @@ export default function InvestissementPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-4">
+      <main className="flex-1 max-w-5xl mx_auto px-4 py-6 space-y-4">
         {/* Onglets */}
         <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-4">
           <div className="flex flex-wrap gap-2">
@@ -511,7 +515,7 @@ export default function InvestissementPage() {
                       setNotaireCustom(true);
                       setFraisNotaire(parseFloat(e.target.value) || 0);
                     }}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full rounded-lg border border-slate-300 bg_white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                   <p className="text-[0.7rem] text-slate-500">
                     Pré-rempli à ~7,5 % du prix, modifiable.
@@ -601,7 +605,7 @@ export default function InvestissementPage() {
                   return (
                     <div
                       key={idx}
-                      className="border-t border-slate-200 pt-3 mt-2 first:border-none first:mt-0 first:pt-0"
+                      className="border-t border-slate-200 pt-3 mt-2 first:border_none first:mt-0 first:pt-0"
                     >
                       <div className="grid gap-2 sm:grid-cols-2 items-center">
                         <p className="text-[0.7rem] text-slate-700 font-medium">
@@ -615,7 +619,7 @@ export default function InvestissementPage() {
                               e.target.value as LocationType
                             )
                           }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline_none focus:ring-1 focus:ring-emerald-500"
                         >
                           <option value="longue">
                             Location longue durée (loyer mensuel)
@@ -698,7 +702,7 @@ export default function InvestissementPage() {
 
         {/* Onglet Charges */}
         {onglet === "charges" && (
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space_y-4">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
                 Étape 3
@@ -724,7 +728,7 @@ export default function InvestissementPage() {
                     onChange={(e) =>
                       setChargesCopro(parseFloat(e.target.value))
                     }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py_2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
                 <div className="space-y-1">
@@ -737,7 +741,7 @@ export default function InvestissementPage() {
                     onChange={(e) =>
                       setTaxeFonc(parseFloat(e.target.value))
                     }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py_2 text-sm text-slate-900 focus:outline_none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
                 <div className="space-y-1">
@@ -750,7 +754,7 @@ export default function InvestissementPage() {
                     onChange={(e) =>
                       setAssurance(parseFloat(e.target.value))
                     }
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py_2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
               </div>
@@ -768,7 +772,7 @@ export default function InvestissementPage() {
                   onChange={(e) =>
                     setTauxGestion(parseFloat(e.target.value))
                   }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py_2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -777,7 +781,7 @@ export default function InvestissementPage() {
 
         {/* Onglet Crédit */}
         {onglet === "credit" && (
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space_y-4">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
                 Étape 4
@@ -799,7 +803,7 @@ export default function InvestissementPage() {
                   type="number"
                   value={apport}
                   onChange={(e) => setApport(parseFloat(e.target.value))}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py_2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div className="space-y-1">
@@ -812,7 +816,7 @@ export default function InvestissementPage() {
                   onChange={(e) =>
                     setTauxCredLoc(parseFloat(e.target.value))
                   }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py_2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div className="space-y-1">
@@ -825,7 +829,7 @@ export default function InvestissementPage() {
                   onChange={(e) =>
                     setDureeCredLoc(parseFloat(e.target.value))
                   }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py_2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div className="space-y-1">
@@ -839,7 +843,7 @@ export default function InvestissementPage() {
                   onChange={(e) =>
                     setTauxAssuranceEmp(parseFloat(e.target.value))
                   }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py_2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -847,11 +851,12 @@ export default function InvestissementPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
               <p className="text-xs text-slate-500">
                 Lorsque toutes les étapes sont renseignées, lancez le calcul de
-                rentabilité dans l&apos;onglet “Résultats & dashboard”.
+                rentabilité pour obtenir le dashboard complet.
               </p>
               <button
-                onClick={() => setOnglet("resultats")}
-                className="rounded-full border border-slate-300 bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                // 🔑 Ici on remplace setOnglet("resultats") par le calcul direct
+                onClick={handleCalculRendement}
+                className="rounded-full border border-slate-300 bg-slate-900 px-4 py_2 text-xs font-semibold text-white hover:bg-slate-800"
               >
                 Aller aux résultats
               </button>
@@ -861,7 +866,7 @@ export default function InvestissementPage() {
 
         {/* Onglet Résultats */}
         {onglet === "resultats" && (
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space_y-4">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
@@ -878,7 +883,7 @@ export default function InvestissementPage() {
               {resumeRendement && (
                 <button
                   onClick={handlePrintPDF}
-                  className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300 transition-colors"
+                  className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py_1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300 transition-colors"
                 >
                   PDF
                 </button>
@@ -888,7 +893,7 @@ export default function InvestissementPage() {
             <div className="flex flex-col sm:flex-row gap-3 mt-1">
               <button
                 onClick={handleCalculRendement}
-                className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]"
+                className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py_2.5 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]"
               >
                 Calculer / Mettre à jour la rentabilité
               </button>
@@ -902,7 +907,7 @@ export default function InvestissementPage() {
               <>
                 {/* Cartes de synthèse */}
                 <div className="grid gap-4 sm:grid-cols-4">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py_2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
                       Coût total projet
                     </p>
@@ -910,7 +915,7 @@ export default function InvestissementPage() {
                       {formatEuro(graphData!.coutTotal)}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py_2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
                       Rendement brut
                     </p>
@@ -918,7 +923,7 @@ export default function InvestissementPage() {
                       {formatPct(graphData!.rendementBrut)}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py_2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
                       Rendement net avant crédit
                     </p>
@@ -926,7 +931,7 @@ export default function InvestissementPage() {
                       {formatPct(graphData!.rendementNetAvantCredit)}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py_2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
                       Mensualité totale crédit + assurance
                     </p>
@@ -938,7 +943,7 @@ export default function InvestissementPage() {
 
                 {/* Cash-flow & résultat */}
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 sm:col-span-2 flex flex-col justify-center">
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py_3 sm:col-span-2 flex flex-col justify-center">
                     <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700 mb-1">
                       Cash-flow & rentabilité
                     </p>
@@ -986,7 +991,7 @@ export default function InvestissementPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py_3">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
                       Durée du crédit
                     </p>
@@ -1084,8 +1089,9 @@ export default function InvestissementPage() {
             ) : (
               <p className="text-sm text-slate-500">
                 Complétez les onglets Coûts, Revenus, Charges et Crédit, puis
-                cliquez sur “Calculer / Mettre à jour la rentabilité” pour
-                afficher le dashboard détaillé.
+                cliquez sur “Calculer / Mettre à jour la rentabilité” ou sur
+                “Aller aux résultats” dans l&apos;onglet Crédit pour afficher le
+                dashboard détaillé.
               </p>
             )}
           </section>
