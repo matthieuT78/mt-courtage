@@ -16,10 +16,26 @@ export default function ProjetsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
+      if (!supabase) {
+        setErrorMsg(
+          "Le service de sauvegarde n'est pas disponible (Supabase non configuré)."
+        );
+        setLoading(false);
+        return;
+      }
+
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      if (sessionError) {
+        setErrorMsg(sessionError.message);
+        setLoading(false);
+        return;
+      }
+
       const session = sessionData?.session;
       if (!session) {
         router.push("/mon-compte?redirect=/projets");
@@ -32,7 +48,9 @@ export default function ProjetsPage() {
         .eq("user_id", session.user.id)
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
+      if (error) {
+        setErrorMsg(error.message);
+      } else if (data) {
         setProjects(data as Project[]);
       }
       setLoading(false);
@@ -57,6 +75,8 @@ export default function ProjetsPage() {
       <main className="flex-1 max-w-4xl mx-auto px-4 py-6 space-y-4">
         {loading ? (
           <p className="text-sm text-slate-500">Chargement…</p>
+        ) : errorMsg ? (
+          <p className="text-sm text-red-600">{errorMsg}</p>
         ) : projects.length === 0 ? (
           <p className="text-sm text-slate-500">
             Aucun projet sauvegardé pour le moment. Lancez une simulation puis

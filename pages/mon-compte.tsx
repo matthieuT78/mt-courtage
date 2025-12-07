@@ -19,6 +19,12 @@ export default function MonComptePage() {
     setLoading(true);
 
     try {
+      if (!supabase) {
+        throw new Error(
+          "Le service d'authentification n'est pas disponible (configuration Supabase manquante)."
+        );
+      }
+
       if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
@@ -37,7 +43,7 @@ export default function MonComptePage() {
         router.push(redirectTo);
       }
     } catch (err: any) {
-      setMessage(err.message || "Une erreur est survenue.");
+      setMessage(err?.message || "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }
@@ -80,7 +86,9 @@ export default function MonComptePage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-700">Mot de passe</label>
+              <label className="block text-xs text-slate-700">
+                Mot de passe
+              </label>
               <input
                 type="password"
                 required
