@@ -1,7 +1,7 @@
 // pages/capacite.tsx
 import { useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 
 function formatEuro(val: number) {
   if (Number.isNaN(val)) return "-";
