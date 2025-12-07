@@ -9,12 +9,25 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  ArcElement,
 } from "chart.js";
 
-ChartJS.register(Tooltip, Legend, CategoryScale, LinearScale, BarElement);
+ChartJS.register(
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement
+);
 
 const Bar = dynamic(
   () => import("react-chartjs-2").then((m) => m.Bar),
+  { ssr: false }
+);
+
+const Doughnut = dynamic(
+  () => import("react-chartjs-2").then((m) => m.Doughnut),
   { ssr: false }
 );
 
@@ -42,245 +55,366 @@ function InfoBadge({ text }: { text: string }) {
       <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[0.6rem] font-semibold text-slate-500 cursor-help">
         i
       </span>
-      <span className="pointer-events-none absolute left-1/2 top-[125%] z-20 hidden w-64 -translate-x-1/2 rounded-md bg-slate-900 px-3 py-2 text-[0.7rem] text-white shadow-lg group-hover:block">
+      <span className="pointer-events-none absolute left-1/2 top-[125%] z-20 hidden w-72 -translate-x-1/2 rounded-md bg-slate-900 px-3 py-2 text-[0.7rem] text-white shadow-lg group-hover:block">
         {text}
       </span>
     </span>
   );
 }
 
-type BienResult = {
-  index: number;
-  valeurRef: number;
-  revenuBrutAnnuel: number;
+type BienResultat = {
+  nom: string;
+  valeurBien: number;
+  loyersAnnuels: number;
   chargesAnnuelles: number;
-  creditAnnuel: number;
-  rendementBrut: number;
-  rendementNetAvant: number;
-  rendementNetApres: number;
-  cashflowAnnuel: number;
+  fraisGestion: number;
+  chargesTotales: number;
+  annuiteCredit: number;
+  resultatNetAnnuel: number;
   cashflowMensuel: number;
+  rendementBrut: number;
+  rendementNetAvantCredit: number;
+  capitalRestantDu: number;
+  ratioCRD: number;
 };
 
-type ResultParc = {
-  parBien: BienResult[];
-  totalValeur: number;
-  totalLoyers: number;
-  totalCharges: number;
-  totalCredit: number;
-  totalCashflowAnnuel: number;
-  totalCashflowMensuel: number;
-  rendementBrutGlobal: number;
-  rendementNetAvantGlobal: number;
-  rendementNetApresGlobal: number;
+type ParcResultatGlobal = {
+  nbBiens: number;
+  valeurTotale: number;
+  crdTotal: number;
+  loyersAnnuelsTotaux: number;
+  chargesTotalesParc: number;
+  annuiteCreditsParc: number;
+  resultatNetAnnuelParc: number;
+  cashflowMensuelParc: number;
+  rendementBrutMoyen: number;
+  rendementNetMoyen: number;
 };
 
 export default function ParcImmobilierPage() {
   const [nbBiens, setNbBiens] = useState(2);
+  const [nomsBiens, setNomsBiens] = useState<string[]>([
+    "Appartement A",
+    "Appartement B",
+  ]);
+  const [valeursBiens, setValeursBiens] = useState<number[]>([
+    220000,
+    180000,
+  ]);
+  const [loyersMensuels, setLoyersMensuels] = useState<number[]>([950, 820]);
+  const [chargesAnnuelles, setChargesAnnuelles] = useState<number[]>([
+    2500,
+    2200,
+  ]); // copro + TF + assurance
+  const [tauxGestionBiens, setTauxGestionBiens] = useState<number[]>([8, 8]);
+  const [mensualitesCredits, setMensualitesCredits] = useState<number[]>([
+    650,
+    520,
+  ]); // crédit + assurance
+  const [crdBiens, setCrdBiens] = useState<number[]>([150000, 120000]);
 
-  const [valeursRef, setValeursRef] = useState<number[]>([200000, 150000]);
-  const [loyersMensuels, setLoyersMensuels] = useState<number[]>([900, 750]);
-  const [chargesAnnuelles, setChargesAnnuelles] = useState<number[]>([3500, 2800]); // copro+taxe+PNO+gestion
-  const [mensualitesCredit, setMensualitesCredit] = useState<number[]>([650, 520]);
+  const [resultatsBiens, setResultatsBiens] = useState<BienResultat[] | null>(
+    null
+  );
+  const [resultatsGlobaux, setResultatsGlobaux] =
+    useState<ParcResultatGlobal | null>(null);
+  const [analyseTexte, setAnalyseTexte] = useState<string>("");
 
-  const [resultParc, setResultParc] = useState<ResultParc | null>(null);
-  const [texteAnalyse, setTexteAnalyse] = useState<string>("");
-
-  const hasResult = resultParc !== null;
+  const hasSimulation = !!resultatsBiens && !!resultatsGlobaux;
 
   const handleNbBiensChange = (value: number) => {
-    const n = Math.min(Math.max(value, 1), 20);
+    const n = Math.min(Math.max(value, 1), 10);
     setNbBiens(n);
 
-    const resize = (arr: number[], def: number) => {
-      const copy = [...arr];
-      while (copy.length < n) copy.push(def);
-      return copy.slice(0, n);
-    };
-
-    setValeursRef((prev) => resize(prev, 0));
-    setLoyersMensuels((prev) => resize(prev, 0));
-    setChargesAnnuelles((prev) => resize(prev, 0));
-    setMensualitesCredit((prev) => resize(prev, 0));
-  };
-
-  const handleValeurChange = (index: number, value: number) => {
-    setValeursRef((prev) => {
+    setNomsBiens((prev) => {
       const arr = [...prev];
-      arr[index] = value;
-      return arr;
+      while (arr.length < n) arr.push(`Bien ${arr.length + 1}`);
+      return arr.slice(0, n);
     });
-  };
 
-  const handleLoyerChange = (index: number, value: number) => {
+    setValeursBiens((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push(0);
+      return arr.slice(0, n);
+    });
+
     setLoyersMensuels((prev) => {
       const arr = [...prev];
-      arr[index] = value;
-      return arr;
+      while (arr.length < n) arr.push(0);
+      return arr.slice(0, n);
     });
-  };
 
-  const handleChargesAnnChange = (index: number, value: number) => {
     setChargesAnnuelles((prev) => {
       const arr = [...prev];
-      arr[index] = value;
-      return arr;
+      while (arr.length < n) arr.push(0);
+      return arr.slice(0, n);
     });
-  };
 
-  const handleMensualiteCreditChange = (index: number, value: number) => {
-    setMensualitesCredit((prev) => {
+    setTauxGestionBiens((prev) => {
       const arr = [...prev];
+      while (arr.length < n) arr.push(8);
+      return arr.slice(0, n);
+    });
+
+    setMensualitesCredits((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push(0);
+      return arr.slice(0, n);
+    });
+
+    setCrdBiens((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push(0);
+      return arr.slice(0, n);
+    });
+  };
+
+  const updateAt = (
+    index: number,
+    value: number | string,
+    setter: (updater: (prev: any[]) => any[]) => void
+  ) => {
+    setter((prev) => {
+      const arr = [...prev];
+      // @ts-ignore
       arr[index] = value;
       return arr;
     });
   };
 
-  const handlePrintPDF = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
-  };
-
-  const handleCalculParc = () => {
-    const parBien: BienResult[] = [];
+  const handleAnalyseParc = () => {
+    const biens: BienResultat[] = [];
 
     for (let i = 0; i < nbBiens; i++) {
-      const valeur = valeursRef[i] || 0;
+      const nom = (nomsBiens[i] || `Bien ${i + 1}`).trim() || `Bien ${i + 1}`;
+      const valeur = valeursBiens[i] || 0;
       const loyerMensuel = loyersMensuels[i] || 0;
-      const chAnn = chargesAnnuelles[i] || 0;
-      const mensCred = mensualitesCredit[i] || 0;
+      const chargesAnn = chargesAnnuelles[i] || 0;
+      const tauxGestion = (tauxGestionBiens[i] || 0) / 100;
+      const mensualiteCredit = mensualitesCredits[i] || 0;
+      const crd = crdBiens[i] || 0;
 
-      const revenuBrutAnnuel = loyerMensuel * 12;
-      const creditAnnuel = mensCred * 12;
+      const loyersAnnuels = loyerMensuel * 12;
+      const fraisGestion = loyersAnnuels * tauxGestion;
+      const chargesTotales = chargesAnn + fraisGestion;
+      const annuiteCredit = mensualiteCredit * 12;
+      const resultatNetAnnuel = loyersAnnuels - chargesTotales - annuiteCredit;
+      const cashflowMensuel = resultatNetAnnuel / 12;
 
-      let rendementBrut = 0;
-      let rendementNetAvant = 0;
-      let rendementNetApres = 0;
-      let cashflowAnnuel = 0;
-      let cashflowMensuel = 0;
+      const rendementBrut =
+        valeur > 0 ? (loyersAnnuels / valeur) * 100 : NaN;
+      const rendementNetAvantCredit =
+        valeur > 0
+          ? ((loyersAnnuels - chargesTotales) / valeur) * 100
+          : NaN;
+      const ratioCRD = valeur > 0 ? (crd / valeur) * 100 : NaN;
 
-      if (valeur > 0) {
-        rendementBrut = (revenuBrutAnnuel / valeur) * 100;
-        rendementNetAvant = ((revenuBrutAnnuel - chAnn) / valeur) * 100;
-        cashflowAnnuel = revenuBrutAnnuel - chAnn - creditAnnuel;
-        rendementNetApres = (cashflowAnnuel / valeur) * 100;
-        cashflowMensuel = cashflowAnnuel / 12;
-      }
-
-      parBien.push({
-        index: i + 1,
-        valeurRef: valeur,
-        revenuBrutAnnuel,
-        chargesAnnuelles: chAnn,
-        creditAnnuel,
-        rendementBrut,
-        rendementNetAvant,
-        rendementNetApres,
-        cashflowAnnuel,
+      biens.push({
+        nom,
+        valeurBien: valeur,
+        loyersAnnuels,
+        chargesAnnuelles: chargesAnn,
+        fraisGestion,
+        chargesTotales,
+        annuiteCredit,
+        resultatNetAnnuel,
         cashflowMensuel,
+        rendementBrut,
+        rendementNetAvantCredit,
+        capitalRestantDu: crd,
+        ratioCRD,
       });
     }
 
-    if (parBien.length === 0) {
-      setResultParc(null);
-      setTexteAnalyse(
-        "Veuillez renseigner au moins un bien pour calculer la rentabilité de votre parc."
+    if (biens.length === 0) {
+      setResultatsBiens(null);
+      setResultatsGlobaux(null);
+      setAnalyseTexte(
+        "Merci de renseigner au moins un bien avec un loyer et une valeur de marché."
       );
       return;
     }
 
-    const totalValeur = parBien.reduce((s, b) => s + b.valeurRef, 0);
-    const totalLoyers = parBien.reduce((s, b) => s + b.revenuBrutAnnuel, 0);
-    const totalCharges = parBien.reduce((s, b) => s + b.chargesAnnuelles, 0);
-    const totalCredit = parBien.reduce((s, b) => s + b.creditAnnuel, 0);
-    const totalCashflowAnnuel = parBien.reduce(
-      (s, b) => s + b.cashflowAnnuel,
+    const valeurTotale = biens.reduce(
+      (sum, b) => sum + (b.valeurBien || 0),
       0
     );
-    const totalCashflowMensuel = totalCashflowAnnuel / 12;
+    const crdTotal = biens.reduce(
+      (sum, b) => sum + (b.capitalRestantDu || 0),
+      0
+    );
+    const loyersAnnTot = biens.reduce(
+      (sum, b) => sum + (b.loyersAnnuels || 0),
+      0
+    );
+    const chargesTotParc = biens.reduce(
+      (sum, b) => sum + (b.chargesTotales || 0),
+      0
+    );
+    const annuiteCreditsParc = biens.reduce(
+      (sum, b) => sum + (b.annuiteCredit || 0),
+      0
+    );
+    const resultatNetAnnParc = biens.reduce(
+      (sum, b) => sum + (b.resultatNetAnnuel || 0),
+      0
+    );
+    const cashflowMensuelParc = resultatNetAnnParc / 12;
 
-    let rendementBrutGlobal = 0;
-    let rendementNetAvantGlobal = 0;
-    let rendementNetApresGlobal = 0;
+    const rendBrutMoyen =
+      biens.length > 0
+        ? biens.reduce((sum, b) => sum + (b.rendementBrut || 0), 0) /
+          biens.length
+        : NaN;
 
-    if (totalValeur > 0) {
-      rendementBrutGlobal = (totalLoyers / totalValeur) * 100;
-      rendementNetAvantGlobal =
-        ((totalLoyers - totalCharges) / totalValeur) * 100;
-      rendementNetApresGlobal =
-        (totalCashflowAnnuel / totalValeur) * 100;
-    }
+    const rendNetMoyen =
+      biens.length > 0
+        ? biens.reduce(
+            (sum, b) => sum + (b.rendementNetAvantCredit || 0),
+            0
+          ) / biens.length
+        : NaN;
 
-    const res: ResultParc = {
-      parBien,
-      totalValeur,
-      totalLoyers,
-      totalCharges,
-      totalCredit,
-      totalCashflowAnnuel,
-      totalCashflowMensuel,
-      rendementBrutGlobal,
-      rendementNetAvantGlobal,
-      rendementNetApresGlobal,
+    const globaux: ParcResultatGlobal = {
+      nbBiens,
+      valeurTotale,
+      crdTotal,
+      loyersAnnuelsTotaux: loyersAnnTot,
+      chargesTotalesParc: chargesTotParc,
+      annuiteCreditsParc,
+      resultatNetAnnuelParc: resultatNetAnnParc,
+      cashflowMensuelParc,
+      rendementBrutMoyen: rendBrutMoyen,
+      rendementNetMoyen: rendNetMoyen,
     };
 
-    setResultParc(res);
+    setResultatsBiens(biens);
+    setResultatsGlobaux(globaux);
+
+    // Analyse narrative
+    const bienMeilleur = biens.reduce((best, b) => {
+      if (!best) return b;
+      return (b.rendementNetAvantCredit || -Infinity) >
+        (best.rendementNetAvantCredit || -Infinity)
+        ? b
+        : best;
+    }, biens[0] as BienResultat | undefined);
+
+    const bienPire = biens.reduce((worst, b) => {
+      if (!worst) return b;
+      return (b.rendementNetAvantCredit || Infinity) <
+        (worst.rendementNetAvantCredit || Infinity)
+        ? b
+        : worst;
+    }, biens[0] as BienResultat | undefined);
 
     const texte = [
-      `Votre parc immobilier comprend actuellement ${parBien.length} bien(s), pour une valeur de référence totale (prix d'achat ou valeur actuelle estimée) d'environ ${formatEuro(
-        totalValeur
+      `Structure de votre parc: vous disposez de ${nbBiens} bien(s) pour une valeur de marché globale estimée à ${formatEuro(
+        valeurTotale
+      )}. Le capital restant dû sur l’ensemble des crédits s’élève à ${formatEuro(
+        crdTotal
+      )}, soit un ratio d’endettement sur valeur du parc d’environ ${formatPct(
+        valeurTotale > 0 ? (crdTotal / valeurTotale) * 100 : NaN
       )}.`,
-      `Les loyers bruts cumulés représentent environ ${formatEuro(
-        totalLoyers
-      )} par an, soit un rendement brut global de l'ordre de ${formatPct(
-        rendementBrutGlobal
-      )}.`,
-      `Après prise en compte des charges récurrentes (copropriété, taxe foncière, assurance, gestion, etc.) pour un montant annuel d'environ ${formatEuro(
-        totalCharges
-      )}, votre rendement net avant crédit se situe autour de ${formatPct(
-        rendementNetAvantGlobal
-      )}.`,
-      `Les mensualités de crédits associées à ces biens représentent environ ${formatEuro(
-        totalCredit
-      )} par an. En intégrant ces remboursements, le cash-flow global de votre parc est de ${formatEuro(
-        totalCashflowAnnuel
-      )} par an, soit ${formatEuro(
-        totalCashflowMensuel
-      )} par mois. Cela correspond à une rentabilité nette après crédit de ${formatPct(
-        rendementNetApresGlobal
-      )} rapportée à la valeur de référence de votre parc.`,
-      totalCashflowMensuel >= 0
-        ? `Votre parc est donc globalement générateur de trésorerie positive, ce qui constitue un signal rassurant pour la poursuite de vos investissements ou la préparation d'un nouveau projet locatif.`
-        : `Votre parc nécessite aujourd'hui un effort de trésorerie mensuel d'environ ${formatEuro(
-            -totalCashflowMensuel
-          )}. Ce n'est pas forcément négatif si ces actifs se valorisent dans le temps, mais c'est un point clé à présenter et à surveiller dans votre stratégie globale (révision des loyers, renégociation de crédits, arbitrages éventuels).`,
+      `Revenus et charges globales: vos loyers bruts annuels atteignent ${formatEuro(
+        loyersAnnTot
+      )}. Après prise en compte des charges récurrentes (copropriété, taxe foncière, assurance, gestion), soit ${formatEuro(
+        chargesTotParc
+      )} par an, et des échéances de crédit (${formatEuro(
+        annuiteCreditsParc
+      )} par an), le résultat net de votre parc ressort à ${formatEuro(
+        resultatNetAnnParc
+      )} par an, soit un cash-flow global d’environ ${formatEuro(
+        cashflowMensuelParc
+      )} par mois.`,
+      `Rendements moyens: le rendement brut moyen de votre parc se situe autour de ${formatPct(
+        rendBrutMoyen
+      )}, tandis que le rendement net avant crédit tourne autour de ${formatPct(
+        rendNetMoyen
+      )}. Ces ordres de grandeur donnent une vision d’ensemble de la performance de vos actifs par rapport au marché et à votre niveau de risque.`,
+      bienMeilleur && bienPire
+        ? `Biens à suivre de près: le bien le plus performant en termes de rendement net avant crédit est « ${
+            bienMeilleur.nom
+          } », avec un rendement net d’environ ${formatPct(
+            bienMeilleur.rendementNetAvantCredit
+          )} et un cash-flow annuel de ${formatEuro(
+            bienMeilleur.resultatNetAnnuel
+          )}. À l’inverse, le bien le plus fragile semble être « ${
+            bienPire.nom
+          } », dont le rendement net est proche de ${formatPct(
+            bienPire.rendementNetAvantCredit
+          )} et le cash-flow annuel de ${formatEuro(
+            bienPire.resultatNetAnnuel
+          )}. Ce contraste peut guider vos arbitrages: renégociation de crédit, travaux pour repositionner le bien, révision du loyer ou, à terme, arbitrage de vente.`,
+      `Lecture stratégique: si le cash-flow global est positif, votre parc contribue à dégager un revenu complémentaire tout en se remboursant au fil du temps. Si le cash-flow est légèrement négatif, cela peut rester acceptable si la valorisation à long terme et la qualité des emplacements compensent cet effort d’épargne. L’objectif de cette analyse est de mettre en évidence les biens qui tirent la performance vers le haut, ceux qui la pénalisent, et de vous donner des éléments concrets à présenter à votre banquier ou à votre conseiller en gestion de patrimoine.`,
     ].join("\n");
 
-    setTexteAnalyse(texte);
+    setAnalyseTexte(texte);
   };
 
   const renderMultiline = (text: string) =>
-    text.split("\n").map((line, idx) => (
-      <p key={idx} className="text-sm text-slate-800 leading-relaxed">
-        {line}
-      </p>
-    ));
+    text.split("\n").map((line, idx) => {
+      const [label, ...rest] = line.split(":");
+      const hasLabel = rest.length > 0;
+      const content = rest.join(":").trim();
 
-  // Graphique cashflow par bien
-  let barData;
-  if (resultParc) {
-    barData = {
-      labels: resultParc.parBien.map(
-        (b) => `Bien #${b.index}`
-      ),
+      return (
+        <div key={idx} className="mb-2">
+          {hasLabel ? (
+            <p className="text-sm text-slate-800 leading-relaxed">
+              <span className="font-semibold text-slate-900">
+                {label.trim()}
+                {": "}
+              </span>
+              {content}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-800 leading-relaxed">{line}</p>
+          )}
+        </div>
+      );
+    });
+
+  // Préparation des graphiques
+  let cashflowBarData;
+  let valeurDonutData;
+
+  if (hasSimulation && resultatsBiens && resultatsGlobaux) {
+    const labels = resultatsBiens.map((b) => b.nom);
+    const cashflows = resultatsBiens.map((b) => b.resultatNetAnnuel);
+    const valeurs = resultatsBiens.map((b) => b.valeurBien);
+
+    cashflowBarData = {
+      labels,
       datasets: [
         {
           label: "Cash-flow net annuel (€)",
-          data: resultParc.parBien.map((b) => b.cashflowAnnuel),
-          backgroundColor: resultParc.parBien.map((b) =>
-            b.cashflowAnnuel >= 0 ? "#22c55e" : "#ef4444"
+          data: cashflows,
+          backgroundColor: cashflows.map((v) =>
+            v >= 0 ? "#22c55e" : "#ef4444"
           ),
+        },
+      ],
+    };
+
+    valeurDonutData = {
+      labels,
+      datasets: [
+        {
+          label: "Répartition de la valeur du parc",
+          data: valeurs,
+          backgroundColor: [
+            "#0f766e",
+            "#1d4ed8",
+            "#f97316",
+            "#22c55e",
+            "#e11d48",
+            "#7c3aed",
+            "#0369a1",
+            "#d97706",
+            "#16a34a",
+            "#334155",
+          ],
         },
       ],
     };
@@ -295,11 +429,11 @@ export default function ParcImmobilierPage() {
               MT Courtage &amp; Investissement
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              Calculette de rentabilité de votre parc immobilier existant.
+              Analyse de rentabilité de votre parc immobilier existant.
             </p>
           </div>
           <div className="text-xs text-slate-500 sm:text-right">
-            <p>Outil indicatif, basé sur les données que vous saisissez.</p>
+            <p>Outil indicatif, hors fiscalité détaillée.</p>
             <Link href="/" className="underline">
               &larr; Retour à l&apos;accueil
             </Link>
@@ -308,346 +442,391 @@ export default function ParcImmobilierPage() {
       </header>
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-4">
-        <section className="grid gap-4 lg:grid-cols-2">
-          {/* Saisie Parc */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-            <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                Étape 1
-              </p>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Déclarez votre parc immobilier
-              </h2>
-              <p className="text-xs text-slate-500">
-                Indiquez, pour chaque bien, une valeur de référence, les loyers
-                mensuels, les charges annuelles et la mensualité de crédit.
-              </p>
-            </div>
+        <section>
+          <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+            Outil patrimoine
+          </p>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Mesurez la performance de votre parc existant
+          </h2>
+          <p className="mt-1 text-xs text-slate-500 max-w-3xl">
+            Renseignez vos biens locatifs (valeur, loyers, charges, crédits) et
+            obtenez une vue d&apos;ensemble : cash-flow global, rendements moyens,
+            biens les plus performants… avec des graphiques exploitables en rendez-vous
+            bancaire.
+          </p>
+        </section>
 
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[0.75rem] font-medium text-slate-800">
-                  Nombre de biens locatifs
+        <section className="grid gap-4 lg:grid-cols-2 items-start">
+          {/* Colonne gauche : saisie des biens */}
+          <div className="space-y-4">
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
+              <div>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Étape 1
                 </p>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Configuration des biens
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Indiquez le nombre de biens locatifs et leurs paramètres
+                  principaux.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">
+                  Nombre de biens locatifs
+                </label>
                 <input
                   type="number"
                   min={1}
-                  max={20}
+                  max={10}
                   value={nbBiens}
                   onChange={(e) =>
-                    handleNbBiensChange(parseInt(e.target.value || "1", 10))
+                    handleNbBiensChange(parseInt(e.target.value, 10) || 1)
                   }
-                  className="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-right"
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
+            </section>
 
-              <div className="space-y-3 max-h-[540px] overflow-y-auto pr-1">
-                {Array.from({ length: nbBiens }).map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2"
-                  >
-                    <p className="text-[0.75rem] font-medium text-slate-800">
-                      Bien #{idx + 1}
-                    </p>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700 flex items-center gap-1">
-                          Valeur de référence (€)
-                          <InfoBadge text="Prix d'achat ou valeur actuelle estimée. L'indicateur de rentabilité sera rapporté à cette valeur." />
-                        </label>
-                        <input
-                          type="number"
-                          value={valeursRef[idx] || 0}
-                          onChange={(e) =>
-                            handleValeurChange(
-                              idx,
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">
-                          Loyer mensuel actuel (€)
-                        </label>
-                        <input
-                          type="number"
-                          value={loyersMensuels[idx] || 0}
-                          onChange={(e) =>
-                            handleLoyerChange(
-                              idx,
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700 flex items-center gap-1">
-                          Charges annuelles (€)
-                          <InfoBadge text="Copropriété, taxe foncière, assurance, gestion locative, etc. hors crédit." />
-                        </label>
-                        <input
-                          type="number"
-                          value={chargesAnnuelles[idx] || 0}
-                          onChange={(e) =>
-                            handleChargesAnnChange(
-                              idx,
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">
-                          Mensualité de crédit (€)
-                        </label>
-                        <input
-                          type="number"
-                          value={mensualitesCredit[idx] || 0}
-                          onChange={(e) =>
-                            handleMensualiteCreditChange(
-                              idx,
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  onClick={handleCalculParc}
-                  className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]"
-                >
-                  Calculer la rentabilité de mon parc
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Résultats */}
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-            <div className="flex items-center justify-between gap-2">
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
               <div>
                 <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                  Résultats
+                  Étape 2
                 </p>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Vue d&apos;ensemble de votre parc
-                </h2>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  Détails par bien
+                </h3>
                 <p className="text-xs text-slate-500">
-                  Rentabilité brute, nette et cash-flow global.
+                  Valeur de marché, loyers, charges, crédit et capital restant dû
+                  pour chaque bien.
                 </p>
               </div>
 
-              {hasResult && (
-                <button
-                  onClick={handlePrintPDF}
-                  className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300 transition-colors"
+              {Array.from({ length: nbBiens }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="mt-3 border-t border-slate-200 pt-3 first:border-none first:pt-0"
                 >
-                  PDF
-                </button>
-              )}
-            </div>
-
-            {resultParc ? (
-              <>
-                <div className="grid gap-3 sm:grid-cols-3 mt-1">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Valeur totale du parc
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {formatEuro(resultParc.totalValeur)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Loyers bruts annuels
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {formatEuro(resultParc.totalLoyers)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Cash-flow mensuel global
-                    </p>
-                    <p
-                      className={
-                        "mt-1 text-sm font-semibold " +
-                        (resultParc.totalCashflowMensuel >= 0
-                          ? "text-emerald-700"
-                          : "text-red-600")
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={nomsBiens[idx] || ""}
+                      onChange={(e) =>
+                        updateAt(idx, e.target.value, setNomsBiens)
                       }
-                    >
-                      {formatEuro(resultParc.totalCashflowMensuel)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Rendement brut global
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {formatPct(resultParc.rendementBrutGlobal)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Rendement net avant crédit
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {formatPct(resultParc.rendementNetAvantGlobal)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Rendement net après crédit
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {formatPct(resultParc.rendementNetApresGlobal)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Graph */}
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 mt-2">
-                  <p className="text-xs text-slate-600 mb-2">
-                    Cash-flow net annuel par bien : identifiez les biens qui
-                    tirent le parc vers le haut… ou vers le bas.
-                  </p>
-                  {barData && (
-                    <Bar
-                      data={barData}
-                      options={{
-                        plugins: {
-                          legend: {
-                            labels: {
-                              color: "#0f172a",
-                              font: { size: 11 },
-                            },
-                          },
-                        },
-                        scales: {
-                          x: {
-                            ticks: { color: "#0f172a", font: { size: 10 } },
-                            grid: { color: "#e5e7eb" },
-                          },
-                          y: {
-                            ticks: { color: "#0f172a", font: { size: 10 } },
-                            grid: { color: "#e5e7eb" },
-                          },
-                        },
-                      }}
+                      placeholder={`Bien ${idx + 1} (ex. T2 centre-ville)`}
+                      className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
-                  )}
-                </div>
+                    <span className="text-[0.7rem] text-slate-400">
+                      #{idx + 1}
+                    </span>
+                  </div>
 
-                {/* Tableau synthétique par bien */}
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 mt-2 overflow-x-auto">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-                    Détail par bien
-                  </p>
-                  <table className="min-w-full text-xs">
-                    <thead>
-                      <tr className="text-left text-slate-500 border-b border-slate-200">
-                        <th className="py-1 pr-3">Bien</th>
-                        <th className="py-1 pr-3">Valeur réf.</th>
-                        <th className="py-1 pr-3">Loyers annuels</th>
-                        <th className="py-1 pr-3">Charges annuelles</th>
-                        <th className="py-1 pr-3">Crédit annuel</th>
-                        <th className="py-1 pr-3">Rdt brut</th>
-                        <th className="py-1 pr-3">Net avant</th>
-                        <th className="py-1 pr-3">Net après</th>
-                        <th className="py-1 pr-3">CF mensuel</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {resultParc.parBien.map((b) => (
-                        <tr
-                          key={b.index}
-                          className="border-b border-slate-100 last:border-0"
-                        >
-                          <td className="py-1 pr-3 text-slate-700">
-                            #{b.index}
-                          </td>
-                          <td className="py-1 pr-3 text-slate-800">
-                            {formatEuro(b.valeurRef)}
-                          </td>
-                          <td className="py-1 pr-3 text-slate-800">
-                            {formatEuro(b.revenuBrutAnnuel)}
-                          </td>
-                          <td className="py-1 pr-3 text-slate-800">
-                            {formatEuro(b.chargesAnnuelles)}
-                          </td>
-                          <td className="py-1 pr-3 text-slate-800">
-                            {formatEuro(b.creditAnnuel)}
-                          </td>
-                          <td className="py-1 pr-3 text-slate-800">
-                            {formatPct(b.rendementBrut)}
-                          </td>
-                          <td className="py-1 pr-3 text-slate-800">
-                            {formatPct(b.rendementNetAvant)}
-                          </td>
-                          <td className="py-1 pr-3 text-slate-800">
-                            {formatPct(b.rendementNetApres)}
-                          </td>
-                          <td
-                            className={
-                              "py-1 pr-3 " +
-                              (b.cashflowMensuel >= 0
-                                ? "text-emerald-700"
-                                : "text-red-600")
-                            }
-                          >
-                            {formatEuro(b.cashflowMensuel)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700 flex items-center">
+                        Valeur de marché estimée (€)
+                        <InfoBadge text="Valeur actuelle approximative du bien (prix de revente probable). Sert de base au calcul des rendements." />
+                      </label>
+                      <input
+                        type="number"
+                        value={valeursBiens[idx] || 0}
+                        onChange={(e) =>
+                          updateAt(
+                            idx,
+                            parseFloat(e.target.value) || 0,
+                            setValeursBiens
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">
+                        Loyer mensuel hors charges (€)
+                      </label>
+                      <input
+                        type="number"
+                        value={loyersMensuels[idx] || 0}
+                        onChange={(e) =>
+                          updateAt(
+                            idx,
+                            parseFloat(e.target.value) || 0,
+                            setLoyersMensuels
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
 
-                {/* Analyse narrative */}
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mt-2">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-                    Analyse globale
-                  </p>
-                  {renderMultiline(texteAnalyse)}
-                </div>
+                  <div className="grid gap-2 sm:grid-cols-2 mt-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700 flex items-center">
+                        Charges annuelles (€)
+                        <InfoBadge text="Copropriété, taxe foncière, assurance PNO / habitation et charges non récupérables." />
+                      </label>
+                      <input
+                        type="number"
+                        value={chargesAnnuelles[idx] || 0}
+                        onChange={(e) =>
+                          updateAt(
+                            idx,
+                            parseFloat(e.target.value) || 0,
+                            setChargesAnnuelles
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700 flex items-center">
+                        Frais de gestion / agence (% loyers)
+                        <InfoBadge text="Honoraires d’agence ou de gestion locative. Sur la location saisonnière, cela correspondrait aux frais de conciergerie." />
+                      </label>
+                      <input
+                        type="number"
+                        value={tauxGestionBiens[idx] || 0}
+                        onChange={(e) =>
+                          updateAt(
+                            idx,
+                            parseFloat(e.target.value) || 0,
+                            setTauxGestionBiens
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
 
-                <p className="mt-1 text-[0.7rem] text-slate-500">
-                  Ces résultats sont indicatifs et ne tiennent pas compte de la
-                  fiscalité, de la revalorisation potentielle des biens, ni
-                  d&apos;éventuelles renégociations de crédits ou arbitrages de
-                  patrimoine.
+                  <div className="grid gap-2 sm:grid-cols-2 mt-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">
+                        Mensualité crédit (crédit + assurance) (€ / mois)
+                      </label>
+                      <input
+                        type="number"
+                        value={mensualitesCredits[idx] || 0}
+                        onChange={(e) =>
+                          updateAt(
+                            idx,
+                            parseFloat(e.target.value) || 0,
+                            setMensualitesCredits
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700 flex items-center">
+                        Capital restant dû (€)
+                        <InfoBadge text="Capital restant à rembourser sur le crédit lié à ce bien. Permet de mesurer l’effet de levier et le ratio dette / valeur." />
+                      </label>
+                      <input
+                        type="number"
+                        value={crdBiens[idx] || 0}
+                        onChange={(e) =>
+                          updateAt(
+                            idx,
+                            parseFloat(e.target.value) || 0,
+                            setCrdBiens
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <button
+                  onClick={handleAnalyseParc}
+                  className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-400/40 hover:shadow-2xl hover:shadow-emerald-400/60 transition-transform active:scale-[0.99]"
+                >
+                  Calculer l&apos;analyse de mon parc
+                </button>
+                <p className="text-xs text-slate-500">
+                  L&apos;analyse agrège l&apos;ensemble des biens et met en
+                  évidence cash-flow, rendements et répartition de la valeur.
                 </p>
-              </>
-            ) : (
-              <p className="text-sm text-slate-500">
-                Renseignez votre parc à gauche puis cliquez sur
-                &nbsp;
-                <span className="font-semibold">
-                  “Calculer la rentabilité de mon parc”
-                </span>{" "}
-                pour obtenir une vue consolidée de vos investissements
-                immobiliers.
-              </p>
-            )}
+              </div>
+            </section>
+          </div>
+
+          {/* Colonne droite : résultats & graphiques */}
+          <div className="space-y-4">
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="uppercase tracking-[0.18em] text-[0.7rem] text-slate-600 mb-1">
+                    Synthèse du parc
+                  </p>
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    Résultats globaux
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Vue consolidée des revenus, charges, crédits et cash-flow
+                    de votre patrimoine locatif.
+                  </p>
+                </div>
+              </div>
+
+              {hasSimulation && resultatsGlobaux && resultatsBiens ? (
+                <>
+                  {/* Cartes principales */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Valeur totale du parc
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {formatEuro(resultatsGlobaux.valeurTotale)}
+                      </p>
+                      <p className="mt-1 text-[0.7rem] text-slate-500">
+                        Capital restant dû :{" "}
+                        {formatEuro(resultatsGlobaux.crdTotal)}.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Cash-flow global mensuel
+                      </p>
+                      <p
+                        className={
+                          "mt-1 text-sm font-semibold " +
+                          (resultatsGlobaux.cashflowMensuelParc >= 0
+                            ? "text-emerald-700"
+                            : "text-red-600")
+                        }
+                      >
+                        {formatEuro(resultatsGlobaux.cashflowMensuelParc)}
+                      </p>
+                      <p className="mt-1 text-[0.7rem] text-slate-500">
+                        Résultat net annuel :{" "}
+                        {formatEuro(resultatsGlobaux.resultatNetAnnuelParc)}.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Rendement brut moyen
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {formatPct(resultatsGlobaux.rendementBrutMoyen)}
+                      </p>
+                      <p className="mt-1 text-[0.7rem] text-slate-500">
+                        Calculé sur la valeur de marché de vos biens.
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Rendement net moyen (avant crédit)
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">
+                        {formatPct(resultatsGlobaux.rendementNetMoyen)}
+                      </p>
+                      <p className="mt-1 text-[0.7rem] text-slate-500">
+                        Après charges d&apos;exploitation, hors financement.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Graphiques */}
+                  <div className="grid gap-4 lg:grid-cols-2 mt-2">
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                      <p className="text-xs text-slate-600 mb-2">
+                        Cash-flow net annuel par bien : repérez en un coup d&apos;œil
+                        les biens qui tirent la performance vers le haut ou vers le bas.
+                      </p>
+                      {cashflowBarData && (
+                        <Bar
+                          data={cashflowBarData}
+                          options={{
+                            plugins: {
+                              legend: {
+                                labels: {
+                                  color: "#0f172a",
+                                  font: { size: 11 },
+                                },
+                              },
+                            },
+                            scales: {
+                              x: {
+                                ticks: {
+                                  color: "#0f172a",
+                                  font: { size: 9 },
+                                },
+                                grid: { color: "#e5e7eb" },
+                              },
+                              y: {
+                                ticks: {
+                                  color: "#0f172a",
+                                  font: { size: 10 },
+                                },
+                                grid: { color: "#e5e7eb" },
+                              },
+                            },
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                      <p className="text-xs text-slate-600 mb-2">
+                        Répartition de la valeur de votre parc entre les différents
+                        biens.
+                      </p>
+                      {valeurDonutData && (
+                        <Doughnut
+                          data={valeurDonutData}
+                          options={{
+                            plugins: {
+                              legend: {
+                                position: "bottom",
+                                labels: {
+                                  color: "#0f172a",
+                                  font: { size: 10 },
+                                },
+                              },
+                            },
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Analyse détaillée */}
+                  <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-4">
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-3">
+                      Analyse détaillée de votre parc
+                    </p>
+                    {renderMultiline(analyseTexte)}
+                    <p className="mt-2 text-[0.7rem] text-slate-500">
+                      Cette analyse ne prend pas en compte la fiscalité (régime réel,
+                      micro-foncier, LMNP, etc.) ni les éventuelles revalorisations
+                      futures des loyers et du marché. Elle fournit néanmoins une base
+                      solide pour engager une réflexion stratégique et préparer vos
+                      rendez-vous bancaires.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Renseignez vos biens (valeur, loyers, charges, crédit) puis cliquez
+                  sur{" "}
+                  <span className="font-semibold">
+                    “Calculer l&apos;analyse de mon parc”
+                  </span>{" "}
+                  pour afficher les indicateurs et graphiques de performance.
+                </p>
+              )}
+            </section>
           </div>
         </section>
       </main>
