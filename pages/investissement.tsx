@@ -273,7 +273,6 @@ export default function InvestissementPage() {
     }
     const annuiteCreditNue = mensualiteCreditNue * 12;
 
-    // Assurance emprunteur (approximation sur capital initial)
     const tAssEmp = (tauxAssuranceEmp || 0) / 100;
     const annuiteAssuranceEmp = montantEmprunte * tAssEmp;
     const mensualiteAssuranceEmp = annuiteAssuranceEmp / 12;
@@ -346,7 +345,6 @@ export default function InvestissementPage() {
     setOnglet("resultats");
   };
 
-  // Analyse plus lisible : label en gras si on trouve un ":"
   const renderMultiline = (text: string) =>
     text.split("\n").map((line, idx) => {
       const [label, ...rest] = line.split(":");
@@ -434,7 +432,7 @@ export default function InvestissementPage() {
         : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
     ].join(" ");
 
-  // Nav Précédent / Suivant avec le même gradient que le CTA
+  // Nav générique (utilisé sauf sur Crédit)
   const renderNav = (prev?: Onglet, next?: Onglet) => (
     <div className="mt-5 flex items-center justify-between">
       <div>
@@ -619,7 +617,7 @@ export default function InvestissementPage() {
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
                 Étape 2
               </p>
-            <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-lg font-semibold text-slate-900">
                 Revenus locatifs : longue durée & saisonnière
               </h2>
               <p className="text-xs text-slate-500">
@@ -903,21 +901,28 @@ export default function InvestissementPage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
-              <p className="text-xs text-slate-500">
-                Quand toutes les étapes sont renseignées, lancez le calcul pour
-                afficher le dashboard complet.
-              </p>
+            {/* Ligne avec Précédent à gauche et Allez aux résultats à droite */}
+            <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <button
-                onClick={handleCalculRendement}
-                className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition-transform active:scale-[0.99]"
+                onClick={() => setOnglet("charges")}
+                className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition-transform active:scale-[0.99]"
               >
-                Aller aux résultats
+                &larr; Précédent
               </button>
-            </div>
 
-            {/* Ici : uniquement le bouton Précédent, pas de Suivant */}
-            {renderNav("charges", undefined)}
+              <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+                <p className="text-xs text-slate-500 sm:text-right">
+                  Quand toutes les étapes sont renseignées, lancez le calcul pour
+                  afficher le dashboard complet.
+                </p>
+                <button
+                  onClick={handleCalculRendement}
+                  className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition-transform active:scale-[0.99]"
+                >
+                  Aller aux résultats
+                </button>
+              </div>
+            </div>
           </section>
         )}
 
@@ -947,7 +952,6 @@ export default function InvestissementPage() {
               )}
             </div>
 
-            {/* petit espace plus large avant le bouton */}
             <div className="flex flex-col sm:flex-row gap-3 mt-5">
               <button
                 onClick={handleCalculRendement}
@@ -963,7 +967,6 @@ export default function InvestissementPage() {
 
             {hasSimulation ? (
               <>
-                {/* espace entre bouton et KPIs */}
                 <div className="grid gap-4 sm:grid-cols-4 mt-5">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
