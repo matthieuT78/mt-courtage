@@ -123,6 +123,8 @@ export default function InvestissementPage() {
     useState<ResumeRendement | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
 
+  // --- Handlers ---
+
   const handlePrixBienChange = (value: number) => {
     const newPrix = value || 0;
     setPrixBien(newPrix);
@@ -200,6 +202,8 @@ export default function InvestissementPage() {
     nbApparts > 0 &&
     locationTypes.slice(0, nbApparts).some((t) => t === "airbnb");
 
+  // --- Calcul principal ---
+
   const handleCalculRendement = () => {
     const prix = prixBien || 0;
     const notaire = fraisNotaire || 0;
@@ -269,6 +273,7 @@ export default function InvestissementPage() {
     }
     const annuiteCreditNue = mensualiteCreditNue * 12;
 
+    // Assurance emprunteur (approximation sur capital initial)
     const tAssEmp = (tauxAssuranceEmp || 0) / 100;
     const annuiteAssuranceEmp = montantEmprunte * tAssEmp;
     const mensualiteAssuranceEmp = annuiteAssuranceEmp / 12;
@@ -280,37 +285,44 @@ export default function InvestissementPage() {
     const cashflowMensuel = resultatNetAnnuel / 12;
 
     const texte = [
-      `Projet locatif avec ${nbApparts} lot(s), combinant éventuellement location longue durée et location saisonnière (type Airbnb).`,
-      `Loyers mensuels cumulés (équivalents) : ${formatEuro(loyerTotalMensuel)}.`,
-      `Coût total du projet (bien + notaire + travaux + agence) : ${formatEuro(
+      `Structure du projet : ${nbApparts} lot(s), combinant éventuellement location longue durée et saisonnière.`,
+      `Revenus locatifs : loyers mensuels cumulés équivalents de ${formatEuro(
+        loyerTotalMensuel
+      )}, soit ${formatEuro(loyersAnnuels)} de loyers bruts par an.`,
+      `Coût global : bien, notaire, travaux et éventuels frais d’agence représentent un coût total d’environ ${formatEuro(
         coutTotal
       )}.`,
-      `Loyers annuels bruts : ${formatEuro(loyersAnnuels)}.`,
-      `Rendement brut : ${formatPct(rendementBrut)}.`,
-      `Charges annuelles (copropriété, taxe foncière, assurance PNO / habitation, gestion / conciergerie) : ${formatEuro(
+      `Rendement brut : vos loyers bruts rapportés au coût total donnent un rendement brut proche de ${formatPct(
+        rendementBrut
+      )}.`,
+      `Charges d’exploitation : copropriété, taxe foncière, assurance PNO / habitation et gestion/conciergerie représentent environ ${formatEuro(
         chargesTotales
+      )} par an.`,
+      `Rendement net avant crédit : une fois les charges d’exploitation déduites, le rendement net hors financement est d’environ ${formatPct(
+        rendementNetAvantCredit
       )}.`,
-      `Rendement net avant crédit : ${formatPct(rendementNetAvantCredit)}.`,
-      `Montant emprunté : ${formatEuro(
+      `Financement : l’apport de ${formatEuro(
+        apportVal
+      )} permet d’emprunter environ ${formatEuro(
         montantEmprunte
-      )} pour un apport de ${formatEuro(apportVal)}.`,
-      `Mensualité de crédit (capital + intérêts, hors assurance emprunteur) : ${formatEuro(
+      )}, avec un taux moyen de ${formatPct(
+        tauxCredLoc
+      )} sur ${dureeCredLoc} ans.`,
+      `Mensualités : la mensualité de crédit (capital + intérêts) est estimée à ${formatEuro(
         mensualiteCreditNue
-      )}.`,
-      `Mensualité d'assurance emprunteur (approx.) : ${formatEuro(
+      )}, à laquelle s’ajoute une mensualité d’assurance emprunteur d’environ ${formatEuro(
         mensualiteAssuranceEmp
-      )}.`,
-      `Mensualité totale crédit + assurance emprunteur : ${formatEuro(
+      )}, soit une mensualité totale proche de ${formatEuro(
         mensualiteTotale
-      )} (soit ${formatEuro(annuiteTotale)} par an).`,
-      `Résultat net après charges, crédit et assurance emprunteur : ${formatEuro(
+      )}.`,
+      `Cash-flow : après paiement des charges, du crédit et de l’assurance emprunteur, le projet dégage un résultat net d’environ ${formatEuro(
         resultatNetAnnuel
-      )} / an, soit ${formatEuro(cashflowMensuel)} / mois.`,
+      )} par an, soit ${formatEuro(cashflowMensuel)} par mois.`,
       resultatNetAnnuel >= 0
-        ? `Le projet génère un cash-flow positif : il s’autofinance et dégage un excédent mensuel, argument fort en rendez-vous bancaire.`
-        : `Le projet nécessite un effort d’épargne mensuel d’environ ${formatEuro(
+        ? `Lecture bancaire : le projet est autofinancé et génère un excédent, ce qui renforce votre dossier en montrant que l’opération ne pèse pas sur votre budget courant.`
+        : `Lecture bancaire : le projet demande un effort d’épargne mensuel d’environ ${formatEuro(
             -cashflowMensuel
-          )}. Ce point peut être présenté comme votre capacité d’effort supplémentaire pour rassurer le banquier.`,
+          )}. Bien présenté, cela peut démontrer votre capacité à absorber cet effort sans fragiliser votre situation globale.`,
     ].join("\n");
 
     setResultRendementTexte(texte);
@@ -334,12 +346,29 @@ export default function InvestissementPage() {
     setOnglet("resultats");
   };
 
+  // Analyse plus lisible : label en gras si on trouve un ":"
   const renderMultiline = (text: string) =>
-    text.split("\n").map((line, idx) => (
-      <p key={idx} className="text-sm text-slate-800 leading-relaxed">
-        {line}
-      </p>
-    ));
+    text.split("\n").map((line, idx) => {
+      const [label, ...rest] = line.split(":");
+      const hasLabel = rest.length > 0;
+      const content = rest.join(":").trim();
+
+      return (
+        <div key={idx} className="mb-2">
+          {hasLabel ? (
+            <p className="text-sm text-slate-800 leading-relaxed">
+              <span className="font-semibold text-slate-900">
+                {label.trim()}
+                {": "}
+              </span>
+              {content}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-800 leading-relaxed">{line}</p>
+          )}
+        </div>
+      );
+    });
 
   const handlePrintPDF = () => {
     if (typeof window !== "undefined") {
@@ -347,6 +376,7 @@ export default function InvestissementPage() {
     }
   };
 
+  // Graphiques
   let barData;
   let lineData;
   if (graphData) {
@@ -404,7 +434,7 @@ export default function InvestissementPage() {
         : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
     ].join(" ");
 
-  // Boutons Précédent / Suivant avec le même gradient que le CTA
+  // Nav Précédent / Suivant avec le même gradient que le CTA
   const renderNav = (prev?: Onglet, next?: Onglet) => (
     <div className="mt-5 flex items-center justify-between">
       <div>
@@ -589,7 +619,7 @@ export default function InvestissementPage() {
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
                 Étape 2
               </p>
-              <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900">
                 Revenus locatifs : longue durée & saisonnière
               </h2>
               <p className="text-xs text-slate-500">
@@ -886,7 +916,8 @@ export default function InvestissementPage() {
               </button>
             </div>
 
-            {renderNav("charges", "resultats")}
+            {/* Ici : uniquement le bouton Précédent, pas de Suivant */}
+            {renderNav("charges", undefined)}
           </section>
         )}
 
@@ -916,7 +947,8 @@ export default function InvestissementPage() {
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 mt-4">
+            {/* petit espace plus large avant le bouton */}
+            <div className="flex flex-col sm:flex-row gap-3 mt-5">
               <button
                 onClick={handleCalculRendement}
                 className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]"
@@ -931,7 +963,8 @@ export default function InvestissementPage() {
 
             {hasSimulation ? (
               <>
-                <div className="grid gap-4 sm:grid-cols-4 mt-4">
+                {/* espace entre bouton et KPIs */}
+                <div className="grid gap-4 sm:grid-cols-4 mt-5">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
                       Coût total projet
@@ -1107,8 +1140,8 @@ export default function InvestissementPage() {
                 </div>
 
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-                    Analyse détaillée
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-3">
+                    Analyse détaillée de votre projet
                   </p>
                   {renderMultiline(resultRendementTexte)}
                 </div>
