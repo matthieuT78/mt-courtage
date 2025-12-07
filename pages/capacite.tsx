@@ -293,7 +293,7 @@ export default function CapaciteEmpruntPage() {
             fraisAgenceEstimes
           )}, soit un budget global financé proche de ${formatEuro(
             coutTotalProjetMax
-          )}, hors éventuel apport personnel supplémentaire.`,
+          )} hors éventuel apport personnel supplémentaire.`,
       capaciteMensuelle > 0
         ? `Lecture bancaire : si vous utilisez pleinement cette capacité mensuelle, votre taux d’endettement théorique après projet atteindrait environ ${formatPct(
             tauxAvecProjet
