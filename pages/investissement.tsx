@@ -283,8 +283,22 @@ export default function InvestissementPage() {
     const resultatNetAnnuel = revenuNetAvantCredit - annuiteTotale;
     const cashflowMensuel = resultatNetAnnuel / 12;
 
+    // --- phrase d’intro contextuelle ---
+    const sliceTypes = locationTypes.slice(0, nbApparts);
+    const hasLongue = sliceTypes.some((t) => t === "longue");
+    const hasSaisonniere = sliceTypes.some((t) => t === "airbnb");
+
+    let structurePhrase: string;
+    if (hasLongue && !hasSaisonniere) {
+      structurePhrase = `Structure du projet : ${nbApparts} lot(s) en location longue durée.`;
+    } else if (!hasLongue && hasSaisonniere) {
+      structurePhrase = `Structure du projet : ${nbApparts} lot(s) en location saisonnière (type Airbnb).`;
+    } else {
+      structurePhrase = `Structure du projet : ${nbApparts} lot(s), combinant location longue durée et saisonnière.`;
+    }
+
     const texte = [
-      `Structure du projet : ${nbApparts} lot(s), combinant éventuellement location longue durée et saisonnière.`,
+      structurePhrase,
       `Revenus locatifs : loyers mensuels cumulés équivalents de ${formatEuro(
         loyerTotalMensuel
       )}, soit ${formatEuro(loyersAnnuels)} de loyers bruts par an.`,
@@ -432,7 +446,7 @@ export default function InvestissementPage() {
         : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
     ].join(" ");
 
-  // Nav générique (utilisé sauf sur Crédit)
+  // Nav générique (sauf sur Crédit)
   const renderNav = (prev?: Onglet, next?: Onglet) => (
     <div className="mt-5 flex items-center justify-between">
       <div>
@@ -901,7 +915,7 @@ export default function InvestissementPage() {
               </div>
             </div>
 
-            {/* Ligne avec Précédent à gauche et Allez aux résultats à droite */}
+            {/* Ligne avec Précédent + Aller aux résultats alignés */}
             <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <button
                 onClick={() => setOnglet("charges")}
