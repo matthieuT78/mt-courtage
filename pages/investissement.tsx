@@ -62,10 +62,10 @@ type LocationType = "longue" | "airbnb";
 type GraphData = {
   loyersAnnuels: number;
   chargesTotales: number;
-  annuiteCredit: number; // crédit + assurance
+  annuiteCredit: number;
   resultatNetAnnuel: number;
   coutTotal: number;
-  mensualiteCredit: number; // crédit + assurance
+  mensualiteCredit: number;
   rendementBrut: number;
   rendementNetAvantCredit: number;
   dureeCredLoc: number;
@@ -87,7 +87,6 @@ function InfoBadge({ text }: { text: string }) {
 }
 
 export default function InvestissementPage() {
-  // Onglets
   const [onglet, setOnglet] = useState<Onglet>("couts");
 
   // Prix / coûts
@@ -101,7 +100,8 @@ export default function InvestissementPage() {
   // Lots / loyers
   const [nbApparts, setNbApparts] = useState(1);
   const [loyersApparts, setLoyersApparts] = useState<number[]>([900]);
-  const [locationTypes, setLocationTypes] = useState<LocationType[]>(["longue"]);
+  const [locationTypes, setLocationTypes] =
+    useState<LocationType[]>(["longue"]);
   const [airbnbNuitees, setAirbnbNuitees] = useState<number[]>([90]);
   const [airbnbOccupation, setAirbnbOccupation] = useState<number[]>([65]);
 
@@ -115,15 +115,13 @@ export default function InvestissementPage() {
   const [apport, setApport] = useState(20000);
   const [tauxCredLoc, setTauxCredLoc] = useState(3.5);
   const [dureeCredLoc, setDureeCredLoc] = useState(25);
-  const [tauxAssuranceEmp, setTauxAssuranceEmp] = useState(0.25); // % annuel
+  const [tauxAssuranceEmp, setTauxAssuranceEmp] = useState(0.25);
 
   // Résultats
   const [resultRendementTexte, setResultRendementTexte] = useState<string>("");
   const [resumeRendement, setResumeRendement] =
     useState<ResumeRendement | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
-
-  // --- Gestion des champs ---
 
   const handlePrixBienChange = (value: number) => {
     const newPrix = value || 0;
@@ -202,8 +200,6 @@ export default function InvestissementPage() {
     nbApparts > 0 &&
     locationTypes.slice(0, nbApparts).some((t) => t === "airbnb");
 
-  // --- Calcul principal ---
-
   const handleCalculRendement = () => {
     const prix = prixBien || 0;
     const notaire = fraisNotaire || 0;
@@ -273,7 +269,6 @@ export default function InvestissementPage() {
     }
     const annuiteCreditNue = mensualiteCreditNue * 12;
 
-    // Assurance emprunteur (approx : % annuel sur capital initial)
     const tAssEmp = (tauxAssuranceEmp || 0) / 100;
     const annuiteAssuranceEmp = montantEmprunte * tAssEmp;
     const mensualiteAssuranceEmp = annuiteAssuranceEmp / 12;
@@ -336,7 +331,6 @@ export default function InvestissementPage() {
       dureeCredLoc,
     });
 
-    // Aller automatiquement sur l’onglet Résultats
     setOnglet("resultats");
   };
 
@@ -352,8 +346,6 @@ export default function InvestissementPage() {
       window.print();
     }
   };
-
-  // --- Graphiques ---
 
   let barData;
   let lineData;
@@ -412,16 +404,29 @@ export default function InvestissementPage() {
         : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
     ].join(" ");
 
-  // --- Navigation "Suivant" ---
-
-  const renderSuivant = (next: Onglet) => (
-    <div className="mt-4 flex justify-end">
-      <button
-        onClick={() => setOnglet(next)}
-        className="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-      >
-        Suivant &rarr;
-      </button>
+  // Boutons Précédent / Suivant avec le même gradient que le CTA
+  const renderNav = (prev?: Onglet, next?: Onglet) => (
+    <div className="mt-5 flex items-center justify-between">
+      <div>
+        {prev && (
+          <button
+            onClick={() => setOnglet(prev)}
+            className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition-transform active:scale-[0.99]"
+          >
+            &larr; Précédent
+          </button>
+        )}
+      </div>
+      <div>
+        {next && (
+          <button
+            onClick={() => setOnglet(next)}
+            className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition-transform active:scale-[0.99]"
+          >
+            Suivant &rarr;
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -483,7 +488,7 @@ export default function InvestissementPage() {
           </div>
         </section>
 
-        {/* Onglet Coûts */}
+        {/* Coûts */}
         {onglet === "couts" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div>
@@ -557,7 +562,9 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={travaux}
-                    onChange={(e) => setTravaux(parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setTravaux(parseFloat(e.target.value) || 0)
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -571,11 +578,11 @@ export default function InvestissementPage() {
               </div>
             </div>
 
-            {renderSuivant("revenus")}
+            {renderNav(undefined, "revenus")}
           </section>
         )}
 
-        {/* Onglet Revenus */}
+        {/* Revenus */}
         {onglet === "revenus" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div>
@@ -710,11 +717,11 @@ export default function InvestissementPage() {
               </div>
             </div>
 
-            {renderSuivant("charges")}
+            {renderNav("couts", "charges")}
           </section>
         )}
 
-        {/* Onglet Charges */}
+        {/* Charges */}
         {onglet === "charges" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div>
@@ -791,11 +798,11 @@ export default function InvestissementPage() {
               </div>
             </div>
 
-            {renderSuivant("credit")}
+            {renderNav("revenus", "credit")}
           </section>
         )}
 
-        {/* Onglet Crédit */}
+        {/* Crédit */}
         {onglet === "credit" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div>
@@ -873,15 +880,17 @@ export default function InvestissementPage() {
               </p>
               <button
                 onClick={handleCalculRendement}
-                className="rounded-full border border-slate-300 bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition-transform active:scale-[0.99]"
               >
                 Aller aux résultats
               </button>
             </div>
+
+            {renderNav("charges", "resultats")}
           </section>
         )}
 
-        {/* Onglet Résultats */}
+        {/* Résultats */}
         {onglet === "resultats" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div className="flex items-center justify-between gap-2">
@@ -907,7 +916,6 @@ export default function InvestissementPage() {
               )}
             </div>
 
-            {/* + d'air entre le header et le bouton */}
             <div className="flex flex-col sm:flex-row gap-3 mt-4">
               <button
                 onClick={handleCalculRendement}
@@ -923,7 +931,6 @@ export default function InvestissementPage() {
 
             {hasSimulation ? (
               <>
-                {/* + un petit espace avant les cartes de chiffres */}
                 <div className="grid gap-4 sm:grid-cols-4 mt-4">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
@@ -959,7 +966,6 @@ export default function InvestissementPage() {
                   </div>
                 </div>
 
-                {/* Cash-flow & résultat */}
                 <div className="grid gap-4 sm:grid-cols-3 mt-4">
                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 sm:col-span-2 flex flex-col justify-center">
                     <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700 mb-1">
@@ -1022,7 +1028,6 @@ export default function InvestissementPage() {
                   </div>
                 </div>
 
-                {/* Graphiques */}
                 <div className="grid gap-4 lg:grid-cols-2 mt-4">
                   <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
                     <p className="text-xs text-slate-600 mb-2">
@@ -1101,7 +1106,6 @@ export default function InvestissementPage() {
                   </div>
                 </div>
 
-                {/* Analyse narrative */}
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4">
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
                     Analyse détaillée
