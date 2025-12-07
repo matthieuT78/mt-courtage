@@ -1,7 +1,7 @@
 // pages/projets.tsx
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 import Link from "next/link";
 
 type Project = {
