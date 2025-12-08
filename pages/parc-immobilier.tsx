@@ -1,8 +1,8 @@
 // pages/parc-immobilier.tsx
 import { useState } from "react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { supabase } from "../lib/supabaseClient";
+import AppHeader from "../components/AppHeader";
 
 import {
   Chart as ChartJS,
@@ -339,24 +339,8 @@ export default function ParcImmobilierPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-4 py-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
-              MT Courtage &amp; Investissement
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Calculette de rentabilité de votre parc immobilier existant.
-            </p>
-          </div>
-          <div className="text-xs text-slate-500 sm:text-right">
-            <p>Outil indicatif, hors fiscalité détaillée.</p>
-            <Link href="/" className="underline">
-              &larr; Retour à l&apos;accueil
-            </Link>
-          </div>
-        </div>
-      </header>
+      {/* ✅ Nouveau header global */}
+      <AppHeader />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-4">
         <section className="grid gap-4 lg:grid-cols-2">
