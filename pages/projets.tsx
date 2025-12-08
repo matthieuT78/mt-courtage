@@ -170,7 +170,8 @@ export default function ProjetsPage() {
       "",
       "Résumé :",
       texte,
-      url ? "", url ? `Lien de consultation : ${url}` : "",
+      url ? "" : "",
+      url ? `Lien de consultation : ${url}` : "",
       "",
       "— Envoyé depuis MT Courtage & Investissement",
     ]
@@ -185,7 +186,7 @@ export default function ProjetsPage() {
           url,
         })
         .catch(() => {
-          // ignore si l'utilisateur annule
+          // utilisateur qui annule → on ignore
         });
     } else {
       // fallback email
@@ -432,11 +433,7 @@ export default function ProjetsPage() {
     );
   };
 
-  const handleGoToLogin = () => {
-    router.push("/mon-compte?redirect=/projets");
-  };
-
-  const isAuthenticated = !loadingSession && !error && projects !== null;
+  const isLoading = loadingSession || loadingProjects;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -460,19 +457,28 @@ export default function ProjetsPage() {
       </header>
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-4">
-        {loadingSession || loadingProjects ? (
+        {isLoading && (
           <p className="text-sm text-slate-500">Chargement des projets…</p>
-        ) : null}
+        )}
 
-        {!loadingSession && !projects.length && !error && (
+        {!isLoading && error && (
+          <section className="rounded-2xl border border-red-100 bg-red-50 shadow-sm p-5">
+            <p className="text-sm text-red-700 font-medium mb-1">
+              Erreur de chargement
+            </p>
+            <p className="text-xs text-red-600">{error}</p>
+          </section>
+        )}
+
+        {!isLoading && !error && projects.length === 0 && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
             <p className="text-sm text-slate-700 font-medium mb-1">
               Aucun projet sauvegardé pour le moment.
             </p>
             <p className="text-xs text-slate-500 mb-3">
               Lancez une simulation de capacité d&apos;emprunt, d&apos;investissement
-              ou de parc immobilier, puis utilisez le bouton “Sauvegarder” pour
-              la retrouver ici.
+              ou de parc immobilier, puis utilisez le bouton “Sauvegarder”
+              pour la retrouver ici.
             </p>
             <div className="flex flex-wrap gap-2">
               <Link
@@ -491,19 +497,7 @@ export default function ProjetsPage() {
           </section>
         )}
 
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {!loadingSession && !projects.length && error && (
-          <p className="text-sm text-red-600">{error}</p>
-        )}
-
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {!loadingSession && projects.length > 0 && (
+        {!isLoading && !error && projects.length > 0 && (
           <section className="space-y-3">
             {projects.map((project) => {
               const isExpanded = expandedId === project.id;
@@ -581,76 +575,6 @@ export default function ProjetsPage() {
               );
             })}
           </section>
-        )}
-
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {!loadingSession && projects.length === 0 && !error && (
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            <p className="text-sm text-slate-700 font-medium mb-1">
-              Vous n&apos;avez pas encore de projets sauvegardés.
-            </p>
-            <p className="text-xs text-slate-500">
-              Créez une simulation puis utilisez le bouton “Sauvegarder ce
-              projet” pour la retrouver ici.
-            </p>
-          </section>
-        )}
-
-        {!loadingSession && projects.length === 0 && error && (
-          <section className="rounded-2xl border border-red-100 bg-red-50 shadow-sm p-5">
-            <p className="text-sm text-red-700 font-medium mb-1">
-              Erreur de chargement
-            </p>
-            <p className="text-xs text-red-600">{error}</p>
-          </section>
-        )}
-
-        {!loadingSession && projects.length === 0 && !error && (
-          <></>
-        )}
-
-        {!loadingSession && projects.length === 0 && !error && (
-          <></>
-        )}
-
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {!loadingSession && !projects.length && !error && (
-          <></>
-        )}
-
-        {/* Si pas connecté du tout (aucune session) */}
-        {!loadingSession && projects.length === 0 && !error && (
-          <></>
         )}
       </main>
 
