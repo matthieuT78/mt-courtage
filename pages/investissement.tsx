@@ -1,8 +1,7 @@
 // pages/investissement.tsx
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { supabase } from "../lib/supabaseClient";
 import {
   Chart as ChartJS,
   Tooltip,
@@ -24,16 +23,18 @@ ChartJS.register(
   PointElement
 );
 
-const Bar = dynamic(() => import("react-chartjs-2").then((m) => m.Bar), {
-  ssr: false,
-});
+const Bar = dynamic(
+  () => import("react-chartjs-2").then((m) => m.Bar),
+  { ssr: false }
+);
 
-const Line = dynamic(() => import("react-chartjs-2").then((m) => m.Line), {
-  ssr: false,
-});
+const Line = dynamic(
+  () => import("react-chartjs-2").then((m) => m.Line),
+  { ssr: false }
+);
 
 function formatEuro(val: number) {
-  if (Number.isNaN(val) || val === undefined || val === null) return "-";
+  if (Number.isNaN(val)) return "-";
   return val.toLocaleString("fr-FR", {
     style: "currency",
     currency: "EUR",
@@ -42,7 +43,7 @@ function formatEuro(val: number) {
 }
 
 function formatPct(val: number) {
-  if (Number.isNaN(val) || val === undefined || val === null) return "-";
+  if (Number.isNaN(val)) return "-";
   return (
     val.toLocaleString("fr-FR", {
       maximumFractionDigits: 2,
@@ -61,16 +62,16 @@ type LocationType = "longue" | "airbnb";
 type GraphData = {
   loyersAnnuels: number;
   chargesTotales: number;
-  annuiteCredit: number;
+  annuiteCredit: number; // crédit + assurance
   resultatNetAnnuel: number;
   coutTotal: number;
-  mensualiteCredit: number;
+  mensualiteCredit: number; // crédit + assurance
   rendementBrut: number;
   rendementNetAvantCredit: number;
   dureeCredLoc: number;
 };
 
-type Onglet = "couts" | "revenus" | "charges" | "credit" | "resultats";
+type Onglet = "couts" | "revenus" | "charges" | "credit";
 
 function InfoBadge({ text }: { text: string }) {
   return (
@@ -93,11 +94,13 @@ export default function InvestissementPage() {
   const [prixBien, setPrixBien] = useState(200000);
   const [fraisNotaire, setFraisNotaire] = useState(Math.round(200000 * 0.075));
   const [notaireCustom, setNotaireCustom] = useState(false);
+
   const [fraisAgence, setFraisAgence] = useState(Math.round(200000 * 0.04));
   const [agenceCustom, setAgenceCustom] = useState(false);
+
   const [travaux, setTravaux] = useState(10000);
 
-  // Lots / loyers
+  // Configuration des lots
   const [nbApparts, setNbApparts] = useState(1);
   const [loyersApparts, setLoyersApparts] = useState<number[]>([900]);
   const [locationTypes, setLocationTypes] = useState<LocationType[]>(["longue"]);
@@ -107,36 +110,29 @@ export default function InvestissementPage() {
   // Charges
   const [chargesCopro, setChargesCopro] = useState(1200);
   const [taxeFonc, setTaxeFonc] = useState(900);
-  const [assurance, setAssurance] = useState(200);
+  const [assurance, setAssurance] = useState(200); // PNO / habitation
   const [tauxGestion, setTauxGestion] = useState(10);
 
   // Crédit
   const [apport, setApport] = useState(20000);
   const [tauxCredLoc, setTauxCredLoc] = useState(3.5);
   const [dureeCredLoc, setDureeCredLoc] = useState(25);
-  const [tauxAssuranceEmp, setTauxAssuranceEmp] = useState(0.25);
+  const [tauxAssuranceEmp, setTauxAssuranceEmp] = useState(0.25); // % annuel
 
   // Résultats
   const [resultRendementTexte, setResultRendementTexte] = useState<string>("");
-  const [resumeRendement, setResumeRendement] =
-    useState<ResumeRendement | null>(null);
+  const [resumeRendement, setResumeRendement] = useState<ResumeRendement | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
 
-  // Sauvegarde Supabase
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  // Référence pour scroller vers les résultats
+  const resultSectionRef = useRef<HTMLDivElement | null>(null);
 
-  const hasSimulation = !!resumeRendement && !!graphData;
-
-  const hasAirbnb =
-    nbApparts > 0 &&
-    locationTypes.slice(0, nbApparts).some((t) => t === "airbnb");
-
-  // --- Gestion champs ---
+  // --- Gestion des champs ---
 
   const handlePrixBienChange = (value: number) => {
     const newPrix = value || 0;
     setPrixBien(newPrix);
+
     if (!notaireCustom) {
       setFraisNotaire(Math.round(newPrix * 0.075));
     }
@@ -206,24 +202,31 @@ export default function InvestissementPage() {
     });
   };
 
-  const renderMultiline = (text: string) =>
-    text.split("\n").map((line, idx) => (
-      <p key={idx} className="text-sm text-slate-800 leading-relaxed">
-        {line}
-      </p>
-    ));
+  const hasAirbnb =
+    nbApparts > 0 &&
+    locationTypes.slice(0, nbApparts).some((t) => t === "airbnb");
 
-  const handlePrintPDF = () => {
-    if (typeof window !== "undefined") {
-      window.print();
+  // --- Navigation onglets (précédent / suivant) ---
+
+  const ordreOnglets: Onglet[] = ["couts", "revenus", "charges", "credit"];
+
+  const handleNext = () => {
+    const idx = ordreOnglets.indexOf(onglet);
+    if (idx < ordreOnglets.length - 1) {
+      setOnglet(ordreOnglets[idx + 1]);
     }
   };
 
-  // --- Calcul rentabilité ---
+  const handlePrev = () => {
+    const idx = ordreOnglets.indexOf(onglet);
+    if (idx > 0) {
+      setOnglet(ordreOnglets[idx - 1]);
+    }
+  };
+
+  // --- Calcul principal ---
 
   const handleCalculRendement = () => {
-    setSaveMessage(null);
-
     const prix = prixBien || 0;
     const notaire = fraisNotaire || 0;
     const trvx = travaux || 0;
@@ -262,7 +265,6 @@ export default function InvestissementPage() {
       );
       setGraphData(null);
       setResumeRendement(null);
-      setOnglet("resultats");
       return;
     }
 
@@ -292,6 +294,7 @@ export default function InvestissementPage() {
     }
     const annuiteCreditNue = mensualiteCreditNue * 12;
 
+    // Assurance emprunteur (approximation sur capital initial)
     const tAssEmp = (tauxAssuranceEmp || 0) / 100;
     const annuiteAssuranceEmp = montantEmprunte * tAssEmp;
     const mensualiteAssuranceEmp = annuiteAssuranceEmp / 12;
@@ -303,47 +306,45 @@ export default function InvestissementPage() {
     const cashflowMensuel = resultatNetAnnuel / 12;
 
     const texte = [
-      `Structure du projet : ${nbApparts} lot(s), avec pour chacun un mode de location défini (longue durée ou saisonnière).`,
-      `Coût total du projet (prix du bien, frais de notaire, frais d'agence, travaux) : ${formatEuro(
+      `Structure du projet : ${nbApparts} lot(s) combinant vos choix de location (longue durée ou saisonnière). Le coût total du projet (prix d’acquisition, frais de notaire, frais d’agence et travaux) ressort à ${formatEuro(
         coutTotal
       )}.`,
-      `Les loyers bruts cumulés représentent environ ${formatEuro(
+      `Les loyers annuels bruts atteignent environ ${formatEuro(
         loyersAnnuels
-      )} par an, soit ${formatEuro(loyerTotalMensuel)} par mois.`,
-      `Les charges récurrentes (copropriété, taxe foncière, assurance, gestion / conciergerie) sont estimées à ${formatEuro(
-        chargesTotales
-      )} par an, ce qui laisse un revenu net avant crédit de ${formatEuro(
-        revenuNetAvantCredit
-      )}.`,
-      `Sur cette base, le rendement brut ressort à ${formatPct(
+      )}, soit un rendement brut de ${formatPct(
         rendementBrut
-      )}, et le rendement net avant crédit à ${formatPct(
+      )} par rapport au coût complet du projet.`,
+      `Une fois intégrées les charges récurrentes (copropriété, taxe foncière, assurance, frais de gestion ou conciergerie), le revenu net avant crédit ressort à ${formatEuro(
+        revenuNetAvantCredit
+      )} par an, soit un rendement net avant remboursement du prêt de ${formatPct(
         rendementNetAvantCredit
-      )}, ce qui permet déjà de positionner le projet par rapport aux standards de votre marché local.`,
-      `Avec un apport de ${formatEuro(
+      )}.`,
+      `Avec un apport personnel de ${formatEuro(
         apportVal
-      )}, le montant emprunté est d'environ ${formatEuro(
+      )}, le montant emprunté est d’environ ${formatEuro(
         montantEmprunte
-      )}. Au taux de ${tauxCredLoc.toLocaleString("fr-FR", {
+      )}. À un taux de ${tauxCredLoc.toLocaleString("fr-FR", {
         maximumFractionDigits: 2,
-      })} % sur ${dureeCredLoc} ans, la mensualité de crédit (hors assurance) est de ${formatEuro(
+      })} % sur ${dureeCredLoc} ans, la mensualité de crédit (hors assurance emprunteur) est de l’ordre de ${formatEuro(
         mensualiteCreditNue
       )}.`,
-      `En ajoutant une estimation d'assurance emprunteur à ${tauxAssuranceEmp.toLocaleString(
+      `En ajoutant une estimation d’assurance emprunteur de ${tauxAssuranceEmp.toLocaleString(
         "fr-FR",
         { maximumFractionDigits: 2 }
-      )} % du capital emprunté, la mensualité totale crédit + assurance est d'environ ${formatEuro(
+      )} % par an sur le capital emprunté, la mensualité totale crédit + assurance ressort autour de ${formatEuro(
         mensualiteTotale
       )}, soit ${formatEuro(annuiteTotale)} par an.`,
-      `Après prise en compte du financement, le projet génère un résultat net annuel de ${formatEuro(
+      `Au global, une fois les charges, le crédit et l’assurance intégrés, le projet dégage un résultat net annuel de ${formatEuro(
         resultatNetAnnuel
-      )}, soit un cash-flow mensuel de ${formatEuro(cashflowMensuel)}.`,
+      )}, correspondant à un cash-flow mensuel de ${formatEuro(
+        cashflowMensuel
+      )}.`,
       resultatNetAnnuel >= 0
-        ? `Concrètement, le projet s'autofinance et dégage un excédent mensuel. Cet élément pourra être mis en avant lors d'un rendez-vous bancaire : vous présentez un actif qui se rembourse tout seul et qui améliore progressivement votre capacité patrimoniale.`
-        : `Le projet nécessite un effort d'épargne d'environ ${formatEuro(
+        ? `Le cash-flow positif indique que le bien s’autofinance et génère un excédent, ce qui constitue un argument fort auprès d’un banquier : le projet ne vient pas dégrader votre budget mensuel, il le renforce.`
+        : `Le cash-flow légèrement négatif signifie que le projet nécessite un effort d’épargne mensuel d’environ ${formatEuro(
             -cashflowMensuel
-          )} par mois. Cela peut rester acceptable si le bien est bien situé, si le potentiel de valorisation est fort ou si vous souhaitez renforcer votre patrimoine à long terme. L'important est d'assumer cet effort et de pouvoir l'expliquer à votre banquier.`,
-      `Ce type de synthèse, présenté proprement (tableau + graphiques), permet de parler le langage de la banque : chiffres, ratios et projection à moyen / long terme.`,
+          )}. Présenté correctement, cet effort peut être perçu comme une contribution maîtrisée à un actif patrimonial, surtout si l’emplacement et le potentiel de valorisation à long terme sont solides.`,
+      `Cette simulation reste indicative : elle ne tient pas compte de la fiscalité, de l’éventuelle revalorisation des loyers, ni de futures évolutions réglementaires. Elle vous donne toutefois une base structurée pour discuter avec votre banque ou votre courtier et affiner votre montage (durée, apport, type de location, etc.).`,
     ].join("\n");
 
     setResultRendementTexte(texte);
@@ -363,67 +364,38 @@ export default function InvestissementPage() {
       rendementNetAvantCredit,
       dureeCredLoc,
     });
-
-    setOnglet("resultats");
   };
 
-  // --- Sauvegarde Supabase ---
-
-  const handleSaveProject = async () => {
-    if (!hasSimulation || !graphData || !resumeRendement) return;
-
-    setSaving(true);
-    setSaveMessage(null);
-
-    try {
-      if (!supabase) {
-        throw new Error(
-          "Le service de sauvegarde n'est pas disponible (configuration Supabase manquante)."
-        );
+  const handleGoToResults = () => {
+    handleCalculRendement();
+    // petit délai pour laisser React rendre les résultats
+    setTimeout(() => {
+      if (resultSectionRef.current) {
+        resultSectionRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       }
+    }, 100);
+  };
 
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
+  const renderMultiline = (text: string) =>
+    text.split("\n").map((line, idx) => (
+      <p key={idx} className="text-sm text-slate-800 leading-relaxed">
+        {line}
+      </p>
+    ));
 
-      const session = sessionData?.session;
-      if (!session) {
-        if (typeof window !== "undefined") {
-          window.location.href = "/mon-compte?redirect=/projets";
-        }
-        return;
-      }
-
-      const titre = `Investissement locatif - ${formatEuro(prixBien)}`;
-
-      const { error } = await supabase.from("projects").insert({
-        user_id: session.user.id,
-        type: "investissement",
-        title: titre,
-        data: {
-          resume: resumeRendement,
-          texte: resultRendementTexte,
-          graphData,
-        },
-      });
-
-      if (error) throw error;
-      setSaveMessage("✅ Projet sauvegardé dans votre espace.");
-    } catch (err: any) {
-      setSaveMessage(
-        "❌ Erreur lors de la sauvegarde du projet : " +
-          (err?.message || "erreur inconnue")
-      );
-    } finally {
-      setSaving(false);
+  const handlePrintPDF = () => {
+    if (typeof window !== "undefined") {
+      window.print();
     }
   };
 
-  // --- Graphiques ---
+  // --- Préparation des graphiques ---
 
-  let barData: any = null;
-  let lineData: any = null;
-
+  let barData;
+  let lineData;
   if (graphData) {
     const {
       loyersAnnuels,
@@ -469,6 +441,8 @@ export default function InvestissementPage() {
     };
   }
 
+  const hasSimulation = !!resumeRendement && !!graphData;
+
   const ongletClasses = (key: Onglet) =>
     [
       "px-3 py-1.5 text-xs font-medium rounded-full border",
@@ -477,42 +451,10 @@ export default function InvestissementPage() {
         : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
     ].join(" ");
 
-  const NavButtons = ({
-    showPrev,
-    onPrev,
-    showNext,
-    onNext,
-    nextLabel = "Suivant",
-  }: {
-    showPrev: boolean;
-    onPrev?: () => void;
-    showNext: boolean;
-    onNext?: () => void;
-    nextLabel?: string;
-  }) => (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
-      <div>
-        {showPrev && (
-          <button
-            onClick={onPrev}
-            className="rounded-full bg-gradient-to-r from-slate-700 to-slate-900 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:shadow-md transition-transform active:scale-[0.99]"
-          >
-            ← Précédent
-          </button>
-        )}
-      </div>
-      <div className="flex justify-start sm:justify-end">
-        {showNext && (
-          <button
-            onClick={onNext}
-            className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]"
-          >
-            {nextLabel} →
-          </button>
-        )}
-      </div>
-    </div>
-  );
+  const primaryNavButtonClass =
+    "rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]";
+  const secondaryNavButtonClass =
+    "rounded-full border border-slate-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 hover:bg-slate-50";
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -535,7 +477,7 @@ export default function InvestissementPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-4">
+      <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-5">
         {/* Onglets */}
         <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-4">
           <div className="flex flex-wrap gap-2">
@@ -563,33 +505,39 @@ export default function InvestissementPage() {
             >
               Crédit & financement
             </button>
-            <button
-              className={ongletClasses("resultats")}
-              onClick={() => setOnglet("resultats")}
-            >
-              Résultats & dashboard
-            </button>
           </div>
         </section>
 
         {/* Onglet Coûts */}
         {onglet === "couts" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-            <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                Calculette
-              </p>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Coût global du projet
-              </h2>
-              <p className="text-xs text-slate-500">
-                Prix d&apos;acquisition, frais associés et travaux éventuels.
-              </p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Étape 1
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Coût global du projet
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Prix du bien, frais de notaire, frais d&apos;agence et travaux.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleNext}
+                  className={primaryNavButtonClass}
+                >
+                  Suivant
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs text-slate-700">Prix du bien (€)</label>
+                <label className="text-xs text-slate-700">
+                  Prix du bien (€)
+                </label>
                 <input
                   type="number"
                   value={prixBien}
@@ -615,7 +563,7 @@ export default function InvestissementPage() {
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                   <p className="text-[0.7rem] text-slate-500">
-                    Pré-rempli à ~7,5 % du prix, ajustable.
+                    Pré-rempli à ~7,5 % du prix, modifiable.
                   </p>
                 </div>
 
@@ -633,16 +581,18 @@ export default function InvestissementPage() {
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                   <p className="text-[0.7rem] text-slate-500">
-                    Pré-rempli à ~4 % du prix, ajustable.
+                    Pré-rempli à ~4 % du prix, modifiable.
                   </p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Travaux (€)</label>
+                  <label className="text-xs text-slate-700">
+                    Travaux (€)
+                  </label>
                   <input
                     type="number"
                     value={travaux}
-                    onChange={(e) => setTravaux(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setTravaux(parseFloat(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -655,28 +605,39 @@ export default function InvestissementPage() {
                 </span>
               </div>
             </div>
-
-            <NavButtons
-              showPrev={false}
-              showNext={true}
-              onNext={() => setOnglet("revenus")}
-            />
           </section>
         )}
 
         {/* Onglet Revenus */}
         {onglet === "revenus" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-            <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                Calculette
-              </p>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Revenus locatifs : longue durée & saisonnière
-              </h2>
-              <p className="text-xs text-slate-500">
-                Configurez le nombre de lots et le mode de location pour chacun.
-              </p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Étape 2
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Revenus locatifs : longue durée & saisonnière
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Configurez le nombre d&apos;appartements et le mode de location
+                  pour chacun.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePrev}
+                  className={secondaryNavButtonClass}
+                >
+                  Précédent
+                </button>
+                <button
+                  onClick={handleNext}
+                  className={primaryNavButtonClass}
+                >
+                  Suivant
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -789,7 +750,7 @@ export default function InvestissementPage() {
                           </div>
                           <p className="text-[0.65rem] text-slate-500">
                             Converti automatiquement en revenu locatif mensuel
-                            équivalent (nuit × taux d&apos;occupation × 365 ÷ 12).
+                            (nuit × taux d&apos;occupation × 365 / 12).
                           </p>
                         </div>
                       )}
@@ -798,29 +759,39 @@ export default function InvestissementPage() {
                 })}
               </div>
             </div>
-
-            <NavButtons
-              showPrev={true}
-              onPrev={() => setOnglet("couts")}
-              showNext={true}
-              onNext={() => setOnglet("charges")}
-            />
           </section>
         )}
 
         {/* Onglet Charges */}
         {onglet === "charges" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-            <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                Calculette
-              </p>
-            <h2 className="text-lg font-semibold text-slate-900">
-                Charges récurrentes & gestion
-              </h2>
-              <p className="text-xs text-slate-500">
-                Copropriété, taxe foncière, assurance, gestion locative ou conciergerie.
-              </p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Étape 3
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Charges récurrentes & gestion
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Copropriété, taxe foncière, assurance, gestion locative ou
+                  conciergerie.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePrev}
+                  className={secondaryNavButtonClass}
+                >
+                  Précédent
+                </button>
+                <button
+                  onClick={handleNext}
+                  className={primaryNavButtonClass}
+                >
+                  Suivant
+                </button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -833,7 +804,7 @@ export default function InvestissementPage() {
                     type="number"
                     value={chargesCopro}
                     onChange={(e) =>
-                      setChargesCopro(parseFloat(e.target.value) || 0)
+                      setChargesCopro(parseFloat(e.target.value))
                     }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
@@ -845,7 +816,9 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={taxeFonc}
-                    onChange={(e) => setTaxeFonc(parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setTaxeFonc(parseFloat(e.target.value))
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -857,7 +830,7 @@ export default function InvestissementPage() {
                     type="number"
                     value={assurance}
                     onChange={(e) =>
-                      setAssurance(parseFloat(e.target.value) || 0)
+                      setAssurance(parseFloat(e.target.value))
                     }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
@@ -875,38 +848,47 @@ export default function InvestissementPage() {
                   type="number"
                   value={tauxGestion}
                   onChange={(e) =>
-                    setTauxGestion(parseFloat(e.target.value) || 0)
+                    setTauxGestion(parseFloat(e.target.value))
                   }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
-
-            <NavButtons
-              showPrev={true}
-              onPrev={() => setOnglet("revenus")}
-              showNext={true}
-              onNext={() => setOnglet("credit")}
-            />
           </section>
         )}
 
         {/* Onglet Crédit */}
         {onglet === "credit" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-            <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                Calculette
-              </p>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Paramètres du financement
-              </h2>
-              <p className="text-xs text-slate-500">
-                Apport personnel, taux, durée du crédit et assurance emprunteur.
-              </p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Étape 4
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Paramètres du financement
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Apport personnel, taux, durée du crédit et assurance emprunteur.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePrev}
+                  className={secondaryNavButtonClass}
+                >
+                  Précédent
+                </button>
+                <button
+                  onClick={handleGoToResults}
+                  className={primaryNavButtonClass}
+                >
+                  Aller aux résultats
+                </button>
+              </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-4 mt-2">
               <div className="space-y-1">
                 <label className="text-xs text-slate-700">
                   Apport personnel (€)
@@ -914,7 +896,7 @@ export default function InvestissementPage() {
                 <input
                   type="number"
                   value={apport}
-                  onChange={(e) => setApport(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setApport(parseFloat(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -926,7 +908,7 @@ export default function InvestissementPage() {
                   type="number"
                   value={tauxCredLoc}
                   onChange={(e) =>
-                    setTauxCredLoc(parseFloat(e.target.value) || 0)
+                    setTauxCredLoc(parseFloat(e.target.value))
                   }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
@@ -939,7 +921,7 @@ export default function InvestissementPage() {
                   type="number"
                   value={dureeCredLoc}
                   onChange={(e) =>
-                    setDureeCredLoc(parseFloat(e.target.value) || 0)
+                    setDureeCredLoc(parseFloat(e.target.value))
                   }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
@@ -947,277 +929,251 @@ export default function InvestissementPage() {
               <div className="space-y-1">
                 <label className="text-xs text-slate-700 flex items-center gap-1">
                   Taux assurance emprunteur (annuel, en %)
-                  <InfoBadge text="Taux annuel appliqué au capital emprunté (contrat groupe typiquement 0,20–0,40 %). Approche simplifiée pour estimer la mensualité totale crédit + assurance." />
+                  <InfoBadge text="Taux annuel appliqué au capital emprunté (contrat groupe ~0,20–0,40 % en moyenne). Approche simplifiée pour estimer la mensualité totale crédit + assurance." />
                 </label>
                 <input
                   type="number"
                   value={tauxAssuranceEmp}
                   onChange={(e) =>
-                    setTauxAssuranceEmp(parseFloat(e.target.value) || 0)
+                    setTauxAssuranceEmp(parseFloat(e.target.value))
                   }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
-              <button
-                onClick={() => setOnglet("charges")}
-                className="rounded-full bg-gradient-to-r from-slate-700 to-slate-900 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:shadow-md transition-transform active:scale-[0.99]"
-              >
-                ← Précédent
-              </button>
-              <button
-                onClick={() => setOnglet("resultats")}
-                className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]"
-              >
-                Aller aux résultats →
-              </button>
-            </div>
           </section>
         )}
 
-        {/* Onglet Résultats */}
-        {onglet === "resultats" && (
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-5">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                  Synthèse
-                </p>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Résultats & dashboard de rentabilité
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Chiffres clés, graphiques et analyse narrative de votre projet.
-                </p>
+        {/* RÉSULTATS & DASHBOARD — toujours sous les onglets */}
+        <section
+          ref={resultSectionRef}
+          className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                Synthèse
+              </p>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Résultats & dashboard de rentabilité
+              </h2>
+              <p className="text-xs text-slate-500">
+                Lancez le calcul puis analysez en détail vos chiffres.
+              </p>
+            </div>
+
+            {hasSimulation && (
+              <button
+                onClick={handlePrintPDF}
+                className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300 transition-colors"
+              >
+                PDF
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 mt-3">
+            <button
+              onClick={handleCalculRendement}
+              className={primaryNavButtonClass}
+            >
+              Calculer / Mettre à jour la rentabilité
+            </button>
+            <p className="text-xs text-slate-500">
+              Assurez-vous que les onglets Coûts, Revenus, Charges et Crédit sont
+              correctement renseignés pour une analyse cohérente.
+            </p>
+          </div>
+
+          {hasSimulation ? (
+            <>
+              {/* Cartes de synthèse */}
+              <div className="grid gap-4 sm:grid-cols-4 mt-4">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Coût total projet
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {formatEuro(graphData!.coutTotal)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Rendement brut
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {formatPct(graphData!.rendementBrut)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Rendement net avant crédit
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {formatPct(graphData!.rendementNetAvantCredit)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Mensualité totale crédit + assurance
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {formatEuro(graphData!.mensualiteCredit)}
+                  </p>
+                </div>
               </div>
 
-              {hasSimulation && (
-                <div className="flex flex-col items-end gap-2">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handlePrintPDF}
-                      className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300 transition-colors"
-                    >
-                      PDF
-                    </button>
-                    <button
-                      onClick={handleSaveProject}
-                      disabled={saving}
-                      className="inline-flex items-center justify-center rounded-full border border-emerald-500/80 bg-emerald-500 px-3 py-1.5 text-[0.7rem] font-semibold text-white shadow-sm hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {saving ? "Enregistrement..." : "Sauvegarder dans mon espace"}
-                    </button>
-                  </div>
-                  {saveMessage && (
-                    <p className="text-[0.65rem] text-slate-500">{saveMessage}</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-1 mb-1">
-              <button
-                onClick={handleCalculRendement}
-                className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]"
-              >
-                Calculer / Mettre à jour la rentabilité
-              </button>
-            </div>
-
-            {hasSimulation ? (
-              <>
-                {/* Cartes de synthèse */}
-                <div className="grid gap-4 sm:grid-cols-4">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Coût total projet
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {formatEuro(graphData!.coutTotal)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Rendement brut
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {formatPct(graphData!.rendementBrut)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Rendement net avant crédit
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {formatPct(graphData!.rendementNetAvantCredit)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Mensualité totale crédit + assurance
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {formatEuro(graphData!.mensualiteCredit)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Cash-flow & résultat */}
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 sm:col-span-2 flex flex-col justify-center">
-                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700 mb-1">
-                      Cash-flow & rentabilité
-                    </p>
-                    <div className="flex flex-wrap gap-6">
-                      <div>
-                        <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                          Cash-flow mensuel
-                        </p>
-                        <p
-                          className={
-                            "mt-1 text-lg font-semibold " +
-                            (resumeRendement!.cashflowMensuel >= 0
-                              ? "text-emerald-700"
-                              : "text-red-600")
-                          }
-                        >
-                          {formatEuro(resumeRendement!.cashflowMensuel)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                          Résultat net annuel
-                        </p>
-                        <p
-                          className={
-                            "mt-1 text-lg font-semibold " +
-                            (resumeRendement!.resultatNetAnnuel >= 0
-                              ? "text-emerald-700"
-                              : "text-red-600")
-                          }
-                        >
-                          {formatEuro(resumeRendement!.resultatNetAnnuel)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                          Rendement net
-                        </p>
-                        <p className="mt-1 text-lg font-semibold text-slate-900">
-                          {formatPct(
-                            resumeRendement!.rendementNetAvantCredit
-                          )}
-                        </p>
-                      </div>
+              {/* Cash-flow & résultat */}
+              <div className="grid gap-4 sm:grid-cols-3 mt-4">
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 sm:col-span-2 flex flex-col justify-center">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700 mb-1">
+                    Cash-flow & rentabilité
+                  </p>
+                  <div className="flex flex-wrap gap-6">
+                    <div>
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Cash-flow mensuel
+                      </p>
+                      <p
+                        className={
+                          "mt-1 text-lg font-semibold " +
+                          (resumeRendement!.cashflowMensuel >= 0
+                            ? "text-emerald-700"
+                            : "text-red-600")
+                        }
+                      >
+                        {formatEuro(resumeRendement!.cashflowMensuel)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Résultat net annuel
+                      </p>
+                      <p
+                        className={
+                          "mt-1 text-lg font-semibold " +
+                          (resumeRendement!.resultatNetAnnuel >= 0
+                            ? "text-emerald-700"
+                            : "text-red-600")
+                        }
+                      >
+                        {formatEuro(resumeRendement!.resultatNetAnnuel)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Rendement net
+                      </p>
+                      <p className="mt-1 text-lg font-semibold text-slate-900">
+                        {formatPct(resumeRendement!.rendementNetAvantCredit)}
+                      </p>
                     </div>
                   </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Durée du crédit
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-slate-900">
-                      {graphData!.dureeCredLoc} ans
-                    </p>
-                    <p className="mt-2 text-[0.7rem] text-slate-500">
-                      Le graphique de droite illustre l&apos;accumulation
-                      théorique du cash-flow sur la durée du prêt (hors revalorisation
-                      et fiscalité).
-                    </p>
-                  </div>
                 </div>
 
-                {/* Graphiques */}
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                    <p className="text-xs text-slate-600 mb-2">
-                      Flux annuels : loyers bruts, charges, crédit + assurance et
-                      résultat net.
-                    </p>
-                    {barData && (
-                      <Bar
-                        data={barData}
-                        options={{
-                          plugins: {
-                            legend: {
-                              labels: {
-                                color: "#0f172a",
-                                font: { size: 11 },
-                              },
-                            },
-                          },
-                          scales: {
-                            x: {
-                              ticks: { color: "#0f172a", font: { size: 10 } },
-                              grid: { color: "#e5e7eb" },
-                            },
-                            y: {
-                              ticks: { color: "#0f172a", font: { size: 10 } },
-                              grid: { color: "#e5e7eb" },
-                            },
-                          },
-                        }}
-                      />
-                    )}
-                  </div>
-
-                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                    <p className="text-xs text-slate-600 mb-2">
-                      Cash-flow cumulé année par année (hypothèse de paramètres
-                      constants).
-                    </p>
-                    {lineData && (
-                      <Line
-                        data={lineData}
-                        options={{
-                          plugins: {
-                            legend: {
-                              labels: {
-                                color: "#0f172a",
-                                font: { size: 11 },
-                              },
-                            },
-                          },
-                          scales: {
-                            x: {
-                              ticks: { color: "#0f172a", font: { size: 9 } },
-                              grid: { color: "#e5e7eb" },
-                            },
-                            y: {
-                              ticks: { color: "#0f172a", font: { size: 10 } },
-                              grid: { color: "#e5e7eb" },
-                            },
-                          },
-                        }}
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Analyse narrative */}
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-                    Analyse détaillée
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Durée du crédit
                   </p>
-                  {renderMultiline(resultRendementTexte)}
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {graphData!.dureeCredLoc} ans
+                  </p>
+                  <p className="mt-2 text-[0.7rem] text-slate-500">
+                    Le graphique de droite illustre l&apos;accumulation théorique
+                    du cash-flow sur la durée du prêt (hors revalorisation et
+                    fiscalité).
+                  </p>
+                </div>
+              </div>
+
+              {/* Graphiques */}
+              <div className="grid gap-4 lg:grid-cols-2 mt-4">
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                  <p className="text-xs text-slate-600 mb-2">
+                    Flux annuels : loyers bruts, charges, crédit + assurance et
+                    résultat net.
+                  </p>
+                  {barData && (
+                    <Bar
+                      data={barData}
+                      options={{
+                        plugins: {
+                          legend: {
+                            labels: {
+                              color: "#0f172a",
+                              font: { size: 11 },
+                            },
+                          },
+                        },
+                        scales: {
+                          x: {
+                            ticks: { color: "#0f172a", font: { size: 10 } },
+                            grid: { color: "#e5e7eb" },
+                          },
+                          y: {
+                            ticks: { color: "#0f172a", font: { size: 10 } },
+                            grid: { color: "#e5e7eb" },
+                          },
+                        },
+                      }}
+                    />
+                  )}
                 </div>
 
-                <p className="mt-1 text-[0.7rem] text-slate-500">
-                  Ces calculs sont fournis à titre indicatif, hors fiscalité et
-                  évolution future des loyers, taux, charges et réglementation.
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                  <p className="text-xs text-slate-600 mb-2">
+                    Cash-flow cumulé année par année (hypothèse de paramètres
+                    constants).
+                  </p>
+                  {lineData && (
+                    <Line
+                      data={lineData}
+                      options={{
+                        plugins: {
+                          legend: {
+                            labels: {
+                              color: "#0f172a",
+                              font: { size: 11 },
+                            },
+                          },
+                        },
+                        scales: {
+                          x: {
+                            ticks: { color: "#0f172a", font: { size: 9 } },
+                            grid: { color: "#e5e7eb" },
+                          },
+                          y: {
+                            ticks: { color: "#0f172a", font: { size: 10 } },
+                            grid: { color: "#e5e7eb" },
+                          },
+                        },
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Analyse narrative */}
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+                  Analyse détaillée
                 </p>
-              </>
-            ) : (
-              <p className="text-sm text-slate-500">
-                Complétez les onglets Coûts, Revenus, Charges et Crédit, puis
-                cliquez sur "Calculer / Mettre à jour la rentabilité" pour
-                afficher le dashboard détaillé.
+                {renderMultiline(resultRendementTexte)}
+              </div>
+
+              <p className="mt-2 text-[0.7rem] text-slate-500">
+                Ces calculs sont fournis à titre indicatif, hors fiscalité et
+                évolution future des loyers, taux, charges et réglementation.
               </p>
-            )}
-          </section>
-        )}
+            </>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">
+              Complétez les onglets Coûts, Revenus, Charges et Crédit, puis
+              cliquez sur “Calculer / Mettre à jour la rentabilité” ou sur
+              “Aller aux résultats” pour afficher le dashboard détaillé.
+            </p>
+          )}
+        </section>
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
