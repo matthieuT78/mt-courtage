@@ -1,6 +1,6 @@
 // pages/capacite.tsx
 import { useState } from "react";
-import Link from "next/link";
+import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
 function formatEuro(val: number) {
@@ -353,24 +353,8 @@ export default function CapaciteEmpruntPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-4 py-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
-              MT Courtage &amp; Investissement
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Calculette de capacité d&apos;emprunt.
-            </p>
-          </div>
-          <div className="text-xs text-slate-500 sm:text-right">
-            <p>Outil indicatif, ne remplace pas une étude personnalisée.</p>
-            <Link href="/" className="underline">
-              &larr; Retour à l&apos;accueil
-            </Link>
-          </div>
-        </div>
-      </header>
+      {/* ✅ Header commun */}
+      <AppHeader />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-4">
         <section className="grid gap-4 lg:grid-cols-2">
@@ -392,7 +376,9 @@ export default function CapaciteEmpruntPage() {
             <div className="space-y-3">
               {/* Revenus */}
               <div className="space-y-1">
-                <label className="text-xs text-slate-700">Revenus nets du foyer (€/mois)</label>
+                <label className="text-xs text-slate-700">
+                  Revenus nets du foyer (€/mois)
+                </label>
                 <input
                   type="number"
                   value={revenusNetMensuels}
@@ -419,7 +405,8 @@ export default function CapaciteEmpruntPage() {
 
               <div className="space-y-1">
                 <label className="text-xs text-slate-700">
-                  Autres charges mensuelles hors crédits (loyer, pensions, etc.) (€/mois)
+                  Autres charges mensuelles hors crédits (loyer, pensions, etc.)
+                  (€/mois)
                 </label>
                 <input
                   type="number"
@@ -699,9 +686,8 @@ export default function CapaciteEmpruntPage() {
                       {formatPct(resumeCapacite!.tauxEndettementAvecProjet)}
                     </p>
                     <p className="mt-1 text-[0.7rem] text-slate-500">
-                      Taux actuel : {formatPct(
-                        resumeCapacite!.tauxEndettementActuel
-                      )}
+                      Taux actuel :{" "}
+                      {formatPct(resumeCapacite!.tauxEndettementActuel)}
                     </p>
                   </div>
                 </div>
