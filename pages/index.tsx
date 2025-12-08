@@ -90,14 +90,6 @@ export default function Home() {
               Quelques minutes suffisent pour obtenir un dossier clair à présenter
               à votre banque ou à votre courtier.
             </p>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/capacite"
-                className="inline-flex items-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-800"
-              >
-                Commencer par ma capacité d&apos;emprunt
-              </Link>
-            </div>
           </div>
         </section>
 
@@ -201,30 +193,6 @@ export default function Home() {
                 Analysez la performance globale de vos biens locatifs : cash-flow,
                 encours, rendements et biens à optimiser.
               </p>
-            </Link>
-          </div>
-        </section>
-
-        {/* Accès aux projets sauvegardés */}
-        <section className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-500 mb-1">
-              Espace projets
-            </p>
-            <p className="text-sm font-semibold text-slate-900">
-              Retrouvez vos simulations sauvegardées
-            </p>
-            <p className="text-xs text-slate-600">
-              Idéal pour préparer un rendez-vous bancaire ou un point avec votre
-              courtier.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href="/projets"
-              className="inline-flex items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-800 hover:bg-slate-100"
-            >
-              Voir mes projets sauvegardés
             </Link>
           </div>
         </section>
