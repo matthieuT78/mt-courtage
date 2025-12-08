@@ -1,135 +1,299 @@
 // pages/mon-compte.tsx
-import { FormEvent, useState } from "react";
+import { useEffect, useState, FormEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
-import Link from "next/link";
+import type { User } from "@supabase/supabase-js";
 
 export default function MonComptePage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const redirectTo = (router.query.redirect as string) || "/projets";
+  const [user, setUser] = useState<User | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setMessage(null);
-    setLoading(true);
+  const [fullName, setFullName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
 
-    try {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchUser = async () => {
       if (!supabase) {
-        throw new Error(
-          "Le service d'authentification n'est pas disponible (configuration Supabase manquante)."
-        );
+        setLoadingUser(false);
+        return;
       }
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data?.user) {
+        setUser(null);
+        setLoadingUser(false);
+        if (typeof window !== "undefined") {
+          router.push("/auth");
+        }
+        return;
+      }
+      setUser(data.user);
+      setFullName((data.user.user_metadata?.full_name as string) || "");
+      setAvatarUrl((data.user.user_metadata?.avatar_url as string) || "");
+      setLoadingUser(false);
+    };
+    fetchUser();
+  }, [router]);
 
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
-        setMessage(
-          "Compte créé. Vérifiez vos e-mails si la confirmation est activée."
-        );
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        router.push(redirectTo);
-      }
+  const handleProfileSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setProfileMessage(null);
+
+    if (!supabase || !user) return;
+
+    setProfileSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          full_name: fullName,
+          avatar_url: avatarUrl,
+        },
+      });
+      if (error) throw error;
+      setProfileMessage("✅ Profil mis à jour.");
     } catch (err: any) {
-      setMessage(err?.message || "Une erreur est survenue.");
+      setProfileMessage("❌ " + (err?.message || "Erreur lors de la mise à jour."));
     } finally {
-      setLoading(false);
+      setProfileSaving(false);
     }
   };
+
+  const handlePasswordSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setPasswordMessage(null);
+
+    if (!supabase || !user) return;
+
+    if (!newPassword || newPassword !== confirmPassword) {
+      setPasswordMessage("❌ Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) throw error;
+      setPasswordMessage("✅ Mot de passe mis à jour.");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      setPasswordMessage(
+        "❌ " + (err?.message || "Erreur lors de la mise à jour du mot de passe.")
+      );
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
+  };
+
+  const initials =
+    user?.user_metadata?.full_name?.[0]?.toUpperCase() ||
+    user?.email?.[0]?.toUpperCase() ||
+    "M";
+
+  if (loadingUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <p className="text-sm text-slate-500">Chargement de votre espace...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-slate-900">
-            MT Courtage &amp; Investissement
-          </h1>
-          <Link href="/" className="text-xs text-slate-500 underline">
-            &larr; Accueil
-          </Link>
+        <div className="max-w-4xl mx-auto px-4 py-5 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
+              Mon compte
+            </h1>
+            <p className="mt-1 text-xs text-slate-500">
+              Gérez vos informations personnelles et vos paramètres d&apos;accès.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-xs text-slate-500 underline">
+              &larr; Accueil
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Déconnexion
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md rounded-2xl bg-white border border-slate-200 shadow-sm p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-slate-900">
-            {mode === "login" ? "Connexion à votre espace" : "Créer un compte"}
-          </h2>
-          <p className="text-xs text-slate-500">
-            Votre espace vous permettra de sauvegarder vos simulations et de les
-            retrouver plus tard.
-          </p>
-
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div>
-              <label className="block text-xs text-slate-700">
-                Adresse e-mail
-              </label>
-              <input
-                type="email"
-                required
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+      <main className="flex-1 max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Résumé utilisateur */}
+        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-full border border-slate-200 bg-slate-900 text-white flex items-center justify-center overflow-hidden">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-base font-semibold">{initials}</span>
+              )}
             </div>
             <div>
-              <label className="block text-xs text-slate-700">
-                Mot de passe
-              </label>
-              <input
-                type="password"
-                required
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-
-            {message && (
-              <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                {message}
+              <p className="text-sm font-semibold text-slate-900">
+                {fullName || user.email}
               </p>
-            )}
+              <p className="text-xs text-slate-500">{user.email}</p>
+            </div>
+          </div>
+          <div className="hidden sm:flex flex-col items-end text-[0.7rem] text-slate-500">
+            <p>ID utilisateur (Supabase)</p>
+            <p className="font-mono text-[0.65rem] text-slate-400 truncate max-w-xs">
+              {user.id}
+            </p>
+          </div>
+        </section>
+
+        {/* Infos perso & avatar */}
+        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              Informations personnelles
+            </h2>
+            <p className="text-xs text-slate-500">
+              Ces informations sont utilisées pour personnaliser votre espace et vos
+              exports de simulations.
+            </p>
+          </div>
+
+          <form className="space-y-3" onSubmit={handleProfileSubmit}>
+            <div className="space-y-1">
+              <label className="text-xs text-slate-700">Nom complet</label>
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-slate-700">
+                URL de l&apos;avatar (optionnel)
+              </label>
+              <input
+                type="url"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="https://…"
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+              <p className="text-[0.7rem] text-slate-500">
+                Vous pouvez utiliser une URL d&apos;image (hébergement externe ou futur
+                stockage dédié).
+              </p>
+            </div>
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full rounded-full bg-slate-900 text-white py-2.5 text-sm font-semibold hover:bg-slate-800 disabled:opacity-60"
+              disabled={profileSaving}
+              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
             >
-              {loading
-                ? "Veuillez patienter..."
-                : mode === "login"
-                ? "Se connecter"
-                : "Créer mon compte"}
+              {profileSaving ? "Enregistrement..." : "Enregistrer les modifications"}
             </button>
-          </form>
 
-          <button
-            type="button"
-            className="text-xs text-slate-500 underline"
-            onClick={() =>
-              setMode((m) => (m === "login" ? "signup" : "login"))
-            }
-          >
-            {mode === "login"
-              ? "Pas encore de compte ? Créer un compte"
-              : "Déjà un compte ? Se connecter"}
-          </button>
-        </div>
+            {profileMessage && (
+              <p className="text-[0.75rem] text-slate-600 whitespace-pre-line">
+                {profileMessage}
+              </p>
+            )}
+          </form>
+        </section>
+
+        {/* Mot de passe */}
+        <section
+          id="password"
+          className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4"
+        >
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              Sécurité & mot de passe
+            </h2>
+            <p className="text-xs text-slate-500">
+              Modifiez votre mot de passe Supabase / MT Courtage. Vous serez invité à
+              vous reconnecter si nécessaire.
+            </p>
+          </div>
+
+          <form className="space-y-3" onSubmit={handlePasswordSubmit}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">Nouveau mot de passe</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">
+                  Confirmation du nouveau mot de passe
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={passwordSaving}
+              className="rounded-full bg-white border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+            >
+              {passwordSaving ? "Mise à jour..." : "Changer mon mot de passe"}
+            </button>
+
+            {passwordMessage && (
+              <p className="text-[0.75rem] text-slate-600 whitespace-pre-line">
+                {passwordMessage}
+              </p>
+            )}
+          </form>
+        </section>
       </main>
+
+      <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
+        <p>
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Espace client.
+        </p>
+      </footer>
     </div>
   );
 }
