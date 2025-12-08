@@ -1,7 +1,7 @@
 // pages/investissement.tsx
 import { useState, useRef } from "react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
+import AppHeader from "../components/AppHeader"; // <<< nouveau header
 import {
   Chart as ChartJS,
   Tooltip,
@@ -368,7 +368,6 @@ export default function InvestissementPage() {
 
   const handleGoToResults = () => {
     handleCalculRendement();
-    // petit délai pour laisser React rendre les résultats
     setTimeout(() => {
       if (resultSectionRef.current) {
         resultSectionRef.current.scrollIntoView({
@@ -458,24 +457,8 @@ export default function InvestissementPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-4 py-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
-              MT Courtage &amp; Investissement
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Simulateur d&apos;investissement locatif (version avancée).
-            </p>
-          </div>
-          <div className="text-xs text-slate-500 sm:text-right">
-            <p>Outil indicatif, ne remplace pas une étude personnalisée.</p>
-            <Link href="/" className="underline">
-              &larr; Retour à l&apos;accueil
-            </Link>
-          </div>
-        </div>
-      </header>
+      {/* Nouveau header global */}
+      <AppHeader />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-5">
         {/* Onglets */}
@@ -944,7 +927,7 @@ export default function InvestissementPage() {
           </section>
         )}
 
-        {/* RÉSULTATS & DASHBOARD — toujours sous les onglets */}
+        {/* RÉSULTATS & DASHBOARD */}
         <section
           ref={resultSectionRef}
           className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4"
