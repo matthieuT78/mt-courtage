@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { supabase } from "../lib/supabaseClient";
 import {
   Chart as ChartJS,
   Tooltip,
@@ -23,18 +24,16 @@ ChartJS.register(
   PointElement
 );
 
-const Bar = dynamic(
-  () => import("react-chartjs-2").then((m) => m.Bar),
-  { ssr: false }
-);
+const Bar = dynamic(() => import("react-chartjs-2").then((m) => m.Bar), {
+  ssr: false,
+});
 
-const Line = dynamic(
-  () => import("react-chartjs-2").then((m) => m.Line),
-  { ssr: false }
-);
+const Line = dynamic(() => import("react-chartjs-2").then((m) => m.Line), {
+  ssr: false,
+});
 
 function formatEuro(val: number) {
-  if (Number.isNaN(val)) return "-";
+  if (Number.isNaN(val) || val === undefined || val === null) return "-";
   return val.toLocaleString("fr-FR", {
     style: "currency",
     currency: "EUR",
@@ -43,7 +42,7 @@ function formatEuro(val: number) {
 }
 
 function formatPct(val: number) {
-  if (Number.isNaN(val)) return "-";
+  if (Number.isNaN(val) || val === undefined || val === null) return "-";
   return (
     val.toLocaleString("fr-FR", {
       maximumFractionDigits: 2,
@@ -87,6 +86,7 @@ function InfoBadge({ text }: { text: string }) {
 }
 
 export default function InvestissementPage() {
+  // Onglets
   const [onglet, setOnglet] = useState<Onglet>("couts");
 
   // Prix / coûts
@@ -100,8 +100,7 @@ export default function InvestissementPage() {
   // Lots / loyers
   const [nbApparts, setNbApparts] = useState(1);
   const [loyersApparts, setLoyersApparts] = useState<number[]>([900]);
-  const [locationTypes, setLocationTypes] =
-    useState<LocationType[]>(["longue"]);
+  const [locationTypes, setLocationTypes] = useState<LocationType[]>(["longue"]);
   const [airbnbNuitees, setAirbnbNuitees] = useState<number[]>([90]);
   const [airbnbOccupation, setAirbnbOccupation] = useState<number[]>([65]);
 
@@ -123,12 +122,21 @@ export default function InvestissementPage() {
     useState<ResumeRendement | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
 
-  // --- Handlers ---
+  // Sauvegarde Supabase
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const hasSimulation = !!resumeRendement && !!graphData;
+
+  const hasAirbnb =
+    nbApparts > 0 &&
+    locationTypes.slice(0, nbApparts).some((t) => t === "airbnb");
+
+  // --- Gestion champs ---
 
   const handlePrixBienChange = (value: number) => {
     const newPrix = value || 0;
     setPrixBien(newPrix);
-
     if (!notaireCustom) {
       setFraisNotaire(Math.round(newPrix * 0.075));
     }
@@ -198,13 +206,24 @@ export default function InvestissementPage() {
     });
   };
 
-  const hasAirbnb =
-    nbApparts > 0 &&
-    locationTypes.slice(0, nbApparts).some((t) => t === "airbnb");
+  const renderMultiline = (text: string) =>
+    text.split("\n").map((line, idx) => (
+      <p key={idx} className="text-sm text-slate-800 leading-relaxed">
+        {line}
+      </p>
+    ));
 
-  // --- Calcul principal ---
+  const handlePrintPDF = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
+  // --- Calcul rentabilité ---
 
   const handleCalculRendement = () => {
+    setSaveMessage(null);
+
     const prix = prixBien || 0;
     const notaire = fraisNotaire || 0;
     const trvx = travaux || 0;
@@ -283,59 +302,48 @@ export default function InvestissementPage() {
     const resultatNetAnnuel = revenuNetAvantCredit - annuiteTotale;
     const cashflowMensuel = resultatNetAnnuel / 12;
 
-    // --- phrase d’intro contextuelle ---
-    const sliceTypes = locationTypes.slice(0, nbApparts);
-    const hasLongue = sliceTypes.some((t) => t === "longue");
-    const hasSaisonniere = sliceTypes.some((t) => t === "airbnb");
-
-    let structurePhrase: string;
-    if (hasLongue && !hasSaisonniere) {
-      structurePhrase = `Structure du projet : ${nbApparts} lot(s) en location longue durée.`;
-    } else if (!hasLongue && hasSaisonniere) {
-      structurePhrase = `Structure du projet : ${nbApparts} lot(s) en location saisonnière (type Airbnb).`;
-    } else {
-      structurePhrase = `Structure du projet : ${nbApparts} lot(s), combinant location longue durée et saisonnière.`;
-    }
-
     const texte = [
-      structurePhrase,
-      `Revenus locatifs : loyers mensuels cumulés équivalents de ${formatEuro(
-        loyerTotalMensuel
-      )}, soit ${formatEuro(loyersAnnuels)} de loyers bruts par an.`,
-      `Coût global : bien, notaire, travaux et éventuels frais d’agence représentent un coût total d’environ ${formatEuro(
+      `Structure du projet : ${nbApparts} lot(s), avec pour chacun un mode de location défini (longue durée ou saisonnière).`,
+      `Coût total du projet (prix du bien, frais de notaire, frais d'agence, travaux) : ${formatEuro(
         coutTotal
       )}.`,
-      `Rendement brut : vos loyers bruts rapportés au coût total donnent un rendement brut proche de ${formatPct(
-        rendementBrut
-      )}.`,
-      `Charges d’exploitation : copropriété, taxe foncière, assurance PNO / habitation et gestion/conciergerie représentent environ ${formatEuro(
+      `Les loyers bruts cumulés représentent environ ${formatEuro(
+        loyersAnnuels
+      )} par an, soit ${formatEuro(loyerTotalMensuel)} par mois.`,
+      `Les charges récurrentes (copropriété, taxe foncière, assurance, gestion / conciergerie) sont estimées à ${formatEuro(
         chargesTotales
-      )} par an.`,
-      `Rendement net avant crédit : une fois les charges d’exploitation déduites, le rendement net hors financement est d’environ ${formatPct(
+      )} par an, ce qui laisse un revenu net avant crédit de ${formatEuro(
+        revenuNetAvantCredit
+      )}.`,
+      `Sur cette base, le rendement brut ressort à ${formatPct(
+        rendementBrut
+      )}, et le rendement net avant crédit à ${formatPct(
         rendementNetAvantCredit
-      )}.`,
-      `Financement : l’apport de ${formatEuro(
+      )}, ce qui permet déjà de positionner le projet par rapport aux standards de votre marché local.`,
+      `Avec un apport de ${formatEuro(
         apportVal
-      )} permet d’emprunter environ ${formatEuro(
+      )}, le montant emprunté est d'environ ${formatEuro(
         montantEmprunte
-      )}, avec un taux moyen de ${formatPct(
-        tauxCredLoc
-      )} sur ${dureeCredLoc} ans.`,
-      `Mensualités : la mensualité de crédit (capital + intérêts) est estimée à ${formatEuro(
+      )}. Au taux de ${tauxCredLoc.toLocaleString("fr-FR", {
+        maximumFractionDigits: 2,
+      })} % sur ${dureeCredLoc} ans, la mensualité de crédit (hors assurance) est de ${formatEuro(
         mensualiteCreditNue
-      )}, à laquelle s’ajoute une mensualité d’assurance emprunteur d’environ ${formatEuro(
-        mensualiteAssuranceEmp
-      )}, soit une mensualité totale proche de ${formatEuro(
-        mensualiteTotale
       )}.`,
-      `Cash-flow : après paiement des charges, du crédit et de l’assurance emprunteur, le projet dégage un résultat net d’environ ${formatEuro(
+      `En ajoutant une estimation d'assurance emprunteur à ${tauxAssuranceEmp.toLocaleString(
+        "fr-FR",
+        { maximumFractionDigits: 2 }
+      )} % du capital emprunté, la mensualité totale crédit + assurance est d'environ ${formatEuro(
+        mensualiteTotale
+      )}, soit ${formatEuro(annuiteTotale)} par an.`,
+      `Après prise en compte du financement, le projet génère un résultat net annuel de ${formatEuro(
         resultatNetAnnuel
-      )} par an, soit ${formatEuro(cashflowMensuel)} par mois.`,
+      )}, soit un cash-flow mensuel de ${formatEuro(cashflowMensuel)}.`,
       resultatNetAnnuel >= 0
-        ? `Lecture bancaire : le projet est autofinancé et génère un excédent, ce qui renforce votre dossier en montrant que l’opération ne pèse pas sur votre budget courant.`
-        : `Lecture bancaire : le projet demande un effort d’épargne mensuel d’environ ${formatEuro(
+        ? `Concrètement, le projet s'autofinance et dégage un excédent mensuel. Cet élément pourra être mis en avant lors d'un rendez-vous bancaire : vous présentez un actif qui se rembourse tout seul et qui améliore progressivement votre capacité patrimoniale.`
+        : `Le projet nécessite un effort d'épargne d'environ ${formatEuro(
             -cashflowMensuel
-          )}. Bien présenté, cela peut démontrer votre capacité à absorber cet effort sans fragiliser votre situation globale.`,
+          )} par mois. Cela peut rester acceptable si le bien est bien situé, si le potentiel de valorisation est fort ou si vous souhaitez renforcer votre patrimoine à long terme. L'important est d'assumer cet effort et de pouvoir l'expliquer à votre banquier.`,
+      `Ce type de synthèse, présenté proprement (tableau + graphiques), permet de parler le langage de la banque : chiffres, ratios et projection à moyen / long terme.`,
     ].join("\n");
 
     setResultRendementTexte(texte);
@@ -359,38 +367,63 @@ export default function InvestissementPage() {
     setOnglet("resultats");
   };
 
-  const renderMultiline = (text: string) =>
-    text.split("\n").map((line, idx) => {
-      const [label, ...rest] = line.split(":");
-      const hasLabel = rest.length > 0;
-      const content = rest.join(":").trim();
+  // --- Sauvegarde Supabase ---
 
-      return (
-        <div key={idx} className="mb-2">
-          {hasLabel ? (
-            <p className="text-sm text-slate-800 leading-relaxed">
-              <span className="font-semibold text-slate-900">
-                {label.trim()}
-                {": "}
-              </span>
-              {content}
-            </p>
-          ) : (
-            <p className="text-sm text-slate-800 leading-relaxed">{line}</p>
-          )}
-        </div>
+  const handleSaveProject = async () => {
+    if (!hasSimulation || !graphData || !resumeRendement) return;
+
+    setSaving(true);
+    setSaveMessage(null);
+
+    try {
+      if (!supabase) {
+        throw new Error(
+          "Le service de sauvegarde n'est pas disponible (configuration Supabase manquante)."
+        );
+      }
+
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      const session = sessionData?.session;
+      if (!session) {
+        if (typeof window !== "undefined") {
+          window.location.href = "/mon-compte?redirect=/projets";
+        }
+        return;
+      }
+
+      const titre = `Investissement locatif - ${formatEuro(prixBien)}`;
+
+      const { error } = await supabase.from("projects").insert({
+        user_id: session.user.id,
+        type: "investissement",
+        title: titre,
+        data: {
+          resume: resumeRendement,
+          texte: resultRendementTexte,
+          graphData,
+        },
+      });
+
+      if (error) throw error;
+      setSaveMessage("✅ Projet sauvegardé dans votre espace.");
+    } catch (err: any) {
+      setSaveMessage(
+        "❌ Erreur lors de la sauvegarde du projet : " +
+          (err?.message || "erreur inconnue")
       );
-    });
-
-  const handlePrintPDF = () => {
-    if (typeof window !== "undefined") {
-      window.print();
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Graphiques
-  let barData;
-  let lineData;
+  // --- Graphiques ---
+
+  let barData: any = null;
+  let lineData: any = null;
+
   if (graphData) {
     const {
       loyersAnnuels,
@@ -413,8 +446,8 @@ export default function InvestissementPage() {
 
     const horizon = Math.min(Math.max(dureeCredLoc, 5), 30);
     const annualCF = resultatNetAnnuel;
-    const labels: string[] = [];
-    const data: number[] = [];
+    const labels = [];
+    const data = [];
     let cumul = 0;
     for (let year = 1; year <= horizon; year++) {
       cumul += annualCF;
@@ -436,8 +469,6 @@ export default function InvestissementPage() {
     };
   }
 
-  const hasSimulation = !!resumeRendement && !!graphData;
-
   const ongletClasses = (key: Onglet) =>
     [
       "px-3 py-1.5 text-xs font-medium rounded-full border",
@@ -446,26 +477,37 @@ export default function InvestissementPage() {
         : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50",
     ].join(" ");
 
-  // Nav générique (sauf sur Crédit)
-  const renderNav = (prev?: Onglet, next?: Onglet) => (
-    <div className="mt-5 flex items-center justify-between">
+  const NavButtons = ({
+    showPrev,
+    onPrev,
+    showNext,
+    onNext,
+    nextLabel = "Suivant",
+  }: {
+    showPrev: boolean;
+    onPrev?: () => void;
+    showNext: boolean;
+    onNext?: () => void;
+    nextLabel?: string;
+  }) => (
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
       <div>
-        {prev && (
+        {showPrev && (
           <button
-            onClick={() => setOnglet(prev)}
-            className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition-transform active:scale-[0.99]"
+            onClick={onPrev}
+            className="rounded-full bg-gradient-to-r from-slate-700 to-slate-900 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:shadow-md transition-transform active:scale-[0.99]"
           >
-            &larr; Précédent
+            ← Précédent
           </button>
         )}
       </div>
-      <div>
-        {next && (
+      <div className="flex justify-start sm:justify-end">
+        {showNext && (
           <button
-            onClick={() => setOnglet(next)}
-            className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition-transform active:scale-[0.99]"
+            onClick={onNext}
+            className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]"
           >
-            Suivant &rarr;
+            {nextLabel} →
           </button>
         )}
       </div>
@@ -530,26 +572,24 @@ export default function InvestissementPage() {
           </div>
         </section>
 
-        {/* Coûts */}
+        {/* Onglet Coûts */}
         {onglet === "couts" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                Étape 1
+                Calculette
               </p>
               <h2 className="text-lg font-semibold text-slate-900">
                 Coût global du projet
               </h2>
               <p className="text-xs text-slate-500">
-                Prix du bien, frais de notaire, frais d&apos;agence et travaux.
+                Prix d&apos;acquisition, frais associés et travaux éventuels.
               </p>
             </div>
 
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs text-slate-700">
-                  Prix du bien (€)
-                </label>
+                <label className="text-xs text-slate-700">Prix du bien (€)</label>
                 <input
                   type="number"
                   value={prixBien}
@@ -575,7 +615,7 @@ export default function InvestissementPage() {
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                   <p className="text-[0.7rem] text-slate-500">
-                    Pré-rempli à ~7,5 % du prix, modifiable.
+                    Pré-rempli à ~7,5 % du prix, ajustable.
                   </p>
                 </div>
 
@@ -593,20 +633,16 @@ export default function InvestissementPage() {
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                   <p className="text-[0.7rem] text-slate-500">
-                    Pré-rempli à ~4 % du prix, modifiable.
+                    Pré-rempli à ~4 % du prix, ajustable.
                   </p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">
-                    Travaux (€)
-                  </label>
+                  <label className="text-xs text-slate-700">Travaux (€)</label>
                   <input
                     type="number"
                     value={travaux}
-                    onChange={(e) =>
-                      setTravaux(parseFloat(e.target.value) || 0)
-                    }
+                    onChange={(e) => setTravaux(parseFloat(e.target.value) || 0)}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -620,22 +656,26 @@ export default function InvestissementPage() {
               </div>
             </div>
 
-            {renderNav(undefined, "revenus")}
+            <NavButtons
+              showPrev={false}
+              showNext={true}
+              onNext={() => setOnglet("revenus")}
+            />
           </section>
         )}
 
-        {/* Revenus */}
+        {/* Onglet Revenus */}
         {onglet === "revenus" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                Étape 2
+                Calculette
               </p>
               <h2 className="text-lg font-semibold text-slate-900">
                 Revenus locatifs : longue durée & saisonnière
               </h2>
               <p className="text-xs text-slate-500">
-                Configurez le nombre d&apos;appartements et le mode de location pour chacun.
+                Configurez le nombre de lots et le mode de location pour chacun.
               </p>
             </div>
 
@@ -749,7 +789,7 @@ export default function InvestissementPage() {
                           </div>
                           <p className="text-[0.65rem] text-slate-500">
                             Converti automatiquement en revenu locatif mensuel
-                            (nuit × taux d&apos;occupation × 365 / 12).
+                            équivalent (nuit × taux d&apos;occupation × 365 ÷ 12).
                           </p>
                         </div>
                       )}
@@ -759,23 +799,27 @@ export default function InvestissementPage() {
               </div>
             </div>
 
-            {renderNav("couts", "charges")}
+            <NavButtons
+              showPrev={true}
+              onPrev={() => setOnglet("couts")}
+              showNext={true}
+              onNext={() => setOnglet("charges")}
+            />
           </section>
         )}
 
-        {/* Charges */}
+        {/* Onglet Charges */}
         {onglet === "charges" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                Étape 3
+                Calculette
               </p>
-              <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900">
                 Charges récurrentes & gestion
               </h2>
               <p className="text-xs text-slate-500">
-                Copropriété, taxe foncière, assurance, gestion locative ou
-                conciergerie.
+                Copropriété, taxe foncière, assurance, gestion locative ou conciergerie.
               </p>
             </div>
 
@@ -801,9 +845,7 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={taxeFonc}
-                    onChange={(e) =>
-                      setTaxeFonc(parseFloat(e.target.value) || 0)
-                    }
+                    onChange={(e) => setTaxeFonc(parseFloat(e.target.value) || 0)}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -840,16 +882,21 @@ export default function InvestissementPage() {
               </div>
             </div>
 
-            {renderNav("revenus", "credit")}
+            <NavButtons
+              showPrev={true}
+              onPrev={() => setOnglet("revenus")}
+              showNext={true}
+              onNext={() => setOnglet("credit")}
+            />
           </section>
         )}
 
-        {/* Crédit */}
+        {/* Onglet Crédit */}
         {onglet === "credit" && (
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                Étape 4
+                Calculette
               </p>
               <h2 className="text-lg font-semibold text-slate-900">
                 Paramètres du financement
@@ -867,9 +914,7 @@ export default function InvestissementPage() {
                 <input
                   type="number"
                   value={apport}
-                  onChange={(e) =>
-                    setApport(parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => setApport(parseFloat(e.target.value) || 0)}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -902,7 +947,7 @@ export default function InvestissementPage() {
               <div className="space-y-1">
                 <label className="text-xs text-slate-700 flex items-center gap-1">
                   Taux assurance emprunteur (annuel, en %)
-                  <InfoBadge text="Taux annuel appliqué au capital emprunté (contrat groupe ~0,20–0,40 % en moyenne). Approche simplifiée pour estimer la mensualité totale crédit + assurance." />
+                  <InfoBadge text="Taux annuel appliqué au capital emprunté (contrat groupe typiquement 0,20–0,40 %). Approche simplifiée pour estimer la mensualité totale crédit + assurance." />
                 </label>
                 <input
                   type="number"
@@ -915,73 +960,76 @@ export default function InvestissementPage() {
               </div>
             </div>
 
-            {/* Ligne avec Précédent + Aller aux résultats alignés */}
-            <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
               <button
                 onClick={() => setOnglet("charges")}
-                className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition-transform active:scale-[0.99]"
+                className="rounded-full bg-gradient-to-r from-slate-700 to-slate-900 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:shadow-md transition-transform active:scale-[0.99]"
               >
-                &larr; Précédent
+                ← Précédent
               </button>
-
-              <div className="flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
-                <p className="text-xs text-slate-500 sm:text-right">
-                  Quand toutes les étapes sont renseignées, lancez le calcul pour
-                  afficher le dashboard complet.
-                </p>
-                <button
-                  onClick={handleCalculRendement}
-                  className="inline-flex items-center rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-md hover:shadow-lg transition-transform active:scale-[0.99]"
-                >
-                  Aller aux résultats
-                </button>
-              </div>
+              <button
+                onClick={() => setOnglet("resultats")}
+                className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]"
+              >
+                Aller aux résultats →
+              </button>
             </div>
           </section>
         )}
 
-        {/* Résultats */}
+        {/* Onglet Résultats */}
         {onglet === "resultats" && (
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-5">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                  Étape 5
+                  Synthèse
                 </p>
                 <h2 className="text-lg font-semibold text-slate-900">
                   Résultats & dashboard de rentabilité
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Synthèse, graphiques et analyse détaillée de votre projet.
+                  Chiffres clés, graphiques et analyse narrative de votre projet.
                 </p>
               </div>
 
-              {resumeRendement && (
-                <button
-                  onClick={handlePrintPDF}
-                  className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300 transition-colors"
-                >
-                  PDF
-                </button>
+              {hasSimulation && (
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handlePrintPDF}
+                      className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300 transition-colors"
+                    >
+                      PDF
+                    </button>
+                    <button
+                      onClick={handleSaveProject}
+                      disabled={saving}
+                      className="inline-flex items-center justify-center rounded-full border border-emerald-500/80 bg-emerald-500 px-3 py-1.5 text-[0.7rem] font-semibold text-white shadow-sm hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {saving ? "Enregistrement..." : "Sauvegarder dans mon espace"}
+                    </button>
+                  </div>
+                  {saveMessage && (
+                    <p className="text-[0.65rem] text-slate-500">{saveMessage}</p>
+                  )}
+                </div>
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 mt-5">
+            <div className="mt-1 mb-1">
               <button
                 onClick={handleCalculRendement}
                 className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]"
               >
                 Calculer / Mettre à jour la rentabilité
               </button>
-              <p className="text-xs text-slate-500">
-                Assurez-vous que les onglets Coûts, Revenus, Charges et Crédit
-                sont correctement renseignés pour une analyse cohérente.
-              </p>
             </div>
 
             {hasSimulation ? (
               <>
-                <div className="grid gap-4 sm:grid-cols-4 mt-5">
+                {/* Cartes de synthèse */}
+                <div className="grid gap-4 sm:grid-cols-4">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
                       Coût total projet
@@ -1016,7 +1064,8 @@ export default function InvestissementPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3 mt-4">
+                {/* Cash-flow & résultat */}
+                <div className="grid gap-4 sm:grid-cols-3">
                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 sm:col-span-2 flex flex-col justify-center">
                     <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700 mb-1">
                       Cash-flow & rentabilité
@@ -1057,7 +1106,9 @@ export default function InvestissementPage() {
                           Rendement net
                         </p>
                         <p className="mt-1 text-lg font-semibold text-slate-900">
-                          {formatPct(resumeRendement!.rendementNetAvantCredit)}
+                          {formatPct(
+                            resumeRendement!.rendementNetAvantCredit
+                          )}
                         </p>
                       </div>
                     </div>
@@ -1072,17 +1123,18 @@ export default function InvestissementPage() {
                     </p>
                     <p className="mt-2 text-[0.7rem] text-slate-500">
                       Le graphique de droite illustre l&apos;accumulation
-                      théorique du cash-flow sur la durée du prêt (hors
-                      revalorisation et fiscalité).
+                      théorique du cash-flow sur la durée du prêt (hors revalorisation
+                      et fiscalité).
                     </p>
                   </div>
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2 mt-4">
+                {/* Graphiques */}
+                <div className="grid gap-4 lg:grid-cols-2">
                   <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
                     <p className="text-xs text-slate-600 mb-2">
-                      Flux annuels : loyers bruts, charges, crédit + assurance
-                      et résultat net.
+                      Flux annuels : loyers bruts, charges, crédit + assurance et
+                      résultat net.
                     </p>
                     {barData && (
                       <Bar
@@ -1098,17 +1150,11 @@ export default function InvestissementPage() {
                           },
                           scales: {
                             x: {
-                              ticks: {
-                                color: "#0f172a",
-                                font: { size: 10 },
-                              },
+                              ticks: { color: "#0f172a", font: { size: 10 } },
                               grid: { color: "#e5e7eb" },
                             },
                             y: {
-                              ticks: {
-                                color: "#0f172a",
-                                font: { size: 10 },
-                              },
+                              ticks: { color: "#0f172a", font: { size: 10 } },
                               grid: { color: "#e5e7eb" },
                             },
                           },
@@ -1136,17 +1182,11 @@ export default function InvestissementPage() {
                           },
                           scales: {
                             x: {
-                              ticks: {
-                                color: "#0f172a",
-                                font: { size: 9 },
-                              },
+                              ticks: { color: "#0f172a", font: { size: 9 } },
                               grid: { color: "#e5e7eb" },
                             },
                             y: {
-                              ticks: {
-                                color: "#0f172a",
-                                font: { size: 10 },
-                              },
+                              ticks: { color: "#0f172a", font: { size: 10 } },
                               grid: { color: "#e5e7eb" },
                             },
                           },
@@ -1156,24 +1196,24 @@ export default function InvestissementPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-3">
-                    Analyse détaillée de votre projet
+                {/* Analyse narrative */}
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+                    Analyse détaillée
                   </p>
                   {renderMultiline(resultRendementTexte)}
                 </div>
 
-                <p className="mt-2 text-[0.7rem] text-slate-500">
+                <p className="mt-1 text-[0.7rem] text-slate-500">
                   Ces calculs sont fournis à titre indicatif, hors fiscalité et
                   évolution future des loyers, taux, charges et réglementation.
                 </p>
               </>
             ) : (
-              <p className="mt-4 text-sm text-slate-500">
+              <p className="text-sm text-slate-500">
                 Complétez les onglets Coûts, Revenus, Charges et Crédit, puis
-                cliquez sur “Calculer / Mettre à jour la rentabilité” ou sur
-                “Aller aux résultats” dans l&apos;onglet Crédit pour afficher le
-                dashboard détaillé.
+                cliquez sur "Calculer / Mettre à jour la rentabilité" pour
+                afficher le dashboard détaillé.
               </p>
             )}
           </section>
