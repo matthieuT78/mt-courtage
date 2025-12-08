@@ -74,6 +74,8 @@ export default function AppHeader() {
     user?.user_metadata?.full_name ||
     (user?.email ? user.email.split("@")[0] : "Mon compte");
 
+  const isHome = router.pathname === "/";
+
   return (
     <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
@@ -94,24 +96,26 @@ export default function AppHeader() {
           </Link>
         </div>
 
-        {/* Navigation centrale (optionnelle, légère) */}
-        <nav className="hidden sm:flex items-center gap-4 text-xs">
-          <Link href="/" className={isActive("/")}>
-            Accueil
-          </Link>
-          <Link href="/capacite" className={isActive("/capacite")}>
-            Capacité d&apos;emprunt
-          </Link>
-          <Link href="/investissement" className={isActive("/investissement")}>
-            Investissement locatif
-          </Link>
-          <Link
-            href="/parc-immobilier"
-            className={isActive("/parc-immobilier")}
-          >
-            Parc immobilier
-          </Link>
-        </nav>
+        {/* Navigation centrale – cachée sur la page d'accueil */}
+        {!isHome && (
+          <nav className="hidden sm:flex items-center gap-4 text-xs">
+            <Link href="/" className={isActive("/")}>
+              Accueil
+            </Link>
+            <Link href="/capacite" className={isActive("/capacite")}>
+              Capacité d&apos;emprunt
+            </Link>
+            <Link href="/investissement" className={isActive("/investissement")}>
+              Investissement locatif
+            </Link>
+            <Link
+              href="/parc-immobilier"
+              className={isActive("/parc-immobilier")}
+            >
+              Parc immobilier
+            </Link>
+          </nav>
+        )}
 
         {/* Compte utilisateur */}
         <div className="relative">
