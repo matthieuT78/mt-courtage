@@ -6,9 +6,20 @@ import { supabase } from "../lib/supabaseClient";
 import Link from "next/link";
 
 type Mode = "login" | "register";
+type Tab = "dashboard" | "infos" | "securite";
+
+function getTabFromQuery(q: string | string[] | undefined): Tab {
+  if (!q) return "dashboard";
+  const val = Array.isArray(q) ? q[0] : q;
+  if (val === "infos") return "infos";
+  if (val === "securite") return "securite";
+  return "dashboard";
+}
 
 export default function MonComptePage() {
   const router = useRouter();
+
+  // Mode connexion / inscription
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,18 +28,21 @@ export default function MonComptePage() {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
+  // Session / utilisateur
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [checkingUser, setCheckingUser] = useState(true);
 
-  // Déduire le mode et redirect depuis l'URL
+  // Onglet courant (uniquement utile si connecté)
+  const [tab, setTab] = useState<Tab>("dashboard");
+
+  // Déduire le mode (login / register) depuis l'URL
   useEffect(() => {
-    if (router.isReady) {
-      const modeQuery = router.query.mode as string | undefined;
-      if (modeQuery === "register") {
-        setMode("register");
-      } else {
-        setMode("login");
-      }
+    if (!router.isReady) return;
+    const modeQuery = router.query.mode as string | undefined;
+    if (modeQuery === "register") {
+      setMode("register");
+    } else {
+      setMode("login");
     }
   }, [router.isReady, router.query.mode]);
 
@@ -49,6 +63,15 @@ export default function MonComptePage() {
     };
     fetchUser();
   }, []);
+
+  const isLoggedIn = !!userEmail;
+
+  // Synchroniser l'onglet avec l'URL quand l'utilisateur est connecté
+  useEffect(() => {
+    if (!router.isReady || !isLoggedIn) return;
+    const newTab = getTabFromQuery(router.query.tab);
+    setTab(newTab);
+  }, [router.isReady, router.query.tab, isLoggedIn]);
 
   const redirectAfterAuth = () => {
     const redirectParam = router.query.redirect;
@@ -134,10 +157,32 @@ export default function MonComptePage() {
     if (!supabase) return;
     await supabase.auth.signOut();
     setUserEmail(null);
+    setTab("dashboard");
     router.push("/");
   };
 
-  const isLoggedIn = !!userEmail;
+  // Navigation interne pour les onglets (quand connecté)
+  const goTab = (nextTab: Tab) => {
+    setTab(nextTab);
+    router.push(
+      {
+        pathname: "/mon-compte",
+        query: { tab: nextTab },
+      },
+      undefined,
+      { shallow: true }
+    );
+  };
+
+  const navButtonClass = (active: boolean, danger = false) =>
+    [
+      "w-full text-left rounded-lg px-3 py-2 text-sm",
+      active
+        ? "bg-slate-900 text-white"
+        : danger
+        ? "text-red-600 hover:bg-red-50"
+        : "text-slate-700 hover:bg-slate-50",
+    ].join(" ");
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -162,34 +207,41 @@ export default function MonComptePage() {
                   </p>
                 </div>
 
-                <nav className="space-y-1 text-sm">
-                  <Link
-                    href="/projets"
-                    className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
-                  >
-                    Voir mes projets sauvegardés
-                  </Link>
+                <nav className="space-y-1">
                   <button
                     type="button"
-                    className="w-full text-left rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
-                    onClick={() => router.push("/mon-compte")}
+                    className={navButtonClass(tab === "dashboard")}
+                    onClick={() => goTab("dashboard")}
+                  >
+                    Tableau de bord
+                  </button>
+
+                  <Link
+                    href="/projets"
+                    className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Mes projets sauvegardés
+                  </Link>
+
+                  <button
+                    type="button"
+                    className={navButtonClass(tab === "infos")}
+                    onClick={() => goTab("infos")}
                   >
                     Informations personnelles
                   </button>
+
                   <button
                     type="button"
-                    className="w-full text-left rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
-                    onClick={() =>
-                      alert(
-                        "Fonction de changement de mot de passe à implémenter plus tard (via Supabase Auth UI ou flux dédié)."
-                      )
-                    }
+                    className={navButtonClass(tab === "securite")}
+                    onClick={() => goTab("securite")}
                   >
-                    Changer mon mot de passe
+                    Sécurité &amp; mot de passe
                   </button>
+
                   <button
                     type="button"
-                    className="w-full text-left rounded-lg px-3 py-2 text-red-600 hover:bg-red-50"
+                    className={navButtonClass(false, true)}
                     onClick={handleLogout}
                   >
                     Déconnexion
@@ -213,6 +265,7 @@ export default function MonComptePage() {
             {checkingUser ? (
               <p className="text-sm text-slate-500">Chargement...</p>
             ) : !isLoggedIn ? (
+              // === CAS NON CONNECTÉ : LOGIN / INSCRIPTION ===
               <>
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <div>
@@ -362,25 +415,99 @@ export default function MonComptePage() {
                 )}
               </>
             ) : (
+              // === CAS CONNECTÉ : TABLEAU DE BORD / INFOS / SÉCURITÉ ===
               <>
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                  Profil
-                </p>
-                <h2 className="text-lg font-semibold text-slate-900 mb-2">
-                  Informations personnelles & accès
-                </h2>
-                <p className="text-sm text-slate-600 mb-4">
-                  Vous êtes connecté avec l&apos;adresse{" "}
-                  <span className="font-semibold">{userEmail}</span>. Cette
-                  adresse est utilisée pour associer vos projets sauvegardés et
-                  pour vous recontacter si nécessaire.
-                </p>
-                <p className="text-sm text-slate-500">
-                  Dans les prochaines évolutions, cet espace permettra de
-                  gérer vos informations personnelles plus finement (coordonnées
-                  complètes, objectifs patrimoniaux, préférences de contact…)
-                  afin de préparer au mieux un accompagnement sur-mesure.
-                </p>
+                {tab === "dashboard" && (
+                  <>
+                    <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                      Tableau de bord
+                    </p>
+                    <h2 className="text-lg font-semibold text-slate-900 mb-2">
+                      Vue d&apos;ensemble de votre espace
+                    </h2>
+                    <p className="text-sm text-slate-600 mb-4">
+                      Vous êtes connecté avec l&apos;adresse{" "}
+                      <span className="font-semibold">{userEmail}</span>. Depuis
+                      cet espace, vous pouvez consulter vos projets sauvegardés
+                      et gérer progressivement vos informations.
+                    </p>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Link
+                        href="/projets"
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm hover:bg-slate-100"
+                      >
+                        <p className="font-semibold text-slate-900 mb-1">
+                          Mes projets sauvegardés
+                        </p>
+                        <p className="text-xs text-slate-600">
+                          Retrouvez vos simulations de capacité, d&apos;investissement
+                          locatif et d&apos;analyse de parc.
+                        </p>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => goTab("infos")}
+                        className="text-left rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm hover:bg-slate-100"
+                      >
+                        <p className="font-semibold text-slate-900 mb-1">
+                          Informations personnelles
+                        </p>
+                        <p className="text-xs text-slate-600">
+                          Gérez progressivement les données qui permettront un
+                          accompagnement plus personnalisé.
+                        </p>
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {tab === "infos" && (
+                  <>
+                    <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                      Profil
+                    </p>
+                    <h2 className="text-lg font-semibold text-slate-900 mb-2">
+                      Informations personnelles
+                    </h2>
+                    <p className="text-sm text-slate-600 mb-4">
+                      Vous êtes connecté avec l&apos;adresse{" "}
+                      <span className="font-semibold">{userEmail}</span>. Cette
+                      adresse est utilisée pour associer vos projets sauvegardés
+                      et pour vous recontacter si nécessaire.
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Dans les prochaines évolutions, cet espace permettra de
+                      gérer vos informations personnelles plus finement
+                      (coordonnées complètes, objectifs patrimoniaux,
+                      préférences de contact…) afin de préparer au mieux un
+                      accompagnement sur-mesure.
+                    </p>
+                  </>
+                )}
+
+                {tab === "securite" && (
+                  <>
+                    <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                      Sécurité
+                    </p>
+                    <h2 className="text-lg font-semibold text-slate-900 mb-2">
+                      Sécurité &amp; mot de passe
+                    </h2>
+                    <p className="text-sm text-slate-600 mb-3">
+                      Pour l&apos;instant, la gestion détaillée du mot de passe
+                      (réinitialisation, changement) s&apos;effectue via les
+                      mécanismes standards de Supabase (lien de réinitialisation
+                      par e-mail).
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Une section dédiée sera ajoutée ici pour déclencher une
+                      réinitialisation de mot de passe et suivre l&apos;historique
+                      des connexions, afin de renforcer la sécurité de votre
+                      espace.
+                    </p>
+                  </>
+                )}
               </>
             )}
           </section>
