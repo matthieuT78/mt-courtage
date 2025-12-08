@@ -4,16 +4,13 @@ import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 import Link from "next/link";
-import ProjectsPanel from "../components/ProjectsPanel";
 
 type Mode = "login" | "register";
-type AccountTab = "infos" | "projets" | "securite";
+type Tab = "infos" | "securite";
 
 export default function MonComptePage() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
-  const [activeTab, setActiveTab] = useState<AccountTab>("infos");
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
@@ -24,29 +21,46 @@ export default function MonComptePage() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [checkingUser, setCheckingUser] = useState(true);
 
-  // Déduire le mode depuis l'URL (login / register)
+  // Onglet actif (pour l'utilisateur connecté)
+  const [activeTab, setActiveTab] = useState<Tab>("infos");
+
+  // Sécurité : changement de mot de passe
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [pwdLoading, setPwdLoading] = useState(false);
+  const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdMessage, setPwdMessage] = useState<string | null>(null);
+
+  // Préférences : newsletter
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [prefsLoading, setPrefsLoading] = useState(false);
+  const [prefsError, setPrefsError] = useState<string | null>(null);
+  const [prefsMessage, setPrefsMessage] = useState<string | null>(null);
+
+  // Déduire le mode (login/register) depuis l'URL pour un utilisateur non connecté
   useEffect(() => {
-    if (!router.isReady) return;
-    const modeQuery = router.query.mode as string | undefined;
-    if (modeQuery === "register") {
-      setMode("register");
-    } else {
-      setMode("login");
+    if (router.isReady) {
+      const modeQuery = router.query.mode as string | undefined;
+      if (modeQuery === "register") {
+        setMode("register");
+      } else {
+        setMode("login");
+      }
     }
   }, [router.isReady, router.query.mode]);
 
-  // Déduire l'onglet actif depuis l'URL (?tab=...)
+  // Déduire l'onglet actif (infos / securite) pour l'utilisateur connecté
   useEffect(() => {
     if (!router.isReady) return;
     const tabQuery = router.query.tab as string | undefined;
-    if (tabQuery === "projets" || tabQuery === "securite" || tabQuery === "infos") {
-      setActiveTab(tabQuery);
+    if (tabQuery === "securite") {
+      setActiveTab("securite");
     } else {
       setActiveTab("infos");
     }
   }, [router.isReady, router.query.tab]);
 
-  // Récupérer l'utilisateur connecté
+  // Récupérer l'utilisateur connecté & ses préférences (newsletter)
   useEffect(() => {
     const fetchUser = async () => {
       if (!supabase) {
@@ -56,6 +70,8 @@ export default function MonComptePage() {
       const { data, error } = await supabase.auth.getUser();
       if (!error && data.user) {
         setUserEmail(data.user.email ?? null);
+        const meta = (data.user as any).user_metadata || {};
+        setNewsletterOptIn(!!meta.newsletter_opt_in);
       } else {
         setUserEmail(null);
       }
@@ -153,16 +169,78 @@ export default function MonComptePage() {
 
   const isLoggedIn = !!userEmail;
 
-  const goToTab = (tab: AccountTab) => {
+  const goToTab = (tab: Tab) => {
     setActiveTab(tab);
-    router.push(
-      {
-        pathname: "/mon-compte",
-        query: { ...router.query, tab },
-      },
-      undefined,
-      { shallow: true }
-    );
+    router.push({
+      pathname: "/mon-compte",
+      query: { tab },
+    });
+  };
+
+  // Changement de mot de passe
+  const handleChangePassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setPwdError(null);
+    setPwdMessage(null);
+
+    if (!supabase) {
+      setPwdError("Service d'authentification indisponible.");
+      return;
+    }
+
+    if (!newPassword) {
+      setPwdError("Merci de renseigner un nouveau mot de passe.");
+      return;
+    }
+
+    if (newPassword !== newPasswordConfirm) {
+      setPwdError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    setPwdLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) {
+        setPwdError(error.message || "Erreur lors de la mise à jour du mot de passe.");
+      } else {
+        setPwdMessage("Votre mot de passe a été mis à jour avec succès.");
+        setNewPassword("");
+        setNewPasswordConfirm("");
+      }
+    } finally {
+      setPwdLoading(false);
+    }
+  };
+
+  // Mise à jour des préférences (newsletter)
+  const handleSavePreferences = async (e: FormEvent) => {
+    e.preventDefault();
+    setPrefsError(null);
+    setPrefsMessage(null);
+
+    if (!supabase) {
+      setPrefsError("Service d'authentification indisponible.");
+      return;
+    }
+
+    setPrefsLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { newsletter_opt_in: newsletterOptIn },
+      });
+      if (error) {
+        setPrefsError(
+          error.message || "Erreur lors de la mise à jour de vos préférences."
+        );
+      } else {
+        setPrefsMessage("Vos préférences ont bien été mises à jour.");
+      }
+    } finally {
+      setPrefsLoading(false);
+    }
   };
 
   return (
@@ -191,37 +269,34 @@ export default function MonComptePage() {
                 <nav className="space-y-1 text-sm">
                   <button
                     type="button"
-                    className={`w-full text-left rounded-lg px-3 py-2 ${
-                      activeTab === "infos"
+                    className={
+                      "w-full text-left rounded-lg px-3 py-2 " +
+                      (activeTab === "infos"
                         ? "bg-slate-900 text-white"
-                        : "text-slate-700 hover:bg-slate-50"
-                    }`}
+                        : "text-slate-700 hover:bg-slate-50")
+                    }
                     onClick={() => goToTab("infos")}
                   >
-                    Informations personnelles
+                    Tableau de bord & infos
                   </button>
                   <button
                     type="button"
-                    className={`w-full text-left rounded-lg px-3 py-2 ${
-                      activeTab === "projets"
+                    className={
+                      "w-full text-left rounded-lg px-3 py-2 " +
+                      (activeTab === "securite"
                         ? "bg-slate-900 text-white"
-                        : "text-slate-700 hover:bg-slate-50"
-                    }`}
-                    onClick={() => goToTab("projets")}
-                  >
-                    Mes projets sauvegardés
-                  </button>
-                  <button
-                    type="button"
-                    className={`w-full text-left rounded-lg px-3 py-2 ${
-                      activeTab === "securite"
-                        ? "bg-slate-900 text-white"
-                        : "text-slate-700 hover:bg-slate-50"
-                    }`}
+                        : "text-slate-700 hover:bg-slate-50")
+                    }
                     onClick={() => goToTab("securite")}
                   >
-                    Sécurité & mot de passe
+                    Sécurité & préférences
                   </button>
+                  <Link
+                    href="/mon-compte?tab=projets"
+                    className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
+                  >
+                    Mes projets sauvegardés
+                  </Link>
                   <button
                     type="button"
                     className="w-full text-left rounded-lg px-3 py-2 text-red-600 hover:bg-red-50"
@@ -389,68 +464,166 @@ export default function MonComptePage() {
                       </button>
                       <p className="text-[0.7rem] text-slate-500 max-w-xs">
                         Votre compte vous permet de sauvegarder vos simulations
-                        (capacité d&apos;emprunt, investissement, parc
-                        immobilier) et de les retrouver plus tard.
+                        (capacité d&apos;emprunt, investissement, parc immobilier)
+                        et de les retrouver plus tard.
                       </p>
                     </div>
                   </form>
                 )}
               </>
+            ) : activeTab === "infos" ? (
+              <>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Profil
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900 mb-2">
+                  Informations personnelles & accès
+                </h2>
+                <p className="text-sm text-slate-600 mb-4">
+                  Vous êtes connecté avec l&apos;adresse{" "}
+                  <span className="font-semibold">{userEmail}</span>. Cette
+                  adresse est utilisée pour associer vos projets sauvegardés et
+                  pour vous recontacter si nécessaire.
+                </p>
+                <p className="text-sm text-slate-500">
+                  Dans les prochaines évolutions, cet espace permettra de gérer
+                  vos informations personnelles plus finement (coordonnées
+                  complètes, objectifs patrimoniaux, préférences de contact…)
+                  afin de préparer au mieux un accompagnement sur-mesure.
+                </p>
+
+                <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500">
+                  <p className="font-semibold text-slate-700 mb-1">
+                    Astuce
+                  </p>
+                  <p>
+                    Rendez-vous dans l&apos;onglet{" "}
+                    <span className="font-semibold">
+                      “Sécurité &amp; préférences”
+                    </span>{" "}
+                    pour mettre à jour votre mot de passe et vos préférences
+                    de newsletter.
+                  </p>
+                </div>
+              </>
             ) : (
               <>
-                {activeTab === "infos" && (
-                  <>
-                    <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                      Profil
-                    </p>
-                    <h2 className="text-lg font-semibold text-slate-900 mb-2">
-                      Informations personnelles & accès
-                    </h2>
-                    <p className="text-sm text-slate-600 mb-4">
-                      Vous êtes connecté avec l&apos;adresse{" "}
-                      <span className="font-semibold">{userEmail}</span>. Cette
-                      adresse est utilisée pour associer vos projets sauvegardés
-                      et pour vous recontacter si nécessaire.
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      Dans les prochaines évolutions, cet espace permettra de
-                      gérer vos informations personnelles plus finement
-                      (coordonnées complètes, objectifs patrimoniaux,
-                      préférences de contact…) afin de préparer au mieux un
-                      accompagnement sur-mesure.
-                    </p>
-                  </>
-                )}
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-slate-900 mb-1">
+                  Sécurité &amp; préférences
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900 mb-2">
+                  Protégez votre compte et choisissez vos communications
+                </h2>
+                <p className="text-sm text-slate-600 mb-4">
+                  Mettez à jour votre mot de passe et indiquez si vous souhaitez
+                  recevoir les newsletters MT Courtage &amp; Investissement.
+                </p>
 
-                {activeTab === "projets" && <ProjectsPanel />}
+                {/* Bloc changement de mot de passe */}
+                <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[0.75rem] font-semibold text-slate-800 mb-2">
+                    Changer mon mot de passe
+                  </p>
+                  {pwdError && (
+                    <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[0.7rem] text-red-700">
+                      {pwdError}
+                    </div>
+                  )}
+                  {pwdMessage && (
+                    <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.7rem] text-emerald-700">
+                      {pwdMessage}
+                    </div>
+                  )}
+                  <form onSubmit={handleChangePassword} className="space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">
+                          Nouveau mot de passe
+                        </label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">
+                          Confirmer le nouveau mot de passe
+                        </label>
+                        <input
+                          type="password"
+                          value={newPasswordConfirm}
+                          onChange={(e) =>
+                            setNewPasswordConfirm(e.target.value)
+                          }
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={pwdLoading}
+                      className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {pwdLoading
+                        ? "Mise à jour..."
+                        : "Mettre à jour mon mot de passe"}
+                    </button>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                      Idéalement, utilisez un mot de passe long, unique et
+                      contenant lettres, chiffres et caractères spéciaux.
+                    </p>
+                  </form>
+                </div>
 
-                {activeTab === "securite" && (
-                  <>
-                    <p className="uppercase tracking-[0.18em] text-[0.7rem] text-slate-600 mb-1">
-                      Sécurité
+                {/* Bloc préférences newsletter */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[0.75rem] font-semibold text-slate-800 mb-2">
+                    Préférences de communication
+                  </p>
+                  {prefsError && (
+                    <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[0.7rem] text-red-700">
+                      {prefsError}
+                    </div>
+                  )}
+                  {prefsMessage && (
+                    <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.7rem] text-emerald-700">
+                      {prefsMessage}
+                    </div>
+                  )}
+                  <form onSubmit={handleSavePreferences} className="space-y-3">
+                    <label className="flex items-start gap-2 text-sm text-slate-800">
+                      <input
+                        type="checkbox"
+                        checked={newsletterOptIn}
+                        onChange={(e) =>
+                          setNewsletterOptIn(e.target.checked)
+                        }
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                      />
+                      <span>
+                        Je souhaite recevoir la newsletter MT Courtage &amp;
+                        Investissement (sélection d&apos;articles, conseils
+                        pratiques, nouveautés sur les simulateurs).
+                      </span>
+                    </label>
+                    <p className="text-[0.7rem] text-slate-500">
+                      Vous pourrez modifier ce choix à tout moment. Votre
+                      adresse ne sera jamais utilisée pour du spam ni transmise
+                      à des tiers.
                     </p>
-                    <h2 className="text-lg font-semibold text-slate-900 mb-2">
-                      Sécurité & mot de passe
-                    </h2>
-                    <p className="text-sm text-slate-600 mb-3">
-                      La gestion avancée du mot de passe (réinitialisation,
-                      changement depuis l&apos;interface) sera intégrée dans une
-                      prochaine version.
-                    </p>
-                    <p className="text-sm text-slate-500 mb-2">
-                      En attendant, si vous avez oublié votre mot de passe,
-                      utilisez la fonction{" "}
-                      <span className="font-semibold">“mot de passe oublié”</span>{" "}
-                      proposée par votre fournisseur d&apos;authentification ou
-                      contactez directement MT Courtage pour être accompagné.
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      Pensez à utiliser un mot de passe unique, suffisamment
-                      long, et idéalement stocké dans un gestionnaire de mots de
-                      passe.
-                    </p>
-                  </>
-                )}
+                    <button
+                      type="submit"
+                      disabled={prefsLoading}
+                      className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      {prefsLoading
+                        ? "Enregistrement..."
+                        : "Enregistrer mes préférences"}
+                    </button>
+                  </form>
+                </div>
               </>
             )}
           </section>
