@@ -1,297 +1,402 @@
 // pages/mon-compte.tsx
-import { useEffect, useState, FormEvent } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
-import type { User } from "@supabase/supabase-js";
+import Link from "next/link";
+
+type Mode = "login" | "register";
 
 export default function MonComptePage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const [mode, setMode] = useState<Mode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
-  const [fullName, setFullName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [profileMessage, setProfileMessage] = useState<string | null>(null);
-  const [profileSaving, setProfileSaving] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [checkingUser, setCheckingUser] = useState(true);
 
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
-  const [passwordSaving, setPasswordSaving] = useState(false);
+  // Déduire le mode et redirect depuis l'URL
+  useEffect(() => {
+    if (router.isReady) {
+      const modeQuery = router.query.mode as string | undefined;
+      if (modeQuery === "register") {
+        setMode("register");
+      } else {
+        setMode("login");
+      }
+    }
+  }, [router.isReady, router.query.mode]);
 
+  // Récupérer l'utilisateur connecté
   useEffect(() => {
     const fetchUser = async () => {
       if (!supabase) {
-        setLoadingUser(false);
+        setCheckingUser(false);
         return;
       }
       const { data, error } = await supabase.auth.getUser();
-      if (error || !data?.user) {
-        setUser(null);
-        setLoadingUser(false);
-        if (typeof window !== "undefined") {
-          router.push("/auth");
-        }
-        return;
+      if (!error && data.user) {
+        setUserEmail(data.user.email ?? null);
+      } else {
+        setUserEmail(null);
       }
-      setUser(data.user);
-      setFullName((data.user.user_metadata?.full_name as string) || "");
-      setAvatarUrl((data.user.user_metadata?.avatar_url as string) || "");
-      setLoadingUser(false);
+      setCheckingUser(false);
     };
     fetchUser();
-  }, [router]);
+  }, []);
 
-  const handleProfileSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setProfileMessage(null);
-
-    if (!supabase || !user) return;
-
-    setProfileSaving(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          full_name: fullName,
-          avatar_url: avatarUrl,
-        },
-      });
-      if (error) throw error;
-      setProfileMessage("✅ Profil mis à jour.");
-    } catch (err: any) {
-      setProfileMessage("❌ " + (err?.message || "Erreur lors de la mise à jour."));
-    } finally {
-      setProfileSaving(false);
-    }
+  const redirectAfterAuth = () => {
+    const redirectParam = router.query.redirect;
+    const redirectPath =
+      typeof redirectParam === "string" && redirectParam.startsWith("/")
+        ? redirectParam
+        : "/";
+    router.push(redirectPath);
   };
 
-  const handlePasswordSubmit = async (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    setPasswordMessage(null);
+    setGlobalError(null);
+    setInfoMessage(null);
 
-    if (!supabase || !user) return;
-
-    if (!newPassword || newPassword !== confirmPassword) {
-      setPasswordMessage("❌ Les mots de passe ne correspondent pas.");
+    if (!supabase) {
+      setGlobalError(
+        "Le service d'authentification n'est pas disponible pour le moment."
+      );
       return;
     }
 
-    setPasswordSaving(true);
+    setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-      if (error) throw error;
-      setPasswordMessage("✅ Mot de passe mis à jour.");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (err: any) {
-      setPasswordMessage(
-        "❌ " + (err?.message || "Erreur lors de la mise à jour du mot de passe.")
-      );
+
+      if (error) {
+        setGlobalError(error.message || "Erreur de connexion.");
+      } else {
+        redirectAfterAuth();
+      }
     } finally {
-      setPasswordSaving(false);
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: FormEvent) => {
+    e.preventDefault();
+    setGlobalError(null);
+    setInfoMessage(null);
+
+    if (!supabase) {
+      setGlobalError(
+        "Le service d'authentification n'est pas disponible pour le moment."
+      );
+      return;
+    }
+
+    if (!email || !password) {
+      setGlobalError("Merci de renseigner un e-mail et un mot de passe.");
+      return;
+    }
+
+    if (password !== passwordConfirm) {
+      setGlobalError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        setGlobalError(error.message || "Erreur lors de l'inscription.");
+      } else {
+        setInfoMessage(
+          "Compte créé. Un e-mail de confirmation peut vous être envoyé. Vous pouvez maintenant vous connecter."
+        );
+        setMode("login");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleLogout = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
+    setUserEmail(null);
+    router.push("/");
   };
 
-  const initials =
-    user?.user_metadata?.full_name?.[0]?.toUpperCase() ||
-    user?.email?.[0]?.toUpperCase() ||
-    "M";
-
-  if (loadingUser) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <p className="text-sm text-slate-500">Chargement de votre espace...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  const isLoggedIn = !!userEmail;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="max-w-4xl mx-auto px-4 py-5 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
-              Mon compte
-            </h1>
-            <p className="mt-1 text-xs text-slate-500">
-              Gérez vos informations personnelles et vos paramètres d&apos;accès.
+      <AppHeader />
+
+      <main className="flex-1 max-w-5xl mx-auto px-4 py-6">
+        <div className="grid gap-6 md:grid-cols-[220px,1fr]">
+          {/* MENU LATÉRAL GAUCHE */}
+          <aside className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 h-fit">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500 mb-3">
+              Mon espace
             </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-xs text-slate-500 underline">
-              &larr; Accueil
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              Déconnexion
-            </button>
-          </div>
+
+            {isLoggedIn ? (
+              <>
+                <div className="mb-4">
+                  <p className="text-xs text-slate-500 mb-1">
+                    Connecté en tant que :
+                  </p>
+                  <p className="text-sm font-semibold text-slate-900 break-all">
+                    {userEmail}
+                  </p>
+                </div>
+
+                <nav className="space-y-1 text-sm">
+                  <Link
+                    href="/projets"
+                    className="block rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
+                  >
+                    Voir mes projets sauvegardés
+                  </Link>
+                  <button
+                    type="button"
+                    className="w-full text-left rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
+                    onClick={() => router.push("/mon-compte")}
+                  >
+                    Informations personnelles
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full text-left rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50"
+                    onClick={() =>
+                      alert(
+                        "Fonction de changement de mot de passe à implémenter plus tard (via Supabase Auth UI ou flux dédié)."
+                      )
+                    }
+                  >
+                    Changer mon mot de passe
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full text-left rounded-lg px-3 py-2 text-red-600 hover:bg-red-50"
+                    onClick={handleLogout}
+                  >
+                    Déconnexion
+                  </button>
+                </nav>
+              </>
+            ) : (
+              <div className="text-xs text-slate-500">
+                <p>Connectez-vous ou créez un compte pour :</p>
+                <ul className="list-disc pl-4 mt-1 space-y-0.5">
+                  <li>Enregistrer vos simulations</li>
+                  <li>Retrouver vos projets plus tard</li>
+                  <li>Préparer vos rendez-vous bancaires</li>
+                </ul>
+              </div>
+            )}
+          </aside>
+
+          {/* CONTENU PRINCIPAL */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+            {checkingUser ? (
+              <p className="text-sm text-slate-500">Chargement...</p>
+            ) : !isLoggedIn ? (
+              <>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div>
+                    <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                      Accès à votre espace
+                    </p>
+                    <h2 className="text-lg font-semibold text-slate-900">
+                      {mode === "login"
+                        ? "Connexion à votre compte"
+                        : "Créer un compte MT Courtage"}
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Utilisez un e-mail que vous consultez régulièrement : il
+                      servira à centraliser vos simulations et échanges.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMode(mode === "login" ? "register" : "login")
+                    }
+                    className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                  >
+                    {mode === "login"
+                      ? "Pas encore inscrit ?"
+                      : "Déjà un compte ?"}
+                  </button>
+                </div>
+
+                {globalError && (
+                  <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    {globalError}
+                  </div>
+                )}
+
+                {infoMessage && (
+                  <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                    {infoMessage}
+                  </div>
+                )}
+
+                {mode === "login" ? (
+                  <form onSubmit={handleLogin} className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700">
+                        Adresse e-mail
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700">
+                        Mot de passe
+                      </label>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex items-center gap-3">
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                      >
+                        {loading ? "Connexion..." : "Se connecter"}
+                      </button>
+                      <p className="text-[0.7rem] text-slate-500">
+                        Après connexion, vous serez redirigé vers{" "}
+                        <span className="font-semibold">
+                          {typeof router.query.redirect === "string"
+                            ? router.query.redirect
+                            : "/"}
+                        </span>
+                        .
+                      </p>
+                    </div>
+                  </form>
+                ) : (
+                  <form onSubmit={handleRegister} className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700">
+                        Adresse e-mail
+                      </label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">
+                          Mot de passe
+                        </label>
+                        <input
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">
+                          Confirmer le mot de passe
+                        </label>
+                        <input
+                          type="password"
+                          value={passwordConfirm}
+                          onChange={(e) =>
+                            setPasswordConfirm(e.target.value)
+                          }
+                          required
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-2 flex items-center gap-3">
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                      >
+                        {loading ? "Création en cours..." : "Créer mon compte"}
+                      </button>
+                      <p className="text-[0.7rem] text-slate-500 max-w-xs">
+                        Votre compte vous permet de sauvegarder vos simulations
+                        (capacité d&apos;emprunt, investissement, parc
+                        immobilier) et de les retrouver plus tard.
+                      </p>
+                    </div>
+                  </form>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Profil
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900 mb-2">
+                  Informations personnelles & accès
+                </h2>
+                <p className="text-sm text-slate-600 mb-4">
+                  Vous êtes connecté avec l&apos;adresse{" "}
+                  <span className="font-semibold">{userEmail}</span>. Cette
+                  adresse est utilisée pour associer vos projets sauvegardés et
+                  pour vous recontacter si nécessaire.
+                </p>
+                <p className="text-sm text-slate-500">
+                  Dans les prochaines évolutions, cet espace permettra de
+                  gérer vos informations personnelles plus finement (coordonnées
+                  complètes, objectifs patrimoniaux, préférences de contact…)
+                  afin de préparer au mieux un accompagnement sur-mesure.
+                </p>
+              </>
+            )}
+          </section>
         </div>
-      </header>
-
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Résumé utilisateur */}
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-full border border-slate-200 bg-slate-900 text-white flex items-center justify-center overflow-hidden">
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span className="text-base font-semibold">{initials}</span>
-              )}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">
-                {fullName || user.email}
-              </p>
-              <p className="text-xs text-slate-500">{user.email}</p>
-            </div>
-          </div>
-          <div className="hidden sm:flex flex-col items-end text-[0.7rem] text-slate-500">
-            <p>ID utilisateur (Supabase)</p>
-            <p className="font-mono text-[0.65rem] text-slate-400 truncate max-w-xs">
-              {user.id}
-            </p>
-          </div>
-        </section>
-
-        {/* Infos perso & avatar */}
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">
-              Informations personnelles
-            </h2>
-            <p className="text-xs text-slate-500">
-              Ces informations sont utilisées pour personnaliser votre espace et vos
-              exports de simulations.
-            </p>
-          </div>
-
-          <form className="space-y-3" onSubmit={handleProfileSubmit}>
-            <div className="space-y-1">
-              <label className="text-xs text-slate-700">Nom complet</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs text-slate-700">
-                URL de l&apos;avatar (optionnel)
-              </label>
-              <input
-                type="url"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://…"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              <p className="text-[0.7rem] text-slate-500">
-                Vous pouvez utiliser une URL d&apos;image (hébergement externe ou futur
-                stockage dédié).
-              </p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={profileSaving}
-              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-            >
-              {profileSaving ? "Enregistrement..." : "Enregistrer les modifications"}
-            </button>
-
-            {profileMessage && (
-              <p className="text-[0.75rem] text-slate-600 whitespace-pre-line">
-                {profileMessage}
-              </p>
-            )}
-          </form>
-        </section>
-
-        {/* Mot de passe */}
-        <section
-          id="password"
-          className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4"
-        >
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">
-              Sécurité & mot de passe
-            </h2>
-            <p className="text-xs text-slate-500">
-              Modifiez votre mot de passe Supabase / MT Courtage. Vous serez invité à
-              vous reconnecter si nécessaire.
-            </p>
-          </div>
-
-          <form className="space-y-3" onSubmit={handlePasswordSubmit}>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <label className="text-xs text-slate-700">Nouveau mot de passe</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs text-slate-700">
-                  Confirmation du nouveau mot de passe
-                </label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={passwordSaving}
-              className="rounded-full bg-white border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-            >
-              {passwordSaving ? "Mise à jour..." : "Changer mon mot de passe"}
-            </button>
-
-            {passwordMessage && (
-              <p className="text-[0.75rem] text-slate-600 whitespace-pre-line">
-                {passwordMessage}
-              </p>
-            )}
-          </form>
-        </section>
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Espace client.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Outils de
+          simulation immobilière.
+        </p>
+        <p className="mt-1">
+          Contact :{" "}
+          <a href="mailto:mtcourtage@gmail.com" className="underline">
+            mtcourtage@gmail.com
+          </a>
         </p>
       </footer>
     </div>
