@@ -58,6 +58,11 @@ export default function AppHeader() {
     }
   };
 
+  const handleGoToAccount = () => {
+    setMenuOpen(false);
+    router.push("/mon-compte?tab=infos");
+  };
+
   const handleGoToLogin = () => {
     router.push("/mon-compte?mode=login");
   };
@@ -72,12 +77,6 @@ export default function AppHeader() {
     (user?.email ? user.email.split("@")[0] : "Mon compte");
 
   const isHome = router.pathname === "/";
-
-  // Helper pour fermer le menu et naviguer proprement
-  const go = (path: string) => {
-    setMenuOpen(false);
-    router.push(path);
-  };
 
   return (
     <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -147,28 +146,31 @@ export default function AppHeader() {
             <div className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white shadow-lg text-xs z-30">
               <button
                 className="w-full text-left px-3 py-2 hover:bg-slate-50"
-                onClick={() => go("/mon-compte")}
+                onClick={handleGoToAccount}
               >
                 Tableau de bord
               </button>
-              <button
-                className="w-full text-left px-3 py-2 hover:bg-slate-50"
-                onClick={() => go("/projets")}
+              <Link
+                href="/mon-compte?tab=projets"
+                className="block px-3 py-2 hover:bg-slate-50"
+                onClick={() => setMenuOpen(false)}
               >
                 Mes projets sauvegardés
-              </button>
-              <button
-                className="w-full text-left px-3 py-2 hover:bg-slate-50"
-                onClick={() => go("/mon-compte?tab=infos")}
+              </Link>
+              <Link
+                href="/mon-compte?tab=infos"
+                className="block px-3 py-2 hover:bg-slate-50"
+                onClick={() => setMenuOpen(false)}
               >
                 Informations personnelles
-              </button>
-              <button
-                className="w-full text-left px-3 py-2 hover:bg-slate-50"
-                onClick={() => go("/mon-compte?tab=securite")}
+              </Link>
+              <Link
+                href="/mon-compte?tab=securite"
+                className="block px-3 py-2 hover:bg-slate-50"
+                onClick={() => setMenuOpen(false)}
               >
                 Sécurité &amp; mot de passe
-              </button>
+              </Link>
               <button
                 className="w-full text-left px-3 py-2 text-red-600 hover:bg-red-50 border-t border-slate-100"
                 onClick={handleLogout}
