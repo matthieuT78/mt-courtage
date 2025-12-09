@@ -178,7 +178,7 @@ export default function Home() {
 
               {/* Achat revente / prêt relais */}
               <div
-                onClick={() => goToProtectedTool("/achat-revente")}
+                onClick={() => goToProtectedTool("/pret-relais")}
                 className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
                 role="button"
                 tabIndex={0}
