@@ -1,7 +1,8 @@
 // pages/investissement.tsx
 import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
-import AppHeader from "../components/AppHeader"; // <<< nouveau header
+import AppHeader from "../components/AppHeader"; // header global
+import { supabase } from "../lib/supabaseClient"; // 👉 ajout pour la sauvegarde
 import {
   Chart as ChartJS,
   Tooltip,
@@ -121,8 +122,13 @@ export default function InvestissementPage() {
 
   // Résultats
   const [resultRendementTexte, setResultRendementTexte] = useState<string>("");
-  const [resumeRendement, setResumeRendement] = useState<ResumeRendement | null>(null);
+  const [resumeRendement, setResumeRendement] =
+    useState<ResumeRendement | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
+
+  // Sauvegarde projet
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   // Référence pour scroller vers les résultats
   const resultSectionRef = useRef<HTMLDivElement | null>(null);
@@ -227,6 +233,8 @@ export default function InvestissementPage() {
   // --- Calcul principal ---
 
   const handleCalculRendement = () => {
+    setSaveMessage(null); // on reset le message de sauvegarde à chaque nouveau calcul
+
     const prix = prixBien || 0;
     const notaire = fraisNotaire || 0;
     const trvx = travaux || 0;
@@ -378,16 +386,99 @@ export default function InvestissementPage() {
     }, 100);
   };
 
-  const renderMultiline = (text: string) =>
-    text.split("\n").map((line, idx) => (
-      <p key={idx} className="text-sm text-slate-800 leading-relaxed">
-        {line}
-      </p>
-    ));
+  // Analyse détaillée en blocs / bullets
+  const renderAnalysisBlocks = (text: string) => {
+    if (!text) return null;
+    const lines = text.split("\n").filter((l) => l.trim().length > 0);
+
+    return (
+      <div className="space-y-2">
+        {lines.map((line, idx) => (
+          <div
+            key={idx}
+            className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white/70 px-3 py-2"
+          >
+            <span className="mt-1 text-xs text-emerald-600">●</span>
+            <p className="text-[0.8rem] text-slate-800 leading-relaxed">
+              {line}
+            </p>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   const handlePrintPDF = () => {
     if (typeof window !== "undefined") {
       window.print();
+    }
+  };
+
+  // --- Sauvegarde du projet investissement ---
+
+  const handleSaveProject = async () => {
+    if (!resumeRendement || !graphData) return;
+    setSaving(true);
+    setSaveMessage(null);
+
+    try {
+      if (!supabase) {
+        throw new Error(
+          "Le service de sauvegarde n'est pas disponible (configuration Supabase manquante)."
+        );
+      }
+
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      const session = sessionData?.session;
+      if (!session) {
+        if (typeof window !== "undefined") {
+          window.location.href = "/mon-compte?mode=login&redirect=/investissement";
+        }
+        return;
+      }
+
+      const { error } = await supabase.from("projects").insert({
+        user_id: session.user.id,
+        type: "investissement",
+        title: "Simulation investissement locatif",
+        data: {
+          inputs: {
+            prixBien,
+            fraisNotaire,
+            fraisAgence,
+            travaux,
+            nbApparts,
+            loyersApparts,
+            locationTypes,
+            airbnbNuitees,
+            airbnbOccupation,
+            chargesCopro,
+            taxeFonc,
+            assurance,
+            tauxGestion,
+            apport,
+            tauxCredLoc,
+            dureeCredLoc,
+            tauxAssuranceEmp,
+          },
+          resume: resumeRendement,
+          graphData,
+          analyse: resultRendementTexte,
+        },
+      });
+
+      if (error) throw error;
+      setSaveMessage("✅ Projet sauvegardé dans votre espace.");
+    } catch (err: any) {
+      setSaveMessage(
+        "❌ Erreur lors de la sauvegarde du projet : " +
+          (err?.message || "erreur inconnue")
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -457,7 +548,7 @@ export default function InvestissementPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* Nouveau header global */}
+      {/* Header global */}
       <AppHeader />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-5">
@@ -932,7 +1023,7 @@ export default function InvestissementPage() {
           ref={resultSectionRef}
           className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4"
         >
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-start justify-between gap-3">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
                 Synthèse
@@ -946,12 +1037,26 @@ export default function InvestissementPage() {
             </div>
 
             {hasSimulation && (
-              <button
-                onClick={handlePrintPDF}
-                className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300 transition-colors"
-              >
-                PDF
-              </button>
+              <div className="flex flex-col items-end gap-1">
+                <button
+                  onClick={handleSaveProject}
+                  disabled={saving}
+                  className="inline-flex items-center justify-center rounded-full border border-emerald-500/80 bg-emerald-500 px-3 py-1.5 text-[0.7rem] font-semibold text-white shadow-sm hover:bg-emerald-400 disabled:opacity-60"
+                >
+                  {saving ? "Sauvegarde..." : "Sauvegarder le projet"}
+                </button>
+                <button
+                  onClick={handlePrintPDF}
+                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Export PDF (impression)
+                </button>
+                {saveMessage && (
+                  <p className="text-[0.65rem] text-slate-500 text-right max-w-[240px]">
+                    {saveMessage}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
@@ -1136,12 +1241,12 @@ export default function InvestissementPage() {
                 </div>
               </div>
 
-              {/* Analyse narrative */}
+              {/* Analyse narrative aérée */}
               <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
                   Analyse détaillée
                 </p>
-                {renderMultiline(resultRendementTexte)}
+                {renderAnalysisBlocks(resultRendementTexte)}
               </div>
 
               <p className="mt-2 text-[0.7rem] text-slate-500">

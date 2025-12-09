@@ -1,8 +1,8 @@
 // pages/investissement.tsx
 import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
-import AppHeader from "../components/AppHeader"; // header global
-import { supabase } from "../lib/supabaseClient"; // 👉 ajout pour la sauvegarde
+import AppHeader from "../components/AppHeader";
+import { supabase } from "../lib/supabaseClient";
 import {
   Chart as ChartJS,
   Tooltip,
@@ -24,15 +24,12 @@ ChartJS.register(
   PointElement
 );
 
-const Bar = dynamic(
-  () => import("react-chartjs-2").then((m) => m.Bar),
-  { ssr: false }
-);
-
-const Line = dynamic(
-  () => import("react-chartjs-2").then((m) => m.Line),
-  { ssr: false }
-);
+const Bar = dynamic(() => import("react-chartjs-2").then((m) => m.Bar), {
+  ssr: false,
+});
+const Line = dynamic(() => import("react-chartjs-2").then((m) => m.Line), {
+  ssr: false,
+});
 
 function formatEuro(val: number) {
   if (Number.isNaN(val)) return "-";
@@ -233,7 +230,7 @@ export default function InvestissementPage() {
   // --- Calcul principal ---
 
   const handleCalculRendement = () => {
-    setSaveMessage(null); // on reset le message de sauvegarde à chaque nouveau calcul
+    setSaveMessage(null); // reset message sauvegarde
 
     const prix = prixBien || 0;
     const notaire = fraisNotaire || 0;
@@ -414,6 +411,38 @@ export default function InvestissementPage() {
     }
   };
 
+  // 🔹 Demande d'analyse premium (optimisation locative)
+  const handleRequestPremiumAnalysis = () => {
+    if (typeof window === "undefined") return;
+
+    const subject = encodeURIComponent(
+      "Demande d’optimisation de mon investissement locatif"
+    );
+
+    const bodyLines: string[] = [
+      "Bonjour,",
+      "",
+      "Je souhaite une analyse approfondie et une optimisation de mon projet d’investissement locatif réalisé sur l’outil MT Courtage & Investissement.",
+      "",
+      "Résumé de ma simulation actuelle :",
+      "",
+      resultRendementTexte && resultRendementTexte.trim().length > 0
+        ? resultRendementTexte
+        : "(Les résultats ne sont pas joints automatiquement, n’hésitez pas à me recontacter pour les détails.)",
+      "",
+      "Merci de revenir vers moi avec :",
+      "- Vos premières recommandations,",
+      "- Le fonctionnement de la prestation,",
+      "- Et le tarif détaillé.",
+      "",
+      "Cordialement,",
+      "",
+    ];
+
+    const body = encodeURIComponent(bodyLines.join("\n"));
+    window.location.href = `mailto:mtcourtage@gmail.com?subject=${subject}&body=${body}`;
+  };
+
   // --- Sauvegarde du projet investissement ---
 
   const handleSaveProject = async () => {
@@ -435,7 +464,8 @@ export default function InvestissementPage() {
       const session = sessionData?.session;
       if (!session) {
         if (typeof window !== "undefined") {
-          window.location.href = "/mon-compte?mode=login&redirect=/investissement";
+          window.location.href =
+            "/mon-compte?mode=login&redirect=/investissement";
         }
         return;
       }
@@ -598,10 +628,7 @@ export default function InvestissementPage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <button
-                  onClick={handleNext}
-                  className={primaryNavButtonClass}
-                >
+                <button onClick={handleNext} className={primaryNavButtonClass}>
                   Suivant
                 </button>
               </div>
@@ -705,10 +732,7 @@ export default function InvestissementPage() {
                 >
                   Précédent
                 </button>
-                <button
-                  onClick={handleNext}
-                  className={primaryNavButtonClass}
-                >
+                <button onClick={handleNext} className={primaryNavButtonClass}>
                   Suivant
                 </button>
               </div>
@@ -859,10 +883,7 @@ export default function InvestissementPage() {
                 >
                   Précédent
                 </button>
-                <button
-                  onClick={handleNext}
-                  className={primaryNavButtonClass}
-                >
+                <button onClick={handleNext} className={primaryNavButtonClass}>
                   Suivant
                 </button>
               </div>
@@ -890,9 +911,7 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={taxeFonc}
-                    onChange={(e) =>
-                      setTaxeFonc(parseFloat(e.target.value))
-                    }
+                    onChange={(e) => setTaxeFonc(parseFloat(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -903,9 +922,7 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={assurance}
-                    onChange={(e) =>
-                      setAssurance(parseFloat(e.target.value))
-                    }
+                    onChange={(e) => setAssurance(parseFloat(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -921,9 +938,7 @@ export default function InvestissementPage() {
                 <input
                   type="number"
                   value={tauxGestion}
-                  onChange={(e) =>
-                    setTauxGestion(parseFloat(e.target.value))
-                  }
+                  onChange={(e) => setTauxGestion(parseFloat(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -981,9 +996,7 @@ export default function InvestissementPage() {
                 <input
                   type="number"
                   value={tauxCredLoc}
-                  onChange={(e) =>
-                    setTauxCredLoc(parseFloat(e.target.value))
-                  }
+                  onChange={(e) => setTauxCredLoc(parseFloat(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -1050,6 +1063,13 @@ export default function InvestissementPage() {
                   className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   Export PDF (impression)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRequestPremiumAnalysis}
+                  className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300"
+                >
+                  Demander une optimisation (service payant)
                 </button>
                 {saveMessage && (
                   <p className="text-[0.65rem] text-slate-500 text-right max-w-[240px]">
@@ -1249,6 +1269,54 @@ export default function InvestissementPage() {
                 {renderAnalysisBlocks(resultRendementTexte)}
               </div>
 
+              {/* 🔥 Bloc Analyse Premium & optimisation locative */}
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-amber-50 to-emerald-50 px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-700">
+                    Service d&apos;accompagnement
+                  </p>
+                  <h3 className="text-sm sm:text-base font-semibold text-slate-900">
+                    Analyse Premium & optimisation de votre investissement locatif
+                  </h3>
+                  <p className="text-[0.8rem] text-slate-700">
+                    Transformez cette simulation en plan d&apos;action concret : choix
+                    du régime fiscal, stratégie d&apos;arbitrage, scénarios de loyers
+                    et présentation prête à l&apos;emploi pour votre banquier.
+                  </p>
+                  <ul className="mt-2 space-y-1.5 text-[0.75rem] text-slate-700">
+                    <li>• Audit détaillé de votre projet à partir de ces chiffres</li>
+                    <li>• 2–3 scénarios d&apos;optimisation (fiscalité, durée, loyers…)</li>
+                    <li>• Recommandations écrites et priorisées</li>
+                    <li>• Synthèse claire à envoyer à la banque / au conseiller</li>
+                  </ul>
+                </div>
+                <div className="shrink-0 flex flex-col items-start md:items-end gap-2">
+                  <div className="text-right">
+                    {/* 💬 adapte librement le tarif ici */}
+                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.18em]">
+                      Prestation sur mesure
+                    </p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      Tarif sur devis
+                    </p>
+                    <p className="text-[0.7rem] text-slate-500">
+                      Facturation distincte de l&apos;abonnement.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRequestPremiumAnalysis}
+                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-md hover:bg-slate-800"
+                  >
+                    Demander une optimisation personnalisée
+                  </button>
+                  <p className="text-[0.65rem] text-slate-500 max-w-[220px] text-right">
+                    Votre mail prérempli inclura automatiquement les chiffres de
+                    cette simulation pour que je puisse commencer à travailler.
+                  </p>
+                </div>
+              </div>
+
               <p className="mt-2 text-[0.7rem] text-slate-500">
                 Ces calculs sont fournis à titre indicatif, hors fiscalité et
                 évolution future des loyers, taux, charges et réglementation.
@@ -1258,7 +1326,8 @@ export default function InvestissementPage() {
             <p className="mt-4 text-sm text-slate-500">
               Complétez les onglets Coûts, Revenus, Charges et Crédit, puis
               cliquez sur “Calculer / Mettre à jour la rentabilité” ou sur
-              “Aller aux résultats” pour afficher le dashboard détaillé.
+              “Aller aux résultats” pour afficher le dashboard détaillé et accéder
+              à l&apos;offre d&apos;optimisation.
             </p>
           )}
         </section>
@@ -1266,8 +1335,8 @@ export default function InvestissementPage() {
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations
-          indicatives.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement –
+          Simulations indicatives.
         </p>
         <p className="mt-1">
           Contact :{" "}
