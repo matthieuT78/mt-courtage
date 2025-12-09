@@ -83,6 +83,11 @@ export default function Home() {
 
   const isLoggedIn = !!user;
 
+  const paidLink = (path: string) =>
+    isLoggedIn
+      ? path
+      : `/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`;
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
@@ -244,14 +249,9 @@ export default function Home() {
           </p>
 
           <div className="grid gap-3 md:grid-cols-3 mt-3">
-            {/* Investissement locatif - locké */}
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.location.href = "/mon-compte?mode=login";
-                }
-              }}
+            {/* Investissement locatif */}
+            <Link
+              href={paidLink("/investissement")}
               className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left flex flex-col gap-2 hover:bg-slate-50 transition-colors"
             >
               <div className="flex items-center justify-between gap-2">
@@ -267,16 +267,11 @@ export default function Home() {
                 Analyse fine des loyers, charges, fiscalité et cash-flow sur un
                 ou plusieurs biens.
               </p>
-            </button>
+            </Link>
 
-            {/* Achat revente / prêt relais - locké */}
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.location.href = "/mon-compte?mode=login";
-                }
-              }}
+            {/* Achat revente / prêt relais */}
+            <Link
+              href={paidLink("/pret-relais")}
               className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left flex flex-col gap-2 hover:bg-slate-50 transition-colors"
             >
               <div className="flex items-center justify-between gap-2">
@@ -292,16 +287,11 @@ export default function Home() {
                 Budget d&apos;achat, montant du relais, simulations avec et sans
                 revente immédiate.
               </p>
-            </button>
+            </Link>
 
-            {/* Parc immobilier existant - locké */}
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.location.href = "/mon-compte?mode=login";
-                }
-              }}
+            {/* Parc immobilier existant */}
+            <Link
+              href={paidLink("/parc-immobilier")}
               className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left flex flex-col gap-2 hover:bg-slate-50 transition-colors"
             >
               <div className="flex items-center justify-between gap-2">
@@ -317,7 +307,7 @@ export default function Home() {
                 Vision consolidée de vos biens : encours, valeurs, cash-flow et
                 pistes d&apos;optimisation.
               </p>
-            </button>
+            </Link>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -339,8 +329,8 @@ export default function Home() {
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations
-          indicatives.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement –
+          Simulations indicatives.
         </p>
         <p className="mt-1">
           Contact :{" "}
