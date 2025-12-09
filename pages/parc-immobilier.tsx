@@ -457,7 +457,7 @@ function ParcImmobilierContent() {
             Détail par bien
           </p>
 
-          {/* Desktop / tablette : tableau complet sans scroll horizontal (dans le container max-w-5xl) */}
+          {/* Desktop / tablette : tableau complet */}
           <div className="hidden md:block">
             <table className="w-full text-[0.75rem] text-slate-800">
               <thead>
@@ -526,12 +526,95 @@ function ParcImmobilierContent() {
                     </tr>
                   );
                 })}
+
+                {/* 🔹 Ligne de synthèse du parc complète dans le tableau de détail */}
+                <tr className="border-t border-slate-300 bg-slate-100/80 font-semibold">
+                  <td className="px-2 py-1.5">Parc complet</td>
+                  <td className="px-2 py-1.5 text-right">
+                    {formatEuro(totalValeur)}
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    {formatEuro(totalCRD)}
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    {formatEuro(totalLoyersAnnuels)}
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    {formatEuro(totalChargesAnnuelles)}
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    {formatEuro(totalCreditAssuranceAnnuel)}
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    {formatEuro(totalResultatNetAnnuel)}
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    {formatEuro(totalCashflowMensuel)}
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    {formatPct(rendementGlobal)}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
 
-          {/* Mobile : cartes par bien, plus de scroll horizontal */}
+          {/* Mobile : carte "Parc complet" + cartes par bien, sans scroll horizontal */}
           <div className="space-y-2 md:hidden">
+            {/* Carte synthèse parc complet */}
+            <div className="rounded-lg border border-slate-300 bg-indigo-50 px-3 py-3 text-[0.75rem] space-y-1.5">
+              <p className="font-semibold text-slate-900">Parc complet</p>
+              <div className="flex justify-between">
+                <span>Valeur totale</span>
+                <span className="font-medium">
+                  {formatEuro(totalValeur)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Encours de crédit</span>
+                <span className="font-medium">
+                  {formatEuro(totalCRD)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Loyers annuels</span>
+                <span className="font-medium">
+                  {formatEuro(totalLoyersAnnuels)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Charges annuelles</span>
+                <span className="font-medium">
+                  {formatEuro(totalChargesAnnuelles)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Crédit + ass. (an)</span>
+                <span className="font-medium">
+                  {formatEuro(totalCreditAssuranceAnnuel)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Résultat net annuel</span>
+                <span className="font-medium">
+                  {formatEuro(totalResultatNetAnnuel)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Cash-flow mensuel</span>
+                <span className="font-medium">
+                  {formatEuro(totalCashflowMensuel)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Rendement net global</span>
+                <span className="font-medium">
+                  {formatPct(rendementGlobal)}
+                </span>
+              </div>
+            </div>
+
+            {/* Cartes par bien */}
             {dataBiens.map((b, idx) => {
               const loyersAnnuels = (b.loyerMensuel || 0) * 12;
               const annuiteCredit = (b.mensualiteCredit || 0) * 12;
@@ -1008,7 +1091,9 @@ export default function ParcImmobilierPage() {
       <div className="min-h-screen flex flex-col bg-slate-100">
         <AppHeader />
         <main className="flex-1 max-w-5xl mx-auto px-4 py-8">
-          <p className="text-sm text-slate-500">Vérification de vos accès...</p>
+          <p className="text-sm text-slate-500">
+            Vérification de vos accès...
+          </p>
         </main>
       </div>
     );
