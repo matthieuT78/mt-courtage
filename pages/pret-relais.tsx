@@ -209,7 +209,7 @@ export default function PretRelaisPage() {
               Prêt relais
             </p>
             <h2 className="text-lg font-semibold text-slate-900 mb-1">
-              Jusqu&apos;à combien puis-je acheter avec un prêt relais ?
+              Quel bien puis-je acheter avec un prêt relais ?
             </h2>
             <p className="text-xs text-slate-500 mb-4">
               Renseignez votre situation pour obtenir un budget d&apos;achat maximal (prêt relais + nouveau crédit + apport).
