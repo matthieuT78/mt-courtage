@@ -1285,7 +1285,7 @@ export default function InvestissementPage() {
                   </p>
                   <ul className="mt-2 space-y-1.5 text-[0.75rem] text-slate-700">
                     <li>• Audit détaillé de votre projet à partir de ces chiffres</li>
-                    <li>• 2–3 scénarios d&apos;optimisation (fiscalité, durée, loyers…)</li>
+                    <li>• le meilleur scénarios d&apos;optimisation (fiscalité, durée, loyers…)</li>
                     <li>• Recommandations écrites et priorisées</li>
                     <li>• Synthèse claire à envoyer à la banque / au conseiller</li>
                   </ul>
