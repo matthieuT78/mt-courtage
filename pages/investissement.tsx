@@ -77,6 +77,12 @@ type MarketBenchmarks = {
   source?: string | null;
 };
 
+type CitySuggestion = {
+  name: string;
+  postalCode: string;
+  inseeCode: string;
+};
+
 function InfoBadge({ text }: { text: string }) {
   return (
     <span className="relative inline-flex items-center group ml-1 align-middle">
@@ -108,8 +114,15 @@ export default function InvestissementPage() {
   const [listingUrl, setListingUrl] = useState("");
 
   // 📍 Localité & surface (pour analyse marché)
-  const [localite, setLocalite] = useState("");
   const [surfaceM2, setSurfaceM2] = useState<number>(0);
+
+  // Auto-complétion ville / CP
+  const [cityQuery, setCityQuery] = useState("");
+  const [citySuggestions, setCitySuggestions] = useState<CitySuggestion[]>([]);
+  const [selectedCity, setSelectedCity] = useState<CitySuggestion | null>(null);
+  const [cityLoading, setCityLoading] = useState(false);
+  const [cityError, setCityError] = useState<string | null>(null);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
 
   // Configuration des lots
   const [nbApparts, setNbApparts] = useState(1);
@@ -156,6 +169,15 @@ export default function InvestissementPage() {
 
   // Référence pour scroller vers les résultats
   const resultSectionRef = useRef<HTMLDivElement | null>(null);
+
+  // --- Helpers d'affichage ---
+
+  const selectedCityLabel =
+    selectedCity != null
+      ? `${selectedCity.name} (${selectedCity.postalCode})`
+      : cityQuery.trim().length > 0
+      ? cityQuery.trim()
+      : "";
 
   // --- Gestion des champs ---
 
@@ -254,19 +276,74 @@ export default function InvestissementPage() {
     }
   };
 
-  // --- Récupération des benchmarks marché (DVF / loyers) via API interne ---
+  // --- Auto-complétion ville / code postal ---
+
+  const fetchCitySuggestions = async (q: string) => {
+    const query = q.trim();
+    if (query.length < 2) {
+      setCitySuggestions([]);
+      setCityError(null);
+      return;
+    }
+
+    try {
+      setCityLoading(true);
+      setCityError(null);
+      const res = await fetch(
+        `/api/cities-search?q=${encodeURIComponent(query)}`
+      );
+      if (!res.ok) {
+        throw new Error("Impossible de récupérer les communes pour cette saisie.");
+      }
+      const data = (await res.json()) as CitySuggestion[];
+      setCitySuggestions(data || []);
+      setShowCitySuggestions(true);
+    } catch (err: any) {
+      console.error("Erreur auto-complétion ville:", err);
+      setCityError(
+        err?.message ||
+          "Erreur lors de la récupération des communes, réessayez plus tard."
+      );
+      setCitySuggestions([]);
+      setShowCitySuggestions(false);
+    } finally {
+      setCityLoading(false);
+    }
+  };
+
+  const handleCityInputChange = (value: string) => {
+    setCityQuery(value);
+    setSelectedCity(null); // on invalide la ville sélectionnée précédente
+    setShowCitySuggestions(true);
+    void fetchCitySuggestions(value);
+  };
+
+  const handleSelectCity = (city: CitySuggestion) => {
+    setSelectedCity(city);
+    setCityQuery(`${city.name} (${city.postalCode})`);
+    setCitySuggestions([]);
+    setShowCitySuggestions(false);
+    setCityError(null);
+  };
+
+  // --- Récupération des benchmarks marché via API interne ---
 
   const fetchMarketBenchmarks = async (
-    loc: string,
+    city: CitySuggestion,
     surface: number
   ): Promise<MarketBenchmarks | null> => {
     try {
       setMarketLoading(true);
       setMarketError(null);
       const params = new URLSearchParams({
-        localite: loc,
-        surface: surface.toString(),
+        inseeCode: city.inseeCode,
+        postalCode: city.postalCode,
+        cityName: city.name,
       });
+      if (surface > 0) {
+        params.set("surface", surface.toString());
+      }
+
       const res = await fetch(`/api/market-benchmarks?${params.toString()}`);
       if (!res.ok) {
         throw new Error(
@@ -385,10 +462,10 @@ export default function InvestissementPage() {
     const resultatNetAnnuel = revenuNetAvantCredit - annuiteTotale;
     const cashflowMensuel = resultatNetAnnuel / 12;
 
-    // 📊 Option : récupération des données marché si localité + surface renseignées
+    // 📊 Option : récupération des données marché si ville sélectionnée + surface renseignée
     let market: MarketBenchmarks | null = null;
-    if (localite.trim().length > 0 && surfaceM2 > 0) {
-      market = await fetchMarketBenchmarks(localite.trim(), surfaceM2);
+    if (selectedCity && surfaceM2 > 0) {
+      market = await fetchMarketBenchmarks(selectedCity, surfaceM2);
     }
 
     // 🔢 Score de rentabilité (1 à 10) + axes d'amélioration
@@ -443,7 +520,7 @@ export default function InvestissementPage() {
         // loyer trop optimiste
         score -= 1;
       } else if (ecartLoyerPourcent < -10) {
-        // loyer sous le marché -> potentiel d'upside, on ne pénalise pas
+        // loyer sous le marché -> potentiel d'upside
         improvements.push(
           `Votre loyer envisagé semble en dessous du loyer médian local. Le marché suggère un loyer autour de ${formatEuro(
             market.rentPerM2 * surfaceM2
@@ -508,7 +585,7 @@ export default function InvestissementPage() {
     }
 
     // Recommandation spécifique sur le prix au m²
-    if (ecartPrixPourcent !== null && market?.pricePerM2) {
+    if (ecartPrixPourcent !== null && market?.pricePerM2 && surfaceM2 > 0) {
       if (ecartPrixPourcent > 10) {
         const prixCibleM2 = market.pricePerM2 * 1.05; // marché +5%
         const prixCible = prixCibleM2 * surfaceM2;
@@ -662,9 +739,8 @@ export default function InvestissementPage() {
       listingUrl
         ? `Lien de l'annonce analysée : ${listingUrl}`
         : "(Aucun lien d'annonce n'a été renseigné dans la simulation.)",
-      "",
-      localite
-        ? `Localité du bien : ${localite}`
+      selectedCityLabel
+        ? `Localité du bien : ${selectedCityLabel}`
         : "(Localité non renseignée dans la simulation.)",
       surfaceM2 > 0
         ? `Surface : ${surfaceM2.toLocaleString("fr-FR", {
@@ -742,8 +818,15 @@ export default function InvestissementPage() {
             dureeCredLoc,
             tauxAssuranceEmp,
             listingUrl,
-            localite,
+            localite: selectedCityLabel,
             surfaceM2,
+            city: selectedCity
+              ? {
+                  name: selectedCity.name,
+                  postalCode: selectedCity.postalCode,
+                  inseeCode: selectedCity.inseeCode,
+                }
+              : null,
           },
           resume: resumeRendement,
           graphData,
@@ -912,19 +995,58 @@ export default function InvestissementPage() {
 
               {/* 📍 Localité & surface (optionnels) */}
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-1 sm:col-span-2">
+                <div className="relative space-y-1 sm:col-span-2">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Localité du bien (optionnel)
-                    <InfoBadge text="Indiquez la commune ou le code postal du bien. Cela permet de comparer le prix et les loyers à des données publiques (DVF, loyers médians… via votre API interne)." />
+                    <InfoBadge text="Tapez un code postal ou le nom de la commune, puis sélectionnez dans la liste. Cela permet de comparer le prix et les loyers à des données publiques (via votre API marché)." />
                   </label>
                   <input
                     type="text"
-                    value={localite}
-                    onChange={(e) => setLocalite(e.target.value)}
-                    placeholder="Ex. Paris 15, 75015, Lyon, Cargèse…"
+                    value={cityQuery}
+                    onChange={(e) => handleCityInputChange(e.target.value)}
+                    onFocus={() => {
+                      if (citySuggestions.length > 0) {
+                        setShowCitySuggestions(true);
+                      }
+                    }}
+                    placeholder="Ex. 75015, Paris, Lyon, Cargèse…"
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
+                  {cityLoading && (
+                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                      Recherche des communes…
+                    </p>
+                  )}
+                  {cityError && (
+                    <p className="mt-1 text-[0.7rem] text-red-600">
+                      {cityError}
+                    </p>
+                  )}
+
+                  {showCitySuggestions && citySuggestions.length > 0 && (
+                    <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                      {citySuggestions.map((city) => (
+                        <button
+                          key={`${city.inseeCode}-${city.postalCode}`}
+                          type="button"
+                          onClick={() => handleSelectCity(city)}
+                          className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                        >
+                          <span>
+                            {city.name}{" "}
+                            <span className="text-slate-500">
+                              ({city.postalCode})
+                            </span>
+                          </span>
+                          <span className="text-[0.65rem] text-slate-400">
+                            INSEE {city.inseeCode}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Surface habitable (m²)
@@ -1223,7 +1345,9 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={taxeFonc}
-                    onChange={(e) => setTaxeFonc(parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setTaxeFonc(parseFloat(e.target.value))
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -1234,7 +1358,9 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={assurance}
-                    onChange={(e) => setAssurance(parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setAssurance(parseFloat(e.target.value))
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -1415,8 +1541,8 @@ export default function InvestissementPage() {
             </button>
             <p className="text-xs text-slate-500">
               Assurez-vous que les onglets Coûts, Revenus, Charges et Crédit sont
-              correctement renseignés pour une analyse cohérente (localité et
-              surface améliorent l&apos;analyse, mais restent optionnels).
+              correctement renseignés. La localité + surface permettent une
+              analyse marché plus fine, mais restent optionnelles.
             </p>
           </div>
 
@@ -1590,8 +1716,8 @@ export default function InvestissementPage() {
                 </div>
               </div>
 
-              {/* 🔍 Encadré dédié à l'annonce (si lien renseigné ou données marché) */}
-              {(listingUrl || opportunityScore !== null) && (
+              {/* 🔍 Encadré dédié à l'annonce / analyse marché */}
+              {(listingUrl || opportunityScore !== null || selectedCityLabel) && (
                 <div className="mt-5 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4 space-y-3">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
@@ -1611,9 +1737,12 @@ export default function InvestissementPage() {
                           Voir l&apos;annonce associée
                         </a>
                       )}
-                      {localite && (
+                      {selectedCityLabel && (
                         <p className="mt-1 text-[0.75rem] text-slate-700">
-                          Localité : <span className="font-medium">{localite}</span>
+                          Localité :{" "}
+                          <span className="font-medium">
+                            {selectedCityLabel}
+                          </span>
                           {surfaceM2 > 0 && (
                             <>
                               {" "}
@@ -1815,8 +1944,8 @@ export default function InvestissementPage() {
                   </button>
                   <p className="text-[0.65rem] text-slate-500 max-w-[220px] text-right">
                     Votre mail prérempli inclura automatiquement les chiffres de
-                    cette simulation (et le lien/localité si renseignés) pour que
-                    je puisse commencer à travailler.
+                    cette simulation (et la localité / le lien si renseignés) pour
+                    que je puisse commencer à travailler.
                   </p>
                 </div>
               </div>
