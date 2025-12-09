@@ -1,7 +1,6 @@
 // pages/pret-relais.tsx
 import { useState } from "react";
 import AppHeader from "../components/AppHeader";
-import { supabase } from "../lib/supabaseClient"; // 👉 ajout pour la sauvegarde
 
 function formatEuro(val: number) {
   if (Number.isNaN(val)) return "-";
@@ -64,13 +63,7 @@ export default function PretRelaisPage() {
   const [resume, setResume] = useState<ResumeRelais | null>(null);
   const [texteDetail, setTexteDetail] = useState<string>("");
 
-  // Sauvegarde projet
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
-
   const handleCalculRelais = () => {
-    setSaveMessage(null); // on reset le message de sauvegarde à chaque nouveau calcul
-
     const revenus = revMensuels || 0;
     const autresMens = autresMensualites || 0;
     const endettementMax = (tauxEndettement || 35) / 100;
@@ -190,27 +183,12 @@ export default function PretRelaisPage() {
     setTexteDetail(message);
   };
 
-  // Analyse détaillée en petits blocs lisibles
-  const renderAnalysisBlocks = (text: string) => {
-    if (!text) return null;
-    const lines = text.split("\n").filter((l) => l.trim().length > 0);
-
-    return (
-      <div className="space-y-2">
-        {lines.map((line, idx) => (
-          <div
-            key={idx}
-            className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white/70 px-3 py-2"
-          >
-            <span className="mt-1 text-xs text-amber-600">●</span>
-            <p className="text-[0.8rem] text-slate-800 leading-relaxed">
-              {line}
-            </p>
-          </div>
-        ))}
-      </div>
-    );
-  };
+  const renderMultiline = (text: string) =>
+    text.split("\n").map((line, idx) => (
+      <p key={idx} className="text-sm text-slate-800 leading-relaxed">
+        {line}
+      </p>
+    ));
 
   const handlePrintPDF = () => {
     if (typeof window !== "undefined") {
@@ -218,69 +196,9 @@ export default function PretRelaisPage() {
     }
   };
 
-  // Sauvegarde du projet prêt relais
-  const handleSaveProject = async () => {
-    if (!resume || !texteDetail) return;
-    setSaving(true);
-    setSaveMessage(null);
-
-    try {
-      if (!supabase) {
-        throw new Error(
-          "Le service de sauvegarde n'est pas disponible (configuration Supabase manquante)."
-        );
-      }
-
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-
-      const session = sessionData?.session;
-      if (!session) {
-        if (typeof window !== "undefined") {
-          window.location.href = "/mon-compte?mode=login&redirect=/pret-relais";
-        }
-        return;
-      }
-
-      const { error } = await supabase.from("projects").insert({
-        user_id: session.user.id,
-        type: "pret_relais",
-        title: "Simulation prêt relais",
-        data: {
-          inputs: {
-            revMensuels,
-            autresMensualites,
-            tauxEndettement,
-            valeurBienActuel,
-            crdActuel,
-            pctRetenu,
-            tauxRelais,
-            apportPerso,
-            tauxNouveau,
-            dureeNouveau,
-            prixCible,
-          },
-          resume,
-          analyse: texteDetail,
-        },
-      });
-
-      if (error) throw error;
-      setSaveMessage("✅ Projet sauvegardé dans votre espace.");
-    } catch (err: any) {
-      setSaveMessage(
-        "❌ Erreur lors de la sauvegarde du projet : " +
-          (err?.message || "erreur inconnue")
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* ✅ Header global */}
+      {/* ✅ Nouveau header global */}
       <AppHeader />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6">
@@ -294,8 +212,7 @@ export default function PretRelaisPage() {
               Quel bien puis-je acheter avec un prêt relais ?
             </h2>
             <p className="text-xs text-slate-500 mb-4">
-              Renseignez votre situation pour obtenir un budget d&apos;achat maximal
-              (prêt relais + nouveau crédit + apport).
+              Renseignez votre situation pour obtenir un budget d&apos;achat maximal (prêt relais + nouveau crédit + apport).
             </p>
 
             <div className="space-y-3">
@@ -482,7 +399,7 @@ export default function PretRelaisPage() {
 
           {/* Résultats */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5">
-            <div className="flex items-start justify-between gap-2 mb-3">
+            <div className="flex items-center justify-between gap-2 mb-3">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">
                   Résultat de la simulation
@@ -491,29 +408,12 @@ export default function PretRelaisPage() {
                   Montant du relais, capacité de prêt et budget d&apos;achat maximal.
                 </p>
               </div>
-
-              {resume && (
-                <div className="flex flex-col items-end gap-1">
-                  <button
-                    onClick={handleSaveProject}
-                    disabled={saving}
-                    className="inline-flex items-center justify-center rounded-full border border-emerald-500/80 bg-emerald-500 px-3 py-1.5 text-[0.7rem] font-semibold text-white shadow-sm hover:bg-emerald-400 disabled:opacity-60"
-                  >
-                    {saving ? "Sauvegarde..." : "Sauvegarder le projet"}
-                  </button>
-                  <button
-                    onClick={handlePrintPDF}
-                    className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300 transition-colors"
-                  >
-                    PDF
-                  </button>
-                  {saveMessage && (
-                    <p className="text-[0.65rem] text-slate-500 text-right max-w-[230px]">
-                      {saveMessage}
-                    </p>
-                  )}
-                </div>
-              )}
+              <button
+                onClick={handlePrintPDF}
+                className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300 transition-colors"
+              >
+                PDF
+              </button>
             </div>
 
             {resume && (
@@ -565,21 +465,16 @@ export default function PretRelaisPage() {
 
             {texteDetail ? (
               <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-3">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-                  Analyse détaillée
-                </p>
-                {renderAnalysisBlocks(texteDetail)}
+                {renderMultiline(texteDetail)}
               </div>
             ) : (
               <p className="text-sm text-slate-500">
-                Renseignez votre situation puis cliquez sur “Calculer mon budget
-                d&apos;achat avec prêt relais”.
+                Renseignez votre situation puis cliquez sur “Calculer mon budget d&apos;achat avec prêt relais”.
               </p>
             )}
 
             <p className="mt-3 text-[0.7rem] text-slate-500">
-              Cette simulation est indicative et ne remplace pas une étude
-              détaillée de votre dossier par un courtier ou une banque.
+              Cette simulation est indicative et ne remplace pas une étude détaillée de votre dossier par un courtier ou une banque.
             </p>
           </section>
         </div>
@@ -587,8 +482,7 @@ export default function PretRelaisPage() {
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations
-          indicatives.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations indicatives.
         </p>
         <p className="mt-1">
           Contact :{" "}
