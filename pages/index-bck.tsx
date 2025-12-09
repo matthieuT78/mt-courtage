@@ -104,84 +104,108 @@ export default function Home() {
           </section>
 
           {/* 💬 Bloc marketing version payante / outils avancés */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-              Outils avancés (version complète)
-            </p>
-            <h2 className="text-sm font-semibold text-slate-900">
-              Passez de la simple capacité d&apos;emprunt à une vision globale de
-              votre stratégie immobilière
-            </h2>
-            <p className="text-xs text-slate-600 max-w-2xl">
-              La version complète (bientôt payante) rassemble les calculettes et
-              analyses dont vous avez besoin pour décider rapidement : que vous
-              soyez primo-accédant ou investisseur chevronné, vous disposez
-              d&apos;outils concrets pour discuter d&apos;égal à égal avec votre
-              banque ou votre courtier.
-            </p>
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 space-y-5">
+            {/* Bandeau titre + prix */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-[0.7rem] uppercase tracking-[0.20em] text-emerald-600">
+                  OUTILS AVANCÉS (VERSION COMPLÈTE)
+                </p>
+                <h2 className="mt-1 text-base sm:text-lg font-semibold text-slate-900">
+                  Tous vos projets immobiliers pilotés comme un pro
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-2 text-right">
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Accès illimité
+                  </p>
+                  <p className="text-lg font-semibold text-slate-900 leading-tight">
+                    49&nbsp;€ / an
+                  </p>
+                  <p className="text-[0.7rem] text-emerald-700">
+                    Moins de 5&nbsp;€ / mois.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-            <div className="grid gap-3 md:grid-cols-3 mt-2">
+            {/* 3 gros blocs fonctionnels */}
+            <div className="grid gap-4 md:grid-cols-3 mt-1">
               {/* Investissement locatif */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2">
-                <p className="text-xs font-semibold text-slate-900">
-                  Investissement locatif
-                </p>
-                <p className="text-[0.7rem] text-slate-600">
-                  Cash-flow, rendement net, effort d’épargne, scénarios de
-                  financement… pour un ou plusieurs biens, en location nue ou
-                  meublée.
-                </p>
-                <p className="text-[0.65rem] text-emerald-700 font-medium">
-                  Idéal pour comparer plusieurs opportunités avant de faire une
-                  offre.
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+                <div className="inline-flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
+                    📈
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900">
+                    Investissement locatif
+                  </p>
+                </div>
+                <ul className="space-y-1 text-[0.7rem] text-slate-700">
+                  <li>• Cash-flow net, rendement réel</li>
+                  <li>• Effort d&apos;épargne par bien</li>
+                  <li>• Comparaison de plusieurs opportunités</li>
+                </ul>
+                <p className="text-[0.7rem] font-medium text-emerald-700">
+                  Ne signez plus un bien sans voir son cash-flow.
                 </p>
               </div>
 
               {/* Achat revente / prêt relais */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2">
-                <p className="text-xs font-semibold text-slate-900">
-                  Achat revente / prêt relais
-                </p>
-                <p className="text-[0.7rem] text-slate-600">
-                  Budget d&apos;achat, montant du relais, reste à vivre pendant la
-                  période de transition, simulations avec ou sans revente
-                  rapide.
-                </p>
-                <p className="text-[0.65rem] text-emerald-700 font-medium">
-                  Visualisez clairement l&apos;impact de votre projet sur vos
-                  mensualités.
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+                <div className="inline-flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
+                    🔁
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900">
+                    Achat revente / prêt relais
+                  </p>
+                </div>
+                <ul className="space-y-1 text-[0.7rem] text-slate-700">
+                  <li>• Budget d&apos;achat réaliste</li>
+                  <li>• Montant du relais & reste à vivre</li>
+                  <li>• Scénarios avec / sans revente rapide</li>
+                </ul>
+                <p className="text-[0.7rem] font-medium text-emerald-700">
+                  Visualisez l&apos;impact exact sur vos mensualités.
                 </p>
               </div>
 
               {/* Parc immobilier existant */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-2">
-                <p className="text-xs font-semibold text-slate-900">
-                  Parc immobilier existant
-                </p>
-                <p className="text-[0.7rem] text-slate-600">
-                  Vue consolidée de vos biens : valeur de parc, encours de
-                  crédit, cash-flow global, rendements, biens à arbitrer ou à
-                  optimiser.
-                </p>
-                <p className="text-[0.65rem] text-emerald-700 font-medium">
-                  Un tableau de bord simple pour piloter votre stratégie dans le
-                  temps.
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+                <div className="inline-flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
+                    🧩
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900">
+                    Parc immobilier global
+                  </p>
+                </div>
+                <ul className="space-y-1 text-[0.7rem] text-slate-700">
+                  <li>• Vue d&apos;ensemble de tous vos biens</li>
+                  <li>• Encours, valeurs, cash-flow total</li>
+                  <li>• Biens à optimiser ou arbitrer</li>
+                </ul>
+                <p className="text-[0.7rem] font-medium text-emerald-700">
+                  Un vrai tableau de bord pour décider sereinement.
                 </p>
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-center gap-3">
+            {/* CTA principal version complète */}
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
               <Link
                 href={isLoggedIn ? "/mon-compte" : "/mon-compte?mode=register"}
-                className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shadow-md"
               >
                 {isLoggedIn
-                  ? "Accéder à mon espace et aux outils avancés"
+                  ? "Ouvrir mes outils avancés"
                   : "Créer mon espace et débloquer les outils avancés"}
               </Link>
               <p className="text-[0.7rem] text-slate-500 max-w-xl">
-                Historique de vos simulations, export PDF, scénarios multiples
-                et une présentation claire pour vos rendez-vous bancaires.
+                Historique de vos simulations, scénarios multiples et exports
+                prêts à être envoyés à votre banque ou votre courtier.
               </p>
             </div>
           </section>
