@@ -47,6 +47,19 @@ function formatDate(dateStr: string) {
   });
 }
 
+function formatDateTime(dateStr: string | null) {
+  if (!dateStr) return "Information non disponible";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "Information non disponible";
+  return d.toLocaleString("fr-FR", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function typeLabel(type: ProjectType): string {
   switch (type) {
     case "capacite":
@@ -89,6 +102,12 @@ export default function MonComptePage() {
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [checkingUser, setCheckingUser] = useState(true);
+
+  // Infos utilisateur pour le tableau de bord
+  const [emailVerified, setEmailVerified] = useState<boolean>(false);
+  const [lastSignInAt, setLastSignInAt] = useState<string | null>(null);
+  const [projectsCount, setProjectsCount] = useState<number | null>(null);
+  const [projectsCountLoading, setProjectsCountLoading] = useState(false);
 
   // Onglet actif
   const [activeTab, setActiveTab] = useState<Tab>("infos");
@@ -138,7 +157,7 @@ export default function MonComptePage() {
     }
   }, [router.isReady, router.query.tab]);
 
-  // Récupérer l'utilisateur connecté & ses préférences (newsletter)
+  // Récupérer l'utilisateur connecté & ses préférences (newsletter) + infos pour le tableau de bord
   useEffect(() => {
     const fetchUser = async () => {
       if (!supabase) {
@@ -147,9 +166,31 @@ export default function MonComptePage() {
       }
       const { data, error } = await supabase.auth.getUser();
       if (!error && data.user) {
-        setUserEmail(data.user.email ?? null);
-        const meta = (data.user as any).user_metadata || {};
+        const rawUser: any = data.user;
+        setUserEmail(rawUser.email ?? null);
+
+        const meta = rawUser.user_metadata || {};
         setNewsletterOptIn(!!meta.newsletter_opt_in);
+
+        setEmailVerified(
+          !!(rawUser.email_confirmed_at || rawUser.confirmed_at)
+        );
+        setLastSignInAt(rawUser.last_sign_in_at || null);
+
+        // Compter les projets pour le tableau de bord
+        try {
+          setProjectsCountLoading(true);
+          const { count, error: projectsCountError } = await supabase
+            .from("projects")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", rawUser.id);
+
+          if (!projectsCountError) {
+            setProjectsCount(count ?? 0);
+          }
+        } finally {
+          setProjectsCountLoading(false);
+        }
       } else {
         setUserEmail(null);
       }
@@ -379,6 +420,9 @@ export default function MonComptePage() {
       if (expandedId === project.id) {
         setExpandedId(null);
       }
+
+      // Mettre à jour le compteur de projets dans le tableau de bord
+      setProjectsCount((prev) => (prev !== null ? Math.max(prev - 1, 0) : prev));
     } catch (err: any) {
       alert(
         "Erreur lors de la suppression du projet : " +
@@ -683,6 +727,15 @@ export default function MonComptePage() {
     );
   };
 
+  // Complétude "simple" du profil (évolutif plus tard)
+  const profileCompletion = (() => {
+    if (!isLoggedIn) return 0;
+    let score = 40; // compte créé + email
+    if (emailVerified) score += 30;
+    if (newsletterOptIn) score += 20;
+    return Math.min(score, 100);
+  })();
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
@@ -717,7 +770,7 @@ export default function MonComptePage() {
                     }
                     onClick={() => goToTab("infos")}
                   >
-                    Tableau de bord & infos
+                    Tableau de bord & profil
                   </button>
                   <button
                     type="button"
@@ -919,42 +972,176 @@ export default function MonComptePage() {
                 )}
               </>
             ) : activeTab === "infos" ? (
-              // ------- ONGLET INFOS -------
+              // ------- ONGLET INFOS / TABLEAU DE BORD -------
               <>
                 <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                  Profil
+                  Tableau de bord
                 </p>
-                <h2 className="text-lg font-semibold text-slate-900 mb-2">
-                  Informations personnelles & accès
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Vue d&apos;ensemble de votre compte
                 </h2>
-                <p className="text-sm text-slate-600 mb-4">
-                  Vous êtes connecté avec l&apos;adresse{" "}
-                  <span className="font-semibold">{userEmail}</span>. Cette
-                  adresse est utilisée pour associer vos projets sauvegardés et
-                  pour vous recontacter si nécessaire.
-                </p>
-                <p className="text-sm text-slate-500">
-                  Dans les prochaines évolutions, cet espace permettra de gérer
-                  vos informations personnelles plus finement (coordonnées
-                  complètes, objectifs patrimoniaux, préférences de contact…)
-                  afin de préparer au mieux un accompagnement sur-mesure.
+                <p className="text-sm text-slate-600 mt-1 mb-4">
+                  Gérez vos informations, suivez vos projets immobiliers et
+                  préparez sereinement vos futurs rendez-vous bancaires.
                 </p>
 
-                <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500">
-                  <p className="font-semibold text-slate-700 mb-1">
-                    Astuce
+                {/* Cartes de synthèse */}
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">
+                      Statut du compte
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      Compte actif
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500 break-all">
+                      {userEmail}
+                    </p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                      {emailVerified
+                        ? "E-mail vérifié ✔"
+                        : "E-mail non encore vérifié"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">
+                      Projets sauvegardés
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {projectsCountLoading
+                        ? "Calcul en cours…"
+                        : projectsCount === null
+                        ? "—"
+                        : `${projectsCount} projet${
+                            (projectsCount || 0) > 1 ? "s" : ""
+                          }`}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Retrouver vos simulations dans{" "}
+                      <button
+                        type="button"
+                        onClick={() => goToTab("projets")}
+                        className="underline underline-offset-2"
+                      >
+                        “Mes projets sauvegardés”
+                      </button>
+                      .
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">
+                      Dernière connexion
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {formatDateTime(lastSignInAt)}
+                    </p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                      Pour sécuriser votre compte, pensez à mettre à jour
+                      régulièrement votre mot de passe.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Complétude de profil */}
+                <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[0.75rem] font-semibold text-slate-800">
+                        Complétude de votre profil
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500 max-w-md">
+                        Plus votre profil est complet, plus il est simple de
+                        préparer un accompagnement personnalisé et de suivre
+                        l&apos;évolution de vos projets.
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-semibold text-slate-900">
+                        {profileCompletion}%
+                      </p>
+                      <p className="text-[0.7rem] text-slate-500">
+                        Profil complété
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden">
+                    <div
+                      className="h-2 rounded-full bg-emerald-500 transition-all"
+                      style={{ width: `${profileCompletion}%` }}
+                    />
+                  </div>
+
+                  <ul className="mt-3 space-y-1 text-[0.75rem] text-slate-600">
+                    <li>✔ Compte créé avec votre adresse e-mail principale</li>
+                    <li>
+                      {emailVerified ? (
+                        <>✔ Adresse e-mail vérifiée</>
+                      ) : (
+                        <>À faire : vérifier votre adresse e-mail via le lien reçu</>
+                      )}
+                    </li>
+                    <li>
+                      {newsletterOptIn ? (
+                        <>✔ Inscrit à la newsletter (modifiable dans l&apos;onglet “Sécurité &amp; préférences”)</>
+                      ) : (
+                        <>Optionnel : vous pouvez activer la newsletter pour recevoir nos conseils et actualités.</>
+                      )}
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Actions rapides */}
+                <div className="mt-6">
+                  <p className="text-[0.75rem] font-semibold text-slate-800 mb-2">
+                    Actions rapides
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <button
+                      type="button"
+                      onClick={() => goToTab("projets")}
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                    >
+                      Consulter mes projets sauvegardés
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => goToTab("securite")}
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                    >
+                      Mettre à jour mot de passe / newsletter
+                    </button>
+                    <div className="flex gap-2">
+                      <Link
+                        href="/capacite"
+                        className="flex-1 inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                      >
+                        Nouvelle simulation capacité
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bloc aide / contact */}
+                <div className="mt-6 rounded-xl border border-slate-200 bg-emerald-50/60 px-4 py-3 text-xs text-slate-700">
+                  <p className="font-semibold text-slate-800 mb-1">
+                    Besoin d&apos;aide ou d&apos;un avis sur vos simulations ?
+                  </p>
+                  <p className="mb-1">
+                    Vous pouvez nous écrire directement pour analyser vos
+                    projets, préparer un rendez-vous bancaire ou poser vos
+                    questions sur une situation spécifique.
                   </p>
                   <p>
-                    Rendez-vous dans l&apos;onglet{" "}
-                    <span className="font-semibold">
-                      “Sécurité &amp; préférences”
-                    </span>{" "}
-                    pour mettre à jour votre mot de passe et vos préférences
-                    de newsletter, et dans{" "}
-                    <span className="font-semibold">
-                      “Mes projets sauvegardés”
-                    </span>{" "}
-                    pour retrouver toutes vos simulations.
+                    Contact :{" "}
+                    <a
+                      href="mailto:mtcourtage@gmail.com"
+                      className="underline underline-offset-2"
+                    >
+                      mtcourtage@gmail.com
+                    </a>
                   </p>
                 </div>
               </>
