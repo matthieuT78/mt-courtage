@@ -84,7 +84,7 @@ function InfoBadge({ text }: { text: string }) {
   );
 }
 
-// 🔸 Composant principal de la calculette (tout ton ancien code de page)
+// 🔸 Composant principal de la calculette
 function ParcImmobilierContent() {
   const [nbBiens, setNbBiens] = useState(1);
   const [biens, setBiens] = useState<Bien[]>([
@@ -332,12 +332,173 @@ function ParcImmobilierContent() {
     }
   };
 
-  const renderMultiline = (text: string) =>
-    text.split("\n").map((line, idx) => (
-      <p key={idx} className="text-sm text-slate-800 leading-relaxed">
-        {line}
-      </p>
-    ));
+  // 🔹 Analyse détaillée en blocs lisibles
+  const renderAnalysisBlocks = (text: string) => {
+    if (!text) return null;
+    const lines = text.split("\n").filter((l) => l.trim().length > 0);
+
+    return (
+      <div className="space-y-2">
+        {lines.map((line, idx) => (
+          <div
+            key={idx}
+            className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white/70 px-3 py-2"
+          >
+            <span className="mt-1 text-xs text-indigo-600">●</span>
+            <p className="text-[0.8rem] text-slate-800 leading-relaxed">
+              {line}
+            </p>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // 🔹 Tableau récapitulatif du parc avec Total
+  const renderRecapTable = () => {
+    if (!hasSimulation) return null;
+    const dataBiens = biens.slice(0, nbBiens);
+
+    let totalValeur = 0;
+    let totalCRD = 0;
+    let totalLoyersAnnuels = 0;
+    let totalChargesAnnuelles = 0;
+    let totalCreditAssuranceAnnuel = 0;
+    let totalResultatNetAnnuel = 0;
+    let totalCashflowMensuel = 0;
+    let totalRevenuNetAvantCredit = 0;
+
+    dataBiens.forEach((b) => {
+      const loyersAnnuels = (b.loyerMensuel || 0) * 12;
+      const charges = b.chargesAnnuelles || 0;
+      const annuiteCredit = (b.mensualiteCredit || 0) * 12;
+      const annuiteAssurance = b.assuranceEmprunteurAnnuelle || 0;
+      const revenuNetAvantCredit = loyersAnnuels - charges;
+
+      totalValeur += b.valeurBien || 0;
+      totalCRD += b.capitalRestantDu || 0;
+      totalLoyersAnnuels += loyersAnnuels;
+      totalChargesAnnuelles += charges;
+      totalCreditAssuranceAnnuel += annuiteCredit + annuiteAssurance;
+      totalResultatNetAnnuel += b.resultatNetAnnuel || 0;
+      totalCashflowMensuel += b.cashflowMensuel || 0;
+      totalRevenuNetAvantCredit += revenuNetAvantCredit;
+    });
+
+    const rendementGlobal =
+      totalValeur > 0
+        ? (totalRevenuNetAvantCredit / totalValeur) * 100
+        : 0;
+
+    return (
+      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+          Tableau récapitulatif du parc
+        </p>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-[0.75rem] text-slate-800">
+            <thead>
+              <tr className="border-b border-slate-200 bg-white/70">
+                <th className="px-2 py-2 text-left font-semibold">Bien</th>
+                <th className="px-2 py-2 text-right font-semibold">
+                  Valeur
+                </th>
+                <th className="px-2 py-2 text-right font-semibold">
+                  CRD
+                </th>
+                <th className="px-2 py-2 text-right font-semibold">
+                  Loyers annuels
+                </th>
+                <th className="px-2 py-2 text-right font-semibold">
+                  Charges annuelles
+                </th>
+                <th className="px-2 py-2 text-right font-semibold">
+                  Crédit + ass. annuels
+                </th>
+                <th className="px-2 py-2 text-right font-semibold">
+                  Résultat net annuel
+                </th>
+                <th className="px-2 py-2 text-right font-semibold">
+                  Cash-flow mensuel
+                </th>
+                <th className="px-2 py-2 text-right font-semibold">
+                  Rendement net
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {dataBiens.map((b, idx) => {
+                const loyersAnnuels = (b.loyerMensuel || 0) * 12;
+                const annuiteCredit = (b.mensualiteCredit || 0) * 12;
+                const annuiteAssurance = b.assuranceEmprunteurAnnuelle || 0;
+                return (
+                  <tr
+                    key={idx}
+                    className="border-b border-slate-100 hover:bg-white"
+                  >
+                    <td className="px-2 py-1.5">
+                      {b.nom || `Bien #${idx + 1}`}
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      {formatEuro(b.valeurBien)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      {formatEuro(b.capitalRestantDu)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      {formatEuro(loyersAnnuels)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      {formatEuro(b.chargesAnnuelles)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      {formatEuro(annuiteCredit + annuiteAssurance)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      {formatEuro(b.resultatNetAnnuel)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      {formatEuro(b.cashflowMensuel)}
+                    </td>
+                    <td className="px-2 py-1.5 text-right">
+                      {formatPct(b.rendementNet)}
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t border-slate-300 bg-slate-100/80 font-semibold">
+                <td className="px-2 py-1.5">Total parc</td>
+                <td className="px-2 py-1.5 text-right">
+                  {formatEuro(totalValeur)}
+                </td>
+                <td className="px-2 py-1.5 text-right">
+                  {formatEuro(totalCRD)}
+                </td>
+                <td className="px-2 py-1.5 text-right">
+                  {formatEuro(totalLoyersAnnuels)}
+                </td>
+                <td className="px-2 py-1.5 text-right">
+                  {formatEuro(totalChargesAnnuelles)}
+                </td>
+                <td className="px-2 py-1.5 text-right">
+                  {formatEuro(totalCreditAssuranceAnnuel)}
+                </td>
+                <td className="px-2 py-1.5 text-right">
+                  {formatEuro(totalResultatNetAnnuel)}
+                </td>
+                <td className="px-2 py-1.5 text-right">
+                  {formatEuro(totalCashflowMensuel)}
+                </td>
+                <td className="px-2 py-1.5 text-right">
+                  {formatPct(rendementGlobal)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -564,6 +725,7 @@ function ParcImmobilierContent() {
 
             {hasSimulation ? (
               <>
+                {/* Cartes de synthèse */}
                 <div className="grid gap-3 sm:grid-cols-4 mt-1">
                   <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
@@ -606,6 +768,7 @@ function ParcImmobilierContent() {
                   </div>
                 </div>
 
+                {/* Graphiques */}
                 <div className="grid gap-4 lg:grid-cols-2 mt-3">
                   <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
                     <p className="text-xs text-slate-600 mb-2">
@@ -659,11 +822,15 @@ function ParcImmobilierContent() {
                   </div>
                 </div>
 
+                {/* Tableau récapitulatif */}
+                {renderRecapTable()}
+
+                {/* Analyse détaillée aérée */}
                 <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
                     Analyse globale
                   </p>
-                  {renderMultiline(analyseTexte)}
+                  {renderAnalysisBlocks(analyseTexte)}
                   <p className="mt-2 text-[0.7rem] text-slate-500">
                     Cette analyse est fournie hors fiscalité détaillée (régimes
                     micro, réel, LMNP, etc.) et hors revalorisation future des

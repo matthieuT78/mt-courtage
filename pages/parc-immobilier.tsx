@@ -354,7 +354,7 @@ function ParcImmobilierContent() {
     );
   };
 
-  // 🔹 Tableau récapitulatif du parc avec Total
+  // 🔹 Tableau récapitulatif du parc avec un bloc "global" + détail par bien
   const renderRecapTable = () => {
     if (!hasSimulation) return null;
     const dataBiens = biens.slice(0, nbBiens);
@@ -391,110 +391,150 @@ function ParcImmobilierContent() {
         : 0;
 
     return (
-      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-          Tableau récapitulatif du parc
-        </p>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-[0.75rem] text-slate-800">
-            <thead>
-              <tr className="border-b border-slate-200 bg-white/70">
-                <th className="px-2 py-2 text-left font-semibold">Bien</th>
-                <th className="px-2 py-2 text-right font-semibold">
-                  Valeur
-                </th>
-                <th className="px-2 py-2 text-right font-semibold">
-                  CRD
-                </th>
-                <th className="px-2 py-2 text-right font-semibold">
-                  Loyers annuels
-                </th>
-                <th className="px-2 py-2 text-right font-semibold">
-                  Charges annuelles
-                </th>
-                <th className="px-2 py-2 text-right font-semibold">
-                  Crédit + ass. annuels
-                </th>
-                <th className="px-2 py-2 text-right font-semibold">
-                  Résultat net annuel
-                </th>
-                <th className="px-2 py-2 text-right font-semibold">
-                  Cash-flow mensuel
-                </th>
-                <th className="px-2 py-2 text-right font-semibold">
-                  Rendement net
-                </th>
-              </tr>
-            </thead>
+      <div className="mt-4 space-y-3">
+        {/* Tableau GLOBAL, lisible sans scroll */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+            Synthèse globale du parc
+          </p>
+          <table className="w-full text-[0.75rem] text-slate-800">
             <tbody>
-              {dataBiens.map((b, idx) => {
-                const loyersAnnuels = (b.loyerMensuel || 0) * 12;
-                const annuiteCredit = (b.mensualiteCredit || 0) * 12;
-                const annuiteAssurance = b.assuranceEmprunteurAnnuelle || 0;
-                return (
-                  <tr
-                    key={idx}
-                    className="border-b border-slate-100 hover:bg-white"
-                  >
-                    <td className="px-2 py-1.5">
-                      {b.nom || `Bien #${idx + 1}`}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      {formatEuro(b.valeurBien)}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      {formatEuro(b.capitalRestantDu)}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      {formatEuro(loyersAnnuels)}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      {formatEuro(b.chargesAnnuelles)}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      {formatEuro(annuiteCredit + annuiteAssurance)}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      {formatEuro(b.resultatNetAnnuel)}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      {formatEuro(b.cashflowMensuel)}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      {formatPct(b.rendementNet)}
-                    </td>
-                  </tr>
-                );
-              })}
-              <tr className="border-t border-slate-300 bg-slate-100/80 font-semibold">
-                <td className="px-2 py-1.5">Total parc</td>
-                <td className="px-2 py-1.5 text-right">
+              <tr>
+                <td className="py-1 pr-2">Valeur totale du parc</td>
+                <td className="py-1 text-right font-semibold">
                   {formatEuro(totalValeur)}
                 </td>
-                <td className="px-2 py-1.5 text-right">
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Encours de crédit total</td>
+                <td className="py-1 text-right font-semibold">
                   {formatEuro(totalCRD)}
                 </td>
-                <td className="px-2 py-1.5 text-right">
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Loyers annuels totaux</td>
+                <td className="py-1 text-right font-semibold">
                   {formatEuro(totalLoyersAnnuels)}
                 </td>
-                <td className="px-2 py-1.5 text-right">
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Charges annuelles totales</td>
+                <td className="py-1 text-right font-semibold">
                   {formatEuro(totalChargesAnnuelles)}
                 </td>
-                <td className="px-2 py-1.5 text-right">
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">
+                  Crédit + assurance (annuels)
+                </td>
+                <td className="py-1 text-right font-semibold">
                   {formatEuro(totalCreditAssuranceAnnuel)}
                 </td>
-                <td className="px-2 py-1.5 text-right">
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Résultat net annuel global</td>
+                <td className="py-1 text-right font-semibold">
                   {formatEuro(totalResultatNetAnnuel)}
                 </td>
-                <td className="px-2 py-1.5 text-right">
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Cash-flow mensuel global</td>
+                <td className="py-1 text-right font-semibold">
                   {formatEuro(totalCashflowMensuel)}
                 </td>
-                <td className="px-2 py-1.5 text-right">
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Rendement net global</td>
+                <td className="py-1 text-right font-semibold">
                   {formatPct(rendementGlobal)}
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+
+        {/* Tableau DÉTAILLÉ par bien (peut scroller horizontalement) */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+            Détail par bien (tableau)
+          </p>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-[0.75rem] text-slate-800">
+              <thead>
+                <tr className="border-b border-slate-200 bg-white/70">
+                  <th className="px-2 py-2 text-left font-semibold">
+                    Bien
+                  </th>
+                  <th className="px-2 py-2 text-right font-semibold">
+                    Valeur
+                  </th>
+                  <th className="px-2 py-2 text-right font-semibold">
+                    CRD
+                  </th>
+                  <th className="px-2 py-2 text-right font-semibold">
+                    Loyers annuels
+                  </th>
+                  <th className="px-2 py-2 text-right font-semibold">
+                    Charges annuelles
+                  </th>
+                  <th className="px-2 py-2 text-right font-semibold">
+                    Crédit + ass. annuels
+                  </th>
+                  <th className="px-2 py-2 text-right font-semibold">
+                    Résultat net annuel
+                  </th>
+                  <th className="px-2 py-2 text-right font-semibold">
+                    Cash-flow mensuel
+                  </th>
+                  <th className="px-2 py-2 text-right font-semibold">
+                    Rendement net
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {dataBiens.map((b, idx) => {
+                  const loyersAnnuels = (b.loyerMensuel || 0) * 12;
+                  const annuiteCredit = (b.mensualiteCredit || 0) * 12;
+                  const annuiteAssurance =
+                    b.assuranceEmprunteurAnnuelle || 0;
+                  return (
+                    <tr
+                      key={idx}
+                      className="border-b border-slate-100 hover:bg-white"
+                    >
+                      <td className="px-2 py-1.5">
+                        {b.nom || `Bien #${idx + 1}`}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {formatEuro(b.valeurBien)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {formatEuro(b.capitalRestantDu)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {formatEuro(loyersAnnuels)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {formatEuro(b.chargesAnnuelles)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {formatEuro(annuiteCredit + annuiteAssurance)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {formatEuro(b.resultatNetAnnuel)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {formatEuro(b.cashflowMensuel)}
+                      </td>
+                      <td className="px-2 py-1.5 text-right">
+                        {formatPct(b.rendementNet)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
@@ -803,7 +843,10 @@ function ParcImmobilierContent() {
                         options={{
                           plugins: {
                             legend: {
-                              labels: { color: "#0f172a", font: { size: 11 } },
+                              labels: {
+                                color: "#0f172a",
+                                font: { size: 11 },
+                              },
                             },
                           },
                           scales: {
