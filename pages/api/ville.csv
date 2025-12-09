@@ -1,0 +1,4 @@
+insee_code,postal_code,city_name,reference_price_m2_sale,reference_rent_m2,source
+75115,75015,Paris 15e,11000,28,"Mock Paris 15 - DVF/Loyers"
+69123,69003,Lyon 3e,6000,18,"Mock Lyon 3 - DVF/Loyers"
+2A077,20130,Cargèse,4200,15,"Mock Cargèse - DVF/Loyers"

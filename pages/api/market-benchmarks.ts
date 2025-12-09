@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { createClient } from "@supabase/supabase-js";
 
 type MarketBenchmarks = {
   inseeCode: string;
@@ -8,6 +9,11 @@ type MarketBenchmarks = {
   referenceRentM2: number | null;
   source: string;
 };
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // ⚠️ service role, BACK uniquement
+);
 
 export default async function handler(
   req: NextApiRequest,
@@ -25,27 +31,57 @@ export default async function handler(
   }
 
   try {
-    // ⚠️ ICI c'est du MOCK ⚠️
-    // Tu remplaces plus tard par un vrai appel à tes données DVF / open data.
-    const mock: MarketBenchmarks = {
-      inseeCode: inseeCode || "00000",
-      cityName: cityName || "Ville inconnue",
-      postalCode: postalCode || "00000",
-      referencePriceM2Sale: 3500, // €/m², EXEMPLE
-      referenceRentM2: 18,        // €/m², EXEMPLE
-      source: "Mock (à remplacer par vraie source DVF/OpenData)",
+    // 1) Construire la requête Supabase
+    let query = supabaseAdmin
+      .from("city_market_benchmarks")
+      .select("*")
+      .limit(1);
+
+    if (inseeCode) {
+      query = query.eq("insee_code", inseeCode);
+    } else if (postalCode) {
+      query = query.eq("postal_code", postalCode);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return res
+        .status(500)
+        .json({ error: "Erreur lors de la récupération des benchmarks." });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        error:
+          "Aucune donnée marché trouvée pour cette zone (vérifiez votre table city_market_benchmarks).",
+      });
+    }
+
+    const row = data[0];
+
+    const result: MarketBenchmarks = {
+      inseeCode: row.insee_code,
+      cityName: row.city_name || cityName || "Ville inconnue",
+      postalCode: row.postal_code,
+      referencePriceM2Sale: row.reference_price_m2_sale,
+      referenceRentM2: row.reference_rent_m2,
+      source: row.source || "DVF / loyers (agrégation interne)",
     };
 
-    // Petit exemple d’ajustement selon la surface (optionnel)
-    if (surface && surface > 0) {
-      if (surface < 30 && mock.referencePriceM2Sale) {
-        mock.referencePriceM2Sale *= 1.08;
+    // Ajustement facultatif selon la surface (comme dans ton mock)
+    if (surface && surface > 0 && result.referencePriceM2Sale) {
+      if (surface < 30) {
+        result.referencePriceM2Sale *= 1.08;
       }
     }
 
-    res.status(200).json(mock);
+    return res.status(200).json(result);
   } catch (e) {
     console.error("Erreur /api/market-benchmarks", e);
-    res.status(500).json({ error: "Erreur serveur benchmarks marché" });
+    return res
+      .status(500)
+      .json({ error: "Erreur serveur benchmarks marché (runtime)" });
   }
 }
