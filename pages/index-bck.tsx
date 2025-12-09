@@ -1,8 +1,7 @@
 // pages/index.tsx
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
+import AppHeader from "../components/AppHeader";
 
 type SimpleUser = {
   email?: string;
@@ -11,19 +10,8 @@ type SimpleUser = {
   };
 };
 
-type ResumeSimple = {
-  revenusPrisEnCompte: number;
-  chargesExistantes: number;
-  tauxEndettementActuel: number;
-  tauxEndettementAvecProjet: number;
-  mensualiteMax: number;
-  montantMax: number;
-  prixBienMax: number;
-  coutTotalProjetMax: number;
-};
-
-function formatEuro(val: number | null | undefined) {
-  if (val === null || val === undefined || Number.isNaN(val)) return "-";
+function formatEuro(val: number) {
+  if (Number.isNaN(val)) return "-";
   return val.toLocaleString("fr-FR", {
     style: "currency",
     currency: "EUR",
@@ -31,72 +19,47 @@ function formatEuro(val: number | null | undefined) {
   });
 }
 
-function formatPct(val: number | null | undefined) {
-  if (val === null || val === undefined || Number.isNaN(val)) return "-";
+function formatPct(val: number) {
+  if (Number.isNaN(val)) return "-";
   return (
     val.toLocaleString("fr-FR", {
-      maximumFractionDigits: 1,
+      maximumFractionDigits: 2,
     }) + " %"
   );
 }
 
-// Icône euro / financement (sobre)
-function IconEuro() {
+type TypeCredit = "immo" | "perso" | "auto" | "conso";
+
+type ResumeCapacite = {
+  revenusPrisEnCompte: number;
+  mensualitesExistantes: number;
+  chargesHorsCredits: number;
+  tauxEndettementActuel: number;
+  tauxEndettementAvecProjet: number;
+  mensualiteMax: number;
+  montantMax: number;
+  prixBienMax: number;
+  fraisNotaireEstimes: number;
+  fraisAgenceEstimes: number;
+  coutTotalProjetMax: number;
+};
+
+function InfoBadge({ text }: { text: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-5 w-5 text-emerald-700"
-    >
-      <path
-        d="M15.5 5.5a6 6 0 0 0-5.657 3.9H7.5a.75.75 0 0 0 0 1.5h1.91a5.9 5.9 0 0 0 0 2.2H7.5a.75.75 0 0 0 0 1.5h2.343A6 6 0 0 0 15.5 18.5a.75.75 0 0 0 0-1.5 4.5 4.5 0 0 1-4.14-2.5h2.64a.75.75 0 0 0 0-1.5h-3.1a5.3 5.3 0 0 1 0-2.2h3.1a.75.75 0 0 0 0-1.5h-2.64A4.5 4.5 0 0 1 15.5 7a.75.75 0 0 0 0-1.5Z"
-        fill="currentColor"
-      />
-    </svg>
+    <span className="relative inline-flex items-center group ml-1 align-middle">
+      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[0.6rem] font-semibold text-slate-500 cursor-help">
+        i
+      </span>
+      <span className="pointer-events-none absolute left-1/2 top-[125%] z-20 hidden w-64 -translate-x-1/2 rounded-md bg-slate-900 px-3 py-2 text-[0.7rem] text-white shadow-lg group-hover:block">
+        {text}
+      </span>
+    </span>
   );
 }
-
-// Icône cadenas (pour les fonctionnalités réservées)
-function IconLock() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-4 w-4 text-slate-500"
-    >
-      <path
-        d="M8.75 10V8a3.25 3.25 0 0 1 6.5 0v2h.25A2.75 2.75 0 0 1 18.25 12.75v5A2.75 2.75 0 0 1 15.5 20.5h-7A2.75 2.75 0 0 1 5.75 17.75v-5A2.75 2.75 0 0 1 8.5 10h.25Zm1.5 0h3.5V8a1.75 1.75 0 0 0-3.5 0v2Zm-1.75 1.5A1.25 1.25 0 0 0 7.25 12.75v5c0 .69.56 1.25 1.25 1.25h7c.69 0 1.25-.56 1.25-1.25v-5A1.25 1.25 0 0 0 15.5 11.5h-7Zm3.5 2a.75.75 0 0 1 .75.75v1.25a.75.75 0 0 1-1.5 0v-1.25a.75.75 0 0 1 .75-.75Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-type Step = 1 | 2 | 3;
 
 export default function Home() {
+  // --------- Session / utilisateur ----------
   const [user, setUser] = useState<SimpleUser | null>(null);
-
-  // Étapes du wizard
-  const [step, setStep] = useState<Step>(1);
-
-  // Inputs simplifiés
-  const [revenusNetMensuels, setRevenusNetMensuels] = useState<number>(4000);
-  const [autresRevenusMensuels, setAutresRevenusMensuels] =
-    useState<number>(0);
-
-  const [loyerMensuel, setLoyerMensuel] = useState<number>(0);
-  const [mensualitesCredits, setMensualitesCredits] = useState<number>(0);
-  const [autresChargesMensuelles, setAutresChargesMensuelles] =
-    useState<number>(0);
-
-  const [tauxEndettementCible, setTauxEndettementCible] = useState<number>(35);
-  const [tauxCreditCible, setTauxCreditCible] = useState<number>(3.5);
-  const [dureeCreditCible, setDureeCreditCible] = useState<number>(25);
-
-  // Résultat simple
-  const [resume, setResume] = useState<ResumeSimple | null>(null);
-  const [hasSimulated, setHasSimulated] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -135,48 +98,158 @@ export default function Home() {
 
   const isLoggedIn = !!user;
 
-  const paidLink = (path: string) =>
-    isLoggedIn
-      ? path
-      : `/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`;
+  // --------- États calculette capacité (comme avant) ----------
+  // Situation financière
+  const [revenusNetMensuels, setRevenusNetMensuels] = useState(4000);
+  const [autresRevenusMensuels, setAutresRevenusMensuels] = useState(0);
+  const [chargesMensuellesHorsCredits, setChargesMensuellesHorsCredits] =
+    useState(0);
+  const [tauxEndettementCible, setTauxEndettementCible] = useState(35);
 
-  const handleNext = () => {
-    setStep((prev) => (prev < 3 ? ((prev + 1) as Step) : prev));
+  // Crédits en cours
+  const [nbCredits, setNbCredits] = useState(0);
+  const [typesCredits, setTypesCredits] = useState<TypeCredit[]>([]);
+  const [mensualitesCredits, setMensualitesCredits] = useState<number[]>([]);
+  const [resteAnneesCredits, setResteAnneesCredits] = useState<number[]>([]);
+  const [tauxCredits, setTauxCredits] = useState<number[]>([]);
+  const [revenusLocatifs, setRevenusLocatifs] = useState<number[]>([]);
+
+  // Nouveau projet (taux/durée)
+  const [tauxCreditCible, setTauxCreditCible] = useState(3.5);
+  const [dureeCreditCible, setDureeCreditCible] = useState(25);
+
+  // Résultats
+  const [resumeCapacite, setResumeCapacite] =
+    useState<ResumeCapacite | null>(null);
+  const [resultCapaciteTexte, setResultCapaciteTexte] = useState<string>("");
+
+  const hasResult = !!resumeCapacite;
+
+  // Sauvegarde
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // --------- Wizard / étapes ----------
+  const [step, setStep] = useState<number>(1);
+  const TOTAL_STEPS = 4;
+
+  const goNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
+  const goPrev = () => setStep((s) => Math.max(s - 1, 1));
+
+  // --------- Gestion dynamique des crédits ----------
+  const handleNbCreditsChange = (value: number) => {
+    const n = Math.min(Math.max(value, 0), 5);
+    setNbCredits(n);
+
+    setTypesCredits((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push("immo");
+      return arr.slice(0, n);
+    });
+    setMensualitesCredits((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push(0);
+      return arr.slice(0, n);
+    });
+    setResteAnneesCredits((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push(10);
+      return arr.slice(0, n);
+    });
+    setTauxCredits((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push(1.5);
+      return arr.slice(0, n);
+    });
+    setRevenusLocatifs((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push(0);
+      return arr.slice(0, n);
+    });
   };
 
-  const handlePrev = () => {
-    setStep((prev) => (prev > 1 ? ((prev - 1) as Step) : prev));
+  const handleTypeCreditChange = (index: number, value: TypeCredit) => {
+    setTypesCredits((prev) => {
+      const arr = [...prev];
+      arr[index] = value;
+      return arr;
+    });
   };
 
-  const handleSimulate = () => {
-    setHasSimulated(true);
+  const handleMensualiteChange = (index: number, value: number) => {
+    setMensualitesCredits((prev) => {
+      const arr = [...prev];
+      arr[index] = value;
+      return arr;
+    });
+  };
 
-    const revenusTotal =
+  const handleResteAnneesChange = (index: number, value: number) => {
+    setResteAnneesCredits((prev) => {
+      const arr = [...prev];
+      arr[index] = value;
+      return arr;
+    });
+  };
+
+  const handleTauxCreditChange = (index: number, value: number) => {
+    setTauxCredits((prev) => {
+      const arr = [...prev];
+      arr[index] = value;
+      return arr;
+    });
+  };
+
+  const handleRevenuLocatifChange = (index: number, value: number) => {
+    setRevenusLocatifs((prev) => {
+      const arr = [...prev];
+      arr[index] = value;
+      return arr;
+    });
+  };
+
+  // --------- Calcul capacité ----------
+  const handleCalculCapacite = () => {
+    setSaveMessage(null);
+
+    const revenusBase =
       (revenusNetMensuels || 0) + (autresRevenusMensuels || 0);
 
-    const chargesExistantes =
-      (loyerMensuel || 0) +
-      (mensualitesCredits || 0) +
-      (autresChargesMensuelles || 0);
-
-    if (revenusTotal <= 0) {
-      setResume(null);
-      return;
+    // 70 % des loyers pour les crédits immo
+    let revenuLocatifPrisEnCompte = 0;
+    for (let i = 0; i < nbCredits; i++) {
+      if (typesCredits[i] === "immo") {
+        const loyer = revenusLocatifs[i] || 0;
+        revenuLocatifPrisEnCompte += loyer * 0.7;
+      }
     }
 
+    const revenusPrisEnCompte = revenusBase + revenuLocatifPrisEnCompte;
+
+    const mensualitesExistantes = mensualitesCredits
+      .slice(0, nbCredits)
+      .reduce((sum, v) => sum + (v || 0), 0);
+
+    const chargesHors = chargesMensuellesHorsCredits || 0;
+
     const enveloppeMax =
-      revenusTotal * ((tauxEndettementCible || 0) / 100);
+      revenusPrisEnCompte * ((tauxEndettementCible || 0) / 100);
 
-    const capaciteMensuelle = Math.max(enveloppeMax - chargesExistantes, 0);
+    const chargesActuelles = mensualitesExistantes + chargesHors;
 
-    const tauxActuel = (chargesExistantes / revenusTotal) * 100;
+    const capaciteMensuelle = Math.max(enveloppeMax - chargesActuelles, 0);
+
+    const tauxActuel =
+      revenusPrisEnCompte > 0
+        ? (chargesActuelles / revenusPrisEnCompte) * 100
+        : 0;
 
     const tauxAvecProjet =
-      revenusTotal > 0
-        ? ((chargesExistantes + capaciteMensuelle) / revenusTotal) * 100
-        : tauxActuel;
+      revenusPrisEnCompte > 0
+        ? ((chargesActuelles + capaciteMensuelle) / revenusPrisEnCompte) *
+          100
+        : 0;
 
-    // Calcul du capital empruntable (formule d'annuité)
     const tAnnuel = (tauxCreditCible || 0) / 100;
     const i = tAnnuel / 12;
     const n = (dureeCreditCible || 0) * 12;
@@ -192,541 +265,734 @@ export default function Home() {
       }
     }
 
-    // Estimation prix de bien (frais inclus dans le crédit)
     const tauxNotaire = 0.075;
     const tauxAgence = 0.04;
     const denom = 1 + tauxNotaire + tauxAgence;
 
     let prixBienMax = 0;
+    let fraisNotaireEstimes = 0;
+    let fraisAgenceEstimes = 0;
     let coutTotalProjetMax = 0;
 
     if (montantMax > 0 && denom > 0) {
       prixBienMax = montantMax / denom;
-      coutTotalProjetMax = montantMax; // ici : on considère que le crédit finance tout
+      fraisNotaireEstimes = prixBienMax * tauxNotaire;
+      fraisAgenceEstimes = prixBienMax * tauxAgence;
+      coutTotalProjetMax =
+        prixBienMax + fraisNotaireEstimes + fraisAgenceEstimes;
     }
 
-    setResume({
-      revenusPrisEnCompte: revenusTotal,
-      chargesExistantes,
+    const resume: ResumeCapacite = {
+      revenusPrisEnCompte,
+      mensualitesExistantes,
+      chargesHorsCredits: chargesHors,
       tauxEndettementActuel: tauxActuel,
       tauxEndettementAvecProjet: tauxAvecProjet,
       mensualiteMax: capaciteMensuelle,
       montantMax,
       prixBienMax,
+      fraisNotaireEstimes,
+      fraisAgenceEstimes,
       coutTotalProjetMax,
-    });
+    };
+
+    setResumeCapacite(resume);
+
+    // Texte d'analyse réservé à la version "détaillée" (affiché en teaser)
+    const lignes: string[] = [
+      `Vos revenus mensuels pris en compte (salaires, autres revenus et 70 % des loyers locatifs) s’élèvent à ${formatEuro(
+        revenusPrisEnCompte
+      )}.`,
+      `Vos charges récurrentes (crédits et autres charges) représentent ${formatEuro(
+        chargesActuelles
+      )} par mois, soit un taux d’endettement actuel d’environ ${formatPct(
+        tauxActuel
+      )}.`,
+      capaciteMensuelle > 0
+        ? `La mensualité théorique disponible pour un nouveau crédit est de ${formatEuro(
+            capaciteMensuelle
+          )}, ce qui permet d’envisager un capital empruntable d’environ ${formatEuro(
+            montantMax
+          )} sur ${dureeCreditCible} ans à ${tauxCreditCible.toLocaleString(
+            "fr-FR",
+            { maximumFractionDigits: 2 }
+          )} %.`
+        : `Avec les paramètres actuels, aucune capacité mensuelle n’apparaît pour un nouveau crédit si l’on reste sur un taux d’endettement cible de ${formatPct(
+            tauxEndettementCible
+          )}.`,
+      prixBienMax > 0
+        ? `En intégrant les frais de notaire (~7,5 %) et d’agence (~4 %), cela correspond à un prix de bien d’environ ${formatEuro(
+            prixBienMax
+          )} pour un budget global financé proche de ${formatEuro(
+            coutTotalProjetMax
+          )}.`
+        : `La projection d’un prix de bien n’est pas pertinente avec ces paramètres : il peut être utile de retravailler la durée, l’apport ou les charges.`,
+    ];
+
+    setResultCapaciteTexte(lignes.join("\n"));
+
+    // se positionner sur les résultats
+    const el = document.getElementById("resultats-capacite");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
-  // Mini "graph" de taux d'endettement (barres horizontales CSS)
-  const renderDebtBars = () => {
-    if (!resume) return null;
+  const handleSaveProject = async () => {
+    if (!resumeCapacite) return;
+    setSaving(true);
+    setSaveMessage(null);
 
-    const actuel = Math.max(0, Math.min(60, resume.tauxEndettementActuel));
-    const cible = Math.max(0, Math.min(60, tauxEndettementCible));
-    const avecProjet = Math.max(
-      0,
-      Math.min(60, resume.tauxEndettementAvecProjet)
-    );
+    try {
+      if (!supabase) {
+        throw new Error(
+          "Le service de sauvegarde n'est pas disponible (configuration Supabase manquante)."
+        );
+      }
 
-    const scale = (v: number) => `${(v / 60) * 100}%`;
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
 
-    return (
-      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-          Taux d&apos;endettement (aperçu)
-        </p>
-        <div className="space-y-2">
-          <div className="text-[0.7rem] text-slate-500 flex items-center justify-between">
-            <span>Actuel</span>
-            <span className="font-semibold text-slate-800">
-              {formatPct(resume.tauxEndettementActuel)}
-            </span>
-          </div>
-          <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-            <div
-              className="h-full bg-slate-900"
-              style={{ width: scale(actuel) }}
-            />
-          </div>
+      const session = sessionData?.session;
+      if (!session) {
+        if (typeof window !== "undefined") {
+          window.location.href = "/mon-compte?redirect=/projets";
+        }
+        return;
+      }
 
-          <div className="text-[0.7rem] text-slate-500 flex items-center justify-between mt-2">
-            <span>Objectif (cible)</span>
-            <span className="font-semibold text-emerald-700">
-              {formatPct(tauxEndettementCible)}
-            </span>
-          </div>
-          <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-            <div
-              className="h-full bg-emerald-500"
-              style={{ width: scale(cible) }}
-            />
-          </div>
+      const { error } = await supabase.from("projects").insert({
+        user_id: session.user.id,
+        type: "capacite",
+        title: "Simulation capacité d'emprunt",
+        data: {
+          resume: resumeCapacite,
+          texte: resultCapaciteTexte,
+        },
+      });
 
-          <div className="text-[0.7rem] text-slate-500 flex items-center justify-between mt-2">
-            <span>Après nouveau crédit</span>
-            <span className="font-semibold text-sky-700">
-              {formatPct(resume.tauxEndettementAvecProjet)}
-            </span>
-          </div>
-          <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-            <div
-              className="h-full bg-sky-500"
-              style={{ width: scale(avecProjet) }}
-            />
-          </div>
-        </div>
-      </div>
-    );
+      if (error) throw error;
+      setSaveMessage("✅ Projet sauvegardé dans votre espace.");
+    } catch (err: any) {
+      setSaveMessage(
+        "❌ Erreur lors de la sauvegarde du projet : " +
+          (err?.message || "erreur inconnue")
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
+  const renderMultiline = (text: string) =>
+    text.split("\n").map((line, idx) => (
+      <p key={idx} className="text-[0.75rem] text-slate-700 leading-relaxed">
+        {line}
+      </p>
+    ));
+
+  // --------- Rendu ----------
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* Header uniquement si connecté */}
-      {isLoggedIn && <AppHeader />}
+      {/* Header : minimal si pas connecté, complet sinon */}
+      {isLoggedIn ? (
+        <AppHeader />
+      ) : (
+        <header className="border-b border-slate-200 bg-white">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-900">
+                MT Courtage &amp; Investissement
+              </span>
+            </div>
+            <a
+              href="/mon-compte?mode=login"
+              className="text-[0.75rem] font-semibold text-slate-600 hover:text-slate-900"
+            >
+              Se connecter
+            </a>
+          </div>
+        </header>
+      )}
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 py-8 space-y-8">
-        {/* Bloc principal : calculette step-by-step */}
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 md:p-7 lg:p-8">
-          {/* Intro */}
-          <div className="flex flex-col gap-3 mb-5">
+      <main className="flex-1 px-4 py-6">
+        <div className="max-w-4xl mx-auto space-y-8">
+          {/* Intro / Hero court */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-2">
             <p className="text-xs uppercase tracking-[0.18em] text-emerald-600">
-              Étude gratuite
+              Étude gratuite en ligne
             </p>
-            <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
               {displayName
-                ? `Bonjour ${displayName}, estimons votre capacité d'emprunt.`
-                : "Estimez gratuitement votre capacité d'emprunt."}
+                ? `Bonjour ${displayName}, estimons votre capacité d’emprunt immobilier.`
+                : "Calculez votre capacité d’emprunt immobilier en quelques étapes."}
             </h1>
-            <p className="text-sm text-slate-600 max-w-xl">
-              Répondez à quelques questions sur vos revenus, charges et le
-              crédit envisagé. Vous obtenez un budget indicatif pour votre
-              futur achat immobilier.
+            <p className="text-xs text-slate-600 max-w-2xl">
+              Un parcours guidé inspiré des méthodes bancaires : revenus,
+              charges, crédits en cours, loyers locatifs pris à 70&nbsp;% et
+              paramètres de votre futur prêt. Résultat épuré, prêt à discuter
+              avec votre banque ou votre courtier.
             </p>
             {!isLoggedIn && (
               <p className="text-[0.7rem] text-slate-500">
-                Aucune création de compte n&apos;est nécessaire pour cette
-                estimation. La version détaillée avec sauvegarde est réservée
-                aux utilisateurs inscrits.
+                L’étude est 100&nbsp;% gratuite et accessible sans compte. Créez
+                ensuite votre espace pour sauvegarder vos simulations et accéder
+                aux outils avancés.
               </p>
             )}
-          </div>
+          </section>
 
-          {/* Grille calculette + résultats */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Colonne gauche : stepper + formulaires */}
-            <div className="space-y-4">
-              {/* Stepper */}
-              <div className="flex items-center justify-between gap-2">
+          {/* Carte centrale : wizard */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 sm:p-6 space-y-5">
+            {/* Stepper */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 text-xs">
                 {[
-                  { id: 1, label: "Revenus" },
-                  { id: 2, label: "Charges" },
-                  { id: 3, label: "Crédit" },
-                ].map((s) => {
-                  const active = step === s.id;
-                  const done = step > (s.id as Step);
+                  "Revenus",
+                  "Charges & crédits",
+                  "Détail des crédits",
+                  "Paramètres du prêt",
+                ].map((label, index) => {
+                  const num = index + 1;
+                  const active = step === num;
+                  const done = step > num;
                   return (
-                    <div
-                      key={s.id}
-                      className="flex-1 flex items-center gap-2"
-                    >
+                    <div key={num} className="flex items-center gap-2">
                       <div
                         className={
-                          "inline-flex h-7 w-7 items-center justify-center rounded-full text-[0.75rem] font-semibold " +
+                          "flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] font-semibold " +
                           (active
                             ? "bg-slate-900 text-white"
                             : done
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-slate-100 text-slate-500 border border-slate-200")
+                            ? "bg-emerald-500 text-white"
+                            : "bg-slate-200 text-slate-700")
                         }
                       >
-                        {s.id}
+                        {num}
                       </div>
                       <span
                         className={
-                          "text-[0.7rem] font-medium " +
+                          "hidden sm:inline text-[0.7rem] " +
                           (active
-                            ? "text-slate-900"
+                            ? "text-slate-900 font-semibold"
                             : "text-slate-500")
                         }
                       >
-                        {s.label}
+                        {label}
                       </span>
+                      {num < TOTAL_STEPS && (
+                        <span className="hidden sm:inline h-px w-6 bg-slate-200" />
+                      )}
                     </div>
                   );
                 })}
               </div>
-
-              {/* Formulaire selon l'étape */}
-              <div className="mt-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-3 sm:px-4 sm:py-4 space-y-3">
-                {step === 1 && (
-                  <>
-                    <p className="text-xs font-semibold text-slate-900">
-                      1. Revenus de votre foyer
-                    </p>
-                    <div className="space-y-2">
-                      <div className="space-y-1">
-                        <label className="text-[0.75rem] text-slate-700">
-                          Revenus nets du foyer (€/mois)
-                        </label>
-                        <input
-                          type="number"
-                          value={revenusNetMensuels}
-                          onChange={(e) =>
-                            setRevenusNetMensuels(
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.75rem] text-slate-700">
-                          Autres revenus (pensions, primes régulières, etc.)
-                          (€/mois)
-                        </label>
-                        <input
-                          type="number"
-                          value={autresRevenusMensuels}
-                          onChange={(e) =>
-                            setAutresRevenusMensuels(
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {step === 2 && (
-                  <>
-                    <p className="text-xs font-semibold text-slate-900">
-                      2. Charges et crédits en cours
-                    </p>
-                    <div className="space-y-2">
-                      <div className="space-y-1">
-                        <label className="text-[0.75rem] text-slate-700">
-                          Loyer actuel (si vous êtes locataire) (€/mois)
-                        </label>
-                        <input
-                          type="number"
-                          value={loyerMensuel}
-                          onChange={(e) =>
-                            setLoyerMensuel(
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.75rem] text-slate-700">
-                          Mensualités de crédits en cours (total) (€/mois)
-                        </label>
-                        <input
-                          type="number"
-                          value={mensualitesCredits}
-                          onChange={(e) =>
-                            setMensualitesCredits(
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.75rem] text-slate-700">
-                          Autres charges mensuelles récurrentes (pensions,
-                          etc.) (€/mois)
-                        </label>
-                        <input
-                          type="number"
-                          value={autresChargesMensuelles}
-                          onChange={(e) =>
-                            setAutresChargesMensuelles(
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {step === 3 && (
-                  <>
-                    <p className="text-xs font-semibold text-slate-900">
-                      3. Paramètres du crédit à simuler
-                    </p>
-                    <div className="space-y-2">
-                      <div className="space-y-1">
-                        <label className="text-[0.75rem] text-slate-700">
-                          Taux d&apos;endettement cible (%)
-                        </label>
-                        <input
-                          type="number"
-                          value={tauxEndettementCible}
-                          onChange={(e) =>
-                            setTauxEndettementCible(
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </div>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <div className="space-y-1">
-                          <label className="text-[0.75rem] text-slate-700">
-                            Taux crédit (annuel, en %)
-                          </label>
-                          <input
-                            type="number"
-                            value={tauxCreditCible}
-                            onChange={(e) =>
-                              setTauxCreditCible(
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[0.75rem] text-slate-700">
-                            Durée du crédit (années)
-                          </label>
-                          <input
-                            type="number"
-                            value={dureeCreditCible}
-                            onChange={(e) =>
-                              setDureeCreditCible(
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Navigation étapes */}
-              <div className="flex items-center justify-between pt-1">
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  disabled={step === 1}
-                  className="text-[0.7rem] text-slate-500 hover:text-slate-800 disabled:opacity-40 disabled:cursor-default"
-                >
-                  ← Étape précédente
-                </button>
-                {step < 3 ? (
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                  >
-                    Continuer →
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSimulate}
-                    className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-5 py-2 text-sm font-semibold text-white shadow-md hover:shadow-lg"
-                  >
-                    Voir mon estimation
-                  </button>
-                )}
-              </div>
+              <p className="text-[0.7rem] text-slate-500">
+                Étape {step} / {TOTAL_STEPS}
+              </p>
             </div>
 
-            {/* Colonne droite : résultat épuré */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-4 sm:px-5 sm:py-5 flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                    Résultats
-                  </p>
-                  <h2 className="text-sm font-semibold text-slate-900">
-                    Budget indicatif pour votre projet
-                  </h2>
-                  <p className="text-[0.7rem] text-slate-500">
-                    Montant de mensualité, capital empruntable et ordre de
-                    grandeur du prix de bien.
-                  </p>
-                </div>
-                <div className="hidden sm:flex h-9 w-9 rounded-full bg-emerald-50 border border-emerald-100 items-center justify-center">
-                  <IconEuro />
-                </div>
-              </div>
-
-              {!hasSimulated && (
-                <p className="mt-2 text-sm text-slate-500">
-                  Complétez les étapes à gauche puis cliquez sur{" "}
-                  <span className="font-semibold">
-                    &quot;Voir mon estimation&quot;
-                  </span>{" "}
-                  pour afficher votre budget indicatif.
-                </p>
-              )}
-
-              {hasSimulated && !resume && (
-                <p className="mt-2 text-sm text-red-600">
-                  Merci de renseigner des revenus supérieurs à 0 € pour
-                  obtenir une estimation.
-                </p>
-              )}
-
-              {hasSimulated && resume && (
+            {/* Contenu de l’étape */}
+            <div className="border border-slate-100 rounded-xl bg-slate-50/70 p-4 space-y-3">
+              {step === 1 && (
                 <>
-                  <div className="grid gap-3 sm:grid-cols-2 mt-2">
-                    <div className="rounded-xl bg-white border border-slate-200 px-3 py-2.5">
-                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                        Mensualité maximale estimée
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">
-                        {formatEuro(resume.mensualiteMax)}
-                      </p>
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    Revenus du foyer
+                  </h2>
+                  <p className="text-[0.75rem] text-slate-600">
+                    Indiquez vos revenus réguliers. Les éventuels revenus
+                    locatifs seront précisés à l’étape «&nbsp;Crédits&nbsp;».
+                  </p>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700">
+                        Revenus nets du foyer (€/mois)
+                      </label>
+                      <input
+                        type="number"
+                        value={revenusNetMensuels}
+                        onChange={(e) =>
+                          setRevenusNetMensuels(
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
                     </div>
-                    <div className="rounded-xl bg-white border border-slate-200 px-3 py-2.5">
-                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                        Capital empruntable
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">
-                        {formatEuro(resume.montantMax)}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-white border border-slate-200 px-3 py-2.5">
-                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                        Prix de bien indicatif
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">
-                        {formatEuro(resume.prixBienMax)}
-                      </p>
-                      <p className="mt-1 text-[0.7rem] text-slate-500">
-                        Estimation incluant frais dans le financement.
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-white border border-slate-200 px-3 py-2.5">
-                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                        Taux d&apos;endettement après projet
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">
-                        {formatPct(resume.tauxEndettementAvecProjet)}
-                      </p>
-                      <p className="mt-1 text-[0.7rem] text-slate-500">
-                        Actuel : {formatPct(resume.tauxEndettementActuel)}
-                      </p>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700">
+                        Autres revenus (pensions, primes récurrentes, etc.)
+                        (€/mois)
+                      </label>
+                      <input
+                        type="number"
+                        value={autresRevenusMensuels}
+                        onChange={(e) =>
+                          setAutresRevenusMensuels(
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
                     </div>
                   </div>
+                </>
+              )}
 
-                  {renderDebtBars()}
-
-                  <p className="mt-2 text-[0.7rem] text-slate-500">
-                    Ces chiffres sont indicatifs et ne remplacent pas une offre
-                    de prêt. Ils vous donnent un ordre de grandeur pour préparer
-                    vos échanges avec votre banque ou votre courtier.
+              {step === 2 && (
+                <>
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    Charges courantes & crédits en cours
+                  </h2>
+                  <p className="text-[0.75rem] text-slate-600">
+                    On recense vos charges fixes hors crédits puis le nombre de
+                    crédits en cours (immo, conso, auto…).
                   </p>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700">
+                        Autres charges mensuelles hors crédits (loyer, pensions,
+                        etc.) (€/mois)
+                      </label>
+                      <input
+                        type="number"
+                        value={chargesMensuellesHorsCredits}
+                        onChange={(e) =>
+                          setChargesMensuellesHorsCredits(
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700 flex items-center gap-1">
+                        Nombre de crédits en cours
+                        <InfoBadge text="Incluez vos prêts immo, auto, conso… Les prêts immo locatifs pourront intégrer 70 % de loyer en face." />
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={5}
+                        value={nbCredits}
+                        onChange={(e) =>
+                          handleNbCreditsChange(
+                            parseInt(e.target.value, 10) || 0
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {step === 3 && (
+                <>
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    Détail de vos crédits
+                  </h2>
+                  <p className="text-[0.75rem] text-slate-600">
+                    Pour chaque crédit, indiquez la mensualité, la durée
+                    restante et le taux. Pour les prêts locatifs, ajoutez le
+                    loyer : 70&nbsp;% seront pris dans vos revenus, comme en
+                    banque.
+                  </p>
+                  {nbCredits === 0 ? (
+                    <p className="text-[0.75rem] text-slate-500">
+                      Vous n&apos;avez déclaré aucun crédit en cours à l&apos;étape
+                      précédente. Vous pouvez passer à l&apos;étape suivante.
+                    </p>
+                  ) : (
+                    <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                      {Array.from({ length: nbCredits }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-2 space-y-2"
+                        >
+                          <p className="text-[0.7rem] font-semibold text-slate-700">
+                            Crédit #{index + 1}
+                          </p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-700">
+                                Type de crédit
+                              </label>
+                              <select
+                                value={typesCredits[index] || "immo"}
+                                onChange={(e) =>
+                                  handleTypeCreditChange(
+                                    index,
+                                    e.target.value as TypeCredit
+                                  )
+                                }
+                                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              >
+                                <option value="immo">
+                                  Crédit immobilier
+                                </option>
+                                <option value="perso">
+                                  Crédit personnel
+                                </option>
+                                <option value="auto">Crédit auto</option>
+                                <option value="conso">
+                                  Crédit consommation
+                                </option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-700">
+                                Mensualité (€/mois)
+                              </label>
+                              <input
+                                type="number"
+                                value={mensualitesCredits[index] || 0}
+                                onChange={(e) =>
+                                  handleMensualiteChange(
+                                    index,
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid gap-2 sm:grid-cols-3">
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-700">
+                                Durée restante (années)
+                              </label>
+                              <input
+                                type="number"
+                                value={resteAnneesCredits[index] || 0}
+                                onChange={(e) =>
+                                  handleResteAnneesChange(
+                                    index,
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-700">
+                                Taux du crédit (%)
+                              </label>
+                              <input
+                                type="number"
+                                value={tauxCredits[index] || 0}
+                                onChange={(e) =>
+                                  handleTauxCreditChange(
+                                    index,
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              />
+                            </div>
+                            {typesCredits[index] === "immo" && (
+                              <div className="space-y-1">
+                                <label className="text-[0.7rem] text-slate-700">
+                                  Loyer associé (€/mois)
+                                </label>
+                                <input
+                                  type="number"
+                                  value={revenusLocatifs[index] || 0}
+                                  onChange={(e) =>
+                                    handleRevenuLocatifChange(
+                                      index,
+                                      parseFloat(e.target.value) || 0
+                                    )
+                                  }
+                                  className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                />
+                                <p className="text-[0.65rem] text-slate-500">
+                                  70 % de ce loyer sera intégré à vos revenus.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {step === 4 && (
+                <>
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    Paramètres du futur prêt
+                  </h2>
+                  <p className="text-[0.75rem] text-slate-600">
+                    Ajustez la durée, le taux et le taux d&apos;endettement cible
+                    pour estimer votre enveloppe et un prix de bien.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1 sm:col-span-1">
+                      <label className="text-[0.7rem] text-slate-700">
+                        Taux du crédit (annuel, en %)
+                      </label>
+                      <input
+                        type="number"
+                        value={tauxCreditCible}
+                        onChange={(e) =>
+                          setTauxCreditCible(parseFloat(e.target.value) || 0)
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-1">
+                      <label className="text-[0.7rem] text-slate-700">
+                        Durée du crédit (années)
+                      </label>
+                      <input
+                        type="number"
+                        value={dureeCreditCible}
+                        onChange={(e) =>
+                          setDureeCreditCible(parseFloat(e.target.value) || 0)
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-1">
+                      <label className="text-[0.7rem] text-slate-700 flex items-center gap-1">
+                        Taux d&apos;endettement cible (%)
+                        <InfoBadge text="Les banques travaillent souvent autour de 33–35 %, parfois plus selon le profil et le patrimoine." />
+                      </label>
+                      <input
+                        type="number"
+                        value={tauxEndettementCible}
+                        onChange={(e) =>
+                          setTauxEndettementCible(
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
                 </>
               )}
             </div>
-          </div>
-        </section>
 
-        {/* Bloc marketing version complète */}
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-slate-500">
-            Version complète (bientôt payante)
-          </p>
-          <h2 className="text-sm font-semibold text-slate-900">
-            Pour aller plus loin que cette estimation rapide
-          </h2>
-          <p className="text-xs text-slate-600 max-w-2xl">
-            La version complète vous permet de détailler vos crédits un par un,
-            d&apos;intégrer vos projets locatifs, un éventuel prêt relais et
-            l&apos;analyse de votre parc immobilier existant. Vous obtenez des
-            synthèses plus poussées, partageables en PDF et sauvegardées dans
-            votre espace.
-          </p>
+            {/* Boutons navigation wizard */}
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={goPrev}
+                disabled={step === 1}
+                className="text-[0.75rem] text-slate-600 disabled:opacity-40 disabled:cursor-default hover:text-slate-900"
+              >
+                ← Précédent
+              </button>
+              {step < TOTAL_STEPS ? (
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className="rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
+                >
+                  Suivant →
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleCalculCapacite}
+                  className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-lg hover:shadow-2xl active:scale-[0.99]"
+                >
+                  Calculer ma capacité d&apos;emprunt
+                </button>
+              )}
+            </div>
+          </section>
 
-          <div className="grid gap-3 md:grid-cols-3 mt-3">
-            <Link
-              href={paidLink("/investissement")}
-              className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left flex flex-col gap-2 hover:bg-slate-50 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-slate-900">
-                  Investissement locatif
+          {/* Résultats épurés */}
+          <section
+            id="resultats-capacite"
+            className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600 mb-1">
+                  Résultats de votre simulation
                 </p>
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 text-[0.65rem] font-semibold text-white px-2 py-0.5">
-                  <IconLock />
-                  Réservé aux membres
-                </span>
-              </div>
-              <p className="text-[0.7rem] text-slate-500">
-                Cash-flow, rendements, fiscalité (LMNP, réel, etc.) et scénarios
-                multi-biens.
-              </p>
-            </Link>
-
-            <Link
-              href={paidLink("/pret-relais")}
-              className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left flex flex-col gap-2 hover:bg-slate-50 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-slate-900">
-                  Achat revente / prêt relais
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Votre capacité d&apos;emprunt et votre budget indicatif
+                </h2>
+                <p className="text-[0.75rem] text-slate-600">
+                  Quelques indicateurs clés pour vous positionner sur votre
+                  projet. Pour aller plus loin, créez un espace et débloquez
+                  l&apos;analyse détaillée.
                 </p>
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 text-[0.65rem] font-semibold text-white px-2 py-0.5">
-                  <IconLock />
-                  Réservé aux membres
-                </span>
               </div>
-              <p className="text-[0.7rem] text-slate-500">
-                Budget d&apos;achat, relais, nouveau crédit et comparaison de
-                plusieurs scénarios.
-              </p>
-            </Link>
+              {hasResult && (
+                <div className="flex flex-col items-end gap-1">
+                  <button
+                    onClick={handleSaveProject}
+                    disabled={saving}
+                    className="inline-flex items-center justify-center rounded-full border border-emerald-500/80 bg-emerald-500 px-3 py-1.5 text-[0.7rem] font-semibold text-white shadow-sm hover:bg-emerald-400 disabled:opacity-60"
+                  >
+                    {saving ? "Sauvegarde..." : "Sauvegarder dans mon espace"}
+                  </button>
+                  {saveMessage && (
+                    <p className="text-[0.65rem] text-slate-500 text-right max-w-[220px]">
+                      {saveMessage}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
 
-            <Link
-              href={paidLink("/parc-immobilier")}
-              className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left flex flex-col gap-2 hover:bg-slate-50 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold text-slate-900">
-                  Parc immobilier existant
+            {hasResult ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                      Mensualité max
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {formatEuro(resumeCapacite!.mensualiteMax)}
+                    </p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                      Capacité théorique sans dépasser le taux cible.
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                      Capital empruntable
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {formatEuro(resumeCapacite!.montantMax)}
+                    </p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                      Sur {dureeCreditCible} ans à ~
+                      {tauxCreditCible.toLocaleString("fr-FR", {
+                        maximumFractionDigits: 2,
+                      })}
+                      %.
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                      Prix de bien indicatif
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {formatEuro(resumeCapacite!.prixBienMax)}
+                    </p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                      Frais de notaire et agence inclus dans le financement.
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                      Taux d&apos;endettement
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {formatPct(resumeCapacite!.tauxEndettementAvecProjet)}
+                    </p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                      Actuel : {formatPct(
+                        resumeCapacite!.tauxEndettementActuel
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Teaser analyse détaillée floutée / payante */}
+                <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
+                  <div className="opacity-30 pointer-events-none">
+                    {renderMultiline(resultCapaciteTexte)}
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
+                  <div className="relative mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[0.7rem] text-slate-700 max-w-xs">
+                      L&apos;analyse complète (commentaire bancaire, scénarios,
+                      PDF, archivage…) est disponible dans la version avancée.
+                    </p>
+                    <a
+                      href={isLoggedIn ? "/mon-compte" : "/mon-compte?mode=register"}
+                      className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
+                    >
+                      Créer mon espace &amp; débloquer l&apos;analyse détaillée
+                    </a>
+                  </div>
+                </div>
+
+                <p className="mt-2 text-[0.65rem] text-slate-500">
+                  Ces résultats sont indicatifs et ne constituent pas une offre
+                  de prêt. Seule une étude approfondie par un établissement
+                  bancaire ou un courtier permet d&apos;obtenir un accord ferme.
                 </p>
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 text-[0.65rem] font-semibold text-white px-2 py-0.5">
-                  <IconLock />
-                  Réservé aux membres
-                </span>
-              </div>
-              <p className="text-[0.7rem] text-slate-500">
-                Vue consolidée de vos biens, encours, cash-flow global et
-                arbitrages possibles.
+              </>
+            ) : (
+              <p className="text-[0.8rem] text-slate-600">
+                Complétez les 4 étapes de la calculette puis cliquez sur
+                «&nbsp;Calculer ma capacité d&apos;emprunt&nbsp;» pour afficher
+                ici votre mensualité maximale, le capital empruntable et un prix
+                de bien indicatif.
               </p>
-            </Link>
-          </div>
+            )}
+          </section>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <Link
-              href={isLoggedIn ? "/mon-compte" : "/mon-compte?mode=register"}
-              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
-            >
-              {isLoggedIn
-                ? "Accéder à mon espace et aux calculettes avancées"
-                : "Créer mon espace et découvrir la version complète"}
-            </Link>
-            <p className="text-[0.7rem] text-slate-500">
-              La version payante intégrera progressivement des fonctionnalités
-              avancées : export PDF, scénarios multiples, historique de vos
-              projets…
+          {/* Section marketing : version payante / outils avancés */}
+          <section className="rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-5 py-6 space-y-4">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-300">
+              Version complète (bientôt payante)
             </p>
-          </div>
-        </section>
+            <h2 className="text-sm sm:text-base font-semibold">
+              De la simple capacité d&apos;emprunt à une stratégie immobilière
+              complète
+            </h2>
+            <p className="text-[0.8rem] text-slate-100 max-w-2xl">
+              Que vous soyez primo-accédant ou investisseur chevronné, la
+              version avancée de MT Courtage &amp; Investissement vous aide à
+              piloter vos projets comme un pro&nbsp;: simulations croisées,
+              vision de long terme, et dossiers prêts à être présentés à votre
+              banque.
+            </p>
+
+            <div className="grid gap-3 sm:grid-cols-3 text-[0.75rem]">
+              <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-1">
+                <p className="font-semibold">Investissement locatif</p>
+                <p className="text-slate-100/80">
+                  Cash-flow, rendements, fiscalité (réel / micro), courte ou
+                  longue durée, multi-lots, scénarios avec et sans travaux.
+                </p>
+              </div>
+              <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-1">
+                <p className="font-semibold">Achat revente & prêt relais</p>
+                <p className="text-slate-100/80">
+                  Budget d’achat, gestion du relais, garde ou revente de
+                  l&apos;ancien bien, impact sur votre taux d&apos;endettement.
+                </p>
+              </div>
+              <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-1">
+                <p className="font-semibold">Parc immobilier complet</p>
+                <p className="text-slate-100/80">
+                  Vue consolidée de tous vos biens : encours, cash-flow global,
+                  biens à arbitrer, opportunités de renégociation.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href={isLoggedIn ? "/mon-compte" : "/mon-compte?mode=register"}
+                className="inline-flex items-center justify-center rounded-full bg-white text-slate-900 px-4 py-2 text-[0.8rem] font-semibold hover:bg-slate-100"
+              >
+                {isLoggedIn
+                  ? "Accéder à mes outils avancés"
+                  : "Créer mon espace gratuit"}
+              </a>
+              <p className="text-[0.7rem] text-slate-200 max-w-xs">
+                Accédez à l&apos;historique de vos projets, aux exports PDF prêts
+                pour la banque, et à des simulateurs pensés pour optimiser
+                chaque décision.
+              </p>
+            </div>
+          </section>
+        </div>
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
