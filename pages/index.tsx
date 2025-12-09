@@ -85,8 +85,26 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* 👉 menu de navigation uniquement si connecté */}
-      <AppHeader showNav={isLoggedIn} />
+      {/* 👉 Si connecté : header complet. Si non connecté : header ultra simple sans menu */}
+      {isLoggedIn ? (
+        <AppHeader />
+      ) : (
+        <header className="border-b border-slate-200 bg-white">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-900">
+                MT Courtage &amp; Investissement
+              </span>
+            </div>
+            <Link
+              href="/mon-compte?mode=login"
+              className="text-[0.75rem] font-semibold text-slate-600 hover:text-slate-900"
+            >
+              Se connecter
+            </Link>
+          </div>
+        </header>
+      )}
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-8 space-y-10">
         {/* HERO : calculette capacité d'emprunt (accès gratuit, ultra mise en avant) */}
