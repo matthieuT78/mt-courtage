@@ -90,7 +90,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      <AppHeader />
+      {/* 👉 Header uniquement si connecté */}
+      {isLoggedIn && <AppHeader />}
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-8 space-y-10">
         {/* HERO : calculette gratuite capacité d'emprunt */}
