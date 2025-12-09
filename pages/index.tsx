@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
-import CapaciteWizard from "../components/CapaciteWizard";
 import { supabase } from "../lib/supabaseClient";
 
 type SimpleUser = {
@@ -59,38 +58,50 @@ export default function Home() {
       <main className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-8">
           {/* HERO / introduction */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
-            <p className="text-xs uppercase tracking-[0.18em] text-emerald-600">
-              Étude gratuite
-            </p>
-            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              {displayName
-                ? `Bonjour ${displayName}, estimez votre capacité d’emprunt immobilier.`
-                : "Estimez votre capacité d’emprunt immobilier en quelques minutes."}
-            </h1>
-            <p className="text-xs text-slate-600 max-w-2xl">
-              Revenus, charges, crédits en cours et loyers locatifs pris à
-              70&nbsp;% : obtenez une estimation réaliste de votre mensualité
-              maximale, du capital empruntable et d&apos;un prix de bien indicatif
-              à présenter à votre banque ou à votre courtier.
-            </p>
-
-            {!isLoggedIn && (
-              <p className="text-[0.7rem] text-slate-500">
-                Cette calculette est accessible sans compte. En créant votre
-                espace, vous pourrez sauvegarder vos simulations et accéder aux
-                autres outils (investissement locatif, achat revente, parc
-                immobilier…).
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-emerald-600">
+                Étude gratuite
               </p>
-            )}
-          </section>
+              <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
+                {displayName
+                  ? `Bonjour ${displayName}, estimez votre capacité d’emprunt immobilier.`
+                  : "Estimez votre capacité d’emprunt immobilier en quelques minutes."}
+              </h1>
+              <p className="text-xs text-slate-600 max-w-2xl">
+                Revenus, charges, crédits en cours et loyers locatifs pris à
+                70&nbsp;% : obtenez une estimation réaliste de votre mensualité
+                maximale, du capital empruntable et d&apos;un prix de bien indicatif
+                à présenter à votre banque ou à votre courtier.
+              </p>
 
-          {/* 🧮 Calculette capacité (même composant que sur /capacite) */}
-          <CapaciteWizard
-            showSaveButton={isLoggedIn}
-            // 👉 analyse floutée uniquement si l'utilisateur n'est pas connecté
-            blurAnalysis={!isLoggedIn}
-          />
+              {!isLoggedIn && (
+                <p className="text-[0.7rem] text-slate-500">
+                  La calculette est accessible sans compte. En créant votre
+                  espace, vous pourrez sauvegarder vos simulations et accéder
+                  aux autres outils (investissement locatif, achat revente, parc
+                  immobilier…).
+                </p>
+              )}
+            </div>
+
+            {/* CTA central : lancer la simulation */}
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
+              <Link
+                href="/capacite"
+                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shadow-md"
+              >
+                Lancer la simulation de capacité d&apos;emprunt
+              </Link>
+
+              <p className="text-[0.7rem] text-slate-500">
+                Simulation 100&nbsp;% gratuite, sans engagement.{" "}
+                {isLoggedIn
+                  ? "Vous pourrez ensuite sauvegarder vos résultats dans votre espace."
+                  : "Aucun compte requis pour lancer une première étude."}
+              </p>
+            </div>
+          </section>
 
           {/* 💬 Bloc marketing version payante / outils avancés */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
