@@ -1,8 +1,6 @@
 // components/CapaciteWizard.tsx
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-
-const CAPACITE_STORAGE_KEY = "capacite_simulation_v1";
 
 function formatEuro(val: number) {
   if (Number.isNaN(val)) return "-";
@@ -260,6 +258,8 @@ export default function CapaciteWizard({
       coutTotalProjetMax,
     };
 
+    setResumeCapacite(resume);
+
     const lignes: string[] = [
       `Vos revenus mensuels pris en compte (salaires, autres revenus et 70 % des loyers locatifs) s’élèvent à ${formatEuro(
         revenusPrisEnCompte
@@ -290,77 +290,13 @@ export default function CapaciteWizard({
         : `La projection d’un prix de bien n’est pas pertinente avec ces paramètres : il peut être utile de retravailler la durée, l’apport ou les charges.`,
     ];
 
-    const texte = lignes.join("\n");
-
-    setResumeCapacite(resume);
-    setResultCapaciteTexte(texte);
-
-    // 💾 Sauvegarde dans localStorage pour retrouver la simulation après connexion
-    if (typeof window !== "undefined") {
-      const payload = {
-        revenusNetMensuels,
-        autresRevenusMensuels,
-        chargesMensuellesHorsCredits,
-        tauxEndettementCible,
-        nbCredits,
-        typesCredits,
-        mensualitesCredits,
-        resteAnneesCredits,
-        tauxCredits,
-        revenusLocatifs,
-        tauxCreditCible,
-        dureeCreditCible,
-        resumeCapacite: resume,
-        resultCapaciteTexte: texte,
-      };
-      window.localStorage.setItem(
-        CAPACITE_STORAGE_KEY,
-        JSON.stringify(payload)
-      );
-    }
+    setResultCapaciteTexte(lignes.join("\n"));
 
     const el = document.getElementById("resultats-capacite");
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
-
-  // --------- Restauration de la simulation depuis localStorage ----------
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem(CAPACITE_STORAGE_KEY);
-    if (!raw) return;
-
-    try {
-      const saved = JSON.parse(raw);
-
-      setRevenusNetMensuels(saved.revenusNetMensuels ?? 4000);
-      setAutresRevenusMensuels(saved.autresRevenusMensuels ?? 0);
-      setChargesMensuellesHorsCredits(
-        saved.chargesMensuellesHorsCredits ?? 0
-      );
-      setTauxEndettementCible(saved.tauxEndettementCible ?? 35);
-
-      setNbCredits(saved.nbCredits ?? 0);
-      setTypesCredits(saved.typesCredits ?? []);
-      setMensualitesCredits(saved.mensualitesCredits ?? []);
-      setResteAnneesCredits(saved.resteAnneesCredits ?? []);
-      setTauxCredits(saved.tauxCredits ?? []);
-      setRevenusLocatifs(saved.revenusLocatifs ?? []);
-
-      setTauxCreditCible(saved.tauxCreditCible ?? 3.5);
-      setDureeCreditCible(saved.dureeCreditCible ?? 25);
-
-      if (saved.resumeCapacite) {
-        setResumeCapacite(saved.resumeCapacite);
-      }
-      if (saved.resultCapaciteTexte) {
-        setResultCapaciteTexte(saved.resultCapaciteTexte);
-      }
-    } catch (e) {
-      console.error("Erreur de restauration de la simulation capacité :", e);
-    }
-  }, []);
 
   const handleSaveProject = async () => {
     if (!showSaveButton) return;
@@ -526,8 +462,8 @@ export default function CapaciteWizard({
               <div className="space-y-2">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700">
-                    Autres charges mensuelles hors crédits (pensions, aide a
-                    domicile, etc.) (€/mois)
+                    Autres charges mensuelles hors crédits (pensions, aide a domicile,
+                    etc.) (€/mois)
                   </label>
                   <input
                     type="number"
@@ -605,7 +541,9 @@ export default function CapaciteWizard({
                             <option value="immo">Crédit immobilier</option>
                             <option value="perso">Crédit personnel</option>
                             <option value="auto">Crédit auto</option>
-                            <option value="conso">Crédit consommation</option>
+                            <option value="conso">
+                              Crédit consommation
+                            </option>
                           </select>
                         </div>
                         <div className="space-y-1">
@@ -877,7 +815,7 @@ export default function CapaciteWizard({
                     PDF, archivage…) est disponible dans la version avancée.
                   </p>
                   <a
-                    href="/mon-compte?mode=register&redirect=/capacite"
+                    href="/mon-compte?mode=register"
                     className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
                   >
                     Créer mon espace &amp; débloquer l&apos;analyse détaillée
