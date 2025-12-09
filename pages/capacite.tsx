@@ -45,6 +45,10 @@ export default function CapaciteEmpruntPage() {
     };
   }, []);
 
+  const displayName =
+    user?.user_metadata?.full_name ||
+    (user?.email ? user.email.split("@")[0] : null);
+
   const isLoggedIn = !!user;
 
   return (
@@ -53,25 +57,34 @@ export default function CapaciteEmpruntPage() {
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Intro page capacité */}
+          {/* Titre / intro spécifique page capacité */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-2">
             <p className="text-xs uppercase tracking-[0.18em] text-emerald-600">
               Calculette capacité d&apos;emprunt
             </p>
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              Estimez précisément votre capacité d’emprunt immobilier
+              {displayName
+                ? `Bonjour ${displayName}, estimez précisément votre capacité d’emprunt.`
+                : "Estimez précisément votre capacité d’emprunt immobilier."}
             </h1>
             <p className="text-xs text-slate-600 max-w-2xl">
-              Parcours guidé en plusieurs étapes : revenus, charges, crédits en
-              cours, loyers locatifs pris à 70&nbsp;% et paramètres de votre
-              futur prêt. Résultat complet, prêt à être présenté à votre banque
-              ou à votre courtier.
+              Parcours guidé en plusieurs étapes : revenus, charges, crédits en cours,
+              loyers locatifs pris à 70&nbsp;% et paramètres de votre futur prêt.
+              Résultat épuré, prêt à être présenté à votre banque ou à votre courtier.
             </p>
+
+            {!isLoggedIn && (
+              <p className="text-[0.7rem] text-slate-500">
+                Sans compte, vous accédez gratuitement à la calculette et à une
+                synthèse simplifiée. En créant votre espace, vous débloquez la
+                sauvegarde de vos simulations et une analyse plus complète avec
+                les autres outils (investissement locatif, achat revente, parc
+                immobilier…).
+              </p>
+            )}
           </section>
 
-          {/* Wizard réutilisé : 
-              - analyse floutée si NON connecté
-              - sauvegarde possible uniquement si connecté */}
+          {/* 🧮 Calculette capacité – même composant que sur la home */}
           <CapaciteWizard
             showSaveButton={isLoggedIn}
             blurAnalysis={!isLoggedIn}
