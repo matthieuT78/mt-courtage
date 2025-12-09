@@ -354,7 +354,7 @@ function ParcImmobilierContent() {
     );
   };
 
-  // 🔹 Tableau récapitulatif du parc avec un bloc "global" + détail par bien
+  // 🔹 Bloc récapitulatif global + détail par bien en pleine largeur
   const renderRecapTable = () => {
     if (!hasSimulation) return null;
     const dataBiens = biens.slice(0, nbBiens);
@@ -391,8 +391,8 @@ function ParcImmobilierContent() {
         : 0;
 
     return (
-      <div className="mt-4 space-y-3">
-        {/* Tableau GLOBAL, lisible sans scroll */}
+      <section className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-md p-4 space-y-4">
+        {/* Synthèse globale lisible */}
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
           <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
             Synthèse globale du parc
@@ -424,9 +424,7 @@ function ParcImmobilierContent() {
                 </td>
               </tr>
               <tr>
-                <td className="py-1 pr-2">
-                  Crédit + assurance (annuels)
-                </td>
+                <td className="py-1 pr-2">Crédit + assurance (annuels)</td>
                 <td className="py-1 text-right font-semibold">
                   {formatEuro(totalCreditAssuranceAnnuel)}
                 </td>
@@ -453,24 +451,20 @@ function ParcImmobilierContent() {
           </table>
         </div>
 
-        {/* Tableau DÉTAILLÉ par bien (peut scroller horizontalement) */}
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-            Détail par bien (tableau)
+        {/* Détail par bien : table complète sur md+ et cartes sur mobile */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 space-y-3">
+          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600">
+            Détail par bien
           </p>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-[0.75rem] text-slate-800">
+
+          {/* Desktop / tablette : tableau complet sans scroll horizontal (dans le container max-w-5xl) */}
+          <div className="hidden md:block">
+            <table className="w-full text-[0.75rem] text-slate-800">
               <thead>
                 <tr className="border-b border-slate-200 bg-white/70">
-                  <th className="px-2 py-2 text-left font-semibold">
-                    Bien
-                  </th>
-                  <th className="px-2 py-2 text-right font-semibold">
-                    Valeur
-                  </th>
-                  <th className="px-2 py-2 text-right font-semibold">
-                    CRD
-                  </th>
+                  <th className="px-2 py-2 text-left font-semibold">Bien</th>
+                  <th className="px-2 py-2 text-right font-semibold">Valeur</th>
+                  <th className="px-2 py-2 text-right font-semibold">CRD</th>
                   <th className="px-2 py-2 text-right font-semibold">
                     Loyers annuels
                   </th>
@@ -535,8 +529,76 @@ function ParcImmobilierContent() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile : cartes par bien, plus de scroll horizontal */}
+          <div className="space-y-2 md:hidden">
+            {dataBiens.map((b, idx) => {
+              const loyersAnnuels = (b.loyerMensuel || 0) * 12;
+              const annuiteCredit = (b.mensualiteCredit || 0) * 12;
+              const annuiteAssurance =
+                b.assuranceEmprunteurAnnuelle || 0;
+              return (
+                <div
+                  key={idx}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[0.75rem] space-y-1.5"
+                >
+                  <p className="font-semibold text-slate-900">
+                    {b.nom || `Bien #${idx + 1}`}
+                  </p>
+                  <div className="flex justify-between">
+                    <span>Valeur</span>
+                    <span className="font-medium">
+                      {formatEuro(b.valeurBien)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>CRD</span>
+                    <span className="font-medium">
+                      {formatEuro(b.capitalRestantDu)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Loyers annuels</span>
+                    <span className="font-medium">
+                      {formatEuro(loyersAnnuels)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Charges annuelles</span>
+                    <span className="font-medium">
+                      {formatEuro(b.chargesAnnuelles)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Crédit + ass. (an)</span>
+                    <span className="font-medium">
+                      {formatEuro(annuiteCredit + annuiteAssurance)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Résultat net annuel</span>
+                    <span className="font-medium">
+                      {formatEuro(b.resultatNetAnnuel)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Cash-flow mensuel</span>
+                    <span className="font-medium">
+                      {formatEuro(b.cashflowMensuel)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Rendement net</span>
+                    <span className="font-medium">
+                      {formatPct(b.rendementNet)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      </section>
     );
   };
 
@@ -865,9 +927,6 @@ function ParcImmobilierContent() {
                   </div>
                 </div>
 
-                {/* Tableau récapitulatif */}
-                {renderRecapTable()}
-
                 {/* Analyse détaillée aérée */}
                 <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
@@ -890,6 +949,9 @@ function ParcImmobilierContent() {
             )}
           </div>
         </section>
+
+        {/* Bloc récapitulatif global + détail par bien en pleine largeur */}
+        {renderRecapTable()}
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
