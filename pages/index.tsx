@@ -11,6 +11,70 @@ type SimpleUser = {
   };
 };
 
+// Icône euro / financement
+function IconEuro() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4 text-emerald-700"
+    >
+      <path
+        d="M15.5 5.5a6 6 0 0 0-5.657 3.9H7.5a.75.75 0 0 0 0 1.5h1.91a6.8 6.8 0 0 0 0 2.2H7.5a.75.75 0 0 0 0 1.5h2.343A6 6 0 0 0 15.5 18.5a.75.75 0 0 0 0-1.5 4.5 4.5 0 0 1-4.14-2.5h2.64a.75.75 0 0 0 0-1.5h-3.1a5.3 5.3 0 0 1 0-2.2h3.1a.75.75 0 0 0 0-1.5h-2.64A4.5 4.5 0 0 1 15.5 7a.75.75 0 0 0 0-1.5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+// Icône immeuble / investissement locatif
+function IconBuilding() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4 text-sky-700"
+    >
+      <path
+        d="M7 4.75A2.75 2.75 0 0 1 9.75 2h4.5A2.75 2.75 0 0 1 17 4.75V20h1.25a.75.75 0 0 1 0 1.5H5.75a.75.75 0 0 1 0-1.5H7V4.75ZM15.5 20V4.75c0-.69-.56-1.25-1.25-1.25h-4.5C9.06 3.5 8.5 4.06 8.5 4.75V20h7ZM10.75 7a.75.75 0 0 1 .75-.75h1a.75.75 0 0 1 0 1.5h-1A.75.75 0 0 1 10.75 7Zm0 3.5a.75.75 0 0 1 .75-.75h1a.75.75 0 0 1 0 1.5h-1a.75.75 0 0 1-.75-.75Zm0 3.5a.75.75 0 0 1 .75-.75h1a.75.75 0 0 1 0 1.5h-1a.75.75 0 0 1-.75-.75Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+// Icône flèches / prêt relais
+function IconArrows() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4 text-amber-700"
+    >
+      <path
+        d="M6.22 5.22a.75.75 0 0 1 1.06 0L10 7.94a.75.75 0 1 1-1.06 1.06L7.75 7.81V15a.75.75 0 0 1-1.5 0V7.81L5.06 9a.75.75 0 0 1-1.06-1.06L6.22 5.22Zm11.56 13.56a.75.75 0 0 1-1.06 0L14 16.06a.75.75 0 1 1 1.06-1.06l1.19 1.19V9a.75.75 0 0 1 1.5 0v7.19l1.19-1.19A.75.75 0 1 1 20 16.06l-2.22 2.72Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+// Icône graphique / parc immobilier
+function IconChart() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-4 w-4 text-indigo-700"
+    >
+      <path
+        d="M5 5.75A.75.75 0 0 1 5.75 5H19a.75.75 0 0 1 0 1.5H6.5v12.75a.75.75 0 0 1-1.5 0V5.75ZM10 10a.75.75 0 0 1 .75-.75h1.5A.75.75 0 0 1 13 10v7.5a.75.75 0 0 1-1.5 0V10.75h-.75A.75.75 0 0 1 10 10Zm4-3a.75.75 0 0 1 .75-.75h1.5A.75.75 0 0 1 17 7v10.5a.75.75 0 0 1-1.5 0V7.75h-.75A.75.75 0 0 1 14 7Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [user, setUser] = useState<SimpleUser | null>(null);
 
@@ -113,8 +177,8 @@ export default function Home() {
                     Capacité d&apos;emprunt
                   </h3>
                 </div>
-                <div className="h-8 w-8 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-lg">
-                  💶
+                <div className="h-8 w-8 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                  <IconEuro />
                 </div>
               </div>
               <p className="text-xs text-slate-600">
@@ -137,8 +201,8 @@ export default function Home() {
                     Investissement locatif
                   </h3>
                 </div>
-                <div className="h-8 w-8 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center text-lg">
-                  🏢
+                <div className="h-8 w-8 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center">
+                  <IconBuilding />
                 </div>
               </div>
               <p className="text-xs text-slate-600">
@@ -161,8 +225,8 @@ export default function Home() {
                     Achat revente / prêt relais
                   </h3>
                 </div>
-                <div className="h-8 w-8 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center text-lg">
-                  🔁
+                <div className="h-8 w-8 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center">
+                  <IconArrows />
                 </div>
               </div>
               <p className="text-xs text-slate-600">
@@ -185,8 +249,8 @@ export default function Home() {
                     Parc immobilier existant
                   </h3>
                 </div>
-                <div className="h-8 w-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-lg">
-                  📊
+                <div className="h-8 w-8 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center">
+                  <IconChart />
                 </div>
               </div>
               <p className="text-xs text-slate-600">
