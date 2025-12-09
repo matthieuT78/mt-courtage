@@ -1,6 +1,5 @@
 // pages/capacite.tsx
 import { useState } from "react";
-import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
@@ -48,56 +47,6 @@ function InfoBadge({ text }: { text: string }) {
         {text}
       </span>
     </span>
-  );
-}
-
-// 🔼 Bloc marketing version complète / payante (affiché après la simulation)
-function UpsellBloc() {
-  return (
-    <section className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 space-y-2">
-      <p className="text-[0.75rem] font-semibold text-slate-900">
-        Aller plus loin que la simple capacité d&apos;emprunt
-      </p>
-      <p className="text-[0.75rem] text-slate-700">
-        Vous venez d&apos;obtenir une estimation structurée de votre capacité
-        d&apos;emprunt. C&apos;est une excellente base pour discuter avec votre
-        banque ou votre courtier.  
-        La version complète de l&apos;outil vous permet ensuite de :
-      </p>
-      <ul className="text-[0.75rem] text-slate-700 list-disc pl-4 space-y-1">
-        <li>
-          simuler précisément un{" "}
-          <span className="font-semibold">investissement locatif</span> (loyers,
-          charges, fiscalité, cash-flow) ;
-        </li>
-        <li>
-          anticiper un{" "}
-          <span className="font-semibold">achat revente / prêt relais</span> avec
-          différents scénarios ;
-        </li>
-        <li>
-          analyser la{" "}
-          <span className="font-semibold">
-            performance globale de votre parc immobilier existant
-          </span>
-          .
-        </li>
-      </ul>
-      <div className="flex flex-wrap items-center gap-3 pt-1">
-        <Link
-          href="/mon-compte?mode=register"
-          className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-        >
-          Créer mon espace et débloquer les calculettes avancées
-        </Link>
-        <p className="text-[0.7rem] text-slate-500">
-          Actuellement réservées aux utilisateurs inscrits – la{" "}
-          <span className="font-semibold">version payante</span> intégrera
-          bientôt des fonctionnalités supplémentaires (export PDF enrichi,
-          scénarios multiples, suivi dans le temps…).
-        </p>
-      </div>
-    </section>
   );
 }
 
@@ -404,7 +353,7 @@ export default function CapaciteEmpruntPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* ✅ Header commun */}
+      {/* Header commun */}
       <AppHeader />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-4">
@@ -475,7 +424,7 @@ export default function CapaciteEmpruntPage() {
               <div className="space-y-1">
                 <label className="text-xs text-slate-700 flex items-center gap-1">
                   Taux d&apos;endettement cible (%)
-                  <InfoBadge text="La plupart des banques travaillent autour de 33 % à 35 % d’endettement, parfois un peu plus selon le profil et le patrimoine." />
+                  <InfoBadge text="La plupart des banques travaillent autour de 33 % à 35 %, parfois plus selon le profil." />
                 </label>
                 <input
                   type="number"
@@ -491,7 +440,7 @@ export default function CapaciteEmpruntPage() {
               <div className="space-y-2">
                 <label className="text-xs text-slate-700 flex items-center gap-1">
                   Nombre de crédits en cours
-                  <InfoBadge text="Détaillez vos crédits pour une vision proche de l’analyse bancaire : type, mensualité, durée restante, loyer associé pour les prêts immobiliers locatifs." />
+                  <InfoBadge text="Détaillez vos crédits pour une analyse proche des méthodes bancaires." />
                 </label>
                 <input
                   type="number"
@@ -602,8 +551,7 @@ export default function CapaciteEmpruntPage() {
                             className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                           <p className="text-[0.65rem] text-slate-500">
-                            70 % de ce loyer sera intégré à vos revenus, comme le
-                            font les banques pour un bien locatif.
+                            70 % de ce loyer sera intégré à vos revenus.
                           </p>
                         </div>
                       )}
@@ -616,7 +564,7 @@ export default function CapaciteEmpruntPage() {
               <div className="mt-3 space-y-2">
                 <p className="text-xs font-semibold text-slate-800 flex items-center gap-1">
                   Paramètres du crédit à simuler
-                  <InfoBadge text="Ces paramètres servent uniquement à estimer le capital que vous pourriez emprunter et un ordre de grandeur du prix de bien accessible." />
+                  <InfoBadge text="Ces paramètres servent uniquement à estimer le capital empruntable." />
                 </p>
                 <div className="grid gap-2 sm:grid-cols-3">
                   <div className="space-y-1">
@@ -689,10 +637,6 @@ export default function CapaciteEmpruntPage() {
                   >
                     {saving ? "Sauvegarde..." : "Sauvegarder ce projet"}
                   </button>
-                  <p className="text-[0.65rem] text-slate-500 max-w-[200px] text-right">
-                    La sauvegarde nécessite un compte. Vous serez invité à vous
-                    connecter ou à créer un espace si ce n&apos;est pas déjà fait.
-                  </p>
                   {saveMessage && (
                     <p className="text-[0.65rem] text-slate-500 max-w-[190px] text-right">
                       {saveMessage}
@@ -754,13 +698,9 @@ export default function CapaciteEmpruntPage() {
                   {renderMultiline(resultCapaciteTexte)}
                   <p className="mt-2 text-[0.7rem] text-slate-500">
                     Ces calculs sont indicatifs et ne tiennent pas compte de la
-                    fiscalité, ni de l&apos;analyse qualitative complète (profil,
-                    historique bancaire, patrimoine…).
+                    fiscalité, ni de l&apos;analyse qualitative complète.
                   </p>
                 </div>
-
-                {/* 🔼 Bloc marketing version complète */}
-                <UpsellBloc />
               </>
             ) : (
               <p className="text-sm text-slate-500">
@@ -775,8 +715,8 @@ export default function CapaciteEmpruntPage() {
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement –
-          Simulations indicatives.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations
+          indicatives.
         </p>
         <p className="mt-1">
           Contact :{" "}
