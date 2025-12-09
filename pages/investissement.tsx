@@ -98,6 +98,9 @@ export default function InvestissementPage() {
 
   const [travaux, setTravaux] = useState(10000);
 
+  // 🔗 Lien d'annonce (Leboncoin, SeLoger…)
+  const [listingUrl, setListingUrl] = useState("");
+
   // Configuration des lots
   const [nbApparts, setNbApparts] = useState(1);
   const [loyersApparts, setLoyersApparts] = useState<number[]>([900]);
@@ -122,6 +125,13 @@ export default function InvestissementPage() {
   const [resumeRendement, setResumeRendement] =
     useState<ResumeRendement | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
+
+  // 🧮 Score d'opportunité & axes d'amélioration (lié au lien d'annonce)
+  const [opportunityScore, setOpportunityScore] = useState<number | null>(null);
+  const [opportunityComment, setOpportunityComment] = useState<string>("");
+  const [opportunityImprovements, setOpportunityImprovements] = useState<
+    string[]
+  >([]);
 
   // Sauvegarde projet
   const [saving, setSaving] = useState(false);
@@ -231,6 +241,10 @@ export default function InvestissementPage() {
 
   const handleCalculRendement = () => {
     setSaveMessage(null); // reset message sauvegarde
+    // reset du score & des axes d'amélioration à chaque calcul
+    setOpportunityScore(null);
+    setOpportunityComment("");
+    setOpportunityImprovements([]);
 
     const prix = prixBien || 0;
     const notaire = fraisNotaire || 0;
@@ -309,6 +323,86 @@ export default function InvestissementPage() {
 
     const resultatNetAnnuel = revenuNetAvantCredit - annuiteTotale;
     const cashflowMensuel = resultatNetAnnuel / 12;
+
+    // 🔢 Score de rentabilité (1 à 10) + axes d'amélioration
+    let score = 5;
+    if (rendementNetAvantCredit >= 8) score = 9;
+    else if (rendementNetAvantCredit >= 6) score = 8;
+    else if (rendementNetAvantCredit >= 4) score = 7;
+    else if (rendementNetAvantCredit >= 3) score = 6;
+    else if (rendementNetAvantCredit >= 2) score = 5;
+    else score = 3;
+
+    if (cashflowMensuel < 0) score -= 1;
+    if (cashflowMensuel > 200) score += 1;
+    if (cashflowMensuel > 400) score += 1;
+
+    score = Math.max(1, Math.min(10, score));
+
+    let comment: string;
+    if (score >= 9) {
+      comment = "Opportunité très rentable et équilibrée.";
+    } else if (score >= 7) {
+      comment =
+        "Projet globalement intéressant, avec quelques paramètres à affiner.";
+    } else if (score >= 5) {
+      comment =
+        "Projet correct mais tendu : une optimisation est recommandée avant de signer.";
+    } else {
+      comment =
+        "Projet fragile : à retravailler en profondeur (prix, loyer ou financement).";
+    }
+
+    const improvements: string[] = [];
+
+    // Loyer cible pour cash-flow neutre
+    const neutralLoyersAnnuels = chargesTotales + annuiteTotale;
+    const neutralLoyerMensuel = neutralLoyersAnnuels / 12;
+    const deltaLoyerMensuel = neutralLoyerMensuel - loyerTotalMensuel;
+
+    if (deltaLoyerMensuel > 20) {
+      improvements.push(
+        `Pour atteindre un cash-flow neutre, le loyer global devrait se situer autour de ${formatEuro(
+          neutralLoyerMensuel
+        )} par mois (soit environ ${formatEuro(
+          deltaLoyerMensuel
+        )} de plus que vos loyers actuels).`
+      );
+    }
+
+    // Marge de négociation sur le coût global pour viser un net "cible"
+    const cibleNet = 5; // 5 % net avant crédit
+    if (rendementNetAvantCredit < cibleNet && revenuNetAvantCredit > 0.01) {
+      const coutCible = revenuNetAvantCredit / (cibleNet / 100);
+      if (coutCible < coutTotal) {
+        const margeNegociation = coutTotal - coutCible;
+        if (margeNegociation > 1000) {
+          improvements.push(
+            `Pour viser un rendement net avant crédit d'environ ${formatPct(
+              cibleNet
+            )}, il faudrait réduire le coût global du projet d'environ ${formatEuro(
+              margeNegociation
+            )} (négociation du prix, optimisation des travaux ou des frais).`
+          );
+        }
+      }
+    }
+
+    if (cashflowMensuel < 0) {
+      improvements.push(
+        "Vous pouvez réduire l'effort d'épargne en allongeant la durée du crédit, en ajustant le montant de l'apport ou en mixant une partie du projet en location saisonnière (si le marché local le permet)."
+      );
+    }
+
+    if (improvements.length === 0) {
+      improvements.push(
+        "Le projet est déjà bien équilibré. Les principaux leviers restent la négociation fine du prix, la qualité du locataire et la maîtrise des charges dans le temps."
+      );
+    }
+
+    setOpportunityScore(score);
+    setOpportunityComment(comment);
+    setOpportunityImprovements(improvements);
 
     const texte = [
       `Structure du projet : ${nbApparts} lot(s) combinant vos choix de location (longue durée ou saisonnière). Le coût total du projet (prix d’acquisition, frais de notaire, frais d’agence et travaux) ressort à ${formatEuro(
@@ -424,6 +518,10 @@ export default function InvestissementPage() {
       "",
       "Je souhaite une analyse approfondie et une optimisation de mon projet d’investissement locatif réalisé sur l’outil MT Courtage & Investissement.",
       "",
+      listingUrl
+        ? `Lien de l'annonce analysée : ${listingUrl}`
+        : "(Aucun lien d'annonce n'a été renseigné dans la simulation.)",
+      "",
       "Résumé de ma simulation actuelle :",
       "",
       resultRendementTexte && resultRendementTexte.trim().length > 0
@@ -493,6 +591,7 @@ export default function InvestissementPage() {
             tauxCredLoc,
             dureeCredLoc,
             tauxAssuranceEmp,
+            listingUrl,
           },
           resume: resumeRendement,
           graphData,
@@ -647,6 +746,25 @@ export default function InvestissementPage() {
                   }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
+              </div>
+
+              {/* 🔗 Lien annonce (optionnel) */}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700 flex items-center gap-1">
+                  Lien de l&apos;annonce (optionnel)
+                  <InfoBadge text="Collez ici le lien Leboncoin, SeLoger, PAP… Il sert de référence dans vos rapports et dans le bloc d’analyse, mais n’est pas aspiré automatiquement." />
+                </label>
+                <input
+                  type="url"
+                  value={listingUrl}
+                  onChange={(e) => setListingUrl(e.target.value)}
+                  placeholder="https://www.leboncoin.fr/... ou https://www.seloger.com/..."
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <p className="text-[0.7rem] text-slate-500">
+                  Optionnel, mais très pratique pour rattacher cette simulation à
+                  une annonce précise.
+                </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
@@ -911,7 +1029,9 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={taxeFonc}
-                    onChange={(e) => setTaxeFonc(parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setTaxeFonc(parseFloat(e.target.value))
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -922,7 +1042,9 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={assurance}
-                    onChange={(e) => setAssurance(parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setAssurance(parseFloat(e.target.value))
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -938,7 +1060,9 @@ export default function InvestissementPage() {
                 <input
                   type="number"
                   value={tauxGestion}
-                  onChange={(e) => setTauxGestion(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setTauxGestion(parseFloat(e.target.value))
+                  }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -996,7 +1120,9 @@ export default function InvestissementPage() {
                 <input
                   type="number"
                   value={tauxCredLoc}
-                  onChange={(e) => setTauxCredLoc(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setTauxCredLoc(parseFloat(e.target.value))
+                  }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -1173,7 +1299,9 @@ export default function InvestissementPage() {
                         Rendement net
                       </p>
                       <p className="mt-1 text-lg font-semibold text-slate-900">
-                        {formatPct(resumeRendement!.rendementNetAvantCredit)}
+                        {formatPct(
+                          resumeRendement!.rendementNetAvantCredit
+                        )}
                       </p>
                     </div>
                   </div>
@@ -1261,6 +1389,90 @@ export default function InvestissementPage() {
                 </div>
               </div>
 
+              {/* 🔍 Encadré dédié à l'annonce (si lien renseigné) */}
+              {listingUrl && opportunityScore !== null && (
+                <div className="mt-5 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4 space-y-3">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-indigo-700">
+                        Analyse de l&apos;annonce
+                      </p>
+                      <h3 className="text-sm sm:text-base font-semibold text-slate-900">
+                        Plan de financement & rentabilité du bien analysé
+                      </h3>
+                      <a
+                        href={listingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center text-[0.75rem] text-indigo-700 underline break-all"
+                      >
+                        Voir l&apos;annonce associée
+                      </a>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Score de rentabilité
+                      </p>
+                      <p className="text-xl font-semibold text-slate-900">
+                        {opportunityScore} / 10
+                      </p>
+                      <p className="text-[0.7rem] text-slate-600">
+                        {opportunityComment}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3 text-[0.75rem] text-slate-800 mt-2">
+                    <div>
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Coût global (tout compris)
+                      </p>
+                      <p className="mt-1 font-semibold">
+                        {formatEuro(graphData!.coutTotal)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Cash-flow mensuel estimé
+                      </p>
+                      <p
+                        className={
+                          "mt-1 font-semibold " +
+                          (resumeRendement!.cashflowMensuel >= 0
+                            ? "text-emerald-700"
+                            : "text-red-600")
+                        }
+                      >
+                        {formatEuro(resumeRendement!.cashflowMensuel)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Rendement net avant crédit
+                      </p>
+                      <p className="mt-1 font-semibold">
+                        {formatPct(
+                          resumeRendement!.rendementNetAvantCredit
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {opportunityImprovements.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
+                        Axes d&apos;amélioration possibles
+                      </p>
+                      <ul className="list-disc pl-5 space-y-1 text-[0.75rem] text-slate-700">
+                        {opportunityImprovements.map((item, idx) => (
+                          <li key={idx}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Analyse narrative aérée */}
               <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
@@ -1279,20 +1491,22 @@ export default function InvestissementPage() {
                     Analyse Premium & optimisation de votre investissement locatif
                   </h3>
                   <p className="text-[0.8rem] text-slate-700">
-                    Transformez cette simulation en plan d&apos;action concret : choix
-                    du régime fiscal, stratégie d&apos;arbitrage, scénarios de loyers
-                    et présentation prête à l&apos;emploi pour votre banquier.
+                    Transformez cette simulation en plan d&apos;action concret :
+                    choix du régime fiscal, stratégie d&apos;arbitrage, scénarios de
+                    loyers et présentation prête à l&apos;emploi pour votre banquier.
                   </p>
                   <ul className="mt-2 space-y-1.5 text-[0.75rem] text-slate-700">
                     <li>• Audit détaillé de votre projet à partir de ces chiffres</li>
-                    <li>• le meilleur scénarios d&apos;optimisation (fiscalité, durée, loyers…)</li>
+                    <li>
+                      • Meilleur scénario d&apos;optimisation (fiscalité, durée,
+                      loyers…)
+                    </li>
                     <li>• Recommandations écrites et priorisées</li>
                     <li>• Synthèse claire à envoyer à la banque / au conseiller</li>
                   </ul>
                 </div>
                 <div className="shrink-0 flex flex-col items-start md:items-end gap-2">
                   <div className="text-right">
-                    {/* 💬 adapte librement le tarif ici */}
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.18em]">
                       Prestation sur mesure
                     </p>
@@ -1312,7 +1526,8 @@ export default function InvestissementPage() {
                   </button>
                   <p className="text-[0.65rem] text-slate-500 max-w-[220px] text-right">
                     Votre mail prérempli inclura automatiquement les chiffres de
-                    cette simulation pour que je puisse commencer à travailler.
+                    cette simulation (et le lien d&apos;annonce si renseigné) pour
+                    que je puisse commencer à travailler.
                   </p>
                 </div>
               </div>
