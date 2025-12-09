@@ -1,5 +1,6 @@
 // pages/capacite.tsx
 import { useState } from "react";
+import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
@@ -196,8 +197,7 @@ export default function CapaciteEmpruntPage() {
 
     const tauxAvecProjet =
       revenusPrisEnCompte > 0
-        ? ((chargesActuelles + capaciteMensuelle) / revenusPrisEnCompte) *
-          100
+        ? ((chargesActuelles + capaciteMensuelle) / revenusPrisEnCompte) * 100
         : 0;
 
     const tAnnuel = (tauxCreditCible || 0) / 100;
@@ -353,23 +353,45 @@ export default function CapaciteEmpruntPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* ✅ Header commun */}
       <AppHeader />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-4">
+        {/* Bandeau de contexte : version avancée */}
+        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600">
+              Version avancée – Capacité d&apos;emprunt
+            </p>
+            <p className="text-xs text-slate-600 max-w-xl mt-1">
+              Cette page reprend le calcul de capacité d&apos;emprunt mais avec
+              davantage de détails : crédits en cours un par un, loyers locatifs,
+              lecture bancaire complète et synthèse textuelle. Idéal pour préparer
+              un dossier structuré.
+            </p>
+          </div>
+          <p className="text-[0.7rem] text-slate-500 mt-2 sm:mt-0">
+            Pour une version rapide en 3 étapes, utilisez la calculette simplifiée
+            depuis la{" "}
+            <Link href="/" className="underline font-semibold">
+              page d&apos;accueil
+            </Link>
+            .
+          </p>
+        </section>
+
         <section className="grid gap-4 lg:grid-cols-2">
-          {/* Colonne gauche : saisie */}
+          {/* Colonne gauche : saisie détaillée */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                Calculette
+                Paramètres détaillés
               </p>
               <h2 className="text-lg font-semibold text-slate-900">
-                Situation actuelle & paramètres du crédit
+                Situation actuelle & crédits en cours
               </h2>
               <p className="text-xs text-slate-500">
                 Renseignez vos revenus, charges, crédits en cours et le type de
-                financement envisagé pour le futur projet.
+                financement envisagé pour votre futur projet immobilier.
               </p>
             </div>
 
@@ -424,7 +446,7 @@ export default function CapaciteEmpruntPage() {
               <div className="space-y-1">
                 <label className="text-xs text-slate-700 flex items-center gap-1">
                   Taux d&apos;endettement cible (%)
-                  <InfoBadge text="La plupart des banques travaillent autour de 33 % à 35 % d’endettement, parfois un peu plus selon le profil et le patrimoine." />
+                  <InfoBadge text="La plupart des banques se situent autour de 33 % à 35 %, avec des exceptions selon le profil et le patrimoine." />
                 </label>
                 <input
                   type="number"
@@ -440,7 +462,7 @@ export default function CapaciteEmpruntPage() {
               <div className="space-y-2">
                 <label className="text-xs text-slate-700 flex items-center gap-1">
                   Nombre de crédits en cours
-                  <InfoBadge text="Détaillez vos crédits pour une vision proche de l’analyse bancaire : type, mensualité, durée restante, loyer associé pour les prêts immobiliers locatifs." />
+                  <InfoBadge text="Détaillez vos crédits pour une vision proche de l’analyse bancaire : type, mensualité, durée restante, loyer associé pour les biens locatifs." />
                 </label>
                 <input
                   type="number"
@@ -565,7 +587,7 @@ export default function CapaciteEmpruntPage() {
               <div className="mt-3 space-y-2">
                 <p className="text-xs font-semibold text-slate-800 flex items-center gap-1">
                   Paramètres du crédit à simuler
-                  <InfoBadge text="Ces paramètres servent uniquement à estimer le capital que vous pourriez emprunter et un ordre de grandeur du prix de bien accessible." />
+                  <InfoBadge text="Ces paramètres servent à estimer le capital empruntable et un ordre de grandeur du prix de bien accessible." />
                 </p>
                 <div className="grid gap-2 sm:grid-cols-3">
                   <div className="space-y-1">
@@ -597,30 +619,34 @@ export default function CapaciteEmpruntPage() {
                 </div>
               </div>
 
-              <div className="mt-4">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                 <button
                   onClick={handleCalculCapacite}
                   className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-2xl active:scale-[0.99]"
                 >
-                  Calculer ma capacité d&apos;emprunt
+                  Calculer ma capacité d&apos;emprunt détaillée
                 </button>
+                <p className="text-[0.7rem] text-slate-500">
+                  Vous pourrez ensuite générer un PDF et sauvegarder ce projet
+                  dans votre espace.
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Colonne droite : résultats */}
+          {/* Colonne droite : résultats détaillés (version avancée) */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 flex flex-col gap-3">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
-                  Résultats
+                  Résultats avancés
                 </p>
                 <h2 className="text-lg font-semibold text-slate-900">
                   Synthèse & lecture bancaire
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Montant théorique, prix de bien estimé et taux d&apos;endettement
-                  après projet.
+                  Montant théorique, prix de bien estimé, taux d&apos;endettement et
+                  analyse textuelle prête à être partagée.
                 </p>
               </div>
               {hasResult && (
@@ -639,7 +665,7 @@ export default function CapaciteEmpruntPage() {
                     {saving ? "Sauvegarde..." : "Sauvegarder ce projet"}
                   </button>
                   {saveMessage && (
-                    <p className="text-[0.65rem] text-slate-500 max-w-[190px] text-right">
+                    <p className="text-[0.65rem] text-slate-500 max-w-[220px] text-right">
                       {saveMessage}
                     </p>
                   )}
@@ -674,8 +700,8 @@ export default function CapaciteEmpruntPage() {
                       {formatEuro(resumeCapacite!.prixBienMax)}
                     </p>
                     <p className="mt-1 text-[0.7rem] text-slate-500">
-                      Incluant frais de notaire (~7,5 %) et d&apos;agence (~4 %)
-                      dans le financement.
+                      Incluant une estimation de frais de notaire (~7,5 %) et
+                      d&apos;agence (~4 %) dans le financement.
                     </p>
                   </div>
                   <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
@@ -699,16 +725,28 @@ export default function CapaciteEmpruntPage() {
                   {renderMultiline(resultCapaciteTexte)}
                   <p className="mt-2 text-[0.7rem] text-slate-500">
                     Ces calculs sont indicatifs et ne tiennent pas compte de la
-                    fiscalité, ni de l&apos;analyse qualitative complète (profil,
-                    historique bancaire, patrimoine…).
+                    fiscalité ni de l&apos;analyse qualitative complète du dossier
+                    (stabilité professionnelle, épargne, patrimoine…).
+                  </p>
+                </div>
+
+                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3">
+                  <p className="text-[0.7rem] font-semibold text-emerald-800 mb-1">
+                    Astuce
+                  </p>
+                  <p className="text-[0.75rem] text-emerald-800">
+                    En sauvegardant cette simulation dans votre espace, vous
+                    pourrez la comparer à d&apos;autres scénarios (durées, taux,
+                    apports différents) et la retrouver facilement lors de vos
+                    échanges avec les banques.
                   </p>
                 </div>
               </>
             ) : (
               <p className="text-sm text-slate-500">
-                Lancez une simulation pour afficher une estimation détaillée de
-                votre capacité d&apos;emprunt et un ordre de grandeur du prix de bien
-                accessible.
+                Lancez une simulation détaillée pour afficher une estimation
+                complète de votre capacité d&apos;emprunt, prête à être exportée en
+                PDF et partagée avec votre banque ou votre courtier.
               </p>
             )}
           </div>
