@@ -50,12 +50,15 @@ function InfoBadge({ text }: { text: string }) {
 }
 
 type CapaciteWizardProps = {
-  /** Si tu veux un jour masquer la sauvegarde sur certaines pages */
+  /** Afficher ou non le bouton de sauvegarde (sur /capacite oui, sur l'index non si tu veux) */
   showSaveButton?: boolean;
+  /** Flouter ou non l'analyse détaillée (true sur la home déconnectée, false ailleurs) */
+  blurAnalysis?: boolean;
 };
 
 export default function CapaciteWizard({
   showSaveButton = true,
+  blurAnalysis = false,
 }: CapaciteWizardProps) {
   // --------- États calculette capacité ----------
   // Situation financière
@@ -801,25 +804,38 @@ export default function CapaciteWizard({
               </div>
             </div>
 
-            {/* Teaser analyse détaillée floutée / payante */}
-            <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
-              <div className="opacity-30 pointer-events-none">
-                {renderMultiline(resultCapaciteTexte)}
+            {/* Analyse détaillée : floutée ou non selon blurAnalysis */}
+            {blurAnalysis ? (
+              <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
+                <div className="opacity-30 pointer-events-none">
+                  {renderMultiline(resultCapaciteTexte)}
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
+                <div className="relative mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[0.7rem] text-slate-700 max-w-xs">
+                    L&apos;analyse complète (lecture bancaire, scénarios, export
+                    PDF, archivage…) est disponible dans la version avancée.
+                  </p>
+                  <a
+                    href="/mon-compte?mode=register"
+                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
+                  >
+                    Créer mon espace &amp; débloquer l&apos;analyse détaillée
+                  </a>
+                </div>
               </div>
-              <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
-              <div className="relative mt-2 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[0.7rem] text-slate-700 max-w-xs">
-                  L&apos;analyse complète (lecture bancaire, scénarios, export
-                  PDF, archivage…) est disponible dans la version avancée.
+            ) : (
+              <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+                  Analyse détaillée
                 </p>
-                <a
-                  href="/mon-compte?mode=register"
-                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
-                >
-                  Créer mon espace &amp; débloquer l&apos;analyse détaillée
-                </a>
+                {renderMultiline(resultCapaciteTexte)}
+                <p className="mt-2 text-[0.65rem] text-slate-500">
+                  Cette analyse est indicative et ne remplace pas une étude
+                  complète par un établissement bancaire ou un courtier.
+                </p>
               </div>
-            </div>
+            )}
 
             <p className="mt-2 text-[0.65rem] text-slate-500">
               Ces résultats sont indicatifs et ne constituent pas une offre de
