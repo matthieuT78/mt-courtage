@@ -1,59 +1,10 @@
 // pages/parc-immobilier.tsx
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
-export default function ParcImmobilierPage() {
-  const router = useRouter();
-  const [checkingAuth, setCheckingAuth] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (!supabase) {
-        setAuthorized(false);
-        setCheckingAuth(false);
-        return;
-      }
-
-      const { data, error } = await supabase.auth.getSession();
-      const session = data?.session;
-
-      if (error || !session) {
-        router.replace(
-          `/mon-compte?mode=login&redirect=${encodeURIComponent("/parc-immobilier")}`
-        );
-        return;
-      }
-
-      setAuthorized(true);
-      setCheckingAuth(false);
-    };
-
-    checkAuth();
-  }, [router]);
-
-  if (checkingAuth) {
-    return (
-      <div className="min-h-screen flex flex-col bg-slate-100">
-        <AppHeader />
-        <main className="flex-1 max-w-5xl mx-auto px-4 py-8">
-          <p className="text-sm text-slate-500">Vérification de vos accès...</p>
-        </main>
-      </div>
-    );
-  }
-
-  if (!authorized) return null;
-
-  return (
-    <div className="min-h-screen flex flex-col bg-slate-100">
-      <AppHeader />
-      {/* ... contenu actuel de ta page parc immobilier */}
-    </div>
-  );
-}
 import {
   Chart as ChartJS,
   Tooltip,
@@ -133,7 +84,8 @@ function InfoBadge({ text }: { text: string }) {
   );
 }
 
-export default function ParcImmobilierPage() {
+// 🔸 Composant principal de la calculette (tout ton ancien code de page)
+function ParcImmobilierContent() {
   const [nbBiens, setNbBiens] = useState(1);
   const [biens, setBiens] = useState<Bien[]>([
     {
@@ -389,7 +341,7 @@ export default function ParcImmobilierPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* ✅ Nouveau header global */}
+      {/* Header global */}
       <AppHeader />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-4">
@@ -732,8 +684,8 @@ export default function ParcImmobilierPage() {
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations
-          indicatives.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement –
+          Simulations indicatives.
         </p>
         <p className="mt-1">
           Contact :{" "}
@@ -744,4 +696,53 @@ export default function ParcImmobilierPage() {
       </footer>
     </div>
   );
+}
+
+// 🔸 Wrapper avec protection d’accès (UN SEUL export default)
+export default function ParcImmobilierPage() {
+  const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!supabase) {
+        setAuthorized(false);
+        setCheckingAuth(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.getSession();
+      const session = data?.session;
+
+      if (error || !session) {
+        router.replace(
+          `/mon-compte?mode=login&redirect=${encodeURIComponent(
+            "/parc-immobilier"
+          )}`
+        );
+        return;
+      }
+
+      setAuthorized(true);
+      setCheckingAuth(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-100">
+        <AppHeader />
+        <main className="flex-1 max-w-5xl mx-auto px-4 py-8">
+          <p className="text-sm text-slate-500">Vérification de vos accès...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (!authorized) return null;
+
+  return <ParcImmobilierContent />;
 }
