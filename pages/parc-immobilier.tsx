@@ -1,9 +1,59 @@
 // pages/parc-immobilier.tsx
-import { useState } from "react";
-import dynamic from "next/dynamic";
-import { supabase } from "../lib/supabaseClient";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
+import { supabase } from "../lib/supabaseClient";
 
+export default function ParcImmobilierPage() {
+  const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!supabase) {
+        setAuthorized(false);
+        setCheckingAuth(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.getSession();
+      const session = data?.session;
+
+      if (error || !session) {
+        router.replace(
+          `/mon-compte?mode=login&redirect=${encodeURIComponent("/parc-immobilier")}`
+        );
+        return;
+      }
+
+      setAuthorized(true);
+      setCheckingAuth(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-100">
+        <AppHeader />
+        <main className="flex-1 max-w-5xl mx-auto px-4 py-8">
+          <p className="text-sm text-slate-500">Vérification de vos accès...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (!authorized) return null;
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-100">
+      <AppHeader />
+      {/* ... contenu actuel de ta page parc immobilier */}
+    </div>
+  );
+}
 import {
   Chart as ChartJS,
   Tooltip,
