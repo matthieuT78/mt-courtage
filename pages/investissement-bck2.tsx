@@ -71,12 +71,6 @@ type GraphData = {
 
 type Onglet = "couts" | "revenus" | "charges" | "credit";
 
-type MarketBenchmarks = {
-  pricePerM2: number | null;
-  rentPerM2: number | null; // loyer mensuel au m²
-  source?: string | null;
-};
-
 function InfoBadge({ text }: { text: string }) {
   return (
     <span className="relative inline-flex items-center group ml-1 align-middle">
@@ -107,10 +101,6 @@ export default function InvestissementPage() {
   // 🔗 Lien d'annonce (Leboncoin, SeLoger…)
   const [listingUrl, setListingUrl] = useState("");
 
-  // 📍 Localité & surface (pour analyse marché)
-  const [localite, setLocalite] = useState("");
-  const [surfaceM2, setSurfaceM2] = useState<number>(0);
-
   // Configuration des lots
   const [nbApparts, setNbApparts] = useState(1);
   const [loyersApparts, setLoyersApparts] = useState<number[]>([900]);
@@ -136,19 +126,12 @@ export default function InvestissementPage() {
     useState<ResumeRendement | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
 
-  // 🧮 Score d'opportunité & axes d'amélioration
+  // 🧮 Score d'opportunité & axes d'amélioration (lié au lien d'annonce)
   const [opportunityScore, setOpportunityScore] = useState<number | null>(null);
   const [opportunityComment, setOpportunityComment] = useState<string>("");
   const [opportunityImprovements, setOpportunityImprovements] = useState<
     string[]
   >([]);
-
-  // 🔎 Données marché (prix / m² & loyer / m²)
-  const [marketPriceM2, setMarketPriceM2] = useState<number | null>(null);
-  const [marketRentM2, setMarketRentM2] = useState<number | null>(null);
-  const [marketSource, setMarketSource] = useState<string | null>(null);
-  const [marketError, setMarketError] = useState<string | null>(null);
-  const [marketLoading, setMarketLoading] = useState(false);
 
   // Sauvegarde projet
   const [saving, setSaving] = useState(false);
@@ -254,58 +237,14 @@ export default function InvestissementPage() {
     }
   };
 
-  // --- Récupération des benchmarks marché (DVF / loyers) via API interne ---
-
-  const fetchMarketBenchmarks = async (
-    loc: string,
-    surface: number
-  ): Promise<MarketBenchmarks | null> => {
-    try {
-      setMarketLoading(true);
-      setMarketError(null);
-      const params = new URLSearchParams({
-        localite: loc,
-        surface: surface.toString(),
-      });
-      const res = await fetch(`/api/market-benchmarks?${params.toString()}`);
-      if (!res.ok) {
-        throw new Error(
-          "Impossible de récupérer les données marché pour cette localité."
-        );
-      }
-      const data = (await res.json()) as MarketBenchmarks;
-      setMarketPriceM2(
-        typeof data.pricePerM2 === "number" ? data.pricePerM2 : null
-      );
-      setMarketRentM2(
-        typeof data.rentPerM2 === "number" ? data.rentPerM2 : null
-      );
-      setMarketSource(data.source ?? null);
-      return data;
-    } catch (err: any) {
-      console.error("Market benchmarks error:", err);
-      setMarketError(
-        err?.message ||
-          "Erreur lors de la récupération des données marché pour cette zone."
-      );
-      setMarketPriceM2(null);
-      setMarketRentM2(null);
-      setMarketSource(null);
-      return null;
-    } finally {
-      setMarketLoading(false);
-    }
-  };
-
   // --- Calcul principal ---
 
-  const handleCalculRendement = async () => {
+  const handleCalculRendement = () => {
     setSaveMessage(null); // reset message sauvegarde
     // reset du score & des axes d'amélioration à chaque calcul
     setOpportunityScore(null);
     setOpportunityComment("");
     setOpportunityImprovements([]);
-    setMarketError(null);
 
     const prix = prixBien || 0;
     const notaire = fraisNotaire || 0;
@@ -385,12 +324,6 @@ export default function InvestissementPage() {
     const resultatNetAnnuel = revenuNetAvantCredit - annuiteTotale;
     const cashflowMensuel = resultatNetAnnuel / 12;
 
-    // 📊 Option : récupération des données marché si localité + surface renseignées
-    let market: MarketBenchmarks | null = null;
-    if (localite.trim().length > 0 && surfaceM2 > 0) {
-      market = await fetchMarketBenchmarks(localite.trim(), surfaceM2);
-    }
-
     // 🔢 Score de rentabilité (1 à 10) + axes d'amélioration
     let score = 5;
     if (rendementNetAvantCredit >= 8) score = 9;
@@ -404,69 +337,23 @@ export default function InvestissementPage() {
     if (cashflowMensuel > 200) score += 1;
     if (cashflowMensuel > 400) score += 1;
 
-    const improvements: string[] = [];
-
-    // Analyse marché : prix au m² & loyer au m²
-    let prixM2Annonce: number | null = null;
-    let ecartPrixPourcent: number | null = null;
-    let loyerM2Annonce: number | null = null;
-    let ecartLoyerPourcent: number | null = null;
-
-    if (surfaceM2 > 0) {
-      prixM2Annonce = prixBien / surfaceM2;
-      if (market?.pricePerM2) {
-        ecartPrixPourcent =
-          ((prixM2Annonce - market.pricePerM2) / market.pricePerM2) * 100;
-      }
-
-      if (market?.rentPerM2) {
-        loyerM2Annonce = loyerTotalMensuel / surfaceM2;
-        ecartLoyerPourcent =
-          ((loyerM2Annonce - market.rentPerM2) / market.rentPerM2) * 100;
-      }
-    }
-
-    // Ajustement du score en fonction du prix au m² marché
-    if (ecartPrixPourcent !== null) {
-      if (ecartPrixPourcent > 20) {
-        score -= 2;
-      } else if (ecartPrixPourcent > 10) {
-        score -= 1;
-      } else if (ecartPrixPourcent < -5) {
-        score += 1; // sous le marché : intéressant
-      }
-    }
-
-    // Ajustement du score en fonction du loyer au m²
-    if (ecartLoyerPourcent !== null && market?.rentPerM2) {
-      if (ecartLoyerPourcent > 25) {
-        // loyer trop optimiste
-        score -= 1;
-      } else if (ecartLoyerPourcent < -10) {
-        // loyer sous le marché -> potentiel d'upside, on ne pénalise pas
-        improvements.push(
-          `Votre loyer envisagé semble en dessous du loyer médian local. Le marché suggère un loyer autour de ${formatEuro(
-            market.rentPerM2 * surfaceM2
-          )} par mois pour cette surface, ce qui offre une marge potentielle de revalorisation.`
-        );
-      }
-    }
-
     score = Math.max(1, Math.min(10, score));
 
     let comment: string;
     if (score >= 9) {
-      comment = "Opportunité très rentable et bien positionnée sur son marché.";
+      comment = "Opportunité très rentable et équilibrée.";
     } else if (score >= 7) {
       comment =
-        "Projet globalement intéressant, avec quelques paramètres à affiner (prix, loyer ou financement).";
+        "Projet globalement intéressant, avec quelques paramètres à affiner.";
     } else if (score >= 5) {
       comment =
         "Projet correct mais tendu : une optimisation est recommandée avant de signer.";
     } else {
       comment =
-        "Projet fragile : à retravailler en profondeur (prix, loyer, durée de crédit ou travaux).";
+        "Projet fragile : à retravailler en profondeur (prix, loyer ou financement).";
     }
+
+    const improvements: string[] = [];
 
     // Loyer cible pour cash-flow neutre
     const neutralLoyersAnnuels = chargesTotales + annuiteTotale;
@@ -505,34 +392,6 @@ export default function InvestissementPage() {
       improvements.push(
         "Vous pouvez réduire l'effort d'épargne en allongeant la durée du crédit, en ajustant le montant de l'apport ou en mixant une partie du projet en location saisonnière (si le marché local le permet)."
       );
-    }
-
-    // Recommandation spécifique sur le prix au m²
-    if (ecartPrixPourcent !== null && market?.pricePerM2) {
-      if (ecartPrixPourcent > 10) {
-        const prixCibleM2 = market.pricePerM2 * 1.05; // marché +5%
-        const prixCible = prixCibleM2 * surfaceM2;
-        const margePrix = prixBien - prixCible;
-        if (margePrix > 1000) {
-          improvements.push(
-            `Le prix au m² de l'annonce semble supérieur au marché local d'environ ${ecartPrixPourcent.toFixed(
-              1
-            )} %. Une cible de prix autour de ${formatEuro(
-              prixCible
-            )} (soit ~${formatEuro(
-              margePrix
-            )} de moins) permettrait de repositionner ce bien dans une zone plus cohérente avec les ventes observées.`
-          );
-        }
-      } else if (ecartPrixPourcent < -5) {
-        improvements.push(
-          `Le prix au m² de l'annonce apparaît inférieur au marché local d'environ ${Math.abs(
-            ecartPrixPourcent
-          ).toFixed(
-            1
-          )} %, ce qui renforce l'intérêt de cette opportunité (sous réserve de la qualité du bien et de son état réel).`
-        );
-      }
     }
 
     if (improvements.length === 0) {
@@ -583,7 +442,7 @@ export default function InvestissementPage() {
         ? `Le cash-flow positif indique que le bien s’autofinance et génère un excédent, ce qui constitue un argument fort auprès d’un banquier : le projet ne vient pas dégrader votre budget mensuel, il le renforce.`
         : `Le cash-flow légèrement négatif signifie que le projet nécessite un effort d’épargne mensuel d’environ ${formatEuro(
             -cashflowMensuel
-          )}. Présenté correctement, cet effort peut être perçu comme une contribution maîtrisée à un actif patrimonial, surtout si l’emplacement et le potentiel de revalorisation à long terme sont solides.`,
+          )}. Présenté correctement, cet effort peut être perçu comme une contribution maîtrisée à un actif patrimonial, surtout si l’emplacement et le potentiel de valorisation à long terme sont solides.`,
       `Cette simulation reste indicative : elle ne tient pas compte de la fiscalité, de l’éventuelle revalorisation des loyers, ni de futures évolutions réglementaires. Elle vous donne toutefois une base structurée pour discuter avec votre banque ou votre courtier et affiner votre montage (durée, apport, type de location, etc.).`,
     ].join("\n");
 
@@ -606,8 +465,8 @@ export default function InvestissementPage() {
     });
   };
 
-  const handleGoToResults = async () => {
-    await handleCalculRendement();
+  const handleGoToResults = () => {
+    handleCalculRendement();
     setTimeout(() => {
       if (resultSectionRef.current) {
         resultSectionRef.current.scrollIntoView({
@@ -662,15 +521,6 @@ export default function InvestissementPage() {
       listingUrl
         ? `Lien de l'annonce analysée : ${listingUrl}`
         : "(Aucun lien d'annonce n'a été renseigné dans la simulation.)",
-      "",
-      localite
-        ? `Localité du bien : ${localite}`
-        : "(Localité non renseignée dans la simulation.)",
-      surfaceM2 > 0
-        ? `Surface : ${surfaceM2.toLocaleString("fr-FR", {
-            maximumFractionDigits: 0,
-          })} m²`
-        : "(Surface non renseignée dans la simulation.)",
       "",
       "Résumé de ma simulation actuelle :",
       "",
@@ -742,22 +592,10 @@ export default function InvestissementPage() {
             dureeCredLoc,
             tauxAssuranceEmp,
             listingUrl,
-            localite,
-            surfaceM2,
           },
           resume: resumeRendement,
           graphData,
           analyse: resultRendementTexte,
-          market: {
-            pricePerM2: marketPriceM2,
-            rentPerM2: marketRentM2,
-            source: marketSource,
-          },
-          opportunity: {
-            score: opportunityScore,
-            comment: opportunityComment,
-            improvements: opportunityImprovements,
-          },
         },
       });
 
@@ -908,38 +746,6 @@ export default function InvestissementPage() {
                   }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
-              </div>
-
-              {/* 📍 Localité & surface (optionnels) */}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Localité du bien (optionnel)
-                    <InfoBadge text="Indiquez la commune ou le code postal du bien. Cela permet de comparer le prix et les loyers à des données publiques (DVF, loyers médians… via votre API interne)." />
-                  </label>
-                  <input
-                    type="text"
-                    value={localite}
-                    onChange={(e) => setLocalite(e.target.value)}
-                    placeholder="Ex. Paris 15, 75015, Lyon, Cargèse…"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Surface habitable (m²)
-                    <InfoBadge text="Permet de calculer le prix au m² de l'annonce et de le comparer au marché, ainsi que le loyer au m²." />
-                  </label>
-                  <input
-                    type="number"
-                    value={surfaceM2 || ""}
-                    onChange={(e) =>
-                      setSurfaceM2(parseFloat(e.target.value) || 0)
-                    }
-                    placeholder="Ex. 55"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
-                </div>
               </div>
 
               {/* 🔗 Lien annonce (optionnel) */}
@@ -1223,7 +1029,9 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={taxeFonc}
-                    onChange={(e) => setTaxeFonc(parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setTaxeFonc(parseFloat(e.target.value))
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -1234,7 +1042,9 @@ export default function InvestissementPage() {
                   <input
                     type="number"
                     value={assurance}
-                    onChange={(e) => setAssurance(parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setAssurance(parseFloat(e.target.value))
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -1363,16 +1173,6 @@ export default function InvestissementPage() {
               <p className="text-xs text-slate-500">
                 Lancez le calcul puis analysez en détail vos chiffres.
               </p>
-              {marketError && (
-                <p className="mt-1 text-[0.7rem] text-red-600">
-                  {marketError}
-                </p>
-              )}
-              {marketLoading && (
-                <p className="mt-1 text-[0.7rem] text-slate-500">
-                  Récupération des données marché en cours…
-                </p>
-              )}
             </div>
 
             {hasSimulation && (
@@ -1408,15 +1208,14 @@ export default function InvestissementPage() {
 
           <div className="flex flex-col sm:flex-row gap-3 mt-3">
             <button
-              onClick={() => void handleCalculRendement()}
+              onClick={handleCalculRendement}
               className={primaryNavButtonClass}
             >
               Calculer / Mettre à jour la rentabilité
             </button>
             <p className="text-xs text-slate-500">
               Assurez-vous que les onglets Coûts, Revenus, Charges et Crédit sont
-              correctement renseignés pour une analyse cohérente (localité et
-              surface améliorent l&apos;analyse, mais restent optionnels).
+              correctement renseignés pour une analyse cohérente.
             </p>
           </div>
 
@@ -1590,8 +1389,8 @@ export default function InvestissementPage() {
                 </div>
               </div>
 
-              {/* 🔍 Encadré dédié à l'annonce (si lien renseigné ou données marché) */}
-              {(listingUrl || opportunityScore !== null) && (
+              {/* 🔍 Encadré dédié à l'annonce (si lien renseigné) */}
+              {listingUrl && opportunityScore !== null && (
                 <div className="mt-5 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4 space-y-3">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
@@ -1601,117 +1400,29 @@ export default function InvestissementPage() {
                       <h3 className="text-sm sm:text-base font-semibold text-slate-900">
                         Plan de financement & rentabilité du bien analysé
                       </h3>
-                      {listingUrl && (
-                        <a
-                          href={listingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1 inline-flex items-center text-[0.75rem] text-indigo-700 underline break-all"
-                        >
-                          Voir l&apos;annonce associée
-                        </a>
-                      )}
-                      {localite && (
-                        <p className="mt-1 text-[0.75rem] text-slate-700">
-                          Localité : <span className="font-medium">{localite}</span>
-                          {surfaceM2 > 0 && (
-                            <>
-                              {" "}
-                              – Surface :{" "}
-                              <span className="font-medium">
-                                {surfaceM2.toLocaleString("fr-FR", {
-                                  maximumFractionDigits: 0,
-                                })}{" "}
-                                m²
-                              </span>
-                            </>
-                          )}
-                        </p>
-                      )}
+                      <a
+                        href={listingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center text-[0.75rem] text-indigo-700 underline break-all"
+                      >
+                        Voir l&apos;annonce associée
+                      </a>
                     </div>
-                    {opportunityScore !== null && (
-                      <div className="shrink-0 text-right">
-                        <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                          Score de rentabilité
-                        </p>
-                        <p className="text-xl font-semibold text-slate-900">
-                          {opportunityScore} / 10
-                        </p>
-                        <p className="text-[0.7rem] text-slate-600">
-                          {opportunityComment}
-                        </p>
-                      </div>
-                    )}
+                    <div className="shrink-0 text-right">
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Score de rentabilité
+                      </p>
+                      <p className="text-xl font-semibold text-slate-900">
+                        {opportunityScore} / 10
+                      </p>
+                      <p className="text-[0.7rem] text-slate-600">
+                        {opportunityComment}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Comparaison marché : prix / m² & loyer / m² */}
-                  {surfaceM2 > 0 && (
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2 text-[0.75rem] text-slate-800">
-                      <div className="rounded-lg border border-slate-200 bg-white/60 px-3 py-2">
-                        <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                          Prix au m² (annonce vs marché)
-                        </p>
-                        <p className="mt-1">
-                          Prix au m² de l&apos;annonce :{" "}
-                          <span className="font-semibold">
-                            {formatEuro(prixBien / surfaceM2)}
-                          </span>
-                        </p>
-                        {marketPriceM2 ? (
-                          <p className="mt-1">
-                            Prix au m² estimé marché :{" "}
-                            <span className="font-semibold">
-                              {formatEuro(marketPriceM2)}
-                            </span>
-                          </p>
-                        ) : (
-                          <p className="mt-1 text-[0.7rem] text-slate-500">
-                            Données marché non disponibles pour cette localité
-                            (vérifiez votre API interne).
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="rounded-lg border border-slate-200 bg-white/60 px-3 py-2">
-                        <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                          Loyer mensuel au m² (annonce vs marché)
-                        </p>
-                        <p className="mt-1">
-                          Loyer au m² envisagé :{" "}
-                          <span className="font-semibold">
-                            {graphData!.loyersAnnuels > 0
-                              ? formatEuro(
-                                  (graphData!.loyersAnnuels / 12) / surfaceM2
-                                )
-                              : "-"}
-                            {" /m²"}
-                          </span>
-                        </p>
-                        {marketRentM2 ? (
-                          <p className="mt-1">
-                            Loyer mensuel au m² estimé marché :{" "}
-                            <span className="font-semibold">
-                              {formatEuro(marketRentM2)}
-                              {" /m²"}
-                            </span>
-                          </p>
-                        ) : (
-                          <p className="mt-1 text-[0.7rem] text-slate-500">
-                            Loyer médian non disponible pour cette localité (via
-                            votre API interne).
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {marketSource && (
-                    <p className="mt-1 text-[0.65rem] text-slate-500">
-                      Sources indicatives : {marketSource}.
-                    </p>
-                  )}
-
-                  <div className="grid gap-3 sm:grid-cols-3 text-[0.75rem] text-slate-800 mt-3">
+                  <div className="grid gap-3 sm:grid-cols-3 text-[0.75rem] text-slate-800 mt-2">
                     <div>
                       <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
                         Coût global (tout compris)
@@ -1815,8 +1526,8 @@ export default function InvestissementPage() {
                   </button>
                   <p className="text-[0.65rem] text-slate-500 max-w-[220px] text-right">
                     Votre mail prérempli inclura automatiquement les chiffres de
-                    cette simulation (et le lien/localité si renseignés) pour que
-                    je puisse commencer à travailler.
+                    cette simulation (et le lien d&apos;annonce si renseigné) pour
+                    que je puisse commencer à travailler.
                   </p>
                 </div>
               </div>
@@ -1828,11 +1539,10 @@ export default function InvestissementPage() {
             </>
           ) : (
             <p className="mt-4 text-sm text-slate-500">
-              Complétez les onglets Coûts, Revenus, Charges et Crédit (vous
-              pouvez aussi renseigner la localité et la surface pour une analyse
-              marché plus fine), puis cliquez sur “Calculer / Mettre à jour la
-              rentabilité” ou sur “Aller aux résultats” pour afficher le dashboard
-              détaillé et accéder à l&apos;offre d&apos;optimisation.
+              Complétez les onglets Coûts, Revenus, Charges et Crédit, puis
+              cliquez sur “Calculer / Mettre à jour la rentabilité” ou sur
+              “Aller aux résultats” pour afficher le dashboard détaillé et accéder
+              à l&apos;offre d&apos;optimisation.
             </p>
           )}
         </section>
