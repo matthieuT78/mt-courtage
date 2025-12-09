@@ -185,7 +185,7 @@ export default function Home() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    goToProtectedTool("/achat-revente");
+                    goToProtectedTool("/pret-relais");
                   }
                 }}
               >
