@@ -49,10 +49,10 @@ function InfoBadge({ text }: { text: string }) {
   );
 }
 
-type CapaciteWizardProps = {
-  /** Afficher ou non le bouton de sauvegarde (sur /capacite oui, sur l'index non si tu veux) */
+export type CapaciteWizardProps = {
+  /** Afficher ou non le bouton de sauvegarde */
   showSaveButton?: boolean;
-  /** Flouter ou non l'analyse détaillée (true sur la home déconnectée, false ailleurs) */
+  /** Flouter ou non l'analyse textuelle détaillée */
   blurAnalysis?: boolean;
 };
 
@@ -729,8 +729,6 @@ export default function CapaciteWizard({
             </h2>
             <p className="text-[0.75rem] text-slate-600">
               Quelques indicateurs clés pour vous positionner sur votre projet.
-              Pour aller plus loin, créez un espace et débloquez l&apos;analyse
-              détaillée et les autres outils.
             </p>
           </div>
           {hasResult && showSaveButton && (
@@ -825,14 +823,12 @@ export default function CapaciteWizard({
                 </div>
               </div>
             ) : (
-              <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-                  Analyse détaillée
-                </p>
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
                 {renderMultiline(resultCapaciteTexte)}
                 <p className="mt-2 text-[0.65rem] text-slate-500">
-                  Cette analyse est indicative et ne remplace pas une étude
-                  complète par un établissement bancaire ou un courtier.
+                  Ces calculs sont fournis à titre indicatif et ne remplacent
+                  pas une étude personnalisée par votre banque ou votre
+                  courtier.
                 </p>
               </div>
             )}
