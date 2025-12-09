@@ -1,5 +1,6 @@
 // pages/capacite.tsx
 import { useState } from "react";
+import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
@@ -47,6 +48,56 @@ function InfoBadge({ text }: { text: string }) {
         {text}
       </span>
     </span>
+  );
+}
+
+// 🔼 Bloc marketing version complète / payante (affiché après la simulation)
+function UpsellBloc() {
+  return (
+    <section className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 space-y-2">
+      <p className="text-[0.75rem] font-semibold text-slate-900">
+        Aller plus loin que la simple capacité d&apos;emprunt
+      </p>
+      <p className="text-[0.75rem] text-slate-700">
+        Vous venez d&apos;obtenir une estimation structurée de votre capacité
+        d&apos;emprunt. C&apos;est une excellente base pour discuter avec votre
+        banque ou votre courtier.  
+        La version complète de l&apos;outil vous permet ensuite de :
+      </p>
+      <ul className="text-[0.75rem] text-slate-700 list-disc pl-4 space-y-1">
+        <li>
+          simuler précisément un{" "}
+          <span className="font-semibold">investissement locatif</span> (loyers,
+          charges, fiscalité, cash-flow) ;
+        </li>
+        <li>
+          anticiper un{" "}
+          <span className="font-semibold">achat revente / prêt relais</span> avec
+          différents scénarios ;
+        </li>
+        <li>
+          analyser la{" "}
+          <span className="font-semibold">
+            performance globale de votre parc immobilier existant
+          </span>
+          .
+        </li>
+      </ul>
+      <div className="flex flex-wrap items-center gap-3 pt-1">
+        <Link
+          href="/mon-compte?mode=register"
+          className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+        >
+          Créer mon espace et débloquer les calculettes avancées
+        </Link>
+        <p className="text-[0.7rem] text-slate-500">
+          Actuellement réservées aux utilisateurs inscrits – la{" "}
+          <span className="font-semibold">version payante</span> intégrera
+          bientôt des fonctionnalités supplémentaires (export PDF enrichi,
+          scénarios multiples, suivi dans le temps…).
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -638,6 +689,10 @@ export default function CapaciteEmpruntPage() {
                   >
                     {saving ? "Sauvegarde..." : "Sauvegarder ce projet"}
                   </button>
+                  <p className="text-[0.65rem] text-slate-500 max-w-[200px] text-right">
+                    La sauvegarde nécessite un compte. Vous serez invité à vous
+                    connecter ou à créer un espace si ce n&apos;est pas déjà fait.
+                  </p>
                   {saveMessage && (
                     <p className="text-[0.65rem] text-slate-500 max-w-[190px] text-right">
                       {saveMessage}
@@ -703,6 +758,9 @@ export default function CapaciteEmpruntPage() {
                     historique bancaire, patrimoine…).
                   </p>
                 </div>
+
+                {/* 🔼 Bloc marketing version complète */}
+                <UpsellBloc />
               </>
             ) : (
               <p className="text-sm text-slate-500">
@@ -717,8 +775,8 @@ export default function CapaciteEmpruntPage() {
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations
-          indicatives.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement –
+          Simulations indicatives.
         </p>
         <p className="mt-1">
           Contact :{" "}
