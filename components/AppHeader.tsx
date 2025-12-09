@@ -6,6 +6,9 @@ import { supabase } from "../lib/supabaseClient";
 
 type SimpleUser = {
   email?: string;
+  user_metadata?: {
+    full_name?: string;
+  };
 };
 
 export default function AppHeader() {
@@ -46,7 +49,33 @@ export default function AppHeader() {
 
   // helpers pour construire les liens
   const paidLink = (path: string) =>
-    isLoggedIn ? path : `/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`;
+    isLoggedIn
+      ? path
+      : `/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`;
+
+  // Initiales pour l'avatar
+  const initials = (() => {
+    if (!user) return "";
+    const fullName = user.user_metadata?.full_name;
+    const base = fullName?.trim() || user.email || "";
+    if (!base) return "";
+    const parts = base.split(" ").filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return base.slice(0, 2).toUpperCase();
+  })();
+
+  const handleLogout = async () => {
+    try {
+      if (!supabase) return;
+      await supabase.auth.signOut();
+      setUser(null);
+      router.push("/");
+    } catch (e) {
+      console.error("Erreur lors de la déconnexion", e);
+    }
+  };
 
   return (
     <header className="border-b border-slate-200 bg-white">
@@ -83,7 +112,7 @@ export default function AppHeader() {
             Capacité d&apos;emprunt
           </Link>
 
-          {/* Liens payants : même visibles pour tout le monde, 
+          {/* Liens payants : visibles pour tout le monde,
               mais redirigent vers login si non connecté */}
           <Link
             href={paidLink("/investissement")}
@@ -122,12 +151,32 @@ export default function AppHeader() {
         {/* Zone droite : compte / connexion */}
         <div className="flex items-center gap-2">
           {isLoggedIn ? (
-            <Link
-              href="/mon-compte"
-              className="rounded-full border border-slate-300 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              Mon compte
-            </Link>
+            <div className="flex items-center gap-2">
+              {/* Avatar + pastille verte */}
+              <div className="relative">
+                <div className="h-8 w-8 rounded-full bg-slate-900 text-xs font-semibold text-white flex items-center justify-center uppercase">
+                  {initials}
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-white bg-emerald-500" />
+              </div>
+
+              {/* Bouton compte + lien déconnexion */}
+              <div className="flex flex-col items-start leading-tight">
+                <Link
+                  href="/mon-compte"
+                  className="rounded-full border border-slate-300 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Mon compte
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="mt-0.5 text-[0.65rem] text-slate-500 hover:text-slate-800 underline decoration-dotted"
+                >
+                  Me déconnecter
+                </button>
+              </div>
+            </div>
           ) : (
             <Link
               href="/mon-compte?mode=login"
