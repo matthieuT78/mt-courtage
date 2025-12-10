@@ -38,6 +38,12 @@ type ResumeCapacite = {
   coutTotalProjetMax: number;
 };
 
+type BankabilityAssessment = {
+  score: number; // 0–100
+  label: string;
+  comment: string;
+};
+
 function InfoBadge({ text }: { text: string }) {
   return (
     <span className="relative inline-flex items-center group ml-1 align-middle">
@@ -49,6 +55,111 @@ function InfoBadge({ text }: { text: string }) {
       </span>
     </span>
   );
+}
+
+function computeBankabilityScore(
+  resume: ResumeCapacite,
+  tauxEndettementCible: number
+): BankabilityAssessment {
+  const ratio =
+    tauxEndettementCible > 0
+      ? resume.tauxEndettementAvecProjet / tauxEndettementCible
+      : 1;
+
+  let score = 60;
+  let label = "Dossier moyen";
+  let comment =
+    "Votre taux d'endettement projeté reste dans une zone exploitable, mais avec peu de marge. Il faudra soigner le dossier.";
+
+  if (!Number.isFinite(ratio)) {
+    return {
+      score: 50,
+      label: "Profil à affiner",
+      comment:
+        "Les données sont incomplètes ou atypiques. Il est utile de vérifier les montants de revenus et de charges avant de présenter le dossier.",
+    };
+  }
+
+  if (ratio <= 0.7) {
+    score = 90;
+    label = "Très confortable";
+    comment =
+      "Votre taux d'endettement projeté laisse une marge de sécurité importante : les banques devraient regarder ce dossier très favorablement, sous réserve du reste du profil.";
+  } else if (ratio <= 0.9) {
+    score = 80;
+    label = "Confortable";
+    comment =
+      "Votre projet reste dans les standards habituels des banques, avec une marge raisonnable sous le taux cible d'endettement.";
+  } else if (ratio <= 1.02) {
+    score = 70;
+    label = "Limite acceptable";
+    comment =
+      "Votre taux d'endettement projeté flirte avec la limite. Le dossier est finançable mais demandera une présentation rigoureuse (stabilité des revenus, situation patrimoniale, etc.).";
+  } else if (ratio <= 1.2) {
+    score = 50;
+    label = "Sous tension";
+    comment =
+      "Le taux d'endettement envisagé dépasse le seuil cible : il faudra retravailler le projet (durée, apport, crédits en cours) pour maximiser les chances d'accord.";
+  } else {
+    score = 35;
+    label = "Profil fragile";
+    comment =
+      "Le taux d'endettement ressort nettement au-dessus des standards usuels. Sans ajustement, le projet risque d'être refusé par la plupart des banques.";
+  }
+
+  return { score, label, comment };
+}
+
+function buildActionPlan(
+  resume: ResumeCapacite,
+  assessment: BankabilityAssessment,
+  tauxEndettementCible: number
+): string {
+  const lignes: string[] = [];
+
+  lignes.push(
+    `1. Valider vos chiffres : revenus pris en compte à ${formatEuro(
+      resume.revenusPrisEnCompte
+    )}, charges et mensualités actuelles à ${formatEuro(
+      resume.mensualitesExistantes + resume.chargesHorsCredits
+    )}, pour un taux d'endettement projeté d’environ ${formatPct(
+      resume.tauxEndettementAvecProjet
+    )} (cible : ${formatPct(tauxEndettementCible)}).`
+  );
+
+  if (assessment.score >= 80) {
+    lignes.push(
+      `2. Consolider un dossier "propre" : bulletins de salaire, derniers avis d’imposition, relevés de comptes sur 3 mois et éventuels actes de propriété pour montrer la solidité de votre profil.`
+    );
+    lignes.push(
+      `3. Mettre en avant la marge de sécurité : votre taux d'endettement reste sous la cible, ce qui donne un argument fort pour négocier conditions de taux et d’assurance.`
+    );
+  } else if (assessment.score >= 60) {
+    lignes.push(
+      `2. Sécuriser le projet : étudier une durée de crédit légèrement plus longue ou un apport un peu plus élevé pour ramener le taux d'endettement sous la cible.`
+    );
+    lignes.push(
+      `3. Soigner la présentation : insister sur la stabilité des revenus (CDI, ancienneté, secteur d’activité) et sur une gestion de comptes saine pour rassurer le banquier.`
+    );
+  } else {
+    lignes.push(
+      `2. Réduire les charges avant de déposer le dossier : solder ou regrouper certains crédits à la consommation, ou revoir certains abonnements / dépenses récurrentes.`
+    );
+    lignes.push(
+      `3. Adapter le projet : viser un prix de bien inférieur à ${formatEuro(
+        resume.prixBienMax
+      )}, augmenter l’apport si possible ou allonger la durée dans la limite du raisonnable.`
+    );
+    lignes.push(
+      `4. Construire un plan sur 6–12 mois : le temps de réduire l’endettement, d’épargner un peu plus et de revenir avec un taux d’endettement plus proche de la cible.`
+    );
+  }
+
+  lignes.push(
+    `5. Faire le tour des banques / d’un courtier : une fois ces actions engagées, présenter le dossier à plusieurs établissements permet de comparer les réponses et les conditions (taux, assurance, frais).`
+  );
+
+  return lignes.join("\n");
 }
 
 export type CapaciteWizardProps = {
@@ -86,6 +197,12 @@ export default function CapaciteWizard({
   const [resumeCapacite, setResumeCapacite] =
     useState<ResumeCapacite | null>(null);
   const [resultCapaciteTexte, setResultCapaciteTexte] = useState<string>("");
+
+  // IA : score de bancabilité + plan d'action
+  const [bankabilityScore, setBankabilityScore] = useState<number | null>(null);
+  const [bankabilityLabel, setBankabilityLabel] = useState<string>("");
+  const [bankabilityComment, setBankabilityComment] = useState<string>("");
+  const [actionPlanText, setActionPlanText] = useState<string>("");
 
   const hasResult = !!resumeCapacite;
 
@@ -172,7 +289,7 @@ export default function CapaciteWizard({
     });
   };
 
-  // --------- Calcul capacité ----------
+  // --------- Calcul capacité + IA ----------
   const handleCalculCapacite = () => {
     setSaveMessage(null);
 
@@ -292,8 +409,20 @@ export default function CapaciteWizard({
 
     const texte = lignes.join("\n");
 
+    // 🔢 IA : score + plan d'action
+    const assessment = computeBankabilityScore(resume, tauxEndettementCible);
+    const actionPlan = buildActionPlan(
+      resume,
+      assessment,
+      tauxEndettementCible
+    );
+
     setResumeCapacite(resume);
     setResultCapaciteTexte(texte);
+    setBankabilityScore(assessment.score);
+    setBankabilityLabel(assessment.label);
+    setBankabilityComment(assessment.comment);
+    setActionPlanText(actionPlan);
 
     // 💾 Sauvegarde dans localStorage pour retrouver la simulation après connexion
     if (typeof window !== "undefined") {
@@ -312,6 +441,10 @@ export default function CapaciteWizard({
         dureeCreditCible,
         resumeCapacite: resume,
         resultCapaciteTexte: texte,
+        bankabilityScore: assessment.score,
+        bankabilityLabel: assessment.label,
+        bankabilityComment: assessment.comment,
+        actionPlanText: actionPlan,
       };
       window.localStorage.setItem(
         CAPACITE_STORAGE_KEY,
@@ -334,7 +467,8 @@ export default function CapaciteWizard({
     try {
       const saved = JSON.parse(raw);
 
-      // 👉 On restaure UNIQUEMENT les entrées, PAS les résultats
+      // 👉 On restaure UNIQUEMENT les entrées, PAS les résultats,
+      // pour éviter d'afficher une synthèse au chargement de la page
       setRevenusNetMensuels(saved.revenusNetMensuels ?? 4000);
       setAutresRevenusMensuels(saved.autresRevenusMensuels ?? 0);
       setChargesMensuellesHorsCredits(
@@ -352,11 +486,8 @@ export default function CapaciteWizard({
       setTauxCreditCible(saved.tauxCreditCible ?? 3.5);
       setDureeCreditCible(saved.dureeCreditCible ?? 25);
 
-      // ❌ NE PAS faire :
-      // if (saved.resumeCapacite) setResumeCapacite(saved.resumeCapacite);
-      // if (saved.resultCapaciteTexte) setResultCapaciteTexte(saved.resultCapaciteTexte);
-      //
-      // Comme ça, la synthèse n’apparaît pas tant que l’utilisateur n’a pas recliqué sur "Calculer".
+      // ❌ NE PAS restaurer :
+      // resumeCapacite, resultCapaciteTexte, bankability*, actionPlanText
     } catch (e) {
       console.error("Erreur de restauration de la simulation capacité :", e);
     }
@@ -394,6 +525,14 @@ export default function CapaciteWizard({
         data: {
           resume: resumeCapacite,
           texte: resultCapaciteTexte,
+          bankability: bankabilityScore
+            ? {
+                score: bankabilityScore,
+                label: bankabilityLabel,
+                comment: bankabilityComment,
+              }
+            : null,
+          actionPlan: actionPlanText || null,
         },
       });
 
@@ -415,6 +554,15 @@ export default function CapaciteWizard({
         {line}
       </p>
     ));
+
+  const scoreColor =
+    bankabilityScore === null
+      ? "text-slate-900"
+      : bankabilityScore >= 80
+      ? "text-emerald-700"
+      : bankabilityScore >= 60
+      ? "text-amber-600"
+      : "text-red-600";
 
   // --------- UI du wizard + résultats ----------
   return (
@@ -813,6 +961,7 @@ export default function CapaciteWizard({
 
         {hasResult ? (
           <>
+            {/* Cartes de synthèse + Score IA */}
             <div className="grid gap-3 sm:grid-cols-4">
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
                 <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
@@ -862,7 +1011,37 @@ export default function CapaciteWizard({
                   Actuel : {formatPct(resumeCapacite!.tauxEndettementActuel)}
                 </p>
               </div>
+
+              {/* 🧠 Score de bancabilité IA */}
+              {bankabilityScore !== null && (
+                <div className="rounded-xl bg-slate-900 text-white px-3 py-2.5 sm:col-span-2">
+                  <p className="text-[0.65rem] uppercase tracking-[0.14em] text-emerald-200">
+                    Score de bancabilité (IA)
+                  </p>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <p className={`text-xl font-semibold ${scoreColor}`}>
+                      {bankabilityScore}/100
+                    </p>
+                    <p className="text-[0.8rem] font-medium">
+                      {bankabilityLabel}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-[0.7rem] text-slate-100">
+                    {bankabilityComment}
+                  </p>
+                </div>
+              )}
             </div>
+
+            {/* 🧭 Option 5 – Plan d'action vers le financement (visible même en gratuit) */}
+            {actionPlanText && (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
+                  Option 5 – Plan d&apos;action vers le financement
+                </p>
+                {renderMultiline(actionPlanText)}
+              </div>
+            )}
 
             {/* Analyse détaillée : floutée ou non selon blurAnalysis */}
             {blurAnalysis ? (
@@ -905,8 +1084,9 @@ export default function CapaciteWizard({
           <p className="text-[0.8rem] text-slate-600">
             Complétez les 4 étapes de la calculette puis cliquez sur
             «&nbsp;Calculer ma capacité d&apos;emprunt&nbsp;» pour afficher ici
-            votre mensualité maximale, le capital empruntable et un prix de bien
-            indicatif.
+            votre mensualité maximale, le capital empruntable, un prix de bien
+            indicatif, votre score de bancabilité IA et un plan d&apos;action
+            vers le financement.
           </p>
         )}
       </section>
