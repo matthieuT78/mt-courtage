@@ -1,4 +1,3 @@
-// pages/api/market-benchmarks.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 
@@ -11,24 +10,22 @@ type MarketBenchmarks = {
   source: string;
 };
 
-// ✅ Récupération des variables d'environnement côté serveur
+// ⚙️ On lit les variables SERVER-SIDE (pas les NEXT_PUBLIC ici)
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Petit garde-fou au démarrage (en dev surtout)
-if (!supabaseUrl) {
+// Petit garde-fou au chargement du module
+if (!supabaseUrl || !supabaseServiceRoleKey) {
   console.error(
-    "[market-benchmarks] SUPABASE_URL manquante. Vérifie ton .env.local"
+    "[market-benchmarks] Variables d'environnement manquantes : " +
+      "SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY."
   );
 }
 
-if (!supabaseServiceKey) {
-  console.error(
-    "[market-benchmarks] SUPABASE_SERVICE_ROLE_KEY manquante. Vérifie ton .env.local"
-  );
-}
-
-const supabaseAdmin = createClient(supabaseUrl!, supabaseServiceKey!);
+const supabaseAdmin =
+  supabaseUrl && supabaseServiceRoleKey
+    ? createClient(supabaseUrl, supabaseServiceRoleKey)
+    : null;
 
 export default async function handler(
   req: NextApiRequest,
@@ -45,11 +42,10 @@ export default async function handler(
     });
   }
 
-  // Si jamais les vars sont vraiment absentes en prod, on évite un crash moche
-  if (!supabaseUrl || !supabaseServiceKey) {
+  if (!supabaseAdmin) {
     return res.status(500).json({
       error:
-        "Configuration Supabase manquante côté serveur (SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY).",
+        "Supabase n'est pas correctement configuré côté serveur (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY manquants).",
     });
   }
 
@@ -69,7 +65,18 @@ export default async function handler(
     const { data, error } = await query;
 
     if (error) {
-      console.error("Supabase error:", error);
+      console.error("[market-benchmarks] Supabase error:", error);
+
+      // En dev, on renvoie un peu plus de détails pour t'aider
+      if (process.env.NODE_ENV !== "production") {
+        return res.status(500).json({
+          error: "Erreur lors de la récupération des benchmarks.",
+          supabaseMessage: error.message,
+          supabaseDetails: (error as any).details ?? null,
+          supabaseHint: (error as any).hint ?? null,
+        });
+      }
+
       return res
         .status(500)
         .json({ error: "Erreur lors de la récupération des benchmarks." });
