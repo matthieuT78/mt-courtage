@@ -1033,14 +1033,37 @@ export default function CapaciteWizard({
               )}
             </div>
 
-            {/* 🧭 Plan d'action vers le financement (visible même en gratuit) */}
+                      {/* 🧭 Plan d'action vers le financement */}
             {actionPlanText && (
-              <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
-                  Option 5 – Plan d&apos;action vers le financement
-                </p>
-                {renderMultiline(actionPlanText)}
-              </div>
+              blurAnalysis ? (
+                // Version floutée / grisée pour les utilisateurs non connectés
+                <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
+                  <div className="opacity-30 pointer-events-none">
+                    {renderMultiline(actionPlanText)}
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
+                  <div className="relative mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[0.7rem] text-slate-700 max-w-xs">
+                      Le plan d&apos;action détaillé (les 5 étapes concrètes pour
+                      aller vers le financement) est réservé aux comptes créés.
+                    </p>
+                    <a
+                      href="/mon-compte?mode=register&redirect=/capacite"
+                      className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
+                    >
+                      Créer mon espace &amp; débloquer le plan d&apos;action
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                // Version complète pour les utilisateurs connectés
+                <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
+                    Option 5 – Plan d&apos;action vers le financement
+                  </p>
+                  {renderMultiline(actionPlanText)}
+                </div>
+              )
             )}
 
             {/* Analyse détaillée : floutée ou non selon blurAnalysis */}
