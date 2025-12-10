@@ -339,6 +339,7 @@ export default function InvestissementPage() {
     try {
       setMarketLoading(true);
       setMarketError(null);
+
       const params = new URLSearchParams({
         inseeCode: city.inseeCode,
         postalCode: city.postalCode,
@@ -349,12 +350,32 @@ export default function InvestissementPage() {
       }
 
       const res = await fetch(`/api/market-benchmarks?${params.toString()}`);
+      const raw = await res.json();
+
+      // 🔍 Log pour voir exactement ce que renvoie l’API
+      console.log("[market-benchmarks] raw response", raw);
+
       if (!res.ok) {
-        throw new Error(
-          "Impossible de récupérer les données marché pour cette localité."
-        );
+        const msg =
+          (raw && raw.error) ||
+          "Impossible de récupérer les données marché pour cette localité.";
+        throw new Error(msg);
       }
-      const data = (await res.json()) as MarketBenchmarks;
+
+      // 🔄 Supporte plusieurs formats possibles:
+      //  - { inseeCode, cityName, ... }
+      //  - { data: { inseeCode, cityName, ... }, error?: string }
+      const payload: any =
+        raw && raw.data && !("referencePriceM2Sale" in raw)
+          ? raw.data
+          : raw;
+
+      // Si l’API renvoie { error: "..." } en 200
+      if (payload && payload.error && !payload.referencePriceM2Sale) {
+        throw new Error(payload.error);
+      }
+
+      const data = payload as MarketBenchmarks;
 
       setMarketPriceM2(
         typeof data.referencePriceM2Sale === "number"
@@ -368,8 +389,7 @@ export default function InvestissementPage() {
       );
       setMarketSource(data.source ?? null);
 
-      return data;      
-
+      return data;
     } catch (err: any) {
       console.error("Market benchmarks error:", err);
       setMarketError(
