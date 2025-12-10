@@ -334,6 +334,7 @@ export default function CapaciteWizard({
     try {
       const saved = JSON.parse(raw);
 
+      // 👉 On restaure UNIQUEMENT les entrées, PAS les résultats
       setRevenusNetMensuels(saved.revenusNetMensuels ?? 4000);
       setAutresRevenusMensuels(saved.autresRevenusMensuels ?? 0);
       setChargesMensuellesHorsCredits(
@@ -351,12 +352,11 @@ export default function CapaciteWizard({
       setTauxCreditCible(saved.tauxCreditCible ?? 3.5);
       setDureeCreditCible(saved.dureeCreditCible ?? 25);
 
-      if (saved.resumeCapacite) {
-        setResumeCapacite(saved.resumeCapacite);
-      }
-      if (saved.resultCapaciteTexte) {
-        setResultCapaciteTexte(saved.resultCapaciteTexte);
-      }
+      // ❌ NE PAS faire :
+      // if (saved.resumeCapacite) setResumeCapacite(saved.resumeCapacite);
+      // if (saved.resultCapaciteTexte) setResultCapaciteTexte(saved.resultCapaciteTexte);
+      //
+      // Comme ça, la synthèse n’apparaît pas tant que l’utilisateur n’a pas recliqué sur "Calculer".
     } catch (e) {
       console.error("Erreur de restauration de la simulation capacité :", e);
     }
