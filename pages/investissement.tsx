@@ -71,9 +71,13 @@ type GraphData = {
 
 type Onglet = "couts" | "revenus" | "charges" | "credit";
 
+// 🔎 Aligné avec la réponse de /api/market-benchmarks
 type MarketBenchmarks = {
-  pricePerM2: number | null;
-  rentPerM2: number | null; // loyer mensuel au m²
+  inseeCode: string;
+  cityName: string;
+  postalCode: string;
+  referencePriceM2Sale: number | null; // €/m² à l'achat
+  referenceRentM2: number | null; // €/m² / mois
   source?: string | null;
 };
 
@@ -113,7 +117,7 @@ export default function InvestissementPage() {
   // 🔗 Lien d'annonce (Leboncoin, SeLoger…)
   const [listingUrl, setListingUrl] = useState("");
 
-  // 📍 Localité & surface (pour analyse marché)
+  // 📍 Surface (pour analyse marché)
   const [surfaceM2, setSurfaceM2] = useState<number>(0);
 
   // Auto-complétion ville / CP
@@ -351,11 +355,15 @@ export default function InvestissementPage() {
         );
       }
       const data = (await res.json()) as MarketBenchmarks;
+
+      // 🔁 On mappe les champs de l'API sur nos états front
       setMarketPriceM2(
-        typeof data.pricePerM2 === "number" ? data.pricePerM2 : null
+        typeof data.referencePriceM2Sale === "number"
+          ? data.referencePriceM2Sale
+          : null
       );
       setMarketRentM2(
-        typeof data.rentPerM2 === "number" ? data.rentPerM2 : null
+        typeof data.referenceRentM2 === "number" ? data.referenceRentM2 : null
       );
       setMarketSource(data.source ?? null);
       return data;
@@ -491,15 +499,20 @@ export default function InvestissementPage() {
 
     if (surfaceM2 > 0) {
       prixM2Annonce = prixBien / surfaceM2;
-      if (market?.pricePerM2) {
+
+      if (market?.referencePriceM2Sale) {
         ecartPrixPourcent =
-          ((prixM2Annonce - market.pricePerM2) / market.pricePerM2) * 100;
+          ((prixM2Annonce - market.referencePriceM2Sale) /
+            market.referencePriceM2Sale) *
+          100;
       }
 
-      if (market?.rentPerM2) {
+      if (market?.referenceRentM2) {
         loyerM2Annonce = loyerTotalMensuel / surfaceM2;
         ecartLoyerPourcent =
-          ((loyerM2Annonce - market.rentPerM2) / market.rentPerM2) * 100;
+          ((loyerM2Annonce - market.referenceRentM2) /
+            market.referenceRentM2) *
+          100;
       }
     }
 
@@ -515,7 +528,7 @@ export default function InvestissementPage() {
     }
 
     // Ajustement du score en fonction du loyer au m²
-    if (ecartLoyerPourcent !== null && market?.rentPerM2) {
+    if (ecartLoyerPourcent !== null && market?.referenceRentM2) {
       if (ecartLoyerPourcent > 25) {
         // loyer trop optimiste
         score -= 1;
@@ -523,7 +536,7 @@ export default function InvestissementPage() {
         // loyer sous le marché -> potentiel d'upside
         improvements.push(
           `Votre loyer envisagé semble en dessous du loyer médian local. Le marché suggère un loyer autour de ${formatEuro(
-            market.rentPerM2 * surfaceM2
+            market.referenceRentM2 * surfaceM2
           )} par mois pour cette surface, ce qui offre une marge potentielle de revalorisation.`
         );
       }
@@ -585,9 +598,13 @@ export default function InvestissementPage() {
     }
 
     // Recommandation spécifique sur le prix au m²
-    if (ecartPrixPourcent !== null && market?.pricePerM2 && surfaceM2 > 0) {
+    if (
+      ecartPrixPourcent !== null &&
+      market?.referencePriceM2Sale &&
+      surfaceM2 > 0
+    ) {
       if (ecartPrixPourcent > 10) {
-        const prixCibleM2 = market.pricePerM2 * 1.05; // marché +5%
+        const prixCibleM2 = market.referencePriceM2Sale * 1.05; // marché +5%
         const prixCible = prixCibleM2 * surfaceM2;
         const margePrix = prixBien - prixCible;
         if (margePrix > 1000) {
