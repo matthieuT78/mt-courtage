@@ -1763,32 +1763,37 @@ const canShowAnalysis =
                 </div>
               </div>
 
-              {/* 🔍 Encadré dédié à l'annonce / analyse marché */}
 {/* 🔍 Encadré dédié à l'annonce / analyse marché */}
-<ListingAnalysisSection
-  hasSimulation={hasSimulation}
-  canShowAnalysis={canShowAnalysis}
-  listingUrl={listingUrl}
-  selectedCityLabel={selectedCityLabel}
-  surfaceM2={surfaceM2}
-  prixBien={prixBien}
-  graphData={graphData}
-  resumeRendement={resumeRendement}
-  opportunityScore={opportunityScore}
-  opportunityComment={opportunityComment}
-  opportunityImprovements={opportunityImprovements}
-  marketPriceM2={marketPriceM2}
-  marketRentM2={marketRentM2}
-  marketSource={marketSource}
-/>
-           <>
-             {hasSimulation && (
-               <p className="mt-2 text-[0.7rem] text-slate-500">
-                 Pour afficher l’analyse détaillée du bien, merci de renseigner :
-                 <br />• la localité du bien<br />• la surface en m²
-               </p>
-             )}
-   </>
+{hasSimulation && (
+  <>
+    {/* Message d’explication si on n’a pas les infos pour analyser l’annonce */}
+    {!canShowAnalysis && (
+      <p className="mt-2 text-[0.7rem] text-slate-500">
+        Pour afficher l’analyse détaillée du bien, merci de renseigner :
+        <br />• la localité du bien<br />• la surface en m²
+      </p>
+    )}
+
+    {/* Bloc complet d’analyse de l’annonce, affiché uniquement si localité + surface */}
+    {canShowAnalysis && (
+      <ListingAnalysisSection
+        hasSimulation={hasSimulation}
+        canShowAnalysis={canShowAnalysis}
+        listingUrl={listingUrl}
+        selectedCityLabel={selectedCityLabel}
+        surfaceM2={surfaceM2}
+        prixBien={prixBien}
+        graphData={graphData}
+        resumeRendement={resumeRendement}
+        opportunityScore={opportunityScore}
+        opportunityComment={opportunityComment}
+        opportunityImprovements={opportunityImprovements}
+        marketPriceM2={marketPriceM2}
+        marketRentM2={marketRentM2}
+        marketSource={marketSource}
+      />
+    )}
+  </>
 )}
 
               {/* Analyse narrative aérée */}
