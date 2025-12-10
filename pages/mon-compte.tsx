@@ -4,6 +4,36 @@ import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+import {
+  Chart as ChartJS,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+} from "chart.js";
+
+// Enregistrement Chart.js une seule fois
+ChartJS.register(
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement
+);
+
+// Charts dynamiques côté client
+const Bar = dynamic(() => import("react-chartjs-2").then((m) => m.Bar), {
+  ssr: false,
+});
+const Line = dynamic(() => import("react-chartjs-2").then((m) => m.Line), {
+  ssr: false,
+});
 
 type Mode = "login" | "register";
 type Tab = "infos" | "securite" | "projets";
@@ -323,7 +353,9 @@ export default function MonComptePage() {
         password: newPassword,
       });
       if (error) {
-        setPwdError(error.message || "Erreur lors de la mise à jour du mot de passe.");
+        setPwdError(
+          error.message || "Erreur lors de la mise à jour du mot de passe."
+        );
       } else {
         setPwdMessage("Votre mot de passe a été mis à jour avec succès.");
         setNewPassword("");
@@ -442,6 +474,7 @@ export default function MonComptePage() {
     const titre = project.title || label;
     const texte =
       project.data?.texte ||
+      project.data?.analyse ||
       "Simulation enregistrée sur MT Courtage & Investissement.";
 
     const subject = `Simulation ${label} – ${titre}`;
@@ -480,6 +513,31 @@ export default function MonComptePage() {
     }
   };
 
+  // Petit helper pour rendre un texte multi-lignes sous forme de blocs
+  const renderAnalysisBlocks = (text: string) => {
+    if (!text) return null;
+    const lines = text
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    return (
+      <div className="space-y-2">
+        {lines.map((line, idx) => (
+          <div
+            key={idx}
+            className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white/70 px-3 py-2"
+          >
+            <span className="mt-1 text-xs text-emerald-600">●</span>
+            <p className="text-[0.8rem] text-slate-800 leading-relaxed">
+              {line}
+            </p>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderProjectDetail = (project: ProjectRow) => {
     const d = project.data || {};
     const type = project.type;
@@ -487,6 +545,8 @@ export default function MonComptePage() {
     // CAPACITÉ D'EMPRUNT
     if (type === "capacite") {
       const r = d.resume || {};
+      const texte = d.texte || d.analyse || "";
+
       return (
         <div className="mt-3 space-y-4">
           <div className="grid gap-3 sm:grid-cols-4">
@@ -551,19 +611,12 @@ export default function MonComptePage() {
             </div>
           </div>
 
-          {d.texte && (
+          {texte && (
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
                 Analyse détaillée
               </p>
-              {d.texte.split("\n").map((line: string, idx: number) => (
-                <p
-                  key={idx}
-                  className="text-xs sm:text-sm text-slate-800 leading-relaxed"
-                >
-                  {line}
-                </p>
-              ))}
+              {renderAnalysisBlocks(texte)}
             </div>
           )}
         </div>
@@ -574,9 +627,122 @@ export default function MonComptePage() {
     if (type === "investissement") {
       const r = d.resume || d.resumeRendement || {};
       const g = d.graphData || {};
+      const inputs = d.inputs || {};
+      const localite =
+        inputs.localite ||
+        (inputs.city
+          ? `${inputs.city.name} (${inputs.city.postalCode})`
+          : null);
+      const surfaceM2 = inputs.surfaceM2 || inputs.surface || null;
+      const listingUrl = inputs.listingUrl || d.listingUrl || null;
+      const analyseText = d.analyse || d.texte || "";
+
+      // Préparation des données graphiques si dispo
+      let barData: any = null;
+      let lineData: any = null;
+
+      if (
+        g &&
+        typeof g.loyersAnnuels === "number" &&
+        typeof g.chargesTotales === "number" &&
+        typeof g.annuiteCredit === "number" &&
+        typeof g.resultatNetAnnuel === "number"
+      ) {
+        barData = {
+          labels: [
+            "Loyers bruts",
+            "Charges",
+            "Crédit + assurance",
+            "Résultat net",
+          ],
+          datasets: [
+            {
+              label: "Montants annuels (€)",
+              data: [
+                g.loyersAnnuels,
+                g.chargesTotales,
+                g.annuiteCredit,
+                g.resultatNetAnnuel,
+              ],
+              backgroundColor: ["#22c55e", "#fb923c", "#38bdf8", "#0f172a"],
+            },
+          ],
+        };
+
+        const duree = g.dureeCredLoc || 0;
+        const horizon = Math.min(Math.max(duree, 5), 30);
+        const annualCF = g.resultatNetAnnuel;
+        const labels: string[] = [];
+        const data: number[] = [];
+        let cumul = 0;
+        for (let year = 1; year <= horizon; year++) {
+          cumul += annualCF;
+          labels.push(`Année ${year}`);
+          data.push(cumul);
+        }
+
+        lineData = {
+          labels,
+          datasets: [
+            {
+              label: "Cash-flow cumulé (€)",
+              data,
+              borderColor: "#0f172a",
+              backgroundColor: "rgba(15, 23, 42, 0.08)",
+              tension: 0.25,
+            },
+          ],
+        };
+      }
 
       return (
         <div className="mt-3 space-y-4">
+          {/* Contexte du bien */}
+          <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+            <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+              Contexte du projet
+            </p>
+            <div className="mt-1 text-xs text-slate-700 space-y-1.5">
+              {localite && (
+                <p>
+                  Localité :{" "}
+                  <span className="font-semibold">{localite}</span>
+                </p>
+              )}
+              {surfaceM2 && (
+                <p>
+                  Surface :{" "}
+                  <span className="font-semibold">
+                    {surfaceM2.toLocaleString("fr-FR", {
+                      maximumFractionDigits: 0,
+                    })}{" "}
+                    m²
+                  </span>
+                </p>
+              )}
+              {listingUrl && (
+                <p className="break-all">
+                  Annonce associée :{" "}
+                  <a
+                    href={listingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-indigo-700 underline"
+                  >
+                    {listingUrl}
+                  </a>
+                </p>
+              )}
+              {!localite && !surfaceM2 && !listingUrl && (
+                <p className="text-slate-500">
+                  Paramètres détaillés non disponibles pour ce projet (ancienne
+                  version de la sauvegarde).
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Tuiles de synthèse */}
           <div className="grid gap-3 sm:grid-cols-4">
             <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
               <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
@@ -619,19 +785,77 @@ export default function MonComptePage() {
             </div>
           </div>
 
-          {d.texte && (
+          {/* Analyse narrative complète */}
+          {analyseText && (
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
                 Analyse détaillée
               </p>
-              {d.texte.split("\n").map((line: string, idx: number) => (
-                <p
-                  key={idx}
-                  className="text-xs sm:text-sm text-slate-800 leading-relaxed"
-                >
-                  {line}
+              {renderAnalysisBlocks(analyseText)}
+            </div>
+          )}
+
+          {/* Graphiques si on a les données */}
+          {barData && lineData && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                <p className="text-xs text-slate-600 mb-2">
+                  Flux annuels : loyers bruts, charges, crédit + assurance et
+                  résultat net.
                 </p>
-              ))}
+                <Bar
+                  data={barData}
+                  options={{
+                    plugins: {
+                      legend: {
+                        labels: {
+                          color: "#0f172a",
+                          font: { size: 11 },
+                        },
+                      },
+                    },
+                    scales: {
+                      x: {
+                        ticks: { color: "#0f172a", font: { size: 10 } },
+                        grid: { color: "#e5e7eb" },
+                      },
+                      y: {
+                        ticks: { color: "#0f172a", font: { size: 10 } },
+                        grid: { color: "#e5e7eb" },
+                      },
+                    },
+                  }}
+                />
+              </div>
+
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                <p className="text-xs text-slate-600 mb-2">
+                  Cash-flow cumulé année par année (paramètres constants).
+                </p>
+                <Line
+                  data={lineData}
+                  options={{
+                    plugins: {
+                      legend: {
+                        labels: {
+                          color: "#0f172a",
+                          font: { size: 11 },
+                        },
+                      },
+                    },
+                    scales: {
+                      x: {
+                        ticks: { color: "#0f172a", font: { size: 9 } },
+                        grid: { color: "#e5e7eb" },
+                      },
+                      y: {
+                        ticks: { color: "#0f172a", font: { size: 10 } },
+                        grid: { color: "#e5e7eb" },
+                      },
+                    },
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -641,6 +865,7 @@ export default function MonComptePage() {
     // PARC IMMOBILIER
     if (type === "parc") {
       const r = d.resumeGlobal || {};
+      const texte = d.texte || d.analyse || "";
       return (
         <div className="mt-3 space-y-4">
           <div className="grid gap-3 sm:grid-cols-4">
@@ -649,9 +874,7 @@ export default function MonComptePage() {
                 Valeur estimée totale
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-900">
-                {formatEuro(
-                  r.valeurTotale ?? r.valeurParc
-                )}
+                {formatEuro(r.valeurTotale ?? r.valeurParc)}
               </p>
             </div>
             <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
@@ -669,8 +892,7 @@ export default function MonComptePage() {
               <p
                 className={
                   "mt-1 text-sm font-semibold " +
-                  ((r.cashflowAnnuelGlobal ?? r.cashflowMensuelGlobal * 12) >=
-                  0
+                  ((r.cashflowAnnuelGlobal ?? r.cashflowMensuelGlobal * 12) >= 0
                     ? "text-emerald-700"
                     : "text-red-600")
                 }
@@ -688,26 +910,17 @@ export default function MonComptePage() {
                 Rendement net global
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-900">
-                {formatPct(
-                  r.rendementNetGlobal ?? r.rendementNetMoyen
-                )}
+                {formatPct(r.rendementNetGlobal ?? r.rendementNetMoyen)}
               </p>
             </div>
           </div>
 
-          {d.texte && (
+          {texte && (
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
                 Analyse détaillée
               </p>
-              {d.texte.split("\n").map((line: string, idx: number) => (
-                <p
-                  key={idx}
-                  className="text-xs sm:text-sm text-slate-800 leading-relaxed"
-                >
-                  {line}
-                </p>
-              ))}
+              {renderAnalysisBlocks(texte)}
             </div>
           )}
         </div>
@@ -1085,9 +1298,15 @@ export default function MonComptePage() {
                     </li>
                     <li>
                       {newsletterOptIn ? (
-                        <>✔ Inscrit à la newsletter (modifiable dans l&apos;onglet “Sécurité &amp; préférences”)</>
+                        <>
+                          ✔ Inscrit à la newsletter (modifiable dans l&apos;onglet
+                          “Sécurité &amp; préférences”)
+                        </>
                       ) : (
-                        <>Optionnel : vous pouvez activer la newsletter pour recevoir nos conseils et actualités.</>
+                        <>
+                          Optionnel : vous pouvez activer la newsletter pour
+                          recevoir nos conseils et actualités.
+                        </>
                       )}
                     </li>
                   </ul>
@@ -1347,7 +1566,7 @@ export default function MonComptePage() {
                                     {label}
                                   </span>
                                   <span className="text-[0.7rem] text-slate-400">
-                                    {formatDate(project.created_at)}
+                                    {formatDateTime(project.created_at)}
                                   </span>
                                 </div>
                                 <p className="mt-1 text-sm font-semibold text-slate-900">
