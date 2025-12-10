@@ -356,17 +356,20 @@ export default function InvestissementPage() {
       }
       const data = (await res.json()) as MarketBenchmarks;
 
-      // 🔁 On mappe les champs de l'API sur nos états front
       setMarketPriceM2(
         typeof data.referencePriceM2Sale === "number"
           ? data.referencePriceM2Sale
           : null
       );
       setMarketRentM2(
-        typeof data.referenceRentM2 === "number" ? data.referenceRentM2 : null
+        typeof data.referenceRentM2 === "number"
+          ? data.referenceRentM2
+          : null
       );
       setMarketSource(data.source ?? null);
-      return data;
+
+      return data;      
+
     } catch (err: any) {
       console.error("Market benchmarks error:", err);
       setMarketError(
@@ -849,8 +852,8 @@ export default function InvestissementPage() {
           graphData,
           analyse: resultRendementTexte,
           market: {
-            pricePerM2: marketPriceM2,
-            rentPerM2: marketRentM2,
+            referencePriceM2Sale: marketPriceM2,
+            referenceRentM2: marketRentM2,
             source: marketSource,
           },
           opportunity: {
