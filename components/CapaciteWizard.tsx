@@ -1033,7 +1033,7 @@ export default function CapaciteWizard({
               )}
             </div>
 
-            {/* 🧭 Option 5 – Plan d'action vers le financement (visible même en gratuit) */}
+            {/* 🧭 Plan d'action vers le financement (visible même en gratuit) */}
             {actionPlanText && (
               <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
