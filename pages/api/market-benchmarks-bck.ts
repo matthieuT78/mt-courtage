@@ -1,4 +1,3 @@
-// pages/api/market-benchmarks.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 
@@ -11,24 +10,10 @@ type MarketBenchmarks = {
   source: string;
 };
 
-// ✅ Récupération des variables d'environnement côté serveur
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-// Petit garde-fou au démarrage (en dev surtout)
-if (!supabaseUrl) {
-  console.error(
-    "[market-benchmarks] SUPABASE_URL manquante. Vérifie ton .env.local"
-  );
-}
-
-if (!supabaseServiceKey) {
-  console.error(
-    "[market-benchmarks] SUPABASE_SERVICE_ROLE_KEY manquante. Vérifie ton .env.local"
-  );
-}
-
-const supabaseAdmin = createClient(supabaseUrl!, supabaseServiceKey!);
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // ⚠️ service role, BACK uniquement
+);
 
 export default async function handler(
   req: NextApiRequest,
@@ -42,14 +27,6 @@ export default async function handler(
   if (!inseeCode && !postalCode) {
     return res.status(400).json({
       error: "Paramètres manquants : inseeCode ou postalCode requis.",
-    });
-  }
-
-  // Si jamais les vars sont vraiment absentes en prod, on évite un crash moche
-  if (!supabaseUrl || !supabaseServiceKey) {
-    return res.status(500).json({
-      error:
-        "Configuration Supabase manquante côté serveur (SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY).",
     });
   }
 
