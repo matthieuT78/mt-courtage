@@ -2,6 +2,7 @@
 import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import AppHeader from "../components/AppHeader";
+import ListingAnalysisSection from "../components/investissement/ListingAnalysisSection";
 import { supabase } from "../lib/supabaseClient";
 import {
   Chart as ChartJS,
@@ -947,11 +948,11 @@ export default function InvestissementPage() {
 
   const hasSimulation = !!resumeRendement && !!graphData;
   
-  // Afficher l’analyse uniquement si ville + surface sont renseignés
+// Afficher l’analyse uniquement si simulation + surface + une localité renseignée
 const canShowAnalysis =
   hasSimulation &&
-  selectedCity !== null &&
-  surfaceM2 > 0;
+  surfaceM2 > 0 &&
+  (selectedCity !== null || cityQuery.trim().length > 0);
 
   const ongletClasses = (key: Onglet) =>
     [
@@ -1763,11 +1764,23 @@ const canShowAnalysis =
               </div>
 
               {/* 🔍 Encadré dédié à l'annonce / analyse marché */}
-                     {canShowAnalysis ? (
-           <div className="mt-5 rounded-2xl ...">
-             ...
-           </div>
-        ) : (
+{/* 🔍 Encadré dédié à l'annonce / analyse marché */}
+<ListingAnalysisSection
+  hasSimulation={hasSimulation}
+  canShowAnalysis={canShowAnalysis}
+  listingUrl={listingUrl}
+  selectedCityLabel={selectedCityLabel}
+  surfaceM2={surfaceM2}
+  prixBien={prixBien}
+  graphData={graphData}
+  resumeRendement={resumeRendement}
+  opportunityScore={opportunityScore}
+  opportunityComment={opportunityComment}
+  opportunityImprovements={opportunityImprovements}
+  marketPriceM2={marketPriceM2}
+  marketRentM2={marketRentM2}
+  marketSource={marketSource}
+/>
            <>
              {hasSimulation && (
                <p className="mt-2 text-[0.7rem] text-slate-500">
