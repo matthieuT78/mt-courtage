@@ -38,7 +38,12 @@ const Line = dynamic(() => import("react-chartjs-2").then((m) => m.Line), {
 type Mode = "login" | "register";
 type Tab = "infos" | "securite" | "projets";
 
-type ProjectType = "capacite" | "investissement" | "parc" | "pret-relais" | string;
+type ProjectType =
+  | "capacite"
+  | "investissement"
+  | "parc"
+  | "pret-relais"
+  | string;
 
 type ProjectRow = {
   id: string;
@@ -915,6 +920,96 @@ export default function MonComptePage() {
             </div>
           </div>
 
+          {texte && (
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
+                Analyse détaillée
+              </p>
+              {renderAnalysisBlocks(texte)}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // 🔹 PRÊT RELAIS
+    if (type === "pret-relais") {
+      const r = d.resume || {};
+      const inputs = d.inputs || {};
+      const texte = d.analyse || d.texte || "";
+
+      return (
+        <div className="mt-3 space-y-4">
+          {/* Contexte synthétique */}
+          <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
+            <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+              Contexte de la simulation
+            </p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 text-xs text-slate-700">
+              <p>
+                Valeur estimée du bien actuel :{" "}
+                <span className="font-semibold">
+                  {formatEuro(inputs.valeurBienActuel)}
+                </span>
+              </p>
+              <p>
+                Capital restant dû :{" "}
+                <span className="font-semibold">
+                  {formatEuro(inputs.crdActuel)}
+                </span>
+              </p>
+              <p>
+                Revenu mensuel net du foyer :{" "}
+                <span className="font-semibold">
+                  {formatEuro(inputs.revMensuels)}
+                </span>
+              </p>
+              <p>
+                Taux d&apos;endettement cible :{" "}
+                <span className="font-semibold">
+                  {formatPct(inputs.tauxEndettement)}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          {/* Tuiles de synthèse prêt relais */}
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
+              <p className="text-[0.7rem] text-amber-700 uppercase tracking-[0.14em]">
+                Montant du prêt relais
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {formatEuro(r.montantRelais)}
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+              <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                Mensualité max nouveau prêt
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {formatEuro(r.mensualiteNouveauMax)}
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+              <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                Capital nouveau prêt
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {formatEuro(r.capitalNouveau)}
+              </p>
+            </div>
+            <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5">
+              <p className="text-[0.7rem] text-emerald-700 uppercase tracking-[0.14em]">
+                Budget d&apos;achat max
+              </p>
+              <p className="mt-1 text-sm font-semibold text-emerald-800">
+                {formatEuro(r.budgetMax)}
+              </p>
+            </div>
+          </div>
+
+          {/* Analyse détaillée narrative */}
           {texte && (
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
