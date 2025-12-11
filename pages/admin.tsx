@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "";
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAILS || "";
 
 // Types de base
 type SimpleUser = {
