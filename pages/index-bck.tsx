@@ -1,6 +1,7 @@
 // pages/index.tsx
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
@@ -13,6 +14,7 @@ type SimpleUser = {
 
 export default function Home() {
   const [user, setUser] = useState<SimpleUser | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     let isMounted = true;
@@ -50,6 +52,17 @@ export default function Home() {
     (user?.email ? user.email.split("@")[0] : null);
 
   const isLoggedIn = !!user;
+
+  // 🔐 Navigation vers les 3 calculettes payantes
+  const goToProtectedTool = (path: string) => {
+    if (isLoggedIn) {
+      router.push(path);
+    } else {
+      router.push(
+        `/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`
+      );
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -133,7 +146,18 @@ export default function Home() {
             {/* 3 gros blocs fonctionnels */}
             <div className="grid gap-4 md:grid-cols-3 mt-1">
               {/* Investissement locatif */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+              <div
+                onClick={() => goToProtectedTool("/investissement")}
+                className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    goToProtectedTool("/investissement");
+                  }
+                }}
+              >
                 <div className="inline-flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
                     📈
@@ -153,7 +177,18 @@ export default function Home() {
               </div>
 
               {/* Achat revente / prêt relais */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+              <div
+                onClick={() => goToProtectedTool("/pret-relais")}
+                className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    goToProtectedTool("/pret-relais");
+                  }
+                }}
+              >
                 <div className="inline-flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
                     🔁
@@ -173,7 +208,18 @@ export default function Home() {
               </div>
 
               {/* Parc immobilier existant */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+              <div
+                onClick={() => goToProtectedTool("/parc-immobilier")}
+                className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    goToProtectedTool("/parc-immobilier");
+                  }
+                }}
+              >
                 <div className="inline-flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
                     🧩
