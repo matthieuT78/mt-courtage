@@ -27,7 +27,7 @@ export default function OutilsProprietairePage() {
               <div className="inline-flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                 <div>
                   <p className="text-[0.7rem] uppercase tracking-[0.16em] text-slate-500">
-                    Abonnement mensuel
+                    Abonnement mensuel (bientôt)
                   </p>
                   <p className="text-2xl font-semibold text-slate-900 leading-tight">
                     49&nbsp;€ / mois
@@ -83,7 +83,7 @@ export default function OutilsProprietairePage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-3 mt-2">
-              {/* Carte cliquable vers /quittances-loyer */}
+              {/* 🧾 Quittances automatiques - CLiquable */}
               <Link
                 href="/quittances-loyer"
                 className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 cursor-pointer hover:bg-amber-50 hover:border-amber-300 hover:shadow-md transition"
@@ -99,20 +99,20 @@ export default function OutilsProprietairePage() {
                 <ul className="space-y-1 text-[0.75rem] text-slate-700">
                   <li>• Génération automatique des quittances chaque mois</li>
                   <li>• Archivage par locataire et par bien</li>
-                  <li>• Export PDF prêt à être envoyé</li>
+                  <li>• Envoi par e-mail au format PDF</li>
                 </ul>
-                <p className="text-[0.7rem] font-medium text-amber-700 opacity-0 group-hover:opacity-100 transition">
+                <p className="text-[0.7rem] font-medium text-amber-700 group-hover:underline">
                   Accéder au générateur de quittances →
                 </p>
               </Link>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 opacity-70">
                 <div className="inline-flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
                     💶
                   </div>
                   <p className="text-xs font-semibold text-slate-900">
-                    Cautions & loyers
+                    Cautions & loyers (bientôt)
                   </p>
                 </div>
                 <ul className="space-y-1 text-[0.75rem] text-slate-700">
@@ -122,13 +122,13 @@ export default function OutilsProprietairePage() {
                 </ul>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 opacity-70">
                 <div className="inline-flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
                     📋
                   </div>
                   <p className="text-xs font-semibold text-slate-900">
-                    États des lieux & documents
+                    États des lieux & documents (bientôt)
                   </p>
                 </div>
                 <ul className="space-y-1 text-[0.75rem] text-slate-700">
