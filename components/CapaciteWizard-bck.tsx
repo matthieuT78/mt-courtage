@@ -165,7 +165,7 @@ function buildActionPlan(
 export type CapaciteWizardProps = {
   /** Afficher ou non le bouton de sauvegarde */
   showSaveButton?: boolean;
-  /** Flouter ou non l'analyse textuelle détaillée */
+  /** Flouter ou non l'analyse textuelle détaillée + plan d'action */
   blurAnalysis?: boolean;
 };
 
@@ -1033,30 +1033,19 @@ export default function CapaciteWizard({
               )}
             </div>
 
-                      {/* 🧭 Plan d'action vers le financement */}
+            {/* 🧭 Plan d'action vers le financement (flouté si non connecté) */}
             {actionPlanText && (
               blurAnalysis ? (
-                // Version floutée / grisée pour les utilisateurs non connectés
                 <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
+                    Option 5 – Plan d&apos;action vers le financement
+                  </p>
                   <div className="opacity-30 pointer-events-none">
                     {renderMultiline(actionPlanText)}
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
-                  <div className="relative mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-[0.7rem] text-slate-700 max-w-xs">
-                      Le plan d&apos;action détaillé (les 5 étapes concrètes pour
-                      aller vers le financement) est réservé aux comptes créés.
-                    </p>
-                    <a
-                      href="/mon-compte?mode=register&redirect=/capacite"
-                      className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
-                    >
-                      Créer mon espace &amp; débloquer le plan d&apos;action
-                    </a>
-                  </div>
                 </div>
               ) : (
-                // Version complète pour les utilisateurs connectés
                 <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
                     Option 5 – Plan d&apos;action vers le financement
@@ -1069,31 +1058,41 @@ export default function CapaciteWizard({
             {/* Analyse détaillée : floutée ou non selon blurAnalysis */}
             {blurAnalysis ? (
               <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
+                  Analyse détaillée de votre dossier
+                </p>
                 <div className="opacity-30 pointer-events-none">
                   {renderMultiline(resultCapaciteTexte)}
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
-                <div className="relative mt-2 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[0.7rem] text-slate-700 max-w-xs">
-                    L&apos;analyse complète (lecture bancaire, scénarios, export
-                    PDF, archivage…) est disponible dans la version avancée.
-                  </p>
-                  <a
-                    href="/mon-compte?mode=register&redirect=/capacite"
-                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
-                  >
-                    Créer mon espace &amp; débloquer l&apos;analyse détaillée
-                  </a>
-                </div>
               </div>
             ) : (
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
+                  Analyse détaillée de votre dossier
+                </p>
                 {renderMultiline(resultCapaciteTexte)}
                 <p className="mt-2 text-[0.65rem] text-slate-500">
                   Ces calculs sont fournis à titre indicatif et ne remplacent
                   pas une étude personnalisée par votre banque ou votre
                   courtier.
                 </p>
+              </div>
+            )}
+
+            {/* CTA unique quand flouté */}
+            {blurAnalysis && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3">
+                <p className="text-[0.7rem] text-slate-700 max-w-xs">
+                  Débloquez le plan d&apos;action complet et l&apos;analyse détaillée
+                  de votre dossier dans votre espace personnel.
+                </p>
+                <a
+                  href="/mon-compte?mode=register&redirect=/capacite"
+                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
+                >
+                  Créer mon espace &amp; débloquer les analyses détaillées
+                </a>
               </div>
             )}
 

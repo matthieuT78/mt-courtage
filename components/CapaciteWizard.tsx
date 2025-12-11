@@ -57,6 +57,9 @@ function InfoBadge({ text }: { text: string }) {
   );
 }
 
+/**
+ * ⚠️ NE PAS MODIFIER : logique de score IA conservée telle quelle
+ */
 function computeBankabilityScore(
   resume: ResumeCapacite,
   tauxEndettementCible: number
@@ -377,6 +380,17 @@ export default function CapaciteWizard({
       coutTotalProjetMax,
     };
 
+    // 🧠 IA : score + plan d'action (fonction inchangée)
+    const assessment = computeBankabilityScore(resume, tauxEndettementCible);
+    const actionPlan = buildActionPlan(
+      resume,
+      assessment,
+      tauxEndettementCible
+    );
+
+    // Petite analyse qualitative complémentaire (marge sous / au-dessus du taux cible)
+    const margeTaux = tauxEndettementCible - tauxAvecProjet;
+
     const lignes: string[] = [
       `Vos revenus mensuels pris en compte (salaires, autres revenus et 70 % des loyers locatifs) s’élèvent à ${formatEuro(
         revenusPrisEnCompte
@@ -407,15 +421,27 @@ export default function CapaciteWizard({
         : `La projection d’un prix de bien n’est pas pertinente avec ces paramètres : il peut être utile de retravailler la durée, l’apport ou les charges.`,
     ];
 
-    const texte = lignes.join("\n");
+    if (revenusPrisEnCompte > 0) {
+      if (margeTaux > 0.5) {
+        lignes.push(
+          `Avec le projet simulé, votre taux d’endettement resterait environ ${formatPct(
+            margeTaux
+          )} en dessous de la cible, ce qui laisse une petite marge de sécurité dans votre budget.`
+        );
+      } else if (margeTaux < -0.5) {
+        lignes.push(
+          `Avec le projet simulé, votre taux d’endettement dépasserait la cible d’environ ${formatPct(
+            -margeTaux
+          )}. Il sera nécessaire d’ajuster le prix du bien, la durée ou l’apport pour revenir dans les grilles habituelles des banques.`
+        );
+      } else {
+        lignes.push(
+          `Votre projet se situe très proche du taux d’endettement cible : le dossier reste jouable, mais la présentation et la qualité de gestion de vos comptes seront déterminantes.`
+        );
+      }
+    }
 
-    // 🔢 IA : score + plan d'action
-    const assessment = computeBankabilityScore(resume, tauxEndettementCible);
-    const actionPlan = buildActionPlan(
-      resume,
-      assessment,
-      tauxEndettementCible
-    );
+    const texte = lignes.join("\n");
 
     setResumeCapacite(resume);
     setResultCapaciteTexte(texte);
@@ -1036,14 +1062,16 @@ export default function CapaciteWizard({
             {/* 🧭 Plan d'action vers le financement (flouté si non connecté) */}
             {actionPlanText && (
               blurAnalysis ? (
-                <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
+                <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3">
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
                     Option 5 – Plan d&apos;action vers le financement
                   </p>
-                  <div className="opacity-30 pointer-events-none">
-                    {renderMultiline(actionPlanText)}
+                  <div className="relative overflow-hidden mt-1">
+                    <div className="opacity-30 pointer-events-none relative z-10">
+                      {renderMultiline(actionPlanText)}
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
                 </div>
               ) : (
                 <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
@@ -1057,14 +1085,16 @@ export default function CapaciteWizard({
 
             {/* Analyse détaillée : floutée ou non selon blurAnalysis */}
             {blurAnalysis ? (
-              <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
+              <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
                   Analyse détaillée de votre dossier
                 </p>
-                <div className="opacity-30 pointer-events-none">
-                  {renderMultiline(resultCapaciteTexte)}
+                <div className="relative overflow-hidden mt-1">
+                  <div className="opacity-30 pointer-events-none relative z-10">
+                    {renderMultiline(resultCapaciteTexte)}
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
               </div>
             ) : (
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
