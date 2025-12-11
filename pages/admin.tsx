@@ -3,9 +3,24 @@ import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAILS || "";
+// --------------------- Config admin ---------------------
+// Permet d'avoir plusieurs emails admin séparés par des virgules
+// ex : NEXT_PUBLIC_ADMIN_EMAILS="matthieu.turbier@gmail.com,autre@mail.com"
+const ADMIN_EMAILS =
+  process.env.NEXT_PUBLIC_ADMIN_EMAILS || process.env.ADMIN_EMAILS || "";
 
-// Types de base
+const adminEmailSet = new Set(
+  ADMIN_EMAILS.split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+);
+
+function isAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  return adminEmailSet.has(email.toLowerCase());
+}
+
+// --------------------- Types ---------------------
 type SimpleUser = {
   id?: string;
   email?: string;
@@ -40,15 +55,6 @@ type AppSettings = {
   frais_agence_defaut: number | null;
 };
 
-function formatEuro(val: number) {
-  if (Number.isNaN(val)) return "-";
-  return val.toLocaleString("fr-FR", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  });
-}
-
 export default function AdminPage() {
   const [user, setUser] = useState<SimpleUser | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
@@ -58,12 +64,17 @@ export default function AdminPage() {
   // Métriques globales
   const [totalUsers, setTotalUsers] = useState<number | null>(null);
   const [totalProjects, setTotalProjects] = useState<number | null>(null);
+  const [newUsers30d, setNewUsers30d] = useState<number | null>(null);
 
   // Stats simulateurs
   const [simStats, setSimStats] = useState<SimStat[]>([]);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  // Recherche utilisateur
+  // Liste des derniers utilisateurs
+  const [recentUsers, setRecentUsers] = useState<Profile[]>([]);
+  const [loadingRecentUsers, setLoadingRecentUsers] = useState(false);
+
+  // Recherche utilisateur (on la garde, en complément)
   const [searchEmail, setSearchEmail] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [loadingUserSearch, setLoadingUserSearch] = useState(false);
@@ -87,73 +98,27 @@ export default function AdminPage() {
   useEffect(() => {
     let isMounted = true;
 
-    const init = async () => {
-      try {
-        if (!supabase) {
-          setAuthError(
-            "Supabase n'est pas configuré côté frontend. Vérifie lib/supabaseClient."
-          );
-          setIsAdmin(false);
-          return;
-        }
-
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-
-        const sessUser = data.session?.user ?? null;
-
-        if (!sessUser) {
-          // Pas connecté → redirection vers login
-          setAuthError("Vous devez être connecté pour accéder à l'administration.");
-          setIsAdmin(false);
-          if (typeof window !== "undefined") {
-            window.location.href = "/mon-compte?mode=login&redirect=/admin";
-          }
-          return;
-        }
-
-        if (!isMounted) return;
-        setUser(sessUser);
-
-        const email = sessUser.email || "";
-        const isAdminEmailMatch =
-          ADMIN_EMAIL && email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
-        if (!isAdminEmailMatch) {
-          setAuthError(
-            "Accès refusé : ce compte n'est pas autorisé à accéder à l'administration."
-          );
-          setIsAdmin(false);
-          return;
-        }
-
-        // ✅ OK admin
-        setIsAdmin(true);
-        setAuthError(null);
-
-        // Charger les données du dashboard
-        await Promise.all([
-          loadGlobalMetrics(),
-          loadSimStats(),
-          loadSettingsFromDb(),
-        ]);
-      } catch (e: any) {
-        console.error("Erreur init admin:", e);
-        setAuthError(e?.message || "Erreur inconnue.");
-        setIsAdmin(false);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
     const loadGlobalMetrics = async () => {
       try {
-        // Total users (table "profiles" à adapter si besoin)
+        // Total users
         const { count: usersCount, error: usersError } = await supabase
           .from("profiles")
           .select("id", { count: "exact", head: true });
         if (!usersError) {
           setTotalUsers(usersCount ?? 0);
+        }
+
+        // Nouveaux utilisateurs sur 30 jours
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const { count: newUsersCount, error: newUsersError } = await supabase
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .gte("created_at", thirtyDaysAgo.toISOString());
+
+        if (!newUsersError) {
+          setNewUsers30d(newUsersCount ?? 0);
         }
 
         // Total projects
@@ -233,6 +198,85 @@ export default function AdminPage() {
         setSettings(next);
       } finally {
         setLoadingSettings(false);
+      }
+    };
+
+    const loadRecentUsers = async () => {
+      try {
+        setLoadingRecentUsers(true);
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, email, full_name, is_admin, created_at")
+          .order("created_at", { ascending: false })
+          .limit(50); // les 50 derniers
+
+        if (error) {
+          console.error("Erreur chargement derniers utilisateurs:", error);
+          return;
+        }
+
+        setRecentUsers((data || []) as Profile[]);
+      } finally {
+        setLoadingRecentUsers(false);
+      }
+    };
+
+    const init = async () => {
+      try {
+        if (!supabase) {
+          setAuthError(
+            "Supabase n'est pas configuré côté frontend. Vérifie lib/supabaseClient."
+          );
+          setIsAdmin(false);
+          return;
+        }
+
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        const sessUser = data.session?.user ?? null;
+
+        if (!sessUser) {
+          // Pas connecté → redirection vers login
+          setAuthError("Vous devez être connecté pour accéder à l'administration.");
+          setIsAdmin(false);
+          if (typeof window !== "undefined") {
+            window.location.href = "/mon-compte?mode=login&redirect=/admin";
+          }
+          return;
+        }
+
+        if (!isMounted) return;
+        setUser(sessUser);
+
+        const email = sessUser.email || "";
+        const isAdminEmailMatch = isAdminEmail(email);
+
+        if (!isAdminEmailMatch) {
+          setAuthError(
+            "Accès refusé : ce compte n'est pas autorisé à accéder à l'administration."
+          );
+          setIsAdmin(false);
+          return;
+        }
+
+        // ✅ OK admin
+        setIsAdmin(true);
+        setAuthError(null);
+
+        // Charger les données du dashboard
+        await Promise.all([
+          loadGlobalMetrics(),
+          loadSimStats(),
+          loadSettingsFromDb(),
+          loadRecentUsers(),
+        ]);
+      } catch (e: any) {
+        console.error("Erreur init admin:", e);
+        setAuthError(e?.message || "Erreur inconnue.");
+        setIsAdmin(false);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     };
 
@@ -398,12 +442,16 @@ export default function AdminPage() {
           </h1>
           <p className="text-xs text-slate-600 max-w-2xl">
             Vue globale sur les utilisateurs, les projets et l&apos;usage des
-            simulateurs. Accès réservé à l&apos;administrateur ({ADMIN_EMAIL || "non configuré"}).
+            simulateurs. Accès réservé aux comptes admin configurés dans{" "}
+            <code className="font-mono text-[0.7rem] bg-slate-100 px-1 py-0.5 rounded">
+              NEXT_PUBLIC_ADMIN_EMAILS
+            </code>{" "}
+            ({ADMIN_EMAILS || "non configuré"}).
           </p>
         </section>
 
         {/* Metrics haut de page */}
-        <section className="grid gap-3 sm:grid-cols-3">
+        <section className="grid gap-3 sm:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm px-4 py-3">
             <p className="text-[0.65rem] uppercase tracking-[0.14em] text-slate-500">
               Utilisateurs inscrits
@@ -413,6 +461,17 @@ export default function AdminPage() {
             </p>
             <p className="mt-1 text-[0.75rem] text-slate-500">
               Basé sur la table <code className="font-mono">profiles</code>.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm px-4 py-3">
+            <p className="text-[0.65rem] uppercase tracking-[0.14em] text-slate-500">
+              Nouveaux sur 30 jours
+            </p>
+            <p className="mt-1 text-xl font-semibold text-slate-900">
+              {newUsers30d ?? "-"}
+            </p>
+            <p className="mt-1 text-[0.75rem] text-slate-500">
+              Profils créés sur les 30 derniers jours.
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm px-4 py-3">
@@ -443,7 +502,7 @@ export default function AdminPage() {
         <section className="grid gap-6 lg:grid-cols-2">
           {/* Colonne gauche : gestion utilisateurs / projets */}
           <div className="space-y-4">
-            {/* Recherche utilisateur */}
+            {/* Derniers utilisateurs */}
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -451,8 +510,107 @@ export default function AdminPage() {
                     Utilisateurs
                   </p>
                   <h2 className="text-sm font-semibold text-slate-900">
-                    Rechercher un utilisateur par email
+                    Derniers utilisateurs inscrits
                   </h2>
+                  <p className="text-[0.75rem] text-slate-500">
+                    Cliquez sur une ligne pour afficher tous les projets de
+                    l&apos;utilisateur.
+                  </p>
+                </div>
+                <p className="text-[0.7rem] text-slate-500">
+                  {recentUsers.length} affiché(s)
+                </p>
+              </div>
+
+              {loadingRecentUsers ? (
+                <p className="text-[0.75rem] text-slate-500">
+                  Chargement des utilisateurs…
+                </p>
+              ) : recentUsers.length === 0 ? (
+                <p className="text-[0.75rem] text-slate-500">
+                  Aucun profil trouvé dans la table{" "}
+                  <code className="font-mono">profiles</code>.
+                </p>
+              ) : (
+                <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-100">
+                  <table className="min-w-full text-left text-[0.8rem]">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-3 py-2 font-semibold text-slate-600">
+                          Email
+                        </th>
+                        <th className="px-3 py-2 font-semibold text-slate-600">
+                          Nom
+                        </th>
+                        <th className="px-3 py-2 font-semibold text-slate-600">
+                          Rôle
+                        </th>
+                        <th className="px-3 py-2 font-semibold text-slate-600">
+                          Créé le
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentUsers.map((u) => (
+                        <tr
+                          key={u.id}
+                          className={
+                            "border-b border-slate-100 hover:bg-emerald-50/40 cursor-pointer" +
+                            (selectedUser?.id === u.id
+                              ? " bg-emerald-50"
+                              : "")
+                          }
+                          onClick={() => handleSelectUser(u)}
+                        >
+                          <td className="px-3 py-2 text-slate-800">
+                            {u.email}
+                          </td>
+                          <td className="px-3 py-2 text-slate-800">
+                            {u.full_name || (
+                              <span className="text-slate-400 italic">
+                                Non renseigné
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {u.is_admin ? (
+                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[0.7rem] font-medium text-emerald-700 border border-emerald-100">
+                                Admin
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 text-[0.7rem] font-medium text-slate-600 border border-slate-200">
+                                Utilisateur
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">
+                            {u.created_at
+                              ? new Date(
+                                  u.created_at
+                                ).toLocaleDateString("fr-FR")
+                              : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Recherche utilisateur (complémentaire) */}
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                    Recherche avancée
+                  </p>
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    Filtrer un utilisateur par email
+                  </h2>
+                  <p className="text-[0.75rem] text-slate-500">
+                    Optionnel : utile si tu veux retrouver un email précis.
+                  </p>
                 </div>
               </div>
 
@@ -475,7 +633,7 @@ export default function AdminPage() {
               </div>
 
               {searchResults.length > 0 && (
-                <div className="mt-2 max-h-60 overflow-y-auto space-y-1">
+                <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
                   {searchResults.map((u) => (
                     <button
                       key={u.id}
@@ -508,8 +666,8 @@ export default function AdminPage() {
 
               {searchResults.length === 0 && !loadingUserSearch && (
                 <p className="text-[0.75rem] text-slate-500">
-                  Saisissez une adresse email (ou une partie) puis lancez la
-                  recherche.
+                  Tu peux te contenter de la liste ci-dessus, ou filtrer par email
+                  ici si besoin.
                 </p>
               )}
             </div>
@@ -529,8 +687,8 @@ export default function AdminPage() {
 
               {!selectedUser && (
                 <p className="text-[0.75rem] text-slate-500">
-                  Sélectionnez d&apos;abord un utilisateur dans la liste de
-                  recherche ci-dessus.
+                  Clique sur un utilisateur dans la liste au-dessus pour voir ses
+                  projets.
                 </p>
               )}
 
