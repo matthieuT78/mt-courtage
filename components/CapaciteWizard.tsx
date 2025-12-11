@@ -105,7 +105,7 @@ function computeBankabilityScore(
       "Le taux d'endettement envisagé dépasse le seuil cible : il faudra retravailler le projet (durée, apport, crédits en cours) pour maximiser les chances d'accord.";
   } else {
     score = 35;
-    label: "Profil fragile";
+    label = "Profil fragile";
     comment =
       "Le taux d'endettement ressort nettement au-dessus des standards usuels. Sans ajustement, le projet risque d'être refusé par la plupart des banques.";
   }
@@ -114,147 +114,173 @@ function computeBankabilityScore(
 }
 
 /**
- * Plan d'action : on évite ici de répéter toutes les valeurs chiffrées
- * déjà présentes dans l'analyse détaillée.
+ * Nouveau plan d'action : concret & exploitable
  */
 function buildActionPlan(
   resume: ResumeCapacite,
   assessment: BankabilityAssessment,
-  tauxEndettementCible: number
+  tauxEndettementCible: number,
+  context: {
+    nbCredits: number;
+    typesCredits: TypeCredit[];
+    mensualitesCredits: number[];
+    resteAnneesCredits: number[];
+    tauxCredits: number[];
+    tauxCreditCible: number;
+    dureeCreditCible: number;
+  }
 ): string {
   const lignes: string[] = [];
-
-  const margeTaux =
+  const chargesActuelles =
+    resume.mensualitesExistantes + resume.chargesHorsCredits;
+  const margeSousCible =
     tauxEndettementCible - resume.tauxEndettementAvecProjet;
+  const depassementCible =
+    resume.tauxEndettementAvecProjet - tauxEndettementCible;
 
-  const mensualiteMax = resume.mensualiteMax;
-  const tauxEndettementProjet = resume.tauxEndettementAvecProjet;
-  const tauxActuel = resume.tauxEndettementActuel;
+  const {
+    nbCredits,
+    typesCredits,
+    mensualitesCredits,
+    resteAnneesCredits,
+    tauxCredits,
+    tauxCreditCible,
+    dureeCreditCible,
+  } = context;
 
-  lignes.push(
-    `Voici les actions concrètes pour augmenter votre score de bancabilité et maximiser vos chances d’obtenir un financement :`
+  // Analyse des crédits conso (perso, auto, conso)
+  const consoIndexes: number[] = [];
+  for (let i = 0; i < nbCredits; i++) {
+    const t = typesCredits[i];
+    if (t === "perso" || t === "auto" || t === "conso") {
+      consoIndexes.push(i);
+    }
+  }
+
+  const totalMensuConso = consoIndexes.reduce(
+    (sum, idx) => sum + (mensualitesCredits[idx] || 0),
+    0
   );
 
-  // 1️⃣ Vérification des données
-  lignes.push(
-    `1. ✔️ Vérifier les données du dossier : revenus retenus ${formatEuro(
+  let maxConsoMensu = 0;
+  let maxConsoIdx: number | null = null;
+
+  consoIndexes.forEach((idx) => {
+    const m = mensualitesCredits[idx] || 0;
+    if (m > maxConsoMensu) {
+      maxConsoMensu = m;
+      maxConsoIdx = idx;
+    }
+  });
+
+  // Étapes numérotées dynamiques
+  let step = 1;
+  const addStep = (text: string) => {
+    lignes.push(`${step}. ${text}`);
+    step++;
+  };
+
+  // 1. Vérification des chiffres
+  addStep(
+    `Valider vos chiffres : revenus pris en compte à ${formatEuro(
       resume.revenusPrisEnCompte
-    )}, charges et mensualités actuelles ${formatEuro(
-      resume.mensualitesExistantes + resume.chargesHorsCredits
-    )}.`
+    )}, charges et mensualités actuelles à ${formatEuro(
+      chargesActuelles
+    )}. Assurez-vous que ces montants correspondent à vos justificatifs (fiches de paie, avis d’imposition, tableaux d’amortissement, etc.).`
   );
 
-  // 2️⃣ Impact du taux négocié
-  const gainTaux = mensualiteMax * 0.003 * 300; // simulation réaliste simplifiée
-  lignes.push(
-    `2. 🎯 Négocier le taux du prêt : une baisse de **0,30 %** augmenterait votre capacité d’emprunt d’environ **${formatEuro(
-      gainTaux
-    )}**, ce qui améliorerait votre score IA d’environ **+8 à +12 points**.`
-  );
-
-  // 3️⃣ Analyse des crédits conso
-  const creditsConso = resume.mensualitesExistantes > 0;
-  if (creditsConso) {
-    lignes.push(
-      `3. 🔧 Optimiser vos crédits en cours :`
+  // 2. Action sur le taux / le projet
+  const tauxNegocieCible = Math.max(tauxCreditCible - 0.3, 0.5);
+  if (depassementCible > 0.2) {
+    addStep(
+      `Ajuster le projet pour revenir sous la cible d’endettement : votre taux d’endettement projeté est d’environ ${formatPct(
+        resume.tauxEndettementAvecProjet
+      )} pour une cible à ${formatPct(
+        tauxEndettementCible
+      )}. En pratique, cela signifie qu’il faut réduire la mensualité cible d’environ ${formatEuro(
+        resume.mensualiteMax * (depassementCible / tauxEndettementCible)
+      )} ou bien viser un prix de bien plus bas / un apport plus élevé.`
     );
-    lignes.push(
-      `   • fermer ou regrouper un crédit consommation pourrait réduire vos charges de **${formatEuro(
-        80
-      )} à ${formatEuro(200)}**, améliorant votre taux d’endettement de **1,5 à 3 points**.`
-    );
-    lignes.push(
-      `   • un regroupement de deux petits crédits permettrait de ramener le taux d’endettement à **${formatPct(
-        tauxEndettementProjet - 1.5
-      )}**, vous faisant passer dans une catégorie bancaire plus favorable.`
-    );
-  }
-
-  // 4️⃣ Ajustement du projet immobilier
-  if (resume.prixBienMax > 0) {
-    lignes.push(
-      `4. 🏡 Ajuster légèrement votre projet immobilier : viser un bien autour de **${formatEuro(
-        resume.prixBienMax * 0.9
-      )}** (soit -10 %) augmenterait mécaniquement votre score de bancabilité.`
-    );
-  }
-
-  // 5️⃣ Durée de crédit
-  lignes.push(
-    `5. ⏳ Étendre la durée du crédit : passer de 20 à 25 ans permet souvent de dégager **${formatEuro(
-      mensualiteMax * 0.15
-    )}** de capacité supplémentaire, améliorant le score IA jusqu’à **+10 points**.`
-  );
-
-  // 6️⃣ Apport stratégique
-  lignes.push(
-    `6. 💰 Constituer un apport complémentaire de **5 %** (via épargne, déblocage PEE, ou vente secondaire) réduit immédiatement le besoin de financement et améliore le score IA de **+5 à +8 points**.`
-  );
-
-  // 7️⃣ Gestion des comptes
-  lignes.push(
-    `7. 📊 Soigner les relevés bancaires : trois mois sans découvert, dépenses maîtrisées, et épargne régulière augmentent fortement l’attractivité du dossier.`
-  );
-
-  // 8️⃣ Stratégie multi-banques & courtier
-  lignes.push(
-    `8. 🏦 Présenter votre dossier à plusieurs banques / courtier : certains établissements valorisent davantage les revenus élevés, d’autres la stabilité ou l’épargne.`
-  );
-
-  // 9️⃣ Conclusion personnalisée selon score
-  if (assessment.score >= 80) {
-    lignes.push(
-      `✔️ Votre dossier est déjà solide. En appliquant 2 ou 3 optimisations ci-dessus, vous obtenez un dossier premium.`
-    );
-  } else if (assessment.score >= 60) {
-    lignes.push(
-      `⚠️ Votre dossier est finançable mais fragile. Deux actions prioritaires : optimisation du taux et réduction des crédits conso.`
+  } else if (margeSousCible > 0) {
+    addStep(
+      `Confirmer que le projet reste dans une zone acceptable : avec un taux d’endettement projeté de ${formatPct(
+        resume.tauxEndettementAvecProjet
+      )} pour une cible à ${formatPct(
+        tauxEndettementCible
+      )}, vous disposez d’une marge d’environ ${formatPct(
+        margeSousCible
+      )}. Cela vous permet de discuter plus sereinement des conditions avec la banque.`
     );
   } else {
-    lignes.push(
-      `❗ Votre dossier nécessite un travail préparatoire. Priorité : baisse des charges, stratégie d’apport et optimisation de durée avant dépôt bancaire.`
+    addStep(
+      `Maintenir un projet raisonnable : votre taux d’endettement projeté est très proche de la cible. Évitez d’augmenter la mensualité ou le prix du bien pour garder un dossier défendable.`
     );
   }
 
-  lignes.push(
-    `Ces actions visent à augmenter votre score de bancabilité et à sécuriser un accord bancaire dans les meilleures conditions.`
+  // 3. Négociation du taux du futur prêt
+  addStep(
+    `Préparer une négociation du taux sur le nouveau prêt : vous partez sur une hypothèse de ${tauxCreditCible.toLocaleString(
+      "fr-FR",
+      { maximumFractionDigits: 2 }
+    )} % sur ${dureeCreditCible} ans. Visez au moins ${tauxNegocieCible.toLocaleString(
+      "fr-FR",
+      { maximumFractionDigits: 2 }
+    )} % en mettant en avant votre stabilité de revenus et votre gestion de comptes. Même une baisse de 0,20 à 0,30 point de taux améliore mécaniquement votre taux d’endettement et votre score de bancabilité.`
   );
 
-  return lignes.join("\n");
-}
+  // 4. Plan spécifique sur les crédits conso si présents
+  if (consoIndexes.length > 0) {
+    const nbConso = consoIndexes.length;
+    addStep(
+      `Travailler vos crédits à la consommation : vous avez actuellement ${nbConso} crédit(s) conso (perso/auto/conso) pour une mensualité totale d’environ ${formatEuro(
+        totalMensuConso
+      )}. Réduire ces mensualités est l’un des leviers les plus efficaces pour améliorer votre bancabilité.`
+    );
 
-  lignes.push(
-    `1. Valider vos chiffres : vérifiez que les revenus, charges et crédits en cours saisis ci-dessus correspondent bien à vos justificatifs (fiches de paie, avis d’imposition, tableaux d’amortissement, etc.).`
-  );
+    if (maxConsoIdx !== null && maxConsoMensu > 0) {
+      const reste = resteAnneesCredits[maxConsoIdx] || 0;
+      const taux = tauxCredits[maxConsoIdx] || 0;
 
-  if (assessment.score >= 80) {
+      lignes.push(
+        `   • Option A – Rembourser en priorité le plus gros crédit conso : ciblez le crédit d’environ ${formatEuro(
+          maxConsoMensu
+        )}/mois (reste ~${reste} an(s), taux ~${taux.toLocaleString("fr-FR", {
+          maximumFractionDigits: 2,
+        })} %). En vous fixant un plan de remboursement agressif sur 6–12 mois (en affectant par exemple 200–300 € d’effort d’épargne par mois), vous supprimez cette mensualité et améliorez nettement votre taux d’endettement.`
+      );
+    }
+
     lignes.push(
-      `2. Consolider un dossier "propre" : rassemblez bulletins de salaire, derniers avis d’imposition, relevés de comptes sur 3 mois et éventuels actes de propriété pour démontrer la solidité de votre profil.`
+      `   • Option B – Regroupement de crédits : si le remboursement anticipé est difficile, étudiez un regroupement de vos crédits conso pour allonger légèrement la durée et réduire la mensualité globale. L’objectif n’est pas d’emprunter plus, mais de diminuer la charge mensuelle en vue du projet immo.`
     );
+
     lignes.push(
-      `3. Mettre en avant la marge de sécurité : votre taux d'endettement reste sous la cible, ce qui constitue un bon levier pour négocier les conditions de taux, d’assurance et de frais de dossier.`
+      `   • Suivi de l’impact : chaque ${formatEuro(
+        50
+      )} à ${formatEuro(
+        100
+      )} de mensualités conso en moins se traduit par une amélioration de votre taux d’endettement projeté et donc de votre score de bancabilité.`
     );
-  } else if (assessment.score >= 60) {
-    lignes.push(
-      `2. Sécuriser le projet : jouer sur la durée de crédit ou l’apport (si possible) pour améliorer légèrement le taux d’endettement et gagner en confort de trésorerie.`
-    );
-    lignes.push(
-      `3. Soigner la présentation : insister sur la stabilité des revenus (CDI, ancienneté, secteur d’activité), la régularité de l’épargne et une gestion de comptes sans incidents pour rassurer le banquier.`
+  }
+
+  // 5. Plan d’épargne / apport
+  if (assessment.score <= 60) {
+    addStep(
+      `Mettre en place un plan d’épargne dédié à l’apport : en mettant de côté par exemple 200–300 € par mois sur 6–12 mois, vous pouvez constituer un apport supplémentaire de quelques milliers d’euros. Cela permet soit de réduire le montant à financer, soit de compenser un dossier un peu juste sur le taux d’endettement.`
     );
   } else {
-    lignes.push(
-      `2. Réduire les charges avant de déposer le dossier : solder ou regrouper certains crédits à la consommation, renégocier des abonnements ou revoir certaines dépenses récurrentes pour libérer de la capacité.`
-    );
-    lignes.push(
-      `3. Adapter le projet : viser un prix de bien inférieur au budget calculé, augmenter l’apport si possible ou allonger la durée de manière raisonnable afin de rapprocher le taux d’endettement de la cible.`
-    );
-    lignes.push(
-      `4. Construire un plan sur 6–12 mois : période durant laquelle vous pourrez réduire l’endettement, renforcer votre épargne et revenir avec un dossier plus solide et un taux d’endettement mieux positionné.`
+    addStep(
+      `Optimiser votre apport : si vous pouvez augmenter légèrement l’apport (vente d’un véhicule secondaire, épargne disponible, aide familiale), cela réduit le capital à financer et améliore la perception de votre dossier par la banque.`
     );
   }
 
-  lignes.push(
-    `5. Faire le tour des banques / d’un courtier : une fois ces actions engagées, présentez le dossier à plusieurs établissements pour comparer les réponses et les conditions (taux, assurance, frais).`
+  // 6. Préparation du dossier & choix des banques
+  addStep(
+    `Préparer un dossier irréprochable : imprimez vos trois derniers relevés de comptes, vos bulletins de salaire et avis d’imposition, ainsi qu’un récapitulatif clair de vos crédits (montant restant dû, mensualités, durées). L’objectif est de montrer une gestion de comptes propre (pas de découverts récurrents, pas de rejets de prélèvements).`
+  );
+
+  addStep(
+    `Faire le tour des banques / d’un courtier : une fois ces actions engagées (ou au moins planifiées noir sur blanc), présentez votre dossier à plusieurs établissements ou à un courtier. Mettez en avant : 1) les actions déjà réalisées (remboursement/optimisation de crédits conso, épargne, négociation de taux), 2) la trajectoire de votre taux d’endettement vers ou sous la cible, 3) la stabilité de vos revenus.`
   );
 
   return lignes.join("\n");
@@ -475,58 +501,6 @@ export default function CapaciteWizard({
       coutTotalProjetMax,
     };
 
-// -------- Résumé des crédits pour le plan d'action --------
-    let nbCreditsConso = 0;
-    let totalMensualitesConso = 0;
-    let smallestMensualiteConso: number | null = null;
-
-    for (let i = 0; i < nbCredits; i++) {
-      const type = typesCredits[i];
-      const mensu = mensualitesCredits[i] || 0;
-
-      if (type && type !== "immo" && mensu > 0) {
-        nbCreditsConso++;
-        totalMensualitesConso += mensu;
-        if (smallestMensualiteConso === null || mensu < smallestMensualiteConso) {
-          smallestMensualiteConso = mensu;
-        }
-      }
-    }
-
-    const creditSummary = {
-      nbCredits,
-      nbCreditsConso,
-      totalMensualitesConso,
-      smallestMensualiteConso,
-    };
-
-    // 🔢 IA : score + plan d'action
-    const assessment = computeBankabilityScore(resume, tauxEndettementCible);
-    const actionPlan = buildActionPlan(
-      resume,
-      assessment,
-      tauxEndettementCible,
-      {
-        tauxCreditCible,
-        dureeCreditCible,
-        creditSummary,
-      }
-    );
-
-
-    // Analyse qualitative complémentaire
-    const margeTaux = tauxEndettementCible - tauxAvecProjet;
-    const partCredits =
-      revenusPrisEnCompte > 0
-        ? (mensualitesExistantes / revenusPrisEnCompte) * 100
-        : 0;
-    const partChargesHors =
-      revenusPrisEnCompte > 0 ? (chargesHors / revenusPrisEnCompte) * 100 : 0;
-    const effortLogementPotentiel =
-      revenusPrisEnCompte > 0
-        ? (capaciteMensuelle / revenusPrisEnCompte) * 100
-        : 0;
-
     const lignes: string[] = [
       `Vos revenus mensuels pris en compte (salaires, autres revenus et 70 % des loyers locatifs) s’élèvent à ${formatEuro(
         revenusPrisEnCompte
@@ -557,43 +531,24 @@ export default function CapaciteWizard({
         : `La projection d’un prix de bien n’est pas pertinente avec ces paramètres : il peut être utile de retravailler la durée, l’apport ou les charges.`,
     ];
 
-    if (revenusPrisEnCompte > 0) {
-      lignes.push(
-        `Aujourd’hui, vos crédits en cours représentent environ ${formatPct(
-          partCredits
-        )} de vos revenus, et vos autres charges fixes environ ${formatPct(
-          partChargesHors
-        )}.`
-      );
-
-      if (capaciteMensuelle > 0) {
-        lignes.push(
-          `L’effort mensuel potentiel lié au nouveau prêt serait d’environ ${formatPct(
-            effortLogementPotentiel
-          )} de vos revenus, en ligne avec le taux d’endettement cible que vous avez choisi.`
-        );
-      }
-
-      if (margeTaux > 0.5) {
-        lignes.push(
-          `Avec le projet simulé, votre taux d’endettement resterait environ ${formatPct(
-            margeTaux
-          )} en dessous de la cible, ce qui laisse une petite marge de sécurité dans votre budget.`
-        );
-      } else if (margeTaux < -0.5) {
-        lignes.push(
-          `Avec le projet simulé, votre taux d’endettement dépasserait la cible d’environ ${formatPct(
-            -margeTaux
-          )}. Il sera nécessaire d’ajuster le prix du bien, la durée ou l’apport pour rester dans les grilles habituelles des banques.`
-        );
-      } else {
-        lignes.push(
-          `Votre projet se situe très proche du taux d’endettement cible : le dossier reste jouable, mais la présentation et la qualité de gestion de vos comptes seront déterminantes pour l’accord.`
-        );
-      }
-    }
-
     const texte = lignes.join("\n");
+
+    // 🔢 IA : score + plan d'action (logique de score conservée)
+    const assessment = computeBankabilityScore(resume, tauxEndettementCible);
+    const actionPlan = buildActionPlan(
+      resume,
+      assessment,
+      tauxEndettementCible,
+      {
+        nbCredits,
+        typesCredits,
+        mensualitesCredits,
+        resteAnneesCredits,
+        tauxCredits,
+        tauxCreditCible,
+        dureeCreditCible,
+      }
+    );
 
     setResumeCapacite(resume);
     setResultCapaciteTexte(texte);
@@ -1216,7 +1171,7 @@ export default function CapaciteWizard({
               blurAnalysis ? (
                 <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
-                    Plan d&apos;action vers le financement
+                    Option 5 – Plan d&apos;action vers le financement
                   </p>
                   <div className="opacity-30 pointer-events-none">
                     {renderMultiline(actionPlanText)}
@@ -1245,7 +1200,7 @@ export default function CapaciteWizard({
                 <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
               </div>
             ) : (
-              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <div className="mt-4 rounded- xl border border-slate-200 bg-slate-50 px-3 py-3">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
                   Analyse détaillée de votre dossier
                 </p>
