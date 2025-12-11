@@ -104,15 +104,34 @@ export default function PretRelaisPage() {
     const mensualiteNouveauMax = plafondEndettement - autresMens;
 
     if (mensualiteNouveauMax <= 0) {
-      const msg = [
-        `Avec un revenu de ${formatEuro(
+      const section1 = [
+        "1. Revenus et endettement",
+        `Vous avez indiqué un revenu net mensuel de ${formatEuro(
           revenus
-        )} et des autres mensualités de ${formatEuro(autresMens)},`,
-        `le plafond d’endettement à ${tauxEndettement.toFixed(
+        )} et des autres mensualités de crédits de ${formatEuro(autresMens)}.`,
+        `Avec un taux d’endettement cible de ${tauxEndettement.toFixed(
           0
-        )} % ne laisse aucune marge pour un nouveau crédit.`,
-        `Dans cette configuration, le projet d’achat devra être retravaillé (prix du bien, durée, apport, remboursement anticipé, etc.).`,
-      ].join("\n");
+        )} %, la charge totale maximale supportable est d’environ ${formatEuro(
+          plafondEndettement
+        )} par mois.`,
+      ];
+
+      const section2 = [
+        "2. Capacité actuelle insuffisante pour un nouveau prêt",
+        `En tenant compte de vos autres crédits, il ne reste aucune marge de mensualité disponible pour un nouveau prêt immobilier.`,
+        `Dans cette configuration, le projet d’achat devra être retravaillé (baisse du prix du bien, augmentation de la durée, hausse de l’apport, remboursement de certains crédits, etc.).`,
+      ];
+
+      const section3 = [
+        "3. Pistes d’action possibles",
+        `• Étudier le remboursement anticipé total ou partiel de certains crédits à la consommation.`,
+        `• Revoir le prix cible du nouveau bien à la baisse, au moins de façon temporaire.`,
+        `• Allonger la durée du futur prêt pour réduire la mensualité cible (dans la limite de l’âge et des pratiques bancaires).`,
+      ];
+
+      const msg = [section1.join("\n"), section2.join("\n"), section3.join("\n")].join(
+        "\n\n"
+      );
 
       setTexteDetail(msg);
       setResume(null);
@@ -132,8 +151,9 @@ export default function PretRelaisPage() {
     // 4) Budget d'achat total max
     const budgetMax = montantRelais + capitalNouveau + apport;
 
-    const message = [
-      `1. Revenus et endettement`,
+    // 🔎 Construction d'une analyse structurée par blocs
+    const section1 = [
+      "1. Revenus et endettement",
       `Vous avez indiqué un revenu net mensuel de ${formatEuro(
         revenus
       )} et des autres mensualités de crédits de ${formatEuro(autresMens)}.`,
@@ -142,17 +162,23 @@ export default function PretRelaisPage() {
       )} %, la charge totale maximale supportable est d’environ ${formatEuro(
         plafondEndettement
       )} par mois.`,
-      "",
-      `2. Estimation du prêt relais`,
+    ];
+
+    const section2 = [
+      "2. Estimation du prêt relais",
       `Valeur estimée du bien actuel : ${formatEuro(valeur)}.`,
       `Capital restant dû : ${formatEuro(crd)}.`,
-      `Part retenue par la banque : ${pctRetenu.toFixed(0)} %.`,
+      `Part retenue par la banque pour le calcul du relais : ${pctRetenu.toFixed(
+        0
+      )} %.`,
       `Montant théorique du prêt relais : ${formatEuro(montantRelais)}.`,
       `Au taux indicatif de ${formatPct(
         tauxRelais
-      )}, cela donne un ordre d'idée du coût financier du relais, mais les intérêts ne sont pas intégrés dans le calcul de capacité ci-dessous (logique long terme).`,
-      "",
-      `3. Capacité pour le nouveau prêt`,
+      )}, cela donne un ordre d'idée du coût financier du relais, mais les intérêts ne sont pas intégrés dans le calcul de capacité ci-dessous (on raisonne ici sur la soutenabilité long terme).`,
+    ];
+
+    const section3 = [
+      "3. Capacité pour le nouveau prêt immobilier",
       `Après prise en compte de vos autres crédits, la mensualité disponible pour le nouveau prêt immobilier est estimée à ${formatEuro(
         mensualiteNouveauMax
       )}.`,
@@ -161,8 +187,10 @@ export default function PretRelaisPage() {
       )} ans à ${formatPct(tauxNouveau)}, cela correspond à un capital empruntable d’environ ${formatEuro(
         capitalNouveau
       )}.`,
-      "",
-      `4. Budget d’achat total estimé`,
+    ];
+
+    const section4 = [
+      "4. Budget d’achat total estimé",
       `En ajoutant votre apport personnel (${formatEuro(
         apport
       )}) et le prêt relais (${formatEuro(
@@ -174,12 +202,21 @@ export default function PretRelaisPage() {
         ? `À titre de comparaison, le bien que vous visez actuellement est à ${formatEuro(
             prixCible
           )}.`
-        : "",
-      "",
-      `Ce calcul reste indicatif : chaque banque applique ses propres règles (prise en compte exacte du relais, plafond d’endettement, assurance, etc.).`,
-    ]
-      .filter(Boolean)
-      .join("\n");
+        : `Vous n’avez pas encore renseigné de prix cible : ce budget peut vous servir de repère pour vos recherches.`,
+    ].filter(Boolean) as string[];
+
+    const section5 = [
+      "5. À garder en tête",
+      `Ce calcul reste indicatif : chaque banque applique ses propres règles (prise en compte exacte du relais, taux et durée, assurance, éventuelle franchise sur les intérêts, etc.).`,
+    ];
+
+    const message = [
+      section1.join("\n"),
+      section2.join("\n"),
+      section3.join("\n"),
+      section4.join("\n"),
+      section5.join("\n"),
+    ].join("\n\n");
 
     setResume({
       montantRelais,
@@ -190,24 +227,48 @@ export default function PretRelaisPage() {
     setTexteDetail(message);
   };
 
-  // Analyse détaillée en petits blocs lisibles
+  // Analyse détaillée en blocs structurés (sections + paragraphes)
   const renderAnalysisBlocks = (text: string) => {
     if (!text) return null;
-    const lines = text.split("\n").filter((l) => l.trim().length > 0);
+
+    // On découpe par double saut de ligne = sections
+    const sections = text
+      .split(/\n\s*\n/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
 
     return (
-      <div className="space-y-2">
-        {lines.map((line, idx) => (
-          <div
-            key={idx}
-            className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white/70 px-3 py-2"
-          >
-            <span className="mt-1 text-xs text-amber-600">●</span>
-            <p className="text-[0.8rem] text-slate-800 leading-relaxed">
-              {line}
-            </p>
-          </div>
-        ))}
+      <div className="space-y-3">
+        {sections.map((section, idx) => {
+          const lines = section
+            .split("\n")
+            .map((l) => l.trim())
+            .filter((l) => l.length > 0);
+
+          if (lines.length === 0) return null;
+
+          const title = lines[0];
+          const body = lines.slice(1);
+
+          return (
+            <div
+              key={idx}
+              className="rounded-xl border border-slate-200 bg-white/80 px-3 py-3"
+            >
+              <p className="text-[0.75rem] font-semibold text-slate-900 mb-1">
+                {title}
+              </p>
+              {body.map((line, i) => (
+                <p
+                  key={i}
+                  className="text-[0.8rem] text-slate-700 leading-relaxed"
+                >
+                  {line}
+                </p>
+              ))}
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -583,6 +644,64 @@ export default function PretRelaisPage() {
             </p>
           </section>
         </div>
+
+        {/* 🔁 Rappel pédagogique sur le prêt relais */}
+        <section className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
+          <h3 className="text-sm font-semibold text-slate-900">
+            Rappel : comment fonctionne un prêt relais ?
+          </h3>
+          <p className="text-[0.8rem] text-slate-600">
+            Le prêt relais est un financement transitoire qui vous permet
+            d&apos;acheter un nouveau bien avant d&apos;avoir vendu l&apos;ancien. La banque
+            avance une partie de la valeur du bien à vendre, en attendant sa
+            vente définitive.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
+              <p className="text-[0.75rem] font-semibold text-emerald-800 mb-1">
+                Les principaux avantages
+              </p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li className="text-[0.8rem] text-slate-700">
+                  Vous pouvez acheter le nouveau bien sans attendre la vente de
+                  l&apos;ancien.
+                </li>
+                <li className="text-[0.8rem] text-slate-700">
+                  Vous évitez un déménagement intermédiaire ou une location
+                  temporaire.
+                </li>
+                <li className="text-[0.8rem] text-slate-700">
+                  La durée est généralement courte (12 à 24 mois), ce qui limite
+                  la période d&apos;incertitude.
+                </li>
+              </ul>
+            </div>
+            <div className="rounded-xl bg-rose-50 border border-rose-100 p-3">
+              <p className="text-[0.75rem] font-semibold text-rose-800 mb-1">
+                Points de vigilance
+              </p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li className="text-[0.8rem] text-slate-700">
+                  Si le bien se vend moins cher que prévu, il peut rester un
+                  capital à rembourser.
+                </li>
+                <li className="text-[0.8rem] text-slate-700">
+                  Tant que le bien n&apos;est pas vendu, vous supportez le coût du
+                  relais en plus de vos autres charges.
+                </li>
+                <li className="text-[0.8rem] text-slate-700">
+                  En cas de délai de vente long, la banque peut demander un
+                  remboursement ou une restructuration de la dette.
+                </li>
+              </ul>
+            </div>
+          </div>
+          <p className="text-[0.7rem] text-slate-500">
+            Ce rappel est volontairement simplifié. Un échange détaillé avec un
+            professionnel permet d&apos;adapter le montage (relais sec ou relais +
+            amortissable, franchise d&apos;intérêts, etc.) à votre situation.
+          </p>
+        </section>
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
