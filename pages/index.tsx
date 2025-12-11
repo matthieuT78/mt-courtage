@@ -1,51 +1,21 @@
-// pages/admin.tsx
+// pages/index.tsx
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
 type SimpleUser = {
-  id?: string;
   email?: string;
+  user_metadata?: {
+    full_name?: string;
+  };
 };
 
-type Profile = {
-  id: string;
-  full_name: string | null;
-  is_admin: boolean | null;
-  created_at?: string | null;
-};
-
-type AdminStats = {
-  totalUsers: number;
-  totalProjects: number;
-  byType: { type: string; count: number }[];
-};
-
-const ADMIN_EMAILS =
-  process.env.NEXT_PUBLIC_ADMIN_EMAILS || process.env.ADMIN_EMAILS || "";
-
-const adminEmailsSet = new Set(
-  ADMIN_EMAILS.split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-);
-
-function isAdminEmail(email?: string | null): boolean {
-  if (!email) return false;
-  return adminEmailsSet.has(email.toLowerCase());
-}
-
-export default function AdminPage() {
+export default function Home() {
   const [user, setUser] = useState<SimpleUser | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const router = useRouter();
 
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [loadingData, setLoadingData] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // 1) Récupération session + contrôle admin
   useEffect(() => {
     let isMounted = true;
 
@@ -54,370 +24,250 @@ export default function AdminPage() {
         if (!supabase) return;
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
-
         if (!isMounted) return;
-        const sessionUser = data.session?.user ?? null;
-        setUser(sessionUser);
-
-        const email = sessionUser?.email ?? null;
-        const isAdminFlag = isAdminEmail(email);
-        setIsAdmin(!!isAdminFlag);
+        setUser(data.session?.user ?? null);
       } catch (e) {
-        console.error("Erreur récupération session (admin)", e);
-        if (isMounted) {
-          setError(
-            "Erreur lors de la récupération de la session. Réessayez ou contactez l'administrateur."
-          );
-        }
-      } finally {
-        if (isMounted) setLoadingUser(false);
+        console.error("Erreur récupération session (home)", e);
       }
     };
 
     fetchSession();
 
+    const {
+      data: { subscription },
+    } =
+      supabase?.auth.onAuthStateChange((_event, session) => {
+        if (!isMounted) return;
+        setUser(session?.user ?? null);
+      }) ?? { data: { subscription: { unsubscribe: () => {} } } };
+
     return () => {
       isMounted = false;
+      subscription?.unsubscribe?.();
     };
   }, []);
 
-  // 2) Récupération des données admin (profils + stats)
-  useEffect(() => {
-    if (!isAdmin || !user) return;
+  const displayName =
+    user?.user_metadata?.full_name ||
+    (user?.email ? user.email.split("@")[0] : null);
 
-    let isMounted = true;
-    const loadData = async () => {
-      try {
-        setLoadingData(true);
-        setError(null);
+  const isLoggedIn = !!user;
 
-        // a) Profils
-        const { data: profilesData, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, full_name, is_admin, created_at")
-          .order("created_at", { ascending: false });
+  // 🔐 Navigation vers les 3 calculettes payantes
+  const goToProtectedTool = (path: string) => {
+    if (isLoggedIn) {
+      router.push(path);
+    } else {
+      router.push(
+        `/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`
+      );
+    }
+  };
 
-        if (profilesError) throw profilesError;
-
-        // b) Stats projets
-        const { data: projectsStats, error: statsError } = await supabase
-          .from("projects")
-          .select("type", { count: "exact", head: false });
-
-        if (statsError) throw statsError;
-
-        const totalUsers = profilesData?.length ?? 0;
-        const totalProjects = projectsStats?.length ?? 0;
-
-        // Regrouper par type
-        const byTypeMap = new Map<string, number>();
-        (projectsStats || []).forEach((p: any) => {
-          const t = p.type || "inconnu";
-          byTypeMap.set(t, (byTypeMap.get(t) || 0) + 1);
-        });
-        const byType: { type: string; count: number }[] = Array.from(
-          byTypeMap.entries()
-        ).map(([type, count]) => ({ type, count }));
-
-        if (!isMounted) return;
-        setProfiles(profilesData || []);
-        setStats({
-          totalUsers,
-          totalProjects,
-          byType,
-        });
-      } catch (e: any) {
-        console.error("Erreur chargement données admin :", e);
-        if (isMounted) {
-          setError(
-            "Erreur lors du chargement des données d'administration. Vérifiez la console ou Supabase."
-          );
-        }
-      } finally {
-        if (isMounted) setLoadingData(false);
-      }
-    };
-
-    loadData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isAdmin, user]);
-
-  // --- Rendus d'état ----
-  if (loadingUser) {
-    return (
-      <div className="min-h-screen flex flex-col bg-slate-100">
-        <AppHeader />
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-slate-500">Chargement de votre session…</p>
-        </main>
-      </div>
-    );
-  }
-
-  if (!user || !isAdmin) {
-    return (
-      <div className="min-h-screen flex flex-col bg-slate-100">
-        <AppHeader />
-        <main className="flex-1 flex items-center justify-center px-4">
-          <div className="max-w-md w-full rounded-2xl border border-red-200 bg-white shadow-sm p-6 text-center space-y-3">
-            <p className="text-xs uppercase tracking-[0.18em] text-red-500">
-              Accès administration refusé
-            </p>
-            <h1 className="text-lg font-semibold text-slate-900">
-              Accès refusé : ce compte n&apos;est pas autorisé à accéder à
-              l&apos;administration.
-            </h1>
-            <p className="text-sm text-slate-600">
-              Si vous pensez qu&apos;il s&apos;agit d&apos;une erreur, vérifiez que votre
-              adresse email figure bien dans la liste{" "}
-              <code className="px-1 py-0.5 rounded bg-slate-100 text-[0.75rem]">
-                ADMIN_EMAILS
-              </code>{" "}
-              ou{" "}
-              <code className="px-1 py-0.5 rounded bg-slate-100 text-[0.75rem]">
-                NEXT_PUBLIC_ADMIN_EMAILS
-              </code>{" "}
-              sur Vercel.
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // --- Page admin principale ---
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-6">
-        {/* En-tête */}
-        <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-emerald-600">
-              Administration
-            </p>
-            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              Tableau de bord administrateur
-            </h1>
-            <p className="text-xs text-slate-600 max-w-xl">
-              Vue d&apos;ensemble des utilisateurs, projets et outils de gestion de
-              la plateforme.
-            </p>
-          </div>
-          <div className="text-right text-[0.75rem] text-slate-500">
-            <p>Connecté en tant que :</p>
-            <p className="font-medium text-slate-800">
-              {user.email ?? "Email inconnu"}
-            </p>
-            <p className="text-emerald-600 font-semibold">Administrateur</p>
-          </div>
-        </section>
+      <main className="flex-1 px-4 py-6">
+        <div className="max-w-4xl mx-auto space-y-8">
+          {/* HERO / introduction */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-emerald-600">
+                Étude gratuite
+              </p>
+              <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
+                {displayName
+                  ? `Bonjour ${displayName}, estimez votre capacité d’emprunt immobilier.`
+                  : "Estimez votre capacité d’emprunt immobilier en quelques minutes."}
+              </h1>
+              <p className="text-xs text-slate-600 max-w-2xl">
+                Revenus, charges, crédits en cours et loyers locatifs pris à
+                70&nbsp;% : obtenez une estimation réaliste de votre mensualité
+                maximale, du capital empruntable et d&apos;un prix de bien indicatif
+                à présenter à votre banque ou à votre courtier.
+              </p>
 
-        {/* Stats globales */}
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Synthèse d&apos;activité
-            </h2>
-            {loadingData && (
+              {!isLoggedIn && (
+                <p className="text-[0.7rem] text-slate-500">
+                  La calculette est accessible sans compte. En créant votre
+                  espace, vous pourrez sauvegarder vos simulations et accéder
+                  aux autres outils (investissement locatif, achat revente, parc
+                  immobilier…).
+                </p>
+              )}
+            </div>
+
+            {/* CTA central : lancer la simulation */}
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
+              <Link
+                href="/capacite"
+                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shadow-md"
+              >
+                Lancer la simulation de capacité d&apos;emprunt
+              </Link>
+
               <p className="text-[0.7rem] text-slate-500">
-                Actualisation des données…
+                Simulation 100&nbsp;% gratuite, sans engagement.{" "}
+                {isLoggedIn
+                  ? "Vous pourrez ensuite sauvegarder vos résultats dans votre espace."
+                  : "Aucun compte requis pour lancer une première étude."}
               </p>
-            )}
-          </div>
+            </div>
+          </section>
 
-          {error && (
-            <p className="mb-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
+          {/* 💬 Bloc marketing version payante / outils avancés */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 space-y-5">
+            {/* Bandeau titre + prix */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-[0.7rem] uppercase tracking-[0.20em] text-emerald-600">
+                  OUTILS AVANCÉS (VERSION COMPLÈTE)
+                </p>
+                <h2 className="mt-1 text-base sm:text-lg font-semibold text-slate-900">
+                  Tous vos projets immobiliers pilotés comme un pro
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-2 text-right">
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Accès illimité
+                  </p>
+                  <p className="text-lg font-semibold text-slate-900 leading-tight">
+                    49&nbsp;€ / an
+                  </p>
+                  <p className="text-[0.7rem] text-emerald-700">
+                    Moins de 5&nbsp;€ / mois.
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-              <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-                Utilisateurs
-              </p>
-              <p className="mt-1 text-xl font-semibold text-slate-900">
-                {stats?.totalUsers ?? 0}
-              </p>
-              <p className="mt-1 text-[0.7rem] text-slate-500">
-                Comptes présents dans la table <code>profiles</code>.
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-              <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-                Projets
-              </p>
-              <p className="mt-1 text-xl font-semibold text-slate-900">
-                {stats?.totalProjects ?? 0}
-              </p>
-              <p className="mt-1 text-[0.7rem] text-slate-500">
-                Tous types confondus (capacite, locatif, relais…).
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-              <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-                Usage par simulateur
-              </p>
-              <ul className="mt-1 space-y-0.5 text-[0.7rem] text-slate-600">
-                {stats?.byType?.length
-                  ? stats.byType.map((t) => (
-                      <li key={t.type} className="flex justify-between">
-                        <span>{t.type}</span>
-                        <span className="font-semibold">{t.count}</span>
-                      </li>
-                    ))
-                  : (
-                    <li className="text-slate-400">
-                      Pas encore de projets enregistrés.
-                    </li>
-                  )}
-              </ul>
-            </div>
-          </div>
-        </section>
+            {/* 3 gros blocs fonctionnels */}
+            <div className="grid gap-4 md:grid-cols-3 mt-1">
+              {/* Investissement locatif */}
+              <div
+                onClick={() => goToProtectedTool("/investissement")}
+                className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    goToProtectedTool("/investissement");
+                  }
+                }}
+              >
+                <div className="inline-flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
+                    📈
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900">
+                    Investissement locatif
+                  </p>
+                </div>
+                <ul className="space-y-1 text-[0.7rem] text-slate-700">
+                  <li>• Cash-flow net, rendement réel</li>
+                  <li>• Effort d&apos;épargne par bien</li>
+                  <li>• Comparaison de plusieurs opportunités</li>
+                </ul>
+                <p className="text-[0.7rem] font-medium text-emerald-700">
+                  Ne signez plus un bien sans voir son cash-flow.
+                </p>
+              </div>
 
-        {/* Liste des utilisateurs */}
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                Utilisateurs inscrits
-              </h2>
-              <p className="text-[0.75rem] text-slate-600">
-                Liste des comptes présents dans <code>public.profiles</code>.
-              </p>
-            </div>
-            <p className="text-[0.7rem] text-slate-500">
-              Total :{" "}
-              <span className="font-semibold">
-                {profiles.length}
-              </span>
-            </p>
-          </div>
+              {/* Achat revente / prêt relais */}
+              <div
+                onClick={() => goToProtectedTool("/achat-revente")}
+                className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    goToProtectedTool("/pret-relais");
+                  }
+                }}
+              >
+                <div className="inline-flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
+                    🔁
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900">
+                    Achat revente / prêt relais
+                  </p>
+                </div>
+                <ul className="space-y-1 text-[0.7rem] text-slate-700">
+                  <li>• Budget d&apos;achat réaliste</li>
+                  <li>• Montant du relais & reste à vivre</li>
+                  <li>• Scénarios avec / sans revente rapide</li>
+                </ul>
+                <p className="text-[0.7rem] font-medium text-emerald-700">
+                  Visualisez l&apos;impact exact sur vos mensualités.
+                </p>
+              </div>
 
-          {profiles.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              Aucun profil trouvé. Vérifiez que vous alimentez bien la table{" "}
-              <code>profiles</code> à la création d&apos;un compte (via trigger ou
-              RPC).
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-100">
-              <table className="min-w-full text-left text-[0.8rem]">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-3 py-2 font-semibold text-slate-600">
-                      ID utilisateur
-                    </th>
-                    <th className="px-3 py-2 font-semibold text-slate-600">
-                      Nom / profil
-                    </th>
-                    <th className="px-3 py-2 font-semibold text-slate-600">
-                      Rôle
-                    </th>
-                    <th className="px-3 py-2 font-semibold text-slate-600">
-                      Créé le
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {profiles.map((p) => (
-                    <tr
-                      key={p.id}
-                      className="border-b border-slate-100 hover:bg-slate-50/70"
-                    >
-                      <td className="px-3 py-2 font-mono text-[0.7rem] text-slate-700">
-                        {p.id.slice(0, 8)}…
-                      </td>
-                      <td className="px-3 py-2 text-slate-800">
-                        {p.full_name || (
-                          <span className="text-slate-400 italic">
-                            Nom non renseigné
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2">
-                        {p.is_admin ? (
-                          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[0.7rem] font-medium text-emerald-700 border border-emerald-100">
-                            Admin
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 text-[0.7rem] font-medium text-slate-600 border border-slate-200">
-                            Utilisateur
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600">
-                        {p.created_at
-                          ? new Date(p.created_at).toLocaleDateString("fr-FR")
-                          : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {/* Parc immobilier existant */}
+              <div
+                onClick={() => goToProtectedTool("/parc-immobilier")}
+                className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    goToProtectedTool("/parc-immobilier");
+                  }
+                }}
+              >
+                <div className="inline-flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
+                    🧩
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900">
+                    Parc immobilier global
+                  </p>
+                </div>
+                <ul className="space-y-1 text-[0.7rem] text-slate-700">
+                  <li>• Vue d&apos;ensemble de tous vos biens</li>
+                  <li>• Encours, valeurs, cash-flow total</li>
+                  <li>• Biens à optimiser ou arbitrer</li>
+                </ul>
+                <p className="text-[0.7rem] font-medium text-emerald-700">
+                  Un vrai tableau de bord pour décider sereinement.
+                </p>
+              </div>
             </div>
-          )}
-        </section>
 
-        {/* Outils administrateur (placeholders) */}
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-3">
-          <h2 className="text-sm font-semibold text-slate-900">
-            Outils administrateur
-          </h2>
-          <p className="text-[0.75rem] text-slate-600">
-            Zone pour centraliser les actions avancées (à enrichir progressivement).
-          </p>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1">
-              <p className="text-[0.75rem] font-semibold text-slate-800">
-                Voir les projets d&apos;un utilisateur
-              </p>
-              <p className="text-[0.7rem] text-slate-600">
-                Plus tard : sélection d&apos;un utilisateur dans la liste et affichage de
-                tous ses projets.
+            {/* CTA principal version complète */}
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <Link
+                href={isLoggedIn ? "/mon-compte" : "/mon-compte?mode=register"}
+                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shadow-md"
+              >
+                {isLoggedIn
+                  ? "Ouvrir mes outils avancés"
+                  : "Créer mon espace et débloquer les outils avancés"}
+              </Link>
+              <p className="text-[0.7rem] text-slate-500 max-w-xl">
+                Historique de vos simulations, scénarios multiples et exports
+                prêts à être envoyés à votre banque ou votre courtier.
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1">
-              <p className="text-[0.75rem] font-semibold text-slate-800">
-                Suivi d&apos;usage des simulateurs
-              </p>
-              <p className="text-[0.7rem] text-slate-600">
-                Statistiques plus fines sur chaque simulateur (capacite, locatif,
-                relais…).
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1">
-              <p className="text-[0.75rem] font-semibold text-slate-800">
-                Export CSV / Excel
-              </p>
-              <p className="text-[0.7rem] text-slate-600">
-                Boutons d&apos;export des utilisateurs / projets pour analyse externe.
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 space-y-1">
-              <p className="text-[0.75rem] font-semibold text-slate-800">
-                Paramètres globaux
-              </p>
-              <p className="text-[0.7rem] text-slate-600">
-                Taux par défaut, frais de notaire, hypothèses d&apos;IA… stockés dans
-                une table <code>settings</code>.
-              </p>
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Outils
-          d&apos;administration.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement –
+          Simulations indicatives.
+        </p>
+        <p className="mt-1">
+          Contact :{" "}
+          <a href="mailto:mtcourtage@gmail.com" className="underline">
+            mtcourtage@gmail.com
+          </a>
         </p>
       </footer>
     </div>
