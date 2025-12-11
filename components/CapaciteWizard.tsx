@@ -105,7 +105,7 @@ function computeBankabilityScore(
       "Le taux d'endettement envisagé dépasse le seuil cible : il faudra retravailler le projet (durée, apport, crédits en cours) pour maximiser les chances d'accord.";
   } else {
     score = 35;
-    label = "Profil fragile";
+    label: "Profil fragile";
     comment =
       "Le taux d'endettement ressort nettement au-dessus des standards usuels. Sans ajustement, le projet risque d'être refusé par la plupart des banques.";
   }
@@ -113,6 +113,10 @@ function computeBankabilityScore(
   return { score, label, comment };
 }
 
+/**
+ * Plan d'action : on évite ici de répéter toutes les valeurs chiffrées
+ * déjà présentes dans l'analyse détaillée.
+ */
 function buildActionPlan(
   resume: ResumeCapacite,
   assessment: BankabilityAssessment,
@@ -121,45 +125,37 @@ function buildActionPlan(
   const lignes: string[] = [];
 
   lignes.push(
-    `1. Valider vos chiffres : revenus pris en compte à ${formatEuro(
-      resume.revenusPrisEnCompte
-    )}, charges et mensualités actuelles à ${formatEuro(
-      resume.mensualitesExistantes + resume.chargesHorsCredits
-    )}, pour un taux d'endettement projeté d’environ ${formatPct(
-      resume.tauxEndettementAvecProjet
-    )} (cible : ${formatPct(tauxEndettementCible)}).`
+    `1. Valider vos chiffres : vérifiez que les revenus, charges et crédits en cours saisis ci-dessus correspondent bien à vos justificatifs (fiches de paie, avis d’imposition, tableaux d’amortissement, etc.).`
   );
 
   if (assessment.score >= 80) {
     lignes.push(
-      `2. Consolider un dossier "propre" : bulletins de salaire, derniers avis d’imposition, relevés de comptes sur 3 mois et éventuels actes de propriété pour montrer la solidité de votre profil.`
+      `2. Consolider un dossier "propre" : rassemblez bulletins de salaire, derniers avis d’imposition, relevés de comptes sur 3 mois et éventuels actes de propriété pour démontrer la solidité de votre profil.`
     );
     lignes.push(
-      `3. Mettre en avant la marge de sécurité : votre taux d'endettement reste sous la cible, ce qui donne un argument fort pour négocier conditions de taux et d’assurance.`
+      `3. Mettre en avant la marge de sécurité : votre taux d'endettement reste sous la cible, ce qui constitue un bon levier pour négocier les conditions de taux, d’assurance et de frais de dossier.`
     );
   } else if (assessment.score >= 60) {
     lignes.push(
-      `2. Sécuriser le projet : étudier une durée de crédit légèrement plus longue ou un apport un peu plus élevé pour ramener le taux d'endettement sous la cible.`
+      `2. Sécuriser le projet : jouer sur la durée de crédit ou l’apport (si possible) pour améliorer légèrement le taux d’endettement et gagner en confort de trésorerie.`
     );
     lignes.push(
-      `3. Soigner la présentation : insister sur la stabilité des revenus (CDI, ancienneté, secteur d’activité) et sur une gestion de comptes saine pour rassurer le banquier.`
+      `3. Soigner la présentation : insister sur la stabilité des revenus (CDI, ancienneté, secteur d’activité), la régularité de l’épargne et une gestion de comptes sans incidents pour rassurer le banquier.`
     );
   } else {
     lignes.push(
-      `2. Réduire les charges avant de déposer le dossier : solder ou regrouper certains crédits à la consommation, ou revoir certains abonnements / dépenses récurrentes.`
+      `2. Réduire les charges avant de déposer le dossier : solder ou regrouper certains crédits à la consommation, renégocier des abonnements ou revoir certaines dépenses récurrentes pour libérer de la capacité.`
     );
     lignes.push(
-      `3. Adapter le projet : viser un prix de bien inférieur à ${formatEuro(
-        resume.prixBienMax
-      )}, augmenter l’apport si possible ou allonger la durée dans la limite du raisonnable.`
+      `3. Adapter le projet : viser un prix de bien inférieur au budget calculé, augmenter l’apport si possible ou allonger la durée de manière raisonnable afin de rapprocher le taux d’endettement de la cible.`
     );
     lignes.push(
-      `4. Construire un plan sur 6–12 mois : le temps de réduire l’endettement, d’épargner un peu plus et de revenir avec un taux d’endettement plus proche de la cible.`
+      `4. Construire un plan sur 6–12 mois : période durant laquelle vous pourrez réduire l’endettement, renforcer votre épargne et revenir avec un dossier plus solide et un taux d’endettement mieux positionné.`
     );
   }
 
   lignes.push(
-    `5. Faire le tour des banques / d’un courtier : une fois ces actions engagées, présenter le dossier à plusieurs établissements permet de comparer les réponses et les conditions (taux, assurance, frais).`
+    `5. Faire le tour des banques / d’un courtier : une fois ces actions engagées, présentez le dossier à plusieurs établissements pour comparer les réponses et les conditions (taux, assurance, frais).`
   );
 
   return lignes.join("\n");
@@ -380,7 +376,7 @@ export default function CapaciteWizard({
       coutTotalProjetMax,
     };
 
-    // 🧠 IA : score + plan d'action (fonction inchangée)
+    // 🔢 IA : score + plan d'action (fonction de score inchangée)
     const assessment = computeBankabilityScore(resume, tauxEndettementCible);
     const actionPlan = buildActionPlan(
       resume,
@@ -388,8 +384,18 @@ export default function CapaciteWizard({
       tauxEndettementCible
     );
 
-    // Petite analyse qualitative complémentaire (marge sous / au-dessus du taux cible)
+    // Analyse qualitative complémentaire
     const margeTaux = tauxEndettementCible - tauxAvecProjet;
+    const partCredits =
+      revenusPrisEnCompte > 0
+        ? (mensualitesExistantes / revenusPrisEnCompte) * 100
+        : 0;
+    const partChargesHors =
+      revenusPrisEnCompte > 0 ? (chargesHors / revenusPrisEnCompte) * 100 : 0;
+    const effortLogementPotentiel =
+      revenusPrisEnCompte > 0
+        ? (capaciteMensuelle / revenusPrisEnCompte) * 100
+        : 0;
 
     const lignes: string[] = [
       `Vos revenus mensuels pris en compte (salaires, autres revenus et 70 % des loyers locatifs) s’élèvent à ${formatEuro(
@@ -422,6 +428,22 @@ export default function CapaciteWizard({
     ];
 
     if (revenusPrisEnCompte > 0) {
+      lignes.push(
+        `Aujourd’hui, vos crédits en cours représentent environ ${formatPct(
+          partCredits
+        )} de vos revenus, et vos autres charges fixes environ ${formatPct(
+          partChargesHors
+        )}.`
+      );
+
+      if (capaciteMensuelle > 0) {
+        lignes.push(
+          `L’effort mensuel potentiel lié au nouveau prêt serait d’environ ${formatPct(
+            effortLogementPotentiel
+          )} de vos revenus, en ligne avec le taux d’endettement cible que vous avez choisi.`
+        );
+      }
+
       if (margeTaux > 0.5) {
         lignes.push(
           `Avec le projet simulé, votre taux d’endettement resterait environ ${formatPct(
@@ -432,11 +454,11 @@ export default function CapaciteWizard({
         lignes.push(
           `Avec le projet simulé, votre taux d’endettement dépasserait la cible d’environ ${formatPct(
             -margeTaux
-          )}. Il sera nécessaire d’ajuster le prix du bien, la durée ou l’apport pour revenir dans les grilles habituelles des banques.`
+          )}. Il sera nécessaire d’ajuster le prix du bien, la durée ou l’apport pour rester dans les grilles habituelles des banques.`
         );
       } else {
         lignes.push(
-          `Votre projet se situe très proche du taux d’endettement cible : le dossier reste jouable, mais la présentation et la qualité de gestion de vos comptes seront déterminantes.`
+          `Votre projet se situe très proche du taux d’endettement cible : le dossier reste jouable, mais la présentation et la qualité de gestion de vos comptes seront déterminantes pour l’accord.`
         );
       }
     }
@@ -1060,18 +1082,16 @@ export default function CapaciteWizard({
             </div>
 
             {/* 🧭 Plan d'action vers le financement (flouté si non connecté) */}
-            {actionPlanText &&
-              (blurAnalysis ? (
-                <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3">
+            {actionPlanText && (
+              blurAnalysis ? (
+                <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
                     Option 5 – Plan d&apos;action vers le financement
                   </p>
-                  <div className="relative overflow-hidden mt-1">
-                    <div className="opacity-30 pointer-events-none relative z-10">
-                      {renderMultiline(actionPlanText)}
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
+                  <div className="opacity-30 pointer-events-none">
+                    {renderMultiline(actionPlanText)}
                   </div>
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
                 </div>
               ) : (
                 <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
@@ -1080,20 +1100,19 @@ export default function CapaciteWizard({
                   </p>
                   {renderMultiline(actionPlanText)}
                 </div>
-              ))}
+              )
+            )}
 
             {/* Analyse détaillée : floutée ou non selon blurAnalysis */}
             {blurAnalysis ? (
-              <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3">
+              <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
                   Analyse détaillée de votre dossier
                 </p>
-                <div className="relative overflow-hidden mt-1">
-                  <div className="opacity-30 pointer-events-none relative z-10">
-                    {renderMultiline(resultCapaciteTexte)}
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
+                <div className="opacity-30 pointer-events-none">
+                  {renderMultiline(resultCapaciteTexte)}
                 </div>
+                <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/70 to-white/90 pointer-events-none" />
               </div>
             ) : (
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
