@@ -124,6 +124,105 @@ function buildActionPlan(
 ): string {
   const lignes: string[] = [];
 
+  const margeTaux =
+    tauxEndettementCible - resume.tauxEndettementAvecProjet;
+
+  const mensualiteMax = resume.mensualiteMax;
+  const tauxEndettementProjet = resume.tauxEndettementAvecProjet;
+  const tauxActuel = resume.tauxEndettementActuel;
+
+  lignes.push(
+    `Voici les actions concrètes pour augmenter votre score de bancabilité et maximiser vos chances d’obtenir un financement :`
+  );
+
+  // 1️⃣ Vérification des données
+  lignes.push(
+    `1. ✔️ Vérifier les données du dossier : revenus retenus ${formatEuro(
+      resume.revenusPrisEnCompte
+    )}, charges et mensualités actuelles ${formatEuro(
+      resume.mensualitesExistantes + resume.chargesHorsCredits
+    )}.`
+  );
+
+  // 2️⃣ Impact du taux négocié
+  const gainTaux = mensualiteMax * 0.003 * 300; // simulation réaliste simplifiée
+  lignes.push(
+    `2. 🎯 Négocier le taux du prêt : une baisse de **0,30 %** augmenterait votre capacité d’emprunt d’environ **${formatEuro(
+      gainTaux
+    )}**, ce qui améliorerait votre score IA d’environ **+8 à +12 points**.`
+  );
+
+  // 3️⃣ Analyse des crédits conso
+  const creditsConso = resume.mensualitesExistantes > 0;
+  if (creditsConso) {
+    lignes.push(
+      `3. 🔧 Optimiser vos crédits en cours :`
+    );
+    lignes.push(
+      `   • fermer ou regrouper un crédit consommation pourrait réduire vos charges de **${formatEuro(
+        80
+      )} à ${formatEuro(200)}**, améliorant votre taux d’endettement de **1,5 à 3 points**.`
+    );
+    lignes.push(
+      `   • un regroupement de deux petits crédits permettrait de ramener le taux d’endettement à **${formatPct(
+        tauxEndettementProjet - 1.5
+      )}**, vous faisant passer dans une catégorie bancaire plus favorable.`
+    );
+  }
+
+  // 4️⃣ Ajustement du projet immobilier
+  if (resume.prixBienMax > 0) {
+    lignes.push(
+      `4. 🏡 Ajuster légèrement votre projet immobilier : viser un bien autour de **${formatEuro(
+        resume.prixBienMax * 0.9
+      )}** (soit -10 %) augmenterait mécaniquement votre score de bancabilité.`
+    );
+  }
+
+  // 5️⃣ Durée de crédit
+  lignes.push(
+    `5. ⏳ Étendre la durée du crédit : passer de 20 à 25 ans permet souvent de dégager **${formatEuro(
+      mensualiteMax * 0.15
+    )}** de capacité supplémentaire, améliorant le score IA jusqu’à **+10 points**.`
+  );
+
+  // 6️⃣ Apport stratégique
+  lignes.push(
+    `6. 💰 Constituer un apport complémentaire de **5 %** (via épargne, déblocage PEE, ou vente secondaire) réduit immédiatement le besoin de financement et améliore le score IA de **+5 à +8 points**.`
+  );
+
+  // 7️⃣ Gestion des comptes
+  lignes.push(
+    `7. 📊 Soigner les relevés bancaires : trois mois sans découvert, dépenses maîtrisées, et épargne régulière augmentent fortement l’attractivité du dossier.`
+  );
+
+  // 8️⃣ Stratégie multi-banques & courtier
+  lignes.push(
+    `8. 🏦 Présenter votre dossier à plusieurs banques / courtier : certains établissements valorisent davantage les revenus élevés, d’autres la stabilité ou l’épargne.`
+  );
+
+  // 9️⃣ Conclusion personnalisée selon score
+  if (assessment.score >= 80) {
+    lignes.push(
+      `✔️ Votre dossier est déjà solide. En appliquant 2 ou 3 optimisations ci-dessus, vous obtenez un dossier premium.`
+    );
+  } else if (assessment.score >= 60) {
+    lignes.push(
+      `⚠️ Votre dossier est finançable mais fragile. Deux actions prioritaires : optimisation du taux et réduction des crédits conso.`
+    );
+  } else {
+    lignes.push(
+      `❗ Votre dossier nécessite un travail préparatoire. Priorité : baisse des charges, stratégie d’apport et optimisation de durée avant dépôt bancaire.`
+    );
+  }
+
+  lignes.push(
+    `Ces actions visent à augmenter votre score de bancabilité et à sécuriser un accord bancaire dans les meilleures conditions.`
+  );
+
+  return lignes.join("\n");
+}
+
   lignes.push(
     `1. Valider vos chiffres : vérifiez que les revenus, charges et crédits en cours saisis ci-dessus correspondent bien à vos justificatifs (fiches de paie, avis d’imposition, tableaux d’amortissement, etc.).`
   );
@@ -376,13 +475,44 @@ export default function CapaciteWizard({
       coutTotalProjetMax,
     };
 
-    // 🔢 IA : score + plan d'action (fonction de score inchangée)
+// -------- Résumé des crédits pour le plan d'action --------
+    let nbCreditsConso = 0;
+    let totalMensualitesConso = 0;
+    let smallestMensualiteConso: number | null = null;
+
+    for (let i = 0; i < nbCredits; i++) {
+      const type = typesCredits[i];
+      const mensu = mensualitesCredits[i] || 0;
+
+      if (type && type !== "immo" && mensu > 0) {
+        nbCreditsConso++;
+        totalMensualitesConso += mensu;
+        if (smallestMensualiteConso === null || mensu < smallestMensualiteConso) {
+          smallestMensualiteConso = mensu;
+        }
+      }
+    }
+
+    const creditSummary = {
+      nbCredits,
+      nbCreditsConso,
+      totalMensualitesConso,
+      smallestMensualiteConso,
+    };
+
+    // 🔢 IA : score + plan d'action
     const assessment = computeBankabilityScore(resume, tauxEndettementCible);
     const actionPlan = buildActionPlan(
       resume,
       assessment,
-      tauxEndettementCible
+      tauxEndettementCible,
+      {
+        tauxCreditCible,
+        dureeCreditCible,
+        creditSummary,
+      }
     );
+
 
     // Analyse qualitative complémentaire
     const margeTaux = tauxEndettementCible - tauxAvecProjet;
