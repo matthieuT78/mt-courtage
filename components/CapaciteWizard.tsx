@@ -1086,7 +1086,7 @@ export default function CapaciteWizard({
               blurAnalysis ? (
                 <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 relative overflow-hidden">
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
-                    Option 5 – Plan d&apos;action vers le financement
+                    Plan d&apos;action vers le financement
                   </p>
                   <div className="opacity-30 pointer-events-none">
                     {renderMultiline(actionPlanText)}
