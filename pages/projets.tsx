@@ -8,7 +8,8 @@ type ProjectType =
   | "capacite"
   | "investissement"
   | "parc"
-  | "pret_relais" // ⚙️ type utilisé par la page prêt relais
+  | "pret_relais"
+  | "pret-relais"
   | string;
 
 type ProjectRow = {
@@ -57,6 +58,7 @@ function typeLabel(type: ProjectType): string {
     case "parc":
       return "Parc immobilier existant";
     case "pret_relais":
+    case "pret-relais":
       return "Prêt relais";
     default:
       return "Simulation";
@@ -72,6 +74,7 @@ function typeBadgeColor(type: ProjectType): string {
     case "parc":
       return "bg-indigo-50 text-indigo-700 border-indigo-200";
     case "pret_relais":
+    case "pret-relais":
       return "bg-amber-50 text-amber-700 border-amber-200";
     default:
       return "bg-slate-50 text-slate-600 border-slate-200";
@@ -163,7 +166,7 @@ export default function ProjetsPage() {
     const titre = project.title || label;
     const texte =
       project.data?.texte ||
-      project.data?.analyse || // 📌 pour le prêt relais
+      project.data?.analyse ||
       "Simulation enregistrée sur MT Courtage & Investissement.";
 
     const subject = `Simulation ${label} – ${titre}`;
@@ -427,16 +430,14 @@ export default function ProjetsPage() {
     }
 
     // PRÊT RELAIS
-    if (type === "pret_relais") {
+    if (type === "pret_relais" || type === "pret-relais") {
       const r = d.resume || {};
-      const inputs = d.inputs || {};
-      const analyse: string = d.analyse || "";
+      const analyse: string | undefined = d.analyse;
 
       return (
         <div className="mt-3 space-y-4">
-          {/* Synthèse numéraire */}
           <div className="grid gap-3 sm:grid-cols-4">
-            <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5">
+            <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
               <p className="text-[0.7rem] text-amber-700 uppercase tracking-[0.14em]">
                 Montant du prêt relais
               </p>
@@ -460,9 +461,9 @@ export default function ProjetsPage() {
                 {formatEuro(r.capitalNouveau)}
               </p>
             </div>
-            <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-              <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                Budget d’achat max
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
+              <p className="text-[0.7rem] text-emerald-700 uppercase tracking-[0.14em]">
+                Budget d&apos;achat max
               </p>
               <p className="mt-1 text-sm font-semibold text-emerald-700">
                 {formatEuro(r.budgetMax)}
@@ -470,72 +471,10 @@ export default function ProjetsPage() {
             </div>
           </div>
 
-          {/* Rappel des paramètres saisis */}
-          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-              Paramètres saisis
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2 text-[0.75rem] text-slate-700">
-              <div>
-                <p>Revenus mensuels : {formatEuro(inputs.revMensuels)}</p>
-                <p>
-                  Autres mensualités de crédits :{" "}
-                  {formatEuro(inputs.autresMensualites)}
-                </p>
-                <p>
-                  Taux d’endettement cible :{" "}
-                  {inputs.tauxEndettement != null
-                    ? `${inputs.tauxEndettement} %`
-                    : "-"}
-                </p>
-              </div>
-              <div>
-                <p>
-                  Valeur bien actuel :{" "}
-                  {formatEuro(inputs.valeurBienActuel)}
-                </p>
-                <p>
-                  CRD bien actuel : {formatEuro(inputs.crdActuel)}
-                </p>
-                <p>
-                  % retenu par la banque :{" "}
-                  {inputs.pctRetenu != null ? `${inputs.pctRetenu} %` : "-"}
-                </p>
-              </div>
-              <div>
-                <p>Apport personnel : {formatEuro(inputs.apportPerso)}</p>
-                <p>
-                  Taux nouveau crédit :{" "}
-                  {inputs.tauxNouveau != null
-                    ? `${inputs.tauxNouveau} %`
-                    : "-"}
-                </p>
-                <p>
-                  Durée nouveau crédit :{" "}
-                  {inputs.dureeNouveau != null
-                    ? `${inputs.dureeNouveau} ans`
-                    : "-"}
-                </p>
-              </div>
-              <div>
-                <p>
-                  Taux prêt relais (indicatif) :{" "}
-                  {inputs.tauxRelais != null
-                    ? `${inputs.tauxRelais} %`
-                    : "-"}
-                </p>
-                <p>
-                  Prix du bien visé : {formatEuro(inputs.prixCible)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Analyse détaillée */}
           {analyse && (
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
-                Analyse détaillée
+                Analyse détaillée prêt relais
               </p>
               {analyse.split("\n").map((line: string, idx: number) => (
                 <p
@@ -607,9 +546,9 @@ export default function ProjetsPage() {
               Aucun projet sauvegardé pour le moment.
             </p>
             <p className="text-xs text-slate-500 mb-3">
-              Lancez une simulation de capacité d&apos;emprunt,
-              d&apos;investissement ou de parc immobilier, puis utilisez le
-              bouton “Sauvegarder” pour la retrouver ici.
+              Lancez une simulation de capacité d&apos;emprunt, d&apos;investissement
+              ou de parc immobilier, puis utilisez le bouton “Sauvegarder”
+              pour la retrouver ici.
             </p>
             <div className="flex flex-wrap gap-2">
               <Link
