@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
 
-type ProjectType = "capacite" | "investissement" | "parc" | "pret-relais" | string;
+type ProjectType =
+  | "capacite"
+  | "investissement"
+  | "parc"
+  | "pret-relais"
+  | "pret_relais"
+  | string;
 
 type ProjectRow = {
   id: string;
@@ -43,8 +49,15 @@ function formatDate(dateStr: string) {
   });
 }
 
+// Normalisation pour gérer l'ancien type "pret_relais"
+function normalizeType(type: ProjectType): ProjectType {
+  if (type === "pret_relais") return "pret-relais";
+  return type;
+}
+
 function typeLabel(type: ProjectType): string {
-  switch (type) {
+  const t = normalizeType(type);
+  switch (t) {
     case "capacite":
       return "Capacité d'emprunt";
     case "investissement":
@@ -59,7 +72,8 @@ function typeLabel(type: ProjectType): string {
 }
 
 function typeBadgeColor(type: ProjectType): string {
-  switch (type) {
+  const t = normalizeType(type);
+  switch (t) {
     case "capacite":
       return "bg-emerald-50 text-emerald-700 border-emerald-200";
     case "investissement":
@@ -158,6 +172,7 @@ export default function ProjetsPage() {
     const titre = project.title || label;
     const texte =
       project.data?.texte ||
+      project.data?.analyse ||
       "Simulation enregistrée sur MT Courtage & Investissement.";
 
     const subject = `Simulation ${label} – ${titre}`;
@@ -198,7 +213,7 @@ export default function ProjetsPage() {
 
   const renderDetail = (project: ProjectRow) => {
     const d = project.data || {};
-    const type = project.type;
+    const type = normalizeType(project.type);
 
     // CAPACITÉ D'EMPRUNT
     if (type === "capacite") {
@@ -407,6 +422,67 @@ export default function ProjetsPage() {
                 Analyse détaillée
               </p>
               {d.texte.split("\n").map((line: string, idx: number) => (
+                <p
+                  key={idx}
+                  className="text-xs sm:text-sm text-slate-800 leading-relaxed"
+                >
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // PRÊT RELAIS
+    if (type === "pret-relais") {
+      const r = d.resume || {};
+      const analyse: string | undefined = d.analyse || d.texte;
+
+      return (
+        <div className="mt-3 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+              <p className="text-[0.7rem] text-amber-700 uppercase tracking-[0.14em]">
+                Montant du prêt relais
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {formatEuro(r.montantRelais)}
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+              <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                Mensualité max nouveau prêt
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {formatEuro(r.mensualiteNouveauMax)}
+              </p>
+            </div>
+            <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+              <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                Capital nouveau prêt
+              </p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {formatEuro(r.capitalNouveau)}
+              </p>
+            </div>
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2.5">
+              <p className="text-[0.7rem] text-emerald-700 uppercase tracking-[0.14em]">
+                Budget d'achat max
+              </p>
+              <p className="mt-1 text-sm font-semibold text-emerald-700">
+                {formatEuro(r.budgetMax)}
+              </p>
+            </div>
+          </div>
+
+          {analyse && (
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">
+                Analyse détaillée prêt relais
+              </p>
+              {analyse.split("\n").map((line: string, idx: number) => (
                 <p
                   key={idx}
                   className="text-xs sm:text-sm text-slate-800 leading-relaxed"

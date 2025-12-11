@@ -306,7 +306,7 @@ export default function PretRelaisPage() {
 
       const { error } = await supabase.from("projects").insert({
         user_id: session.user.id,
-        type: "pret_relais",
+        type: "pret-relais",
         title: "Simulation prêt relais",
         data: {
           inputs: {
