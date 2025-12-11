@@ -53,7 +53,7 @@ export default function Home() {
 
   const isLoggedIn = !!user;
 
-  // 🔐 Navigation vers les 3 calculettes payantes
+  // 🔐 Navigation vers les calculettes / outils payants
   const goToProtectedTool = (path: string) => {
     if (isLoggedIn) {
       router.push(path);
@@ -131,7 +131,7 @@ export default function Home() {
               <div className="flex items-center gap-2">
                 <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-4 py-2 text-right">
                   <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                    Accès illimité
+                    Calculettes avancées
                   </p>
                   <p className="text-lg font-semibold text-slate-900 leading-tight">
                     49&nbsp;€ / an
@@ -143,8 +143,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 3 gros blocs fonctionnels */}
-            <div className="grid gap-4 md:grid-cols-3 mt-1">
+            {/* 4 gros blocs fonctionnels */}
+            <div className="grid gap-4 md:grid-cols-4 mt-1">
               {/* Investissement locatif */}
               <div
                 onClick={() => goToProtectedTool("/investissement")}
@@ -178,7 +178,7 @@ export default function Home() {
 
               {/* Achat revente / prêt relais */}
               <div
-                onClick={() => goToProtectedTool("/achat-revente")}
+                onClick={() => goToProtectedTool("/pret-relais")}
                 className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
                 role="button"
                 tabIndex={0}
@@ -235,6 +235,40 @@ export default function Home() {
                 </ul>
                 <p className="text-[0.7rem] font-medium text-emerald-700">
                   Un vrai tableau de bord pour décider sereinement.
+                </p>
+              </div>
+
+              {/* Boîte à outils propriétaire */}
+              <div
+                onClick={() => goToProtectedTool("/outils-proprietaire")}
+                className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 space-y-3 cursor-pointer hover:bg-amber-100 hover:shadow-md transition relative"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    goToProtectedTool("/outils-proprietaire");
+                  }
+                }}
+              >
+                <div className="absolute right-3 top-3 rounded-full bg-slate-900 text-white text-[0.65rem] px-2 py-0.5 font-semibold">
+                  49&nbsp;€ / mois
+                </div>
+                <div className="inline-flex items-center gap-2 mt-2">
+                  <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center text-lg">
+                    🏠
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900">
+                    Outils propriétaire
+                  </p>
+                </div>
+                <ul className="space-y-1 text-[0.7rem] text-slate-700">
+                  <li>• Quittances automatiques & archivage</li>
+                  <li>• Suivi des cautions & loyers</li>
+                  <li>• Génération d&apos;états des lieux</li>
+                </ul>
+                <p className="text-[0.7rem] font-medium text-amber-700">
+                  Une vraie boîte à outils pour bailleurs exigeants.
                 </p>
               </div>
             </div>
