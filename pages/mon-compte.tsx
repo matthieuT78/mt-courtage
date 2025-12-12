@@ -63,8 +63,16 @@ function typeBadgeColor(type: ProjectType): string {
 }
 
 function getTab(raw: any): Tab {
+  // Next peut donner string | string[].
+  const value = Array.isArray(raw) ? raw[0] : raw;
+
+  const cleaned = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\/$/, ""); // enlève un slash final
+
   const allowed: Tab[] = ["infos", "securite", "projets", "bailleur"];
-  return allowed.includes(raw) ? raw : "infos";
+  return allowed.includes(cleaned as Tab) ? (cleaned as Tab) : "infos";
 }
 
 function getMode(raw: any): Mode {
