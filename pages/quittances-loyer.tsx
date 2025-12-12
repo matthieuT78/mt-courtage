@@ -1,5 +1,5 @@
 // pages/quittances-loyer.tsx
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
@@ -36,10 +36,229 @@ type RentReceipt = {
   created_at: string;
 };
 
+type PaymentMode = "virement" | "prelevement" | "cheque" | "especes";
+
+// -------------------------
+// Helpers (purs)
+// -------------------------
+const formatEuro = (val: number | null | undefined) => {
+  if (val == null || Number.isNaN(val)) return "—";
+  return val.toLocaleString("fr-FR", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+
+const formatDateFR = (val?: string | null) => {
+  if (!val) return "";
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return val;
+  return d.toLocaleDateString("fr-FR", {
+    year: "numeric",
+    month: "long",
+    day: "2-digit",
+  });
+};
+
+const getMonthPeriod = (base: Date) => {
+  const y = base.getFullYear();
+  const m = base.getMonth();
+  const start = new Date(y, m, 1);
+  const end = new Date(y, m + 1, 0);
+  return { start, end };
+};
+
+function generateQuittanceText(params: {
+  bailleurNom: string;
+  bailleurAdresse?: string | null;
+  locataireNom: string;
+  bienAdresse?: string | null;
+  loyerHC: number;
+  charges: number;
+  periodeDebut: string;
+  periodeFin: string;
+  datePaiement?: string | null;
+  villeQuittance?: string | null;
+  dateQuittance?: string | null;
+  modePaiement: PaymentMode;
+  mentionSolde: boolean;
+}) {
+  const {
+    bailleurNom,
+    bailleurAdresse,
+    locataireNom,
+    bienAdresse,
+    loyerHC,
+    charges,
+    periodeDebut,
+    periodeFin,
+    datePaiement,
+    villeQuittance,
+    dateQuittance,
+    modePaiement,
+    mentionSolde,
+  } = params;
+
+  const total = (loyerHC || 0) + (charges || 0);
+
+  const periodeStr =
+    periodeDebut && periodeFin
+      ? `pour la période du ${formatDateFR(periodeDebut)} au ${formatDateFR(periodeFin)}`
+      : "";
+
+  const paiementStr = datePaiement ? `payé le ${formatDateFR(datePaiement)}` : "dû et réglé";
+
+  const villeDateStr =
+    villeQuittance && dateQuittance ? `${villeQuittance}, le ${formatDateFR(dateQuittance)}` : "";
+
+  const modePaiementLabel =
+    modePaiement === "virement"
+      ? "par virement bancaire"
+      : modePaiement === "cheque"
+      ? "par chèque"
+      : modePaiement === "especes"
+      ? "en espèces"
+      : "par prélèvement";
+
+  const lignes: string[] = [];
+
+  if (bailleurNom || bailleurAdresse) {
+    lignes.push(`${bailleurNom || "Nom du bailleur"}`);
+    if (bailleurAdresse) lignes.push(bailleurAdresse);
+    lignes.push("");
+  }
+
+  if (locataireNom) {
+    lignes.push(`À l'attention de : ${locataireNom}`);
+    lignes.push("");
+  }
+
+  lignes.push("QUITTANCE DE LOYER");
+  lignes.push("".padEnd(22, "="));
+  lignes.push("");
+
+  lignes.push(
+    `Je soussigné(e) ${bailleurNom || "[Nom du bailleur]"}, propriétaire du logement situé ${
+      bienAdresse || "[Adresse du logement]"
+    }, certifie avoir reçu de la part de ${locataireNom || "[Nom du locataire]"} la somme de ${formatEuro(
+      total
+    )} (${formatEuro(loyerHC)} de loyer hors charges et ${formatEuro(charges)} de provisions sur charges)${
+      periodeStr ? ` ${periodeStr}` : ""
+    }, ${paiementStr} ${modePaiementLabel}.`
+  );
+
+  lignes.push("");
+
+  if (mentionSolde) {
+    lignes.push(
+      "La présente quittance vaut reçu pour toutes sommes versées à ce jour au titre des loyers et charges pour la période indiquée et éteint, à ce titre, toute dette de locataire envers le bailleur pour ladite période."
+    );
+    lignes.push("");
+  }
+
+  lignes.push(
+    "La présente quittance ne préjuge en rien du paiement des loyers et charges antérieurs ou ultérieurs non quittancés."
+  );
+  lignes.push("");
+
+  if (villeDateStr) {
+    lignes.push(villeDateStr);
+    lignes.push("");
+  }
+
+  lignes.push("Signature du bailleur :");
+  lignes.push("");
+  lignes.push("____________________________________");
+
+  return lignes.join("\n");
+}
+
+// -------------------------
+// Hooks simples (dans le même fichier)
+// -------------------------
+function useAuthedUser() {
+  const [user, setUser] = useState<SimpleUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        if (!supabase) return;
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!mounted) return;
+        const u = data.session?.user ?? null;
+        setUser(u ? { id: u.id, email: u.email ?? undefined } : null);
+      } catch (e) {
+        console.error("Erreur session quittances", e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return { user, loading };
+}
+
+// -------------------------
+// Form reducer
+// -------------------------
+type UnitFormState = {
+  label: string;
+  address: string;
+  tenantName: string;
+  tenantEmail: string;
+  rent: string;
+  charges: string;
+  paymentDay: string;
+  autoEnabled: boolean;
+};
+
+const emptyForm: UnitFormState = {
+  label: "",
+  address: "",
+  tenantName: "",
+  tenantEmail: "",
+  rent: "",
+  charges: "",
+  paymentDay: "1",
+  autoEnabled: true,
+};
+
+type UnitFormAction =
+  | { type: "reset" }
+  | { type: "load"; payload: Partial<UnitFormState> }
+  | { type: "set"; field: keyof UnitFormState; value: string | boolean };
+
+function unitFormReducer(state: UnitFormState, action: UnitFormAction): UnitFormState {
+  switch (action.type) {
+    case "reset":
+      return { ...emptyForm };
+    case "load":
+      return { ...state, ...action.payload };
+    case "set":
+      return { ...state, [action.field]: action.value } as UnitFormState;
+    default:
+      return state;
+  }
+}
+
+// -------------------------
+// Page
+// -------------------------
 export default function QuittancesLoyerPage() {
   const router = useRouter();
-  const [user, setUser] = useState<SimpleUser | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const { user, loading: loadingUser } = useAuthedUser();
 
   const [units, setUnits] = useState<RentalUnit[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(false);
@@ -48,287 +267,128 @@ export default function QuittancesLoyerPage() {
   const [receipts, setReceipts] = useState<RentReceipt[]>([]);
   const [receiptsLoading, setReceiptsLoading] = useState(false);
 
-  const [savingUnit, setSavingUnit] = useState(false);
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+  const currentUnit = useMemo(
+    () => units.find((u) => u.id === selectedUnitId) || null,
+    [units, selectedUnitId]
+  );
 
-  // Formulaire "bien loué"
-  const [formLabel, setFormLabel] = useState("");
-  const [formAddress, setFormAddress] = useState("");
-  const [formTenantName, setFormTenantName] = useState("");
-  const [formTenantEmail, setFormTenantEmail] = useState("");
-  const [formRent, setFormRent] = useState<string>("");
-  const [formCharges, setFormCharges] = useState<string>("");
-  const [formPaymentDay, setFormPaymentDay] = useState<string>("1");
-  const [formAutoEnabled, setFormAutoEnabled] = useState(true);
+  const [form, dispatch] = useReducer(unitFormReducer, emptyForm);
 
+  const [savingUnit, setSavingUnit] = useState(false);
   const [globalMessage, setGlobalMessage] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
-  // --- Récupération session utilisateur ---
-  useEffect(() => {
-    const fetchSession = async () => {
-      try {
-        if (!supabase) return;
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        const sessionUser = data.session?.user ?? null;
-        setUser(
-          sessionUser
-            ? { id: sessionUser.id, email: sessionUser.email ?? undefined }
-            : null
-        );
-      } catch (e) {
-        console.error("Erreur session quittances", e);
-      } finally {
-        setLoadingUser(false);
-      }
-    };
-    fetchSession();
-  }, []);
+  const [generatingForId, setGeneratingForId] = useState<string | null>(null);
+  const [quittancePreview, setQuittancePreview] = useState<string | null>(null);
 
-  // --- Charger les biens ---
-  useEffect(() => {
-    const fetchUnits = async () => {
-      if (!supabase || !user) return;
-      try {
-        setUnitsLoading(true);
-        setUnitsError(null);
-        const { data, error } = await supabase
-          .from("rental_units") // ← adapte au nom réel de ta table
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: true });
-
-        if (error) throw error;
-        setUnits((data || []) as RentalUnit[]);
-      } catch (err: any) {
-        setUnitsError(
-          err?.message || "Impossible de charger vos biens loués pour le moment."
-        );
-      } finally {
-        setUnitsLoading(false);
-      }
-    };
-    if (user) fetchUnits();
+  const refreshUnits = useCallback(async () => {
+    if (!supabase || !user) return;
+    try {
+      setUnitsLoading(true);
+      setUnitsError(null);
+      const { data, error } = await supabase
+        .from("rental_units")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      setUnits((data || []) as RentalUnit[]);
+    } catch (err: any) {
+      setUnitsError(err?.message || "Impossible de charger vos biens loués pour le moment.");
+    } finally {
+      setUnitsLoading(false);
+    }
   }, [user]);
 
-  // --- Charger les dernières quittances ---
-  useEffect(() => {
-    const fetchReceipts = async () => {
-      if (!supabase || !user) return;
-      try {
-        setReceiptsLoading(true);
-        const { data, error } = await supabase
-          .from("rent_receipts") // ← adapte au nom réel
-          .select("*")
-          .in(
-            "rental_unit_id",
-            units.length ? units.map((u) => u.id) : ["00000000-0000-0000-0000-000000000000"]
-          )
-          .order("created_at", { ascending: false })
-          .limit(30);
+  const refreshReceipts = useCallback(async () => {
+    if (!supabase || !user) return;
+    if (!units.length) {
+      setReceipts([]);
+      return;
+    }
+    try {
+      setReceiptsLoading(true);
+      const { data, error } = await supabase
+        .from("rent_receipts")
+        .select("*")
+        .in("rental_unit_id", units.map((u) => u.id))
+        .order("created_at", { ascending: false })
+        .limit(30);
 
-        if (error) throw error;
-        setReceipts((data || []) as RentReceipt[]);
-      } catch (err) {
-        console.error("Erreur fetch quittances", err);
-      } finally {
-        setReceiptsLoading(false);
-      }
-    };
-    if (user && units.length) fetchReceipts();
+      if (error) throw error;
+      setReceipts((data || []) as RentReceipt[]);
+    } catch (err) {
+      console.error("Erreur fetch quittances", err);
+    } finally {
+      setReceiptsLoading(false);
+    }
   }, [user, units]);
 
-  // --- Pré-remplir le formulaire quand on sélectionne un bien ---
+  // Load units on login
   useEffect(() => {
+    if (user) refreshUnits();
+  }, [user, refreshUnits]);
+
+  // Load receipts when units change
+  useEffect(() => {
+    if (user) refreshReceipts();
+  }, [user, refreshReceipts]);
+
+  // Sync form when selecting a unit
+  useEffect(() => {
+    setGlobalError(null);
+    setGlobalMessage(null);
+    setQuittancePreview(null);
+
     if (!selectedUnitId) {
-      setFormLabel("");
-      setFormAddress("");
-      setFormTenantName("");
-      setFormTenantEmail("");
-      setFormRent("");
-      setFormCharges("");
-      setFormPaymentDay("1");
-      setFormAutoEnabled(true);
+      dispatch({ type: "reset" });
       return;
     }
 
     const unit = units.find((u) => u.id === selectedUnitId);
     if (!unit) return;
 
-    setFormLabel(unit.label || "");
-    setFormAddress(unit.address || "");
-    setFormTenantName(unit.tenant_name || "");
-    setFormTenantEmail(unit.tenant_email || "");
-    setFormRent(unit.rent_amount != null ? String(unit.rent_amount) : "");
-    setFormCharges(unit.charges_amount != null ? String(unit.charges_amount) : "");
-    setFormPaymentDay(
-      unit.payment_day != null ? String(unit.payment_day) : "1"
-    );
-    setFormAutoEnabled(unit.auto_quittance_enabled);
+    dispatch({
+      type: "load",
+      payload: {
+        label: unit.label || "",
+        address: unit.address || "",
+        tenantName: unit.tenant_name || "",
+        tenantEmail: unit.tenant_email || "",
+        rent: unit.rent_amount != null ? String(unit.rent_amount) : "",
+        charges: unit.charges_amount != null ? String(unit.charges_amount) : "",
+        paymentDay: unit.payment_day != null ? String(unit.payment_day) : "1",
+        autoEnabled: !!unit.auto_quittance_enabled,
+      },
+    });
   }, [selectedUnitId, units]);
 
-  // --- Helper format € ---
-  const formatEuro = (val: number | null | undefined) => {
-    if (val == null || Number.isNaN(val)) return "—";
-    return val.toLocaleString("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  };
-
-  // --- Génération texte quittance (même logique que ton modèle) ---
-  const generateQuittanceText = (params: {
-    bailleurNom: string;
-    bailleurAdresse: string;
-    locataireNom: string;
-    bienAdresse: string;
-    loyerHC: number;
-    charges: number;
-    periodeDebut: string;
-    periodeFin: string;
-    datePaiement?: string | null;
-    villeQuittance?: string | null;
-    dateQuittance?: string | null;
-    modePaiement: "virement" | "prelevement" | "cheque" | "especes";
-    mentionSolde: boolean;
-  }) => {
-    const {
-      bailleurNom,
-      bailleurAdresse,
-      locataireNom,
-      bienAdresse,
-      loyerHC,
-      charges,
-      periodeDebut,
-      periodeFin,
-      datePaiement,
-      villeQuittance,
-      dateQuittance,
-      modePaiement,
-      mentionSolde,
-    } = params;
-
-    const total = (loyerHC || 0) + (charges || 0);
-
-    const formatDateFR = (val?: string | null) => {
-      if (!val) return "";
-      const d = new Date(val);
-      if (Number.isNaN(d.getTime())) return val;
-      return d.toLocaleDateString("fr-FR", {
-        year: "numeric",
-        month: "long",
-        day: "2-digit",
-      });
-    };
-
-    const periodeStr =
-      periodeDebut && periodeFin
-        ? `pour la période du ${formatDateFR(
-            periodeDebut
-          )} au ${formatDateFR(periodeFin)}`
-        : "";
-
-    const paiementStr = datePaiement
-      ? `payé le ${formatDateFR(datePaiement)}`
-      : "dû et réglé";
-
-    const villeDateStr =
-      villeQuittance && dateQuittance
-        ? `${villeQuittance}, le ${formatDateFR(dateQuittance)}`
-        : "";
-
-    const modePaiementLabel =
-      modePaiement === "virement"
-        ? "par virement bancaire"
-        : modePaiement === "cheque"
-        ? "par chèque"
-        : modePaiement === "especes"
-        ? "en espèces"
-        : "par prélèvement";
-
-    const lignes: string[] = [];
-
-    if (bailleurNom || bailleurAdresse) {
-      lignes.push(`${bailleurNom || "Nom du bailleur"}`);
-      if (bailleurAdresse) lignes.push(bailleurAdresse);
-      lignes.push("");
-    }
-
-    if (locataireNom) {
-      lignes.push(`À l'attention de : ${locataireNom}`);
-      lignes.push("");
-    }
-
-    lignes.push("QUITTANCE DE LOYER");
-    lignes.push("".padEnd(22, "="));
-    lignes.push("");
-
-    lignes.push(
-      `Je soussigné(e) ${bailleurNom || "[Nom du bailleur]"}, propriétaire du logement situé ${
-        bienAdresse || "[Adresse du logement]"
-      }, certifie avoir reçu de la part de ${
-        locataireNom || "[Nom du locataire]"
-      } la somme de ${formatEuro(total)} (${formatEuro(
-        loyerHC
-      )} de loyer hors charges et ${formatEuro(
-        charges
-      )} de provisions sur charges)${
-        periodeStr ? ` ${periodeStr}` : ""
-      }, ${paiementStr} ${modePaiementLabel}.`
-    );
-
-    lignes.push("");
-
-    if (mentionSolde) {
-      lignes.push(
-        "La présente quittance vaut reçu pour toutes sommes versées à ce jour au titre des loyers et charges pour la période indiquée et éteint, à ce titre, toute dette de locataire envers le bailleur pour ladite période."
-      );
-      lignes.push("");
-    }
-
-    lignes.push(
-      "La présente quittance ne préjuge en rien du paiement des loyers et charges antérieurs ou ultérieurs non quittancés."
-    );
-    lignes.push("");
-
-    if (villeDateStr) {
-      lignes.push(villeDateStr);
-      lignes.push("");
-    }
-
-    lignes.push("Signature du bailleur :");
-    lignes.push("");
-    lignes.push("____________________________________");
-
-    return lignes.join("\n");
-  };
-
-  // --- Soumission formulaire bien (create/update) ---
+  // Save unit (create/update)
   const handleSaveUnit = async (e: FormEvent) => {
     e.preventDefault();
     if (!supabase || !user) return;
+
     setSavingUnit(true);
     setGlobalError(null);
     setGlobalMessage(null);
 
     try {
-      const rentNum = parseFloat(formRent || "0") || 0;
-      const chargesNum = parseFloat(formCharges || "0") || 0;
-      const paymentDayNum = parseInt(formPaymentDay || "1", 10);
+      const rentNum = parseFloat(form.rent || "0") || 0;
+      const chargesNum = parseFloat(form.charges || "0") || 0;
+
+      const paymentDayNum = Math.min(31, Math.max(1, parseInt(form.paymentDay || "1", 10) || 1));
 
       const payload = {
         user_id: user.id,
-        label: formLabel || "Logement sans titre",
-        address: formAddress || null,
-        tenant_name: formTenantName || null,
-        tenant_email: formTenantEmail || null,
+        label: form.label || "Logement sans titre",
+        address: form.address || null,
+        tenant_name: form.tenantName || null,
+        tenant_email: form.tenantEmail || null,
         rent_amount: rentNum,
         charges_amount: chargesNum,
         payment_day: paymentDayNum,
-        auto_quittance_enabled: formAutoEnabled,
+        auto_quittance_enabled: form.autoEnabled,
       };
 
       if (selectedUnitId) {
@@ -337,92 +397,65 @@ export default function QuittancesLoyerPage() {
           .update(payload)
           .eq("id", selectedUnitId)
           .eq("user_id", user.id);
-
         if (error) throw error;
         setGlobalMessage("Bien mis à jour.");
       } else {
-        const { data, error } = await supabase
-          .from("rental_units")
-          .insert(payload)
-          .select()
-          .single();
-
+        const { data, error } = await supabase.from("rental_units").insert(payload).select().single();
         if (error) throw error;
         const created = data as RentalUnit;
-        setUnits((prev) => [...prev, created]);
-        setSelectedUnitId(created.id);
         setGlobalMessage("Bien créé.");
+        setSelectedUnitId(created.id);
       }
 
-      // Rafraîchir liste
-      const { data: newList, error: listError } = await supabase
-        .from("rental_units")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: true });
-      if (!listError && newList) {
-        setUnits(newList as RentalUnit[]);
-      }
+      await refreshUnits();
     } catch (err: any) {
-      setGlobalError(
-        err?.message ||
-          "Erreur lors de l’enregistrement du bien. Vérifiez les champs."
-      );
+      setGlobalError(err?.message || "Erreur lors de l’enregistrement du bien. Vérifiez les champs.");
     } finally {
       setSavingUnit(false);
     }
   };
 
-  // --- Générer une quittance pour le mois courant pour un bien ---
-  const [generatingForId, setGeneratingForId] = useState<string | null>(null);
-  const [quittancePreview, setQuittancePreview] = useState<string | null>(null);
-
+  // Generate receipt for current month
   const handleGenerateReceiptForCurrentMonth = async (unit: RentalUnit) => {
     if (!supabase || !user) return;
+
     setGeneratingForId(unit.id);
     setGlobalError(null);
     setGlobalMessage(null);
 
     try {
-      // Période = mois courant (1er → dernier jour)
       const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth(); // 0-11
-
-      const periodStart = new Date(year, month, 1);
-      const periodEnd = new Date(year, month + 1, 0);
-
-      const toISO = (d: Date) => d.toISOString().slice(0, 10);
+      const { start, end } = getMonthPeriod(now);
 
       const loyer = unit.rent_amount || 0;
       const charges = unit.charges_amount || 0;
+      const total = loyer + charges;
 
+      // ⚠️ Ici, bailleurNom = user.email pour l’instant.
+      // Plus tard: créer un profil bailleur avec nom/adresse.
       const texte = generateQuittanceText({
         bailleurNom: user.email || "Bailleur",
         bailleurAdresse: "",
         locataireNom: unit.tenant_name || "Locataire",
         bienAdresse: unit.address || "",
         loyerHC: loyer,
-        charges: charges,
-        periodeDebut: toISO(periodStart),
-        periodeFin: toISO(periodEnd),
+        charges,
+        periodeDebut: toISODate(start),
+        periodeFin: toISODate(end),
         datePaiement: null,
         villeQuittance: "",
-        dateQuittance: toISO(now),
+        dateQuittance: toISODate(now),
         modePaiement: "virement",
         mentionSolde: true,
       });
-
-      // Stockage en base
-      const total = loyer + charges;
 
       const { data, error } = await supabase
         .from("rent_receipts")
         .insert({
           rental_unit_id: unit.id,
-          period_start: toISO(periodStart),
-          period_end: toISO(periodEnd),
-          paid_at: null, // tu pourras le mettre à jour quand le loyer est reçu
+          period_start: toISODate(start),
+          period_end: toISODate(end),
+          paid_at: null,
           total_amount: total,
           quittance_text: texte,
         })
@@ -433,28 +466,19 @@ export default function QuittancesLoyerPage() {
 
       const created = data as RentReceipt;
       setReceipts((prev) => [created, ...prev]);
-      setGlobalMessage("Quittance générée et stockée.");
-
       setQuittancePreview(texte);
-
-      // 👉 La partie "envoi d'e-mail automatique" se fera côté backend
-      // (edge function / cron / trigger) en utilisant cette ligne.
+      setGlobalMessage("Quittance générée et stockée.");
     } catch (err: any) {
       console.error(err);
-      setGlobalError(
-        err?.message || "Erreur lors de la génération de la quittance."
-      );
+      setGlobalError(err?.message || "Erreur lors de la génération de la quittance.");
     } finally {
       setGeneratingForId(null);
     }
   };
 
-  const currentUnit = useMemo(
-    () => units.find((u) => u.id === selectedUnitId) || null,
-    [units, selectedUnitId]
-  );
-
-  // --- Si non connecté ---
+  // -------------------------
+  // UI: not logged in
+  // -------------------------
   if (!loadingUser && !user) {
     return (
       <div className="min-h-screen flex flex-col bg-slate-100">
@@ -468,28 +492,20 @@ export default function QuittancesLoyerPage() {
               Connectez-vous pour gérer vos quittances
             </h1>
             <p className="text-sm text-slate-600">
-              Cet outil nécessite un compte afin de stocker vos biens, vos locataires
-              et l&apos;historique de vos quittances.
+              Cet outil nécessite un compte afin de stocker vos biens, vos locataires et l&apos;historique
+              de vos quittances.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  router.push(
-                    "/mon-compte?mode=login&redirect=/quittances-loyer"
-                  )
-                }
+                onClick={() => router.push("/mon-compte?mode=login&redirect=/quittances-loyer")}
                 className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
               >
                 Me connecter
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  router.push(
-                    "/mon-compte?mode=register&redirect=/quittances-loyer"
-                  )
-                }
+                onClick={() => router.push("/mon-compte?mode=register&redirect=/quittances-loyer")}
                 className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
               >
                 Créer un compte bailleur
@@ -501,6 +517,9 @@ export default function QuittancesLoyerPage() {
     );
   }
 
+  // -------------------------
+  // UI: main
+  // -------------------------
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
@@ -516,10 +535,8 @@ export default function QuittancesLoyerPage() {
               Générez, stockez et automatisez vos quittances de loyer.
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 max-w-3xl">
-              Déclarez vos biens loués, activez l&apos;option d&apos;envoi automatique
-              et laissez le système générer vos quittances chaque mois. Cette page
-              gère uniquement la configuration et le stockage des quittances ; l&apos;
-              envoi automatique se fera côté serveur (cron / edge function).
+              Déclarez vos biens loués et générez vos quittances mensuelles. L&apos;envoi automatique se fera
+              côté serveur (cron / edge function) en s’appuyant sur vos paramètres.
             </p>
 
             {globalError && (
@@ -534,9 +551,9 @@ export default function QuittancesLoyerPage() {
             )}
           </section>
 
-          {/* LAYOUT 2 COLONNES : BIENS / FORM + QUITTANCES */}
+          {/* LAYOUT */}
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr),minmax(0,1.2fr)]">
-            {/* Colonne gauche : liste des biens */}
+            {/* LEFT: units */}
             <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -556,17 +573,12 @@ export default function QuittancesLoyerPage() {
                 </button>
               </div>
 
-              {unitsLoading && (
-                <p className="text-xs text-slate-500">Chargement des biens…</p>
-              )}
-              {unitsError && (
-                <p className="text-xs text-red-600">{unitsError}</p>
-              )}
+              {unitsLoading && <p className="text-xs text-slate-500">Chargement des biens…</p>}
+              {unitsError && <p className="text-xs text-red-600">{unitsError}</p>}
 
               {!unitsLoading && !unitsError && units.length === 0 && (
                 <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-[0.75rem] text-slate-600">
-                  Aucun bien déclaré pour le moment. Commencez par en créer un
-                  (adresse + locataire + loyer) pour générer vos premières quittances.
+                  Aucun bien déclaré. Créez votre premier bien pour générer vos quittances.
                 </div>
               )}
 
@@ -588,33 +600,17 @@ export default function QuittancesLoyerPage() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div>
-                            <p className="font-semibold text-slate-900">
-                              {unit.label || "Bien sans titre"}
-                            </p>
-                            <p className="text-[0.7rem] text-slate-500 line-clamp-2">
-                              {unit.address}
-                            </p>
+                            <p className="font-semibold text-slate-900">{unit.label || "Bien sans titre"}</p>
+                            <p className="text-[0.7rem] text-slate-500 line-clamp-2">{unit.address}</p>
                             <p className="mt-1 text-[0.7rem] text-slate-600">
-                              Locataire :{" "}
-                              <span className="font-medium">
-                                {unit.tenant_name || "—"}
-                              </span>{" "}
-                              • Loyer :{" "}
-                              <span className="font-medium">
-                                {formatEuro(unit.rent_amount)}
-                              </span>{" "}
-                              + charges :{" "}
-                              <span className="font-medium">
-                                {formatEuro(unit.charges_amount)}
-                              </span>
+                              Locataire : <span className="font-medium">{unit.tenant_name || "—"}</span> • Loyer :{" "}
+                              <span className="font-medium">{formatEuro(unit.rent_amount)}</span> + charges :{" "}
+                              <span className="font-medium">{formatEuro(unit.charges_amount)}</span>
                             </p>
                           </div>
                           <div className="text-right">
                             <p className="text-[0.65rem] text-slate-500">
-                              Jour prévu :{" "}
-                              <span className="font-semibold">
-                                J+{unit.payment_day ?? 1}
-                              </span>
+                              Jour prévu : <span className="font-semibold">{unit.payment_day ?? 1}</span>
                             </p>
                             <p
                               className={
@@ -624,9 +620,7 @@ export default function QuittancesLoyerPage() {
                                   : "border-slate-200 bg-slate-50 text-slate-500")
                               }
                             >
-                              {unit.auto_quittance_enabled
-                                ? "Auto-quittance activée"
-                                : "Auto-quittance désactivée"}
+                              {unit.auto_quittance_enabled ? "Auto-quittance activée" : "Auto-quittance désactivée"}
                             </p>
                           </div>
                         </div>
@@ -637,7 +631,7 @@ export default function QuittancesLoyerPage() {
               )}
             </section>
 
-            {/* Colonne droite : Formulaire bien + actions quittances */}
+            {/* RIGHT: form + actions */}
             <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
                 {currentUnit ? "Modifier le bien & l’auto-quittance" : "Nouveau bien à louer"}
@@ -646,36 +640,30 @@ export default function QuittancesLoyerPage() {
               <form onSubmit={handleSaveUnit} className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">
-                      Nom du bien (ex : T2 centre-ville)
-                    </label>
+                    <label className="text-[0.7rem] text-slate-700">Nom du bien</label>
                     <input
                       type="text"
-                      value={formLabel}
-                      onChange={(e) => setFormLabel(e.target.value)}
+                      value={form.label}
+                      onChange={(e) => dispatch({ type: "set", field: "label", value: e.target.value })}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">
-                      Nom du locataire
-                    </label>
+                    <label className="text-[0.7rem] text-slate-700">Nom du locataire</label>
                     <input
                       type="text"
-                      value={formTenantName}
-                      onChange={(e) => setFormTenantName(e.target.value)}
+                      value={form.tenantName}
+                      onChange={(e) => dispatch({ type: "set", field: "tenantName", value: e.target.value })}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[0.7rem] text-slate-700">
-                    Adresse du logement loué
-                  </label>
+                  <label className="text-[0.7rem] text-slate-700">Adresse du logement loué</label>
                   <textarea
-                    value={formAddress}
-                    onChange={(e) => setFormAddress(e.target.value)}
+                    value={form.address}
+                    onChange={(e) => dispatch({ type: "set", field: "address", value: e.target.value })}
                     rows={2}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
@@ -683,38 +671,33 @@ export default function QuittancesLoyerPage() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">
-                      Adresse e-mail du locataire (pour envoi auto)
-                    </label>
+                    <label className="text-[0.7rem] text-slate-700">Email du locataire (envoi auto)</label>
                     <input
                       type="email"
-                      value={formTenantEmail}
-                      onChange={(e) => setFormTenantEmail(e.target.value)}
+                      value={form.tenantEmail}
+                      onChange={(e) => dispatch({ type: "set", field: "tenantEmail", value: e.target.value })}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
+
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">
-                        Loyer mensuel hors charges (€)
-                      </label>
+                      <label className="text-[0.7rem] text-slate-700">Loyer HC (€)</label>
                       <input
                         type="number"
                         step="0.01"
-                        value={formRent}
-                        onChange={(e) => setFormRent(e.target.value)}
+                        value={form.rent}
+                        onChange={(e) => dispatch({ type: "set", field: "rent", value: e.target.value })}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">
-                        Provisions sur charges (€)
-                      </label>
+                      <label className="text-[0.7rem] text-slate-700">Charges (€)</label>
                       <input
                         type="number"
                         step="0.01"
-                        value={formCharges}
-                        onChange={(e) => setFormCharges(e.target.value)}
+                        value={form.charges}
+                        onChange={(e) => dispatch({ type: "set", field: "charges", value: e.target.value })}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                       />
                     </div>
@@ -723,33 +706,27 @@ export default function QuittancesLoyerPage() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">
-                      Jour habituel de paiement (1–31)
-                    </label>
+                    <label className="text-[0.7rem] text-slate-700">Jour habituel de paiement (1–31)</label>
                     <input
                       type="number"
                       min={1}
                       max={31}
-                      value={formPaymentDay}
-                      onChange={(e) => setFormPaymentDay(e.target.value)}
+                      value={form.paymentDay}
+                      onChange={(e) => dispatch({ type: "set", field: "paymentDay", value: e.target.value })}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
+
                   <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">
-                      Auto-quittance mensuelle
-                    </label>
+                    <label className="text-[0.7rem] text-slate-700">Auto-quittance mensuelle</label>
                     <label className="inline-flex items-center gap-2 text-[0.8rem] text-slate-700">
                       <input
                         type="checkbox"
-                        checked={formAutoEnabled}
-                        onChange={(e) => setFormAutoEnabled(e.target.checked)}
+                        checked={form.autoEnabled}
+                        onChange={(e) => dispatch({ type: "set", field: "autoEnabled", value: e.target.checked })}
                         className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-600"
                       />
-                      <span>
-                        Générer automatiquement une quittance chaque mois (envoi réel
-                        géré côté serveur).
-                      </span>
+                      <span>Générer automatiquement une quittance chaque mois.</span>
                     </label>
                   </div>
                 </div>
@@ -759,35 +736,27 @@ export default function QuittancesLoyerPage() {
                   disabled={savingUnit}
                   className="mt-2 inline-flex items-center justify-center rounded-full bg-amber-500 px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-amber-400 disabled:opacity-60"
                 >
-                  {savingUnit
-                    ? "Enregistrement..."
-                    : currentUnit
-                    ? "Mettre à jour ce bien"
-                    : "Créer ce bien"}
+                  {savingUnit ? "Enregistrement..." : currentUnit ? "Mettre à jour ce bien" : "Créer ce bien"}
                 </button>
               </form>
 
-              {/* Actions quittances sur le bien sélectionné */}
               {currentUnit && (
                 <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 space-y-2">
                   <p className="text-[0.75rem] font-semibold text-slate-900">
                     Quittances pour : {currentUnit.label || "Bien sans titre"}
                   </p>
                   <p className="text-[0.7rem] text-slate-600">
-                    Utilisez ce bouton pour générer immédiatement la quittance du
-                    mois en cours (stockage en base). L&apos;envoi automatique mensuel
-                    se fera ensuite via une tâche planifiée côté serveur qui appelera
-                    cette même logique.
+                    Générez la quittance du mois en cours (stockée en base). L&apos;envoi automatique utilisera la
+                    même logique côté serveur.
                   </p>
+
                   <button
                     type="button"
                     onClick={() => handleGenerateReceiptForCurrentMonth(currentUnit)}
                     disabled={!!generatingForId}
                     className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
                   >
-                    {generatingForId === currentUnit.id
-                      ? "Génération en cours..."
-                      : "Générer la quittance de ce mois"}
+                    {generatingForId === currentUnit.id ? "Génération en cours..." : "Générer la quittance de ce mois"}
                   </button>
 
                   {quittancePreview && (
@@ -805,27 +774,15 @@ export default function QuittancesLoyerPage() {
             </section>
           </div>
 
-          {/* Historique rapides des quittances */}
+          {/* History */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                  Historique des quittances
-                </p>
-                <p className="text-[0.75rem] text-slate-600">
-                  Dernières quittances générées et stockées en base.
-                </p>
-              </div>
-            </div>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Historique des quittances</p>
+            <p className="text-[0.75rem] text-slate-600">Dernières quittances générées et stockées en base.</p>
 
-            {receiptsLoading && (
-              <p className="text-xs text-slate-500">Chargement...</p>
-            )}
+            {receiptsLoading && <p className="text-xs text-slate-500">Chargement...</p>}
 
             {!receiptsLoading && receipts.length === 0 && (
-              <p className="text-[0.75rem] text-slate-500">
-                Aucune quittance générée pour l&apos;instant.
-              </p>
+              <p className="text-[0.75rem] text-slate-500">Aucune quittance générée pour l&apos;instant.</p>
             )}
 
             {!receiptsLoading && receipts.length > 0 && (
@@ -833,26 +790,17 @@ export default function QuittancesLoyerPage() {
                 {receipts.map((r) => {
                   const unit = units.find((u) => u.id === r.rental_unit_id);
                   return (
-                    <div
-                      key={r.id}
-                      className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
-                    >
+                    <div key={r.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <div>
-                          <p className="font-semibold text-slate-900">
-                            {unit?.label || "Bien"}
-                          </p>
+                          <p className="font-semibold text-slate-900">{unit?.label || "Bien"}</p>
                           <p className="text-[0.7rem] text-slate-500">
                             Période du {r.period_start} au {r.period_end}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-slate-900">
-                            {formatEuro(r.total_amount)}
-                          </p>
-                          <p className="text-[0.7rem] text-slate-500">
-                            Générée le {r.created_at.slice(0, 10)}
-                          </p>
+                          <p className="font-semibold text-slate-900">{formatEuro(r.total_amount)}</p>
+                          <p className="text-[0.7rem] text-slate-500">Générée le {r.created_at.slice(0, 10)}</p>
                         </div>
                       </div>
                     </div>
@@ -861,6 +809,12 @@ export default function QuittancesLoyerPage() {
               </div>
             )}
           </section>
+
+          <div className="text-right">
+            <a href="/outils-proprietaire" className="text-[0.75rem] text-slate-500 underline underline-offset-2">
+              ← Retour à la boîte à outils propriétaire
+            </a>
+          </div>
         </div>
       </main>
 
