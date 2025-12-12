@@ -1,69 +1,24 @@
 // components/account/AccountLayout.tsx
-import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import AppHeader from "../AppHeader";
-import { supabase } from "../../lib/supabaseClient";
 
 type Props = {
-  title?: string;
-  children: ReactNode;
+  userEmail?: string | null;
+  active: "dashboard" | "bailleur" | "securite" | "projets";
+  children: React.ReactNode;
+  onLogout?: () => void;
 };
 
-export default function AccountLayout({ title, children }: Props) {
+export default function AccountLayout({ userEmail, active, children, onLogout }: Props) {
   const router = useRouter();
-  const [checking, setChecking] = useState(true);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  useEffect(() => {
-    const run = async () => {
-      if (!supabase) {
-        setChecking(false);
-        return;
-      }
-      const { data } = await supabase.auth.getUser();
-      setUserEmail(data.user?.email ?? null);
-      setChecking(false);
-    };
-    run();
-  }, []);
-
-  const isLoggedIn = !!userEmail;
-  const pathname = router.pathname; // ex: /mon-compte/securite
-
-  const linkClass = (href: string) =>
-    "w-full text-left rounded-lg px-3 py-2 text-sm " +
-    (pathname === href
-      ? "bg-slate-900 text-white"
-      : "text-slate-700 hover:bg-slate-50");
-
-  const handleLogout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    router.push("/");
-  };
-
-  if (checking) {
-    return (
-      <div className="min-h-screen flex flex-col bg-slate-100">
-        <AppHeader />
-        <main className="flex-1 max-w-5xl mx-auto px-4 py-6">
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-            <p className="text-sm text-slate-500">Chargement…</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // 👉 Si pas connecté : redirection vers la page existante mon-compte en mode login
-  // (tu peux aussi afficher un écran login ici si tu préfères)
-  if (!isLoggedIn) {
-    router.replace(
-      `/mon-compte?mode=login&redirect=${encodeURIComponent(router.asPath)}`
-    );
-    return null;
-  }
+  const nav = [
+    { key: "dashboard", label: "Mon compte", href: "/mon-compte" },
+    { key: "bailleur", label: "Bailleur", href: "/mon-compte/bailleur" },
+    { key: "securite", label: "Sécurité", href: "/mon-compte/securite" },
+    { key: "projets", label: "Projets", href: "/mon-compte/projets" },
+  ] as const;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -76,55 +31,55 @@ export default function AccountLayout({ title, children }: Props) {
               Mon espace
             </p>
 
-            <div className="mb-4">
-              <p className="text-xs text-slate-500 mb-1">Connecté :</p>
-              <p className="text-sm font-semibold text-slate-900 break-all">
-                {userEmail}
-              </p>
-            </div>
+            {userEmail ? (
+              <>
+                <div className="mb-4">
+                  <p className="text-xs text-slate-500 mb-1">Connecté en tant que :</p>
+                  <p className="text-sm font-semibold text-slate-900 break-all">{userEmail}</p>
+                </div>
 
-            <nav className="space-y-1">
-              <Link href="/mon-compte" className={linkClass("/mon-compte")}>
-                Tableau de bord
-              </Link>
-              <Link
-                href="/mon-compte/bailleur"
-                className={linkClass("/mon-compte/bailleur")}
-              >
-                Espace bailleur
-              </Link>
-              <Link
-                href="/mon-compte/securite"
-                className={linkClass("/mon-compte/securite")}
-              >
-                Sécurité
-              </Link>
-              <Link
-                href="/mon-compte/projets"
-                className={linkClass("/mon-compte/projets")}
-              >
-                Projets
-              </Link>
+                <nav className="space-y-1 text-sm">
+                  {nav.map((item) => {
+                    const isActive = item.key === active;
+                    return (
+                      <Link
+                        key={item.key}
+                        href={item.href}
+                        className={
+                          "block w-full rounded-lg px-3 py-2 " +
+                          (isActive ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-50")
+                        }
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
 
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full text-left rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-              >
-                Déconnexion
-              </button>
-            </nav>
+                  <button
+                    type="button"
+                    onClick={onLogout}
+                    className="w-full text-left rounded-lg px-3 py-2 text-red-600 hover:bg-red-50"
+                  >
+                    Déconnexion
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => router.push("/")}
+                    className="w-full text-left rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-50"
+                  >
+                    Retour accueil
+                  </button>
+                </nav>
+              </>
+            ) : (
+              <div className="text-xs text-slate-500">
+                <p>Connectez-vous pour accéder à votre espace.</p>
+              </div>
+            )}
           </aside>
 
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            {title && (
-              <div className="mb-4">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                  Mon compte
-                </p>
-                <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
-              </div>
-            )}
             {children}
           </section>
         </div>
@@ -132,6 +87,12 @@ export default function AccountLayout({ title, children }: Props) {
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>© {new Date().getFullYear()} MT Courtage &amp; Investissement</p>
+        <p className="mt-1">
+          Contact :{" "}
+          <a href="mailto:mtcourtage@gmail.com" className="underline">
+            mtcourtage@gmail.com
+          </a>
+        </p>
       </footer>
     </div>
   );
