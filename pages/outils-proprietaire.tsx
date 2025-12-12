@@ -1,9 +1,38 @@
 // pages/outils-proprietaire.tsx
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
+import { supabase } from "../lib/supabaseClient";
 
 export default function OutilsProprietairePage() {
+  // On veut atterrir sur l'onglet bailleur APRÈS auth
   const redirectToBailleur = encodeURIComponent("/mon-compte?tab=bailleur");
+
+  // Session state (pour afficher un CTA "ouvrir" si déjà connecté)
+  const [checking, setChecking] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) {
+      setIsLoggedIn(false);
+      setChecking(false);
+      return;
+    }
+
+    // Session immédiate
+    supabase.auth.getSession().then(({ data }) => {
+      setIsLoggedIn(!!data.session?.user?.id);
+      setChecking(false);
+    });
+
+    // Reste synchro (login/logout/refresh)
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user?.id);
+      setChecking(false);
+    });
+
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -34,9 +63,7 @@ export default function OutilsProprietairePage() {
                   <p className="text-2xl font-semibold text-slate-900 leading-tight">
                     49&nbsp;€ / mois
                   </p>
-                  <p className="text-[0.7rem] text-emerald-800">
-                    Résiliable à tout moment.
-                  </p>
+                  <p className="text-[0.7rem] text-emerald-800">Résiliable à tout moment.</p>
                 </div>
               </div>
 
@@ -52,21 +79,41 @@ export default function OutilsProprietairePage() {
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              {/* ✅ CTA principal : créer un compte puis atterrir sur l'onglet bailleur */}
-              <Link
-                href={`/mon-compte?mode=register&tab=bailleur&redirect=${redirectToBailleur}`}
-                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shadow-md"
-              >
-                Créer mon espace bailleur
-              </Link>
+              {checking ? (
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white opacity-60"
+                >
+                  Chargement…
+                </button>
+              ) : isLoggedIn ? (
+                // ✅ déjà connecté -> on ouvre directement l'onglet bailleur
+                <Link
+                  href="/mon-compte?tab=bailleur"
+                  className="inline-flex items-center justify-center rounded-full bg-amber-500 px-6 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-400 shadow-md"
+                >
+                  Ouvrir mon espace bailleur
+                </Link>
+              ) : (
+                <>
+                  {/* ✅ CTA principal : créer un compte puis atterrir sur l'onglet bailleur */}
+                  <Link
+                    href={`/mon-compte?mode=register&tab=bailleur&redirect=${redirectToBailleur}`}
+                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shadow-md"
+                  >
+                    Créer mon espace bailleur
+                  </Link>
 
-              {/* ✅ CTA secondaire : déjà un compte -> login -> redirection bailleur */}
-              <Link
-                href={`/mon-compte?mode=login&tab=bailleur&redirect=${redirectToBailleur}`}
-                className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-              >
-                J’ai déjà un compte
-              </Link>
+                  {/* ✅ CTA secondaire : déjà un compte -> login -> redirection bailleur */}
+                  <Link
+                    href={`/mon-compte?mode=login&tab=bailleur&redirect=${redirectToBailleur}`}
+                    className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  >
+                    J’ai déjà un compte
+                  </Link>
+                </>
+              )}
 
               <a
                 href="mailto:mtcourtage@gmail.com?subject=Pré-inscription%20Outils%20propriétaire"
@@ -154,11 +201,10 @@ export default function OutilsProprietairePage() {
 
           {/* POUR QUI ? */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-              Pour qui ?
-            </p>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Pour qui ?</p>
             <h2 className="text-base sm:text-lg font-semibold text-slate-900">
-              Propriétaires solo, LMNP, multipropriétaires… si vous avez des locataires, c&apos;est pour vous.
+              Propriétaires solo, LMNP, multipropriétaires… si vous avez des locataires,
+              c&apos;est pour vous.
             </h2>
 
             <div className="grid gap-4 md:grid-cols-3 mt-2 text-[0.75rem] text-slate-700">
@@ -199,7 +245,8 @@ export default function OutilsProprietairePage() {
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Outils pour propriétaires et investisseurs.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Outils pour propriétaires et
+          investisseurs.
         </p>
         <p className="mt-1">
           Contact :{" "}
