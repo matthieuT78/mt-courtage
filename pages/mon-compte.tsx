@@ -62,12 +62,21 @@ function typeBadgeColor(type: ProjectType): string {
   }
 }
 
+function getTab(raw: any): Tab {
+  const allowed: Tab[] = ["infos", "securite", "projets", "bailleur"];
+  return allowed.includes(raw) ? raw : "infos";
+}
+
+function getMode(raw: any): Mode {
+  return raw === "register" ? "register" : "login";
+}
+
 export default function MonComptePage() {
   const router = useRouter();
 
-  // UI state
-  const [mode, setMode] = useState<Mode>("login");
-  const [activeTab, setActiveTab] = useState<Tab>("infos");
+  // URL-derived UI state (✅ source of truth)
+  const tab: Tab = getTab(router.query.tab);
+  const mode: Mode = getMode(router.query.mode);
 
   // Auth form
   const [authEmail, setAuthEmail] = useState("");
@@ -81,7 +90,7 @@ export default function MonComptePage() {
   const [checkingUser, setCheckingUser] = useState(true);
   const [user, setUser] = useState<any>(null);
 
-  // Dashboard bits
+  // Dashboard
   const [projectsCount, setProjectsCount] = useState<number | null>(null);
   const [projectsCountLoading, setProjectsCountLoading] = useState(false);
 
@@ -97,7 +106,7 @@ export default function MonComptePage() {
   const [prefsError, setPrefsError] = useState<string | null>(null);
   const [prefsOk, setPrefsOk] = useState<string | null>(null);
 
-  // Bailleur (stocké en user_metadata pour démarrer)
+  // Bailleur (user_metadata)
   const [bailleurLoading, setBailleurLoading] = useState(false);
   const [bailleurError, setBailleurError] = useState<string | null>(null);
   const [bailleurOk, setBailleurOk] = useState<string | null>(null);
@@ -118,46 +127,31 @@ export default function MonComptePage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
 
-  // ✅ Plus robuste que email
   const isLoggedIn = !!user?.id;
 
-  // URL -> mode
-  useEffect(() => {
-    if (!router.isReady) return;
-    const m = router.query.mode as string | undefined;
-    setMode(m === "register" ? "register" : "login");
-  }, [router.isReady, router.query.mode]);
+  const redirectParam =
+    typeof router.query.redirect === "string" && router.query.redirect.startsWith("/")
+      ? router.query.redirect
+      : null;
 
-  // URL -> tab
-  useEffect(() => {
-    if (!router.isReady) return;
-    const t = router.query.tab as string | undefined;
-    const allowed: Tab[] = ["infos", "securite", "projets", "bailleur"];
-    setActiveTab(allowed.includes(t as Tab) ? (t as Tab) : "infos");
-  }, [router.isReady, router.query.tab]);
-
-  // ✅ Conserve redirect si présent
-  const goToTab = (tab: Tab) => {
-    const redirect = typeof router.query.redirect === "string" ? router.query.redirect : undefined;
-    setActiveTab(tab);
-    router.push(
-      { pathname: "/mon-compte", query: redirect ? { tab, redirect } : { tab } },
-      undefined,
-      { shallow: true }
-    );
+  const goToTab = (next: Tab) => {
+    // conserve redirect et enlève mode (inutile quand connecté)
+    const nextQuery: Record<string, any> = { ...router.query, tab: next };
+    router.push({ pathname: "/mon-compte", query: nextQuery }, undefined, { shallow: true });
   };
 
-  // ✅ Redirect : si pas de paramètre, on reste sur la page en gardant l’onglet
+  const setModeInUrl = (m: Mode) => {
+    const nextQuery: Record<string, any> = { ...router.query, mode: m };
+    router.push({ pathname: "/mon-compte", query: nextQuery }, undefined, { shallow: true });
+  };
+
   const redirectAfterAuth = () => {
-    const redirectParam = router.query.redirect;
-    const redirectPath =
-      typeof redirectParam === "string" && redirectParam.startsWith("/")
-        ? redirectParam
-        : router.asPath; // fallback: rester sur /mon-compte?tab=...
-    router.push(redirectPath);
+    // si redirect est fourni -> on y va
+    // sinon on reste sur /mon-compte en conservant tab
+    if (redirectParam) router.push(redirectParam);
+    else router.push({ pathname: "/mon-compte", query: { tab } });
   };
 
-  // ✅ Centralise l'application des metadata dans l'état
   const hydrateFromUser = async (u: any | null) => {
     setUser(u);
 
@@ -176,7 +170,6 @@ export default function MonComptePage() {
     const meta = u.user_metadata || {};
     setNewsletterOptIn(!!meta.newsletter_opt_in);
 
-    // Bailleur meta
     setIsLandlord(!!meta.is_landlord);
     setLandlordName(meta.landlord_name || "");
     setLandlordAddress(meta.landlord_address || "");
@@ -184,9 +177,8 @@ export default function MonComptePage() {
     setDefaultPaymentMode(meta.landlord_default_payment_mode || "virement");
     setAutoSendEnabled(!!meta.landlord_auto_send_enabled);
 
-    // Count projects
+    // Compteur projets
     try {
-      if (!supabase) return;
       setProjectsCountLoading(true);
       const { count } = await supabase
         .from("projects")
@@ -198,56 +190,47 @@ export default function MonComptePage() {
     }
   };
 
-  // ✅ Session robuste : getSession + listener
+  // ✅ Session robuste (la clé du problème)
   useEffect(() => {
-    if (!supabase) {
-      setUser(null);
-      setCheckingUser(false);
-      return;
-    }
+    let mounted = true;
 
-    // 1) session immédiate
     supabase.auth
       .getSession()
       .then(async ({ data }) => {
+        if (!mounted) return;
         await hydrateFromUser(data.session?.user ?? null);
         setCheckingUser(false);
       })
       .catch(() => {
+        if (!mounted) return;
         setUser(null);
         setCheckingUser(false);
       });
 
-    // 2) écoute (login/logout/refresh)
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
       await hydrateFromUser(session?.user ?? null);
       setCheckingUser(false);
     });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Si déjà connecté, on nettoie "mode" pour éviter l'écran register/login inutile
-  useEffect(() => {
-    if (!router.isReady) return;
-    if (!isLoggedIn) return;
-    if (router.query.mode !== "login" && router.query.mode !== "register") return;
-
-    const { mode: _mode, ...rest } = router.query;
-    router.replace({ pathname: "/mon-compte", query: rest }, undefined, { shallow: true });
-  }, [router.isReady, isLoggedIn, router.query.mode]);
-
-  // Load projects only when needed
+  // ✅ Charge les projets seulement quand onglet "projets"
   useEffect(() => {
     const fetchProjects = async () => {
-      if (!supabase || !isLoggedIn || activeTab !== "projets") return;
+      if (!isLoggedIn || tab !== "projets") return;
+
       try {
         setProjectsLoading(true);
         setProjectsError(null);
 
-        const { data: sessionData, error: sErr } = await supabase.auth.getSession();
-        if (sErr || !sessionData.session) throw new Error("Session invalide, reconnectez-vous.");
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData.session) throw new Error("Session invalide, reconnectez-vous.");
 
         const { data, error } = await supabase
           .from("projects")
@@ -263,9 +246,9 @@ export default function MonComptePage() {
         setProjectsLoading(false);
       }
     };
+
     fetchProjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, isLoggedIn]);
+  }, [isLoggedIn, tab]);
 
   // ---------- AUTH ----------
   const handleLogin = async (e: FormEvent) => {
@@ -273,19 +256,19 @@ export default function MonComptePage() {
     setAuthError(null);
     setAuthInfo(null);
 
-    if (!supabase) {
-      setAuthError("Auth indisponible.");
-      return;
-    }
-
     setAuthLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: authEmail,
         password: authPassword,
       });
-      if (error) setAuthError(error.message || "Erreur de connexion.");
-      else redirectAfterAuth();
+
+      if (error) {
+        setAuthError(error.message || "Erreur de connexion.");
+        return;
+      }
+
+      redirectAfterAuth();
     } finally {
       setAuthLoading(false);
     }
@@ -296,10 +279,6 @@ export default function MonComptePage() {
     setAuthError(null);
     setAuthInfo(null);
 
-    if (!supabase) {
-      setAuthError("Auth indisponible.");
-      return;
-    }
     if (!authEmail || !authPassword) {
       setAuthError("Merci de renseigner un e-mail et un mot de passe.");
       return;
@@ -315,18 +294,20 @@ export default function MonComptePage() {
         email: authEmail,
         password: authPassword,
       });
-      if (error) setAuthError(error.message || "Erreur inscription.");
-      else {
-        setAuthInfo("Compte créé. Vérifiez vos e-mails puis connectez-vous.");
-        setMode("login");
+
+      if (error) {
+        setAuthError(error.message || "Erreur inscription.");
+        return;
       }
+
+      setAuthInfo("Compte créé. Vérifiez vos e-mails puis connectez-vous.");
+      setModeInUrl("login");
     } finally {
       setAuthLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    if (!supabase) return;
     await supabase.auth.signOut();
     router.push("/");
   };
@@ -337,7 +318,6 @@ export default function MonComptePage() {
     setPwdError(null);
     setPwdOk(null);
 
-    if (!supabase) return setPwdError("Auth indisponible.");
     if (!newPassword) return setPwdError("Merci de renseigner un nouveau mot de passe.");
     if (newPassword !== newPassword2) return setPwdError("Les mots de passe ne correspondent pas.");
 
@@ -360,8 +340,6 @@ export default function MonComptePage() {
     setPrefsError(null);
     setPrefsOk(null);
 
-    if (!supabase) return setPrefsError("Auth indisponible.");
-
     setPrefsLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({
@@ -374,13 +352,11 @@ export default function MonComptePage() {
     }
   };
 
-  // ---------- BAILLEUR (user_metadata) ----------
+  // ---------- BAILLEUR ----------
   const handleSaveLandlord = async (e: FormEvent) => {
     e.preventDefault();
     setBailleurError(null);
     setBailleurOk(null);
-
-    if (!supabase) return setBailleurError("Auth indisponible.");
 
     setBailleurLoading(true);
     try {
@@ -396,7 +372,7 @@ export default function MonComptePage() {
       });
       if (error) throw error;
 
-      // ✅ on met aussi à jour l'user local (sinon parfois l'UI ne reflète pas tout de suite)
+      // Refresh user local
       const { data } = await supabase.auth.getUser();
       await hydrateFromUser(data.user ?? null);
 
@@ -449,7 +425,9 @@ export default function MonComptePage() {
               Mon espace
             </p>
 
-            {isLoggedIn ? (
+            {checkingUser ? (
+              <p className="text-sm text-slate-500">Chargement…</p>
+            ) : isLoggedIn ? (
               <>
                 <div className="mb-4">
                   <p className="text-xs text-slate-500 mb-1">Connecté en tant que :</p>
@@ -457,22 +435,22 @@ export default function MonComptePage() {
                 </div>
 
                 <nav className="space-y-1 text-sm">
-                  {[
+                  {([
                     ["infos", "Tableau de bord"],
                     ["bailleur", "Espace bailleur"],
                     ["securite", "Sécurité & préférences"],
                     ["projets", "Mes projets"],
-                  ].map(([key, label]) => (
+                  ] as const).map(([key, label]) => (
                     <button
                       key={key}
                       type="button"
                       className={
                         "w-full text-left rounded-lg px-3 py-2 " +
-                        (activeTab === key
+                        (tab === key
                           ? "bg-slate-900 text-white"
                           : "text-slate-700 hover:bg-slate-50")
                       }
-                      onClick={() => goToTab(key as Tab)}
+                      onClick={() => goToTab(key)}
                     >
                       {label}
                     </button>
@@ -521,7 +499,7 @@ export default function MonComptePage() {
 
                   <button
                     type="button"
-                    onClick={() => setMode(mode === "login" ? "register" : "login")}
+                    onClick={() => setModeInUrl(mode === "login" ? "register" : "login")}
                     className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
                   >
                     {mode === "login" ? "Créer un compte" : "J’ai déjà un compte"}
@@ -573,9 +551,7 @@ export default function MonComptePage() {
                       <p className="text-[0.7rem] text-slate-500">
                         Redirection :{" "}
                         <span className="font-semibold">
-                          {typeof router.query.redirect === "string"
-                            ? router.query.redirect
-                            : router.asPath}
+                          {redirectParam ?? `/mon-compte?tab=${tab}`}
                         </span>
                       </p>
                     </div>
@@ -624,7 +600,7 @@ export default function MonComptePage() {
                   </form>
                 )}
               </>
-            ) : activeTab === "infos" ? (
+            ) : tab === "infos" ? (
               <>
                 {/* DASHBOARD */}
                 <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
@@ -714,7 +690,7 @@ export default function MonComptePage() {
                   </Link>
                 </div>
               </>
-            ) : activeTab === "bailleur" ? (
+            ) : tab === "bailleur" ? (
               <>
                 {/* BAILLEUR */}
                 <p className="uppercase tracking-[0.18em] text-[0.7rem] text-amber-700 mb-1">
@@ -834,15 +810,190 @@ export default function MonComptePage() {
                   </div>
                 </form>
               </>
-            ) : activeTab === "securite" ? (
+            ) : tab === "securite" ? (
               <>
-                {/* SECURITY & PREFS */}
-                {/* ... inchangé chez toi ... */}
+                {/* SECURITY */}
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-slate-900 mb-1">
+                  Sécurité & préférences
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900 mb-2">
+                  Protégez votre compte
+                </h2>
+
+                <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[0.75rem] font-semibold text-slate-800 mb-2">
+                    Changer mon mot de passe
+                  </p>
+                  {pwdError && (
+                    <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[0.7rem] text-red-700">
+                      {pwdError}
+                    </div>
+                  )}
+                  {pwdOk && (
+                    <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.7rem] text-emerald-700">
+                      {pwdOk}
+                    </div>
+                  )}
+                  <form onSubmit={handleChangePassword} className="space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">Nouveau mot de passe</label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">Confirmer</label>
+                        <input
+                          type="password"
+                          value={newPassword2}
+                          onChange={(e) => setNewPassword2(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={pwdLoading}
+                      className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {pwdLoading ? "Mise à jour..." : "Mettre à jour"}
+                    </button>
+                  </form>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-[0.75rem] font-semibold text-slate-800 mb-2">
+                    Newsletter
+                  </p>
+                  {prefsError && (
+                    <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[0.7rem] text-red-700">
+                      {prefsError}
+                    </div>
+                  )}
+                  {prefsOk && (
+                    <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.7rem] text-emerald-700">
+                      {prefsOk}
+                    </div>
+                  )}
+                  <form onSubmit={handleSavePreferences} className="space-y-3">
+                    <label className="flex items-start gap-2 text-sm text-slate-800">
+                      <input
+                        type="checkbox"
+                        checked={newsletterOptIn}
+                        onChange={(e) => setNewsletterOptIn(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                      />
+                      <span>Je souhaite recevoir la newsletter.</span>
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={prefsLoading}
+                      className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      {prefsLoading ? "Enregistrement..." : "Enregistrer"}
+                    </button>
+                  </form>
+                </div>
               </>
             ) : (
               <>
                 {/* PROJECTS */}
-                {/* ... inchangé chez toi ... */}
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-slate-900 mb-1">
+                  Mes projets
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900 mb-2">
+                  Projets sauvegardés
+                </h2>
+
+                {projectsLoading && <p className="text-sm text-slate-500">Chargement…</p>}
+                {!projectsLoading && projectsError && (
+                  <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700 mb-3">
+                    {projectsError}
+                  </div>
+                )}
+
+                {!projectsLoading && !projectsError && projects.length === 0 && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm text-slate-700 font-medium mb-1">Aucun projet.</p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Link
+                        href="/capacite"
+                        className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                      >
+                        Calculette capacité
+                      </Link>
+                      <Link
+                        href="/investissement"
+                        className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                      >
+                        Investissement locatif
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {!projectsLoading && !projectsError && projects.length > 0 && (
+                  <section className="space-y-3">
+                    {projects.map((p) => {
+                      const isExpanded = expandedId === p.id;
+                      return (
+                        <article
+                          key={p.id}
+                          className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4"
+                        >
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={
+                                    "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold " +
+                                    typeBadgeColor(p.type)
+                                  }
+                                >
+                                  {typeLabel(p.type)}
+                                </span>
+                                <span className="text-[0.7rem] text-slate-400">
+                                  {formatDateTime(p.created_at)}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-sm font-semibold text-slate-900">
+                                {p.title || typeLabel(p.type)}
+                              </p>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setExpandedId(isExpanded ? null : p.id)}
+                                className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                              >
+                                {isExpanded ? "Masquer" : "Détails"}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteProject(p)}
+                                disabled={deleteLoadingId === p.id}
+                                className="inline-flex items-center justify-center rounded-full border border-red-300 bg-red-50 px-3 py-1.5 text-[0.7rem] font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+                              >
+                                {deleteLoadingId === p.id ? "Supp…" : "Supprimer"}
+                              </button>
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+                              <pre className="text-[0.7rem] sm:text-xs text-slate-800 overflow-auto">
+                                {JSON.stringify(p.data, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </section>
+                )}
               </>
             )}
           </section>
