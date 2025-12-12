@@ -14,47 +14,50 @@ export default function OutilsProprietairePage() {
             <p className="text-[0.7rem] uppercase tracking-[0.20em] text-emerald-600">
               Boîte à outils propriétaire
             </p>
+
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
               Centralisez la gestion de vos locations comme un pro.
             </h1>
+
             <p className="text-xs sm:text-sm text-slate-600 max-w-2xl">
               Quittances automatiques, suivi des cautions, états des lieux, dossiers
-              locataires... Un espace unique pour simplifier la vie des bailleurs
-              particuliers comme pros.
+              locataires… Un espace unique pour simplifier la vie des bailleurs
+              particuliers comme professionnels.
             </p>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-2">
               <div className="inline-flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                 <div>
                   <p className="text-[0.7rem] uppercase tracking-[0.16em] text-slate-500">
-                    Abonnement mensuel (bientôt)
+                    Abonnement (bientôt)
                   </p>
-                  <p className="text-2xl font-semibold text-slate-900 leading-tight">
-                    49&nbsp;€ / mois
+                  <p className="text-2xl font-semibold text-slate-900">
+                    49 € / mois
                   </p>
                   <p className="text-[0.7rem] text-emerald-800">
-                    Résiliable à tout moment.
+                    Résiliable à tout moment
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2 text-[0.75rem] text-slate-600">
+              <div className="text-[0.75rem] text-slate-600 space-y-1">
                 <p>
-                  Idéal si vous gérez plusieurs biens (meublés, nus, colocations) et
-                  que vous voulez professionnaliser vos échanges avec vos locataires.
+                  Conçu pour les propriétaires qui veulent structurer leur gestion
+                  sans passer par une agence.
                 </p>
-                <p className="text-[0.7rem] text-slate-500">
-                  Version bêta en préparation – pré-inscriptions possibles dès maintenant.
+                <p className="text-slate-500">
+                  Version bêta – fonctionnalités activées progressivement.
                 </p>
               </div>
             </div>
 
+            {/* CTA PRINCIPAL */}
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
               <Link
-                href="/mon-compte?mode=register&tab=bailleur&redirect=/mon-compte?tab=bailleur"
+                href="/mon-compte?tab=bailleur"
                 className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shadow-md"
               >
-                Créer mon espace bailleur
+                Créer / accéder à mon espace bailleur
               </Link>
 
               <a
@@ -64,138 +67,75 @@ export default function OutilsProprietairePage() {
                 Discuter de mes besoins
               </a>
             </div>
+
+            <p className="text-[0.7rem] text-slate-500">
+              Vous serez redirigé vers votre compte, onglet{" "}
+              <span className="font-semibold">« Espace bailleur »</span>.
+            </p>
           </section>
 
-          {/* FONCTIONNALITÉS CLÉS */}
+          {/* FONCTIONNALITÉS */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                  Fonctionnalités principales
-                </p>
-                <h2 className="mt-1 text-base sm:text-lg font-semibold text-slate-900">
-                  Tout ce qu&apos;il faut pour piloter vos locations
-                </h2>
-              </div>
-              <p className="text-[0.75rem] text-slate-500 max-w-xs">
-                Pensé pour des propriétaires qui veulent gagner du temps sans passer
-                par une agence.
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                Fonctionnalités principales
               </p>
+              <h2 className="mt-1 text-base sm:text-lg font-semibold text-slate-900">
+                Les outils essentiels du bailleur moderne
+              </h2>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3 mt-2">
-              {/* 🧾 Quittances automatiques - CLiquable */}
+            <div className="grid gap-4 md:grid-cols-3">
+              {/* QUITTANCES */}
               <Link
                 href="/quittances-loyer"
-                className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 cursor-pointer hover:bg-amber-50 hover:border-amber-300 hover:shadow-md transition"
+                className="group rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2 hover:bg-amber-50 hover:border-amber-300 hover:shadow transition"
               >
-                <div className="inline-flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center">
                     🧾
                   </div>
                   <p className="text-xs font-semibold text-slate-900">
-                    Quittances automatiques
+                    Quittances de loyer
                   </p>
                 </div>
-                <ul className="space-y-1 text-[0.75rem] text-slate-700">
-                  <li>• Génération automatique des quittances chaque mois</li>
-                  <li>• Archivage par locataire et par bien</li>
-                  <li>• Envoi par e-mail au format PDF</li>
+                <ul className="text-[0.75rem] text-slate-700 space-y-1">
+                  <li>• Génération mensuelle</li>
+                  <li>• Historique par bien</li>
+                  <li>• Envoi e-mail automatisable</li>
                 </ul>
-                <p className="text-[0.7rem] font-medium text-amber-700 group-hover:underline">
-                  Accéder au générateur de quittances →
+                <p className="text-[0.7rem] text-amber-700 font-medium group-hover:underline">
+                  Accéder au module →
                 </p>
               </Link>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 opacity-70">
-                <div className="inline-flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
-                    💶
-                  </div>
-                  <p className="text-xs font-semibold text-slate-900">
-                    Cautions & loyers (bientôt)
-                  </p>
-                </div>
-                <ul className="space-y-1 text-[0.75rem] text-slate-700">
-                  <li>• Suivi des dépôts de garantie</li>
-                  <li>• Historique des loyers et retards</li>
-                  <li>• Alertes sur régularisation ou fin de bail</li>
-                </ul>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 opacity-70">
-                <div className="inline-flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
-                    📋
-                  </div>
-                  <p className="text-xs font-semibold text-slate-900">
-                    États des lieux & documents (bientôt)
-                  </p>
-                </div>
-                <ul className="space-y-1 text-[0.75rem] text-slate-700">
-                  <li>• Modèles d&apos;états des lieux d&apos;entrée / sortie</li>
-                  <li>• Checklist personnalisable par type de bien</li>
-                  <li>• Centralisation des pièces locataires</li>
-                </ul>
-              </div>
-            </div>
-          </section>
-
-          {/* POUR QUI ? */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-              Pour qui ?
-            </p>
-            <h2 className="text-base sm:text-lg font-semibold text-slate-900">
-              Propriétaires solo, LMNP, multipropriétaires… si vous avez des locataires, c&apos;est pour vous.
-            </h2>
-
-            <div className="grid gap-4 md:grid-cols-3 mt-2 text-[0.75rem] text-slate-700">
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <p className="font-semibold text-slate-900 mb-1">Bailleur débutant</p>
-                <p>
-                  Vous mettez votre premier bien en location et vous voulez éviter
-                  les erreurs administratives (quittances, bail, caution…).
+              {/* À VENIR */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2 opacity-60">
+                <p className="text-xs font-semibold text-slate-900">
+                  💶 Loyers & cautions
                 </p>
-              </div>
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <p className="font-semibold text-slate-900 mb-1">Multipropriétaire</p>
-                <p>
-                  Plusieurs biens, plusieurs locataires, plusieurs cautions… mais
-                  un seul tableau de bord pour tout suivre.
+                <p className="text-[0.75rem] text-slate-600">
+                  Suivi des paiements, dépôts de garantie, alertes.
                 </p>
+                <p className="text-[0.7rem] text-slate-500">Bientôt</p>
               </div>
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <p className="font-semibold text-slate-900 mb-1">Investisseur structuré</p>
-                <p>
-                  Vous utilisez déjà les calculettes MT Courtage pour vos achats
-                  et vous voulez aller jusqu&apos;à la gestion locative.
-                </p>
-              </div>
-            </div>
 
-            <div className="mt-4 flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/capacite"
-                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2 text-[0.8rem] font-semibold text-slate-800 hover:bg-slate-50"
-              >
-                Continuer à explorer les simulateurs
-              </Link>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2 opacity-60">
+                <p className="text-xs font-semibold text-slate-900">
+                  📋 États des lieux
+                </p>
+                <p className="text-[0.75rem] text-slate-600">
+                  Modèles, checklists et signatures.
+                </p>
+                <p className="text-[0.7rem] text-slate-500">Bientôt</p>
+              </div>
             </div>
           </section>
         </div>
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
-        <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Outils pour propriétaires et investisseurs.
-        </p>
-        <p className="mt-1">
-          Contact :{" "}
-          <a href="mailto:mtcourtage@gmail.com" className="underline">
-            mtcourtage@gmail.com
-          </a>
-        </p>
+        © {new Date().getFullYear()} MT Courtage & Investissement
       </footer>
     </div>
   );
