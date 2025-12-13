@@ -6,7 +6,7 @@ import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
 type Mode = "login" | "register";
-type Tab = "infos" | "profil" | "securite" | "projets" | "bailleur";
+type Tab = "infos" | "securite" | "projets" | "bailleur";
 
 type ProjectType = "capacite" | "investissement" | "parc" | "pret-relais" | string;
 
@@ -19,53 +19,77 @@ type ProjectRow = {
   created_at: string;
 };
 
-type PaymentMode = "virement" | "prelevement" | "cheque" | "especes";
-type AccountType = "particulier" | "pro";
-type SubscriptionPlan = "free" | "annual_40" | "monthly_49";
-
-type ProfileRow = {
-  id: string;
-  full_name: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-  address_line1: string | null;
-  address_line2: string | null;
-  postal_code: string | null;
-  city: string | null;
-  country: string | null;
-  account_type: AccountType | null;
-  subscription_plan: SubscriptionPlan | null;
-  is_admin?: boolean | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
-
 type LandlordRow = {
   user_id: string;
   display_name: string | null;
   address: string | null;
   default_city: string | null;
   default_payment_mode: string | null;
-
   properties_count: number | null;
-
   auto_send_enabled: boolean | null;
-  auto_send_frequency: string | null; // monthly / quarterly / yearly
-  auto_send_day: number | null; // 1..31
-  auto_send_hour: number | null; // 0..23
+  created_at?: string;
+  updated_at?: string;
 
+  // champs détaillés (si présents)
+  address_line1?: string | null;
+  address_line2?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  country?: string | null;
+
+  default_issue_place?: string | null;
+  default_payment_method?: string | null;
+
+  auto_send_frequency?: string | null; // ex: "monthly"
+  auto_send_day?: number | null; // 1..31
+  auto_send_hour?: number | null; // 0..23
+};
+
+type PropertyRow = {
+  id: string;
+  user_id: string;
+  label: string | null;
   address_line1: string | null;
   address_line2: string | null;
   postal_code: string | null;
   city: string | null;
   country: string | null;
+  created_at: string;
+  updated_at?: string;
+};
 
-  default_issue_place: string | null;
-  default_payment_method: string | null;
+type TenantRow = {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at?: string;
+};
 
-  created_at?: string | null;
-  updated_at?: string | null;
+type LeaseRow = {
+  id: string;
+  user_id: string;
+  property_id: string;
+  tenant_id: string;
+  start_date: string; // NOT NULL
+  end_date: string | null;
+  rent_amount: string | number | null; // numeric
+  charges_amount: string | number | null; // numeric
+  deposit_amount: string | number | null;
+  payment_day: number | null;
+  payment_method: string | null;
+  status: string | null; // si tu l'as
+  auto_reminder_enabled: boolean | null;
+  auto_quittance_enabled: boolean | null;
+  reminder_day_of_month: number | null;
+  reminder_email: string | null;
+  tenant_receipt_email: string | null;
+  timezone: string | null;
+  created_at: string;
+  updated_at?: string;
 };
 
 function formatDateTime(dateStr: string | null) {
@@ -79,6 +103,13 @@ function formatDateTime(dateStr: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatDateFR(dateStr: string | null) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "2-digit" });
 }
 
 function typeLabel(type: ProjectType): string {
@@ -114,7 +145,7 @@ function typeBadgeColor(type: ProjectType): string {
 function getTab(raw: any): Tab {
   const value = Array.isArray(raw) ? raw[0] : raw;
   const cleaned = String(value ?? "").trim().toLowerCase().replace(/\/$/, "");
-  const allowed: Tab[] = ["infos", "profil", "securite", "projets", "bailleur"];
+  const allowed: Tab[] = ["infos", "securite", "projets", "bailleur"];
   return allowed.includes(cleaned as Tab) ? (cleaned as Tab) : "infos";
 }
 
@@ -122,9 +153,23 @@ function getMode(raw: any): Mode {
   return raw === "register" ? "register" : "login";
 }
 
+function formatMoney(n: number | string | null | undefined) {
+  if (n == null) return "—";
+  const v = typeof n === "string" ? Number(n) : n;
+  if (Number.isNaN(v)) return "—";
+  return v.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+}
+
+function clampInt(val: any, min: number, max: number, fallback: number) {
+  const n = parseInt(String(val ?? ""), 10);
+  if (Number.isNaN(n)) return fallback;
+  return Math.max(min, Math.min(max, n));
+}
+
 export default function MonComptePage() {
   const router = useRouter();
 
+  // URL-derived state
   const tab: Tab = getTab(router.query.tab);
   const mode: Mode = getMode(router.query.mode);
 
@@ -136,81 +181,16 @@ export default function MonComptePage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authInfo, setAuthInfo] = useState<string | null>(null);
 
-  // Session
+  // User session
   const [checkingUser, setCheckingUser] = useState(true);
   const [user, setUser] = useState<any>(null);
   const isLoggedIn = !!user?.id;
 
-  // Redirect param
+  // redirect
   const redirectParam =
     typeof router.query.redirect === "string" && router.query.redirect.startsWith("/")
       ? router.query.redirect
       : null;
-
-  // Dashboard
-  const [projectsCount, setProjectsCount] = useState<number | null>(null);
-  const [projectsCountLoading, setProjectsCountLoading] = useState(false);
-
-  // Projects tab
-  const [projects, setProjects] = useState<ProjectRow[]>([]);
-  const [projectsLoading, setProjectsLoading] = useState(false);
-  const [projectsError, setProjectsError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
-
-  // Security
-  const [newPassword, setNewPassword] = useState("");
-  const [newPassword2, setNewPassword2] = useState("");
-  const [pwdLoading, setPwdLoading] = useState(false);
-  const [pwdError, setPwdError] = useState<string | null>(null);
-  const [pwdOk, setPwdOk] = useState<string | null>(null);
-
-  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
-  const [prefsLoading, setPrefsLoading] = useState(false);
-  const [prefsError, setPrefsError] = useState<string | null>(null);
-  const [prefsOk, setPrefsOk] = useState<string | null>(null);
-
-  // ---- PROFIL (DB: profiles) ----
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [profileError, setProfileError] = useState<string | null>(null);
-  const [profileOk, setProfileOk] = useState<string | null>(null);
-
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [addr1, setAddr1] = useState("");
-  const [addr2, setAddr2] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const [city, setCity] = useState("");
-  const [country, setCountry] = useState("FR");
-
-  const [accountType, setAccountType] = useState<AccountType>("particulier");
-  const [subscriptionPlan, setSubscriptionPlan] = useState<SubscriptionPlan>("free");
-
-  // ---- BAILLEUR (DB: landlords) ----
-  const [bailleurLoading, setBailleurLoading] = useState(false);
-  const [bailleurError, setBailleurError] = useState<string | null>(null);
-  const [bailleurOk, setBailleurOk] = useState<string | null>(null);
-
-  const [isLandlord, setIsLandlord] = useState(false);
-
-  const [landlordName, setLandlordName] = useState("");
-  const [landlordAddress, setLandlordAddress] = useState(""); // fallback/legacy
-  const [landlordAddr1, setLandlordAddr1] = useState("");
-  const [landlordAddr2, setLandlordAddr2] = useState("");
-  const [landlordPostalCode, setLandlordPostalCode] = useState("");
-  const [landlordCity, setLandlordCity] = useState("");
-  const [landlordCountry, setLandlordCountry] = useState("FR");
-
-  const [defaultCity, setDefaultCity] = useState(""); // legacy label in UI
-  const [defaultPaymentMode, setDefaultPaymentMode] = useState<PaymentMode>("virement");
-
-  const [propertiesCount, setPropertiesCount] = useState<number>(1);
-
-  const [autoSendEnabled, setAutoSendEnabled] = useState(false);
-  const [autoSendFrequency, setAutoSendFrequency] = useState<string>("monthly");
-  const [autoSendDay, setAutoSendDay] = useState<number>(1);
-  const [autoSendHour, setAutoSendHour] = useState<number>(9);
 
   const goToTab = (next: Tab) => {
     const nextQuery: Record<string, any> = { ...router.query, tab: next };
@@ -224,130 +204,195 @@ export default function MonComptePage() {
 
   const redirectAfterAuth = () => {
     if (redirectParam) router.push(redirectParam);
-    else router.push({ pathname: "/mon-compte", query: { tab: "infos" } });
+    else router.push({ pathname: "/mon-compte", query: { tab } });
   };
 
-  const resetAllState = () => {
-    setNewsletterOptIn(false);
+  // Dashboard / projects counter
+  const [projectsCount, setProjectsCount] = useState<number | null>(null);
+  const [projectsCountLoading, setProjectsCountLoading] = useState(false);
 
-    setFirstName("");
-    setLastName("");
-    setPhone("");
-    setAddr1("");
-    setAddr2("");
-    setPostalCode("");
-    setCity("");
-    setCountry("FR");
-    setAccountType("particulier");
-    setSubscriptionPlan("free");
+  // Security
+  const [newPassword, setNewPassword] = useState("");
+  const [newPassword2, setNewPassword2] = useState("");
+  const [pwdLoading, setPwdLoading] = useState(false);
+  const [pwdError, setPwdError] = useState<string | null>(null);
+  const [pwdOk, setPwdOk] = useState<string | null>(null);
 
-    setIsLandlord(false);
-    setLandlordName("");
-    setLandlordAddress("");
-    setLandlordAddr1("");
-    setLandlordAddr2("");
-    setLandlordPostalCode("");
-    setLandlordCity("");
-    setLandlordCountry("FR");
-    setDefaultCity("");
-    setDefaultPaymentMode("virement");
-    setPropertiesCount(1);
-    setAutoSendEnabled(false);
-    setAutoSendFrequency("monthly");
-    setAutoSendDay(1);
-    setAutoSendHour(9);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [prefsLoading, setPrefsLoading] = useState(false);
+  const [prefsError, setPrefsError] = useState<string | null>(null);
+  const [prefsOk, setPrefsOk] = useState<string | null>(null);
 
-    setProjectsCount(null);
+  // Projects tab
+  const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
+
+  // -------------------------
+  // Bailleur dashboard states
+  // -------------------------
+  type BailleurSubTab = "params" | "biens" | "locataires" | "baux";
+  const [bSub, setBSub] = useState<BailleurSubTab>("params");
+
+  // Data
+  const [landlord, setLandlord] = useState<LandlordRow | null>(null);
+  const [properties, setProperties] = useState<PropertyRow[]>([]);
+  const [tenants, setTenants] = useState<TenantRow[]>([]);
+  const [leases, setLeases] = useState<LeaseRow[]>([]);
+  const [receiptCountsByLease, setReceiptCountsByLease] = useState<Record<string, number>>({});
+
+  // Loading / error
+  const [bLoading, setBLoading] = useState(false);
+  const [bError, setBError] = useState<string | null>(null);
+  const [bOk, setBOk] = useState<string | null>(null);
+
+  // Forms: landlord
+  const [ldDisplayName, setLdDisplayName] = useState("");
+  const [ldAddressLine1, setLdAddressLine1] = useState("");
+  const [ldAddressLine2, setLdAddressLine2] = useState("");
+  const [ldPostalCode, setLdPostalCode] = useState("");
+  const [ldCity, setLdCity] = useState("");
+  const [ldCountry, setLdCountry] = useState("France");
+  const [ldDefaultIssuePlace, setLdDefaultIssuePlace] = useState("");
+  const [ldDefaultPaymentMethod, setLdDefaultPaymentMethod] = useState("virement");
+  const [ldAutoSendEnabled, setLdAutoSendEnabled] = useState(false);
+  const [ldAutoSendFrequency, setLdAutoSendFrequency] = useState("monthly");
+  const [ldAutoSendDay, setLdAutoSendDay] = useState(1);
+  const [ldAutoSendHour, setLdAutoSendHour] = useState(9);
+
+  // Forms: property
+  const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
+  const [pLabel, setPLabel] = useState("");
+  const [pLine1, setPLine1] = useState("");
+  const [pLine2, setPLine2] = useState("");
+  const [pPostal, setPPostal] = useState("");
+  const [pCity, setPCity] = useState("");
+  const [pCountry, setPCountry] = useState("France");
+
+  // Forms: tenant
+  const [editingTenantId, setEditingTenantId] = useState<string | null>(null);
+  const [tFullName, setTFullName] = useState("");
+  const [tEmail, setTEmail] = useState("");
+  const [tPhone, setTPhone] = useState("");
+  const [tNotes, setTNotes] = useState("");
+
+  // Forms: lease
+  const [creatingLease, setCreatingLease] = useState(false);
+  const [editingLeaseId, setEditingLeaseId] = useState<string | null>(null);
+
+  const [lPropertyId, setLPropertyId] = useState<string>("");
+  const [lTenantId, setLTenantId] = useState<string>("");
+  const [lStartDate, setLStartDate] = useState<string>("");
+  const [lEndDate, setLEndDate] = useState<string>("");
+  const [lRentAmount, setLRentAmount] = useState<string>("");
+  const [lChargesAmount, setLChargesAmount] = useState<string>("");
+  const [lDepositAmount, setLDepositAmount] = useState<string>("");
+  const [lPaymentDay, setLPaymentDay] = useState<number>(1);
+  const [lPaymentMethod, setLPaymentMethod] = useState<string>("virement");
+  const [lAutoQuittance, setLAutoQuittance] = useState<boolean>(true);
+  const [lTenantReceiptEmail, setLTenantReceiptEmail] = useState<string>("");
+
+  const hydrateLandlordForm = (row: LandlordRow | null) => {
+    if (!row) {
+      setLdDisplayName("");
+      setLdAddressLine1("");
+      setLdAddressLine2("");
+      setLdPostalCode("");
+      setLdCity("");
+      setLdCountry("France");
+      setLdDefaultIssuePlace("");
+      setLdDefaultPaymentMethod("virement");
+      setLdAutoSendEnabled(false);
+      setLdAutoSendFrequency("monthly");
+      setLdAutoSendDay(1);
+      setLdAutoSendHour(9);
+      return;
+    }
+
+    setLdDisplayName(row.display_name || "");
+    setLdAddressLine1(row.address_line1 || "");
+    setLdAddressLine2(row.address_line2 || "");
+    setLdPostalCode(row.postal_code || "");
+    setLdCity(row.city || "");
+    setLdCountry(row.country || "France");
+
+    setLdDefaultIssuePlace(row.default_issue_place || row.default_city || "");
+    setLdDefaultPaymentMethod(row.default_payment_method || row.default_payment_mode || "virement");
+
+    setLdAutoSendEnabled(!!row.auto_send_enabled);
+    setLdAutoSendFrequency(row.auto_send_frequency || "monthly");
+    setLdAutoSendDay(row.auto_send_day ?? 1);
+    setLdAutoSendHour(row.auto_send_hour ?? 9);
   };
 
+  const resetPropertyForm = () => {
+    setEditingPropertyId(null);
+    setPLabel("");
+    setPLine1("");
+    setPLine2("");
+    setPPostal("");
+    setPCity("");
+    setPCountry("France");
+  };
+
+  const resetTenantForm = () => {
+    setEditingTenantId(null);
+    setTFullName("");
+    setTEmail("");
+    setTPhone("");
+    setTNotes("");
+  };
+
+  const resetLeaseForm = () => {
+    setCreatingLease(false);
+    setEditingLeaseId(null);
+    setLPropertyId("");
+    setLTenantId("");
+    setLStartDate("");
+    setLEndDate("");
+    setLRentAmount("");
+    setLChargesAmount("");
+    setLDepositAmount("");
+    setLPaymentDay(1);
+    setLPaymentMethod("virement");
+    setLAutoQuittance(true);
+    setLTenantReceiptEmail("");
+  };
+
+  const activeLeaseByPropertyId = useMemo(() => {
+    const map: Record<string, LeaseRow> = {};
+    for (const l of leases) {
+      const isActive = !l.end_date; // actif = end_date IS NULL
+      if (isActive) map[l.property_id] = l;
+    }
+    return map;
+  }, [leases]);
+
+  // -------------------------
+  // Session bootstrap
+  // -------------------------
   const hydrateFromUser = async (u: any | null) => {
     setUser(u);
 
     if (!u) {
-      resetAllState();
+      setNewsletterOptIn(false);
+      setProjectsCount(null);
+      setLandlord(null);
+      setProperties([]);
+      setTenants([]);
+      setLeases([]);
+      setReceiptCountsByLease({});
+      hydrateLandlordForm(null);
       return;
     }
 
-    // newsletter in auth metadata (ok de laisser ici)
+    // Newsletter -> tu peux le garder en user_metadata si tu veux
     const meta = u.user_metadata || {};
     setNewsletterOptIn(!!meta.newsletter_opt_in);
 
-    // ---- DB: profiles ----
-    try {
-      const { data: p } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", u.id)
-        .maybeSingle();
-
-      const pr = (p as ProfileRow | null) ?? null;
-
-      if (pr) {
-        setFirstName(pr.first_name || "");
-        setLastName(pr.last_name || "");
-
-        // full_name fallback
-        if (!pr.first_name && !pr.last_name && pr.full_name) {
-          const parts = pr.full_name.split(" ");
-          setFirstName(parts.slice(0, -1).join(" ") || "");
-          setLastName(parts.slice(-1).join(" ") || "");
-        }
-
-        setPhone(pr.phone || "");
-        setAddr1(pr.address_line1 || "");
-        setAddr2(pr.address_line2 || "");
-        setPostalCode(pr.postal_code || "");
-        setCity(pr.city || "");
-        setCountry(pr.country || "FR");
-        setAccountType((pr.account_type as AccountType) || "particulier");
-        setSubscriptionPlan((pr.subscription_plan as SubscriptionPlan) || "free");
-      }
-    } catch {
-      // si table profiles RLS ou non dispo => on ne bloque pas l’accès
-    }
-
-    // ---- DB: landlords ----
-    try {
-      const { data: l } = await supabase
-        .from("landlords")
-        .select("*")
-        .eq("user_id", u.id)
-        .maybeSingle();
-
-      const lr = (l as LandlordRow | null) ?? null;
-
-      if (lr) {
-        setIsLandlord(true);
-
-        setLandlordName(lr.display_name || "");
-        setLandlordAddress(lr.address || "");
-        setLandlordAddr1(lr.address_line1 || "");
-        setLandlordAddr2(lr.address_line2 || "");
-        setLandlordPostalCode(lr.postal_code || "");
-        setLandlordCity(lr.city || "");
-        setLandlordCountry(lr.country || "FR");
-
-        setDefaultCity(lr.default_issue_place || lr.default_city || "");
-        setDefaultPaymentMode(
-          (lr.default_payment_method as PaymentMode) ||
-            (lr.default_payment_mode as PaymentMode) ||
-            "virement"
-        );
-
-        setPropertiesCount(lr.properties_count ?? 1);
-
-        setAutoSendEnabled(!!lr.auto_send_enabled);
-        setAutoSendFrequency(lr.auto_send_frequency || "monthly");
-        setAutoSendDay(lr.auto_send_day ?? 1);
-        setAutoSendHour(lr.auto_send_hour ?? 9);
-      } else {
-        setIsLandlord(false);
-      }
-    } catch {
-      // ignore
-    }
-
-    // projects count
+    // Compteur projets
     try {
       setProjectsCountLoading(true);
       const { count } = await supabase
@@ -360,7 +405,6 @@ export default function MonComptePage() {
     }
   };
 
-  // Session init + listener
   useEffect(() => {
     let mounted = true;
 
@@ -390,7 +434,9 @@ export default function MonComptePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // -------------------------
   // Load projects when needed
+  // -------------------------
   useEffect(() => {
     const fetchProjects = async () => {
       if (!isLoggedIn || tab !== "projets") return;
@@ -420,7 +466,95 @@ export default function MonComptePage() {
     fetchProjects();
   }, [isLoggedIn, tab]);
 
-  // ---------- AUTH ----------
+  // -------------------------
+  // Bailleur: load all
+  // -------------------------
+  const loadBailleurDashboard = async () => {
+    if (!isLoggedIn) return;
+    setBLoading(true);
+    setBError(null);
+    setBOk(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const u = sessionData.session?.user;
+      if (!u) throw new Error("Session invalide.");
+
+      // landlords (1 row by user_id)
+      const { data: ld, error: ldErr } = await supabase
+        .from("landlords")
+        .select("*")
+        .eq("user_id", u.id)
+        .maybeSingle();
+
+      if (ldErr) throw ldErr;
+      setLandlord((ld as LandlordRow) || null);
+      hydrateLandlordForm((ld as LandlordRow) || null);
+
+      // properties
+      const { data: props, error: pErr } = await supabase
+        .from("properties")
+        .select("*")
+        .eq("user_id", u.id)
+        .order("created_at", { ascending: true });
+      if (pErr) throw pErr;
+      setProperties((props || []) as PropertyRow[]);
+
+      // tenants
+      const { data: tens, error: tErr } = await supabase
+        .from("tenants")
+        .select("*")
+        .eq("user_id", u.id)
+        .order("created_at", { ascending: true });
+      if (tErr) throw tErr;
+      setTenants((tens || []) as TenantRow[]);
+
+      // leases (history included)
+      const { data: ls, error: lErr } = await supabase
+        .from("leases")
+        .select("*")
+        .eq("user_id", u.id)
+        .order("created_at", { ascending: false });
+      if (lErr) throw lErr;
+      const leasesRows = (ls || []) as LeaseRow[];
+      setLeases(leasesRows);
+
+      // receipts counts by lease
+      const leaseIds = leasesRows.map((x) => x.id);
+      if (leaseIds.length) {
+        const { data: rc, error: rcErr } = await supabase
+          .from("rent_receipts")
+          .select("lease_id")
+          .in("lease_id", leaseIds);
+
+        if (rcErr) throw rcErr;
+
+        const counts: Record<string, number> = {};
+        for (const row of (rc || []) as any[]) {
+          const id = row.lease_id as string;
+          counts[id] = (counts[id] || 0) + 1;
+        }
+        setReceiptCountsByLease(counts);
+      } else {
+        setReceiptCountsByLease({});
+      }
+    } catch (err: any) {
+      setBError(err?.message || "Erreur lors du chargement de l’espace bailleur.");
+    } finally {
+      setBLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (tab !== "bailleur") return;
+    loadBailleurDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, isLoggedIn]);
+
+  // -------------------------
+  // AUTH handlers
+  // -------------------------
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -482,7 +616,9 @@ export default function MonComptePage() {
     router.push("/");
   };
 
-  // ---------- SECURITY ----------
+  // -------------------------
+  // SECURITY handlers
+  // -------------------------
   const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
     setPwdError(null);
@@ -522,111 +658,323 @@ export default function MonComptePage() {
     }
   };
 
-  // ---------- PROFIL (profiles) ----------
-  const handleSaveProfile = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!isLoggedIn) return;
-
-    setProfileError(null);
-    setProfileOk(null);
-    setProfileLoading(true);
-
-    try {
-      const fullName = `${firstName} ${lastName}`.trim();
-
-      const { error } = await supabase.from("profiles").upsert({
-        id: user.id,
-        full_name: fullName || null,
-        first_name: firstName || null,
-        last_name: lastName || null,
-        phone: phone || null,
-        address_line1: addr1 || null,
-        address_line2: addr2 || null,
-        postal_code: postalCode || null,
-        city: city || null,
-        country: country || "FR",
-        account_type: accountType,
-        subscription_plan: subscriptionPlan,
-        updated_at: new Date().toISOString(),
-      });
-
-      if (error) throw error;
-
-      // refresh local
-      const { data } = await supabase.auth.getUser();
-      await hydrateFromUser(data.user ?? null);
-
-      setProfileOk("Profil enregistré ✅");
-    } catch (err: any) {
-      setProfileError(err?.message || "Erreur lors de l’enregistrement du profil.");
-    } finally {
-      setProfileLoading(false);
-    }
-  };
-
-  // ---------- BAILLEUR (landlords) ----------
+  // -------------------------
+  // Bailleur handlers
+  // -------------------------
   const handleSaveLandlord = async (e: FormEvent) => {
     e.preventDefault();
     if (!isLoggedIn) return;
-
-    setBailleurError(null);
-    setBailleurOk(null);
-    setBailleurLoading(true);
+    setBError(null);
+    setBOk(null);
 
     try {
-      // si pas activé, on laisse quand même enregistrer (mais tu peux choisir delete)
-      const safeCount = Math.max(1, Math.min(999, Number(propertiesCount || 1)));
-      const safeDay = Math.max(1, Math.min(31, Number(autoSendDay || 1)));
-      const safeHour = Math.max(0, Math.min(23, Number(autoSendHour ?? 9)));
+      setBLoading(true);
 
-      const { error } = await supabase.from("landlords").upsert({
-        user_id: user.id,
-        display_name: landlordName || null,
+      const { data: sessionData } = await supabase.auth.getSession();
+      const u = sessionData.session?.user;
+      if (!u) throw new Error("Session invalide.");
 
-        // legacy field (texte libre)
-        address: landlordAddress || null,
+      const payload: Partial<LandlordRow> = {
+        user_id: u.id,
+        display_name: ldDisplayName || null,
 
-        // address détaillée
-        address_line1: landlordAddr1 || null,
-        address_line2: landlordAddr2 || null,
-        postal_code: landlordPostalCode || null,
-        city: landlordCity || null,
-        country: landlordCountry || "FR",
+        address_line1: ldAddressLine1 || null,
+        address_line2: ldAddressLine2 || null,
+        postal_code: ldPostalCode || null,
+        city: ldCity || null,
+        country: ldCountry || null,
 
-        // defaults
-        default_city: defaultCity || null, // legacy
-        default_payment_mode: defaultPaymentMode, // legacy
+        default_issue_place: ldDefaultIssuePlace || null,
+        default_payment_method: ldDefaultPaymentMethod || null,
 
-        default_issue_place: defaultCity || null,
-        default_payment_method: defaultPaymentMode,
+        auto_send_enabled: ldAutoSendEnabled,
+        auto_send_frequency: ldAutoSendFrequency || "monthly",
+        auto_send_day: clampInt(ldAutoSendDay, 1, 31, 1),
+        auto_send_hour: clampInt(ldAutoSendHour, 0, 23, 9),
 
-        properties_count: safeCount,
+        // optionnel (si tu veux garder une redondance)
+        properties_count: properties.length,
+      };
 
-        auto_send_enabled: !!autoSendEnabled,
-        auto_send_frequency: autoSendFrequency || "monthly",
-        auto_send_day: safeDay,
-        auto_send_hour: safeHour,
-
-        updated_at: new Date().toISOString(),
-      });
-
+      // upsert by user_id (il faut une contrainte unique sur landlords.user_id)
+      const { error } = await supabase.from("landlords").upsert(payload, { onConflict: "user_id" });
       if (error) throw error;
 
-      // on considère bailleur activé si une ligne existe
-      setIsLandlord(true);
-
-      const { data } = await supabase.auth.getUser();
-      await hydrateFromUser(data.user ?? null);
-
-      setBailleurOk("Espace bailleur mis à jour ✅");
+      setBOk("Paramètres bailleur enregistrés ✅");
+      await loadBailleurDashboard();
     } catch (err: any) {
-      setBailleurError(err?.message || "Erreur lors de l’enregistrement.");
+      setBError(err?.message || "Erreur lors de l’enregistrement des paramètres bailleur.");
     } finally {
-      setBailleurLoading(false);
+      setBLoading(false);
     }
   };
 
-  // ---------- PROJECTS ----------
+  const handleSaveProperty = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!isLoggedIn) return;
+    setBError(null);
+    setBOk(null);
+
+    try {
+      setBLoading(true);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const u = sessionData.session?.user;
+      if (!u) throw new Error("Session invalide.");
+
+      const payload = {
+        user_id: u.id,
+        label: pLabel || null,
+        address_line1: pLine1 || null,
+        address_line2: pLine2 || null,
+        postal_code: pPostal || null,
+        city: pCity || null,
+        country: pCountry || null,
+      };
+
+      if (editingPropertyId) {
+        const { error } = await supabase
+          .from("properties")
+          .update(payload)
+          .eq("id", editingPropertyId)
+          .eq("user_id", u.id);
+        if (error) throw error;
+        setBOk("Bien mis à jour ✅");
+      } else {
+        const { error } = await supabase.from("properties").insert(payload);
+        if (error) throw error;
+        setBOk("Bien créé ✅");
+      }
+
+      resetPropertyForm();
+      await loadBailleurDashboard();
+      setBSub("biens");
+    } catch (err: any) {
+      setBError(err?.message || "Erreur lors de l’enregistrement du bien.");
+    } finally {
+      setBLoading(false);
+    }
+  };
+
+  const handleEditProperty = (p: PropertyRow) => {
+    setEditingPropertyId(p.id);
+    setPLabel(p.label || "");
+    setPLine1(p.address_line1 || "");
+    setPLine2(p.address_line2 || "");
+    setPPostal(p.postal_code || "");
+    setPCity(p.city || "");
+    setPCountry(p.country || "France");
+    setBSub("biens");
+  };
+
+  const handleDeleteProperty = async (p: PropertyRow) => {
+    const ok = window.confirm("Supprimer définitivement ce bien ?");
+    if (!ok) return;
+    try {
+      setBLoading(true);
+      const { error } = await supabase.from("properties").delete().eq("id", p.id);
+      if (error) throw error;
+      setBOk("Bien supprimé ✅");
+      await loadBailleurDashboard();
+    } catch (err: any) {
+      setBError(err?.message || "Erreur suppression bien.");
+    } finally {
+      setBLoading(false);
+    }
+  };
+
+  const handleSaveTenant = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!isLoggedIn) return;
+    setBError(null);
+    setBOk(null);
+
+    try {
+      setBLoading(true);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const u = sessionData.session?.user;
+      if (!u) throw new Error("Session invalide.");
+
+      const payload = {
+        user_id: u.id,
+        full_name: tFullName || null,
+        email: tEmail || null,
+        phone: tPhone || null,
+        notes: tNotes || null,
+      };
+
+      if (editingTenantId) {
+        const { error } = await supabase
+          .from("tenants")
+          .update(payload)
+          .eq("id", editingTenantId)
+          .eq("user_id", u.id);
+        if (error) throw error;
+        setBOk("Locataire mis à jour ✅");
+      } else {
+        const { error } = await supabase.from("tenants").insert(payload);
+        if (error) throw error;
+        setBOk("Locataire créé ✅");
+      }
+
+      resetTenantForm();
+      await loadBailleurDashboard();
+      setBSub("locataires");
+    } catch (err: any) {
+      setBError(err?.message || "Erreur lors de l’enregistrement du locataire.");
+    } finally {
+      setBLoading(false);
+    }
+  };
+
+  const handleEditTenant = (t: TenantRow) => {
+    setEditingTenantId(t.id);
+    setTFullName(t.full_name || "");
+    setTEmail(t.email || "");
+    setTPhone(t.phone || "");
+    setTNotes(t.notes || "");
+    setBSub("locataires");
+  };
+
+  const handleDeleteTenant = async (t: TenantRow) => {
+    const ok = window.confirm("Supprimer définitivement ce locataire ?");
+    if (!ok) return;
+    try {
+      setBLoading(true);
+      const { error } = await supabase.from("tenants").delete().eq("id", t.id);
+      if (error) throw error;
+      setBOk("Locataire supprimé ✅");
+      await loadBailleurDashboard();
+    } catch (err: any) {
+      setBError(err?.message || "Erreur suppression locataire.");
+    } finally {
+      setBLoading(false);
+    }
+  };
+
+  const handleOpenCreateLease = () => {
+    resetLeaseForm();
+    setCreatingLease(true);
+    setBSub("baux");
+
+    // defaults
+    const today = new Date().toISOString().slice(0, 10);
+    setLStartDate(today);
+    setLPaymentDay(1);
+    setLPaymentMethod(ldDefaultPaymentMethod || "virement");
+    setLAutoQuittance(true);
+  };
+
+  const handleEditLease = (l: LeaseRow) => {
+    setCreatingLease(true);
+    setEditingLeaseId(l.id);
+
+    setLPropertyId(l.property_id);
+    setLTenantId(l.tenant_id);
+    setLStartDate(l.start_date || "");
+    setLEndDate(l.end_date || "");
+    setLRentAmount(l.rent_amount != null ? String(l.rent_amount) : "");
+    setLChargesAmount(l.charges_amount != null ? String(l.charges_amount) : "");
+    setLDepositAmount(l.deposit_amount != null ? String(l.deposit_amount) : "");
+    setLPaymentDay(l.payment_day ?? 1);
+    setLPaymentMethod(l.payment_method || ldDefaultPaymentMethod || "virement");
+    setLAutoQuittance(!!l.auto_quittance_enabled);
+    setLTenantReceiptEmail(l.tenant_receipt_email || "");
+    setBSub("baux");
+  };
+
+  const handleCloseLease = async (l: LeaseRow) => {
+    const ok = window.confirm("Clôturer ce bail (fin de location) ?");
+    if (!ok) return;
+
+    try {
+      setBLoading(true);
+      const end = new Date().toISOString().slice(0, 10);
+      const { error } = await supabase
+        .from("leases")
+        .update({ end_date: end })
+        .eq("id", l.id)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      setBOk("Bail clôturé ✅");
+      await loadBailleurDashboard();
+    } catch (err: any) {
+      setBError(err?.message || "Erreur clôture bail.");
+    } finally {
+      setBLoading(false);
+    }
+  };
+
+  const handleSaveLease = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!isLoggedIn) return;
+
+    setBError(null);
+    setBOk(null);
+
+    try {
+      setBLoading(true);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const u = sessionData.session?.user;
+      if (!u) throw new Error("Session invalide.");
+
+      if (!lPropertyId) throw new Error("Merci de sélectionner un appartement.");
+      if (!lTenantId) throw new Error("Merci de sélectionner un locataire.");
+      if (!lStartDate) throw new Error("Merci de renseigner la date de début (start_date).");
+
+      // Empêcher 2 baux actifs sur le même bien (sécurité UX)
+      const existingActive = leases.find((x) => x.property_id === lPropertyId && !x.end_date && x.id !== editingLeaseId);
+      if (existingActive) {
+        throw new Error(
+          "Ce bien a déjà un bail actif. Clôturez d’abord le bail actuel avant d’en créer un nouveau."
+        );
+      }
+
+      const payload: Partial<LeaseRow> = {
+        user_id: u.id,
+        property_id: lPropertyId,
+        tenant_id: lTenantId,
+        start_date: lStartDate,
+        end_date: lEndDate ? lEndDate : null,
+
+        rent_amount: lRentAmount ? Number(lRentAmount) : null,
+        charges_amount: lChargesAmount ? Number(lChargesAmount) : null,
+        deposit_amount: lDepositAmount ? Number(lDepositAmount) : null,
+
+        payment_day: clampInt(lPaymentDay, 1, 31, 1),
+        payment_method: lPaymentMethod || null,
+
+        auto_quittance_enabled: lAutoQuittance,
+        tenant_receipt_email: lTenantReceiptEmail || null,
+        timezone: "Europe/Paris",
+      };
+
+      if (editingLeaseId) {
+        const { error } = await supabase
+          .from("leases")
+          .update(payload)
+          .eq("id", editingLeaseId)
+          .eq("user_id", u.id);
+        if (error) throw error;
+        setBOk("Bail mis à jour ✅");
+      } else {
+        const { error } = await supabase.from("leases").insert(payload);
+        if (error) throw error;
+        setBOk("Bail créé ✅");
+      }
+
+      resetLeaseForm();
+      await loadBailleurDashboard();
+      setBSub("baux");
+    } catch (err: any) {
+      setBError(err?.message || "Erreur lors de l’enregistrement du bail.");
+    } finally {
+      setBLoading(false);
+    }
+  };
+
+  // -------------------------
+  // Projects delete
+  // -------------------------
   const handleDeleteProject = async (project: ProjectRow) => {
     const ok = window.confirm("Supprimer définitivement ce projet ?");
     if (!ok) return;
@@ -648,42 +996,33 @@ export default function MonComptePage() {
 
   const profileCompletion = useMemo(() => {
     if (!isLoggedIn) return 0;
-
-    let score = 20;
-    if (firstName && lastName) score += 20;
-    if (addr1 && postalCode && city) score += 20;
-    if (phone) score += 10;
-    if (subscriptionPlan !== "free") score += 10;
-    if (isLandlord && landlordName) score += 10;
-    if (isLandlord && safeNonEmpty(landlordAddr1 || landlordAddress) && landlordPostalCode && landlordCity) score += 10;
+    // petite complétude simple (tu pourras l’améliorer)
+    let score = 40;
+    if (newsletterOptIn) score += 10;
+    if (landlord?.display_name) score += 15;
+    if (properties.length > 0) score += 15;
+    if (tenants.length > 0) score += 20;
     return Math.min(score, 100);
-  }, [
-    isLoggedIn,
-    firstName,
-    lastName,
-    addr1,
-    postalCode,
-    city,
-    phone,
-    subscriptionPlan,
-    isLandlord,
-    landlordName,
-    landlordAddr1,
-    landlordAddress,
-    landlordPostalCode,
-    landlordCity,
-  ]);
+  }, [isLoggedIn, newsletterOptIn, landlord?.display_name, properties.length, tenants.length]);
 
-  function safeNonEmpty(v: string) {
-    return !!String(v || "").trim();
-  }
+  const propertyLabel = (id: string) => {
+    const p = properties.find((x) => x.id === id);
+    return p?.label || "Bien";
+  };
+  const tenantLabel = (id: string) => {
+    const t = tenants.find((x) => x.id === id);
+    return t?.full_name || "Locataire";
+  };
 
-  const planLabel =
-    subscriptionPlan === "annual_40"
-      ? "Pro (40€ / an)"
-      : subscriptionPlan === "monthly_49"
-      ? "Pro (49€ / mois)"
-      : "Gratuit";
+  const propertyFullAddress = (p: PropertyRow) => {
+    const parts = [
+      p.address_line1,
+      p.address_line2,
+      [p.postal_code, p.city].filter(Boolean).join(" "),
+      p.country,
+    ].filter(Boolean);
+    return parts.join(", ");
+  };
 
   // ---------- RENDER ----------
   return (
@@ -694,7 +1033,9 @@ export default function MonComptePage() {
         <div className="grid gap-6 md:grid-cols-[240px,1fr]">
           {/* SIDEBAR */}
           <aside className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 h-fit">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500 mb-3">Mon espace</p>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500 mb-3">
+              Mon espace
+            </p>
 
             {checkingUser ? (
               <p className="text-sm text-slate-500">Chargement…</p>
@@ -703,15 +1044,11 @@ export default function MonComptePage() {
                 <div className="mb-4">
                   <p className="text-xs text-slate-500 mb-1">Connecté en tant que :</p>
                   <p className="text-sm font-semibold text-slate-900 break-all">{user.email}</p>
-                  <p className="mt-1 text-[0.7rem] text-slate-500">
-                    Plan : <span className="font-semibold">{planLabel}</span>
-                  </p>
                 </div>
 
                 <nav className="space-y-1 text-sm">
                   {([
                     ["infos", "Tableau de bord"],
-                    ["profil", "Profil (identité)"],
                     ["bailleur", "Espace bailleur"],
                     ["securite", "Sécurité & préférences"],
                     ["projets", "Mes projets"],
@@ -721,7 +1058,9 @@ export default function MonComptePage() {
                       type="button"
                       className={
                         "w-full text-left rounded-lg px-3 py-2 " +
-                        (tab === key ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-50")
+                        (tab === key
+                          ? "bg-slate-900 text-white"
+                          : "text-slate-700 hover:bg-slate-50")
                       }
                       onClick={() => goToTab(key)}
                     >
@@ -742,9 +1081,9 @@ export default function MonComptePage() {
               <div className="text-xs text-slate-500">
                 <p>Connectez-vous pour :</p>
                 <ul className="list-disc pl-4 mt-1 space-y-0.5">
-                  <li>Sauvegarder vos simulations</li>
-                  <li>Accéder aux outils avancés</li>
-                  <li>Gérer vos quittances bailleur</li>
+                  <li>Accéder à l’espace bailleur</li>
+                  <li>Gérer appartements / locataires / baux</li>
+                  <li>Générer des quittances</li>
                 </ul>
               </div>
             )}
@@ -766,7 +1105,7 @@ export default function MonComptePage() {
                       {mode === "login" ? "Connexion" : "Créer un compte"}
                     </h2>
                     <p className="text-xs text-slate-500 mt-1">
-                      Vous pourrez ensuite accéder à vos outils (dont l’espace bailleur).
+                      Connectez-vous pour accéder au dashboard bailleur.
                     </p>
                   </div>
 
@@ -823,7 +1162,9 @@ export default function MonComptePage() {
                       </button>
                       <p className="text-[0.7rem] text-slate-500">
                         Redirection :{" "}
-                        <span className="font-semibold">{redirectParam ?? `/mon-compte?tab=${tab}`}</span>
+                        <span className="font-semibold">
+                          {redirectParam ?? `/mon-compte?tab=${tab}`}
+                        </span>
                       </p>
                     </div>
                   </form>
@@ -874,31 +1215,43 @@ export default function MonComptePage() {
             ) : tab === "infos" ? (
               <>
                 {/* DASHBOARD */}
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Tableau de bord</p>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Tableau de bord
+                </p>
                 <h2 className="text-lg font-semibold text-slate-900">Vue d’ensemble</h2>
                 <p className="text-sm text-slate-600 mt-1 mb-4">
-                  Profil, bailleur, projets et accès rapide aux quittances.
+                  Votre compte + accès aux outils bailleur.
                 </p>
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Compte</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">{planLabel}</p>
+                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">
+                      Compte
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">Actif</p>
                     <p className="mt-1 text-xs text-slate-500 break-all">{user.email}</p>
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Projets sauvegardés</p>
+                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">
+                      Projets sauvegardés
+                    </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                       {projectsCountLoading ? "…" : projectsCount ?? "—"}
                     </p>
-                    <button type="button" onClick={() => goToTab("projets")} className="mt-1 text-xs text-slate-600 underline">
+                    <button
+                      type="button"
+                      onClick={() => goToTab("projets")}
+                      className="mt-1 text-xs text-slate-600 underline"
+                    >
                       Voir mes projets
                     </button>
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Profil</p>
+                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">
+                      Profil bailleur
+                    </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">{profileCompletion}%</p>
                     <p className="mt-1 text-xs text-slate-500">Complétude</p>
                   </div>
@@ -909,7 +1262,7 @@ export default function MonComptePage() {
                     <div>
                       <p className="text-[0.75rem] font-semibold text-slate-900">Espace bailleur</p>
                       <p className="text-xs text-slate-700 mt-1">
-                        {isLandlord ? "Votre espace bailleur est configuré." : "Activez-le pour gérer quittances, biens et envois automatiques."}
+                        Gérez vos biens, vos locataires, vos baux et vos quittances.
                       </p>
                     </div>
                     <button
@@ -917,319 +1270,926 @@ export default function MonComptePage() {
                       onClick={() => goToTab("bailleur")}
                       className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
                     >
-                      {isLandlord ? "Ouvrir l’espace bailleur" : "Configurer l’espace bailleur"}
+                      Ouvrir l’espace bailleur
                     </button>
                   </div>
                 </div>
 
                 <div className="mt-6 flex flex-wrap gap-2">
-                  <Link href="/quittances-loyer" className="inline-flex items-center justify-center rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-amber-400">
-                    Quittances de loyer
-                  </Link>
-                  <Link href="/outils-proprietaire" className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50">
+                  <Link
+                    href="/outils-proprietaire"
+                    className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                  >
                     Outils propriétaire
                   </Link>
-                  <Link href="/capacite" className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50">
-                    Nouvelle simulation capacité
+                  <Link
+                    href="/quittances-loyer"
+                    className="inline-flex items-center justify-center rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-amber-400"
+                  >
+                    Quittances de loyer
                   </Link>
                 </div>
               </>
-            ) : tab === "profil" ? (
-              <>
-                {/* PROFIL */}
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-sky-700 mb-1">Profil</p>
-                <h2 className="text-lg font-semibold text-slate-900">Identité & coordonnées</h2>
-                <p className="text-sm text-slate-600 mt-1 mb-4">
-                  Ces informations sont stockées en base (<span className="font-semibold">profiles</span>).
-                </p>
-
-                {profileError && (
-                  <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{profileError}</div>
-                )}
-                {profileOk && (
-                  <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{profileOk}</div>
-                )}
-
-                <form onSubmit={handleSaveProfile} className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Prénom</label>
-                      <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Nom</label>
-                      <input value={lastName} onChange={(e) => setLastName(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Téléphone</label>
-                      <input value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Type de compte</label>
-                      <select value={accountType} onChange={(e) => setAccountType(e.target.value as AccountType)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
-                        <option value="particulier">Particulier</option>
-                        <option value="pro">Professionnel</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="text-xs text-slate-700">Adresse (ligne 1)</label>
-                      <input value={addr1} onChange={(e) => setAddr1(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Adresse (ligne 2)</label>
-                      <input value={addr2} onChange={(e) => setAddr2(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Code postal</label>
-                      <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Ville</label>
-                      <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Pays</label>
-                      <input value={country} onChange={(e) => setCountry(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-xs font-semibold text-slate-900 mb-2">Abonnement (sélection fonctionnelle, paiement géré ailleurs)</p>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <label className="flex items-center gap-2 text-sm text-slate-700">
-                        <input type="radio" checked={subscriptionPlan === "free"} onChange={() => setSubscriptionPlan("free")} />
-                        Gratuit
-                      </label>
-                      <label className="flex items-center gap-2 text-sm text-slate-700">
-                        <input type="radio" checked={subscriptionPlan === "annual_40"} onChange={() => setSubscriptionPlan("annual_40")} />
-                        40€ / an
-                      </label>
-                      <label className="flex items-center gap-2 text-sm text-slate-700">
-                        <input type="radio" checked={subscriptionPlan === "monthly_49"} onChange={() => setSubscriptionPlan("monthly_49")} />
-                        49€ / mois
-                      </label>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={profileLoading}
-                    className="rounded-full bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
-                  >
-                    {profileLoading ? "Enregistrement..." : "Enregistrer mon profil"}
-                  </button>
-                </form>
-              </>
             ) : tab === "bailleur" ? (
               <>
-                {/* BAILLEUR */}
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-amber-700 mb-1">Espace bailleur</p>
-                <h2 className="text-lg font-semibold text-slate-900">Paramètres bailleur</h2>
-                <p className="text-sm text-slate-600 mt-1 mb-4">
-                  Ces informations sont stockées en base (<span className="font-semibold">landlords</span>) et serviront de valeurs par défaut dans{" "}
-                  <span className="font-semibold">/quittances-loyer</span>.
-                </p>
+                {/* BAILLEUR DASHBOARD */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                  <div>
+                    <p className="uppercase tracking-[0.18em] text-[0.7rem] text-amber-700 mb-1">
+                      Dashboard bailleur
+                    </p>
+                    <h2 className="text-lg font-semibold text-slate-900">Biens • Locataires • Baux</h2>
+                    <p className="text-sm text-slate-600 mt-1">
+                      Ici vous paramétrez tout ce qui est nécessaire pour générer des quittances.
+                    </p>
+                  </div>
 
-                {bailleurError && (
-                  <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{bailleurError}</div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => loadBailleurDashboard()}
+                      className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                      disabled={bLoading}
+                    >
+                      {bLoading ? "Actualisation…" : "Actualiser"}
+                    </button>
+
+                    <Link
+                      href="/quittances-loyer"
+                      className="inline-flex items-center justify-center rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                    >
+                      Aller aux quittances →
+                    </Link>
+                  </div>
+                </div>
+
+                {bError && (
+                  <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    {bError}
+                  </div>
                 )}
-                {bailleurOk && (
-                  <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{bailleurOk}</div>
+                {bOk && (
+                  <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                    {bOk}
+                  </div>
                 )}
 
-                <form onSubmit={handleSaveLandlord} className="space-y-3">
-                  <label className="flex items-start gap-2 text-sm text-slate-800">
-                    <input
-                      type="checkbox"
-                      checked={isLandlord}
-                      onChange={(e) => setIsLandlord(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-600"
-                    />
-                    <span className="font-medium">Activer mon espace bailleur</span>
-                  </label>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Nom / raison sociale</label>
-                      <input value={landlordName} onChange={(e) => setLandlordName(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Nombre de biens (pour la suite)</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={999}
-                        value={propertiesCount}
-                        onChange={(e) => setPropertiesCount(parseInt(e.target.value || "1", 10) || 1)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                      />
-                    </div>
+                {/* KPIs */}
+                <div className="grid gap-3 sm:grid-cols-4 mb-5">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Biens</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">{properties.length}</p>
+                    <p className="text-xs text-slate-500">Appartements / logements</p>
                   </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="text-xs text-slate-700">Adresse (ligne 1)</label>
-                      <input value={landlordAddr1} onChange={(e) => setLandlordAddr1(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Adresse (ligne 2)</label>
-                      <input value={landlordAddr2} onChange={(e) => setLandlordAddr2(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Locataires</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">{tenants.length}</p>
+                    <p className="text-xs text-slate-500">Contacts enregistrés</p>
                   </div>
-
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Code postal</label>
-                      <input value={landlordPostalCode} onChange={(e) => setLandlordPostalCode(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Ville</label>
-                      <input value={landlordCity} onChange={(e) => setLandlordCity(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Pays</label>
-                      <input value={landlordCountry} onChange={(e) => setLandlordCountry(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Baux actifs</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">
+                      {leases.filter((x) => !x.end_date).length}
+                    </p>
+                    <p className="text-xs text-slate-500">Locataires en cours</p>
                   </div>
-
-                  {/* legacy textarea kept optional */}
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700">Adresse bailleur (texte libre - optionnel)</label>
-                    <textarea
-                      rows={2}
-                      value={landlordAddress}
-                      onChange={(e) => setLandlordAddress(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                    />
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Auto-envoi</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">
+                      {landlord?.auto_send_enabled ? "ON" : "OFF"}
+                    </p>
+                    <p className="text-xs text-slate-500">Règles globales</p>
                   </div>
+                </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Ville de signature / émission (défaut)</label>
-                      <input value={defaultCity} onChange={(e) => setDefaultCity(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Mode de paiement par défaut</label>
-                      <select
-                        value={defaultPaymentMode}
-                        onChange={(e) => setDefaultPaymentMode(e.target.value as PaymentMode)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                {/* Sub navigation */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {[
+                    ["params", "Paramètres bailleur"],
+                    ["biens", "Mes appartements"],
+                    ["locataires", "Mes locataires"],
+                    ["baux", "Mes baux (liaisons)"],
+                  ].map(([k, label]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setBSub(k as BailleurSubTab)}
+                      className={
+                        "rounded-full px-4 py-2 text-xs font-semibold border " +
+                        (bSub === k
+                          ? "bg-slate-900 text-white border-slate-900"
+                          : "bg-white text-slate-800 border-slate-300 hover:bg-slate-50")
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* PARAMS */}
+                {bSub === "params" && (
+                  <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500 mb-2">
+                      Paramètres bailleur
+                    </p>
+
+                    <form onSubmit={handleSaveLandlord} className="space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Nom / raison sociale</label>
+                          <input
+                            type="text"
+                            value={ldDisplayName}
+                            onChange={(e) => setLdDisplayName(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Lieu d’émission par défaut</label>
+                          <input
+                            type="text"
+                            value={ldDefaultIssuePlace}
+                            onChange={(e) => setLdDefaultIssuePlace(e.target.value)}
+                            placeholder="Ex: Paris"
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Adresse (ligne 1)</label>
+                          <input
+                            type="text"
+                            value={ldAddressLine1}
+                            onChange={(e) => setLdAddressLine1(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Adresse (ligne 2)</label>
+                          <input
+                            type="text"
+                            value={ldAddressLine2}
+                            onChange={(e) => setLdAddressLine2(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Code postal</label>
+                          <input
+                            type="text"
+                            value={ldPostalCode}
+                            onChange={(e) => setLdPostalCode(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Ville</label>
+                          <input
+                            type="text"
+                            value={ldCity}
+                            onChange={(e) => setLdCity(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Pays</label>
+                          <input
+                            type="text"
+                            value={ldCountry}
+                            onChange={(e) => setLdCountry(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Mode de paiement par défaut</label>
+                          <select
+                            value={ldDefaultPaymentMethod}
+                            onChange={(e) => setLdDefaultPaymentMethod(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          >
+                            <option value="virement">Virement</option>
+                            <option value="prelevement">Prélèvement</option>
+                            <option value="cheque">Chèque</option>
+                            <option value="especes">Espèces</option>
+                          </select>
+                          <p className="text-[0.7rem] text-slate-500 mt-1">
+                            Utilisé par défaut lors de la création de quittances.
+                          </p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Auto-envoi des quittances</label>
+                          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={ldAutoSendEnabled}
+                              onChange={(e) => setLdAutoSendEnabled(e.target.checked)}
+                              className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-600"
+                            />
+                            <span>Activer l’auto-envoi (global)</span>
+                          </label>
+
+                          <div className="grid gap-2 sm:grid-cols-3 mt-2">
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-600">Fréquence</label>
+                              <select
+                                value={ldAutoSendFrequency}
+                                onChange={(e) => setLdAutoSendFrequency(e.target.value)}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+                              >
+                                <option value="monthly">Mensuel</option>
+                              </select>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-600">Jour (1–31)</label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={31}
+                                value={ldAutoSendDay}
+                                onChange={(e) => setLdAutoSendDay(clampInt(e.target.value, 1, 31, 1))}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-600">Heure (0–23)</label>
+                              <input
+                                type="number"
+                                min={0}
+                                max={23}
+                                value={ldAutoSendHour}
+                                onChange={(e) => setLdAutoSendHour(clampInt(e.target.value, 0, 23, 9))}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={bLoading}
+                        className="rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-amber-400 disabled:opacity-60"
                       >
-                        <option value="virement">Virement</option>
-                        <option value="prelevement">Prélèvement</option>
-                        <option value="cheque">Chèque</option>
-                        <option value="especes">Espèces</option>
-                      </select>
-                    </div>
-                  </div>
+                        {bLoading ? "Enregistrement…" : "Enregistrer les paramètres"}
+                      </button>
+                    </form>
+                  </section>
+                )}
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
-                    <p className="text-xs font-semibold text-slate-900">Envoi automatique (global)</p>
-
-                    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={autoSendEnabled}
-                        onChange={(e) => setAutoSendEnabled(e.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-600"
-                      />
-                      <span>Activer l’envoi automatique</span>
-                    </label>
-
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="space-y-1">
-                        <label className="text-xs text-slate-700">Fréquence</label>
-                        <select
-                          value={autoSendFrequency}
-                          onChange={(e) => setAutoSendFrequency(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                {/* BIENS */}
+                {bSub === "biens" && (
+                  <section className="grid gap-4 lg:grid-cols-[1fr,1fr]">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div>
+                          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                            Mes appartements
+                          </p>
+                          <p className="text-sm text-slate-600 mt-1">
+                            Un bien = une adresse. Le locataire actif est géré via un bail.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => resetPropertyForm()}
+                          className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
                         >
-                          <option value="monthly">Mensuel</option>
-                          <option value="quarterly">Trimestriel</option>
-                          <option value="yearly">Annuel</option>
-                        </select>
+                          + Nouveau
+                        </button>
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-slate-700">Jour (1–31)</label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={31}
-                          value={autoSendDay}
-                          onChange={(e) => setAutoSendDay(parseInt(e.target.value || "1", 10) || 1)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs text-slate-700">Heure (0–23)</label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={23}
-                          value={autoSendHour}
-                          onChange={(e) => setAutoSendHour(parseInt(e.target.value || "9", 10) || 9)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                        <p className="text-[0.7rem] text-slate-500">Par défaut : 09h</p>
-                      </div>
+
+                      {properties.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                          Aucun bien. Créez votre premier appartement.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {properties.map((p) => {
+                            const activeLease = activeLeaseByPropertyId[p.id];
+                            return (
+                              <div
+                                key={p.id}
+                                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-slate-900 truncate">
+                                      {p.label || "Appartement"}
+                                    </p>
+                                    <p className="text-xs text-slate-600 mt-1">
+                                      {propertyFullAddress(p) || "—"}
+                                    </p>
+                                    <p className="text-[0.7rem] text-slate-500 mt-1">
+                                      Locataire actif :{" "}
+                                      <span className="font-semibold text-slate-700">
+                                        {activeLease ? tenantLabel(activeLease.tenant_id) : "Aucun"}
+                                      </span>
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-2 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditProperty(p)}
+                                      className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                                    >
+                                      Modifier
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteProperty(p)}
+                                      className="rounded-full border border-red-300 bg-red-50 px-3 py-1.5 text-[0.7rem] font-semibold text-red-700 hover:bg-red-100"
+                                    >
+                                      Supprimer
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  <button
-                    type="submit"
-                    disabled={bailleurLoading}
-                    className="rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-amber-400 disabled:opacity-60"
-                  >
-                    {bailleurLoading ? "Enregistrement..." : "Enregistrer l’espace bailleur"}
-                  </button>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500 mb-2">
+                        {editingPropertyId ? "Modifier un appartement" : "Créer un appartement"}
+                      </p>
 
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Link href="/quittances-loyer" className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
-                      Gérer mes quittances
-                    </Link>
-                    <Link href="/outils-proprietaire" className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50">
-                      Outils propriétaire
-                    </Link>
-                  </div>
-                </form>
+                      <form onSubmit={handleSaveProperty} className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Nom du bien</label>
+                          <input
+                            type="text"
+                            value={pLabel}
+                            onChange={(e) => setPLabel(e.target.value)}
+                            placeholder="Ex: Studio République"
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1">
+                            <label className="text-xs text-slate-700">Adresse (ligne 1)</label>
+                            <input
+                              type="text"
+                              value={pLine1}
+                              onChange={(e) => setPLine1(e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-slate-700">Adresse (ligne 2)</label>
+                            <input
+                              type="text"
+                              value={pLine2}
+                              onChange={(e) => setPLine2(e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="space-y-1">
+                            <label className="text-xs text-slate-700">Code postal</label>
+                            <input
+                              type="text"
+                              value={pPostal}
+                              onChange={(e) => setPPostal(e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-slate-700">Ville</label>
+                            <input
+                              type="text"
+                              value={pCity}
+                              onChange={(e) => setPCity(e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-slate-700">Pays</label>
+                            <input
+                              type="text"
+                              value={pCountry}
+                              onChange={(e) => setPCountry(e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={bLoading}
+                            className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                          >
+                            {bLoading ? "Enregistrement…" : editingPropertyId ? "Mettre à jour" : "Créer"}
+                          </button>
+                          {editingPropertyId && (
+                            <button
+                              type="button"
+                              onClick={() => resetPropertyForm()}
+                              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                            >
+                              Annuler
+                            </button>
+                          )}
+                        </div>
+                      </form>
+                    </div>
+                  </section>
+                )}
+
+                {/* LOCATAIRES */}
+                {bSub === "locataires" && (
+                  <section className="grid gap-4 lg:grid-cols-[1fr,1fr]">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div>
+                          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                            Mes locataires
+                          </p>
+                          <p className="text-sm text-slate-600 mt-1">
+                            Vous pourrez les associer à un appartement via un bail.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => resetTenantForm()}
+                          className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                        >
+                          + Nouveau
+                        </button>
+                      </div>
+
+                      {tenants.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                          Aucun locataire. Ajoutez votre premier locataire.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {tenants.map((t) => (
+                            <div
+                              key={t.id}
+                              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-slate-900 truncate">
+                                    {t.full_name || "Locataire"}
+                                  </p>
+                                  <p className="text-xs text-slate-600 mt-1">
+                                    {t.email || "—"} {t.phone ? `• ${t.phone}` : ""}
+                                  </p>
+                                  {t.notes && (
+                                    <p className="text-[0.7rem] text-slate-500 mt-1 line-clamp-2">
+                                      {t.notes}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex gap-2 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditTenant(t)}
+                                    className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                                  >
+                                    Modifier
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteTenant(t)}
+                                    className="rounded-full border border-red-300 bg-red-50 px-3 py-1.5 text-[0.7rem] font-semibold text-red-700 hover:bg-red-100"
+                                  >
+                                    Supprimer
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500 mb-2">
+                        {editingTenantId ? "Modifier un locataire" : "Créer un locataire"}
+                      </p>
+
+                      <form onSubmit={handleSaveTenant} className="space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Nom complet</label>
+                          <input
+                            type="text"
+                            value={tFullName}
+                            onChange={(e) => setTFullName(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1">
+                            <label className="text-xs text-slate-700">Email</label>
+                            <input
+                              type="email"
+                              value={tEmail}
+                              onChange={(e) => setTEmail(e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs text-slate-700">Téléphone</label>
+                            <input
+                              type="text"
+                              value={tPhone}
+                              onChange={(e) => setTPhone(e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Notes</label>
+                          <textarea
+                            rows={3}
+                            value={tNotes}
+                            onChange={(e) => setTNotes(e.target.value)}
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={bLoading}
+                            className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                          >
+                            {bLoading ? "Enregistrement…" : editingTenantId ? "Mettre à jour" : "Créer"}
+                          </button>
+                          {editingTenantId && (
+                            <button
+                              type="button"
+                              onClick={() => resetTenantForm()}
+                              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                            >
+                              Annuler
+                            </button>
+                          )}
+                        </div>
+                      </form>
+                    </div>
+                  </section>
+                )}
+
+                {/* BAUX */}
+                {bSub === "baux" && (
+                  <section className="grid gap-4 lg:grid-cols-[1.2fr,1fr]">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div>
+                          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                            Mes baux
+                          </p>
+                          <p className="text-sm text-slate-600 mt-1">
+                            Un bail = un couple <span className="font-semibold">Appartement + Locataire</span>.
+                            Le bail actif est celui sans date de fin.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleOpenCreateLease}
+                          className="rounded-full bg-amber-500 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-amber-400"
+                        >
+                          + Créer un bail
+                        </button>
+                      </div>
+
+                      {(properties.length === 0 || tenants.length === 0) && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-800 mb-3">
+                          Pour créer un bail, vous devez avoir au moins{" "}
+                          <span className="font-semibold">1 bien</span> et{" "}
+                          <span className="font-semibold">1 locataire</span>.
+                        </div>
+                      )}
+
+                      {leases.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                          Aucun bail. Créez un bail pour définir le locataire actif d’un appartement.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {leases.map((l) => {
+                            const isActive = !l.end_date;
+                            const receiptsCount = receiptCountsByLease[l.id] || 0;
+
+                            return (
+                              <div
+                                key={l.id}
+                                className={
+                                  "rounded-xl border px-3 py-3 " +
+                                  (isActive ? "border-emerald-200 bg-emerald-50/60" : "border-slate-200 bg-slate-50")
+                                }
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className={
+                                          "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold " +
+                                          (isActive
+                                            ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                                            : "border-slate-200 bg-white text-slate-600")
+                                        }
+                                      >
+                                        {isActive ? "Bail actif" : "Historique"}
+                                      </span>
+                                      <span className="text-[0.7rem] text-slate-500">
+                                        Début : {formatDateFR(l.start_date)}{" "}
+                                        {l.end_date ? `• Fin : ${formatDateFR(l.end_date)}` : ""}
+                                      </span>
+                                    </div>
+
+                                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                                      {propertyLabel(l.property_id)} — {tenantLabel(l.tenant_id)}
+                                    </p>
+
+                                    <p className="mt-1 text-[0.75rem] text-slate-700">
+                                      Loyer : <span className="font-semibold">{formatMoney(l.rent_amount)}</span>{" "}
+                                      • Charges :{" "}
+                                      <span className="font-semibold">{formatMoney(l.charges_amount)}</span>{" "}
+                                      • Paiement :{" "}
+                                      <span className="font-semibold">
+                                        J{l.payment_day ?? 1} ({l.payment_method || "—"})
+                                      </span>
+                                    </p>
+
+                                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                                      Quittances liées :{" "}
+                                      <span className="font-semibold text-slate-700">{receiptsCount}</span>{" "}
+                                      • Auto-quittance :{" "}
+                                      <span className="font-semibold text-slate-700">
+                                        {l.auto_quittance_enabled ? "ON" : "OFF"}
+                                      </span>
+                                    </p>
+                                  </div>
+
+                                  <div className="flex gap-2 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditLease(l)}
+                                      className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                                    >
+                                      Modifier
+                                    </button>
+                                    {isActive && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCloseLease(l)}
+                                        className="rounded-full border border-red-300 bg-red-50 px-3 py-1.5 text-[0.7rem] font-semibold text-red-700 hover:bg-red-100"
+                                      >
+                                        Clôturer
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500 mb-2">
+                        {editingLeaseId ? "Modifier le bail" : "Créer un bail"}
+                      </p>
+
+                      {!creatingLease ? (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                          Cliquez sur <span className="font-semibold">“Créer un bail”</span> pour lier un locataire à un
+                          appartement (locataire actif).
+                        </div>
+                      ) : (
+                        <form onSubmit={handleSaveLease} className="space-y-3">
+                          <div className="space-y-1">
+                            <label className="text-xs text-slate-700">Appartement</label>
+                            <select
+                              value={lPropertyId}
+                              onChange={(e) => setLPropertyId(e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                            >
+                              <option value="">— Sélectionner —</option>
+                              {properties.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.label || "Appartement"} — {propertyFullAddress(p)}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="text-[0.7rem] text-slate-500 mt-1">
+                              Astuce : un bien ne peut avoir qu’un seul bail actif.
+                            </p>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-xs text-slate-700">Locataire</label>
+                            <select
+                              value={lTenantId}
+                              onChange={(e) => setLTenantId(e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                            >
+                              <option value="">— Sélectionner —</option>
+                              {tenants.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                  {t.full_name || "Locataire"} {t.email ? `(${t.email})` : ""}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1">
+                              <label className="text-xs text-slate-700">Début de bail *</label>
+                              <input
+                                type="date"
+                                value={lStartDate}
+                                onChange={(e) => setLStartDate(e.target.value)}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs text-slate-700">Fin de bail</label>
+                              <input
+                                type="date"
+                                value={lEndDate}
+                                onChange={(e) => setLEndDate(e.target.value)}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="space-y-1">
+                              <label className="text-xs text-slate-700">Loyer (€)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={lRentAmount}
+                                onChange={(e) => setLRentAmount(e.target.value)}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs text-slate-700">Charges (€)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={lChargesAmount}
+                                onChange={(e) => setLChargesAmount(e.target.value)}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs text-slate-700">Dépôt (€)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={lDepositAmount}
+                                onChange={(e) => setLDepositAmount(e.target.value)}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="space-y-1">
+                              <label className="text-xs text-slate-700">Jour paiement (1–31)</label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={31}
+                                value={lPaymentDay}
+                                onChange={(e) => setLPaymentDay(clampInt(e.target.value, 1, 31, 1))}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs text-slate-700">Mode de paiement</label>
+                              <select
+                                value={lPaymentMethod}
+                                onChange={(e) => setLPaymentMethod(e.target.value)}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              >
+                                <option value="virement">Virement</option>
+                                <option value="prelevement">Prélèvement</option>
+                                <option value="cheque">Chèque</option>
+                                <option value="especes">Espèces</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs text-slate-700">Email quittance</label>
+                              <input
+                                type="email"
+                                value={lTenantReceiptEmail}
+                                onChange={(e) => setLTenantReceiptEmail(e.target.value)}
+                                placeholder="(optionnel) destinataire"
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                          </div>
+
+                          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={lAutoQuittance}
+                              onChange={(e) => setLAutoQuittance(e.target.checked)}
+                              className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-600"
+                            />
+                            <span>Activer auto-quittance sur ce bail</span>
+                          </label>
+
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              type="submit"
+                              disabled={bLoading}
+                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                            >
+                              {bLoading ? "Enregistrement…" : editingLeaseId ? "Mettre à jour" : "Créer le bail"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => resetLeaseForm()}
+                              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+
+                          <p className="text-[0.7rem] text-slate-500">
+                            * requis — pour éviter l’erreur <span className="font-semibold">start_date NOT NULL</span>.
+                          </p>
+                        </form>
+                      )}
+                    </div>
+                  </section>
+                )}
               </>
             ) : tab === "securite" ? (
               <>
                 {/* SECURITY */}
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-slate-900 mb-1">Sécurité & préférences</p>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-slate-900 mb-1">
+                  Sécurité & préférences
+                </p>
                 <h2 className="text-lg font-semibold text-slate-900 mb-2">Protégez votre compte</h2>
 
                 <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-[0.75rem] font-semibold text-slate-800 mb-2">Changer mon mot de passe</p>
-
                   {pwdError && (
-                    <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[0.7rem] text-red-700">{pwdError}</div>
+                    <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[0.7rem] text-red-700">
+                      {pwdError}
+                    </div>
                   )}
                   {pwdOk && (
-                    <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.7rem] text-emerald-700">{pwdOk}</div>
+                    <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.7rem] text-emerald-700">
+                      {pwdOk}
+                    </div>
                   )}
-
                   <form onSubmit={handleChangePassword} className="space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
                         <label className="text-xs text-slate-700">Nouveau mot de passe</label>
-                        <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs text-slate-700">Confirmer</label>
-                        <input type="password" value={newPassword2} onChange={(e) => setNewPassword2(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" />
+                        <input
+                          type="password"
+                          value={newPassword2}
+                          onChange={(e) => setNewPassword2(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
                       </div>
                     </div>
-                    <button type="submit" disabled={pwdLoading} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+                    <button
+                      type="submit"
+                      disabled={pwdLoading}
+                      className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
                       {pwdLoading ? "Mise à jour..." : "Mettre à jour"}
                     </button>
                   </form>
@@ -1237,20 +2197,31 @@ export default function MonComptePage() {
 
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-[0.75rem] font-semibold text-slate-800 mb-2">Newsletter</p>
-
                   {prefsError && (
-                    <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[0.7rem] text-red-700">{prefsError}</div>
+                    <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[0.7rem] text-red-700">
+                      {prefsError}
+                    </div>
                   )}
                   {prefsOk && (
-                    <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.7rem] text-emerald-700">{prefsOk}</div>
+                    <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[0.7rem] text-emerald-700">
+                      {prefsOk}
+                    </div>
                   )}
-
                   <form onSubmit={handleSavePreferences} className="space-y-3">
                     <label className="flex items-start gap-2 text-sm text-slate-800">
-                      <input type="checkbox" checked={newsletterOptIn} onChange={(e) => setNewsletterOptIn(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900" />
+                      <input
+                        type="checkbox"
+                        checked={newsletterOptIn}
+                        onChange={(e) => setNewsletterOptIn(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                      />
                       <span>Je souhaite recevoir la newsletter.</span>
                     </label>
-                    <button type="submit" disabled={prefsLoading} className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60">
+                    <button
+                      type="submit"
+                      disabled={prefsLoading}
+                      className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+                    >
                       {prefsLoading ? "Enregistrement..." : "Enregistrer"}
                     </button>
                   </form>
@@ -1264,17 +2235,25 @@ export default function MonComptePage() {
 
                 {projectsLoading && <p className="text-sm text-slate-500">Chargement…</p>}
                 {!projectsLoading && projectsError && (
-                  <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700 mb-3">{projectsError}</div>
+                  <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700 mb-3">
+                    {projectsError}
+                  </div>
                 )}
 
                 {!projectsLoading && !projectsError && projects.length === 0 && (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-sm text-slate-700 font-medium mb-1">Aucun projet.</p>
                     <div className="flex flex-wrap gap-2 mt-2">
-                      <Link href="/capacite" className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+                      <Link
+                        href="/capacite"
+                        className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                      >
                         Calculette capacité
                       </Link>
-                      <Link href="/investissement" className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50">
+                      <Link
+                        href="/investissement"
+                        className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                      >
                         Investissement locatif
                       </Link>
                     </div>
@@ -1290,12 +2269,21 @@ export default function MonComptePage() {
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className={"inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold " + typeBadgeColor(p.type)}>
+                                <span
+                                  className={
+                                    "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold " +
+                                    typeBadgeColor(p.type)
+                                  }
+                                >
                                   {typeLabel(p.type)}
                                 </span>
-                                <span className="text-[0.7rem] text-slate-400">{formatDateTime(p.created_at)}</span>
+                                <span className="text-[0.7rem] text-slate-400">
+                                  {formatDateTime(p.created_at)}
+                                </span>
                               </div>
-                              <p className="mt-1 text-sm font-semibold text-slate-900">{p.title || typeLabel(p.type)}</p>
+                              <p className="mt-1 text-sm font-semibold text-slate-900">
+                                {p.title || typeLabel(p.type)}
+                              </p>
                             </div>
 
                             <div className="flex gap-2">
@@ -1317,7 +2305,9 @@ export default function MonComptePage() {
 
                           {isExpanded && (
                             <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
-                              <pre className="text-[0.7rem] sm:text-xs text-slate-800 overflow-auto">{JSON.stringify(p.data, null, 2)}</pre>
+                              <pre className="text-[0.7rem] sm:text-xs text-slate-800 overflow-auto">
+                                {JSON.stringify(p.data, null, 2)}
+                              </pre>
                             </div>
                           )}
                         </article>
