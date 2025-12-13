@@ -165,21 +165,28 @@ export default function OutilsProprietairePage() {
                 </p>
               </Link>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 opacity-70">
+              {/* 💶 Cautions & loyers - MAINTENANT CLIQUABLE */}
+              <Link
+                href="/cautions-loyers"
+                className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 cursor-pointer hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md transition"
+              >
                 <div className="inline-flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
                     💶
                   </div>
                   <p className="text-xs font-semibold text-slate-900">
-                    Cautions & loyers (bientôt)
+                    Cautions & loyers
                   </p>
                 </div>
                 <ul className="space-y-1 text-[0.75rem] text-slate-700">
-                  <li>• Suivi des dépôts de garantie</li>
+                  <li>• Suivi des dépôts de garantie (entrée / sortie)</li>
                   <li>• Historique des loyers et retards</li>
                   <li>• Alertes sur régularisation ou fin de bail</li>
                 </ul>
-              </div>
+                <p className="text-[0.7rem] font-medium text-emerald-700 group-hover:underline">
+                  Accéder au suivi cautions & loyers →
+                </p>
+              </Link>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 opacity-70">
                 <div className="inline-flex items-center gap-2">
