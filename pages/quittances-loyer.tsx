@@ -1,25 +1,15 @@
 // pages/quittances-loyer.tsx
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
+type SimpleUser = { id: string; email?: string };
+
 type PaymentMode = "virement" | "prelevement" | "cheque" | "especes";
 
-type LandlordRow = {
-  user_id: string;
-  display_name: string | null;
-  address: string | null;
-  address_line1: string | null;
-  address_line2: string | null;
-  postal_code: string | null;
-  city: string | null;
-  country: string | null;
-  default_issue_place: string | null;
-  default_payment_method: string | null;
-};
-
-type PropertyRow = {
+// Tables (alignées avec ton schéma)
+type Property = {
   id: string;
   user_id: string;
   label: string | null;
@@ -28,28 +18,35 @@ type PropertyRow = {
   postal_code: string | null;
   city: string | null;
   country: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
-type TenantRow = {
+type Tenant = {
   id: string;
   user_id: string;
   full_name: string | null;
   email: string | null;
   phone: string | null;
   notes: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
-type LeaseRow = {
+type Lease = {
   id: string;
   user_id: string;
   property_id: string;
   tenant_id: string;
-  start_date: string | null;
+
+  start_date: string; // NOT NULL
   end_date: string | null;
+
   rent_amount: number | null;
   charges_amount: number | null;
   deposit_amount: number | null;
-  payment_day: number | null;
+
+  payment_day: number | null; // smallint
   payment_method: string | null;
   status: string | null;
 
@@ -57,102 +54,123 @@ type LeaseRow = {
   tenant_receipt_email: string | null;
   timezone: string | null;
 
-  // ✅ à ajouter via SQL : auto_send_frequency/day/hour
-  auto_send_frequency?: string | null;
-  auto_send_day?: number | null;
-  auto_send_hour?: number | null;
-
-  created_at: string;
-  updated_at: string | null;
-
-  property?: PropertyRow | null;
-  tenant?: TenantRow | null;
+  auto_send_frequency: string | null; // ex: monthly | weekly | quarterly
+  auto_send_day: number | null; // smallint (1-31 ou 1-7 selon ta logique)
+  auto_send_hour: number | null; // smallint
+  created_at?: string;
+  updated_at?: string;
 };
 
-type RentReceiptRow = {
+type RentReceipt = {
   id: string;
   lease_id: string;
-  period_start: string;
-  period_end: string;
+  payment_id: string | null;
+  period_start: string; // date
+  period_end: string; // date
   rent_amount: number | null;
   charges_amount: number | null;
   total_amount: number | null;
-  issue_date: string | null;
+  issue_date: string | null; // date
   issue_place: string | null;
+  issued_at: string | null;
   content_text: string | null;
+  pdf_url: string | null;
+  sent_to_tenant_email: string | null;
+  sent_at: string | null;
   created_at: string;
 };
 
-function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
+type Landlord = {
+  user_id: string;
+  display_name: string | null;
+  address: string | null;
 
-function formatDateFR(val?: string | null) {
-  if (!val) return "";
-  const d = new Date(val);
-  if (Number.isNaN(d.getTime())) return val;
-  return d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "2-digit" });
-}
+  address_line1: string | null;
+  address_line2: string | null;
+  postal_code: string | null;
+  city: string | null;
+  country: string | null;
 
-function formatEuro(val: number | null | undefined) {
+  default_issue_place: string | null;
+  default_payment_method: string | null;
+
+  auto_send_enabled: boolean | null;
+  auto_send_frequency: string | null;
+  auto_send_day: number | null;
+  auto_send_hour: number | null;
+};
+
+// -------------------------
+// Helpers
+// -------------------------
+const formatEuro = (val: number | null | undefined) => {
   if (val == null || Number.isNaN(val)) return "—";
-  return val.toLocaleString("fr-FR", {
+  return Number(val).toLocaleString("fr-FR", {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-}
+};
 
-function getMonthPeriod(base: Date) {
-  const y = base.getFullYear();
-  const m = base.getMonth();
+const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+const toMonthISO = (d: Date) => d.toISOString().slice(0, 7);
+
+const formatDateFR = (val?: string | null) => {
+  if (!val) return "";
+  const d = new Date(val + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return val;
+  return d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "2-digit" });
+};
+
+const getMonthPeriodFromYYYYMM = (yyyymm: string) => {
+  const [yStr, mStr] = yyyymm.split("-");
+  const y = Number(yStr);
+  const m = Number(mStr) - 1;
   const start = new Date(y, m, 1);
   const end = new Date(y, m + 1, 0);
   return { start, end };
-}
+};
 
-function compactAddress(p: {
-  address_line1?: string | null;
-  address_line2?: string | null;
-  postal_code?: string | null;
-  city?: string | null;
-  country?: string | null;
-}) {
+const toDateOnly = (val: string) => new Date(val + "T00:00:00");
+const isAfterOrEqual = (a: Date, b: Date) => a.getTime() >= b.getTime();
+const isBeforeOrEqual = (a: Date, b: Date) => a.getTime() <= b.getTime();
+
+const buildPropertyAddress = (p: Property | null) => {
+  if (!p) return "";
   const parts = [
     p.address_line1,
     p.address_line2,
     [p.postal_code, p.city].filter(Boolean).join(" "),
     p.country,
-  ].filter(Boolean);
-  return parts.join("\n");
-}
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return parts.trim();
+};
 
-function paymentModeLabel(mode: PaymentMode) {
-  switch (mode) {
-    case "virement":
-      return "par virement bancaire";
-    case "cheque":
-      return "par chèque";
-    case "especes":
-      return "en espèces";
-    case "prelevement":
-      return "par prélèvement";
-  }
-}
+const buildLandlordAddress = (l: Landlord | null) => {
+  if (!l) return "";
+  const parts = [
+    l.address_line1 || l.address || null,
+    l.address_line2,
+    [l.postal_code, l.city].filter(Boolean).join(" "),
+    l.country,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return parts.trim();
+};
 
 function generateQuittanceText(params: {
   bailleurNom: string;
   bailleurAdresse?: string | null;
   locataireNom: string;
   bienAdresse?: string | null;
-
   loyerHC: number;
   charges: number;
-
   periodeDebut: string;
   periodeFin: string;
-
   villeQuittance?: string | null;
   dateQuittance?: string | null;
   modePaiement: PaymentMode;
@@ -183,12 +201,22 @@ function generateQuittanceText(params: {
   const villeDateStr =
     villeQuittance && dateQuittance ? `${villeQuittance}, le ${formatDateFR(dateQuittance)}` : "";
 
+  const modePaiementLabel =
+    modePaiement === "virement"
+      ? "par virement bancaire"
+      : modePaiement === "cheque"
+      ? "par chèque"
+      : modePaiement === "especes"
+      ? "en espèces"
+      : "par prélèvement";
+
   const lignes: string[] = [];
 
   lignes.push(bailleurNom || "Nom du bailleur");
   if (bailleurAdresse) lignes.push(bailleurAdresse);
   lignes.push("");
-  lignes.push(`À l'attention de : ${locataireNom || "Nom du locataire"}`);
+
+  lignes.push(`À l'attention de : ${locataireNom || "Locataire"}`);
   lignes.push("");
 
   lignes.push("QUITTANCE DE LOYER");
@@ -202,14 +230,14 @@ function generateQuittanceText(params: {
       total
     )} (${formatEuro(loyerHC)} de loyer hors charges et ${formatEuro(charges)} de provisions sur charges) ${
       periodeStr ? periodeStr : ""
-    }, ${paymentModeLabel(modePaiement)}.`
+    }, ${modePaiementLabel}.`
   );
 
   lignes.push("");
 
   if (mentionSolde) {
     lignes.push(
-      "La présente quittance vaut reçu pour toutes sommes versées à ce jour au titre des loyers et charges pour la période indiquée et éteint, à ce titre, toute dette du locataire envers le bailleur pour ladite période."
+      "La présente quittance vaut reçu pour toutes sommes versées à ce jour au titre des loyers et charges pour la période indiquée et éteint, à ce titre, toute dette de locataire envers le bailleur pour ladite période."
     );
     lignes.push("");
   }
@@ -232,160 +260,170 @@ function generateQuittanceText(params: {
 }
 
 // -------------------------
+// Auth hook (robuste)
+// -------------------------
+function useAuthedUser() {
+  const [user, setUser] = useState<SimpleUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
+        const u = data.session?.user ?? null;
+        setUser(u ? { id: u.id, email: u.email ?? undefined } : null);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUser(null);
+        setLoading(false);
+      });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
+      const u = session?.user ?? null;
+      setUser(u ? { id: u.id, email: u.email ?? undefined } : null);
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  return { user, loading };
+}
+
+// -------------------------
 // Page
 // -------------------------
 export default function QuittancesLoyerPage() {
   const router = useRouter();
+  const { user, loading: loadingUser } = useAuthedUser();
 
-  const [checkingUser, setCheckingUser] = useState(true);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  // Data
+  const [landlord, setLandlord] = useState<Landlord | null>(null);
 
-  const [landlord, setLandlord] = useState<LandlordRow | null>(null);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [leases, setLeases] = useState<Lease[]>([]);
+  const [receipts, setReceipts] = useState<RentReceipt[]>([]);
 
-  const [leases, setLeases] = useState<LeaseRow[]>([]);
-  const [leasesLoading, setLeasesLoading] = useState(false);
-  const [leasesError, setLeasesError] = useState<string | null>(null);
+  const [loadingData, setLoadingData] = useState(false);
+  const [errorData, setErrorData] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
+  // Selection
   const [selectedLeaseId, setSelectedLeaseId] = useState<string | null>(null);
-
-  const currentLease = useMemo(
+  const selectedLease = useMemo(
     () => leases.find((l) => l.id === selectedLeaseId) || null,
     [leases, selectedLeaseId]
   );
 
-  const [receipts, setReceipts] = useState<RentReceiptRow[]>([]);
-  const [receiptsLoading, setReceiptsLoading] = useState(false);
-  const [receiptsError, setReceiptsError] = useState<string | null>(null);
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
-  const currentReceipt = useMemo(
+  const selectedReceipt = useMemo(
     () => receipts.find((r) => r.id === selectedReceiptId) || null,
     [receipts, selectedReceiptId]
   );
 
-  const [globalMsg, setGlobalMsg] = useState<string | null>(null);
-  const [globalErr, setGlobalErr] = useState<string | null>(null);
+  // Form (unique) : Property + Tenant + Lease + Auto-send + Preview
+  const [propertyId, setPropertyId] = useState<string>(""); // "" = nouveau
+  const [propertyLabel, setPropertyLabel] = useState("");
+  const [address1, setAddress1] = useState("");
+  const [address2, setAddress2] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("France");
 
-  // -------------------------
-  // Form (bail unique)
-  // -------------------------
-  const [editingLeaseId, setEditingLeaseId] = useState<string | null>(null);
+  const [tenantId, setTenantId] = useState<string>(""); // "" = nouveau
+  const [tenantName, setTenantName] = useState("");
+  const [tenantEmail, setTenantEmail] = useState("");
+  const [tenantPhone, setTenantPhone] = useState("");
 
-  // Bien
-  const [pLabel, setPLabel] = useState("");
-  const [pAddr1, setPAddr1] = useState("");
-  const [pAddr2, setPAddr2] = useState("");
-  const [pZip, setPZip] = useState("");
-  const [pCity, setPCity] = useState("");
-  const [pCountry, setPCountry] = useState("FR");
+  const [startDate, setStartDate] = useState(() => toISODate(new Date()));
+  const [endDate, setEndDate] = useState<string>("");
 
-  // Locataire
-  const [tName, setTName] = useState("");
-  const [tEmail, setTEmail] = useState("");
+  const [rent, setRent] = useState<string>("");
+  const [charges, setCharges] = useState<string>("");
+  const [deposit, setDeposit] = useState<string>("");
 
-  // Bail
-  const [rent, setRent] = useState("0");
-  const [charges, setCharges] = useState("0");
-  const [paymentDay, setPaymentDay] = useState("1");
+  const [paymentDay, setPaymentDay] = useState<string>("1");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMode>("virement");
-  const [leaseStatus, setLeaseStatus] = useState("active");
+  const [leaseStatus, setLeaseStatus] = useState<string>("active");
 
-  // Auto-envoi par bail
-  const [autoEnabled, setAutoEnabled] = useState(true);
-  const [autoFreq, setAutoFreq] = useState<"monthly">("monthly");
-  const [autoDay, setAutoDay] = useState("1");
-  const [autoHour, setAutoHour] = useState("9");
+  const [autoEnabled, setAutoEnabled] = useState<boolean>(true);
+  const [autoFreq, setAutoFreq] = useState<string>("monthly"); // monthly|weekly|quarterly
+  const [autoDay, setAutoDay] = useState<string>("1"); // jour du mois (1-31)
+  const [autoHour, setAutoHour] = useState<string>("9"); // 09h
 
-  // Génération quittance
-  const [periodMonth, setPeriodMonth] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  });
-  const [issuePlace, setIssuePlace] = useState("");
-  const [issueDate, setIssueDate] = useState(() => toISODate(new Date()));
+  const [periodMonth, setPeriodMonth] = useState(() => toMonthISO(new Date())); // YYYY-MM
   const [mentionSolde, setMentionSolde] = useState(true);
 
-  const bailleurDisplayName = useMemo(() => {
-    return landlord?.display_name || userEmail || "Bailleur";
-  }, [landlord, userEmail]);
+  const [savingLease, setSavingLease] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
-  const bailleurAddress = useMemo(() => {
-    if (landlord?.address) return landlord.address;
-    const fromSplit = compactAddress({
-      address_line1: landlord?.address_line1,
-      address_line2: landlord?.address_line2,
-      postal_code: landlord?.postal_code,
-      city: landlord?.city,
-      country: landlord?.country,
-    });
-    return fromSplit || "";
-  }, [landlord]);
+  // Maps for UI joins
+  const propertiesById = useMemo(() => {
+    const m = new Map<string, Property>();
+    properties.forEach((p) => m.set(p.id, p));
+    return m;
+  }, [properties]);
 
-  // Preview
-  const previewText = useMemo(() => {
-    const [yy, mm] = periodMonth.split("-").map((x) => parseInt(x, 10));
-    const base = new Date(yy, (mm || 1) - 1, 1);
-    const { start, end } = getMonthPeriod(base);
+  const tenantsById = useMemo(() => {
+    const m = new Map<string, Tenant>();
+    tenants.forEach((t) => m.set(t.id, t));
+    return m;
+  }, [tenants]);
 
-    const loyer = parseFloat(rent || "0") || 0;
-    const ch = parseFloat(charges || "0") || 0;
+  const leaseLabel = useCallback(
+    (l: Lease) => {
+      const p = propertiesById.get(l.property_id) || null;
+      const t = tenantsById.get(l.tenant_id) || null;
+      const pName = p?.label || "Bien";
+      const tName = t?.full_name || "Locataire";
+      return `${pName} — ${tName}`;
+    },
+    [propertiesById, tenantsById]
+  );
 
-    const bienAdresse = compactAddress({
-      address_line1: pAddr1,
-      address_line2: pAddr2,
-      postal_code: pZip,
-      city: pCity,
-      country: pCountry,
-    });
-
-    return generateQuittanceText({
-      bailleurNom: bailleurDisplayName,
-      bailleurAdresse: bailleurAddress || "",
-      locataireNom: tName || "Locataire",
-      bienAdresse,
-      loyerHC: loyer,
-      charges: ch,
-      periodeDebut: toISODate(start),
-      periodeFin: toISODate(end),
-      villeQuittance: issuePlace || landlord?.default_issue_place || pCity || "",
-      dateQuittance: issueDate || toISODate(new Date()),
-      modePaiement: paymentMethod,
-      mentionSolde,
-    });
-  }, [
-    periodMonth,
-    rent,
-    charges,
-    pAddr1,
-    pAddr2,
-    pZip,
-    pCity,
-    pCountry,
-    tName,
-    bailleurDisplayName,
-    bailleurAddress,
-    issuePlace,
-    issueDate,
-    paymentMethod,
-    mentionSolde,
-    landlord?.default_issue_place,
-  ]);
+  const receiptLabel = useCallback(
+    (r: RentReceipt) => {
+      const l = leases.find((x) => x.id === r.lease_id) || null;
+      const base = l ? leaseLabel(l) : "Bail";
+      return `${base} · ${r.period_start} → ${r.period_end}`;
+    },
+    [leases, leaseLabel]
+  );
 
   const resetForm = () => {
-    setEditingLeaseId(null);
+    setSelectedLeaseId(null);
+    setSelectedReceiptId(null);
 
-    setPLabel("");
-    setPAddr1("");
-    setPAddr2("");
-    setPZip("");
-    setPCity("");
-    setPCountry("FR");
+    setPropertyId("");
+    setPropertyLabel("");
+    setAddress1("");
+    setAddress2("");
+    setPostalCode("");
+    setCity("");
+    setCountry("France");
 
-    setTName("");
-    setTEmail("");
+    setTenantId("");
+    setTenantName("");
+    setTenantEmail("");
+    setTenantPhone("");
 
-    setRent("0");
-    setCharges("0");
+    setStartDate(toISODate(new Date()));
+    setEndDate("");
+
+    setRent("");
+    setCharges("");
+    setDeposit("");
+
     setPaymentDay("1");
     setPaymentMethod("virement");
     setLeaseStatus("active");
@@ -395,205 +433,439 @@ export default function QuittancesLoyerPage() {
     setAutoDay("1");
     setAutoHour("9");
 
-    setIssueDate(toISODate(new Date()));
-    setIssuePlace("");
-    setMentionSolde(true);
-
-    setGlobalErr(null);
-    setGlobalMsg(null);
+    setMessage(null);
+    setErrorData(null);
   };
 
-  const loadFormFromLease = (l: LeaseRow) => {
-    setEditingLeaseId(l.id);
+  // Load all
+  const refreshAll = useCallback(async () => {
+    if (!user) return;
+    setLoadingData(true);
+    setErrorData(null);
+    setMessage(null);
 
-    setPLabel(l.property?.label || "");
-    setPAddr1(l.property?.address_line1 || "");
-    setPAddr2(l.property?.address_line2 || "");
-    setPZip(l.property?.postal_code || "");
-    setPCity(l.property?.city || "");
-    setPCountry(l.property?.country || "FR");
-
-    setTName(l.tenant?.full_name || "");
-    setTEmail((l.tenant_receipt_email || l.tenant?.email || "") as string);
-
-    setRent(l.rent_amount != null ? String(l.rent_amount) : "0");
-    setCharges(l.charges_amount != null ? String(l.charges_amount) : "0");
-    setPaymentDay(l.payment_day != null ? String(l.payment_day) : "1");
-    setPaymentMethod(((l.payment_method as any) || "virement") as PaymentMode);
-    setLeaseStatus(l.status || "active");
-
-    setAutoEnabled(!!l.auto_quittance_enabled);
-    setAutoFreq((l.auto_send_frequency as any) === "monthly" ? "monthly" : "monthly");
-    setAutoDay(l.auto_send_day != null ? String(l.auto_send_day) : String(l.payment_day ?? 1));
-    setAutoHour(l.auto_send_hour != null ? String(l.auto_send_hour) : "9");
-
-    setIssuePlace(landlord?.default_issue_place || l.property?.city || "");
-    setGlobalErr(null);
-    setGlobalMsg(null);
-  };
-
-  // -------------------------
-  // Auth/session
-  // -------------------------
-  useEffect(() => {
-    let mounted = true;
-
-    supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        if (!mounted) return;
-        const u = data.session?.user ?? null;
-        setUserId(u?.id ?? null);
-        setUserEmail(u?.email ?? null);
-        setCheckingUser(false);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setUserId(null);
-        setUserEmail(null);
-        setCheckingUser(false);
-      });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-      if (!mounted) return;
-      const u = session?.user ?? null;
-      setUserId(u?.id ?? null);
-      setUserEmail(u?.email ?? null);
-      setCheckingUser(false);
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
-
-  // -------------------------
-  // Load landlord + leases + receipts
-  // -------------------------
-  const refreshLandlord = async (uid: string) => {
     try {
-      const { data, error } = await supabase
+      // landlord (optionnel)
+      const { data: lData } = await supabase
         .from("landlords")
         .select("*")
-        .eq("user_id", uid)
+        .eq("user_id", user.id)
         .maybeSingle();
-      if (error) throw error;
-      setLandlord((data as any) || null);
+      setLandlord((lData as Landlord) || null);
 
-      // default issue place in UI
-      setIssuePlace((data as any)?.default_issue_place || "");
-    } catch (e) {
-      setLandlord(null);
-    }
-  };
+      // properties / tenants / leases
+      const [pRes, tRes, leaseRes] = await Promise.all([
+        supabase.from("properties").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
+        supabase.from("tenants").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
+        supabase.from("leases").select("*").eq("user_id", user.id).order("created_at", { ascending: true }),
+      ]);
 
-  const refreshLeases = async (uid: string) => {
-    setLeasesLoading(true);
-    setLeasesError(null);
-    try {
-      const { data, error } = await supabase
-        .from("leases")
-        .select(
-          `
-          *,
-          property:properties(*),
-          tenant:tenants(*)
-        `
-        )
-        .eq("user_id", uid)
-        .order("created_at", { ascending: false });
+      if (pRes.error) throw pRes.error;
+      if (tRes.error) throw tRes.error;
+      if (leaseRes.error) throw leaseRes.error;
 
-      if (error) throw error;
+      const p = (pRes.data || []) as Property[];
+      const t = (tRes.data || []) as Tenant[];
+      const l = (leaseRes.data || []) as Lease[];
 
-      const rows = (data || []) as any as LeaseRow[];
-      setLeases(rows);
+      setProperties(p);
+      setTenants(t);
+      setLeases(l);
 
-      // UX: si aucun bail → on force le mode création
-      if (!rows.length) {
-        setSelectedLeaseId(null);
-        setSelectedReceiptId(null);
-        resetForm();
+      // receipts: via lease ids
+      const leaseIds = l.map((x) => x.id);
+      if (leaseIds.length === 0) {
+        setReceipts([]);
       } else {
-        // garder sélection si possible, sinon prendre le dernier
-        setSelectedLeaseId((prev) => prev && rows.some((x) => x.id === prev) ? prev : rows[0].id);
+        const rr = await supabase
+          .from("rent_receipts")
+          .select("*")
+          .in("lease_id", leaseIds)
+          .order("created_at", { ascending: false })
+          .limit(80);
+
+        if (rr.error) throw rr.error;
+        setReceipts((rr.data || []) as RentReceipt[]);
       }
     } catch (err: any) {
-      setLeasesError(err?.message || "Impossible de charger vos baux.");
-      setLeases([]);
+      setErrorData(err?.message || "Impossible de charger les données (baux/quittances).");
     } finally {
-      setLeasesLoading(false);
+      setLoadingData(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) refreshAll();
+  }, [user, refreshAll]);
+
+  // Load form when selecting a lease
+  useEffect(() => {
+    setMessage(null);
+    setErrorData(null);
+
+    if (!selectedLease) return;
+
+    const p = propertiesById.get(selectedLease.property_id) || null;
+    const t = tenantsById.get(selectedLease.tenant_id) || null;
+
+    setPropertyId(p?.id || "");
+    setPropertyLabel(p?.label || "");
+    setAddress1(p?.address_line1 || "");
+    setAddress2(p?.address_line2 || "");
+    setPostalCode(p?.postal_code || "");
+    setCity(p?.city || "");
+    setCountry(p?.country || "France");
+
+    setTenantId(t?.id || "");
+    setTenantName(t?.full_name || "");
+    setTenantEmail(t?.email || selectedLease.tenant_receipt_email || "");
+    setTenantPhone(t?.phone || "");
+
+    setStartDate(selectedLease.start_date || toISODate(new Date()));
+    setEndDate(selectedLease.end_date || "");
+
+    setRent(selectedLease.rent_amount != null ? String(selectedLease.rent_amount) : "");
+    setCharges(selectedLease.charges_amount != null ? String(selectedLease.charges_amount) : "");
+    setDeposit(selectedLease.deposit_amount != null ? String(selectedLease.deposit_amount) : "");
+
+    setPaymentDay(selectedLease.payment_day != null ? String(selectedLease.payment_day) : "1");
+    setPaymentMethod(((selectedLease.payment_method as any) || "virement") as PaymentMode);
+    setLeaseStatus(selectedLease.status || "active");
+
+    setAutoEnabled(!!selectedLease.auto_quittance_enabled);
+    setAutoFreq(selectedLease.auto_send_frequency || "monthly");
+    setAutoDay(selectedLease.auto_send_day != null ? String(selectedLease.auto_send_day) : "1");
+    setAutoHour(selectedLease.auto_send_hour != null ? String(selectedLease.auto_send_hour) : "9");
+  }, [selectedLease, propertiesById, tenantsById]);
+
+  // Choose property / tenant from dropdown -> fill fields
+  useEffect(() => {
+    if (!propertyId) return;
+    const p = propertiesById.get(propertyId);
+    if (!p) return;
+    setPropertyLabel(p.label || "");
+    setAddress1(p.address_line1 || "");
+    setAddress2(p.address_line2 || "");
+    setPostalCode(p.postal_code || "");
+    setCity(p.city || "");
+    setCountry(p.country || "France");
+  }, [propertyId, propertiesById]);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    const t = tenantsById.get(tenantId);
+    if (!t) return;
+    setTenantName(t.full_name || "");
+    setTenantEmail(t.email || "");
+    setTenantPhone(t.phone || "");
+  }, [tenantId, tenantsById]);
+
+  // Preview text (live)
+  const previewText = useMemo(() => {
+    const bailleurNom = landlord?.display_name || user?.email || "Bailleur";
+    const bailleurAdresse = buildLandlordAddress(landlord);
+
+    const p: Property | null = propertyId ? propertiesById.get(propertyId) || null : null;
+    const t: Tenant | null = tenantId ? tenantsById.get(tenantId) || null : null;
+
+    const bienAdresse = buildPropertyAddress(
+      p || {
+        id: "temp",
+        user_id: user?.id || "",
+        label: propertyLabel || null,
+        address_line1: address1 || null,
+        address_line2: address2 || null,
+        postal_code: postalCode || null,
+        city: city || null,
+        country: country || null,
+      }
+    );
+
+    const locataireNom = (t?.full_name || tenantName || "Locataire").trim();
+
+    const rentNum = parseFloat(rent || "0") || 0;
+    const chargesNum = parseFloat(charges || "0") || 0;
+
+    const { start, end } = getMonthPeriodFromYYYYMM(periodMonth);
+
+    const issuePlace = landlord?.default_issue_place || city || "";
+    const issueDate = toISODate(new Date());
+
+    return generateQuittanceText({
+      bailleurNom,
+      bailleurAdresse,
+      locataireNom,
+      bienAdresse,
+      loyerHC: rentNum,
+      charges: chargesNum,
+      periodeDebut: toISODate(start),
+      periodeFin: toISODate(end),
+      villeQuittance: issuePlace,
+      dateQuittance: issueDate,
+      modePaiement: paymentMethod,
+      mentionSolde,
+    });
+  }, [
+    landlord,
+    user,
+    propertyId,
+    propertiesById,
+    tenantId,
+    tenantsById,
+    propertyLabel,
+    address1,
+    address2,
+    postalCode,
+    city,
+    country,
+    tenantName,
+    rent,
+    charges,
+    periodMonth,
+    paymentMethod,
+    mentionSolde,
+  ]);
+
+  // Click receipt -> show its text (if stored)
+  const receiptTextToShow = useMemo(() => {
+    if (selectedReceipt?.content_text) return selectedReceipt.content_text;
+    return previewText;
+  }, [selectedReceipt, previewText]);
+
+  // Create/update lease + (maybe) property/tenant
+  const handleSaveLease = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    setSavingLease(true);
+    setMessage(null);
+    setErrorData(null);
+
+    try {
+      // Validations minimales
+      if (!startDate) throw new Error("La date de début du bail est obligatoire.");
+      if (!propertyLabel.trim()) throw new Error("Merci de renseigner un nom de bien.");
+      if (!address1.trim() || !postalCode.trim() || !city.trim()) {
+        throw new Error("Merci de renseigner l’adresse (ligne 1), le code postal et la ville du bien.");
+      }
+      if (!tenantName.trim()) throw new Error("Merci de renseigner le nom du locataire.");
+
+      const rentNum = parseFloat(rent || "0") || 0;
+      const chargesNum = parseFloat(charges || "0") || 0;
+      const depositNum = deposit ? parseFloat(deposit || "0") || 0 : null;
+
+      const payDayNum = Math.min(31, Math.max(1, parseInt(paymentDay || "1", 10) || 1));
+      const autoDayNum = Math.min(31, Math.max(1, parseInt(autoDay || "1", 10) || 1));
+      const autoHourNum = Math.min(23, Math.max(0, parseInt(autoHour || "9", 10) || 9));
+
+      // 1) Upsert Property
+      let finalPropertyId = propertyId;
+      if (finalPropertyId) {
+        const { error } = await supabase
+          .from("properties")
+          .update({
+            label: propertyLabel.trim(),
+            address_line1: address1.trim(),
+            address_line2: address2.trim() || null,
+            postal_code: postalCode.trim(),
+            city: city.trim(),
+            country: (country || "France").trim(),
+          })
+          .eq("id", finalPropertyId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("properties")
+          .insert({
+            user_id: user.id,
+            label: propertyLabel.trim(),
+            address_line1: address1.trim(),
+            address_line2: address2.trim() || null,
+            postal_code: postalCode.trim(),
+            city: city.trim(),
+            country: (country || "France").trim(),
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        finalPropertyId = (data as Property).id;
+      }
+
+      // 2) Upsert Tenant
+      let finalTenantId = tenantId;
+      if (finalTenantId) {
+        const { error } = await supabase
+          .from("tenants")
+          .update({
+            full_name: tenantName.trim(),
+            email: tenantEmail.trim() || null,
+            phone: tenantPhone.trim() || null,
+          })
+          .eq("id", finalTenantId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("tenants")
+          .insert({
+            user_id: user.id,
+            full_name: tenantName.trim(),
+            email: tenantEmail.trim() || null,
+            phone: tenantPhone.trim() || null,
+            notes: null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        finalTenantId = (data as Tenant).id;
+      }
+
+      // 3) Upsert Lease
+      const payload = {
+        user_id: user.id,
+        property_id: finalPropertyId,
+        tenant_id: finalTenantId,
+
+        start_date: startDate,
+        end_date: endDate || null,
+
+        rent_amount: rentNum,
+        charges_amount: chargesNum,
+        deposit_amount: depositNum,
+
+        payment_day: payDayNum,
+        payment_method: paymentMethod,
+        status: leaseStatus,
+
+        auto_quittance_enabled: !!autoEnabled,
+        tenant_receipt_email: (tenantEmail.trim() || null) as any,
+        timezone: "Europe/Paris",
+
+        auto_send_frequency: autoEnabled ? autoFreq : null,
+        auto_send_day: autoEnabled ? autoDayNum : null,
+        auto_send_hour: autoEnabled ? autoHourNum : null,
+      };
+
+      if (selectedLeaseId) {
+        const { error } = await supabase
+          .from("leases")
+          .update(payload)
+          .eq("id", selectedLeaseId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+        setMessage("Bail mis à jour ✅");
+      } else {
+        const { data, error } = await supabase.from("leases").insert(payload).select().single();
+        if (error) throw error;
+        setSelectedLeaseId((data as Lease).id);
+        setMessage("Bail créé ✅");
+      }
+
+      await refreshAll();
+    } catch (err: any) {
+      setErrorData(err?.message || "Erreur lors de l’enregistrement du bail.");
+    } finally {
+      setSavingLease(false);
     }
   };
 
-  const refreshReceipts = async (uid: string, leaseIds: string[]) => {
-    setReceiptsLoading(true);
-    setReceiptsError(null);
+  // Generate + save receipt
+  const handleGenerateAndSaveReceipt = async () => {
+    if (!user) return;
+    if (!selectedLease) {
+      setErrorData("Sélectionnez un bail avant de générer une quittance.");
+      return;
+    }
+
+    setGenerating(true);
+    setMessage(null);
+    setErrorData(null);
+
     try {
-      if (!leaseIds.length) {
-        setReceipts([]);
-        setSelectedReceiptId(null);
-        return;
+      // Validation période vs bail
+      const { start, end } = getMonthPeriodFromYYYYMM(periodMonth);
+      const leaseStart = selectedLease.start_date ? toDateOnly(selectedLease.start_date) : null;
+      const leaseEnd = selectedLease.end_date ? toDateOnly(selectedLease.end_date) : null;
+
+      if (leaseStart && !isAfterOrEqual(end, leaseStart)) {
+        throw new Error("Impossible : le bail commence après la période de quittance.");
+      }
+      if (leaseEnd && !isBeforeOrEqual(start, leaseEnd)) {
+        throw new Error("Impossible : le bail est terminé avant la période de quittance.");
       }
 
-      // rent_receipts n'a pas user_id : on filtre par lease_id IN (...)
+      // Montants
+      const rentNum = parseFloat(rent || "0") || 0;
+      const chargesNum = parseFloat(charges || "0") || 0;
+      const total = rentNum + chargesNum;
+
+      const issuePlace = landlord?.default_issue_place || city || null;
+      const issueDate = toISODate(new Date());
+
+      // Texte = preview live
+      const text = previewText;
+
+      // Option : éviter doublon (même lease + même période)
+      const existing = receipts.find(
+        (r) => r.lease_id === selectedLease.id && r.period_start === toISODate(start) && r.period_end === toISODate(end)
+      );
+      if (existing) {
+        throw new Error("Une quittance existe déjà pour ce bail et cette période.");
+      }
+
       const { data, error } = await supabase
         .from("rent_receipts")
-        .select("*")
-        .in("lease_id", leaseIds)
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .insert({
+          lease_id: selectedLease.id,
+          payment_id: null,
+          period_start: toISODate(start),
+          period_end: toISODate(end),
+
+          rent_amount: rentNum,
+          charges_amount: chargesNum,
+          total_amount: total,
+
+          issue_date: issueDate,
+          issue_place: issuePlace,
+          issued_at: new Date().toISOString(),
+
+          content_text: text,
+          pdf_url: null,
+
+          sent_to_tenant_email: tenantEmail.trim() || null,
+          sent_at: null,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      const rows = (data || []) as any as RentReceiptRow[];
-      setReceipts(rows);
+      const created = data as RentReceipt;
 
-      // si on a une quittance sélectionnée qui n'existe plus, on reset
-      setSelectedReceiptId((prev) => (prev && rows.some((r) => r.id === prev) ? prev : null));
+      setReceipts((prev) => [created, ...prev]);
+      setSelectedReceiptId(created.id);
+      setMessage("Quittance générée et enregistrée ✅");
     } catch (err: any) {
-      setReceiptsError(err?.message || "Impossible de charger vos quittances.");
-      setReceipts([]);
+      setErrorData(err?.message || "Erreur lors de la génération/enregistrement.");
     } finally {
-      setReceiptsLoading(false);
+      setGenerating(false);
     }
   };
-
-  useEffect(() => {
-    if (!userId) return;
-    (async () => {
-      await refreshLandlord(userId);
-      await refreshLeases(userId);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId) return;
-    refreshReceipts(
-      userId,
-      leases.map((l) => l.id)
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, leases.length]);
 
   // -------------------------
   // UI: not logged in
   // -------------------------
-  if (!checkingUser && !userId) {
+  if (!loadingUser && !user) {
     return (
       <div className="min-h-screen flex flex-col bg-slate-100">
         <AppHeader />
         <main className="flex-1 px-4 py-6">
           <div className="max-w-xl mx-auto rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-600">
-              Quittances de loyer
-            </p>
-            <h1 className="text-lg font-semibold text-slate-900">
-              Connectez-vous pour gérer vos quittances
-            </h1>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-600">Quittances de loyer</p>
+            <h1 className="text-lg font-semibold text-slate-900">Connectez-vous pour gérer vos quittances</h1>
             <p className="text-sm text-slate-600">
-              Vous pourrez créer vos baux (bien + locataire) puis générer vos quittances et activer l’envoi automatique.
+              Cet outil nécessite un compte pour stocker vos baux, vos quittances et l’historique.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button
@@ -618,290 +890,63 @@ export default function QuittancesLoyerPage() {
   }
 
   // -------------------------
-  // Actions: save lease (property+tenant+lease)
+  // UI: main
   // -------------------------
-  const handleSaveLease = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!userId) return;
-
-    setGlobalErr(null);
-    setGlobalMsg(null);
-
-    const rentNum = parseFloat(rent || "0") || 0;
-    const chargesNum = parseFloat(charges || "0") || 0;
-
-    const payDayNum = Math.min(31, Math.max(1, parseInt(paymentDay || "1", 10) || 1));
-    const autoDayNum = Math.min(31, Math.max(1, parseInt(autoDay || String(payDayNum), 10) || payDayNum));
-    const autoHourNum = Math.min(23, Math.max(0, parseInt(autoHour || "9", 10) || 9));
-
-    // validations min
-    if (!pLabel.trim()) return setGlobalErr("Merci de renseigner au minimum le nom du bien.");
-    if (!pAddr1.trim() || !pZip.trim() || !pCity.trim()) {
-      return setGlobalErr("Merci de renseigner l’adresse du bien (ligne 1, code postal, ville).");
-    }
-    if (!tName.trim()) return setGlobalErr("Merci de renseigner le nom du locataire.");
-    if (!tEmail.trim()) return setGlobalErr("Merci de renseigner l’email du locataire (utile pour l’envoi auto).");
-
-    try {
-      // 1) property
-      let propertyId = currentLease?.property_id || "";
-      if (editingLeaseId && currentLease?.property_id) {
-        const { error } = await supabase
-          .from("properties")
-          .update({
-            label: pLabel.trim(),
-            address_line1: pAddr1.trim(),
-            address_line2: pAddr2.trim() || null,
-            postal_code: pZip.trim(),
-            city: pCity.trim(),
-            country: (pCountry || "FR").trim(),
-          })
-          .eq("id", currentLease.property_id)
-          .eq("user_id", userId);
-        if (error) throw error;
-        propertyId = currentLease.property_id;
-      } else {
-        const { data, error } = await supabase
-          .from("properties")
-          .insert({
-            user_id: userId,
-            label: pLabel.trim(),
-            address_line1: pAddr1.trim(),
-            address_line2: pAddr2.trim() || null,
-            postal_code: pZip.trim(),
-            city: pCity.trim(),
-            country: (pCountry || "FR").trim(),
-          })
-          .select()
-          .single();
-        if (error) throw error;
-        propertyId = (data as any).id;
-      }
-
-      // 2) tenant
-      let tenantId = currentLease?.tenant_id || "";
-      if (editingLeaseId && currentLease?.tenant_id) {
-        const { error } = await supabase
-          .from("tenants")
-          .update({
-            full_name: tName.trim(),
-            email: tEmail.trim(),
-          })
-          .eq("id", currentLease.tenant_id)
-          .eq("user_id", userId);
-        if (error) throw error;
-        tenantId = currentLease.tenant_id;
-      } else {
-        const { data, error } = await supabase
-          .from("tenants")
-          .insert({
-            user_id: userId,
-            full_name: tName.trim(),
-            email: tEmail.trim(),
-          })
-          .select()
-          .single();
-        if (error) throw error;
-        tenantId = (data as any).id;
-      }
-
-      // 3) lease
-      const leasePayload: any = {
-        user_id: userId,
-        property_id: propertyId,
-        tenant_id: tenantId,
-        rent_amount: rentNum,
-        charges_amount: chargesNum,
-        payment_day: payDayNum,
-        payment_method: paymentMethod,
-        status: leaseStatus,
-        auto_quittance_enabled: !!autoEnabled,
-        tenant_receipt_email: tEmail.trim(),
-        timezone: "Europe/Paris",
-
-        // ✅ colonnes à ajouter via SQL
-        auto_send_frequency: autoEnabled ? autoFreq : null,
-        auto_send_day: autoEnabled ? autoDayNum : null,
-        auto_send_hour: autoEnabled ? autoHourNum : null,
-      };
-
-      if (editingLeaseId) {
-        const { error } = await supabase
-          .from("leases")
-          .update(leasePayload)
-          .eq("id", editingLeaseId)
-          .eq("user_id", userId);
-        if (error) throw error;
-        setGlobalMsg("Bail mis à jour ✅");
-      } else {
-        const { data, error } = await supabase
-          .from("leases")
-          .insert(leasePayload)
-          .select()
-          .single();
-        if (error) throw error;
-        const createdId = (data as any).id as string;
-        setGlobalMsg("Bail créé ✅");
-        setSelectedLeaseId(createdId);
-        setEditingLeaseId(createdId);
-      }
-
-      await refreshLeases(userId);
-      await refreshReceipts(userId, leases.map((l) => l.id));
-    } catch (err: any) {
-      // Si tu n'as pas encore ajouté les colonnes, tu verras une erreur "column ... does not exist"
-      setGlobalErr(err?.message || "Erreur lors de l’enregistrement du bail.");
-    }
-  };
-
-  // -------------------------
-  // Action: generate & save receipt
-  // -------------------------
-  const handleSaveReceipt = async () => {
-    if (!userId) return;
-    if (!currentLease) return setGlobalErr("Sélectionnez un bail (ou créez-en un) avant de générer une quittance.");
-
-    setGlobalErr(null);
-    setGlobalMsg(null);
-
-    try {
-      const [yy, mm] = periodMonth.split("-").map((x) => parseInt(x, 10));
-      const base = new Date(yy, (mm || 1) - 1, 1);
-      const { start, end } = getMonthPeriod(base);
-
-      const rentNum = currentLease.rent_amount || parseFloat(rent || "0") || 0;
-      const chargesNum = currentLease.charges_amount || parseFloat(charges || "0") || 0;
-      const total = rentNum + chargesNum;
-
-      const bienAdresse = compactAddress({
-        address_line1: currentLease.property?.address_line1 || pAddr1,
-        address_line2: currentLease.property?.address_line2 || pAddr2,
-        postal_code: currentLease.property?.postal_code || pZip,
-        city: currentLease.property?.city || pCity,
-        country: currentLease.property?.country || pCountry,
-      });
-
-      const txt = generateQuittanceText({
-        bailleurNom: bailleurDisplayName,
-        bailleurAdresse: bailleurAddress || "",
-        locataireNom: currentLease.tenant?.full_name || tName || "Locataire",
-        bienAdresse,
-        loyerHC: rentNum,
-        charges: chargesNum,
-        periodeDebut: toISODate(start),
-        periodeFin: toISODate(end),
-        villeQuittance: issuePlace || landlord?.default_issue_place || currentLease.property?.city || "",
-        dateQuittance: issueDate || toISODate(new Date()),
-        modePaiement: ((currentLease.payment_method as any) || paymentMethod) as PaymentMode,
-        mentionSolde,
-      });
-
-      const { data, error } = await supabase
-        .from("rent_receipts")
-        .insert({
-          lease_id: currentLease.id,
-          period_start: toISODate(start),
-          period_end: toISODate(end),
-          rent_amount: rentNum,
-          charges_amount: chargesNum,
-          total_amount: total,
-          issue_date: issueDate || toISODate(new Date()),
-          issue_place: issuePlace || landlord?.default_issue_place || currentLease.property?.city || "",
-          content_text: txt,
-          sent_to_tenant_email: currentLease.tenant_receipt_email || currentLease.tenant?.email || tEmail || null,
-        } as any)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const created = data as any as RentReceiptRow;
-      setReceipts((prev) => [created, ...prev]);
-      setSelectedReceiptId(created.id);
-      setGlobalMsg("Quittance enregistrée ✅");
-    } catch (err: any) {
-      setGlobalErr(err?.message || "Erreur lors de l’enregistrement de la quittance.");
-    }
-  };
-
-  // -------------------------
-  // UI
-  // -------------------------
-  const hasLeases = leases.length > 0;
-
-  const leaseTitle = (l: LeaseRow) => {
-    const p = l.property?.label || "Bien";
-    const t = l.tenant?.full_name || "Locataire";
-    return `${p} — ${t}`;
-  };
-
-  const receiptTitle = (r: RentReceiptRow) => {
-    const lease = leases.find((l) => l.id === r.lease_id);
-    const base = lease ? leaseTitle(lease) : "Bail";
-    return `${base}`;
-  };
-
-  const receiptPreview = useMemo(() => {
-    if (currentReceipt?.content_text) return currentReceipt.content_text;
-    return previewText;
-  }, [currentReceipt?.content_text, previewText]);
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-6xl mx-auto space-y-5">
-          {/* HEADER */}
+          {/* Header */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-2">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-600">
-              Quittances de loyer
-            </p>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-600">Quittances de loyer</p>
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              Créez vos baux, générez vos quittances, et automatisez l’envoi.
+              Baux + quittances enregistrées + preview + auto-envoi
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-3xl">
-              Un <span className="font-semibold">bail</span> = un bien + un locataire + des conditions (loyer/charges/jour).
-              Tant qu’il n’y a pas de bail, le générateur ne peut pas fonctionner.
+            <p className="text-xs sm:text-sm text-slate-600">
+              Ici, vous créez un <span className="font-semibold">bail</span> (bien + locataire + conditions),
+              puis vous générez une quittance mensuelle liée à ce bail.
             </p>
 
-            {globalErr && (
+            {errorData && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                {globalErr}
+                {errorData}
               </div>
             )}
-            {globalMsg && (
+            {message && (
               <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                {globalMsg}
+                {message}
               </div>
             )}
+            {loadingData && <p className="text-xs text-slate-500">Chargement…</p>}
           </section>
 
           <div className="grid gap-5 lg:grid-cols-[320px,1fr]">
-            {/* LEFT: receipts list */}
-            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-3 h-fit">
-              <div>
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                  Quittances enregistrées
-                </p>
-                <p className="text-[0.75rem] text-slate-600">
-                  Cliquez pour afficher l’aperçu.
-                </p>
+            {/* LEFT: Receipts list */}
+            <aside className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 space-y-3 h-fit">
+              <div className="flex items-center justify-between">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Quittances enregistrées</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedReceiptId(null);
+                    setMessage(null);
+                    setErrorData(null);
+                  }}
+                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Preview modèle
+                </button>
               </div>
 
-              {receiptsLoading && <p className="text-xs text-slate-500">Chargement…</p>}
-              {!receiptsLoading && receiptsError && (
-                <p className="text-xs text-red-600">{receiptsError}</p>
-              )}
-
-              {!receiptsLoading && !receiptsError && receipts.length === 0 && (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[0.75rem] text-slate-600">
-                  Aucune quittance enregistrée pour l’instant.
+              {receipts.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-[0.75rem] text-slate-600">
+                  Aucune quittance enregistrée. Sélectionnez un bail puis cliquez sur{" "}
+                  <span className="font-semibold">“Générer & enregistrer”</span>.
                 </div>
-              )}
-
-              {!receiptsLoading && receipts.length > 0 && (
-                <div className="space-y-2">
+              ) : (
+                <div className="space-y-2 max-h-[520px] overflow-auto pr-1">
                   {receipts.map((r) => {
                     const active = r.id === selectedReceiptId;
                     return (
@@ -916,221 +961,274 @@ export default function QuittancesLoyerPage() {
                             : "border-slate-200 bg-slate-50 hover:bg-slate-100")
                         }
                       >
-                        <p className="font-semibold text-slate-900 line-clamp-1">
-                          {receiptTitle(r)}
-                        </p>
-                        <p className="text-[0.7rem] text-slate-500">
-                          Période {formatDateFR(r.period_start)} → {formatDateFR(r.period_end)}
-                        </p>
-                        <p className="mt-1 text-[0.7rem] text-slate-600">
-                          Total : <span className="font-semibold">{formatEuro(r.total_amount)}</span>
+                        <p className="font-semibold text-slate-900 line-clamp-2">{receiptLabel(r)}</p>
+                        <p className="text-[0.7rem] text-slate-500 mt-1">
+                          Total : <span className="font-semibold">{formatEuro(r.total_amount)}</span> · créée le{" "}
+                          {r.created_at.slice(0, 10)}
                         </p>
                       </button>
                     );
                   })}
                 </div>
               )}
-            </section>
+            </aside>
 
-            {/* RIGHT: main content */}
-            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
-              {/* Bail selector / onboarding */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                    Bail (bien + locataire)
-                  </p>
-                  <p className="text-[0.75rem] text-slate-600">
-                    {hasLeases ? "Sélectionnez un bail existant, ou créez-en un nouveau." : "Vous n’avez pas encore de bail. Créez le premier ci-dessous."}
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  {hasLeases && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        resetForm();
-                        setSelectedLeaseId(null);
-                        setSelectedReceiptId(null);
-                      }}
-                      className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
-                    >
-                      + Nouveau bail
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {leasesLoading && <p className="text-xs text-slate-500">Chargement des baux…</p>}
-              {!leasesLoading && leasesError && (
-                <p className="text-xs text-red-600">{leasesError}</p>
-              )}
-
-              {hasLeases && (
-                <div className="grid gap-3 sm:grid-cols-[1fr,auto]">
+            {/* RIGHT: Lease select + form + preview */}
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+              {/* Lease select */}
+              <div className="grid gap-3 sm:grid-cols-[1fr,auto] sm:items-end">
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Bail (bien + locataire)</label>
                   <select
-                    value={selectedLeaseId ?? ""}
+                    value={selectedLeaseId || ""}
                     onChange={(e) => {
-                      const id = e.target.value || null;
-                      setSelectedLeaseId(id);
+                      const v = e.target.value;
                       setSelectedReceiptId(null);
-
-                      const l = leases.find((x) => x.id === id);
-                      if (l) loadFormFromLease(l);
+                      setSelectedLeaseId(v || null);
+                      setMessage(null);
+                      setErrorData(null);
                     }}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                   >
+                    <option value="">— Créer un nouveau bail —</option>
                     {leases.map((l) => (
                       <option key={l.id} value={l.id}>
-                        {leaseTitle(l)}
+                        {leaseLabel(l)}
                       </option>
                     ))}
                   </select>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!currentLease) return;
-                      loadFormFromLease(currentLease);
-                      setGlobalMsg("Bail chargé dans le formulaire.");
-                    }}
-                    className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                  >
-                    Modifier ce bail
-                  </button>
-                </div>
-              )}
-
-              {/* Form bail unique */}
-              <form onSubmit={handleSaveLease} className="space-y-4">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                  <p className="text-[0.75rem] font-semibold text-slate-900">
-                    {editingLeaseId ? "Modifier le bail" : "Créer un bail"}
+                  <p className="text-[0.7rem] text-slate-500">
+                    Le bail est ce qui “débloque” les quittances (il relie un bien et un locataire).
                   </p>
+                </div>
 
-                  {/* Bien */}
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  + Nouveau bail
+                </button>
+              </div>
+
+              {/* Form unique */}
+              <form onSubmit={handleSaveLease} className="space-y-4">
+                {/* Property */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <p className="text-[0.75rem] font-semibold text-slate-900">Bien (properties)</p>
+
                   <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Bien existant (optionnel)</label>
+                      <select
+                        value={propertyId}
+                        onChange={(e) => setPropertyId(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="">— Nouveau bien —</option>
+                        {properties.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label || "Bien"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Nom du bien</label>
                       <input
-                        value={pLabel}
-                        onChange={(e) => setPLabel(e.target.value)}
+                        type="text"
+                        value={propertyLabel}
+                        onChange={(e) => setPropertyLabel(e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        placeholder="Ex: Studio Paris 11"
+                        placeholder="Ex: Studio Paris 15"
+                        required
                       />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Pays</label>
-                      <input
-                        value={pCountry}
-                        onChange={(e) => setPCountry(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        placeholder="FR"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">Adresse (ligne 1)</label>
-                    <input
-                      value={pAddr1}
-                      onChange={(e) => setPAddr1(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                      placeholder="Ex: 12 rue ..."
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">Adresse (ligne 2) – optionnel</label>
-                    <input
-                      value={pAddr2}
-                      onChange={(e) => setPAddr2(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                      placeholder="Bâtiment, étage, etc."
-                    />
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Adresse (ligne 1)</label>
+                      <input
+                        type="text"
+                        value={address1}
+                        onChange={(e) => setAddress1(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Adresse (ligne 2)</label>
+                      <input
+                        type="text"
+                        value={address2}
+                        onChange={(e) => setAddress2(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Code postal</label>
                       <input
-                        value={pZip}
-                        onChange={(e) => setPZip(e.target.value)}
+                        type="text"
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        placeholder="75011"
+                        required
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Ville</label>
                       <input
-                        value={pCity}
-                        onChange={(e) => setPCity(e.target.value)}
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        placeholder="Paris"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Pays</label>
+                      <input
+                        type="text"
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                       />
                     </div>
                   </div>
+                </div>
 
-                  {/* Locataire */}
+                {/* Tenant */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <p className="text-[0.75rem] font-semibold text-slate-900">Locataire (tenants)</p>
+
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Nom du locataire</label>
-                      <input
-                        value={tName}
-                        onChange={(e) => setTName(e.target.value)}
+                      <label className="text-[0.7rem] text-slate-700">Locataire existant (optionnel)</label>
+                      <select
+                        value={tenantId}
+                        onChange={(e) => setTenantId(e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        placeholder="Nom Prénom"
-                      />
+                      >
+                        <option value="">— Nouveau locataire —</option>
+                        {tenants.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.full_name || "Locataire"}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+
                     <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Email du locataire</label>
+                      <label className="text-[0.7rem] text-slate-700">Nom complet</label>
                       <input
-                        value={tEmail}
-                        onChange={(e) => setTEmail(e.target.value)}
-                        type="email"
+                        type="text"
+                        value={tenantName}
+                        onChange={(e) => setTenantName(e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        placeholder="locataire@email.fr"
+                        required
                       />
                     </div>
                   </div>
 
-                  {/* Conditions */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Email (pour envoi quittance)</label>
+                      <input
+                        type="email"
+                        value={tenantEmail}
+                        onChange={(e) => setTenantEmail(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Téléphone</label>
+                      <input
+                        type="text"
+                        value={tenantPhone}
+                        onChange={(e) => setTenantPhone(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lease */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                  <p className="text-[0.75rem] font-semibold text-slate-900">Bail (leases)</p>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Début du bail (obligatoire)</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Fin du bail (optionnel)</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Loyer HC (€)</label>
                       <input
-                        value={rent}
-                        onChange={(e) => setRent(e.target.value)}
                         type="number"
                         step="0.01"
+                        value={rent}
+                        onChange={(e) => setRent(e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Charges (€)</label>
                       <input
-                        value={charges}
-                        onChange={(e) => setCharges(e.target.value)}
                         type="number"
                         step="0.01"
+                        value={charges}
+                        onChange={(e) => setCharges(e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Jour paiement (1–31)</label>
+                      <label className="text-[0.7rem] text-slate-700">Dépôt de garantie (€)</label>
                       <input
-                        value={paymentDay}
-                        onChange={(e) => setPaymentDay(e.target.value)}
                         type="number"
-                        min={1}
-                        max={31}
+                        step="0.01"
+                        value={deposit}
+                        onChange={(e) => setDeposit(e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                       />
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Jour de paiement (1–31)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={paymentDay}
+                        onChange={(e) => setPaymentDay(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Mode de paiement</label>
                       <select
@@ -1153,51 +1251,52 @@ export default function QuittancesLoyerPage() {
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                       >
                         <option value="active">Actif</option>
-                        <option value="paused">En pause</option>
+                        <option value="paused">Suspendu</option>
                         <option value="ended">Terminé</option>
                       </select>
                     </div>
                   </div>
+                </div>
 
-                  {/* Auto-envoi */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-3">
-                    <div className="flex items-start gap-2">
-                      <input
-                        type="checkbox"
-                        checked={autoEnabled}
-                        onChange={(e) => setAutoEnabled(e.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-600"
-                      />
-                      <div>
-                        <p className="text-[0.75rem] font-semibold text-slate-900">
-                          Envoi automatique (par bail)
-                        </p>
-                        <p className="text-[0.75rem] text-slate-600">
-                          Stocké dans <span className="font-mono">leases.auto_send_*</span>. Heure par défaut : 09:00.
-                        </p>
-                      </div>
-                    </div>
+                {/* Auto send */}
+                <div className="rounded-xl border border-slate-200 bg-amber-50/60 p-4 space-y-3">
+                  <p className="text-[0.75rem] font-semibold text-slate-900">Envoi automatique (bail)</p>
 
-                    <div className={"grid gap-3 sm:grid-cols-3 " + (!autoEnabled ? "opacity-50 pointer-events-none" : "")}>
+                  <label className="inline-flex items-center gap-2 text-sm text-slate-800">
+                    <input
+                      type="checkbox"
+                      checked={autoEnabled}
+                      onChange={(e) => setAutoEnabled(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-600"
+                    />
+                    <span>Activer l’envoi automatique des quittances</span>
+                  </label>
+
+                  {autoEnabled && (
+                    <div className="grid gap-3 sm:grid-cols-3">
                       <div className="space-y-1">
                         <label className="text-[0.7rem] text-slate-700">Fréquence</label>
                         <select
                           value={autoFreq}
-                          onChange={(e) => setAutoFreq(e.target.value as any)}
+                          onChange={(e) => setAutoFreq(e.target.value)}
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                         >
                           <option value="monthly">Mensuel</option>
+                          <option value="weekly">Hebdomadaire</option>
+                          <option value="quarterly">Trimestriel</option>
                         </select>
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Jour du mois (1–31)</label>
+                        <label className="text-[0.7rem] text-slate-700">
+                          Jour (mensuel = 1–31)
+                        </label>
                         <input
-                          value={autoDay}
-                          onChange={(e) => setAutoDay(e.target.value)}
                           type="number"
                           min={1}
                           max={31}
+                          value={autoDay}
+                          onChange={(e) => setAutoDay(e.target.value)}
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                         />
                       </div>
@@ -1205,69 +1304,49 @@ export default function QuittancesLoyerPage() {
                       <div className="space-y-1">
                         <label className="text-[0.7rem] text-slate-700">Heure (0–23)</label>
                         <input
-                          value={autoHour}
-                          onChange={(e) => setAutoHour(e.target.value)}
                           type="number"
                           min={0}
                           max={23}
+                          value={autoHour}
+                          onChange={(e) => setAutoHour(e.target.value)}
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                         />
+                        <p className="text-[0.7rem] text-slate-600">Défaut : 09h</p>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <button
-                      type="submit"
-                      className="inline-flex items-center justify-center rounded-full bg-amber-500 px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-amber-400"
-                    >
-                      {editingLeaseId ? "Enregistrer les modifications" : "Créer ce bail"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                    >
-                      Réinitialiser
-                    </button>
-                  </div>
+                  )}
                 </div>
-              </form>
 
-              {/* Generate receipt */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-                <p className="text-[0.75rem] font-semibold text-slate-900">
-                  Générer / enregistrer une quittance
-                </p>
+                {/* Save */}
+                <div className="flex flex-wrap gap-2 items-center">
+                  <button
+                    type="submit"
+                    disabled={savingLease}
+                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    {savingLease ? "Enregistrement…" : selectedLeaseId ? "Mettre à jour le bail" : "Créer le bail"}
+                  </button>
 
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">Mois</label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateAndSaveReceipt}
+                    disabled={generating || !selectedLeaseId}
+                    className="inline-flex items-center justify-center rounded-full bg-amber-500 px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-amber-400 disabled:opacity-60"
+                    title={!selectedLeaseId ? "Créez ou sélectionnez un bail d'abord." : ""}
+                  >
+                    {generating ? "Génération…" : "Générer & enregistrer la quittance"}
+                  </button>
+
+                  <div className="ml-auto flex items-center gap-2">
+                    <label className="text-[0.7rem] text-slate-700">Période</label>
                     <input
                       type="month"
                       value={periodMonth}
-                      onChange={(e) => setPeriodMonth(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">Lieu d’émission</label>
-                    <input
-                      value={issuePlace}
-                      onChange={(e) => setIssuePlace(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                      placeholder="Ex: Paris"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">Date d’émission</label>
-                    <input
-                      type="date"
-                      value={issueDate}
-                      onChange={(e) => setIssueDate(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      onChange={(e) => {
+                        setSelectedReceiptId(null);
+                        setPeriodMonth(e.target.value);
+                      }}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
@@ -1279,57 +1358,67 @@ export default function QuittancesLoyerPage() {
                     onChange={(e) => setMentionSolde(e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
                   />
-                  <span>Inclure la mention “solde de tout compte”</span>
+                  <span>Inclure la mention “solde de toute dette”</span>
                 </label>
-
-                <button
-                  type="button"
-                  onClick={handleSaveReceipt}
-                  disabled={!currentLease && !editingLeaseId}
-                  className={
-                    "inline-flex items-center justify-center rounded-full px-5 py-2 text-xs font-semibold " +
-                    (currentLease || editingLeaseId
-                      ? "bg-slate-900 text-white hover:bg-slate-800"
-                      : "bg-slate-300 text-slate-600 cursor-not-allowed")
-                  }
-                >
-                  Enregistrer la quittance (et l’ajouter à la liste)
-                </button>
-
-                {!hasLeases && (
-                  <p className="text-[0.75rem] text-slate-600">
-                    Astuce : créez d’abord un bail ci-dessus, puis vous pourrez enregistrer des quittances.
-                  </p>
-                )}
-              </div>
+              </form>
 
               {/* Preview */}
-              <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                    Aperçu quittance
-                  </p>
-                  {currentReceipt && (
-                    <span className="text-[0.7rem] text-slate-400">
-                      (quittance enregistrée sélectionnée)
-                    </span>
+                  <div>
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                      {selectedReceipt ? "Aperçu quittance enregistrée" : "Aperçu du modèle (live)"}
+                    </p>
+                    {selectedReceipt && (
+                      <p className="text-[0.75rem] text-slate-600 mt-1">
+                        {receiptLabel(selectedReceipt)}
+                      </p>
+                    )}
+                  </div>
+
+                  {selectedReceipt && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReceiptId(null)}
+                      className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                    >
+                      Revenir au modèle
+                    </button>
                   )}
                 </div>
 
-                <pre className="whitespace-pre-wrap text-[0.75rem] text-slate-800 leading-relaxed rounded-lg border border-slate-200 bg-slate-50 p-3 max-h-[380px] overflow-auto">
-                  {receiptPreview}
-                </pre>
+                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 max-h-[420px] overflow-auto">
+                  <pre className="whitespace-pre-wrap text-[0.8rem] text-slate-800 leading-relaxed">
+                    {receiptTextToShow}
+                  </pre>
+                </div>
+
+                {selectedReceipt && (
+                  <div className="mt-3 text-[0.75rem] text-slate-600">
+                    <div className="flex flex-wrap gap-x-6 gap-y-1">
+                      <span>
+                        Total : <span className="font-semibold">{formatEuro(selectedReceipt.total_amount)}</span>
+                      </span>
+                      <span>
+                        Émise le : <span className="font-semibold">{selectedReceipt.issue_date || "—"}</span>
+                      </span>
+                      <span>
+                        Lieu : <span className="font-semibold">{selectedReceipt.issue_place || "—"}</span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="text-right">
+                <a
+                  href="/outils-proprietaire"
+                  className="text-[0.75rem] text-slate-500 underline underline-offset-2"
+                >
+                  ← Retour à la boîte à outils propriétaire
+                </a>
               </div>
             </section>
-          </div>
-
-          <div className="text-right">
-            <a
-              href="/outils-proprietaire"
-              className="text-[0.75rem] text-slate-500 underline underline-offset-2"
-            >
-              ← Retour à la boîte à outils propriétaire
-            </a>
           </div>
         </div>
       </main>
