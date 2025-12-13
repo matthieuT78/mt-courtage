@@ -1,5 +1,5 @@
 // pages/outils-proprietaire.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
@@ -33,6 +33,12 @@ export default function OutilsProprietairePage() {
 
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // ✅ Lien intelligent : si non connecté -> login + redirect
+  const etatsDesLieuxHref = useMemo(() => {
+    const target = "/etats-des-lieux-documents";
+    return isLoggedIn ? target : `/mon-compte?mode=login&redirect=${encodeURIComponent(target)}`;
+  }, [isLoggedIn]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -151,9 +157,7 @@ export default function OutilsProprietairePage() {
                   <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
                     🧾
                   </div>
-                  <p className="text-xs font-semibold text-slate-900">
-                    Quittances automatiques
-                  </p>
+                  <p className="text-xs font-semibold text-slate-900">Quittances automatiques</p>
                 </div>
                 <ul className="space-y-1 text-[0.75rem] text-slate-700">
                   <li>• Génération automatique des quittances chaque mois</li>
@@ -165,7 +169,7 @@ export default function OutilsProprietairePage() {
                 </p>
               </Link>
 
-              {/* 💶 Cautions & loyers - MAINTENANT CLIQUABLE */}
+              {/* 💶 Cautions & loyers - cliquable */}
               <Link
                 href="/cautions-loyers"
                 className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 cursor-pointer hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-md transition"
@@ -174,9 +178,7 @@ export default function OutilsProprietairePage() {
                   <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
                     💶
                   </div>
-                  <p className="text-xs font-semibold text-slate-900">
-                    Cautions & loyers
-                  </p>
+                  <p className="text-xs font-semibold text-slate-900">Cautions & loyers</p>
                 </div>
                 <ul className="space-y-1 text-[0.75rem] text-slate-700">
                   <li>• Suivi des dépôts de garantie (entrée / sortie)</li>
@@ -188,13 +190,17 @@ export default function OutilsProprietairePage() {
                 </p>
               </Link>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 opacity-70">
+              {/* 📋 États des lieux & documents - MAINTENANT CLIQUABLE + LOGIN REDIRECT */}
+              <Link
+                href={etatsDesLieuxHref}
+                className="group rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2 cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 hover:shadow-md transition"
+              >
                 <div className="inline-flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg">
                     📋
                   </div>
                   <p className="text-xs font-semibold text-slate-900">
-                    États des lieux & documents (bientôt)
+                    États des lieux & documents
                   </p>
                 </div>
                 <ul className="space-y-1 text-[0.75rem] text-slate-700">
@@ -202,7 +208,10 @@ export default function OutilsProprietairePage() {
                   <li>• Checklist personnalisable par type de bien</li>
                   <li>• Centralisation des pièces locataires</li>
                 </ul>
-              </div>
+                <p className="text-[0.7rem] font-medium text-indigo-700 group-hover:underline">
+                  {isLoggedIn ? "Accéder aux documents →" : "Se connecter pour accéder →"}
+                </p>
+              </Link>
             </div>
           </section>
 
