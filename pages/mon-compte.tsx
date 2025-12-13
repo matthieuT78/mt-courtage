@@ -424,7 +424,9 @@ export default function MonComptePage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
-
+<div className="mx-auto max-w-5xl px-4 pt-2 text-xs text-red-600">
+  BUILD_TAG=5fdf3d7-bailleur-fix
+</div>
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6">
         <div className="grid gap-6 md:grid-cols-[220px,1fr]">
           {/* SIDEBAR */}
