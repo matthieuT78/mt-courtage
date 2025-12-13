@@ -20,10 +20,15 @@ export default function Home() {
     let isMounted = true;
 
     const fetchSession = async () => {
-      if (!supabase) return;
-      const { data } = await supabase.auth.getSession();
-      if (!isMounted) return;
-      setUser((data.session?.user as any) ?? null);
+      try {
+        if (!supabase) return;
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!isMounted) return;
+        setUser((data.session?.user as any) ?? null);
+      } catch (e) {
+        console.error("Erreur récupération session (home)", e);
+      }
     };
 
     fetchSession();
@@ -48,6 +53,7 @@ export default function Home() {
 
   const isLoggedIn = !!user;
 
+  // 🔐 Boîte à outils bailleur
   const goToLandlordTool = () => {
     const path = "/outils-proprietaire";
     if (isLoggedIn) router.push(path);
@@ -73,8 +79,8 @@ export default function Home() {
             </h1>
 
             <p className="text-xs text-slate-600 max-w-2xl">
-              Une estimation réaliste de votre capacité d’achat, utilisée par
-              courtiers et banques : mensualité, capital et prix de bien indicatif.
+              Revenus, charges, crédits en cours et loyers locatifs pris à 70&nbsp;% :
+              obtenez une estimation réaliste de votre capacité d’achat.
             </p>
 
             <Link
@@ -91,21 +97,29 @@ export default function Home() {
               OUTILS IMMOBILIERS
             </p>
 
-            <div className="grid gap-5 lg:grid-cols-2">
+            <div className="grid gap-5 lg:grid-cols-2 mt-2">
               {/* Calculettes gratuites */}
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-4">
                 <p className="text-sm font-semibold text-slate-900">
                   Calculettes immobilières gratuites
                 </p>
                 <p className="text-[0.7rem] text-slate-600">
-                  Décidez avant d’acheter. Aucun abonnement, aucun engagement.
+                  Décidez avant d’acheter ou d’investir. Sans engagement.
                 </p>
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <Link href="/capacite" className="tool-card">🧮 Capacité d’emprunt</Link>
-                  <Link href="/investissement" className="tool-card">📈 Investissement locatif</Link>
-                  <Link href="/pret-relais" className="tool-card">🔁 Achat-revente</Link>
-                  <Link href="/parc-immobilier" className="tool-card">🧩 Parc immobilier</Link>
+                  <Link href="/capacite" className="tool-card">
+                    🧮 Capacité d’emprunt
+                  </Link>
+                  <Link href="/investissement" className="tool-card">
+                    📈 Investissement locatif
+                  </Link>
+                  <Link href="/pret-relais" className="tool-card">
+                    🔁 Achat-revente
+                  </Link>
+                  <Link href="/parc-immobilier" className="tool-card">
+                    🧩 Parc immobilier
+                  </Link>
                 </div>
               </div>
 
@@ -117,23 +131,23 @@ export default function Home() {
                       Boîte à outils propriétaire
                     </p>
                     <p className="mt-1 text-sm font-semibold text-white">
-                      Le kit du bailleur organisé
+                      Le kit du bailleur exigeant
                     </p>
-                    <p className="mt-1 text-[0.7rem] text-slate-200">
+                    <p className="mt-1 text-[0.7rem] text-slate-200 max-w-sm">
                       Quittances, cautions, documents, rappels, suivi locatif.
                     </p>
                   </div>
 
                   {/* 💰 PRICING */}
-                  <div className="rounded-xl bg-slate-800 border border-amber-300/60 px-3 py-2 text-right">
-                    <p className="text-[0.65rem] uppercase tracking-[0.14em] text-slate-300">
+                  <div className="rounded-xl bg-slate-800 border border-amber-300/60 px-3 py-2 text-right shrink-0">
+                    <p className="text-[0.65rem] text-slate-200 uppercase tracking-[0.14em]">
                       Abonnement
                     </p>
-                    <p className="text-base font-semibold text-amber-300">
-                      29 € / mois
+                    <p className="text-base font-semibold text-amber-300 leading-tight">
+                      29&nbsp;€ / mois
                     </p>
                     <p className="text-[0.75rem] text-slate-200">
-                      ou 290 € / an
+                      ou 290&nbsp;€ / an
                     </p>
                     <p className="text-[0.65rem] text-slate-400 mt-1">
                       Pour bailleurs multi-biens
@@ -142,7 +156,7 @@ export default function Home() {
                 </div>
 
                 <ul className="space-y-1.5 text-[0.7rem]">
-                  <li>• Quittances automatiques PDF</li>
+                  <li>• Génération automatique de quittances PDF</li>
                   <li>• Suivi des dépôts de garantie</li>
                   <li>• États des lieux & documents</li>
                   <li>• Alertes & rappels bailleur</li>
@@ -152,7 +166,7 @@ export default function Home() {
                   onClick={goToLandlordTool}
                   className="inline-flex items-center justify-center rounded-full bg-amber-400 px-4 py-2 text-[0.8rem] font-semibold text-slate-900 hover:bg-amber-300"
                 >
-                  Découvrir la boîte à outils bailleur
+                  Découvrir la boîte à outils propriétaire
                 </button>
               </div>
             </div>
@@ -161,7 +175,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
-        © {new Date().getFullYear()} MT Courtage & Investissement
+        © {new Date().getFullYear()} MT Courtage &amp; Investissement
       </footer>
     </div>
   );
