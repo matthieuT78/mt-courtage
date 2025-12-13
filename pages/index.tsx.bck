@@ -48,16 +48,19 @@ export default function Home() {
   }, []);
 
   const displayName =
-    user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
+    user?.user_metadata?.full_name ||
+    (user?.email ? user.email.split("@")[0] : null);
 
   const isLoggedIn = !!user;
 
-  // 🔐 Navigation vers les calculettes premium
+  // 🔐 Navigation vers les 3 calculettes payantes
   const goToProtectedTool = (path: string) => {
     if (isLoggedIn) {
       router.push(path);
     } else {
-      router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
+      router.push(
+        `/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`
+      );
     }
   };
 
@@ -67,7 +70,9 @@ export default function Home() {
     if (isLoggedIn) {
       router.push(path);
     } else {
-      router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
+      router.push(
+        `/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`
+      );
     }
   };
 
@@ -89,16 +94,18 @@ export default function Home() {
                   : "Estimez votre capacité d’emprunt immobilier en quelques minutes."}
               </h1>
               <p className="text-xs text-slate-600 max-w-2xl">
-                Revenus, charges, crédits en cours et loyers locatifs pris à 70&nbsp;% : obtenez une estimation
-                réaliste de votre mensualité maximale, du capital empruntable et d&apos;un prix de bien indicatif à
-                présenter à votre banque ou à votre courtier.
+                Revenus, charges, crédits en cours et loyers locatifs pris à
+                70&nbsp;% : obtenez une estimation réaliste de votre mensualité
+                maximale, du capital empruntable et d&apos;un prix de bien
+                indicatif à présenter à votre banque ou à votre courtier.
               </p>
 
               {!isLoggedIn && (
                 <p className="text-[0.7rem] text-slate-500">
-                  La calculette est accessible sans compte. En créant votre espace, vous pourrez sauvegarder vos
-                  simulations et accéder aux outils premium (investissement, prêt relais, parc immobilier) et à
-                  l’espace bailleur.
+                  La calculette est accessible sans compte. En créant votre
+                  espace, vous pourrez sauvegarder vos simulations et accéder
+                  aux autres outils (investissement locatif, achat revente, parc
+                  immobilier…).
                 </p>
               )}
             </div>
@@ -121,22 +128,23 @@ export default function Home() {
             </div>
           </section>
 
-          {/* 🧰 Bloc marketing : offres payantes */}
+          {/* 🧰 Bloc marketing : outils premium (investisseurs + bailleurs) */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 space-y-5">
             <div className="space-y-1">
               <p className="text-[0.7rem] uppercase tracking-[0.20em] text-slate-500">
-                OFFRES
+                OUTILS PREMIUM
               </p>
               <h2 className="text-base sm:text-lg font-semibold text-slate-900">
-                Deux parcours : investir ou gérer vos locations
+                Calculettes avancées & boîte à outils propriétaire
               </h2>
               <p className="text-xs text-slate-600 max-w-2xl">
-                D’un côté, des calculettes avancées pour décider vite et bien (budget, cash-flow, encours). De
-                l’autre, un espace bailleur pour gérer vos biens sans Excel et sans stress.
+                Choisissez ce dont vous avez besoin : des calculettes pour
+                piloter vos projets d&apos;achat ou d&apos;investissement, ou une boîte
+                à outils complète pour gérer vos locations au quotidien.
               </p>
             </div>
 
-            {/* 2 colonnes : calculettes avancées / espace bailleur */}
+            {/* 2 colonnes : calculettes avancées / outils propriétaire */}
             <div className="grid gap-5 lg:grid-cols-2 mt-2">
               {/* Colonne gauche : pack calculettes avancées */}
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-4">
@@ -149,7 +157,8 @@ export default function Home() {
                       Investisseurs & acheteurs exigeants
                     </p>
                     <p className="mt-1 text-[0.7rem] text-slate-600">
-                      Accédez aux 3 calculettes premium pour analyser vos projets avant de voir votre banque.
+                      Accédez aux 3 calculettes premium pour analyser vos
+                      projets avant de voir votre banque.
                     </p>
                   </div>
                   <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-right shrink-0">
@@ -160,13 +169,16 @@ export default function Home() {
                       49&nbsp;€ / an
                     </p>
                     <p className="text-[0.65rem] text-emerald-700">
-                      <span className="whitespace-nowrap">≈ 4&nbsp;€ / mois</span>
+                      <span className="whitespace-nowrap">
+                        ≈ 4&nbsp;€/ mois.
+                      </span>
                     </p>
                   </div>
                 </div>
 
                 {/* 3 cartes cliquables */}
                 <div className="grid gap-3 md:grid-cols-3">
+                  {/* Investissement locatif */}
                   <button
                     type="button"
                     onClick={() => goToProtectedTool("/investissement")}
@@ -177,15 +189,16 @@ export default function Home() {
                         📈
                       </div>
                       <p className="text-[0.75rem] font-semibold text-slate-900">
-                        Investissement
+                        Investissement locatif
                       </p>
                     </div>
                     <ul className="space-y-0.5 text-[0.7rem] text-slate-700">
-                      <li>• Cash-flow net</li>
-                      <li>• Rendement réel</li>
+                      <li>• Cash-flow net & rendement réel</li>
+                      <li>• Effort d&apos;épargne mensuel</li>
                     </ul>
                   </button>
 
+                  {/* Achat revente / prêt relais */}
                   <button
                     type="button"
                     onClick={() => goToProtectedTool("/pret-relais")}
@@ -196,15 +209,16 @@ export default function Home() {
                         🔁
                       </div>
                       <p className="text-[0.75rem] font-semibold text-slate-900">
-                        Prêt relais
+                        Achat revente / prêt relais
                       </p>
                     </div>
                     <ul className="space-y-0.5 text-[0.7rem] text-slate-700">
-                      <li>• Budget réaliste</li>
-                      <li>• Reste à vivre</li>
+                      <li>• Budget d&apos;achat réaliste</li>
+                      <li>• Montant de relais & reste à vivre</li>
                     </ul>
                   </button>
 
+                  {/* Parc immobilier existant */}
                   <button
                     type="button"
                     onClick={() => goToProtectedTool("/parc-immobilier")}
@@ -215,12 +229,12 @@ export default function Home() {
                         🧩
                       </div>
                       <p className="text-[0.75rem] font-semibold text-slate-900">
-                        Parc global
+                        Parc immobilier global
                       </p>
                     </div>
                     <ul className="space-y-0.5 text-[0.7rem] text-slate-700">
-                      <li>• Vue d’ensemble</li>
-                      <li>• Cash-flow global</li>
+                      <li>• Vue d&apos;ensemble de tous vos biens</li>
+                      <li>• Cash-flow global & encours</li>
                     </ul>
                   </button>
                 </div>
@@ -231,8 +245,8 @@ export default function Home() {
                     className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800 shadow-sm"
                   >
                     {isLoggedIn
-                      ? "Gérer mon accès"
-                      : "Créer mon espace"}
+                      ? "Gérer mon accès aux calculettes avancées"
+                      : "Créer mon espace pour débloquer les calculettes"}
                   </Link>
                 </div>
               </div>
@@ -241,42 +255,36 @@ export default function Home() {
               <div className="rounded-2xl border border-slate-200 bg-slate-900 text-slate-50 p-4 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="inline-flex items-center gap-2">
-                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-300">
-                        Espace bailleur
-                      </p>
-                      <span className="inline-flex items-center rounded-full border border-amber-300/60 bg-slate-800 px-2 py-0.5 text-[0.65rem] font-semibold text-amber-200">
-                        Recommandé
-                      </span>
-                    </div>
-
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-300">
+                      Boîte à outils propriétaire
+                    </p>
                     <p className="mt-1 text-sm font-semibold text-white">
-                      Gérer vos locations simplement
+                      Le kit du bailleur exigeant
                     </p>
                     <p className="mt-1 text-[0.7rem] text-slate-200 max-w-sm">
-                      Quittances, baux, dépôts de garantie, rappels et documents : tout au même endroit, sans agence.
+                      Quittances automatiques, suivi des cautions, génération
+                      d&apos;états des lieux, rappel d&apos;échéances… Tout pour
+                      gérer vos locations comme un pro.
                     </p>
                   </div>
-
                   <div className="rounded-xl bg-slate-800 border border-amber-300/60 px-3 py-2 text-right shrink-0">
                     <p className="text-[0.65rem] text-slate-200 uppercase tracking-[0.14em]">
-                      29&nbsp;€ / mois
+                      Abonnement mensuel
                     </p>
                     <p className="text-base font-semibold text-amber-300 leading-tight">
-                      ou 290&nbsp;€ / an
+                      49&nbsp;€ / mois
                     </p>
                     <p className="text-[0.65rem] text-slate-300">
-                      Annuel = <span className="font-semibold text-slate-100">-2 mois</span>
+                      Pour bailleurs multi-biens.
                     </p>
                   </div>
                 </div>
 
                 <ul className="space-y-1.5 text-[0.7rem] text-slate-100 mt-1">
-                  <li>• Quittances PDF (manuel & automatique)</li>
-                  <li>• Suivi des cautions (entrée / sortie) + historisation</li>
-                  <li>• Historique des loyers & retards</li>
-                  <li>• Modèles d’états des lieux & stockage des documents</li>
-                  <li>• Alertes : retards, fin de bail, échéances</li>
+                  <li>• Génération automatique de quittances PDF</li>
+                  <li>• Suivi des dépôts de garantie et restitutions</li>
+                  <li>• Modèles d&apos;états des lieux prêts à remplir</li>
+                  <li>• Rappels des échéances importantes (assurances, révisions…)</li>
                 </ul>
 
                 <div className="pt-1 flex flex-col gap-2">
@@ -285,30 +293,13 @@ export default function Home() {
                     onClick={goToLandlordTool}
                     className="inline-flex items-center justify-center rounded-full bg-amber-400 px-4 py-2 text-[0.8rem] font-semibold text-slate-900 hover:bg-amber-300 shadow-md"
                   >
-                    Découvrir l’espace bailleur
+                    Découvrir la boîte à outils propriétaire
                   </button>
                   <p className="text-[0.65rem] text-slate-300 max-w-sm">
-                    Idéal si vous gérez un ou plusieurs lots et voulez professionnaliser vos process (sans multiplier les outils).
+                    Idéal si vous gérez plusieurs lots et souhaitez professionnaliser
+                    vos process sans multiplier les logiciels.
                   </p>
                 </div>
-              </div>
-            </div>
-          </section>
-
-          {/* petit bloc “preuve” / promesse */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            <div className="grid gap-3 sm:grid-cols-3 text-[0.75rem] text-slate-700">
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <p className="font-semibold text-slate-900 mb-1">Décidez vite</p>
-                <p>Des calculettes claires, orientées banque et cash-flow.</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <p className="font-semibold text-slate-900 mb-1">Gérez sans stress</p>
-                <p>Quittances, baux, cautions, alertes : au même endroit.</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                <p className="font-semibold text-slate-900 mb-1">Sans usine à gaz</p>
-                <p>Simple, rapide, pensé pour des bailleurs particuliers.</p>
               </div>
             </div>
           </section>
@@ -317,7 +308,8 @@ export default function Home() {
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations indicatives.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement –
+          Simulations indicatives.
         </p>
         <p className="mt-1">
           Contact :{" "}
