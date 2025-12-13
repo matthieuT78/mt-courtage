@@ -8,6 +8,8 @@ import { supabase } from "../lib/supabaseClient";
 type Mode = "login" | "register";
 type Tab = "infos" | "securite" | "projets" | "bailleur";
 
+type AccountPlan = "free" | "annual_40" | "monthly_49";
+
 type ProjectType = "capacite" | "investissement" | "parc" | "pret-relais" | string;
 
 type ProjectRow = {
@@ -63,14 +65,8 @@ function typeBadgeColor(type: ProjectType): string {
 }
 
 function getTab(raw: any): Tab {
-  // Next peut donner string | string[].
   const value = Array.isArray(raw) ? raw[0] : raw;
-
-  const cleaned = String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\/$/, ""); // enlève un slash final
-
+  const cleaned = String(value ?? "").trim().toLowerCase().replace(/\/$/, "");
   const allowed: Tab[] = ["infos", "securite", "projets", "bailleur"];
   return allowed.includes(cleaned as Tab) ? (cleaned as Tab) : "infos";
 }
@@ -79,10 +75,21 @@ function getMode(raw: any): Mode {
   return raw === "register" ? "register" : "login";
 }
 
+function planLabel(p: AccountPlan) {
+  switch (p) {
+    case "annual_40":
+      return "Annuel – 40 € / an";
+    case "monthly_49":
+      return "Mensuel – 49 € / mois";
+    default:
+      return "Gratuit / Bêta";
+  }
+}
+
 export default function MonComptePage() {
   const router = useRouter();
 
-  // URL-derived UI state (✅ source of truth)
+  // URL-derived state
   const tab: Tab = getTab(router.query.tab);
   const mode: Mode = getMode(router.query.mode);
 
@@ -97,24 +104,49 @@ export default function MonComptePage() {
   // User session
   const [checkingUser, setCheckingUser] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const isLoggedIn = !!user?.id;
+
+  // Redirect param (safe)
+  const redirectParam =
+    typeof router.query.redirect === "string" && router.query.redirect.startsWith("/")
+      ? router.query.redirect
+      : null;
 
   // Dashboard
   const [projectsCount, setProjectsCount] = useState<number | null>(null);
   const [projectsCountLoading, setProjectsCountLoading] = useState(false);
 
-  // Security
+  // ---------- PROFIL (user_metadata) ----------
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileOk, setProfileOk] = useState<string | null>(null);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+
+  const [address1, setAddress1] = useState("");
+  const [address2, setAddress2] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("France");
+
+  const [accountPlan, setAccountPlan] = useState<AccountPlan>("free");
+
+  // ---------- PREFS ----------
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [prefsLoading, setPrefsLoading] = useState(false);
+  const [prefsError, setPrefsError] = useState<string | null>(null);
+  const [prefsOk, setPrefsOk] = useState<string | null>(null);
+
+  // ---------- SECURITY ----------
   const [newPassword, setNewPassword] = useState("");
   const [newPassword2, setNewPassword2] = useState("");
   const [pwdLoading, setPwdLoading] = useState(false);
   const [pwdError, setPwdError] = useState<string | null>(null);
   const [pwdOk, setPwdOk] = useState<string | null>(null);
 
-  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
-  const [prefsLoading, setPrefsLoading] = useState(false);
-  const [prefsError, setPrefsError] = useState<string | null>(null);
-  const [prefsOk, setPrefsOk] = useState<string | null>(null);
-
-  // Bailleur (user_metadata)
+  // ---------- BAILLEUR ----------
   const [bailleurLoading, setBailleurLoading] = useState(false);
   const [bailleurError, setBailleurError] = useState<string | null>(null);
   const [bailleurOk, setBailleurOk] = useState<string | null>(null);
@@ -127,23 +159,17 @@ export default function MonComptePage() {
     "virement" | "prelevement" | "cheque" | "especes"
   >("virement");
   const [autoSendEnabled, setAutoSendEnabled] = useState(false);
+  const [propertiesCount, setPropertiesCount] = useState<number>(1); // ✅ nombre de biens
 
-  // Projects tab
+  // ---------- PROJECTS ----------
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
 
-  const isLoggedIn = !!user?.id;
-
-  const redirectParam =
-    typeof router.query.redirect === "string" && router.query.redirect.startsWith("/")
-      ? router.query.redirect
-      : null;
-
+  // ---------- NAV ----------
   const goToTab = (next: Tab) => {
-    // conserve redirect et enlève mode (inutile quand connecté)
     const nextQuery: Record<string, any> = { ...router.query, tab: next };
     router.push({ pathname: "/mon-compte", query: nextQuery }, undefined, { shallow: true });
   };
@@ -154,36 +180,69 @@ export default function MonComptePage() {
   };
 
   const redirectAfterAuth = () => {
-    // si redirect est fourni -> on y va
-    // sinon on reste sur /mon-compte en conservant tab
     if (redirectParam) router.push(redirectParam);
     else router.push({ pathname: "/mon-compte", query: { tab } });
   };
 
+  // ---------- HYDRATE ----------
   const hydrateFromUser = async (u: any | null) => {
     setUser(u);
 
     if (!u) {
       setNewsletterOptIn(false);
+
+      setFirstName("");
+      setLastName("");
+      setPhone("");
+      setAddress1("");
+      setAddress2("");
+      setPostalCode("");
+      setCity("");
+      setCountry("France");
+      setAccountPlan("free");
+
       setIsLandlord(false);
       setLandlordName("");
       setLandlordAddress("");
       setDefaultCity("");
       setDefaultPaymentMode("virement");
       setAutoSendEnabled(false);
+      setPropertiesCount(1);
+
       setProjectsCount(null);
       return;
     }
 
     const meta = u.user_metadata || {};
+
+    // Profil
+    setFirstName(meta.first_name || "");
+    setLastName(meta.last_name || "");
+    setPhone(meta.phone || "");
+
+    setAddress1(meta.address_line1 || "");
+    setAddress2(meta.address_line2 || "");
+    setPostalCode(meta.postal_code || "");
+    setCity(meta.city || "");
+    setCountry(meta.country || "France");
+
+    setAccountPlan((meta.account_plan as AccountPlan) || "free");
+
+    // Prefs
     setNewsletterOptIn(!!meta.newsletter_opt_in);
 
+    // Bailleur
     setIsLandlord(!!meta.is_landlord);
     setLandlordName(meta.landlord_name || "");
     setLandlordAddress(meta.landlord_address || "");
     setDefaultCity(meta.landlord_default_city || "");
     setDefaultPaymentMode(meta.landlord_default_payment_mode || "virement");
     setAutoSendEnabled(!!meta.landlord_auto_send_enabled);
+    setPropertiesCount(
+      typeof meta.landlord_properties_count === "number"
+        ? meta.landlord_properties_count
+        : parseInt(meta.landlord_properties_count || "1", 10) || 1
+    );
 
     // Compteur projets
     try {
@@ -198,7 +257,7 @@ export default function MonComptePage() {
     }
   };
 
-  // ✅ Session robuste (la clé du problème)
+  // ---------- SESSION ----------
   useEffect(() => {
     let mounted = true;
 
@@ -228,7 +287,7 @@ export default function MonComptePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Charge les projets seulement quand onglet "projets"
+  // ---------- LOAD PROJECTS ----------
   useEffect(() => {
     const fetchProjects = async () => {
       if (!isLoggedIn || tab !== "projets") return;
@@ -275,7 +334,6 @@ export default function MonComptePage() {
         setAuthError(error.message || "Erreur de connexion.");
         return;
       }
-
       redirectAfterAuth();
     } finally {
       setAuthLoading(false);
@@ -320,6 +378,70 @@ export default function MonComptePage() {
     router.push("/");
   };
 
+  // ---------- PROFIL SAVE ----------
+  const handleSaveProfile = async (e: FormEvent) => {
+    e.preventDefault();
+    setProfileError(null);
+    setProfileOk(null);
+
+    // mini validation “inscription sérieuse”
+    if (!firstName.trim() || !lastName.trim()) {
+      setProfileError("Merci de renseigner votre prénom et votre nom.");
+      return;
+    }
+    if (!address1.trim() || !postalCode.trim() || !city.trim()) {
+      setProfileError("Merci de renseigner une adresse complète (adresse, code postal, ville).");
+      return;
+    }
+
+    setProfileLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone: phone.trim(),
+
+          address_line1: address1.trim(),
+          address_line2: address2.trim(),
+          postal_code: postalCode.trim(),
+          city: city.trim(),
+          country: country.trim(),
+
+          account_plan: accountPlan, // ✅ plan choisi
+        },
+      });
+      if (error) throw error;
+
+      const { data } = await supabase.auth.getUser();
+      await hydrateFromUser(data.user ?? null);
+
+      setProfileOk("Profil mis à jour ✅");
+    } catch (err: any) {
+      setProfileError(err?.message || "Erreur lors de l'enregistrement du profil.");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  // ---------- PREFS ----------
+  const handleSavePreferences = async (e: FormEvent) => {
+    e.preventDefault();
+    setPrefsError(null);
+    setPrefsOk(null);
+
+    setPrefsLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: { newsletter_opt_in: newsletterOptIn },
+      });
+      if (error) setPrefsError(error.message || "Erreur de mise à jour.");
+      else setPrefsOk("Préférences enregistrées ✅");
+    } finally {
+      setPrefsLoading(false);
+    }
+  };
+
   // ---------- SECURITY ----------
   const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
@@ -343,44 +465,32 @@ export default function MonComptePage() {
     }
   };
 
-  const handleSavePreferences = async (e: FormEvent) => {
-    e.preventDefault();
-    setPrefsError(null);
-    setPrefsOk(null);
-
-    setPrefsLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        data: { newsletter_opt_in: newsletterOptIn },
-      });
-      if (error) setPrefsError(error.message || "Erreur de mise à jour.");
-      else setPrefsOk("Préférences enregistrées ✅");
-    } finally {
-      setPrefsLoading(false);
-    }
-  };
-
   // ---------- BAILLEUR ----------
   const handleSaveLandlord = async (e: FormEvent) => {
     e.preventDefault();
     setBailleurError(null);
     setBailleurOk(null);
 
+    const safeCount = Number.isFinite(propertiesCount)
+      ? Math.max(0, Math.min(999, propertiesCount))
+      : 0;
+
     setBailleurLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({
         data: {
           is_landlord: isLandlord,
-          landlord_name: landlordName,
-          landlord_address: landlordAddress,
-          landlord_default_city: defaultCity,
+          landlord_name: landlordName.trim(),
+          landlord_address: landlordAddress.trim(),
+          landlord_default_city: defaultCity.trim(),
           landlord_default_payment_mode: defaultPaymentMode,
           landlord_auto_send_enabled: autoSendEnabled,
+
+          landlord_properties_count: safeCount, // ✅ NB BIENS
         },
       });
       if (error) throw error;
 
-      // Refresh user local
       const { data } = await supabase.auth.getUser();
       await hydrateFromUser(data.user ?? null);
 
@@ -414,19 +524,36 @@ export default function MonComptePage() {
 
   const profileCompletion = useMemo(() => {
     if (!isLoggedIn) return 0;
-    let score = 50;
-    if (newsletterOptIn) score += 10;
-    if (isLandlord && landlordName && landlordAddress) score += 40;
+    let score = 30;
+
+    if (firstName.trim() && lastName.trim()) score += 20;
+    if (phone.trim()) score += 5;
+    if (address1.trim() && postalCode.trim() && city.trim()) score += 25;
+    if (accountPlan !== "free") score += 10;
+    if (newsletterOptIn) score += 5;
+    if (isLandlord && landlordName.trim() && landlordAddress.trim()) score += 5;
+
     return Math.min(score, 100);
-  }, [isLoggedIn, newsletterOptIn, isLandlord, landlordName, landlordAddress]);
+  }, [
+    isLoggedIn,
+    firstName,
+    lastName,
+    phone,
+    address1,
+    postalCode,
+    city,
+    accountPlan,
+    newsletterOptIn,
+    isLandlord,
+    landlordName,
+    landlordAddress,
+  ]);
 
   // ---------- RENDER ----------
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
-<div className="mx-auto max-w-5xl px-4 pt-2 text-xs text-red-600">
-  BUILD_TAG=5fdf3d7-bailleur-fix
-</div>
+
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6">
         <div className="grid gap-6 md:grid-cols-[220px,1fr]">
           {/* SIDEBAR */}
@@ -446,7 +573,7 @@ export default function MonComptePage() {
 
                 <nav className="space-y-1 text-sm">
                   {([
-                    ["infos", "Tableau de bord"],
+                    ["infos", "Tableau de bord & profil"],
                     ["bailleur", "Espace bailleur"],
                     ["securite", "Sécurité & préférences"],
                     ["projets", "Mes projets"],
@@ -503,7 +630,7 @@ export default function MonComptePage() {
                       {mode === "login" ? "Connexion" : "Créer un compte"}
                     </h2>
                     <p className="text-xs text-slate-500 mt-1">
-                      Vous pourrez ensuite accéder à vos outils (dont l’espace bailleur).
+                      Vous compléterez ensuite votre profil (nom, adresse, abonnement…).
                     </p>
                   </div>
 
@@ -612,13 +739,13 @@ export default function MonComptePage() {
               </>
             ) : tab === "infos" ? (
               <>
-                {/* DASHBOARD */}
+                {/* DASHBOARD + PROFIL */}
                 <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
                   Tableau de bord
                 </p>
                 <h2 className="text-lg font-semibold text-slate-900">Vue d’ensemble</h2>
                 <p className="text-sm text-slate-600 mt-1 mb-4">
-                  Vos projets + accès rapide à l’espace bailleur.
+                  Compte, profil, abonnement et accès bailleur.
                 </p>
 
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -628,6 +755,9 @@ export default function MonComptePage() {
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">Actif</p>
                     <p className="mt-1 text-xs text-slate-500 break-all">{user.email}</p>
+                    <p className="mt-2 text-xs text-slate-600">
+                      Abonnement : <span className="font-semibold">{planLabel(accountPlan)}</span>
+                    </p>
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
@@ -665,7 +795,7 @@ export default function MonComptePage() {
                       </p>
                       <p className="text-xs text-slate-700 mt-1">
                         {isLandlord
-                          ? "Votre espace bailleur est activé."
+                          ? `Activé — ${propertiesCount} bien(s) déclaré(s).`
                           : "Activez-le pour gérer quittances, biens et envois automatiques."}
                       </p>
                     </div>
@@ -679,13 +809,138 @@ export default function MonComptePage() {
                   </div>
                 </div>
 
+                {/* PROFIL + ABONNEMENT */}
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="text-[0.75rem] font-semibold text-slate-900 mb-1">
+                    Informations personnelles & abonnement
+                  </p>
+                  <p className="text-xs text-slate-600 mb-4">
+                    Ces informations servent à fiabiliser votre inscription et seront réutilisées dans vos documents (ex: quittances).
+                  </p>
+
+                  {profileError && (
+                    <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                      {profileError}
+                    </div>
+                  )}
+                  {profileOk && (
+                    <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                      {profileOk}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSaveProfile} className="space-y-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">Prénom *</label>
+                        <input
+                          type="text"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">Nom *</label>
+                        <input
+                          type="text"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">Téléphone</label>
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">Type de compte *</label>
+                        <select
+                          value={accountPlan}
+                          onChange={(e) => setAccountPlan(e.target.value as AccountPlan)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        >
+                          <option value="free">{planLabel("free")}</option>
+                          <option value="annual_40">{planLabel("annual_40")}</option>
+                          <option value="monthly_49">{planLabel("monthly_49")}</option>
+                        </select>
+                        <p className="text-[0.7rem] text-slate-500 mt-1">
+                          (Ici tu enregistres le choix. Le paiement/Stripe viendra ensuite.)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700">Adresse (ligne 1) *</label>
+                      <input
+                        type="text"
+                        value={address1}
+                        onChange={(e) => setAddress1(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700">Adresse (ligne 2)</label>
+                      <input
+                        type="text"
+                        value={address2}
+                        onChange={(e) => setAddress2(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-700">Code postal *</label>
+                        <input
+                          type="text"
+                          value={postalCode}
+                          onChange={(e) => setPostalCode(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1 sm:col-span-2">
+                        <label className="text-xs text-slate-700">Ville *</label>
+                        <input
+                          type="text"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700">Pays</label>
+                      <input
+                        type="text"
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={profileLoading}
+                      className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {profileLoading ? "Enregistrement..." : "Enregistrer mon profil"}
+                    </button>
+                  </form>
+                </div>
+
                 <div className="mt-6 flex flex-wrap gap-2">
-                  <Link
-                    href="/capacite"
-                    className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                  >
-                    Nouvelle simulation capacité
-                  </Link>
                   <Link
                     href="/outils-proprietaire"
                     className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
@@ -707,11 +962,11 @@ export default function MonComptePage() {
                   Espace bailleur
                 </p>
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Paramètres bailleur (utilisés pour vos quittances)
+                  Paramètres bailleur (quittances & gestion)
                 </h2>
                 <p className="text-sm text-slate-600 mt-1 mb-4">
-                  Configurez votre profil bailleur. Ces infos serviront de valeurs par défaut dans
-                  <span className="font-semibold"> /quittances-loyer</span>.
+                  Configurez votre profil bailleur. Ces infos serviront de valeurs par défaut dans{" "}
+                  <span className="font-semibold">/quittances-loyer</span>.
                 </p>
 
                 {bailleurError && (
@@ -746,6 +1001,24 @@ export default function MonComptePage() {
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                       />
                     </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700">Nombre de biens (important) *</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={999}
+                        value={propertiesCount}
+                        onChange={(e) => setPropertiesCount(parseInt(e.target.value || "0", 10))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                      <p className="text-[0.7rem] text-slate-500 mt-1">
+                        Stocké dans <code className="px-1 rounded bg-slate-100">landlord_properties_count</code> (user_metadata).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
                       <label className="text-xs text-slate-700">Ville de signature (défaut)</label>
                       <input
@@ -755,19 +1028,7 @@ export default function MonComptePage() {
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700">Adresse bailleur</label>
-                    <textarea
-                      rows={2}
-                      value={landlordAddress}
-                      onChange={(e) => setLandlordAddress(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                    />
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
                       <label className="text-xs text-slate-700">Mode de paiement par défaut</label>
                       <select
@@ -781,19 +1042,29 @@ export default function MonComptePage() {
                         <option value="especes">Espèces</option>
                       </select>
                     </div>
+                  </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-700">Envoi auto (global)</label>
-                      <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={autoSendEnabled}
-                          onChange={(e) => setAutoSendEnabled(e.target.checked)}
-                          className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-600"
-                        />
-                        <span>Activer l’envoi automatique (option)</span>
-                      </label>
-                    </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-700">Adresse bailleur</label>
+                    <textarea
+                      rows={2}
+                      value={landlordAddress}
+                      onChange={(e) => setLandlordAddress(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-700">Envoi auto (global)</label>
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={autoSendEnabled}
+                        onChange={(e) => setAutoSendEnabled(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-amber-600 focus:ring-amber-600"
+                      />
+                      <span>Activer l’envoi automatique (option)</span>
+                    </label>
                   </div>
 
                   <button

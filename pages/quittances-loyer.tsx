@@ -4,9 +4,12 @@ import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
-type SimpleUser = {
+type PaymentMode = "virement" | "prelevement" | "cheque" | "especes";
+
+type AuthedUser = {
   id: string;
   email?: string;
+  user_metadata?: any;
 };
 
 // DOIT correspondre à ta table SQL, par ex. "rental_units"
@@ -35,8 +38,6 @@ type RentReceipt = {
   quittance_text: string;
   created_at: string;
 };
-
-type PaymentMode = "virement" | "prelevement" | "cheque" | "especes";
 
 // -------------------------
 // Helpers (purs)
@@ -178,10 +179,10 @@ function generateQuittanceText(params: {
 }
 
 // -------------------------
-// Hooks simples (dans le même fichier)
+// Hooks simples
 // -------------------------
 function useAuthedUser() {
-  const [user, setUser] = useState<SimpleUser | null>(null);
+  const [user, setUser] = useState<AuthedUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -193,8 +194,17 @@ function useAuthedUser() {
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
         if (!mounted) return;
+
         const u = data.session?.user ?? null;
-        setUser(u ? { id: u.id, email: u.email ?? undefined } : null);
+        setUser(
+          u
+            ? {
+                id: u.id,
+                email: u.email ?? undefined,
+                user_metadata: u.user_metadata ?? {},
+              }
+            : null
+        );
       } catch (e) {
         console.error("Erreur session quittances", e);
       } finally {
@@ -208,6 +218,46 @@ function useAuthedUser() {
   }, []);
 
   return { user, loading };
+}
+
+function getLandlordDefaults(user: AuthedUser | null) {
+  const meta = user?.user_metadata || {};
+
+  const firstName = String(meta.first_name || "").trim();
+  const lastName = String(meta.last_name || "").trim();
+  const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
+
+  const bailleurNom =
+    String(meta.landlord_name || "").trim() || fullName || user?.email || "Bailleur";
+
+  const bailleurAdresse =
+    String(meta.landlord_address || "").trim() ||
+    String(meta.address_line1 || "").trim() ||
+    "";
+
+  const villeQuittance =
+    String(meta.landlord_default_city || "").trim() || String(meta.city || "").trim() || "";
+
+  const modePaiement = (meta.landlord_default_payment_mode || "virement") as PaymentMode;
+
+  const rawCount = meta.landlord_properties_count;
+  const propertiesCount =
+    typeof rawCount === "number" ? rawCount : parseInt(String(rawCount || "0"), 10) || 0;
+
+  const isLandlord = !!meta.is_landlord;
+
+  const landlordReady =
+    !!String(meta.landlord_name || "").trim() && !!String(meta.landlord_address || "").trim();
+
+  return {
+    isLandlord,
+    landlordReady,
+    bailleurNom,
+    bailleurAdresse,
+    villeQuittance,
+    modePaiement,
+    propertiesCount,
+  };
 }
 
 // -------------------------
@@ -259,6 +309,7 @@ function unitFormReducer(state: UnitFormState, action: UnitFormAction): UnitForm
 export default function QuittancesLoyerPage() {
   const router = useRouter();
   const { user, loading: loadingUser } = useAuthedUser();
+  const landlordDefaults = useMemo(() => getLandlordDefaults(user), [user]);
 
   const [units, setUnits] = useState<RentalUnit[]>([]);
   const [unitsLoading, setUnitsLoading] = useState(false);
@@ -281,6 +332,9 @@ export default function QuittancesLoyerPage() {
 
   const [generatingForId, setGeneratingForId] = useState<string | null>(null);
   const [quittancePreview, setQuittancePreview] = useState<string | null>(null);
+
+  const maxUnits = landlordDefaults.propertiesCount; // 0 = illimité
+  const reachedLimit = maxUnits > 0 && units.length >= maxUnits;
 
   const refreshUnits = useCallback(async () => {
     if (!supabase || !user) return;
@@ -369,6 +423,14 @@ export default function QuittancesLoyerPage() {
     e.preventDefault();
     if (!supabase || !user) return;
 
+    // bloque la création d’un nouveau bien si limite atteinte
+    if (!selectedUnitId && reachedLimit) {
+      setGlobalError(
+        `Limite atteinte (${units.length}/${maxUnits}). Modifiez le nombre de biens dans /mon-compte?tab=bailleur.`
+      );
+      return;
+    }
+
     setSavingUnit(true);
     setGlobalError(null);
     setGlobalMessage(null);
@@ -376,7 +438,6 @@ export default function QuittancesLoyerPage() {
     try {
       const rentNum = parseFloat(form.rent || "0") || 0;
       const chargesNum = parseFloat(form.charges || "0") || 0;
-
       const paymentDayNum = Math.min(31, Math.max(1, parseInt(form.paymentDay || "1", 10) || 1));
 
       const payload = {
@@ -431,11 +492,9 @@ export default function QuittancesLoyerPage() {
       const charges = unit.charges_amount || 0;
       const total = loyer + charges;
 
-      // ⚠️ Ici, bailleurNom = user.email pour l’instant.
-      // Plus tard: créer un profil bailleur avec nom/adresse.
       const texte = generateQuittanceText({
-        bailleurNom: user.email || "Bailleur",
-        bailleurAdresse: "",
+        bailleurNom: landlordDefaults.bailleurNom,
+        bailleurAdresse: landlordDefaults.bailleurAdresse,
         locataireNom: unit.tenant_name || "Locataire",
         bienAdresse: unit.address || "",
         loyerHC: loyer,
@@ -443,9 +502,9 @@ export default function QuittancesLoyerPage() {
         periodeDebut: toISODate(start),
         periodeFin: toISODate(end),
         datePaiement: null,
-        villeQuittance: "",
+        villeQuittance: landlordDefaults.villeQuittance,
         dateQuittance: toISODate(now),
-        modePaiement: "virement",
+        modePaiement: landlordDefaults.modePaiement,
         mentionSolde: true,
       });
 
@@ -539,6 +598,16 @@ export default function QuittancesLoyerPage() {
               côté serveur (cron / edge function) en s’appuyant sur vos paramètres.
             </p>
 
+            {(!landlordDefaults.isLandlord || !landlordDefaults.landlordReady) && (
+              <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Pensez à compléter votre{" "}
+                <a className="underline" href="/mon-compte?tab=bailleur">
+                  profil bailleur
+                </a>{" "}
+                (nom + adresse) pour générer des quittances propres.
+              </div>
+            )}
+
             {globalError && (
               <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                 {globalError}
@@ -564,14 +633,36 @@ export default function QuittancesLoyerPage() {
                     Sélectionnez un bien pour configurer les quittances.
                   </p>
                 </div>
+
                 <button
                   type="button"
                   onClick={() => setSelectedUnitId(null)}
-                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                  disabled={reachedLimit}
+                  className={
+                    "inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-[0.7rem] font-semibold " +
+                    (reachedLimit
+                      ? "border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed"
+                      : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50")
+                  }
                 >
                   + Nouveau bien
                 </button>
               </div>
+
+              {maxUnits > 0 && (
+                <div className="text-[0.7rem] text-slate-500">
+                  Biens déclarés : <span className="font-semibold">{units.length}</span> / {maxUnits}
+                  {reachedLimit && (
+                    <>
+                      {" "}
+                      – Limite atteinte.{" "}
+                      <a className="underline" href="/mon-compte?tab=bailleur">
+                        Modifier le nombre de biens
+                      </a>
+                    </>
+                  )}
+                </div>
+              )}
 
               {unitsLoading && <p className="text-xs text-slate-500">Chargement des biens…</p>}
               {unitsError && <p className="text-xs text-red-600">{unitsError}</p>}
@@ -800,7 +891,9 @@ export default function QuittancesLoyerPage() {
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-slate-900">{formatEuro(r.total_amount)}</p>
-                          <p className="text-[0.7rem] text-slate-500">Générée le {r.created_at.slice(0, 10)}</p>
+                          <p className="text-[0.7rem] text-slate-500">
+                            Générée le {String(r.created_at || "").slice(0, 10)}
+                          </p>
                         </div>
                       </div>
                     </div>
