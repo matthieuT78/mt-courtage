@@ -47,310 +47,315 @@ export default function Home() {
     };
   }, []);
 
-  const displayName =
-    user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
-
   const isLoggedIn = !!user;
 
-  // 🔐 Navigation vers les 3 calculettes payantes
+  // 🔐 Navigation vers les tools protégés
   const goToProtectedTool = (path: string) => {
-    if (isLoggedIn) {
-      router.push(path);
-    } else {
-      router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
-    }
+    if (isLoggedIn) router.push(path);
+    else router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
   };
 
-  // 🔐 Navigation vers la boîte à outils propriétaire
+  // 🔐 Navigation vers espace bailleur (vendu)
   const goToLandlordTool = () => {
     const path = "/outils-proprietaire";
-    if (isLoggedIn) {
-      router.push(path);
-    } else {
-      router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
-    }
+    if (isLoggedIn) router.push(path);
+    else router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
   };
 
+  // 🎨 Brand Izimo (cohérent avec le logo)
+  const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
+  const brandText = "text-white";
+  const brandHover = "hover:opacity-95";
+
+  // ===========================
+  // LANDING (non connecté)
+  // ===========================
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-100">
+        <AppHeader />
+
+        <main className="flex-1 px-4 py-10">
+          <div className="max-w-5xl mx-auto space-y-10">
+            {/* HERO pub */}
+            <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+              <div className={`h-1.5 w-full ${brandBg}`} />
+              <div className="p-7 sm:p-10">
+                <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+                  {/* Texte */}
+                  <div className="space-y-5">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src="/izimo-logo.png"
+                        alt="Izimo"
+                        className="h-11 w-auto object-contain"
+                      />
+                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
+                        Suite immobilière • Simulations + Gestion locative
+                      </span>
+                    </div>
+
+                    <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 leading-tight">
+                      Izimo vous aide à{" "}
+                      <span className="text-slate-900">acheter</span>,{" "}
+                      <span className="text-slate-900">investir</span> et surtout{" "}
+                      <span className="text-slate-900">gérer vos locations</span>.
+                    </h1>
+
+                    <p className="text-sm text-slate-600">
+                      Des calculettes simples et réalistes pour décider vite, et un{" "}
+                      <span className="font-semibold">Espace bailleur</span> pour professionnaliser
+                      votre gestion locative (quittances, cautions, états des lieux, rappels…).
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={goToLandlordTool}
+                        className={`inline-flex items-center justify-center rounded-full ${brandBg} px-6 py-3 text-sm font-semibold ${brandText} ${brandHover} shadow-md`}
+                      >
+                        Découvrir l’Espace bailleur Izimo
+                      </button>
+
+                      <Link
+                        href="/capacite"
+                        className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                      >
+                        Essayer la calculette capacité (gratuit)
+                      </Link>
+                    </div>
+
+                    <p className="text-[0.75rem] text-slate-500">
+                      Aucun compte requis pour lancer la calculette de capacité. L’Espace bailleur
+                      est un service premium.
+                    </p>
+                  </div>
+
+                  {/* Carte focus produit */}
+                  <div className="rounded-3xl border border-slate-200 bg-slate-900 text-white p-6 sm:p-7 relative overflow-hidden">
+                    <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
+                    <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-indigo-600" />
+
+                    <div className="relative space-y-4">
+                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">
+                        Produit principal
+                      </p>
+                      <h2 className="text-xl font-semibold">Espace bailleur • Gestion locative</h2>
+                      <p className="text-sm text-slate-200">
+                        Conçu pour gagner du temps, éviter les oublis et centraliser vos documents.
+                      </p>
+
+                      <div className="grid gap-3 sm:grid-cols-2 pt-2">
+                        <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                          <p className="font-semibold text-sm">Quittances PDF</p>
+                          <p className="text-xs text-slate-200 mt-1">
+                            Génération automatique et historique.
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                          <p className="font-semibold text-sm">Dépôts de garantie</p>
+                          <p className="text-xs text-slate-200 mt-1">
+                            Suivi, restitutions et rappels.
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                          <p className="font-semibold text-sm">États des lieux</p>
+                          <p className="text-xs text-slate-200 mt-1">
+                            Modèles prêts à remplir + archivage.
+                          </p>
+                        </div>
+                        <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                          <p className="font-semibold text-sm">Rappels & échéances</p>
+                          <p className="text-xs text-slate-200 mt-1">
+                            Assurances, révisions, renouvellements.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-xs text-slate-300">À partir de</p>
+                          <p className="text-2xl font-semibold text-cyan-200">29 € / mois</p>
+                          <p className="text-xs text-slate-300">
+                            ou <span className="font-semibold text-white">290 € / an</span>
+                          </p>
+                        </div>
+                        <Link
+                          href="/tarifs"
+                          className="text-sm font-semibold text-white underline decoration-white/30 hover:decoration-white/60"
+                        >
+                          Voir les tarifs →
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* “Izimo c’est…” : suite de calculettes */}
+            <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8">
+              <div className="space-y-2">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                  Izimo, en bref
+                </p>
+                <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
+                  Les calculettes pour décider + l’outil pour gérer
+                </h2>
+                <p className="text-sm text-slate-600 max-w-3xl">
+                  Faites vos simulations (gratuit) et passez à la gestion locative (premium) quand
+                  vous êtes prêt à structurer votre parc.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-6">
+                <Link
+                  href="/capacite"
+                  className="rounded-3xl border border-slate-200 bg-slate-50 p-5 hover:bg-white hover:shadow-md transition"
+                >
+                  <p className="text-sm font-semibold text-slate-900">Capacité d’emprunt</p>
+                  <p className="text-xs text-slate-600 mt-1">
+                    Mensualité max, capital empruntable, prix indicatif.
+                  </p>
+                  <p className="text-xs font-semibold mt-3 text-slate-900 underline decoration-slate-300">
+                    Lancer →
+                  </p>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => goToProtectedTool("/investissement")}
+                  className="text-left rounded-3xl border border-slate-200 bg-slate-50 p-5 hover:bg-white hover:shadow-md transition"
+                >
+                  <p className="text-sm font-semibold text-slate-900">Rentabilité locative</p>
+                  <p className="text-xs text-slate-600 mt-1">
+                    Cash-flow net, rendement réel, effort d’épargne.
+                  </p>
+                  <p className="text-xs font-semibold mt-3 text-slate-900 underline decoration-slate-300">
+                    Découvrir →
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => goToProtectedTool("/pret-relais")}
+                  className="text-left rounded-3xl border border-slate-200 bg-slate-50 p-5 hover:bg-white hover:shadow-md transition"
+                >
+                  <p className="text-sm font-semibold text-slate-900">Achat-revente / relais</p>
+                  <p className="text-xs text-slate-600 mt-1">
+                    Budget réaliste, relais, reste à vivre.
+                  </p>
+                  <p className="text-xs font-semibold mt-3 text-slate-900 underline decoration-slate-300">
+                    Découvrir →
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => goToProtectedTool("/parc-immobilier")}
+                  className="text-left rounded-3xl border border-slate-200 bg-slate-50 p-5 hover:bg-white hover:shadow-md transition"
+                >
+                  <p className="text-sm font-semibold text-slate-900">Parc immobilier</p>
+                  <p className="text-xs text-slate-600 mt-1">
+                    Vision globale, encours, cash-flow total.
+                  </p>
+                  <p className="text-xs font-semibold mt-3 text-slate-900 underline decoration-slate-300">
+                    Découvrir →
+                  </p>
+                </button>
+              </div>
+
+              <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={goToLandlordTool}
+                  className={`inline-flex items-center justify-center rounded-full ${brandBg} px-6 py-3 text-sm font-semibold ${brandText} ${brandHover}`}
+                >
+                  Démarrer l’Espace bailleur (premium)
+                </button>
+
+                <Link
+                  href="/tarifs"
+                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                >
+                  Comparer les offres
+                </Link>
+              </div>
+            </section>
+
+            {/* Preuve / rassurance + mini FAQ */}
+            <section className="grid gap-4 lg:grid-cols-3">
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <p className="text-sm font-semibold text-slate-900">Simple & rapide</p>
+                <p className="text-sm text-slate-600 mt-2">
+                  Izimo va droit au but : chiffres utiles, décisions plus rapides.
+                </p>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <p className="text-sm font-semibold text-slate-900">Pensé pour les bailleurs</p>
+                <p className="text-sm text-slate-600 mt-2">
+                  Centralisez documents, échéances et suivi par bail.
+                </p>
+              </div>
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <p className="text-sm font-semibold text-slate-900">Évolutif</p>
+                <p className="text-sm text-slate-600 mt-2">
+                  Commencez avec les calculettes, passez à la gestion quand votre parc grandit.
+                </p>
+              </div>
+            </section>
+          </div>
+        </main>
+
+        <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 bg-white">
+          <p>© {new Date().getFullYear()} Izimo – Simulations indicatives.</p>
+          <p className="mt-1">
+            Contact :{" "}
+            <a href="mailto:mtcourtage@gmail.com" className="underline">
+              mtcourtage@gmail.com
+            </a>
+          </p>
+        </footer>
+      </div>
+    );
+  }
+
+  // ===========================
+  // CONNECTÉ (tu peux garder simple)
+  // ===========================
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
 
-      <main className="flex-1 px-4 py-6">
-        <div className="max-w-4xl mx-auto space-y-8">
-          {/* HERO / introduction */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
-            <div className="space-y-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-emerald-600">Étude gratuite</p>
+      <main className="flex-1 px-4 py-8">
+        <div className="max-w-5xl mx-auto space-y-6">
+          <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6">
+            <h1 className="text-xl font-semibold text-slate-900">Bienvenue sur Izimo</h1>
+            <p className="text-sm text-slate-600 mt-2">
+              Accédez à vos calculettes et à votre espace bailleur.
+            </p>
 
-              <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
-                {displayName
-                  ? `Bonjour ${displayName}, estimez votre capacité d’emprunt immobilier.`
-                  : "Estimez votre capacité d’emprunt immobilier en quelques minutes."}
-              </h1>
-
-              <p className="text-xs text-slate-600 max-w-2xl">
-                Revenus, charges, crédits en cours et loyers locatifs pris à 70&nbsp;% : obtenez une
-                estimation réaliste de votre mensualité maximale, du capital empruntable et d&apos;un
-                prix de bien indicatif à présenter à votre banque ou à votre courtier.
-              </p>
-
-              {!isLoggedIn && (
-                <p className="text-[0.7rem] text-slate-500">
-                  La calculette est accessible sans compte. En créant votre espace, vous pourrez
-                  sauvegarder vos simulations et accéder aux autres outils (investissement locatif,
-                  achat revente, parc immobilier…).
-                </p>
-              )}
-            </div>
-
-            {/* CTA central : lancer la simulation */}
-            <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="mt-4 flex flex-col sm:flex-row gap-3">
               <Link
                 href="/capacite"
-                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 shadow-md"
+                className={`inline-flex items-center justify-center rounded-full ${brandBg} px-6 py-3 text-sm font-semibold text-white hover:opacity-95`}
               >
-                Lancer la simulation de capacité d&apos;emprunt
+                Lancer une simulation
               </Link>
-
-              <p className="text-[0.7rem] text-slate-500">
-                Simulation 100&nbsp;% gratuite, sans engagement.{" "}
-                {isLoggedIn
-                  ? "Vous pourrez ensuite sauvegarder vos résultats dans votre espace."
-                  : "Aucun compte requis pour lancer une première étude."}
-              </p>
-            </div>
-          </section>
-
-          {/* 🧰 Bloc marketing : outils premium (investisseurs + bailleurs) */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-6 space-y-5">
-            <div className="space-y-1">
-              <p className="text-[0.7rem] uppercase tracking-[0.20em] text-slate-500">OUTILS PREMIUM</p>
-              <h2 className="text-base sm:text-lg font-semibold text-slate-900">
-                Calculettes avancées & boîte à outils propriétaire
-              </h2>
-              <p className="text-xs text-slate-600 max-w-2xl">
-                Choisissez ce dont vous avez besoin : des calculettes pour piloter vos projets
-                d&apos;achat ou d&apos;investissement, ou une boîte à outils complète pour gérer vos
-                locations au quotidien.
-              </p>
-            </div>
-
-            {/* 2 colonnes : calculettes avancées / outils propriétaire */}
-            <div className="grid gap-5 lg:grid-cols-2 mt-2">
-              {/* Colonne gauche : pack calculettes avancées */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700">
-                      Pack calculettes avancées
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      Investisseurs & acheteurs exigeants
-                    </p>
-                    <p className="mt-1 text-[0.7rem] text-slate-600">
-                      Accédez aux 3 calculettes premium pour analyser vos projets avant de voir votre
-                      banque.
-                    </p>
-                  </div>
-
-                  {/* ✅ CHANGEMENT UNIQUE : tarif => Gratuit (vert) */}
-                  <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-right shrink-0">
-                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Accès</p>
-                    <p className="text-base font-semibold text-emerald-700 leading-tight">Gratuit</p>
-                    <p className="text-[0.65rem] text-emerald-700">Simulations illimités</p>
-                  </div>
-                </div>
-
-                {/* 3 cartes cliquables */}
-                <div className="grid gap-3 md:grid-cols-3">
-                  {/* Investissement locatif */}
-                  <button
-                    type="button"
-                    onClick={() => goToProtectedTool("/investissement")}
-                    className="text-left rounded-2xl border border-slate-200 bg-white p-3 space-y-2 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
-                  >
-                    <div className="inline-flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-emerald-100 flex items-center justify-center text-base">
-                        📈
-                      </div>
-                      <p className="text-[0.75rem] font-semibold text-slate-900">
-                        Investissement locatif
-                      </p>
-                    </div>
-                    <ul className="space-y-0.5 text-[0.7rem] text-slate-700">
-                      <li>• Cash-flow net & rendement réel</li>
-                      <li>• Effort d&apos;épargne mensuel</li>
-                    </ul>
-                  </button>
-
-                  {/* Achat revente / prêt relais */}
-                  <button
-                    type="button"
-                    onClick={() => goToProtectedTool("/pret-relais")}
-                    className="text-left rounded-2xl border border-slate-200 bg-white p-3 space-y-2 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
-                  >
-                    <div className="inline-flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-emerald-100 flex items-center justify-center text-base">
-                        🔁
-                      </div>
-                      <p className="text-[0.75rem] font-semibold text-slate-900">
-                        Achat revente / prêt relais
-                      </p>
-                    </div>
-                    <ul className="space-y-0.5 text-[0.7rem] text-slate-700">
-                      <li>• Budget d&apos;achat réaliste</li>
-                      <li>• Montant de relais & reste à vivre</li>
-                    </ul>
-                  </button>
-
-                  {/* Parc immobilier existant */}
-                  <button
-                    type="button"
-                    onClick={() => goToProtectedTool("/parc-immobilier")}
-                    className="text-left rounded-2xl border border-slate-200 bg-white p-3 space-y-2 cursor-pointer hover:bg-slate-100 hover:shadow-md transition"
-                  >
-                    <div className="inline-flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-emerald-100 flex items-center justify-center text-base">
-                        🧩
-                      </div>
-                      <p className="text-[0.75rem] font-semibold text-slate-900">
-                        Parc immobilier global
-                      </p>
-                    </div>
-                    <ul className="space-y-0.5 text-[0.7rem] text-slate-700">
-                      <li>• Vue d&apos;ensemble de tous vos biens</li>
-                      <li>• Cash-flow global & encours</li>
-                    </ul>
-                  </button>
-                </div>
-
-                <div className="pt-1">
-                  <Link
-                    href={isLoggedIn ? "/mon-compte" : "/mon-compte?mode=register"}
-                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.75rem] font-semibold text-white hover:bg-slate-800 shadow-sm"
-                  >
-                    {isLoggedIn
-                      ? "Gérer mon accès aux calculettes avancées"
-                      : "Créer mon espace pour débloquer les calculettes"}
-                  </Link>
-                </div>
-              </div>
-
-              {/* Colonne droite : boîte à outils propriétaire */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-900 text-slate-50 p-4 space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-300">
-                      Boîte à outils propriétaire
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white">Le kit du bailleur exigeant</p>
-                    <p className="mt-1 text-[0.7rem] text-slate-200 max-w-sm">
-                      Quittances automatiques, suivi des cautions, génération d&apos;états des lieux,
-                      rappel d&apos;échéances… Tout pour gérer vos locations comme un pro.
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-slate-800 border border-amber-300/60 px-3 py-2 text-right shrink-0">
-                    <p className="text-[0.65rem] text-slate-200 uppercase tracking-[0.14em]">
-                      Abonnement mensuel
-                    </p>
-                    <p className="text-base font-semibold text-amber-300 leading-tight">
-                      49&nbsp;€ / mois
-                    </p>
-                    <p className="text-[0.65rem] text-slate-300">Pour bailleurs multi-biens.</p>
-                  </div>
-                </div>
-
-                <ul className="space-y-1.5 text-[0.7rem] text-slate-100 mt-1">
-                  <li>• Génération automatique de quittances PDF</li>
-                  <li>• Suivi des dépôts de garantie et restitutions</li>
-                  <li>• Modèles d&apos;états des lieux prêts à remplir</li>
-                  <li>• Rappels des échéances importantes (assurances, révisions…)</li>
-                </ul>
-
-                <div className="pt-1 flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={goToLandlordTool}
-                    className="inline-flex items-center justify-center rounded-full bg-amber-400 px-4 py-2 text-[0.8rem] font-semibold text-slate-900 hover:bg-amber-300 shadow-md"
-                  >
-                    Découvrir la boîte à outils propriétaire
-                  </button>
-                  <p className="text-[0.65rem] text-slate-300 max-w-sm">
-                    Idéal si vous gérez plusieurs lots et souhaitez professionnaliser vos process sans
-                    multiplier les logiciels.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ✅ NOUVEAU : bloc Tarifs (teaser) */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Tarifs</p>
-                <h2 className="mt-1 text-base sm:text-lg font-semibold text-slate-900">
-                  Une offre claire, et un prix qui évolue avec vos baux
-                </h2>
-                <p className="text-xs text-slate-600 max-w-2xl mt-1">
-                  Les calculettes restent gratuites. La boîte à outils bailleur est facturée selon le
-                  nombre de <span className="font-semibold">baux actifs</span> (au-delà de 5, offre Pro).
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-[0.7rem] uppercase tracking-[0.16em] text-slate-500">
-                  Boîte à outils bailleur
-                </p>
-                <p className="text-xl font-semibold text-slate-900 leading-tight">49&nbsp;€ / mois</p>
-                <p className="text-[0.75rem] text-slate-600">
-                  ou <span className="font-semibold">290&nbsp;€ / an</span>
-                </p>
-                <p className="text-[0.7rem] text-slate-500 mt-1">
-                  Jusqu’à <span className="font-semibold">5 baux</span> • Pro au-delà
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Link
-                href="/tarifs"
-                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-              >
-                Voir les tarifs
-              </Link>
-
               <button
                 type="button"
                 onClick={goToLandlordTool}
-                className="inline-flex items-center justify-center rounded-full bg-amber-400 px-5 py-2 text-sm font-semibold text-slate-900 hover:bg-amber-300"
+                className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
               >
-                Démarrer (Espace bailleur)
+                Ouvrir l’espace bailleur
               </button>
             </div>
-
-            <p className="text-[0.7rem] text-slate-500">
-              Besoin d’une offre agence (portefeuille) ?{" "}
-              <a
-                href="mailto:mtcourtage@gmail.com?subject=Offre%20Agence%20-%20ImmoPilot"
-                className="underline"
-              >
-                Contactez-nous
-              </a>
-              .
-            </p>
           </section>
         </div>
       </main>
 
-      <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
-        <p>© {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations indicatives.</p>
-        <p className="mt-1">
-          Contact :{" "}
-          <a href="mailto:mtcourtage@gmail.com" className="underline">
-            mtcourtage@gmail.com
-          </a>
-        </p>
+      <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 bg-white">
+        <p>© {new Date().getFullYear()} Izimo – Simulations indicatives.</p>
       </footer>
     </div>
   );
