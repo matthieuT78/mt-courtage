@@ -1,8 +1,9 @@
 // pages/index.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
+import AppFooter from "../components/AppFooter";
 import { supabase } from "../lib/supabaseClient";
 
 type SimpleUser = {
@@ -49,15 +50,20 @@ export default function Home() {
 
   const isLoggedIn = !!user;
 
+  const displayName = useMemo(() => {
+    const n = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
+    return n || "à vous";
+  }, [user]);
+
   // 🔐 Navigation vers les tools protégés
   const goToProtectedTool = (path: string) => {
     if (isLoggedIn) router.push(path);
     else router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
   };
 
-  // 🔐 Navigation vers espace bailleur (vendu)
+  // ✅ Espace bailleur : pointe vers /espace-bailleur
   const goToLandlordTool = () => {
-    const path = "/outils-proprietaire";
+    const path = "/espace-bailleur";
     if (isLoggedIn) router.push(path);
     else router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
   };
@@ -85,7 +91,6 @@ export default function Home() {
                   {/* Texte */}
                   <div className="space-y-5">
                     <div className="flex items-center gap-4">
-                      {/* ✅ LOGO PLUS GROS ICI */}
                       <img
                         src="/izimo-logo.png"
                         alt="Izimo"
@@ -308,56 +313,239 @@ export default function Home() {
           </div>
         </main>
 
-        <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 bg-white">
-          <p>© {new Date().getFullYear()} Izimo – Simulations indicatives.</p>
-          <p className="mt-1">
-            Contact :{" "}
-            <a href="mailto:mtcourtage@gmail.com" className="underline">
-              mtcourtage@gmail.com
-            </a>
-          </p>
-        </footer>
+        <AppFooter />
       </div>
     );
   }
 
   // ===========================
-  // CONNECTÉ
+  // CONNECTÉ — WAOU (sans les 3 cases à droite)
   // ===========================
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
 
-      <main className="flex-1 px-4 py-8">
-        <div className="max-w-5xl mx-auto space-y-6">
-          <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6">
-            <h1 className="text-xl font-semibold text-slate-900">Bienvenue sur Izimo</h1>
-            <p className="text-sm text-slate-600 mt-2">
-              Accédez à vos calculettes et à votre espace bailleur.
-            </p>
+      <main className="flex-1 px-4 py-10">
+        <div className="max-w-6xl mx-auto space-y-8">
+          {/* HERO connecté */}
+          <section className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className={`h-1.5 w-full ${brandBg}`} />
+            <div className="p-7 sm:p-10">
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-3">
+                  <div className="rounded-2xl bg-white border border-slate-200 p-2 shadow-sm">
+                    <img
+                      src="/izimo-logo.png"
+                      alt="Izimo"
+                      className="h-9 sm:h-10 w-auto object-contain"
+                    />
+                  </div>
+                  <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600">
+                    Simuler • Décider • Gérer
+                  </span>
+                </div>
 
-            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
+                  Bonjour {displayName} 👋
+                </h1>
+
+                <p className="text-sm text-slate-600 max-w-3xl">
+                  Votre espace Izimo est prêt. Lancez une simulation, comparez vos scénarios, puis
+                  centralisez votre gestion locative dans l’espace bailleur.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                  <Link
+                    href="/calculettes"
+                    className={`inline-flex items-center justify-center rounded-full ${brandBg} px-6 py-3 text-sm font-semibold ${brandText} ${brandHover} shadow-md`}
+                  >
+                    Ouvrir les calculettes
+                  </Link>
+
+                  <Link
+                    href="/espace-bailleur"
+                    className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                  >
+                    Ouvrir l’espace bailleur →
+                  </Link>
+
+                  <Link
+                    href="/tarifs"
+                    className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                  >
+                    Mon abonnement
+                  </Link>
+                </div>
+
+                <div className="pt-2 text-[0.75rem] text-slate-500">
+                  Raccourcis :{" "}
+                  <Link
+                    href="/capacite"
+                    className="underline decoration-slate-300 hover:decoration-slate-500"
+                  >
+                    capacité
+                  </Link>
+                  {" • "}
+                  <Link
+                    href="/investissement"
+                    className="underline decoration-slate-300 hover:decoration-slate-500"
+                  >
+                    rentabilité
+                  </Link>
+                  {" • "}
+                  <Link
+                    href="/pret-relais"
+                    className="underline decoration-slate-300 hover:decoration-slate-500"
+                  >
+                    prêt relais
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Parcours */}
+          <section className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">1 • Simuler</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">Capacité & scénarios</p>
+              <p className="mt-2 text-sm text-slate-600">
+                Évaluez votre budget, mensualité et points d’équilibre en quelques clics.
+              </p>
+              <div className="mt-4">
+                <Link
+                  href="/capacite"
+                  className="text-sm font-semibold text-slate-900 underline decoration-slate-300"
+                >
+                  Lancer une simulation →
+                </Link>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">2 • Décider</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">Rentabilité & arbitrage</p>
+              <p className="mt-2 text-sm text-slate-600">
+                Comparez cash-flow, rendement, effort d’épargne et scénarios de financement.
+              </p>
+              <div className="mt-4">
+                <Link
+                  href="/investissement"
+                  className="text-sm font-semibold text-slate-900 underline decoration-slate-300"
+                >
+                  Ouvrir l’analyse →
+                </Link>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-900 text-white p-6 shadow-sm relative overflow-hidden">
+              <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
+              <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-indigo-600" />
+
+              <div className="relative">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">3 • Gérer</p>
+                <p className="mt-1 text-base font-semibold text-white">Espace bailleur</p>
+                <p className="mt-2 text-sm text-slate-200">
+                  Centralisez vos baux, quittances, dépôts de garantie, états des lieux et rappels.
+                </p>
+
+                <div className="mt-4 flex gap-2">
+                  <Link
+                    href="/espace-bailleur"
+                    className={`inline-flex items-center justify-center rounded-full ${brandBg} px-4 py-2 text-sm font-semibold ${brandText} ${brandHover}`}
+                  >
+                    Ouvrir →
+                  </Link>
+                  <Link
+                    href="/tarifs"
+                    className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+                  >
+                    Tarifs
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Hub outils */}
+          <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Hub</p>
+                <h2 className="mt-1 text-lg sm:text-xl font-semibold text-slate-900">
+                  Accès rapide à vos outils
+                </h2>
+                <p className="mt-2 text-sm text-slate-600 max-w-2xl">
+                  Tout ce dont vous avez besoin pour avancer : simulations, analyses et gestion.
+                </p>
+              </div>
+              <Link
+                href="/calculettes"
+                className="hidden sm:inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+              >
+                Voir toutes les calculettes →
+              </Link>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Link
                 href="/capacite"
-                className={`inline-flex items-center justify-center rounded-full ${brandBg} px-6 py-3 text-sm font-semibold text-white hover:opacity-95`}
+                className="rounded-3xl border border-slate-200 bg-slate-50 p-5 hover:bg-white hover:shadow-md transition"
               >
-                Lancer une simulation
+                <p className="text-sm font-semibold text-slate-900">Capacité d’emprunt</p>
+                <p className="text-xs text-slate-600 mt-1">Budget, mensualité, prix indicatif.</p>
+                <p className="text-xs font-semibold mt-3 text-slate-900 underline decoration-slate-300">
+                  Ouvrir →
+                </p>
               </Link>
-              <button
-                type="button"
-                onClick={goToLandlordTool}
-                className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+
+              <Link
+                href="/investissement"
+                className="rounded-3xl border border-slate-200 bg-slate-50 p-5 hover:bg-white hover:shadow-md transition"
               >
-                Ouvrir l’espace bailleur
-              </button>
+                <p className="text-sm font-semibold text-slate-900">Rentabilité locative</p>
+                <p className="text-xs text-slate-600 mt-1">Cash-flow, rendement, effort.</p>
+                <p className="text-xs font-semibold mt-3 text-slate-900 underline decoration-slate-300">
+                  Ouvrir →
+                </p>
+              </Link>
+
+              <Link
+                href="/pret-relais"
+                className="rounded-3xl border border-slate-200 bg-slate-50 p-5 hover:bg-white hover:shadow-md transition"
+              >
+                <p className="text-sm font-semibold text-slate-900">Prêt relais</p>
+                <p className="text-xs text-slate-600 mt-1">Achat-revente & relais.</p>
+                <p className="text-xs font-semibold mt-3 text-slate-900 underline decoration-slate-300">
+                  Ouvrir →
+                </p>
+              </Link>
+
+              <Link
+                href="/parc-immobilier"
+                className="rounded-3xl border border-slate-200 bg-slate-50 p-5 hover:bg-white hover:shadow-md transition"
+              >
+                <p className="text-sm font-semibold text-slate-900">Parc immobilier</p>
+                <p className="text-xs text-slate-600 mt-1">Vue globale & cash-flow total.</p>
+                <p className="text-xs font-semibold mt-3 text-slate-900 underline decoration-slate-300">
+                  Ouvrir →
+                </p>
+              </Link>
+            </div>
+
+            <div className="mt-6 sm:hidden">
+              <Link
+                href="/calculettes"
+                className={`inline-flex w-full items-center justify-center rounded-full ${brandBg} px-6 py-3 text-sm font-semibold ${brandText} ${brandHover}`}
+              >
+                Voir toutes les calculettes
+              </Link>
             </div>
           </section>
         </div>
       </main>
 
-      <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 bg-white">
-        <p>© {new Date().getFullYear()} Izimo – Simulations indicatives.</p>
-      </footer>
+      <AppFooter />
     </div>
   );
 }

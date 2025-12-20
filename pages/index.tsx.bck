@@ -62,7 +62,7 @@ export default function Home() {
     else router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
   };
 
-  // 🎨 Brand Izimo (cohérent avec le logo)
+  // 🎨 Brand Izimo
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
@@ -84,11 +84,12 @@ export default function Home() {
                 <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
                   {/* Texte */}
                   <div className="space-y-5">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-4">
+                      {/* ✅ LOGO PLUS GROS ICI */}
                       <img
                         src="/izimo-logo.png"
                         alt="Izimo"
-                        className="h-11 w-auto object-contain"
+                        className="h-16 sm:h-20 w-auto object-contain"
                       />
                       <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
                         Suite immobilière • Simulations + Gestion locative
@@ -283,7 +284,7 @@ export default function Home() {
               </div>
             </section>
 
-            {/* Preuve / rassurance + mini FAQ */}
+            {/* Preuve / rassurance */}
             <section className="grid gap-4 lg:grid-cols-3">
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <p className="text-sm font-semibold text-slate-900">Simple & rapide</p>
@@ -321,7 +322,7 @@ export default function Home() {
   }
 
   // ===========================
-  // CONNECTÉ (tu peux garder simple)
+  // CONNECTÉ
   // ===========================
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
