@@ -1,7 +1,8 @@
 // pages/pret-relais.tsx
-import { useState } from "react";
+import type { NextPage } from "next";
+import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
-import { supabase } from "../lib/supabaseClient"; // 👉 ajout pour la sauvegarde
+import { supabase } from "../lib/supabaseClient";
 
 function formatEuro(val: number) {
   if (Number.isNaN(val)) return "-";
@@ -41,35 +42,62 @@ type ResumeRelais = {
   budgetMax: number;
 };
 
-export default function PretRelaisPage() {
+const PretRelaisPage: NextPage = () => {
+  // ✅ Auth (pour floutage)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setIsLoggedIn(!!data.session);
+      } catch {
+        if (!mounted) return;
+        setIsLoggedIn(false);
+      }
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      setIsLoggedIn(!!session);
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
   // Revenus & charges
   const [revMensuels, setRevMensuels] = useState(4500);
-  const [autresMensualites, setAutresMensualites] = useState(0); // hors bien actuel
+  const [autresMensualites, setAutresMensualites] = useState(0);
   const [tauxEndettement, setTauxEndettement] = useState(35);
 
   // Bien actuel
   const [valeurBienActuel, setValeurBienActuel] = useState(400000);
   const [crdActuel, setCrdActuel] = useState(200000);
-  const [pctRetenu, setPctRetenu] = useState(70); // % retenu par la banque
+  const [pctRetenu, setPctRetenu] = useState(70);
 
-  // Prêt relais (juste pour info)
-  const [tauxRelais, setTauxRelais] = useState(4); // annuel, en %
+  // Prêt relais (indicatif)
+  const [tauxRelais, setTauxRelais] = useState(4);
 
   // Nouveau projet
   const [apportPerso, setApportPerso] = useState(30000);
-  const [tauxNouveau, setTauxNouveau] = useState(3.5); // annuel, en %
-  const [dureeNouveau, setDureeNouveau] = useState(25); // années
-  const [prixCible, setPrixCible] = useState(450000); // pour comparer
+  const [tauxNouveau, setTauxNouveau] = useState(3.5);
+  const [dureeNouveau, setDureeNouveau] = useState(25);
+  const [prixCible, setPrixCible] = useState(450000);
 
   const [resume, setResume] = useState<ResumeRelais | null>(null);
   const [texteDetail, setTexteDetail] = useState<string>("");
 
-  // Sauvegarde projet
+  // Sauvegarde
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const handleCalculRelais = () => {
-    setSaveMessage(null); // on reset le message de sauvegarde à chaque nouveau calcul
+    setSaveMessage(null);
 
     const revenus = revMensuels || 0;
     const autresMens = autresMensualites || 0;
@@ -78,7 +106,6 @@ export default function PretRelaisPage() {
     const valeur = valeurBienActuel || 0;
     const crd = crdActuel || 0;
     const pct = (pctRetenu || 70) / 100;
-    const tRelaisAnnuel = (tauxRelais || 0) / 100;
 
     const apport = apportPerso || 0;
     const tNouveauAnnuel = (tauxNouveau || 0) / 100;
@@ -99,46 +126,40 @@ export default function PretRelaisPage() {
 
     // 2) Plafond d'endettement (long terme)
     const plafondEndettement = revenus * endettementMax;
-
-    // On enlève seulement les autres crédits (auto, conso, etc.), pas les intérêts du relais
     const mensualiteNouveauMax = plafondEndettement - autresMens;
 
     if (mensualiteNouveauMax <= 0) {
-      const section1 = [
-        "1. Revenus et endettement",
-        `Vous avez indiqué un revenu net mensuel de ${formatEuro(
-          revenus
-        )} et des autres mensualités de crédits de ${formatEuro(autresMens)}.`,
-        `Avec un taux d’endettement cible de ${tauxEndettement.toFixed(
-          0
-        )} %, la charge totale maximale supportable est d’environ ${formatEuro(
-          plafondEndettement
-        )} par mois.`,
-      ];
-
-      const section2 = [
-        "2. Capacité actuelle insuffisante pour un nouveau prêt",
-        `En tenant compte de vos autres crédits, il ne reste aucune marge de mensualité disponible pour un nouveau prêt immobilier.`,
-        `Dans cette configuration, le projet d’achat devra être retravaillé (baisse du prix du bien, augmentation de la durée, hausse de l’apport, remboursement de certains crédits, etc.).`,
-      ];
-
-      const section3 = [
-        "3. Pistes d’action possibles",
-        `• Étudier le remboursement anticipé total ou partiel de certains crédits à la consommation.`,
-        `• Revoir le prix cible du nouveau bien à la baisse, au moins de façon temporaire.`,
-        `• Allonger la durée du futur prêt pour réduire la mensualité cible (dans la limite de l’âge et des pratiques bancaires).`,
-      ];
-
-      const msg = [section1.join("\n"), section2.join("\n"), section3.join("\n")].join(
-        "\n\n"
-      );
+      const msg = [
+        [
+          "1. Revenus et endettement",
+          `Vous avez indiqué un revenu net mensuel de ${formatEuro(
+            revenus
+          )} et des autres mensualités de crédits de ${formatEuro(autresMens)}.`,
+          `Avec un taux d’endettement cible de ${tauxEndettement.toFixed(
+            0
+          )} %, la charge totale maximale supportable est d’environ ${formatEuro(
+            plafondEndettement
+          )} par mois.`,
+        ].join("\n"),
+        [
+          "2. Capacité actuelle insuffisante pour un nouveau prêt",
+          "En tenant compte de vos autres crédits, il ne reste aucune marge de mensualité disponible pour un nouveau prêt immobilier.",
+          "Dans cette configuration, le projet d’achat devra être retravaillé (baisse du prix du bien, augmentation de la durée, hausse de l’apport, remboursement de certains crédits, etc.).",
+        ].join("\n"),
+        [
+          "3. Pistes d’action possibles",
+          "• Étudier le remboursement anticipé total ou partiel de certains crédits à la consommation.",
+          "• Revoir le prix cible du nouveau bien à la baisse, au moins de façon temporaire.",
+          "• Allonger la durée du futur prêt pour réduire la mensualité cible (dans la limite de l’âge et des pratiques bancaires).",
+        ].join("\n"),
+      ].join("\n\n");
 
       setTexteDetail(msg);
       setResume(null);
       return;
     }
 
-    // 3) Capital empruntable pour le nouveau prêt
+    // 3) Capital empruntable
     let capitalNouveau = 0;
     if (tNouveauMensuel === 0) {
       capitalNouveau = mensualiteNouveauMax * nMois;
@@ -148,74 +169,55 @@ export default function PretRelaisPage() {
         mensualiteNouveauMax * ((facteur - 1) / (tNouveauMensuel * facteur));
     }
 
-    // 4) Budget d'achat total max
+    // 4) Budget max
     const budgetMax = montantRelais + capitalNouveau + apport;
 
-    // 🔎 Construction d'une analyse structurée par blocs
-    const section1 = [
-      "1. Revenus et endettement",
-      `Vous avez indiqué un revenu net mensuel de ${formatEuro(
-        revenus
-      )} et des autres mensualités de crédits de ${formatEuro(autresMens)}.`,
-      `Avec un taux d’endettement cible de ${tauxEndettement.toFixed(
-        0
-      )} %, la charge totale maximale supportable est d’environ ${formatEuro(
-        plafondEndettement
-      )} par mois.`,
-    ];
-
-    const section2 = [
-      "2. Estimation du prêt relais",
-      `Valeur estimée du bien actuel : ${formatEuro(valeur)}.`,
-      `Capital restant dû : ${formatEuro(crd)}.`,
-      `Part retenue par la banque pour le calcul du relais : ${pctRetenu.toFixed(
-        0
-      )} %.`,
-      `Montant théorique du prêt relais : ${formatEuro(montantRelais)}.`,
-      `Au taux indicatif de ${formatPct(
-        tauxRelais
-      )}, cela donne un ordre d'idée du coût financier du relais, mais les intérêts ne sont pas intégrés dans le calcul de capacité ci-dessous (on raisonne ici sur la soutenabilité long terme).`,
-    ];
-
-    const section3 = [
-      "3. Capacité pour le nouveau prêt immobilier",
-      `Après prise en compte de vos autres crédits, la mensualité disponible pour le nouveau prêt immobilier est estimée à ${formatEuro(
-        mensualiteNouveauMax
-      )}.`,
-      `Sur ${dureeNouveau.toFixed(
-        0
-      )} ans à ${formatPct(tauxNouveau)}, cela correspond à un capital empruntable d’environ ${formatEuro(
-        capitalNouveau
-      )}.`,
-    ];
-
-    const section4 = [
-      "4. Budget d’achat total estimé",
-      `En ajoutant votre apport personnel (${formatEuro(
-        apport
-      )}) et le prêt relais (${formatEuro(
-        montantRelais
-      )}), votre budget d’achat maximal théorique se situe autour de ${formatEuro(
-        budgetMax
-      )}.`,
-      prixCible > 0
-        ? `À titre de comparaison, le bien que vous visez actuellement est à ${formatEuro(
-            prixCible
-          )}.`
-        : `Vous n’avez pas encore renseigné de prix cible : ce budget peut vous servir de repère pour vos recherches.`,
-    ].filter(Boolean) as string[];
-
-    const section5 = [
-      "5. À garder en tête",
-      `Ce calcul reste indicatif : chaque banque applique ses propres règles (prise en compte exacte du relais, taux et durée, assurance, éventuelle franchise sur les intérêts, etc.).`,
-    ];
-
     const message = [
-      section1.join("\n"),
-      section2.join("\n"),
-      section3.join("\n"),
-      section4.join("\n"),
-      section5.join("\n"),
+      [
+        "1. Revenus et endettement",
+        `Vous avez indiqué un revenu net mensuel de ${formatEuro(
+          revenus
+        )} et des autres mensualités de crédits de ${formatEuro(autresMens)}.`,
+        `Avec un taux d’endettement cible de ${tauxEndettement.toFixed(
+          0
+        )} %, la charge totale maximale supportable est d’environ ${formatEuro(
+          plafondEndettement
+        )} par mois.`,
+      ].join("\n"),
+      [
+        "2. Estimation du prêt relais",
+        `Valeur estimée du bien actuel : ${formatEuro(valeur)}.`,
+        `Capital restant dû : ${formatEuro(crd)}.`,
+        `Part retenue par la banque : ${pctRetenu.toFixed(0)} %.`,
+        `Montant théorique du prêt relais : ${formatEuro(montantRelais)}.`,
+        `Au taux indicatif de ${formatPct(
+          tauxRelais
+        )}, cela donne un ordre d'idée du coût du relais (non intégré dans la capacité ci-dessous).`,
+      ].join("\n"),
+      [
+        "3. Capacité pour le nouveau prêt immobilier",
+        `Mensualité disponible estimée : ${formatEuro(mensualiteNouveauMax)}.`,
+        `Sur ${dureeNouveau.toFixed(0)} ans à ${formatPct(
+          tauxNouveau
+        )}, capital empruntable ≈ ${formatEuro(capitalNouveau)}.`,
+      ].join("\n"),
+      [
+        "4. Budget d’achat total estimé",
+        `Apport (${formatEuro(apport)}) + relais (${formatEuro(
+          montantRelais
+        )}) + nouveau prêt (${formatEuro(
+          capitalNouveau
+        )}) ⇒ budget max ≈ ${formatEuro(budgetMax)}.`,
+        prixCible > 0
+          ? `Comparaison : votre bien cible est à ${formatEuro(prixCible)}.`
+          : "Vous n’avez pas renseigné de prix cible.",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      [
+        "5. À garder en tête",
+        "Ce calcul reste indicatif : chaque banque applique ses propres règles (assurance, franchise d’intérêts, prise en compte du relais, etc.).",
+      ].join("\n"),
     ].join("\n\n");
 
     setResume({
@@ -227,11 +229,9 @@ export default function PretRelaisPage() {
     setTexteDetail(message);
   };
 
-  // Analyse détaillée en blocs structurés (sections + paragraphes)
   const renderAnalysisBlocks = (text: string) => {
     if (!text) return null;
 
-    // On découpe par double saut de ligne = sections
     const sections = text
       .split(/\n\s*\n/)
       .map((s) => s.trim())
@@ -245,7 +245,7 @@ export default function PretRelaisPage() {
             .map((l) => l.trim())
             .filter((l) => l.length > 0);
 
-          if (lines.length === 0) return null;
+          if (!lines.length) return null;
 
           const title = lines[0];
           const body = lines.slice(1);
@@ -259,10 +259,7 @@ export default function PretRelaisPage() {
                 {title}
               </p>
               {body.map((line, i) => (
-                <p
-                  key={i}
-                  className="text-[0.8rem] text-slate-700 leading-relaxed"
-                >
+                <p key={i} className="text-[0.8rem] text-slate-700 leading-relaxed">
                   {line}
                 </p>
               ))}
@@ -274,24 +271,15 @@ export default function PretRelaisPage() {
   };
 
   const handlePrintPDF = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
+    if (typeof window !== "undefined") window.print();
   };
 
-  // Sauvegarde du projet prêt relais
   const handleSaveProject = async () => {
     if (!resume || !texteDetail) return;
     setSaving(true);
     setSaveMessage(null);
 
     try {
-      if (!supabase) {
-        throw new Error(
-          "Le service de sauvegarde n'est pas disponible (configuration Supabase manquante)."
-        );
-      }
-
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
       if (sessionError) throw sessionError;
@@ -299,7 +287,8 @@ export default function PretRelaisPage() {
       const session = sessionData?.session;
       if (!session) {
         if (typeof window !== "undefined") {
-          window.location.href = "/mon-compte?mode=login&redirect=/pret-relais";
+          window.location.href =
+            "/mon-compte?mode=login&redirect=/pret-relais";
         }
         return;
       }
@@ -339,9 +328,10 @@ export default function PretRelaisPage() {
     }
   };
 
+  const canShowFullAnalysis = isLoggedIn;
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* ✅ Header global */}
       <AppHeader />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6">
@@ -360,7 +350,6 @@ export default function PretRelaisPage() {
             </p>
 
             <div className="space-y-3">
-              {/* Revenus & charges */}
               <div className="space-y-1">
                 <label className="text-xs text-slate-700">
                   Revenus nets mensuels du foyer (€)
@@ -368,9 +357,7 @@ export default function PretRelaisPage() {
                 <input
                   type="number"
                   value={revMensuels}
-                  onChange={(e) =>
-                    setRevMensuels(parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => setRevMensuels(parseFloat(e.target.value) || 0)}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
@@ -383,9 +370,7 @@ export default function PretRelaisPage() {
                 <input
                   type="number"
                   value={autresMensualites}
-                  onChange={(e) =>
-                    setAutresMensualites(parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => setAutresMensualites(parseFloat(e.target.value) || 0)}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
@@ -397,14 +382,11 @@ export default function PretRelaisPage() {
                 <input
                   type="number"
                   value={tauxEndettement}
-                  onChange={(e) =>
-                    setTauxEndettement(parseFloat(e.target.value) || 0)
-                  }
+                  onChange={(e) => setTauxEndettement(parseFloat(e.target.value) || 0)}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
-              {/* Bien actuel */}
               <div className="mt-3 pt-3 border-t border-slate-200 space-y-3">
                 <p className="text-xs font-semibold text-slate-700">
                   Bien actuel à vendre
@@ -417,9 +399,7 @@ export default function PretRelaisPage() {
                   <input
                     type="number"
                     value={valeurBienActuel}
-                    onChange={(e) =>
-                      setValeurBienActuel(parseFloat(e.target.value) || 0)
-                    }
+                    onChange={(e) => setValeurBienActuel(parseFloat(e.target.value) || 0)}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -431,9 +411,7 @@ export default function PretRelaisPage() {
                   <input
                     type="number"
                     value={crdActuel}
-                    onChange={(e) =>
-                      setCrdActuel(parseFloat(e.target.value) || 0)
-                    }
+                    onChange={(e) => setCrdActuel(parseFloat(e.target.value) || 0)}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -446,9 +424,7 @@ export default function PretRelaisPage() {
                   <input
                     type="number"
                     value={pctRetenu}
-                    onChange={(e) =>
-                      setPctRetenu(parseFloat(e.target.value) || 0)
-                    }
+                    onChange={(e) => setPctRetenu(parseFloat(e.target.value) || 0)}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -460,15 +436,12 @@ export default function PretRelaisPage() {
                   <input
                     type="number"
                     value={tauxRelais}
-                    onChange={(e) =>
-                      setTauxRelais(parseFloat(e.target.value) || 0)
-                    }
+                    onChange={(e) => setTauxRelais(parseFloat(e.target.value) || 0)}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
 
-              {/* Nouveau projet */}
               <div className="mt-3 pt-3 border-t border-slate-200 space-y-3">
                 <p className="text-xs font-semibold text-slate-700">
                   Nouveau projet immobilier
@@ -481,9 +454,7 @@ export default function PretRelaisPage() {
                   <input
                     type="number"
                     value={apportPerso}
-                    onChange={(e) =>
-                      setApportPerso(parseFloat(e.target.value) || 0)
-                    }
+                    onChange={(e) => setApportPerso(parseFloat(e.target.value) || 0)}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -496,9 +467,7 @@ export default function PretRelaisPage() {
                     <input
                       type="number"
                       value={tauxNouveau}
-                      onChange={(e) =>
-                        setTauxNouveau(parseFloat(e.target.value) || 0)
-                      }
+                      onChange={(e) => setTauxNouveau(parseFloat(e.target.value) || 0)}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -509,9 +478,7 @@ export default function PretRelaisPage() {
                     <input
                       type="number"
                       value={dureeNouveau}
-                      onChange={(e) =>
-                        setDureeNouveau(parseFloat(e.target.value) || 0)
-                      }
+                      onChange={(e) => setDureeNouveau(parseFloat(e.target.value) || 0)}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -524,9 +491,7 @@ export default function PretRelaisPage() {
                   <input
                     type="number"
                     value={prixCible}
-                    onChange={(e) =>
-                      setPrixCible(parseFloat(e.target.value) || 0)
-                    }
+                    onChange={(e) => setPrixCible(parseFloat(e.target.value) || 0)}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -625,11 +590,34 @@ export default function PretRelaisPage() {
             )}
 
             {texteDetail ? (
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-3">
+              <div className="relative rounded-xl bg-slate-50 border border-slate-200 p-4 mb-3">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
                   Analyse détaillée
                 </p>
-                {renderAnalysisBlocks(texteDetail)}
+
+                <div className={canShowFullAnalysis ? "" : "blur-sm select-none"}>
+                  {renderAnalysisBlocks(texteDetail)}
+                </div>
+
+                {!canShowFullAnalysis && (
+                  <div className="absolute inset-0 flex items-center justify-center p-3">
+                    <div className="max-w-sm w-full rounded-2xl border border-slate-200 bg-white/95 shadow-lg p-4 text-center">
+                      <p className="text-sm font-semibold text-slate-900">
+                        Analyse réservée aux inscrits
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Crée un compte gratuit pour accéder à l’analyse complète,
+                        sauvegarder tes projets et comparer tes simulations.
+                      </p>
+                      <a
+                        href="/mon-compte?mode=register&redirect=%2Fpret-relais"
+                        className="mt-3 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                      >
+                        Créer un compte gratuit
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-sm text-slate-500">
@@ -645,61 +633,13 @@ export default function PretRelaisPage() {
           </section>
         </div>
 
-        {/* 🔁 Rappel pédagogique sur le prêt relais */}
         <section className="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
           <h3 className="text-sm font-semibold text-slate-900">
             Rappel : comment fonctionne un prêt relais ?
           </h3>
           <p className="text-[0.8rem] text-slate-600">
             Le prêt relais est un financement transitoire qui vous permet
-            d&apos;acheter un nouveau bien avant d&apos;avoir vendu l&apos;ancien. La banque
-            avance une partie de la valeur du bien à vendre, en attendant sa
-            vente définitive.
-          </p>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
-              <p className="text-[0.75rem] font-semibold text-emerald-800 mb-1">
-                Les principaux avantages
-              </p>
-              <ul className="list-disc pl-4 space-y-1">
-                <li className="text-[0.8rem] text-slate-700">
-                  Vous pouvez acheter le nouveau bien sans attendre la vente de
-                  l&apos;ancien.
-                </li>
-                <li className="text-[0.8rem] text-slate-700">
-                  Vous évitez un déménagement intermédiaire ou une location
-                  temporaire.
-                </li>
-                <li className="text-[0.8rem] text-slate-700">
-                  La durée est généralement courte (12 à 24 mois), ce qui limite
-                  la période d&apos;incertitude.
-                </li>
-              </ul>
-            </div>
-            <div className="rounded-xl bg-rose-50 border border-rose-100 p-3">
-              <p className="text-[0.75rem] font-semibold text-rose-800 mb-1">
-                Points de vigilance
-              </p>
-              <ul className="list-disc pl-4 space-y-1">
-                <li className="text-[0.8rem] text-slate-700">
-                  Si le bien se vend moins cher que prévu, il peut rester un
-                  capital à rembourser.
-                </li>
-                <li className="text-[0.8rem] text-slate-700">
-                  Tant que le bien n&apos;est pas vendu, vous supportez le coût du
-                  relais en plus de vos autres charges.
-                </li>
-                <li className="text-[0.8rem] text-slate-700">
-                  En cas de délai de vente long, la banque peut demander un
-                  remboursement ou une restructuration de la dette.
-                </li>
-              </ul>
-            </div>
-          </div>
-          <p className="text-[0.7rem] text-slate-500">
-            Ce rappel est volontairement simplifié. Un échange détaillé avec un
-            professionnel permet d&apos;adapter le montage (relais sec ou relais +
-            amortissable, franchise d&apos;intérêts, etc.) à votre situation.
+            d&apos;acheter un nouveau bien avant d&apos;avoir vendu l&apos;ancien.
           </p>
         </section>
       </main>
@@ -718,4 +658,6 @@ export default function PretRelaisPage() {
       </footer>
     </div>
   );
-}
+};
+
+export default PretRelaisPage;

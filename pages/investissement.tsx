@@ -1,4 +1,5 @@
 // pages/investissement.tsx
+import { usePermissions } from "../components/PermissionProvider";
 import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import AppHeader from "../components/AppHeader";
@@ -102,7 +103,8 @@ function InfoBadge({ text }: { text: string }) {
 }
 
 export default function InvestissementPage() {
-  // Onglets
+  const { canSeeCalcDetails, isLoggedIn } = usePermissions();  
+// Onglets
   const [onglet, setOnglet] = useState<Onglet>("couts");
 
   // Prix / coûts
@@ -1797,12 +1799,40 @@ const canShowAnalysis =
 )}
 
               {/* Analyse narrative aérée */}
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-                  Analyse détaillée
-                </p>
-                {renderAnalysisBlocks(resultRendementTexte)}
-              </div>
+            <div className="relative rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4 overflow-hidden">
+  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+    Analyse détaillée
+  </p>
+
+  {/* CONTENU */}
+  <div className={canSeeCalcDetails ? "" : "blur-sm select-none pointer-events-none"}>
+    {renderAnalysisBlocks(resultRendementTexte)}
+  </div>
+
+  {/* OVERLAY SI BLOQUÉ */}
+  {!canSeeCalcDetails && (
+    <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+      <div className="max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-lg">
+        <p className="text-sm font-semibold text-slate-900">
+          Analyse réservée aux inscrits
+        </p>
+        <p className="mt-1 text-xs text-slate-600">
+          Crée un compte gratuit pour accéder à l’analyse complète,
+          sauvegarder tes projets et comparer tes simulations.
+        </p>
+
+        {!isLoggedIn && (
+          <a
+            href={`/mon-compte?mode=register&redirect=${encodeURIComponent("/investissement")}`}
+            className="inline-flex mt-4 items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+          >
+            Créer un compte gratuit
+          </a>
+        )}
+      </div>
+    </div>
+  )}
+</div>
 
               {/* 🔥 Bloc Analyse Premium & optimisation locative */}
               <div className="mt-5 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-amber-50 to-emerald-50 px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">

@@ -1,7 +1,7 @@
 // pages/parc-immobilier.tsx
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
@@ -56,7 +56,7 @@ type Bien = {
   valeurBien: number;
   capitalRestantDu: number;
   loyerMensuel: number;
-  chargesAnnuelles: number; // copro + TF + PNO, etc.
+  chargesAnnuelles: number;
   mensualiteCredit: number;
   assuranceEmprunteurAnnuelle: number;
   resultatNetAnnuel: number;
@@ -84,8 +84,38 @@ function InfoBadge({ text }: { text: string }) {
   );
 }
 
-// 🔸 Composant principal de la calculette
-function ParcImmobilierContent() {
+export default function ParcImmobilierPage() {
+  /* ============================
+     AUTH (comme investissement)
+  ============================ */
+  const [user, setUser] = useState<any>(null);
+  const [checkingUser, setCheckingUser] = useState(true);
+  const isLoggedIn = !!user?.id;
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setUser(data.session?.user ?? null);
+      setCheckingUser(false);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      if (!mounted) return;
+      setUser(session?.user ?? null);
+      setCheckingUser(false);
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  /* ============================
+     STATE CALCULETTE
+  ============================ */
   const [nbBiens, setNbBiens] = useState(1);
   const [biens, setBiens] = useState<Bien[]>([
     {
@@ -112,6 +142,8 @@ function ParcImmobilierContent() {
 
   const hasSimulation = !!resumeGlobal && !!barData && !!lineData;
 
+  const shouldBlurAnalysis = hasSimulation && !isLoggedIn;
+
   const handleNbBiensChange = (value: number) => {
     const n = Math.min(Math.max(value, 1), 20);
     setNbBiens(n);
@@ -135,11 +167,7 @@ function ParcImmobilierContent() {
     });
   };
 
-  const updateBienField = (
-    index: number,
-    field: keyof Bien,
-    value: string
-  ) => {
+  const updateBienField = (index: number, field: keyof Bien, value: string) => {
     setBiens((prev) => {
       const arr = [...prev];
       const bien = { ...arr[index] };
@@ -207,27 +235,22 @@ function ParcImmobilierContent() {
     };
     setResumeGlobal(resume);
 
-    const labels = updatedBiens.map(
-      (b, idx) => b.nom || `Bien #${idx + 1}`
-    );
+    const labels = updatedBiens.map((b, idx) => b.nom || `Bien #${idx + 1}`);
     const cashFlows = updatedBiens.map((b) => b.resultatNetAnnuel || 0);
     const rendements = updatedBiens.map((b) => b.rendementNet || 0);
 
-    const bar = {
+    setBarData({
       labels,
       datasets: [
         {
           label: "Cash-flow annuel (€)",
           data: cashFlows,
-          backgroundColor: cashFlows.map((v) =>
-            v >= 0 ? "#22c55e" : "#ef4444"
-          ),
+          backgroundColor: cashFlows.map((v) => (v >= 0 ? "#22c55e" : "#ef4444")),
         },
       ],
-    };
-    setBarData(bar);
+    });
 
-    const line = {
+    setLineData({
       labels,
       datasets: [
         {
@@ -238,10 +261,8 @@ function ParcImmobilierContent() {
           tension: 0.25,
         },
       ],
-    };
-    setLineData(line);
+    });
 
-    // Analyse textuelle
     let bienTop = updatedBiens[0];
     let bienWorst = updatedBiens[0];
     updatedBiens.forEach((b) => {
@@ -279,9 +300,7 @@ function ParcImmobilierContent() {
   };
 
   const handlePrintPDF = () => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
+    if (typeof window !== "undefined") window.print();
   };
 
   const handleSaveProject = async () => {
@@ -291,12 +310,6 @@ function ParcImmobilierContent() {
     setSaveMessage(null);
 
     try {
-      if (!supabase) {
-        throw new Error(
-          "Le service de sauvegarde n'est pas disponible (configuration Supabase manquante)."
-        );
-      }
-
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
       if (sessionError) throw sessionError;
@@ -304,7 +317,8 @@ function ParcImmobilierContent() {
       const session = sessionData?.session;
       if (!session) {
         if (typeof window !== "undefined") {
-          window.location.href = "/mon-compte?redirect=/projets";
+          window.location.href =
+            "/mon-compte?mode=login&redirect=/parc-immobilier";
         }
         return;
       }
@@ -332,7 +346,6 @@ function ParcImmobilierContent() {
     }
   };
 
-  // 🔹 Analyse détaillée en blocs lisibles
   const renderAnalysisBlocks = (text: string) => {
     if (!text) return null;
     const lines = text.split("\n").filter((l) => l.trim().length > 0);
@@ -354,7 +367,6 @@ function ParcImmobilierContent() {
     );
   };
 
-  // 🔹 Bloc récapitulatif global + détail par bien en pleine largeur
   const renderRecapTable = () => {
     if (!hasSimulation) return null;
     const dataBiens = biens.slice(0, nbBiens);
@@ -386,308 +398,114 @@ function ParcImmobilierContent() {
     });
 
     const rendementGlobal =
-      totalValeur > 0
-        ? (totalRevenuNetAvantCredit / totalValeur) * 100
-        : 0;
+      totalValeur > 0 ? (totalRevenuNetAvantCredit / totalValeur) * 100 : 0;
 
     return (
-      <section className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-md p-4 space-y-4">
-        {/* Synthèse globale lisible */}
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-            Synthèse globale du parc
-          </p>
-          <table className="w-full text-[0.75rem] text-slate-800">
-            <tbody>
-              <tr>
-                <td className="py-1 pr-2">Valeur totale du parc</td>
-                <td className="py-1 text-right font-semibold">
-                  {formatEuro(totalValeur)}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-2">Encours de crédit total</td>
-                <td className="py-1 text-right font-semibold">
-                  {formatEuro(totalCRD)}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-2">Loyers annuels totaux</td>
-                <td className="py-1 text-right font-semibold">
-                  {formatEuro(totalLoyersAnnuels)}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-2">Charges annuelles totales</td>
-                <td className="py-1 text-right font-semibold">
-                  {formatEuro(totalChargesAnnuelles)}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-2">Crédit + assurance (annuels)</td>
-                <td className="py-1 text-right font-semibold">
-                  {formatEuro(totalCreditAssuranceAnnuel)}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-2">Résultat net annuel global</td>
-                <td className="py-1 text-right font-semibold">
-                  {formatEuro(totalResultatNetAnnuel)}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-2">Cash-flow mensuel global</td>
-                <td className="py-1 text-right font-semibold">
-                  {formatEuro(totalCashflowMensuel)}
-                </td>
-              </tr>
-              <tr>
-                <td className="py-1 pr-2">Rendement net global</td>
-                <td className="py-1 text-right font-semibold">
-                  {formatPct(rendementGlobal)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* Détail par bien : table complète sur md+ et cartes sur mobile */}
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 space-y-3">
-          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600">
-            Détail par bien
-          </p>
-
-          {/* Desktop / tablette : tableau complet */}
-          <div className="hidden md:block">
+      <section className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-md p-4 space-y-4 relative">
+        <div
+          className={
+            shouldBlurAnalysis ? "blur-sm select-none pointer-events-none" : ""
+          }
+        >
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+              Synthèse globale du parc
+            </p>
             <table className="w-full text-[0.75rem] text-slate-800">
-              <thead>
-                <tr className="border-b border-slate-200 bg-white/70">
-                  <th className="px-2 py-2 text-left font-semibold">Bien</th>
-                  <th className="px-2 py-2 text-right font-semibold">Valeur</th>
-                  <th className="px-2 py-2 text-right font-semibold">CRD</th>
-                  <th className="px-2 py-2 text-right font-semibold">
-                    Loyers annuels
-                  </th>
-                  <th className="px-2 py-2 text-right font-semibold">
-                    Charges annuelles
-                  </th>
-                  <th className="px-2 py-2 text-right font-semibold">
-                    Crédit + ass. annuels
-                  </th>
-                  <th className="px-2 py-2 text-right font-semibold">
-                    Résultat net annuel
-                  </th>
-                  <th className="px-2 py-2 text-right font-semibold">
-                    Cash-flow mensuel
-                  </th>
-                  <th className="px-2 py-2 text-right font-semibold">
-                    Rendement net
-                  </th>
-                </tr>
-              </thead>
               <tbody>
-                {dataBiens.map((b, idx) => {
-                  const loyersAnnuels = (b.loyerMensuel || 0) * 12;
-                  const annuiteCredit = (b.mensualiteCredit || 0) * 12;
-                  const annuiteAssurance =
-                    b.assuranceEmprunteurAnnuelle || 0;
-                  return (
-                    <tr
-                      key={idx}
-                      className="border-b border-slate-100 hover:bg-white"
-                    >
-                      <td className="px-2 py-1.5">
-                        {b.nom || `Bien #${idx + 1}`}
-                      </td>
-                      <td className="px-2 py-1.5 text-right">
-                        {formatEuro(b.valeurBien)}
-                      </td>
-                      <td className="px-2 py-1.5 text-right">
-                        {formatEuro(b.capitalRestantDu)}
-                      </td>
-                      <td className="px-2 py-1.5 text-right">
-                        {formatEuro(loyersAnnuels)}
-                      </td>
-                      <td className="px-2 py-1.5 text-right">
-                        {formatEuro(b.chargesAnnuelles)}
-                      </td>
-                      <td className="px-2 py-1.5 text-right">
-                        {formatEuro(annuiteCredit + annuiteAssurance)}
-                      </td>
-                      <td className="px-2 py-1.5 text-right">
-                        {formatEuro(b.resultatNetAnnuel)}
-                      </td>
-                      <td className="px-2 py-1.5 text-right">
-                        {formatEuro(b.cashflowMensuel)}
-                      </td>
-                      <td className="px-2 py-1.5 text-right">
-                        {formatPct(b.rendementNet)}
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {/* 🔹 Ligne de synthèse du parc complète dans le tableau de détail */}
-                <tr className="border-t border-slate-300 bg-slate-100/80 font-semibold">
-                  <td className="px-2 py-1.5">Parc complet</td>
-                  <td className="px-2 py-1.5 text-right">
+                <tr>
+                  <td className="py-1 pr-2">Valeur totale du parc</td>
+                  <td className="py-1 text-right font-semibold">
                     {formatEuro(totalValeur)}
                   </td>
-                  <td className="px-2 py-1.5 text-right">
+                </tr>
+                <tr>
+                  <td className="py-1 pr-2">Encours de crédit total</td>
+                  <td className="py-1 text-right font-semibold">
                     {formatEuro(totalCRD)}
                   </td>
-                  <td className="px-2 py-1.5 text-right">
+                </tr>
+                <tr>
+                  <td className="py-1 pr-2">Loyers annuels totaux</td>
+                  <td className="py-1 text-right font-semibold">
                     {formatEuro(totalLoyersAnnuels)}
                   </td>
-                  <td className="px-2 py-1.5 text-right">
+                </tr>
+                <tr>
+                  <td className="py-1 pr-2">Charges annuelles totales</td>
+                  <td className="py-1 text-right font-semibold">
                     {formatEuro(totalChargesAnnuelles)}
                   </td>
-                  <td className="px-2 py-1.5 text-right">
+                </tr>
+                <tr>
+                  <td className="py-1 pr-2">Crédit + assurance (annuels)</td>
+                  <td className="py-1 text-right font-semibold">
                     {formatEuro(totalCreditAssuranceAnnuel)}
                   </td>
-                  <td className="px-2 py-1.5 text-right">
+                </tr>
+                <tr>
+                  <td className="py-1 pr-2">Résultat net annuel global</td>
+                  <td className="py-1 text-right font-semibold">
                     {formatEuro(totalResultatNetAnnuel)}
                   </td>
-                  <td className="px-2 py-1.5 text-right">
+                </tr>
+                <tr>
+                  <td className="py-1 pr-2">Cash-flow mensuel global</td>
+                  <td className="py-1 text-right font-semibold">
                     {formatEuro(totalCashflowMensuel)}
                   </td>
-                  <td className="px-2 py-1.5 text-right">
+                </tr>
+                <tr>
+                  <td className="py-1 pr-2">Rendement net global</td>
+                  <td className="py-1 text-right font-semibold">
                     {formatPct(rendementGlobal)}
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+        </div>
 
-          {/* Mobile : carte "Parc complet" + cartes par bien, sans scroll horizontal */}
-          <div className="space-y-2 md:hidden">
-            {/* Carte synthèse parc complet */}
-            <div className="rounded-lg border border-slate-300 bg-indigo-50 px-3 py-3 text-[0.75rem] space-y-1.5">
-              <p className="font-semibold text-slate-900">Parc complet</p>
-              <div className="flex justify-between">
-                <span>Valeur totale</span>
-                <span className="font-medium">
-                  {formatEuro(totalValeur)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Encours de crédit</span>
-                <span className="font-medium">
-                  {formatEuro(totalCRD)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Loyers annuels</span>
-                <span className="font-medium">
-                  {formatEuro(totalLoyersAnnuels)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Charges annuelles</span>
-                <span className="font-medium">
-                  {formatEuro(totalChargesAnnuelles)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Crédit + ass. (an)</span>
-                <span className="font-medium">
-                  {formatEuro(totalCreditAssuranceAnnuel)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Résultat net annuel</span>
-                <span className="font-medium">
-                  {formatEuro(totalResultatNetAnnuel)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Cash-flow mensuel</span>
-                <span className="font-medium">
-                  {formatEuro(totalCashflowMensuel)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Rendement net global</span>
-                <span className="font-medium">
-                  {formatPct(rendementGlobal)}
-                </span>
+        {!checkingUser && shouldBlurAnalysis && (
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="max-w-md rounded-2xl border border-slate-200 bg-white/90 backdrop-blur px-5 py-4 shadow-lg">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-indigo-700 mb-1">
+                Analyse réservée aux inscrits
+              </p>
+              <p className="text-sm font-semibold text-slate-900">
+                Débloquez l’analyse complète
+              </p>
+              <p className="text-xs text-slate-600 mt-1">
+                Créez un compte gratuit pour accéder à l’analyse détaillée, au
+                tableau récapitulatif et sauvegarder vos projets.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Link
+                  href={`/mon-compte?mode=register&redirect=${encodeURIComponent(
+                    "/parc-immobilier"
+                  )}`}
+                  className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                >
+                  Créer un compte gratuit
+                </Link>
+                <Link
+                  href={`/mon-compte?mode=login&redirect=${encodeURIComponent(
+                    "/parc-immobilier"
+                  )}`}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800"
+                >
+                  J’ai déjà un compte
+                </Link>
               </div>
             </div>
-
-            {/* Cartes par bien */}
-            {dataBiens.map((b, idx) => {
-              const loyersAnnuels = (b.loyerMensuel || 0) * 12;
-              const annuiteCredit = (b.mensualiteCredit || 0) * 12;
-              const annuiteAssurance =
-                b.assuranceEmprunteurAnnuelle || 0;
-              return (
-                <div
-                  key={idx}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[0.75rem] space-y-1.5"
-                >
-                  <p className="font-semibold text-slate-900">
-                    {b.nom || `Bien #${idx + 1}`}
-                  </p>
-                  <div className="flex justify-between">
-                    <span>Valeur</span>
-                    <span className="font-medium">
-                      {formatEuro(b.valeurBien)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>CRD</span>
-                    <span className="font-medium">
-                      {formatEuro(b.capitalRestantDu)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Loyers annuels</span>
-                    <span className="font-medium">
-                      {formatEuro(loyersAnnuels)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Charges annuelles</span>
-                    <span className="font-medium">
-                      {formatEuro(b.chargesAnnuelles)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Crédit + ass. (an)</span>
-                    <span className="font-medium">
-                      {formatEuro(annuiteCredit + annuiteAssurance)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Résultat net annuel</span>
-                    <span className="font-medium">
-                      {formatEuro(b.resultatNetAnnuel)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Cash-flow mensuel</span>
-                    <span className="font-medium">
-                      {formatEuro(b.cashflowMensuel)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Rendement net</span>
-                    <span className="font-medium">
-                      {formatPct(b.rendementNet)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
           </div>
-        </div>
+        )}
       </section>
     );
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      {/* Header global */}
       <AppHeader />
 
       <main className="flex-1 max-w-5xl mx-auto px-4 py-6 space-y-4">
@@ -734,6 +552,7 @@ function ParcImmobilierContent() {
                     <p className="text-[0.7rem] font-semibold text-slate-700">
                       Bien #{idx + 1}
                     </p>
+
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">
                         Nom du bien (libellé)
@@ -884,6 +703,7 @@ function ParcImmobilierContent() {
                   Cash-flow global, encours, rendements et biens à surveiller.
                 </p>
               </div>
+
               {hasSimulation && (
                 <div className="flex flex-col items-end gap-2">
                   <button
@@ -953,7 +773,7 @@ function ParcImmobilierContent() {
                   </div>
                 </div>
 
-                {/* Graphiques */}
+                {/* Graphiques (laissés visibles même en visiteur) */}
                 <div className="grid gap-4 lg:grid-cols-2 mt-3">
                   <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
                     <p className="text-xs text-slate-600 mb-2">
@@ -978,6 +798,7 @@ function ParcImmobilierContent() {
                       />
                     )}
                   </div>
+
                   <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
                     <p className="text-xs text-slate-600 mb-2">
                       Rendement net par bien (avant impôts).
@@ -988,10 +809,7 @@ function ParcImmobilierContent() {
                         options={{
                           plugins: {
                             legend: {
-                              labels: {
-                                color: "#0f172a",
-                                font: { size: 11 },
-                              },
+                              labels: { color: "#0f172a", font: { size: 11 } },
                             },
                           },
                           scales: {
@@ -1010,30 +828,74 @@ function ParcImmobilierContent() {
                   </div>
                 </div>
 
-                {/* Analyse détaillée aérée */}
-                <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
+                {/* Analyse globale (floutée si visiteur) */}
+                <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3 relative">
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
                     Analyse globale
                   </p>
-                  {renderAnalysisBlocks(analyseTexte)}
-                  <p className="mt-2 text-[0.7rem] text-slate-500">
-                    Cette analyse est fournie hors fiscalité détaillée (régimes
-                    micro, réel, LMNP, etc.) et hors revalorisation future des
-                    loyers et des prix de marché.
-                  </p>
+
+                  <div
+                    className={
+                      shouldBlurAnalysis
+                        ? "blur-sm select-none pointer-events-none"
+                        : ""
+                    }
+                  >
+                    {renderAnalysisBlocks(analyseTexte)}
+                    <p className="mt-2 text-[0.7rem] text-slate-500">
+                      Cette analyse est fournie hors fiscalité détaillée (régimes
+                      micro, réel, LMNP, etc.) et hors revalorisation future des
+                      loyers et des prix de marché.
+                    </p>
+                  </div>
+
+                  {!checkingUser && shouldBlurAnalysis && (
+                    <div className="absolute inset-0 flex items-center justify-center p-4">
+                      <div className="max-w-md rounded-2xl border border-slate-200 bg-white/90 backdrop-blur px-5 py-4 shadow-lg">
+                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-indigo-700 mb-1">
+                          Analyse réservée aux inscrits
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          Débloquez l’analyse complète
+                        </p>
+                        <p className="text-xs text-slate-600 mt-1">
+                          Créez un compte gratuit pour accéder à l’analyse
+                          complète, sauvegarder vos projets et comparer vos
+                          simulations.
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                          <Link
+                            href={`/mon-compte?mode=register&redirect=${encodeURIComponent(
+                              "/parc-immobilier"
+                            )}`}
+                            className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+                          >
+                            Créer un compte gratuit
+                          </Link>
+                          <Link
+                            href={`/mon-compte?mode=login&redirect=${encodeURIComponent(
+                              "/parc-immobilier"
+                            )}`}
+                            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800"
+                          >
+                            J’ai déjà un compte
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             ) : (
               <p className="text-sm text-slate-500">
                 Renseignez vos biens et cliquez sur “Calculer la rentabilité du
-                parc” pour obtenir une vue d&apos;ensemble complète à présenter à
-                votre banque ou à votre conseiller.
+                parc” pour obtenir une vue d&apos;ensemble complète.
               </p>
             )}
           </div>
         </section>
 
-        {/* Bloc récapitulatif global + détail par bien en pleine largeur */}
+        {/* Récap table (floutée si visiteur) */}
         {renderRecapTable()}
       </main>
 
@@ -1051,55 +913,4 @@ function ParcImmobilierContent() {
       </footer>
     </div>
   );
-}
-
-// 🔸 Wrapper avec protection d’accès (UN SEUL export default)
-export default function ParcImmobilierPage() {
-  const router = useRouter();
-  const [checkingAuth, setCheckingAuth] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      if (!supabase) {
-        setAuthorized(false);
-        setCheckingAuth(false);
-        return;
-      }
-
-      const { data, error } = await supabase.auth.getSession();
-      const session = data?.session;
-
-      if (error || !session) {
-        router.replace(
-          `/mon-compte?mode=login&redirect=${encodeURIComponent(
-            "/parc-immobilier"
-          )}`
-        );
-        return;
-      }
-
-      setAuthorized(true);
-      setCheckingAuth(false);
-    };
-
-    checkAuth();
-  }, [router]);
-
-  if (checkingAuth) {
-    return (
-      <div className="min-h-screen flex flex-col bg-slate-100">
-        <AppHeader />
-        <main className="flex-1 max-w-5xl mx-auto px-4 py-8">
-          <p className="text-sm text-slate-500">
-            Vérification de vos accès...
-          </p>
-        </main>
-      </div>
-    );
-  }
-
-  if (!authorized) return null;
-
-  return <ParcImmobilierContent />;
 }

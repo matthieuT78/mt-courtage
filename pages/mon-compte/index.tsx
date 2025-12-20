@@ -7,10 +7,18 @@ import { supabase } from "../../lib/supabaseClient";
 
 type Mode = "login" | "register";
 
+const safeRedirect = (raw: unknown) => {
+  const v = typeof raw === "string" ? raw : "";
+  return v.startsWith("/") ? v : "/mon-compte";
+};
+
 export default function MonCompteHomePage() {
   const router = useRouter();
 
+  // éviter mismatch SSR/CSR : on ne lit pas router.query au 1er rendu
   const [mode, setMode] = useState<Mode>("login");
+  const [redirectPath, setRedirectPath] = useState<string>("/mon-compte");
+  const [routerReady, setRouterReady] = useState(false);
 
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -25,62 +33,106 @@ export default function MonCompteHomePage() {
   const [projectsCount, setProjectsCount] = useState<number | null>(null);
   const [projectsCountLoading, setProjectsCountLoading] = useState(false);
 
-  const isLoggedIn = !!user?.email;
+  const isLoggedIn = !!user?.id;
 
-  // mode depuis URL ?mode=register
+  // lire query seulement quand router prêt
   useEffect(() => {
     if (!router.isReady) return;
+
+    setRouterReady(true);
+
     const m = router.query.mode as string | undefined;
     setMode(m === "register" ? "register" : "login");
-  }, [router.isReady, router.query.mode]);
+
+    setRedirectPath(safeRedirect(router.query.redirect));
+  }, [router.isReady, router.query.mode, router.query.redirect]);
 
   const redirectAfterAuth = () => {
-    const redirectParam = router.query.redirect;
-    const redirectPath =
-      typeof redirectParam === "string" && redirectParam.startsWith("/") ? redirectParam : "/mon-compte";
-    router.push(redirectPath);
+    router.replace(redirectPath);
   };
 
-  useEffect(() => {
-    const run = async () => {
-      try {
-        if (!supabase) return;
-        const { data, error } = await supabase.auth.getUser();
-        if (error) throw error;
-        const u = data.user ?? null;
-        setUser(u);
+  const refreshProjectsCount = async (u: any | null) => {
+    if (!supabase || !u?.id) {
+      setProjectsCount(null);
+      return;
+    }
 
-        if (u) {
-          try {
-            setProjectsCountLoading(true);
-            const { count } = await supabase
-              .from("projects")
-              .select("id", { count: "exact", head: true })
-              .eq("user_id", u.id);
-            setProjectsCount(count ?? 0);
-          } finally {
-            setProjectsCountLoading(false);
-          }
+    try {
+      setProjectsCountLoading(true);
+      const { count, error } = await supabase
+        .from("projects")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", u.id);
+
+      if (error) throw error;
+      setProjectsCount(count ?? 0);
+    } catch {
+      setProjectsCount(null);
+    } finally {
+      setProjectsCountLoading(false);
+    }
+  };
+
+  // bootstrap auth + sync temps réel
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribe: (() => void) | null = null;
+
+    const init = async () => {
+      try {
+        if (!supabase) {
+          if (!mounted) return;
+          setUser(null);
+          setCheckingUser(false);
+          return;
         }
+
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        const u = data.session?.user ?? null;
+        setUser(u);
+        setCheckingUser(false);
+        refreshProjectsCount(u);
+
+        const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+          if (!mounted) return;
+          const nextUser = session?.user ?? null;
+          setUser(nextUser);
+          setCheckingUser(false);
+          refreshProjectsCount(nextUser);
+        });
+
+        unsubscribe = () => sub.subscription.unsubscribe();
       } catch {
+        if (!mounted) return;
         setUser(null);
-      } finally {
         setCheckingUser(false);
       }
     };
-    run();
+
+    init();
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
   }, []);
 
   const handleLogout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    router.push("/");
+    try {
+      await supabase?.auth.signOut();
+    } finally {
+      // IMPORTANT : on sort vers l’accueil, pas vers un redirect “protégé”
+      router.replace("/");
+    }
   };
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setAuthError(null);
     setAuthInfo(null);
+
     if (!supabase) return setAuthError("Auth indisponible.");
 
     setAuthLoading(true);
@@ -89,6 +141,7 @@ export default function MonCompteHomePage() {
         email: authEmail,
         password: authPassword,
       });
+
       if (error) setAuthError(error.message || "Erreur de connexion.");
       else redirectAfterAuth();
     } finally {
@@ -100,6 +153,7 @@ export default function MonCompteHomePage() {
     e.preventDefault();
     setAuthError(null);
     setAuthInfo(null);
+
     if (!supabase) return setAuthError("Auth indisponible.");
     if (!authEmail || !authPassword) return setAuthError("Merci de renseigner un e-mail et un mot de passe.");
     if (authPassword !== authPassword2) return setAuthError("Les mots de passe ne correspondent pas.");
@@ -110,6 +164,7 @@ export default function MonCompteHomePage() {
         email: authEmail,
         password: authPassword,
       });
+
       if (error) setAuthError(error.message || "Erreur inscription.");
       else {
         setAuthInfo("Compte créé. Vérifiez vos e-mails puis connectez-vous.");
@@ -176,6 +231,7 @@ export default function MonCompteHomePage() {
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                 />
               </div>
+
               <div className="space-y-1">
                 <label className="text-xs text-slate-700">Mot de passe</label>
                 <input
@@ -195,11 +251,10 @@ export default function MonCompteHomePage() {
                 >
                   {authLoading ? "Connexion..." : "Se connecter"}
                 </button>
+
                 <p className="text-[0.7rem] text-slate-500">
                   Redirection :{" "}
-                  <span className="font-semibold">
-                    {typeof router.query.redirect === "string" ? router.query.redirect : "/mon-compte"}
-                  </span>
+                  <span className="font-semibold">{routerReady ? redirectPath : "/mon-compte"}</span>
                 </p>
               </div>
             </form>
@@ -215,6 +270,7 @@ export default function MonCompteHomePage() {
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                 />
               </div>
+
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700">Mot de passe</label>
@@ -237,9 +293,10 @@ export default function MonCompteHomePage() {
                   />
                 </div>
               </div>
+
               <button
                 type="submit"
-                disabled={authLoading}
+                  disabled={authLoading}
                 className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
               >
                 {authLoading ? "Création..." : "Créer mon compte"}

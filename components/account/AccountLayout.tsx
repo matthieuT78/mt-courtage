@@ -1,4 +1,5 @@
 // components/account/AccountLayout.tsx
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import AppHeader from "../AppHeader";
@@ -6,7 +7,7 @@ import AppHeader from "../AppHeader";
 type Props = {
   userEmail?: string | null;
   active: "dashboard" | "bailleur" | "securite" | "projets";
-  children: React.ReactNode;
+  children: ReactNode;
   onLogout?: () => void;
 };
 
@@ -47,7 +48,9 @@ export default function AccountLayout({ userEmail, active, children, onLogout }:
                         href={item.href}
                         className={
                           "block w-full rounded-lg px-3 py-2 " +
-                          (isActive ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-50")
+                          (isActive
+                            ? "bg-slate-900 text-white"
+                            : "text-slate-700 hover:bg-slate-50")
                         }
                       >
                         {item.label}
@@ -58,7 +61,8 @@ export default function AccountLayout({ userEmail, active, children, onLogout }:
                   <button
                     type="button"
                     onClick={onLogout}
-                    className="w-full text-left rounded-lg px-3 py-2 text-red-600 hover:bg-red-50"
+                    disabled={!onLogout}
+                    className="w-full text-left rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-60"
                   >
                     Déconnexion
                   </button>
