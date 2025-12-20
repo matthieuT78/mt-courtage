@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
+import RepairsGuideCard from "../RepairsGuideCard";
 
 /* ======================================================
    TYPES
@@ -142,6 +143,9 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "ended" | "draft">("all");
 
+  // Bloc “Waou” (collapsible)
+  const [showGuide, setShowGuide] = useState(false);
+
   const filteredLeases = useMemo(() => {
     const query = q.trim().toLowerCase();
     return safeLeases
@@ -256,7 +260,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   };
 
   /* ======================================================
-     CRUD (ANTI-SUBMIT HTML)
+     CRUD
   ====================================================== */
 
   const saveLease = async () => {
@@ -270,8 +274,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     setOk(null);
 
     try {
-      console.log("[saveLease] start", { mode, selectedId, userId, supabase: !!supabase, form });
-
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
       if (!form.property_id) throw new Error("Veuillez sélectionner un bien.");
       if (!form.tenant_id) throw new Error("Veuillez sélectionner un locataire.");
@@ -305,8 +307,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         timezone: form.timezone || "Europe/Paris",
       };
 
-      console.log("[saveLease] payload", payload);
-
       if (mode === "edit" && selectedId) {
         const { error } = await supabase.from("leases").update(payload).eq("id", selectedId).eq("user_id", userId);
         if (error) throw error;
@@ -321,7 +321,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         setMode("idle");
       }
 
-      // best-effort
       safeRefresh();
     } catch (e: any) {
       console.error("[saveLease] error:", e);
@@ -463,6 +462,36 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         </div>
       )}
 
+      {/* Waou block: repairs guide (collapsed by default) */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowGuide((v) => !v)}
+          className="w-full text-left px-5 py-4 bg-white hover:bg-slate-50 transition"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Assistant bailleur</p>
+              <p className="text-sm font-semibold text-slate-900">Réparations locatives : qui paie quoi ?</p>
+              <p className="mt-1 text-xs text-slate-600 max-w-2xl">
+                Recherche instantanée + accès au guide PDF officiel. Parfait en cas de panne, entretien ou dépôt de garantie.
+              </p>
+            </div>
+            <div className="shrink-0">
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800">
+                {showGuide ? "Masquer" : "Ouvrir"}
+              </span>
+            </div>
+          </div>
+        </button>
+
+        {showGuide ? (
+          <div className="p-4">
+            <RepairsGuideCard />
+          </div>
+        ) : null}
+      </div>
+
       {/* Drawer */}
       {drawerOpen ? (
         <div className="fixed inset-0 z-50">
@@ -565,7 +594,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                 )
               ) : null}
 
-              {/* CREATE / EDIT (sans submit HTML) */}
+              {/* CREATE / EDIT */}
               {mode === "create" || mode === "edit" ? (
                 <div className="space-y-3" data-stop-nav>
                   <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
@@ -728,7 +757,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                       onClick={(e) => {
                         stop(e);
                         if (loading) return;
-                        console.log("[btn] saveLease clicked", { mode, selectedId });
                         saveLease();
                       }}
                       className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"

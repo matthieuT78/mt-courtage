@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
-import RepairsGuideCard from "../RepairsGuideCard";
 
 /* ======================================================
    TYPES
@@ -143,9 +142,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "ended" | "draft">("all");
 
-  // Bloc “Waou” (collapsible)
-  const [showGuide, setShowGuide] = useState(false);
-
   const filteredLeases = useMemo(() => {
     const query = q.trim().toLowerCase();
     return safeLeases
@@ -260,7 +256,32 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   };
 
   /* ======================================================
-     CRUD
+     PDF MODAL (premium)
+  ====================================================== */
+
+  const PDF_URL = "/docs/votre-habitat-repare-entretien.pdf";
+  const [guideOpen, setGuideOpen] = useState(false);
+
+  // ESC + lock scroll
+  useEffect(() => {
+    if (!guideOpen) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setGuideOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [guideOpen]);
+
+  /* ======================================================
+     CRUD (ANTI-SUBMIT HTML)
   ====================================================== */
 
   const saveLease = async () => {
@@ -274,6 +295,8 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     setOk(null);
 
     try {
+      console.log("[saveLease] start", { mode, selectedId, userId, supabase: !!supabase, form });
+
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
       if (!form.property_id) throw new Error("Veuillez sélectionner un bien.");
       if (!form.tenant_id) throw new Error("Veuillez sélectionner un locataire.");
@@ -306,6 +329,8 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         tenant_receipt_email: form.tenant_receipt_email ? form.tenant_receipt_email : null,
         timezone: form.timezone || "Europe/Paris",
       };
+
+      console.log("[saveLease] payload", payload);
 
       if (mode === "edit" && selectedId) {
         const { error } = await supabase.from("leases").update(payload).eq("id", selectedId).eq("user_id", userId);
@@ -388,6 +413,45 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
+      {/* Premium helper */}
+      <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-amber-50" />
+          <div className="relative p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Assistant bailleur</p>
+                <p className="text-sm sm:text-base font-semibold text-slate-900">
+                  Réparations & entretien : qui est responsable ?
+                </p>
+                <p className="mt-1 text-xs text-slate-600 max-w-2xl">
+                  Ouvre le guide en plein écran (scroll + recherche). Pratique quand un locataire te signale un souci.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={PDF_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
+                >
+                  Ouvrir dans un onglet
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setGuideOpen(true)}
+                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 shadow-sm"
+                >
+                  Ouvrir le guide (premium)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -461,36 +525,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
           })}
         </div>
       )}
-
-      {/* Waou block: repairs guide (collapsed by default) */}
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowGuide((v) => !v)}
-          className="w-full text-left px-5 py-4 bg-white hover:bg-slate-50 transition"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Assistant bailleur</p>
-              <p className="text-sm font-semibold text-slate-900">Réparations locatives : qui paie quoi ?</p>
-              <p className="mt-1 text-xs text-slate-600 max-w-2xl">
-                Recherche instantanée + accès au guide PDF officiel. Parfait en cas de panne, entretien ou dépôt de garantie.
-              </p>
-            </div>
-            <div className="shrink-0">
-              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800">
-                {showGuide ? "Masquer" : "Ouvrir"}
-              </span>
-            </div>
-          </div>
-        </button>
-
-        {showGuide ? (
-          <div className="p-4">
-            <RepairsGuideCard />
-          </div>
-        ) : null}
-      </div>
 
       {/* Drawer */}
       {drawerOpen ? (
@@ -757,6 +791,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                       onClick={(e) => {
                         stop(e);
                         if (loading) return;
+                        console.log("[btn] saveLease clicked", { mode, selectedId });
                         saveLease();
                       }}
                       className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
@@ -778,6 +813,68 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                   </div>
                 </div>
               ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* PREMIUM MODAL PDF */}
+      {guideOpen ? (
+        <div className="fixed inset-0 z-[60]">
+          {/* Backdrop */}
+          <button
+            type="button"
+            aria-label="Fermer le guide"
+            onClick={() => setGuideOpen(false)}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+
+          {/* Modal */}
+          <div className="absolute inset-0 p-3 sm:p-6">
+            <div className="h-full w-full rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+              {/* Top bar */}
+              <div className="px-4 sm:px-5 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Guide</p>
+                  <p className="text-sm font-semibold text-slate-900 truncate">
+                    Réparations locatives — qui paie quoi ?
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href={PDF_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
+                  >
+                    Ouvrir dans un onglet
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setGuideOpen(false)}
+                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                  >
+                    Fermer (ESC)
+                  </button>
+                </div>
+              </div>
+
+              {/* PDF area */}
+              <div className="flex-1 bg-white">
+                <iframe
+                  title="Guide réparations locatives"
+                  src={`${PDF_URL}#view=FitH`}
+                  className="w-full h-full"
+                />
+              </div>
+
+              {/* Bottom hint */}
+              <div className="px-4 sm:px-5 py-3 border-t border-slate-200 bg-white">
+                <p className="text-[0.75rem] text-slate-500">
+                  Astuce : pour chercher dans le PDF, utilise <span className="font-semibold">Ctrl+F</span> (ou ⌘F).
+                </p>
+              </div>
             </div>
           </div>
         </div>
