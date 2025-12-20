@@ -153,46 +153,52 @@ function printChecklist(title: string, items: ChecklistItem[], meta: { property?
   w.print();
 }
 
+/** Helper : force le bon type ChecklistCategory (évite category: string) */
+function ci(category: ChecklistCategory, label: string): ChecklistItem {
+  return { id: uid("c"), category, label, checked: false, note: "" };
+}
+
 function baseChecklistFor(typeBien: string): ChecklistItem[] {
   const common: ChecklistItem[] = [
-    { id: uid("c"), category: "général", label: "État général du logement (propreté, odeurs, humidité)", checked: false, note: "" },
-    { id: uid("c"), category: "compteurs", label: "Relevé compteur électricité", checked: false, note: "" },
-    { id: uid("c"), category: "compteurs", label: "Relevé compteur eau", checked: false, note: "" },
-    { id: uid("c"), category: "compteurs", label: "Relevé compteur gaz (si applicable)", checked: false, note: "" },
-    { id: uid("c"), category: "entrée", label: "Porte d’entrée (serrure, clés)", checked: false, note: "" },
-    { id: uid("c"), category: "entrée", label: "Interphone / badge", checked: false, note: "" },
-    { id: uid("c"), category: "annexes", label: "Cave / parking / box (si applicable)", checked: false, note: "" },
+    ci("général", "État général du logement (propreté, odeurs, humidité)"),
+    ci("compteurs", "Relevé compteur électricité"),
+    ci("compteurs", "Relevé compteur eau"),
+    ci("compteurs", "Relevé compteur gaz (si applicable)"),
+    ci("entrée", "Porte d’entrée (serrure, clés)"),
+    ci("entrée", "Interphone / badge"),
+    ci("annexes", "Cave / parking / box (si applicable)"),
   ];
 
-  const studio = [
-    { id: uid("c"), category: "séjour", label: "Murs / plafonds / sols", checked: false, note: "" },
-    { id: uid("c"), category: "séjour", label: "Fenêtres / volets / rideaux", checked: false, note: "" },
-    { id: uid("c"), category: "séjour", label: "Chauffage / radiateurs", checked: false, note: "" },
-    { id: uid("c"), category: "cuisine", label: "Plaques / hotte / four (si présent)", checked: false, note: "" },
-    { id: uid("c"), category: "cuisine", label: "Réfrigérateur / congélateur (si présent)", checked: false, note: "" },
-    { id: uid("c"), category: "cuisine", label: "Évier / robinetterie / évacuation", checked: false, note: "" },
-    { id: uid("c"), category: "sdb", label: "Douche/baignoire (joints, évacuation)", checked: false, note: "" },
-    { id: uid("c"), category: "sdb", label: "Lavabo / miroir / rangements", checked: false, note: "" },
-    { id: uid("c"), category: "wc", label: "WC (chasse d’eau, abattant)", checked: false, note: "" },
+  // ✅ IMPORTANT : typé ChecklistItem[] (sinon category devient string)
+  const studio: ChecklistItem[] = [
+    ci("séjour", "Murs / plafonds / sols"),
+    ci("séjour", "Fenêtres / volets / rideaux"),
+    ci("séjour", "Chauffage / radiateurs"),
+    ci("cuisine", "Plaques / hotte / four (si présent)"),
+    ci("cuisine", "Réfrigérateur / congélateur (si présent)"),
+    ci("cuisine", "Évier / robinetterie / évacuation"),
+    ci("sdb", "Douche/baignoire (joints, évacuation)"),
+    ci("sdb", "Lavabo / miroir / rangements"),
+    ci("wc", "WC (chasse d’eau, abattant)"),
   ];
 
-  const t2 = [
+  const t2: ChecklistItem[] = [
     ...studio,
-    { id: uid("c"), category: "chambre", label: "Chambre : murs / plafonds / sols", checked: false, note: "" },
-    { id: uid("c"), category: "chambre", label: "Chambre : fenêtres / volets", checked: false, note: "" },
+    ci("chambre", "Chambre : murs / plafonds / sols"),
+    ci("chambre", "Chambre : fenêtres / volets"),
   ];
 
-  const maison = [
+  const maison: ChecklistItem[] = [
     ...t2,
-    { id: uid("c"), category: "annexes", label: "Extérieurs : jardin / terrasse", checked: false, note: "" },
-    { id: uid("c"), category: "annexes", label: "Portail / clôture (si applicable)", checked: false, note: "" },
+    ci("annexes", "Extérieurs : jardin / terrasse"),
+    ci("annexes", "Portail / clôture (si applicable)"),
   ];
 
   const map: Record<string, ChecklistItem[]> = {
     studio: [...common, ...studio],
     t1: [...common, ...studio],
     t2: [...common, ...t2],
-    t3: [...common, ...t2, { id: uid("c"), category: "chambre", label: "Chambre 2 : état général", checked: false, note: "" }],
+    t3: [...common, ...t2, ci("chambre", "Chambre 2 : état général")],
     maison: [...common, ...maison],
   };
 
@@ -389,12 +395,8 @@ export default function EtatsDesLieuxDocumentsPage() {
         <AppHeader />
         <main className="flex-1 px-4 py-6">
           <div className="max-w-xl mx-auto rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600">
-              États des lieux & documents
-            </p>
-            <h1 className="text-lg font-semibold text-slate-900">
-              Connectez-vous pour accéder à l’outil
-            </h1>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600">États des lieux & documents</p>
+            <h1 className="text-lg font-semibold text-slate-900">Connectez-vous pour accéder à l’outil</h1>
             <p className="text-sm text-slate-600">
               Vous pourrez générer vos checklists, télécharger des modèles et centraliser les pièces locataires.
             </p>
@@ -432,9 +434,7 @@ export default function EtatsDesLieuxDocumentsPage() {
         <div className="max-w-6xl mx-auto space-y-5">
           {/* Header */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-2">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600">
-              États des lieux & documents
-            </p>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600">États des lieux & documents</p>
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
               Modèles + checklist personnalisable + centralisation des pièces.
             </h1>
@@ -548,9 +548,7 @@ export default function EtatsDesLieuxDocumentsPage() {
                 {/* Entrée */}
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                   <p className="text-sm font-semibold text-slate-900">Modèle – Entrée</p>
-                  <p className="text-xs text-slate-600">
-                    Génère un document d’état des lieux d’entrée à compléter + imprimer.
-                  </p>
+                  <p className="text-xs text-slate-600">Génère un document d’état des lieux d’entrée à compléter + imprimer.</p>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -597,9 +595,16 @@ export default function EtatsDesLieuxDocumentsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const metaProp = selectedProperty ? `${selectedProperty.label || "Bien"} — ${addr(selectedProperty)}` : "";
-                        const metaTenant = selectedTenant ? `${selectedTenant.full_name || "Locataire"} (${selectedTenant.email || "—"})` : "";
-                        printChecklist("Checklist EDL – Entrée", baseChecklistFor(typeBien), { property: metaProp, tenant: metaTenant });
+                        const metaProp = selectedProperty
+                          ? `${selectedProperty.label || "Bien"} — ${addr(selectedProperty)}`
+                          : "";
+                        const metaTenant = selectedTenant
+                          ? `${selectedTenant.full_name || "Locataire"} (${selectedTenant.email || "—"})`
+                          : "";
+                        printChecklist("Checklist EDL – Entrée", baseChecklistFor(typeBien), {
+                          property: metaProp,
+                          tenant: metaTenant,
+                        });
                       }}
                       className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
                     >
@@ -674,9 +679,7 @@ export default function EtatsDesLieuxDocumentsPage() {
                 <div>
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Checklist</p>
                   <h2 className="text-lg font-semibold text-slate-900">Checklist personnalisable par type de bien</h2>
-                  <p className="text-sm text-slate-600 mt-1">
-                    Coche, ajoute des notes, puis export (.txt) ou impression.
-                  </p>
+                  <p className="text-sm text-slate-600 mt-1">Coche, ajoute des notes, puis export (.txt) ou impression.</p>
                 </div>
 
                 <div className="flex gap-2 items-end">
@@ -716,7 +719,9 @@ export default function EtatsDesLieuxDocumentsPage() {
                   type="button"
                   onClick={() => {
                     const metaProp = selectedProperty ? `${selectedProperty.label || "Bien"} — ${addr(selectedProperty)}` : "";
-                    const metaTenant = selectedTenant ? `${selectedTenant.full_name || "Locataire"} (${selectedTenant.email || "—"})` : "";
+                    const metaTenant = selectedTenant
+                      ? `${selectedTenant.full_name || "Locataire"} (${selectedTenant.email || "—"})`
+                      : "";
                     printChecklist(`Checklist EDL (${typeBien})`, checklist, { property: metaProp, tenant: metaTenant });
                   }}
                   className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
@@ -741,9 +746,7 @@ export default function EtatsDesLieuxDocumentsPage() {
                           className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600"
                         />
                         <span>
-                          <span className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-400">
-                            {it.category}
-                          </span>
+                          <span className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-400">{it.category}</span>
                           <br />
                           <span className="font-medium">{it.label}</span>
                         </span>
@@ -773,10 +776,13 @@ export default function EtatsDesLieuxDocumentsPage() {
 
                 <div className="rounded-xl border border-dashed border-slate-200 bg-white p-3">
                   <p className="text-xs text-slate-600 mb-2">Ajouter un point personnalisé</p>
-                  <AddChecklistItem onAdd={(label) => {
-                    const item: ChecklistItem = { id: uid("c"), category: "général", label, checked: false, note: "" };
-                    setChecklist((prev) => [item, ...prev]);
-                  }} />
+                  <AddChecklistItem
+                    onAdd={(label) => {
+                      // ✅ category bien typée
+                      const item: ChecklistItem = { id: uid("c"), category: "général", label, checked: false, note: "" };
+                      setChecklist((prev) => [item, ...prev]);
+                    }}
+                  />
                 </div>
               </div>
             </section>
@@ -784,11 +790,10 @@ export default function EtatsDesLieuxDocumentsPage() {
             <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
               <div>
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Documents locataire</p>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Centralisation des pièces (MVP)
-                </h2>
+                <h2 className="text-lg font-semibold text-slate-900">Centralisation des pièces (MVP)</h2>
                 <p className="text-sm text-slate-600 mt-1">
-                  Pour l’instant : liste & statuts stockés en local (par utilisateur). Ensuite : upload fichiers via Supabase Storage + table.
+                  Pour l’instant : liste & statuts stockés en local (par utilisateur). Ensuite : upload fichiers via Supabase
+                  Storage + table.
                 </p>
               </div>
 
@@ -830,7 +835,7 @@ export default function EtatsDesLieuxDocumentsPage() {
                       <label className="text-[0.7rem] text-slate-600">Statut</label>
                       <select
                         value={docStatus}
-                        onChange={(e) => setDocStatus(e.target.value as any)}
+                        onChange={(e) => setDocStatus(e.target.value as StoredDoc["status"])}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                       >
                         <option value="à demander">À demander</option>
@@ -877,15 +882,12 @@ export default function EtatsDesLieuxDocumentsPage() {
                 {/* Right: list */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-900">
-                      Documents ({filteredDocs.length})
-                    </p>
+                    <p className="text-sm font-semibold text-slate-900">Documents ({filteredDocs.length})</p>
                     <button
                       type="button"
                       onClick={() => {
                         const ok = window.confirm("Vider la liste filtrée ?");
                         if (!ok) return;
-                        // remove only filtered
                         const ids = new Set(filteredDocs.map((d) => d.id));
                         setDocs((prev) => prev.filter((d) => !ids.has(d.id)));
                       }}
@@ -937,7 +939,7 @@ export default function EtatsDesLieuxDocumentsPage() {
 
                             <select
                               value={d.status}
-                              onChange={(e) => updateDoc(d.id, { status: e.target.value as any })}
+                              onChange={(e) => updateDoc(d.id, { status: e.target.value as StoredDoc["status"] })}
                               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs"
                             >
                               <option value="à demander">À demander</option>
@@ -963,10 +965,7 @@ export default function EtatsDesLieuxDocumentsPage() {
 
           {/* Footer actions */}
           <div className="text-right">
-            <a
-              href="/outils-proprietaire"
-              className="text-[0.75rem] text-slate-500 underline underline-offset-2"
-            >
+            <a href="/outils-proprietaire" className="text-[0.75rem] text-slate-500 underline underline-offset-2">
               ← Retour à la boîte à outils propriétaire
             </a>
           </div>
@@ -974,9 +973,7 @@ export default function EtatsDesLieuxDocumentsPage() {
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
-        <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Outils pour propriétaires et investisseurs.
-        </p>
+        <p>© {new Date().getFullYear()} MT Courtage &amp; Investissement – Outils pour propriétaires et investisseurs.</p>
         <p className="mt-1">
           Contact :{" "}
           <a href="mailto:mtcourtage@gmail.com" className="underline">
