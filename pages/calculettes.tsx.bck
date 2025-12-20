@@ -31,6 +31,7 @@ export default function CalculettesPage() {
 
     (async () => {
       try {
+        // ✅ évite un "checking" bloqué si, un jour, supabase n'est pas dispo
         if (!supabase) return;
         const { data } = await supabase.auth.getSession();
         if (!mounted) return;
@@ -40,21 +41,22 @@ export default function CalculettesPage() {
       }
     })();
 
-    const { data: sub } =
-      supabase?.auth.onAuthStateChange((_evt, session) => {
-        setUser((session?.user as any) ?? null);
-        setChecking(false);
-      }) ?? { data: { subscription: { unsubscribe: () => {} } } };
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      if (!mounted) return;
+      setUser((session?.user as any) ?? null);
+      setChecking(false);
+    });
 
     return () => {
       mounted = false;
-      sub?.subscription?.unsubscribe?.();
+      sub.subscription.unsubscribe();
     };
   }, []);
 
   const isLoggedIn = !!user?.id;
   const displayName =
-    user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
+    user?.user_metadata?.full_name ||
+    (user?.email ? user.email.split("@")[0] : null);
 
   // ✅ IMPORTANT : Calculettes = toujours accessibles (visiteur OK)
   const goToTool = (path: string) => {
@@ -103,7 +105,13 @@ export default function CalculettesPage() {
     []
   );
 
-  const Badge = ({ tone, label }: { tone: "emerald" | "amber" | "slate"; label: string }) => {
+  const Badge = ({
+    tone,
+    label,
+  }: {
+    tone: "emerald" | "amber" | "slate";
+    label: string;
+  }) => {
     const cls =
       tone === "emerald"
         ? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -114,7 +122,8 @@ export default function CalculettesPage() {
     return (
       <span
         className={
-          "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold " + cls
+          "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold " +
+          cls
         }
       >
         {label}
@@ -138,10 +147,13 @@ export default function CalculettesPage() {
                     Calculettes • Simulations
                   </p>
                   <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
-                    {displayName ? `Bonjour ${displayName}.` : "Choisissez votre objectif."}
+                    {displayName
+                      ? `Bonjour ${displayName}.`
+                      : "Choisissez votre objectif."}
                   </h1>
                   <p className="text-sm text-slate-700 max-w-2xl">
-                    Cliquez, simulez, sauvegardez. En visiteur : accès OK, analyse détaillée floutée.
+                    Cliquez, simulez, sauvegardez. En visiteur : accès OK,
+                    analyse détaillée floutée.
                   </p>
 
                   <div className="flex flex-wrap gap-2 pt-1">
@@ -174,9 +186,24 @@ export default function CalculettesPage() {
               {/* Quick start tiles */}
               <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 {[
-                  { title: "Acheter", desc: "Capacité + budget", icon: "🏠", href: "/capacite" },
-                  { title: "Investir", desc: "Cash-flow & rendement", icon: "📈", href: "/investissement" },
-                  { title: "Achat revente", desc: "Prêt relais", icon: "🔁", href: "/pret-relais" },
+                  {
+                    title: "Acheter",
+                    desc: "Capacité + budget",
+                    icon: "🏠",
+                    href: "/capacite",
+                  },
+                  {
+                    title: "Investir",
+                    desc: "Cash-flow & rendement",
+                    icon: "📈",
+                    href: "/investissement",
+                  },
+                  {
+                    title: "Achat revente",
+                    desc: "Prêt relais",
+                    icon: "🔁",
+                    href: "/pret-relais",
+                  },
                 ].map((x) => (
                   <button
                     key={x.title}
@@ -186,7 +213,9 @@ export default function CalculettesPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">{x.title}</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {x.title}
+                        </p>
                         <p className="text-xs text-slate-600 mt-1">{x.desc}</p>
                       </div>
                       <div className="h-10 w-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-lg shadow-sm transition group-hover:scale-[1.03]">
@@ -199,11 +228,13 @@ export default function CalculettesPage() {
             </div>
           </section>
 
-          {/* GRID “SEXY” DES OUTILS */}
+          {/* GRID DES OUTILS */}
           <section className="space-y-3">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Bibliothèque</p>
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                  Bibliothèque
+                </p>
                 <h2 className="text-base sm:text-lg font-semibold text-slate-900">
                   Toutes les calculettes
                 </h2>
@@ -230,13 +261,19 @@ export default function CalculettesPage() {
                           {t.icon}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
-                          <p className="text-xs text-slate-600 mt-0.5">{t.desc}</p>
+                          <p className="text-sm font-semibold text-slate-900 truncate">
+                            {t.title}
+                          </p>
+                          <p className="text-xs text-slate-600 mt-0.5">
+                            {t.desc}
+                          </p>
                         </div>
                       </div>
 
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        {t.badge ? <Badge tone={t.badge.tone} label={t.badge.label} /> : null}
+                        {t.badge ? (
+                          <Badge tone={t.badge.tone} label={t.badge.label} />
+                        ) : null}
                         <span className="text-[0.65rem] text-slate-500">
                           {t.note ?? ""}
                         </span>
@@ -256,9 +293,12 @@ export default function CalculettesPage() {
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">Vous voulez gérer vos locations ?</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    Vous voulez gérer vos locations ?
+                  </p>
                   <p className="text-xs text-slate-600 mt-1">
-                    Accédez au dashboard bailleur (biens, locataires, baux, quittances).
+                    Accédez au dashboard bailleur (biens, locataires, baux,
+                    quittances).
                   </p>
                 </div>
                 <Link

@@ -11,27 +11,62 @@ type SimpleUser = {
   user_metadata?: { full_name?: string };
 };
 
+type Tone = "emerald" | "amber" | "slate";
+
 type Tool = {
   key: string;
   title: string;
   desc: string;
   href: string;
   icon: string;
-  badge?: { label: string; tone: "emerald" | "amber" | "slate" };
-  note?: string;
+  category: "Achat" | "Investissement" | "Patrimoine";
+  access: "free" | "blur_if_guest";
+  badge?: { label: string; tone: Tone };
+  tags?: string[];
 };
+
+function cx(...c: Array<string | false | null | undefined>) {
+  return c.filter(Boolean).join(" ");
+}
+
+function Badge({ tone, label }: { tone: Tone; label: string }) {
+  const cls =
+    tone === "emerald"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : tone === "amber"
+      ? "border-amber-200 bg-amber-50 text-amber-800"
+      : "border-slate-200 bg-slate-50 text-slate-700";
+
+  return (
+    <span className={cx("inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold", cls)}>
+      {label}
+    </span>
+  );
+}
+
+function Pill({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
+      {children}
+    </span>
+  );
+}
 
 export default function CalculettesPage() {
   const router = useRouter();
+
   const [user, setUser] = useState<SimpleUser | null>(null);
   const [checking, setChecking] = useState(true);
+
+  // UI state
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<"Toutes" | Tool["category"]>("Toutes");
 
   useEffect(() => {
     let mounted = true;
 
     (async () => {
       try {
-        // ✅ évite un "checking" bloqué si, un jour, supabase n'est pas dispo
         if (!supabase) return;
         const { data } = await supabase.auth.getSession();
         if (!mounted) return;
@@ -55,13 +90,9 @@ export default function CalculettesPage() {
 
   const isLoggedIn = !!user?.id;
   const displayName =
-    user?.user_metadata?.full_name ||
-    (user?.email ? user.email.split("@")[0] : null);
+    user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
 
-  // ✅ IMPORTANT : Calculettes = toujours accessibles (visiteur OK)
-  const goToTool = (path: string) => {
-    router.push(path);
-  };
+  const go = (href: string) => router.push(href);
 
   const tools: Tool[] = useMemo(
     () => [
@@ -71,8 +102,10 @@ export default function CalculettesPage() {
         desc: "Mensualité max, capital empruntable, prix indicatif.",
         href: "/capacite",
         icon: "🏠",
+        category: "Achat",
+        access: "free",
         badge: { label: "Gratuit", tone: "emerald" },
-        note: "Accès direct",
+        tags: ["Budget", "Mensualité", "Banque"],
       },
       {
         key: "invest",
@@ -80,8 +113,10 @@ export default function CalculettesPage() {
         desc: "Cash-flow net, rendement réel, effort mensuel.",
         href: "/investissement",
         icon: "📈",
-        badge: { label: "Analyse + si inscrit", tone: "amber" },
-        note: "Analyse floutée si visiteur",
+        category: "Investissement",
+        access: "blur_if_guest",
+        badge: { label: "Analyse si inscrit", tone: "amber" },
+        tags: ["Cash-flow", "Rendement", "Charges"],
       },
       {
         key: "relais",
@@ -89,8 +124,10 @@ export default function CalculettesPage() {
         desc: "Budget réaliste, relais, reste à vivre.",
         href: "/pret-relais",
         icon: "🔁",
-        badge: { label: "Analyse + si inscrit", tone: "amber" },
-        note: "Analyse floutée si visiteur",
+        category: "Achat",
+        access: "blur_if_guest",
+        badge: { label: "Analyse si inscrit", tone: "amber" },
+        tags: ["Relais", "Reste à vivre"],
       },
       {
         key: "parc",
@@ -98,216 +135,284 @@ export default function CalculettesPage() {
         desc: "Vue globale, cash-flow total, encours.",
         href: "/parc-immobilier",
         icon: "🧩",
-        badge: { label: "Analyse + si inscrit", tone: "amber" },
-        note: "Analyse floutée si visiteur",
+        category: "Patrimoine",
+        access: "blur_if_guest",
+        badge: { label: "Analyse si inscrit", tone: "amber" },
+        tags: ["Portefeuille", "Global"],
       },
     ],
     []
   );
 
-  const Badge = ({
-    tone,
-    label,
-  }: {
-    tone: "emerald" | "amber" | "slate";
-    label: string;
-  }) => {
-    const cls =
-      tone === "emerald"
-        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-        : tone === "amber"
-        ? "border-amber-200 bg-amber-50 text-amber-800"
-        : "border-slate-200 bg-slate-50 text-slate-700";
+  // “Recommandé” : 3 cartes max, orientées action
+  const featuredKeys = ["capacite", "invest", "relais"];
+  const featured = tools.filter((t) => featuredKeys.includes(t.key));
 
-    return (
-      <span
-        className={
-          "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold " +
-          cls
-        }
-      >
-        {label}
-      </span>
-    );
-  };
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return tools.filter((t) => {
+      const inCat = category === "Toutes" ? true : t.category === category;
+
+      if (!q) return inCat;
+
+      const hay = [
+        t.title,
+        t.desc,
+        t.category,
+        ...(t.tags || []),
+        t.access === "free" ? "gratuit" : "inscription",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return inCat && hay.includes(q);
+    });
+  }, [tools, query, category]);
+
+  // CTA connexion “soft” (pas agressif)
+  const loginHref = useMemo(() => {
+    const redirect = encodeURIComponent("/calculettes");
+    return `/mon-compte?mode=login&redirect=${redirect}`;
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
-        <div className="max-w-5xl mx-auto space-y-6">
-          {/* HERO WAOU */}
-          <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-amber-50" />
-            <div className="relative p-6 sm:p-7">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-2">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600">
-                    Calculettes • Simulations
-                  </p>
-                  <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
-                    {displayName
-                      ? `Bonjour ${displayName}.`
-                      : "Choisissez votre objectif."}
-                  </h1>
-                  <p className="text-sm text-slate-700 max-w-2xl">
-                    Cliquez, simulez, sauvegardez. En visiteur : accès OK,
-                    analyse détaillée floutée.
-                  </p>
+        <div className="mx-auto max-w-6xl space-y-5">
+          {/* TOP BAR (pro, ultra simple) */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-emerald-50" />
+              <div className="relative p-6 sm:p-7">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div className="space-y-2">
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600">
+                      Bibliothèque de calculettes
+                    </p>
 
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
-                      ⚡ Résultats instantanés
-                    </span>
-                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
-                      🧠 Logique “banque”
-                    </span>
-                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
-                      📌 Sauvegarde {isLoggedIn ? "active" : "après inscription"}
-                    </span>
+                    <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
+                      {displayName ? `Bonjour ${displayName}.` : "Choisissez un outil, et simulez."}
+                    </h1>
+
+                    <p className="text-sm text-slate-700 max-w-2xl">
+                      Une interface unique. Recherche instantanée. En visiteur : accès OK, certaines analyses sont floutées.
+                    </p>
+
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Pill>⚡ Rapide</Pill>
+                      <Pill>🧠 “Logique banque”</Pill>
+                      <Pill>📌 Sauvegarde {isLoggedIn ? "active" : "si inscrit"}</Pill>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 flex flex-col items-stretch gap-2">
+                    <button
+                      type="button"
+                      onClick={() => go("/capacite")}
+                      className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 shadow-sm"
+                    >
+                      Démarrer par la capacité →
+                    </button>
+
+                    {!checking && !isLoggedIn ? (
+                      <div className="flex gap-2 justify-end">
+                        <Link
+                          href={loginHref}
+                          className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-[0.8rem] font-semibold text-slate-800 hover:bg-slate-50"
+                        >
+                          Connexion
+                        </Link>
+                        <Link
+                          href="/mon-compte?mode=register&redirect=%2Fcalculettes"
+                          className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-emerald-500"
+                        >
+                          Créer un compte
+                        </Link>
+                      </div>
+                    ) : (
+                      <p className="text-[0.7rem] text-slate-600 text-right">
+                        {checking ? "…" : isLoggedIn ? "Connecté" : "Visiteur"}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <div className="shrink-0 flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => goToTool("/capacite")}
-                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 shadow-md"
-                  >
-                    Démarrer en 30 secondes →
-                  </button>
-                  <p className="text-[0.7rem] text-slate-600 text-right">
-                    Accès direct.
-                  </p>
-                </div>
-              </div>
-
-              {/* Quick start tiles */}
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {[
-                  {
-                    title: "Acheter",
-                    desc: "Capacité + budget",
-                    icon: "🏠",
-                    href: "/capacite",
-                  },
-                  {
-                    title: "Investir",
-                    desc: "Cash-flow & rendement",
-                    icon: "📈",
-                    href: "/investissement",
-                  },
-                  {
-                    title: "Achat revente",
-                    desc: "Prêt relais",
-                    icon: "🔁",
-                    href: "/pret-relais",
-                  },
-                ].map((x) => (
-                  <button
-                    key={x.title}
-                    type="button"
-                    onClick={() => goToTool(x.href)}
-                    className="group text-left rounded-2xl border border-slate-200 bg-white/70 backdrop-blur px-4 py-4 shadow-sm transition hover:shadow-md hover:-translate-y-0.5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {x.title}
+                {/* Search + filter */}
+                <div className="mt-5 grid gap-3 md:grid-cols-[1.2fr,auto] md:items-center">
+                  <div className="rounded-2xl border border-slate-200 bg-white shadow-sm px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-slate-900 text-white flex items-center justify-center">
+                        ⌕
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[0.65rem] uppercase tracking-[0.18em] text-slate-500">
+                          Recherche
                         </p>
-                        <p className="text-xs text-slate-600 mt-1">{x.desc}</p>
+                        <input
+                          value={query}
+                          onChange={(e) => setQuery(e.target.value)}
+                          placeholder="Ex : cashflow, prêt relais, rendement, mensualité…"
+                          className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                        />
                       </div>
-                      <div className="h-10 w-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-lg shadow-sm transition group-hover:scale-[1.03]">
-                        {x.icon}
-                      </div>
+                      {query ? (
+                        <button
+                          type="button"
+                          onClick={() => setQuery("")}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.75rem] font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Effacer
+                        </button>
+                      ) : null}
                     </div>
-                  </button>
-                ))}
+                  </div>
+
+                  <div className="flex gap-2 flex-wrap md:justify-end">
+                    {(["Toutes", "Achat", "Investissement", "Patrimoine"] as const).map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setCategory(c)}
+                        className={cx(
+                          "rounded-full px-4 py-2 text-xs font-semibold border transition",
+                          category === c
+                            ? "bg-slate-900 text-white border-slate-900"
+                            : "bg-white text-slate-800 border-slate-300 hover:bg-slate-50"
+                        )}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </section>
 
-          {/* GRID DES OUTILS */}
+          {/* RECOMMANDÉ (3 cartes, pas plus) */}
           <section className="space-y-3">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                  Bibliothèque
-                </p>
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Recommandé</p>
                 <h2 className="text-base sm:text-lg font-semibold text-slate-900">
-                  Toutes les calculettes
+                  Les 3 outils les plus utilisés
                 </h2>
               </div>
-              <div className="text-[0.7rem] text-slate-500">
-                {checking ? "…" : isLoggedIn ? "Connecté" : "Visiteur"}
-              </div>
+              <p className="text-[0.75rem] text-slate-500">
+                Objectif : aller vite, sans se poser de questions.
+              </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              {tools.map((t) => (
+            <div className="grid gap-3 md:grid-cols-3">
+              {featured.map((t) => (
                 <button
                   key={t.key}
                   type="button"
-                  onClick={() => goToTool(t.href)}
-                  className="group relative text-left rounded-2xl border border-slate-200 bg-white shadow-sm p-5 transition hover:shadow-md hover:-translate-y-0.5"
+                  onClick={() => go(t.href)}
+                  className="group text-left rounded-2xl border border-slate-200 bg-white shadow-sm p-5 hover:shadow-md transition hover:-translate-y-0.5"
                 >
-                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition bg-gradient-to-br from-emerald-50/60 via-white to-amber-50/60" />
-
-                  <div className="relative flex items-start justify-between gap-3">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <div className="h-10 w-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-lg shadow-sm">
                           {t.icon}
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">
-                            {t.title}
-                          </p>
-                          <p className="text-xs text-slate-600 mt-0.5">
-                            {t.desc}
-                          </p>
-                        </div>
+                        <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
                       </div>
+                      <p className="mt-2 text-xs text-slate-600">{t.desc}</p>
 
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        {t.badge ? (
-                          <Badge tone={t.badge.tone} label={t.badge.label} />
-                        ) : null}
-                        <span className="text-[0.65rem] text-slate-500">
-                          {t.note ?? ""}
-                        </span>
+                        {t.badge ? <Badge tone={t.badge.tone} label={t.badge.label} /> : null}
+                        <span className="text-[0.65rem] text-slate-500">{t.category}</span>
                       </div>
                     </div>
 
-                    <div className="shrink-0">
-                      <span className="inline-flex items-center justify-center rounded-full bg-slate-900 px-3 py-1.5 text-[0.7rem] font-semibold text-white">
-                        Ouvrir →
-                      </span>
-                    </div>
+                    <span className="shrink-0 inline-flex items-center rounded-full bg-slate-900 px-3 py-1.5 text-[0.7rem] font-semibold text-white">
+                      Ouvrir →
+                    </span>
                   </div>
                 </button>
               ))}
             </div>
+          </section>
 
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">
-                    Vous voulez gérer vos locations ?
-                  </p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Accédez au dashboard bailleur (biens, locataires, baux,
-                    quittances).
-                  </p>
-                </div>
-                <Link
-                  href="/espace-bailleur"
-                  className="inline-flex items-center justify-center rounded-full bg-amber-400 px-4 py-2 text-[0.8rem] font-semibold text-slate-900 hover:bg-amber-300"
-                >
-                  Ouvrir l’espace bailleur
-                </Link>
+          {/* TOUTES */}
+          <section className="space-y-3">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Catalogue</p>
+                <h2 className="text-base sm:text-lg font-semibold text-slate-900">
+                  Toutes les calculettes
+                </h2>
               </div>
+              <p className="text-[0.75rem] text-slate-500">
+                {filtered.length} résultat{filtered.length > 1 ? "s" : ""}
+              </p>
+            </div>
+
+            {filtered.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-6 text-sm text-slate-700">
+                Aucun résultat. Essaie “cashflow”, “mensualité”, “relais”, “rendement”…
+              </div>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {filtered.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => go(t.href)}
+                    className="group text-left rounded-2xl border border-slate-200 bg-white shadow-sm p-5 hover:shadow-md transition"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="h-10 w-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-lg shadow-sm">
+                            {t.icon}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{t.title}</p>
+                            <p className="text-xs text-slate-600 mt-0.5">{t.desc}</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          {t.badge ? <Badge tone={t.badge.tone} label={t.badge.label} /> : null}
+                          <Badge tone="slate" label={t.category} />
+                          {(t.tags || []).slice(0, 3).map((x) => (
+                            <span key={x} className="text-[0.65rem] text-slate-500">
+                              {x}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <span className="shrink-0 inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 group-hover:bg-slate-50">
+                        Ouvrir →
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* CTA bailleur (sobre, 1 seul) */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Gestion locative</p>
+                <p className="text-xs text-slate-600 mt-1">
+                  Biens, locataires, baux, quittances, états des lieux.
+                </p>
+              </div>
+              <Link
+                href="/espace-bailleur"
+                className="inline-flex items-center justify-center rounded-full bg-amber-400 px-4 py-2 text-[0.8rem] font-semibold text-slate-900 hover:bg-amber-300"
+              >
+                Ouvrir l’espace bailleur
+              </Link>
             </div>
           </section>
         </div>
