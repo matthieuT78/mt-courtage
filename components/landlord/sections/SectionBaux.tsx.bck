@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 
@@ -89,7 +89,24 @@ const badge = (tone: "slate" | "emerald" | "amber" | "red", label: string) => {
       : tone === "red"
       ? "border-red-200 bg-red-50 text-red-900"
       : "border-slate-200 bg-slate-50 text-slate-800";
-  return <span className={"inline-flex items-center rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold " + cls}>{label}</span>;
+  return (
+    <span className={"inline-flex items-center rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold " + cls}>
+      {label}
+    </span>
+  );
+};
+
+// ✅ refresh best-effort (ne bloque jamais l’UI)
+const withTimeout = async <T,>(p: Promise<T>, ms = 4000): Promise<T> => {
+  return await Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`Timeout réseau (${ms}ms)`)), ms)),
+  ]);
+};
+
+const stop = (e: React.SyntheticEvent) => {
+  e.preventDefault();
+  e.stopPropagation();
 };
 
 /* ======================================================
@@ -128,23 +145,12 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   const filteredLeases = useMemo(() => {
     const query = q.trim().toLowerCase();
     return safeLeases
-      .filter((l) => {
-        if (statusFilter === "all") return true;
-        return (l.status || "").toLowerCase() === statusFilter;
-      })
+      .filter((l) => (statusFilter === "all" ? true : (l.status || "").toLowerCase() === statusFilter))
       .filter((l) => {
         if (!query) return true;
         const p = propertyById.get(l.property_id);
         const t = tenantById.get(l.tenant_id);
-        const hay = [
-          p?.label,
-          p?.city,
-          t?.full_name,
-          t?.email,
-          l.start_date,
-          l.end_date || "",
-          String(l.rent_amount ?? ""),
-        ]
+        const hay = [p?.label, p?.city, t?.full_name, t?.email, l.start_date, l.end_date || "", String(l.rent_amount ?? "")]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
@@ -172,11 +178,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     timezone: "Europe/Paris",
   });
 
-  // Quand on ouvre “create”
-  const openCreate = () => {
-    setErr(null);
-    setOk(null);
-    setSelectedId(null);
+  const resetForm = () => {
     setForm({
       property_id: "",
       tenant_id: "",
@@ -195,6 +197,14 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       tenant_receipt_email: "",
       timezone: "Europe/Paris",
     });
+  };
+
+  // Quand on ouvre “create”
+  const openCreate = () => {
+    setErr(null);
+    setOk(null);
+    setSelectedId(null);
+    resetForm();
     setMode("create");
   };
 
@@ -235,19 +245,21 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   const closeDrawer = () => {
     setMode("idle");
     setErr(null);
-    // ok on le laisse visible dans la liste
   };
 
   const safeRefresh = async () => {
     try {
-      await onRefresh?.();
-    } catch (e) {
-      console.error("[SectionBaux] onRefresh error:", e);
+      await withTimeout(onRefresh(), 4000);
+    } catch (e: any) {
+      console.warn("[SectionBaux] refresh skipped:", e?.message || e);
     }
   };
 
-  const onSave = async (e: FormEvent) => {
-    e.preventDefault();
+  /* ======================================================
+     CRUD (ANTI-SUBMIT HTML)
+  ====================================================== */
+
+  const saveLease = async () => {
     if (!userId) {
       setErr("userId manquant (DashboardShell / useLandlordDashboard).");
       return;
@@ -258,10 +270,13 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     setOk(null);
 
     try {
+      console.log("[saveLease] start", { mode, selectedId, userId, supabase: !!supabase, form });
+
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
       if (!form.property_id) throw new Error("Veuillez sélectionner un bien.");
       if (!form.tenant_id) throw new Error("Veuillez sélectionner un locataire.");
       if (!form.start_date) throw new Error("La date de début de bail est obligatoire.");
+      if (mode === "edit" && !selectedId) throw new Error("Impossible de modifier : bail non sélectionné.");
 
       const paymentDayNum = clampInt(form.payment_day, 1, 31, 1);
       const reminderDayNum = clampInt(form.reminder_day_of_month, 1, 31, 1);
@@ -290,29 +305,26 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         timezone: form.timezone || "Europe/Paris",
       };
 
+      console.log("[saveLease] payload", payload);
+
       if (mode === "edit" && selectedId) {
         const { error } = await supabase.from("leases").update(payload).eq("id", selectedId).eq("user_id", userId);
         if (error) throw error;
         setOk("Bail mis à jour ✅");
+        setMode("view");
       } else {
         const { data, error } = await supabase.from("leases").insert(payload).select("id").single();
         if (error) throw error;
         const newId = (data as any)?.id ?? null;
         setOk("Bail créé ✅");
         setSelectedId(newId);
-      }
-
-      await safeRefresh();
-
-      // Après save : revenir en “view” du bail (si id)
-      if (mode === "create") {
-        // si l’ID est dans l’état après refresh, on essaie de le garder
         setMode("idle");
-      } else {
-        setMode("view");
       }
+
+      // best-effort
+      safeRefresh();
     } catch (e: any) {
-      console.error("[SectionBaux] save error:", e);
+      console.error("[saveLease] error:", e);
       setErr(e?.message || "Erreur lors de l’enregistrement.");
     } finally {
       setLoading(false);
@@ -336,7 +348,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       setOk("Bail supprimé ✅");
       setSelectedId(null);
       setMode("idle");
-      await safeRefresh();
+      safeRefresh();
     } catch (e: any) {
       console.error("[SectionBaux] delete error:", e);
       setErr(e?.message || "Suppression impossible (quittances/loyers existants ?).");
@@ -344,6 +356,10 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       setLoading(false);
     }
   };
+
+  /* ======================================================
+     UI HELPERS
+  ====================================================== */
 
   const leaseCardLabel = (l: Lease) => {
     const p = propertyById.get(l.property_id);
@@ -396,7 +412,10 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
         <button
           type="button"
-          onClick={openCreate}
+          onClick={(e) => {
+            stop(e);
+            openCreate();
+          }}
           className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
         >
           + Nouveau bail
@@ -416,7 +435,10 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
               <button
                 key={l.id}
                 type="button"
-                onClick={() => openView(l.id)}
+                onClick={(e) => {
+                  stop(e);
+                  openView(l.id);
+                }}
                 className="rounded-2xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50 transition"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -425,7 +447,9 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                     <p className="mt-1 text-xs text-slate-600">{meta.sub}</p>
                     <p className="mt-2 text-xs text-slate-700">
                       Total mensuel : <span className="font-semibold">{formatEuro(meta.total)}</span>{" "}
-                      <span className="text-slate-500">({formatEuro(l.rent_amount)} + {formatEuro(l.charges_amount)})</span>
+                      <span className="text-slate-500">
+                        ({formatEuro(l.rent_amount)} + {formatEuro(l.charges_amount)})
+                      </span>
                     </p>
                   </div>
                   <div className="shrink-0 flex flex-col items-end gap-2">
@@ -451,11 +475,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
               <div className="min-w-0">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Baux</p>
                 <p className="text-base font-semibold text-slate-900">{drawerTitle}</p>
-                {mode !== "create" && selected ? (
-                  <p className="mt-1 text-xs text-slate-600">
-                    {leaseCardLabel(selected).title}
-                  </p>
-                ) : null}
+                {mode !== "create" && selected ? <p className="mt-1 text-xs text-slate-600">{leaseCardLabel(selected).title}</p> : null}
               </div>
 
               <button
@@ -520,7 +540,10 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={openEdit}
+                        onClick={(e) => {
+                          stop(e);
+                          openEdit();
+                        }}
                         className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
                         disabled={loading}
                       >
@@ -528,7 +551,10 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                       </button>
                       <button
                         type="button"
-                        onClick={onDelete}
+                        onClick={(e) => {
+                          stop(e);
+                          onDelete();
+                        }}
                         className="rounded-full border border-red-300 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                         disabled={loading}
                       >
@@ -539,9 +565,9 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                 )
               ) : null}
 
-              {/* CREATE / EDIT FORM */}
+              {/* CREATE / EDIT (sans submit HTML) */}
               {mode === "create" || mode === "edit" ? (
-                <form onSubmit={onSave} className="space-y-3">
+                <div className="space-y-3" data-stop-nav>
                   <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
@@ -585,7 +611,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                           value={form.start_date}
                           onChange={(e) => setForm((s) => ({ ...s, start_date: e.target.value }))}
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                          required
                         />
                       </div>
                       <div className="space-y-1">
@@ -698,8 +723,14 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
                   <div className="flex flex-wrap gap-2">
                     <button
-                      type="submit"
+                      type="button"
                       disabled={loading}
+                      onClick={(e) => {
+                        stop(e);
+                        if (loading) return;
+                        console.log("[btn] saveLease clicked", { mode, selectedId });
+                        saveLease();
+                      }}
                       className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
                     >
                       {loading ? "Enregistrement…" : mode === "edit" ? "Mettre à jour" : "Créer"}
@@ -707,13 +738,17 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
                     <button
                       type="button"
-                      onClick={() => (mode === "edit" ? setMode("view") : closeDrawer())}
+                      onClick={(e) => {
+                        stop(e);
+                        if (mode === "edit") setMode("view");
+                        else closeDrawer();
+                      }}
                       className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
                     >
                       Annuler
                     </button>
                   </div>
-                </form>
+                </div>
               ) : null}
             </div>
           </div>
