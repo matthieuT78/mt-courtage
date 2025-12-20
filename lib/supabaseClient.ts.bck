@@ -1,0 +1,38 @@
+// lib/supabaseClient.ts
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __supabase: SupabaseClient | null | undefined;
+}
+
+function makeClient(): SupabaseClient | null {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // IMPORTANT: on ne throw pas ici, sinon Next crash à l'import => page blanche / 500
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        "[supabase] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY manquantes. supabase = null"
+      );
+    }
+    return null;
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      // mets true seulement si tu utilises magic link / OAuth callback
+      detectSessionInUrl: true,
+    },
+  });
+}
+
+export const supabase: SupabaseClient | null =
+  globalThis.__supabase ?? makeClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis.__supabase = supabase;
+}

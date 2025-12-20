@@ -1,0 +1,186 @@
+// components/landlord/DashboardShell.tsx
+import React, { useMemo, useState } from "react";
+import { SidebarNav, LandlordSectionKey } from "./SidebarNav";
+
+import { SectionDashboard } from "./sections/SectionDashboard";
+import { SectionBiens } from "./sections/SectionBiens";
+import { SectionLocataires } from "./sections/SectionLocataires";
+import { SectionBaux } from "./sections/SectionBaux";
+import { SectionLoyers } from "./sections/SectionLoyers";
+import { SectionQuittances } from "./sections/SectionQuittances";
+import { SectionFinance } from "./sections/SectionFinance";
+import { SectionEtatDesLieux } from "./sections/SectionEtatDesLieux";
+import { SectionInventaire } from "./sections/SectionInventaire";
+import { SectionCompteurs } from "./sections/SectionCompteurs";
+import { SectionRevision } from "./sections/SectionRevision";
+import { SectionParametres } from "./sections/SectionParametres";
+
+export function DashboardShell(props: any) {
+  const [active, setActive] = useState<LandlordSectionKey>("dashboard");
+
+  const userId: string = props?.user?.id || "";
+  const userEmail: string | undefined = props?.user?.email;
+
+  const properties = Array.isArray(props?.properties) ? props.properties : [];
+  const tenants = Array.isArray(props?.tenants) ? props.tenants : [];
+  const leases = Array.isArray(props?.leases) ? props.leases : [];
+  const payments = Array.isArray(props?.payments) ? props.payments : [];
+  const receipts = Array.isArray(props?.receipts) ? props.receipts : [];
+  const photos = Array.isArray(props?.photos) ? props.photos : [];
+
+  const content = useMemo(() => {
+    if (!userId) {
+      return (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Chargement utilisateur… (userId manquant)
+        </div>
+      );
+    }
+
+    switch (active) {
+      case "dashboard":
+        return (
+          <SectionDashboard
+            userId={userId} // ✅ DB persistence onboarding
+            onGo={setActive} // ✅ navigation depuis le parcours guidé
+            propertiesCount={properties.length}
+            tenantsCount={tenants.length}
+            leasesCount={leases.length}
+            monthRange={props.monthRange}
+            monthlyExpected={props.monthlyExpected}
+            monthlyPaid={props.monthlyPaid}
+            lateCount={props.lateCount}
+            depositTotal={props.depositTotal}
+            occupancyRate={props.occupancyRate}
+            alerts={props.alerts}
+            activeLeases={props.activeLeases}
+            propertyById={props.propertyById}
+            tenantById={props.tenantById}
+          />
+        );
+
+      case "biens":
+        return (
+          <SectionBiens
+            userId={userId}
+            properties={properties}
+            photos={photos}
+            onRefresh={props.refresh}
+          />
+        );
+
+      case "locataires":
+        return (
+          <SectionLocataires
+            userId={userId}
+            tenants={tenants}
+            leases={leases}
+            properties={properties}
+            onRefresh={props.refresh}
+          />
+        );
+
+      case "baux":
+        return (
+          <SectionBaux
+            userId={userId}
+            leases={leases}
+            properties={properties}
+            tenants={tenants}
+            onRefresh={props.refresh}
+          />
+        );
+
+      case "loyers":
+        return (
+          <SectionLoyers
+            payments={payments}
+            leases={leases}
+            propertyById={props.propertyById}
+            tenantById={props.tenantById}
+          />
+        );
+
+      case "quittances":
+        return (
+          <SectionQuittances
+            userId={userId}
+            userEmail={userEmail}
+            landlord={props.landlord}
+            receipts={receipts}
+            leases={leases}
+            propertyById={props.propertyById}
+            tenantById={props.tenantById}
+            onRefresh={props.refresh}
+          />
+        );
+
+      case "finance":
+        return (
+          <SectionFinance
+            leases={leases}
+            payments={payments}
+            propertyById={props.propertyById}
+          />
+        );
+
+      case "etat_des_lieux":
+        return (
+          <SectionEtatDesLieux
+            userId={userId}
+            leases={leases}
+            properties={properties}
+            tenants={tenants}
+            onRefresh={props.refresh}
+          />
+        );
+
+      case "inventaire":
+        return <SectionInventaire />;
+
+      case "compteurs":
+        return <SectionCompteurs />;
+
+      case "revision":
+        return <SectionRevision />;
+
+      case "parametres":
+        return (
+          <SectionParametres
+            landlord={props.landlord}
+            overLimit={props.overLimit}
+            leaseLimit={props.leaseLimit}
+            activeLeaseCount={props.activeLeases?.length || 0}
+          />
+        );
+
+      default:
+        return null;
+    }
+  }, [
+    active,
+    props,
+    userId,
+    userEmail,
+    properties,
+    tenants,
+    leases,
+    payments,
+    receipts,
+    photos,
+  ]);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+        <SidebarNav
+          active={active}
+          onChange={setActive}
+          healthScore={props.healthScore}
+          overLimit={props.overLimit}
+        />
+        <section className="min-w-0 space-y-4">{content}</section>
+      </div>
+    </div>
+  );
+}
