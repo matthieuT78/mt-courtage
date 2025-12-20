@@ -44,8 +44,20 @@ type Props = {
 const fmt = (v?: string | null) => (v ? v : "—");
 
 /* ======================================================
-   COMPONENT
+   UTIL (anti loading infini)
 ====================================================== */
+
+const withTimeout = async <T,>(p: Promise<T>, ms = 15000) => {
+  let t: any;
+  const timeout = new Promise<never>((_, rej) => {
+    t = setTimeout(() => rej(new Error(`Timeout réseau (${ms}ms)`)), ms);
+  });
+  try {
+    return await Promise.race([p, timeout]);
+  } finally {
+    clearTimeout(t);
+  }
+};
 
 export function SectionLocataires({ userId, tenants, leases, properties, onRefresh }: Props) {
   const safeTenants = Array.isArray(tenants) ? tenants : [];
@@ -127,12 +139,16 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
       await onRefresh?.();
     } catch (e) {
       console.error("[SectionLocataires] onRefresh error:", e);
-      // on ne bloque pas l’UI pour ça
     }
   };
 
+  const stop = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   /* ======================================================
-     CRUD (ANTI-SUBMIT HTML)
+     CRUD (ANTI-NAVIGATION + DEBUG RESULT)
   ====================================================== */
 
   const saveTenant = async () => {
@@ -143,12 +159,7 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
     setOk(null);
 
     try {
-      console.log("[saveTenant] start", {
-        userId,
-        selectedId,
-        supabase: !!supabase,
-        form,
-      });
+      console.log("[saveTenant] start", { userId, selectedId, supabase: !!supabase, form });
 
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
 
@@ -163,19 +174,25 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
       console.log("[saveTenant] payload", payload);
 
       if (selectedId) {
-        const { error } = await supabase
-          .from("tenants")
-          .update(payload)
-          .eq("id", selectedId)
-          .eq("user_id", userId);
+        const res = await withTimeout(
+          supabase.from("tenants").update(payload).eq("id", selectedId).eq("user_id", userId).select("id").single()
+        );
 
-        if (error) throw error;
+        console.log("[saveTenant] update result", res);
+        // @ts-ignore
+        if ((res as any)?.error) throw (res as any).error;
+
         setOk("Locataire mis à jour ✅");
       } else {
-        const { data, error } = await supabase.from("tenants").insert(payload).select("id").single();
-        if (error) throw error;
+        const res = await withTimeout(
+          supabase.from("tenants").insert(payload).select("id").single()
+        );
 
-        const newId = (data as any)?.id ?? null;
+        console.log("[saveTenant] insert result", res);
+        // @ts-ignore
+        if ((res as any)?.error) throw (res as any).error;
+
+        const newId = (res as any)?.data?.id ?? null;
         setOk("Locataire créé ✅");
         setSelectedId(newId);
       }
@@ -189,10 +206,9 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
     }
   };
 
-  const onDelete = async () => {
+  const deleteTenant = async () => {
     if (!userId || !selectedId) return;
 
-    // ✅ UX: message clair AVANT d’appeler Supabase
     if (hasAnyLeaseForTenant(selectedId)) {
       setErr("Suppression impossible : ce locataire est lié à un bail. Supprimez/terminez d’abord le bail associé.");
       return;
@@ -207,8 +223,13 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
     try {
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
 
-      const { error } = await supabase.from("tenants").delete().eq("id", selectedId).eq("user_id", userId);
-      if (error) throw error;
+      const res = await withTimeout(
+        supabase.from("tenants").delete().eq("id", selectedId).eq("user_id", userId)
+      );
+
+      console.log("[deleteTenant] result", res);
+      // @ts-ignore
+      if ((res as any)?.error) throw (res as any).error;
 
       setOk("Locataire supprimé ✅");
       setSelectedId(null);
@@ -247,7 +268,10 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Mes locataires</p>
             <button
               type="button"
-              onClick={() => setSelectedId(null)}
+              onClick={(e) => {
+                stop(e);
+                setSelectedId(null);
+              }}
               className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
             >
               + Nouveau
@@ -270,14 +294,19 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setSelectedId(t.id)}
+                    onClick={(e) => {
+                      stop(e);
+                      setSelectedId(t.id);
+                    }}
                     className={
                       "w-full text-left rounded-xl border px-3 py-3 transition " +
                       (active ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50")
                     }
                   >
                     <p className="text-sm font-semibold text-slate-900">{t.full_name || "Locataire"}</p>
-                    <p className="mt-0.5 text-[0.75rem] text-slate-600">{(t.email || "—") + (t.phone ? ` • ${t.phone}` : "")}</p>
+                    <p className="mt-0.5 text-[0.75rem] text-slate-600">
+                      {(t.email || "—") + (t.phone ? ` • ${t.phone}` : "")}
+                    </p>
                     <p className="mt-1 text-[0.75rem] text-slate-600">
                       Bail actif : <span className="font-semibold">{p?.label || "—"}</span>
                     </p>
@@ -288,7 +317,7 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
           )}
         </section>
 
-        {/* FORM (sans submit HTML) */}
+        {/* FORM */}
         <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
           <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
             {selected ? "Modifier le locataire" : "Nouveau locataire"}
@@ -337,7 +366,9 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
             <div className="flex flex-wrap gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  stop(e);
+                  if (loading) return;
                   console.log("[btn] saveTenant clicked", { selectedId });
                   saveTenant();
                 }}
@@ -350,7 +381,11 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
               {selectedId ? (
                 <button
                   type="button"
-                  onClick={onDelete}
+                  onClick={(e) => {
+                    stop(e);
+                    if (loading) return;
+                    deleteTenant();
+                  }}
                   disabled={loading}
                   className="inline-flex items-center justify-center rounded-full border border-red-300 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                 >
@@ -361,7 +396,10 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
               {selectedId ? (
                 <button
                   type="button"
-                  onClick={() => setSelectedId(null)}
+                  onClick={(e) => {
+                    stop(e);
+                    setSelectedId(null);
+                  }}
                   className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   Nouveau

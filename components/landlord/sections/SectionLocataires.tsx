@@ -175,7 +175,15 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
 
       if (selectedId) {
         const res = await withTimeout(
-          supabase.from("tenants").update(payload).eq("id", selectedId).eq("user_id", userId).select("id").single()
+          Promise.resolve(
+            supabase
+              .from("tenants")
+              .update(payload)
+              .eq("id", selectedId)
+              .eq("user_id", userId)
+              .select("id")
+              .single()
+          )
         );
 
         console.log("[saveTenant] update result", res);
@@ -185,7 +193,13 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
         setOk("Locataire mis à jour ✅");
       } else {
         const res = await withTimeout(
-          supabase.from("tenants").insert(payload).select("id").single()
+          Promise.resolve(
+            supabase
+              .from("tenants")
+              .insert(payload)
+              .select("id")
+              .single()
+          )
         );
 
         console.log("[saveTenant] insert result", res);
@@ -224,7 +238,13 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
 
       const res = await withTimeout(
-        supabase.from("tenants").delete().eq("id", selectedId).eq("user_id", userId)
+        Promise.resolve(
+          supabase
+            .from("tenants")
+            .delete()
+            .eq("id", selectedId)
+            .eq("user_id", userId)
+        )
       );
 
       console.log("[deleteTenant] result", res);
