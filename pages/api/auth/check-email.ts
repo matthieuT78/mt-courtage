@@ -16,27 +16,38 @@ const supabaseAdmin = createClient(
   }
 );
 
+function normEmail(v: unknown) {
+  return String(v || "").trim().toLowerCase();
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Resp>) {
   if (req.method !== "POST") return res.status(405).json({ exists: false, error: "Method not allowed" });
 
   try {
-    const email = String(req.body?.email || "").trim().toLowerCase();
+    const email = normEmail(req.body?.email);
     if (!email) return res.status(400).json({ exists: false, error: "Email manquant" });
 
-    // ✅ Fonction admin prévue pour ça
-    const { data, error } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-
-    if (error) {
-      // Si Supabase renvoie une erreur "not found", on considère que ça n'existe pas
-      // (selon versions, c'est parfois une error, parfois data.user = null)
-      const msg = (error.message || "").toLowerCase();
-      if (msg.includes("not found") || msg.includes("user not found")) {
-        return res.status(200).json({ exists: false });
-      }
-      return res.status(500).json({ exists: false, error: error.message });
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(500).json({ exists: false, error: "SUPABASE_SERVICE_ROLE_KEY manquant" });
     }
 
-    return res.status(200).json({ exists: !!data?.user });
+    // ⚠️ On pagine et on cherche côté serveur (compatible SDK qui n'a pas getUserByEmail)
+    const PER_PAGE = 1000;
+    const MAX_PAGES = 20; // 20k users max scannés (à ajuster)
+
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: PER_PAGE });
+      if (error) return res.status(500).json({ exists: false, error: error.message });
+
+      const users = data?.users || [];
+      const found = users.some((u: any) => normEmail(u?.email) === email);
+      if (found) return res.status(200).json({ exists: true });
+
+      // si on a moins que PER_PAGE, c'est la dernière page
+      if (users.length < PER_PAGE) break;
+    }
+
+    return res.status(200).json({ exists: false });
   } catch (e: any) {
     return res.status(500).json({ exists: false, error: e?.message || "Erreur serveur" });
   }
