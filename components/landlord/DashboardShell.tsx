@@ -1,3 +1,4 @@
+// components/landlord/DashboardShell.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { SidebarNav, LandlordSectionKey } from "./SidebarNav";
 
@@ -128,7 +129,8 @@ export function DashboardShell(props: any) {
         return <SectionInventaire />;
 
       case "declaration":
-        return <SectionDeclaration />;
+        // ✅ FIX: SectionDeclaration requires userId
+        return <SectionDeclaration userId={userId} />;
 
       default:
         return (
