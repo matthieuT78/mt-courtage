@@ -6,7 +6,7 @@ import AppFooter from "../AppFooter";
 
 type Props = {
   userEmail: string | null;
-  active: "home" | "profile" | "securite" | "projets"; // ✅ bailleur supprimé
+  active: "profile" | "securite" | "projets" | "abonnement";
   onLogout: () => Promise<void> | void;
   children: ReactNode;
 };
@@ -69,10 +69,6 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
             </div>
 
             <div className="p-3 space-y-2">
-              <NavItem href="/mon-compte" active={active === "home"} sub="Vue d’ensemble">
-                Mon compte
-              </NavItem>
-
               <NavItem href="/mon-compte/profil" active={active === "profile"} sub="Infos perso & adresse">
                 Profil
               </NavItem>
@@ -83,6 +79,10 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
 
               <NavItem href="/mon-compte/securite" active={active === "securite"} sub="Mot de passe & newsletter">
                 Sécurité
+              </NavItem>
+
+              <NavItem href="/mon-compte/abonnement" active={active === "abonnement"} sub="Offre & facturation">
+                Abonnement
               </NavItem>
             </div>
 

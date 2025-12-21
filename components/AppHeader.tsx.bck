@@ -23,7 +23,7 @@ export default function AppHeader() {
   const [authReady, setAuthReady] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // ✅ SSR-safe: on évite asPath côté serveur (sinon mismatch)
+  // ✅ SSR-safe
   const [clientAsPath, setClientAsPath] = useState<string>("/");
 
   useEffect(() => {
@@ -119,8 +119,8 @@ export default function AppHeader() {
 
   // 🎨 Brand Izimo
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
-  const brandHover = "hover:opacity-95";
   const brandText = "text-white";
+  const brandHover = "hover:opacity-95";
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -133,7 +133,7 @@ export default function AppHeader() {
               alt="Izimo"
               className="h-10 md:h-11 w-auto object-contain"
             />
-            <span className="hidden sm:inline text-xs font-semibold text-slate-600">
+            <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600 animate-izimo-baseline">
               Simuler • Décider • Gérer
             </span>
           </Link>
