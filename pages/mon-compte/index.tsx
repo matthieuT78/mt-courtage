@@ -8,13 +8,16 @@ import { useAuthUser } from "../../hooks/useAuthUser";
 
 type Mode = "login" | "register";
 
+/**
+ * ✅ On autorise un redirect UNIQUEMENT si c'est un chemin interne
+ * Mais par défaut → HOME
+ */
 const safeRedirect = (raw: unknown) => {
   const v = typeof raw === "string" ? raw : "";
-  // par défaut → Profil
-  if (!v) return "/mon-compte/profil";
-  if (!v.startsWith("/")) return "/mon-compte/profil";
-  // si on t'envoie vers /mon-compte → profil
-  if (v === "/mon-compte") return "/mon-compte/profil";
+  if (!v) return "/";
+  if (!v.startsWith("/")) return "/";
+  // évite les boucles vers /mon-compte (index)
+  if (v === "/mon-compte") return "/";
   return v;
 };
 
@@ -24,10 +27,10 @@ function cx(...c: Array<string | false | null | undefined>) {
 
 export default function MonCompteIndexPage() {
   const router = useRouter();
-  const { checking, user, isLoggedIn } = useAuthUser();
+  const { checking, isLoggedIn } = useAuthUser();
 
   const [mode, setMode] = useState<Mode>("login");
-  const [redirectPath, setRedirectPath] = useState<string>("/mon-compte/profil");
+  const [redirectPath, setRedirectPath] = useState<string>("/");
 
   // login
   const [loginEmail, setLoginEmail] = useState("");
@@ -72,18 +75,15 @@ export default function MonCompteIndexPage() {
     setRedirectPath(safeRedirect(router.query.redirect));
   }, [router.isReady, router.query.mode, router.query.redirect]);
 
-  // ✅ si connecté : redirection immédiate vers la section par défaut
+  // ✅ si déjà connecté et tu viens sur /mon-compte => HOME
   useEffect(() => {
     if (checking) return;
     if (isLoggedIn) {
-      router.replace("/mon-compte/profil");
+      router.replace("/"); // ✅ HOME
     }
   }, [checking, isLoggedIn, router]);
 
-  const forgotPwdHref = useMemo(
-    () => `/mon-compte/securite?mode=forgot&redirect=${encodeURIComponent(redirectPath)}`,
-    [redirectPath]
-  );
+  const forgotPwdHref = useMemo(() => `/mon-compte/securite?mode=forgot`, []);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -104,8 +104,8 @@ export default function MonCompteIndexPage() {
         return;
       }
 
-      // après login → profil par défaut (ou redirect si fourni)
-      router.replace(redirectPath || "/mon-compte/profil");
+      // ✅ Après login => HOME (ou redirect interne si tu veux le garder)
+      router.replace(redirectPath || "/");
     } finally {
       setAuthLoading(false);
     }
@@ -173,6 +173,8 @@ export default function MonCompteIndexPage() {
         options: {
           data: {
             full_name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
           },
         },
       });
@@ -227,7 +229,7 @@ export default function MonCompteIndexPage() {
                     {mode === "login" ? "Connexion" : "Créer un compte"}
                   </h1>
                   <p className="text-xs text-slate-500 mt-1">
-                    {mode === "login" ? "Connectez-vous pour accéder à votre espace." : "Créez votre compte Izimo."}
+                    {mode === "login" ? "Connectez-vous pour accéder à Izimo." : "Créez votre compte Izimo."}
                   </p>
                 </div>
 
@@ -277,7 +279,9 @@ export default function MonCompteIndexPage() {
               {mode === "login" ? (
                 <form onSubmit={handleLogin} className="space-y-3" autoComplete="on">
                   <div className="space-y-1">
-                    <label htmlFor="login_email" className="text-xs text-slate-700">Adresse e-mail</label>
+                    <label htmlFor="login_email" className="text-xs text-slate-700">
+                      Adresse e-mail
+                    </label>
                     <input
                       id="login_email"
                       name="email"
@@ -291,7 +295,9 @@ export default function MonCompteIndexPage() {
                   </div>
 
                   <div className="space-y-1">
-                    <label htmlFor="login_password" className="text-xs text-slate-700">Mot de passe</label>
+                    <label htmlFor="login_password" className="text-xs text-slate-700">
+                      Mot de passe
+                    </label>
                     <input
                       id="login_password"
                       name="password"
@@ -326,7 +332,9 @@ export default function MonCompteIndexPage() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-3">
                       <div className="space-y-1">
-                        <label htmlFor="reg_civility" className="text-xs text-slate-700">Civilité</label>
+                        <label htmlFor="reg_civility" className="text-xs text-slate-700">
+                          Civilité
+                        </label>
                         <select
                           id="reg_civility"
                           name="civility"
@@ -342,7 +350,9 @@ export default function MonCompteIndexPage() {
                       </div>
 
                       <div className="space-y-1">
-                        <label htmlFor="reg_first_name" className="text-xs text-slate-700">Prénom *</label>
+                        <label htmlFor="reg_first_name" className="text-xs text-slate-700">
+                          Prénom *
+                        </label>
                         <input
                           id="reg_first_name"
                           name="first_name"
@@ -355,7 +365,9 @@ export default function MonCompteIndexPage() {
                       </div>
 
                       <div className="space-y-1">
-                        <label htmlFor="reg_last_name" className="text-xs text-slate-700">Nom *</label>
+                        <label htmlFor="reg_last_name" className="text-xs text-slate-700">
+                          Nom *
+                        </label>
                         <input
                           id="reg_last_name"
                           name="last_name"
@@ -370,7 +382,9 @@ export default function MonCompteIndexPage() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
-                        <label htmlFor="reg_birth_date" className="text-xs text-slate-700">Date de naissance</label>
+                        <label htmlFor="reg_birth_date" className="text-xs text-slate-700">
+                          Date de naissance
+                        </label>
                         <input
                           id="reg_birth_date"
                           name="birth_date"
@@ -382,7 +396,9 @@ export default function MonCompteIndexPage() {
                       </div>
 
                       <div className="space-y-1">
-                        <label htmlFor="reg_phone" className="text-xs text-slate-700">Téléphone</label>
+                        <label htmlFor="reg_phone" className="text-xs text-slate-700">
+                          Téléphone
+                        </label>
                         <input
                           id="reg_phone"
                           name="phone"
@@ -400,7 +416,9 @@ export default function MonCompteIndexPage() {
                     <p className="text-xs font-semibold text-slate-900">Adresse</p>
 
                     <div className="mt-3 space-y-1">
-                      <label htmlFor="reg_address1" className="text-xs text-slate-700">Adresse (ligne 1) *</label>
+                      <label htmlFor="reg_address1" className="text-xs text-slate-700">
+                        Adresse (ligne 1) *
+                      </label>
                       <input
                         id="reg_address1"
                         name="address_line1"
@@ -413,7 +431,9 @@ export default function MonCompteIndexPage() {
                     </div>
 
                     <div className="mt-3 space-y-1">
-                      <label htmlFor="reg_address2" className="text-xs text-slate-700">Adresse (ligne 2)</label>
+                      <label htmlFor="reg_address2" className="text-xs text-slate-700">
+                        Adresse (ligne 2)
+                      </label>
                       <input
                         id="reg_address2"
                         name="address_line2"
@@ -426,7 +446,9 @@ export default function MonCompteIndexPage() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-3">
                       <div className="space-y-1">
-                        <label htmlFor="reg_postal" className="text-xs text-slate-700">Code postal *</label>
+                        <label htmlFor="reg_postal" className="text-xs text-slate-700">
+                          Code postal *
+                        </label>
                         <input
                           id="reg_postal"
                           name="postal_code"
@@ -439,7 +461,9 @@ export default function MonCompteIndexPage() {
                       </div>
 
                       <div className="space-y-1 sm:col-span-2">
-                        <label htmlFor="reg_city" className="text-xs text-slate-700">Ville *</label>
+                        <label htmlFor="reg_city" className="text-xs text-slate-700">
+                          Ville *
+                        </label>
                         <input
                           id="reg_city"
                           name="city"
@@ -454,7 +478,9 @@ export default function MonCompteIndexPage() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
-                        <label htmlFor="reg_country" className="text-xs text-slate-700">Pays</label>
+                        <label htmlFor="reg_country" className="text-xs text-slate-700">
+                          Pays
+                        </label>
                         <input
                           id="reg_country"
                           name="country"
@@ -483,7 +509,9 @@ export default function MonCompteIndexPage() {
                         <p className="text-xs font-semibold text-slate-900">Adresse de facturation</p>
 
                         <div className="mt-3 space-y-1">
-                          <label htmlFor="bill_address1" className="text-xs text-slate-700">Adresse (ligne 1) *</label>
+                          <label htmlFor="bill_address1" className="text-xs text-slate-700">
+                            Adresse (ligne 1) *
+                          </label>
                           <input
                             id="bill_address1"
                             name="billing_address_line1"
@@ -494,7 +522,9 @@ export default function MonCompteIndexPage() {
                         </div>
 
                         <div className="mt-3 space-y-1">
-                          <label htmlFor="bill_address2" className="text-xs text-slate-700">Adresse (ligne 2)</label>
+                          <label htmlFor="bill_address2" className="text-xs text-slate-700">
+                            Adresse (ligne 2)
+                          </label>
                           <input
                             id="bill_address2"
                             name="billing_address_line2"
@@ -506,7 +536,9 @@ export default function MonCompteIndexPage() {
 
                         <div className="mt-3 grid gap-3 sm:grid-cols-3">
                           <div className="space-y-1">
-                            <label htmlFor="bill_postal" className="text-xs text-slate-700">Code postal *</label>
+                            <label htmlFor="bill_postal" className="text-xs text-slate-700">
+                              Code postal *
+                            </label>
                             <input
                               id="bill_postal"
                               name="billing_postal_code"
@@ -517,7 +549,9 @@ export default function MonCompteIndexPage() {
                           </div>
 
                           <div className="space-y-1 sm:col-span-2">
-                            <label htmlFor="bill_city" className="text-xs text-slate-700">Ville *</label>
+                            <label htmlFor="bill_city" className="text-xs text-slate-700">
+                              Ville *
+                            </label>
                             <input
                               id="bill_city"
                               name="billing_city"
@@ -529,7 +563,9 @@ export default function MonCompteIndexPage() {
                         </div>
 
                         <div className="mt-3 space-y-1">
-                          <label htmlFor="bill_country" className="text-xs text-slate-700">Pays</label>
+                          <label htmlFor="bill_country" className="text-xs text-slate-700">
+                            Pays
+                          </label>
                           <input
                             id="bill_country"
                             name="billing_country"
@@ -547,7 +583,9 @@ export default function MonCompteIndexPage() {
                     <p className="text-xs font-semibold text-slate-900">Compte</p>
 
                     <div className="mt-3 space-y-1">
-                      <label htmlFor="reg_email" className="text-xs text-slate-700">Adresse e-mail *</label>
+                      <label htmlFor="reg_email" className="text-xs text-slate-700">
+                        Adresse e-mail *
+                      </label>
                       <input
                         id="reg_email"
                         name="reg_email"
@@ -562,7 +600,9 @@ export default function MonCompteIndexPage() {
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
-                        <label htmlFor="reg_password" className="text-xs text-slate-700">Mot de passe *</label>
+                        <label htmlFor="reg_password" className="text-xs text-slate-700">
+                          Mot de passe *
+                        </label>
                         <input
                           id="reg_password"
                           name="reg_password"
@@ -575,7 +615,9 @@ export default function MonCompteIndexPage() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label htmlFor="reg_password2" className="text-xs text-slate-700">Confirmer *</label>
+                        <label htmlFor="reg_password2" className="text-xs text-slate-700">
+                          Confirmer *
+                        </label>
                         <input
                           id="reg_password2"
                           name="reg_password2"
