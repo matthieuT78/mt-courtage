@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import PDFDocument from "pdfkit";
+import fs from "fs";
+import path from "path";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 type Json = Record<string, any>;
@@ -49,7 +51,7 @@ function collectDefects(item: any) {
   return tags.length ? tags.join(", ") : "";
 }
 
-// ✅ fix: typer avec PDFDocument (pas PDFKit.PDFDocument)
+// ✅ typer avec PDFDocument
 function buildPdfBuffer(build: (doc: PDFDocument) => Promise<void>) {
   return new Promise<Buffer>(async (resolve, reject) => {
     try {
@@ -74,6 +76,19 @@ function buildPdfBuffer(build: (doc: PDFDocument) => Promise<void>) {
         const pageNumber = i - range.start + 1;
         const total = range.count;
 
+        // petite signature Izimo à gauche
+        doc.font("Helvetica").fontSize(9).fillColor("#6b7280");
+        doc.text(
+          "Izimo • État des lieux",
+          doc.page.margins.left,
+          doc.page.height - doc.page.margins.bottom + 16,
+          {
+            align: "left",
+            width: 220,
+          }
+        );
+
+        // numéro de page centré
         doc.font("Helvetica").fontSize(9).fillColor("#6b7280");
         doc.text(
           `Page ${pageNumber} / ${total}`,
@@ -93,30 +108,48 @@ function buildPdfBuffer(build: (doc: PDFDocument) => Promise<void>) {
   });
 }
 
-// ✅ fix: typer avec PDFDocument
 function ensureSpace(doc: PDFDocument, needed = 120) {
   if (doc.y + needed > doc.page.height - doc.page.margins.bottom - 20) doc.addPage();
 }
 
-// ✅ fix: typer avec PDFDocument
-function drawHeaderBand(doc: PDFDocument, title: string, subtitle: string) {
+/**
+ * Header brandé Izimo + logo (optionnel)
+ * logoBuf : Buffer PNG/JPG (idéalement PNG transparent)
+ */
+function drawHeaderBand(doc: PDFDocument, title: string, subtitle: string, logoBuf?: Buffer | null) {
   const x = doc.page.margins.left;
   const y = doc.page.margins.top - 20;
   const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
+  // Bandeau
   doc.save();
   doc.rect(x, y, w, 60).fill("#0f172a"); // slate-900
   doc.restore();
 
+  // Logo (optionnel)
+  const logoSize = 28; // hauteur
+  const logoX = x + 16;
+  const logoY = y + 16;
+
+  let textX = x + 16;
+  if (logoBuf) {
+    try {
+      doc.image(logoBuf, logoX, logoY, { height: logoSize });
+      textX = x + 16 + 90; // marge à droite du logo
+    } catch {
+      textX = x + 16;
+    }
+  }
+
+  // Texte
   doc.fillColor("#ffffff");
-  doc.font("Helvetica-Bold").fontSize(18).text(title, x + 16, y + 12, { width: w - 32 });
-  doc.font("Helvetica").fontSize(10).text(subtitle, x + 16, y + 38, { width: w - 32 });
+  doc.font("Helvetica-Bold").fontSize(18).text(title, textX, y + 12, { width: w - (textX - x) - 16 });
+  doc.font("Helvetica").fontSize(10).text(subtitle, textX, y + 38, { width: w - (textX - x) - 16 });
 
   doc.moveDown(2);
   doc.fillColor("#111111");
 }
 
-// ✅ fix: typer avec PDFDocument
 function drawSectionTitle(doc: PDFDocument, title: string) {
   ensureSpace(doc, 60);
   doc.moveDown(0.4);
@@ -130,7 +163,6 @@ function drawSectionTitle(doc: PDFDocument, title: string) {
   doc.moveDown(0.7);
 }
 
-// ✅ fix: typer avec PDFDocument
 function drawKeyValueRow(doc: PDFDocument, label: string, value: string) {
   const x = doc.page.margins.left;
   const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
@@ -140,7 +172,6 @@ function drawKeyValueRow(doc: PDFDocument, label: string, value: string) {
   doc.moveDown(0.25);
 }
 
-// ✅ fix: typer avec PDFDocument
 function drawCategoryBand(doc: PDFDocument, category: string) {
   ensureSpace(doc, 40);
   const x = doc.page.margins.left;
@@ -156,7 +187,6 @@ function drawCategoryBand(doc: PDFDocument, category: string) {
   doc.moveDown(1.2);
 }
 
-// ✅ fix: typer avec PDFDocument
 function drawTableHeader(doc: PDFDocument) {
   const x = doc.page.margins.left;
   const y = doc.y;
@@ -178,7 +208,6 @@ function drawTableHeader(doc: PDFDocument) {
   doc.moveDown(0.2);
 }
 
-// ✅ fix: typer avec PDFDocument
 function drawRow(
   doc: PDFDocument,
   row: { label: string; cond: string; clean: string; func: string; desc: string; defects: string },
@@ -312,6 +341,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { reportId, userId } = (req.body || {}) as { reportId?: string; userId?: string };
     if (!reportId || !userId) return res.status(400).json({ error: "reportId et userId requis." });
 
+    // ✅ charge logo Izimo depuis /public
+    let logoBuf: Buffer | null = null;
+    try {
+      const logoPath = path.join(process.cwd(), "public", "brand", "izimo-logo.png");
+      if (fs.existsSync(logoPath)) {
+        logoBuf = fs.readFileSync(logoPath);
+      }
+    } catch {
+      logoBuf = null;
+    }
+
     const { data: report, error: repErr } = await supabaseAdmin
       .from("inventory_reports")
       .select("*")
@@ -331,7 +371,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (roomsErr) return res.status(500).json({ error: `rooms: ${roomsErr.message}` });
     if (itemsErr) return res.status(500).json({ error: `items: ${itemsErr.message}` });
 
-    const safePhotos = photosErr ? [] : (photos || []);
+    const safePhotos = photosErr ? [] : photos || [];
 
     const { data: lease } = await supabaseAdmin.from("leases").select("*").eq("id", report.lease_id).single();
 
@@ -397,7 +437,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         pageNum += 1;
       };
 
-      drawHeaderBand(doc, title, `ImmoPilot — Document généré le ${new Date().toLocaleDateString("fr-FR")}`);
+      drawHeaderBand(doc, title, `Izimo — Document généré le ${new Date().toLocaleDateString("fr-FR")}`, logoBuf);
 
       drawSectionTitle(doc, "Résumé");
       drawKeyValueRow(doc, "Bailleur", landlordName);
@@ -421,7 +461,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       addPage();
 
-      drawHeaderBand(doc, "SOMMAIRE", "Pièces & pagination");
+      drawHeaderBand(doc, "SOMMAIRE", "Pièces & pagination", logoBuf);
 
       const tocPageIndex = pageNum;
       drawSectionTitle(doc, "Pièces");
@@ -445,7 +485,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           page: pageNum,
         });
 
-        drawHeaderBand(doc, "DÉTAIL", `${room.name}${room.floor_level ? " — " + room.floor_level : ""}`);
+        drawHeaderBand(doc, "DÉTAIL", `${room.name}${room.floor_level ? " — " + room.floor_level : ""}`, logoBuf);
 
         if (room.notes) {
           doc.font("Helvetica").fontSize(10).fillColor("#374151").text(`Notes : ${room.notes}`);
@@ -480,9 +520,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             const defects = collectDefects(it);
             const desc = safeText(it.description);
             const important =
-              (typeof it.severity === "number" && it.severity >= 3) ||
-              it.condition === "mauvais" ||
-              Boolean(defects);
+              (typeof it.severity === "number" && it.severity >= 3) || it.condition === "mauvais" || Boolean(defects);
 
             drawRow(
               doc,
@@ -512,7 +550,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const noRoomItems = itemsByRoom.get("__no_room__") || [];
       if (noRoomItems.length) {
         addPage();
-        drawHeaderBand(doc, "DÉTAIL", "Éléments hors pièce");
+        drawHeaderBand(doc, "DÉTAIL", "Éléments hors pièce", logoBuf);
         toc.push({ name: "Éléments hors pièce", count: noRoomItems.length, page: pageNum });
 
         const byCat = new Map<string, any[]>();
@@ -536,9 +574,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             const defects = collectDefects(it);
             const desc = safeText(it.description);
             const important =
-              (typeof it.severity === "number" && it.severity >= 3) ||
-              it.condition === "mauvais" ||
-              Boolean(defects);
+              (typeof it.severity === "number" && it.severity >= 3) || it.condition === "mauvais" || Boolean(defects);
 
             drawRow(
               doc,
@@ -566,7 +602,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
 
       addPage();
-      drawHeaderBand(doc, "SIGNATURES", "À signer par les parties");
+      drawHeaderBand(doc, "SIGNATURES", "À signer par les parties", logoBuf);
 
       drawSectionTitle(doc, "Bailleur");
       doc.font("Helvetica").fontSize(10).fillColor("#111").text("Nom : " + landlordName);
@@ -579,6 +615,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       doc.moveDown(0.4);
       doc.rect(doc.page.margins.left, doc.y, 240, 90).strokeColor("#e5e7eb").stroke();
 
+      // Sommaire : ré-écriture dans la bonne page
       const range = doc.bufferedPageRange();
       const tocBufferIndex = range.start + (tocPageIndex - 1);
 

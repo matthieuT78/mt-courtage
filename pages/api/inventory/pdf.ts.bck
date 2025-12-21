@@ -21,11 +21,6 @@ const fmtDateTimeFR = (iso?: string | null) => {
 
 const safeText = (s: any) => (s == null ? "" : String(s));
 
-function collectDefects(item: any) {
-  const tags = Array.isArray(item?.defect_tags) ? item.defect_tags : [];
-  return tags.length ? tags.join(", ") : "";
-}
-
 function conditionLabel(c: string) {
   switch (c) {
     case "neuf":
@@ -43,28 +38,35 @@ function conditionLabel(c: string) {
   }
 }
 
-function yn(v: any) {
-  if (v === true) return "Oui";
-  if (v === false) return "Non";
+function ynIcon(v: any) {
+  if (v === true) return "✅";
+  if (v === false) return "❌";
   return "—";
 }
 
-function buildPdfBuffer(build: (doc: PDFKit.PDFDocument) => Promise<void>) {
+function collectDefects(item: any) {
+  const tags = Array.isArray(item?.defect_tags) ? item.defect_tags : [];
+  return tags.length ? tags.join(", ") : "";
+}
+
+// ✅ fix: typer avec PDFDocument (pas PDFKit.PDFDocument)
+function buildPdfBuffer(build: (doc: PDFDocument) => Promise<void>) {
   return new Promise<Buffer>(async (resolve, reject) => {
     try {
       const doc = new PDFDocument({
         size: "A4",
         margin: 46,
-        bufferPages: true, // ✅ pour pagination
+        bufferPages: true,
       });
 
       const chunks: Buffer[] = [];
-      doc.on("data", (c) => chunks.push(c));
+      doc.on("data", (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
       doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", (e) => reject(e));
 
       await build(doc);
 
-      // ✅ Pagination après génération
+      // Pagination footer
       const range = doc.bufferedPageRange(); // { start, count }
       for (let i = range.start; i < range.start + range.count; i++) {
         doc.switchToPage(i);
@@ -72,13 +74,15 @@ function buildPdfBuffer(build: (doc: PDFKit.PDFDocument) => Promise<void>) {
         const pageNumber = i - range.start + 1;
         const total = range.count;
 
-        doc.font("Helvetica").fontSize(9);
-        doc.fillColor("#666666");
+        doc.font("Helvetica").fontSize(9).fillColor("#6b7280");
         doc.text(
           `Page ${pageNumber} / ${total}`,
           doc.page.margins.left,
           doc.page.height - doc.page.margins.bottom + 16,
-          { align: "center", width: doc.page.width - doc.page.margins.left - doc.page.margins.right }
+          {
+            align: "center",
+            width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
+          }
         );
       }
 
@@ -89,23 +93,45 @@ function buildPdfBuffer(build: (doc: PDFKit.PDFDocument) => Promise<void>) {
   });
 }
 
-function ensureSpace(doc: PDFKit.PDFDocument, needed = 120) {
+// ✅ fix: typer avec PDFDocument
+function ensureSpace(doc: PDFDocument, needed = 120) {
   if (doc.y + needed > doc.page.height - doc.page.margins.bottom - 20) doc.addPage();
 }
 
-function drawSectionTitle(doc: PDFKit.PDFDocument, title: string) {
+// ✅ fix: typer avec PDFDocument
+function drawHeaderBand(doc: PDFDocument, title: string, subtitle: string) {
+  const x = doc.page.margins.left;
+  const y = doc.page.margins.top - 20;
+  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+  doc.save();
+  doc.rect(x, y, w, 60).fill("#0f172a"); // slate-900
+  doc.restore();
+
+  doc.fillColor("#ffffff");
+  doc.font("Helvetica-Bold").fontSize(18).text(title, x + 16, y + 12, { width: w - 32 });
+  doc.font("Helvetica").fontSize(10).text(subtitle, x + 16, y + 38, { width: w - 32 });
+
+  doc.moveDown(2);
+  doc.fillColor("#111111");
+}
+
+// ✅ fix: typer avec PDFDocument
+function drawSectionTitle(doc: PDFDocument, title: string) {
   ensureSpace(doc, 60);
-  doc.moveDown(0.3);
+  doc.moveDown(0.4);
   doc.font("Helvetica-Bold").fontSize(12).fillColor("#111111").text(title);
   doc.moveDown(0.2);
-  doc.moveTo(doc.page.margins.left, doc.y)
+  doc
+    .moveTo(doc.page.margins.left, doc.y)
     .lineTo(doc.page.width - doc.page.margins.right, doc.y)
     .strokeColor("#e5e7eb")
     .stroke();
-  doc.moveDown(0.6);
+  doc.moveDown(0.7);
 }
 
-function drawKeyValueRow(doc: PDFKit.PDFDocument, label: string, value: string) {
+// ✅ fix: typer avec PDFDocument
+function drawKeyValueRow(doc: PDFDocument, label: string, value: string) {
   const x = doc.page.margins.left;
   const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
@@ -114,59 +140,67 @@ function drawKeyValueRow(doc: PDFKit.PDFDocument, label: string, value: string) 
   doc.moveDown(0.25);
 }
 
-function drawHeader(doc: PDFKit.PDFDocument, title: string, subtitle: string) {
+// ✅ fix: typer avec PDFDocument
+function drawCategoryBand(doc: PDFDocument, category: string) {
+  ensureSpace(doc, 40);
   const x = doc.page.margins.left;
-  const y = doc.page.margins.top - 20;
   const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
-  // Bandeau
   doc.save();
-  doc.rect(x, y, w, 56).fill("#0f172a"); // slate-900
+  doc.rect(x, doc.y, w, 18).fill("#f1f5f9"); // slate-100
   doc.restore();
 
-  doc.fillColor("#ffffff");
-  doc.font("Helvetica-Bold").fontSize(16).text(title, x + 16, y + 12, { width: w - 32 });
-  doc.font("Helvetica").fontSize(10).text(subtitle, x + 16, y + 34, { width: w - 32 });
+  doc.font("Helvetica-Bold").fontSize(10).fillColor("#111");
+  doc.text(category || "—", x + 8, doc.y + 4, { width: w - 16 });
 
-  doc.moveDown(1.8);
-  doc.fillColor("#111111");
+  doc.moveDown(1.2);
 }
 
-function tableHeader(doc: PDFKit.PDFDocument) {
+// ✅ fix: typer avec PDFDocument
+function drawTableHeader(doc: PDFDocument) {
   const x = doc.page.margins.left;
   const y = doc.y;
   const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
-  // Header row background
   doc.save();
-  doc.rect(x, y, w, 18).fill("#f1f5f9"); // slate-100
+  doc.rect(x, y, w, 18).fill("#ffffff");
   doc.restore();
 
   doc.font("Helvetica-Bold").fontSize(9).fillColor("#111");
-  doc.text("Catégorie", x + 6, y + 5, { width: 80 });
-  doc.text("Élément", x + 92, y + 5, { width: 150 });
-  doc.text("État", x + 248, y + 5, { width: 70 });
-  doc.text("Propre", x + 322, y + 5, { width: 50 });
-  doc.text("Fonct.", x + 375, y + 5, { width: 50 });
-  doc.text("Observations", x + 430, y + 5, { width: w - 430 });
+  doc.text("Élément", x + 6, y + 5, { width: 170 });
+  doc.text("État", x + 182, y + 5, { width: 70 });
+  doc.text("Propre", x + 258, y + 5, { width: 50 });
+  doc.text("Fonct.", x + 312, y + 5, { width: 50 });
+  doc.text("Observations", x + 366, y + 5, { width: w - 366 });
 
-  doc.moveDown(1.2);
+  doc.moveDown(1.0);
   doc.moveTo(x, doc.y).lineTo(x + w, doc.y).strokeColor("#e5e7eb").stroke();
-  doc.moveDown(0.3);
+  doc.moveDown(0.2);
 }
 
-function tableRow(doc: PDFKit.PDFDocument, row: { cat: string; label: string; cond: string; clean: string; func: string; obs: string }, stripe: boolean) {
+// ✅ fix: typer avec PDFDocument
+function drawRow(
+  doc: PDFDocument,
+  row: { label: string; cond: string; clean: string; func: string; desc: string; defects: string },
+  stripe: boolean
+) {
   const x = doc.page.margins.left;
   const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
-  // hauteur dynamique selon obs
   const startY = doc.y;
-  const obsHeight = doc.heightOfString(row.obs || "—", { width: w - 430, align: "left" });
-  const rowH = Math.max(16, Math.min(120, obsHeight + 10));
 
-  ensureSpace(doc, rowH + 24);
+  const obsText =
+    row.defects && row.desc
+      ? `${row.desc}\nDéfauts : ${row.defects}`
+      : row.defects
+      ? `Défauts : ${row.defects}`
+      : row.desc || "—";
 
-  // stripe
+  const obsHeight = doc.heightOfString(obsText, { width: w - 366 });
+  const rowH = Math.max(18, Math.min(140, obsHeight + 10));
+
+  ensureSpace(doc, rowH + 18);
+
   if (stripe) {
     doc.save();
     doc.rect(x, startY, w, rowH).fill("#fcfcfd");
@@ -174,16 +208,100 @@ function tableRow(doc: PDFKit.PDFDocument, row: { cat: string; label: string; co
   }
 
   doc.font("Helvetica").fontSize(9).fillColor("#111");
-  doc.text(row.cat || "—", x + 6, startY + 4, { width: 80 });
-  doc.text(row.label || "—", x + 92, startY + 4, { width: 150 });
-  doc.text(row.cond || "—", x + 248, startY + 4, { width: 70 });
-  doc.text(row.clean || "—", x + 322, startY + 4, { width: 50 });
-  doc.text(row.func || "—", x + 375, startY + 4, { width: 50 });
-  doc.text(row.obs || "—", x + 430, startY + 4, { width: w - 430 });
+  doc.text(row.label || "—", x + 6, startY + 4, { width: 170 });
+  doc.text(row.cond || "—", x + 182, startY + 4, { width: 70 });
+  doc.text(row.clean || "—", x + 258, startY + 4, { width: 50 });
+  doc.text(row.func || "—", x + 312, startY + 4, { width: 50 });
+
+  if (row.defects) {
+    const main = row.desc ? `${row.desc}\n` : "";
+    doc.fillColor("#111").text(main, x + 366, startY + 4, { width: w - 366 });
+
+    doc.fillColor("#b91c1c");
+    doc.text(
+      `Défauts : ${row.defects}`,
+      x + 366,
+      startY + 4 + doc.heightOfString(main || "", { width: w - 366 }),
+      { width: w - 366 }
+    );
+    doc.fillColor("#111");
+  } else {
+    doc.fillColor("#111").text(obsText, x + 366, startY + 4, { width: w - 366 });
+  }
 
   doc.y = startY + rowH;
   doc.moveTo(x, doc.y).lineTo(x + w, doc.y).strokeColor("#f1f5f9").stroke();
   doc.moveDown(0.2);
+}
+
+async function drawPhotos(
+  doc: PDFDocument,
+  supabase: NonNullable<typeof supabaseAdmin>,
+  photos: any[],
+  mode: "hero" | "thumbs"
+) {
+  if (!photos.length) return;
+
+  const x = doc.page.margins.left;
+  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+  if (mode === "hero") {
+    const p = photos[0];
+    const bucket = p.storage_bucket || "inventory-photos";
+    const path = p.storage_path;
+    if (!path) return;
+
+    ensureSpace(doc, 260);
+
+    try {
+      const { data: imgData } = await supabase.storage.from(bucket).download(path);
+      if (!imgData) return;
+
+      const buf = Buffer.from(await imgData.arrayBuffer());
+
+      const top = doc.y + 6;
+      const h = 220;
+
+      doc.save();
+      doc.rect(x, top, w, h).strokeColor("#e5e7eb").stroke();
+      doc.image(buf, x + 6, top + 6, { fit: [w - 12, h - 12] });
+      doc.restore();
+
+      doc.y = top + h + 10;
+    } catch {
+      // ignore
+    }
+    return;
+  }
+
+  const list = photos.slice(0, 3);
+  ensureSpace(doc, 120);
+
+  const startY = doc.y + 6;
+  let cx = x;
+
+  for (const p of list) {
+    const bucket = p.storage_bucket || "inventory-photos";
+    const path = p.storage_path;
+    if (!path) continue;
+
+    try {
+      const { data: imgData } = await supabase.storage.from(bucket).download(path);
+      if (!imgData) continue;
+      const buf = Buffer.from(await imgData.arrayBuffer());
+
+      doc.save();
+      doc.rect(cx, startY, 120, 86).strokeColor("#e5e7eb").stroke();
+      doc.image(buf, cx + 4, startY + 4, { fit: [112, 78] });
+      doc.restore();
+
+      cx += 130;
+    } catch {
+      // ignore
+    }
+  }
+
+  doc.y = startY + 96;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Json>) {
@@ -194,7 +312,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { reportId, userId } = (req.body || {}) as { reportId?: string; userId?: string };
     if (!reportId || !userId) return res.status(400).json({ error: "reportId et userId requis." });
 
-    // 1) report + contrôle ownership
     const { data: report, error: repErr } = await supabaseAdmin
       .from("inventory_reports")
       .select("*")
@@ -204,19 +321,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (repErr || !report) return res.status(404).json({ error: "Report introuvable." });
     if (report.user_id !== userId) return res.status(403).json({ error: "Accès refusé." });
 
-    // 2) rooms/items/photos + infos bail / property / tenant / landlord
-    const [{ data: rooms, error: rRoomsErr }, { data: items, error: rItemsErr }, { data: photos, error: rPhotosErr }] =
+    const [{ data: rooms, error: roomsErr }, { data: items, error: itemsErr }, { data: photos, error: photosErr }] =
       await Promise.all([
         supabaseAdmin.from("inventory_rooms").select("*").eq("report_id", reportId).order("sort_order", { ascending: true }),
         supabaseAdmin.from("inventory_items").select("*").eq("report_id", reportId).order("created_at", { ascending: true }),
-        // si la table n'existe pas chez toi, laisse cette requête mais gère en "null"
         supabaseAdmin.from("inventory_photos").select("*").eq("report_id", reportId).order("created_at", { ascending: true }),
       ]);
 
-    if (rRoomsErr) return res.status(500).json({ error: `rooms: ${rRoomsErr.message}` });
-    if (rItemsErr) return res.status(500).json({ error: `items: ${rItemsErr.message}` });
-    // photos peut être optionnel selon ton schéma
-    const safePhotos = rPhotosErr ? [] : (photos || []);
+    if (roomsErr) return res.status(500).json({ error: `rooms: ${roomsErr.message}` });
+    if (itemsErr) return res.status(500).json({ error: `items: ${itemsErr.message}` });
+
+    const safePhotos = photosErr ? [] : (photos || []);
 
     const { data: lease } = await supabaseAdmin.from("leases").select("*").eq("id", report.lease_id).single();
 
@@ -235,7 +350,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const rLand = await supabaseAdmin.from("landlords").select("*").eq("user_id", userId).single();
     landlord = rLand.data || null;
 
-    // 3) photos par item
     const photosByItem = new Map<string, any[]>();
     for (const p of safePhotos as any[]) {
       if (!p?.item_id) continue;
@@ -244,7 +358,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       photosByItem.set(p.item_id, arr);
     }
 
-    // 4) PDF
     const title = report.report_type === "entry" ? "ÉTAT DES LIEUX D’ENTRÉE" : "ÉTAT DES LIEUX DE SORTIE";
 
     const landlordName = landlord?.display_name || "Bailleur";
@@ -259,190 +372,251 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       .filter(Boolean)
       .join(", ");
 
-    const pdf = await buildPdfBuffer(async (doc) => {
-      drawHeader(
-        doc,
-        title,
-        `Généré le ${new Date().toLocaleDateString("fr-FR")} — ImmoPilot`
-      );
+    const roomList = (rooms || []) as any[];
+    const itemList = (items || []) as any[];
 
-      drawSectionTitle(doc, "Informations");
+    const itemsByRoom = new Map<string, any[]>();
+    for (const it of itemList) {
+      const rid = it.room_id || "__no_room__";
+      const arr = itemsByRoom.get(rid) || [];
+      arr.push(it);
+      itemsByRoom.set(rid, arr);
+    }
+
+    const roomsOk = roomList.filter((r) => (itemsByRoom.get(r.id) || []).length > 0).length;
+    const completeness = roomList.length ? Math.round((roomsOk / roomList.length) * 100) : 0;
+
+    type TocEntry = { name: string; count: number; page: number };
+    const toc: TocEntry[] = [];
+
+    const pdf = await buildPdfBuffer(async (doc) => {
+      let pageNum = 1;
+
+      const addPage = () => {
+        doc.addPage();
+        pageNum += 1;
+      };
+
+      drawHeaderBand(doc, title, `ImmoPilot — Document généré le ${new Date().toLocaleDateString("fr-FR")}`);
+
+      drawSectionTitle(doc, "Résumé");
       drawKeyValueRow(doc, "Bailleur", landlordName);
       drawKeyValueRow(doc, "Locataire", tenantName);
       drawKeyValueRow(doc, "Bien", `${propLabel}${propAddr ? " — " + propAddr : ""}`);
-      drawKeyValueRow(doc, "Date", fmtDateTimeFR(report.performed_at));
+      drawKeyValueRow(doc, "Date & heure", fmtDateTimeFR(report.performed_at));
       drawKeyValueRow(doc, "Lieu", safeText(report.performed_place) || "—");
 
+      doc.moveDown(0.5);
+      doc.font("Helvetica-Bold").fontSize(11).fillColor("#111").text("Indicateurs");
+      doc.font("Helvetica").fontSize(10).fillColor("#111");
+      doc.text(`• Nombre de pièces : ${roomList.length}`);
+      doc.text(`• Nombre d’éléments : ${itemList.length}`);
+      doc.text(`• Complétude : ${completeness}%`);
+
       if (report.general_notes) {
-        doc.moveDown(0.2);
-        doc.font("Helvetica-Bold").fontSize(10).text("Notes générales");
+        doc.moveDown(0.5);
+        doc.font("Helvetica-Bold").fontSize(11).text("Notes générales");
         doc.font("Helvetica").fontSize(10).fillColor("#111").text(safeText(report.general_notes));
       }
 
-      // Compteurs
-      if (report.counters_json && Object.keys(report.counters_json || {}).length) {
-        drawSectionTitle(doc, "Compteurs");
-        const c = report.counters_json || {};
-        for (const k of Object.keys(c)) {
-          const v = c[k];
-          if (v && typeof v === "object") {
-            doc.font("Helvetica-Bold").fontSize(10).text(`${k} : `, { continued: true });
-            doc.font("Helvetica").fontSize(10).text(
-              `${safeText(v.index)} ${safeText(v.unit)}${v.note ? " — " + safeText(v.note) : ""}`
-            );
-          } else {
-            doc.font("Helvetica-Bold").fontSize(10).text(`${k} : `, { continued: true });
-            doc.font("Helvetica").fontSize(10).text(`${safeText(v)}`);
-          }
-        }
-      }
+      addPage();
 
-      drawSectionTitle(doc, "Détail par pièce");
+      drawHeaderBand(doc, "SOMMAIRE", "Pièces & pagination");
 
-      const roomList = (rooms || []) as any[];
-      const itemList = (items || []) as any[];
+      const tocPageIndex = pageNum;
+      drawSectionTitle(doc, "Pièces");
 
-      const itemsByRoom = new Map<string, any[]>();
-      for (const it of itemList) {
-        const rid = it.room_id || "__no_room__";
-        const arr = itemsByRoom.get(rid) || [];
-        arr.push(it);
-        itemsByRoom.set(rid, arr);
-      }
+      doc.font("Helvetica").fontSize(10).fillColor("#111");
+      doc.text("Le détail commence à la page suivante.", { align: "left" });
+      doc.moveDown(0.8);
 
-      for (const room of roomList) {
-        ensureSpace(doc, 160);
+      const tocStartY = doc.y;
 
-        doc.font("Helvetica-Bold").fontSize(12).fillColor("#111").text(
-          `${room.name}${room.floor_level ? " — " + room.floor_level : ""}`
-        );
-        if (room.notes) {
-          doc.font("Helvetica").fontSize(10).fillColor("#444").text(`Notes : ${room.notes}`);
-        }
-        doc.moveDown(0.2);
+      addPage();
 
-        tableHeader(doc);
+      for (let i = 0; i < roomList.length; i++) {
+        const room = roomList[i];
+        if (i > 0) addPage();
 
         const rItems = itemsByRoom.get(room.id) || [];
+        toc.push({
+          name: `${room.name}${room.floor_level ? " — " + room.floor_level : ""}`,
+          count: rItems.length,
+          page: pageNum,
+        });
+
+        drawHeaderBand(doc, "DÉTAIL", `${room.name}${room.floor_level ? " — " + room.floor_level : ""}`);
+
+        if (room.notes) {
+          doc.font("Helvetica").fontSize(10).fillColor("#374151").text(`Notes : ${room.notes}`);
+          doc.moveDown(0.4);
+        }
+
         if (!rItems.length) {
-          doc.font("Helvetica").fontSize(10).fillColor("#666").text("Aucun élément renseigné.");
-          doc.moveDown(0.8);
+          doc.font("Helvetica").fontSize(11).fillColor("#6b7280").text("Aucun élément renseigné pour cette pièce.");
           continue;
         }
 
-        let stripe = false;
+        const byCat = new Map<string, any[]>();
         for (const it of rItems) {
-          const defects = collectDefects(it);
-          const desc = safeText(it.description);
-          const obs = [desc, defects ? `Défauts: ${defects}` : ""].filter(Boolean).join(" • ");
-
-          tableRow(
-            doc,
-            {
-              cat: safeText(it.category),
-              label: safeText(it.label),
-              cond: conditionLabel(it.condition),
-              clean: yn(it.is_clean),
-              func: yn(it.is_functional),
-              obs: obs || "—",
-            },
-            stripe
-          );
-          stripe = !stripe;
-
-          // Miniatures (max 2) – optionnel, et sans casser si une image foire
-          const pList = (photosByItem.get(it.id) || []).slice(0, 2);
-          if (pList.length) {
-            ensureSpace(doc, 110);
-            const startY = doc.y + 4;
-            let x = doc.page.margins.left;
-
-            for (const p of pList) {
-              const bucket = p.storage_bucket || "inventory-photos";
-              const path = p.storage_path;
-              if (!path) continue;
-
-              const { data: imgData } = await supabaseAdmin!.storage.from(bucket).download(path);
-              if (!imgData) continue;
-
-              try {
-                const buf = Buffer.from(await imgData.arrayBuffer());
-                doc.save();
-                doc.rect(x, startY, 120, 86).strokeColor("#e5e7eb").stroke();
-                doc.image(buf, x + 4, startY + 4, { fit: [112, 78] });
-                doc.restore();
-                x += 130;
-              } catch {
-                // ignore
-              }
-            }
-
-            doc.y = startY + 92;
-            doc.moveDown(0.4);
-          }
+          const cat = safeText(it.category || "Autre");
+          const arr = byCat.get(cat) || [];
+          arr.push(it);
+          byCat.set(cat, arr);
         }
 
-        doc.moveDown(0.8);
+        const cats = Array.from(byCat.keys()).sort((a, b) => a.localeCompare(b, "fr"));
+
+        for (const cat of cats) {
+          ensureSpace(doc, 120);
+          drawCategoryBand(doc, cat);
+          drawTableHeader(doc);
+
+          const list = byCat.get(cat) || [];
+          list.sort((a, b) => safeText(a.label).localeCompare(safeText(b.label), "fr"));
+
+          let stripe = false;
+          for (const it of list) {
+            const defects = collectDefects(it);
+            const desc = safeText(it.description);
+            const important =
+              (typeof it.severity === "number" && it.severity >= 3) ||
+              it.condition === "mauvais" ||
+              Boolean(defects);
+
+            drawRow(
+              doc,
+              {
+                label: safeText(it.label),
+                cond: conditionLabel(it.condition),
+                clean: ynIcon(it.is_clean),
+                func: ynIcon(it.is_functional),
+                desc,
+                defects,
+              },
+              stripe
+            );
+            stripe = !stripe;
+
+            const pList = (photosByItem.get(it.id) || []).slice(0, important ? 1 : 3);
+            if (pList.length) {
+              await drawPhotos(doc, supabaseAdmin, pList, important ? "hero" : "thumbs");
+              doc.moveDown(0.2);
+            }
+          }
+
+          doc.moveDown(0.6);
+        }
       }
 
-      // Items hors pièce
       const noRoomItems = itemsByRoom.get("__no_room__") || [];
       if (noRoomItems.length) {
-        doc.addPage();
-        drawSectionTitle(doc, "Éléments hors pièce");
-        tableHeader(doc);
+        addPage();
+        drawHeaderBand(doc, "DÉTAIL", "Éléments hors pièce");
+        toc.push({ name: "Éléments hors pièce", count: noRoomItems.length, page: pageNum });
 
-        let stripe = false;
+        const byCat = new Map<string, any[]>();
         for (const it of noRoomItems) {
-          const defects = collectDefects(it);
-          const desc = safeText(it.description);
-          const obs = [desc, defects ? `Défauts: ${defects}` : ""].filter(Boolean).join(" • ");
+          const cat = safeText(it.category || "Autre");
+          const arr = byCat.get(cat) || [];
+          arr.push(it);
+          byCat.set(cat, arr);
+        }
+        const cats = Array.from(byCat.keys()).sort((a, b) => a.localeCompare(b, "fr"));
 
-          tableRow(
-            doc,
-            {
-              cat: safeText(it.category),
-              label: safeText(it.label),
-              cond: conditionLabel(it.condition),
-              clean: yn(it.is_clean),
-              func: yn(it.is_functional),
-              obs: obs || "—",
-            },
-            stripe
-          );
-          stripe = !stripe;
+        for (const cat of cats) {
+          drawCategoryBand(doc, cat);
+          drawTableHeader(doc);
+
+          const list = byCat.get(cat) || [];
+          list.sort((a, b) => safeText(a.label).localeCompare(safeText(b.label), "fr"));
+
+          let stripe = false;
+          for (const it of list) {
+            const defects = collectDefects(it);
+            const desc = safeText(it.description);
+            const important =
+              (typeof it.severity === "number" && it.severity >= 3) ||
+              it.condition === "mauvais" ||
+              Boolean(defects);
+
+            drawRow(
+              doc,
+              {
+                label: safeText(it.label),
+                cond: conditionLabel(it.condition),
+                clean: ynIcon(it.is_clean),
+                func: ynIcon(it.is_functional),
+                desc,
+                defects,
+              },
+              stripe
+            );
+            stripe = !stripe;
+
+            const pList = (photosByItem.get(it.id) || []).slice(0, important ? 1 : 3);
+            if (pList.length) {
+              await drawPhotos(doc, supabaseAdmin, pList, important ? "hero" : "thumbs");
+              doc.moveDown(0.2);
+            }
+          }
+
+          doc.moveDown(0.6);
         }
       }
 
-      // Signatures
-      doc.addPage();
-      drawSectionTitle(doc, "Signatures");
+      addPage();
+      drawHeaderBand(doc, "SIGNATURES", "À signer par les parties");
 
-      doc.font("Helvetica").fontSize(10).fillColor("#111");
-      doc.text("Bailleur :", { continued: false });
-      doc.moveDown(0.8);
+      drawSectionTitle(doc, "Bailleur");
+      doc.font("Helvetica").fontSize(10).fillColor("#111").text("Nom : " + landlordName);
+      doc.moveDown(0.4);
       doc.rect(doc.page.margins.left, doc.y, 240, 90).strokeColor("#e5e7eb").stroke();
       doc.moveDown(6);
 
-      doc.text("Locataire :", { continued: false });
-      doc.moveDown(0.8);
+      drawSectionTitle(doc, "Locataire");
+      doc.font("Helvetica").fontSize(10).fillColor("#111").text("Nom : " + tenantName);
+      doc.moveDown(0.4);
       doc.rect(doc.page.margins.left, doc.y, 240, 90).strokeColor("#e5e7eb").stroke();
-      doc.moveDown(1);
+
+      const range = doc.bufferedPageRange();
+      const tocBufferIndex = range.start + (tocPageIndex - 1);
+
+      doc.switchToPage(tocBufferIndex);
+      doc.y = tocStartY;
+
+      doc.font("Helvetica-Bold").fontSize(10).fillColor("#111").text("Pièce", doc.page.margins.left, doc.y, { width: 360 });
+      doc.text("Éléments", doc.page.margins.left + 370, doc.y, { width: 70, align: "right" });
+      doc.text("Page", doc.page.margins.left + 450, doc.y, { width: 80, align: "right" });
+      doc.moveDown(0.3);
+      doc
+        .moveTo(doc.page.margins.left, doc.y)
+        .lineTo(doc.page.width - doc.page.margins.right, doc.y)
+        .strokeColor("#e5e7eb")
+        .stroke();
+      doc.moveDown(0.4);
+
+      doc.font("Helvetica").fontSize(10).fillColor("#111");
+      for (const entry of toc) {
+        ensureSpace(doc, 22);
+        doc.text(entry.name, doc.page.margins.left, doc.y, { width: 360 });
+        doc.text(String(entry.count), doc.page.margins.left + 370, doc.y, { width: 70, align: "right" });
+        doc.text(String(entry.page), doc.page.margins.left + 450, doc.y, { width: 80, align: "right" });
+        doc.moveDown(0.25);
+      }
     });
 
-    // 5) Upload PDF vers Storage
     const filename = `etat-des-lieux-${report.report_type}-${toISODate(new Date())}.pdf`;
     const storagePath = `${userId}/${report.lease_id}/${reportId}/${filename}`;
 
-    const { error: upErr } = await supabaseAdmin.storage
-      .from("inventory-pdfs")
-      .upload(storagePath, pdf, { contentType: "application/pdf", upsert: true });
+    const { error: upErr } = await supabaseAdmin.storage.from("inventory-pdfs").upload(storagePath, pdf, {
+      contentType: "application/pdf",
+      upsert: true,
+    });
 
     if (upErr) return res.status(500).json({ error: `Upload PDF échoué: ${upErr.message}` });
 
-    // 6) Update report
     const pdfUrl = `inventory-pdfs:${storagePath}`;
-
     const { error: updErr } = await supabaseAdmin
       .from("inventory_reports")
       .update({ pdf_url: pdfUrl, updated_at: new Date().toISOString() })

@@ -45,23 +45,36 @@ const badge = (tone: "slate" | "emerald" | "amber" | "red", label: string) => {
   );
 };
 
+function isArchived(p: any) {
+  return (p?.status || "").toLowerCase() === "archived";
+}
+
 export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
   const safeProperties = Array.isArray(properties) ? properties : [];
   const safePhotos = Array.isArray(photos) ? photos : [];
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
 
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  const actifs = useMemo(() => safeProperties.filter((p) => p?.status !== "archived"), [safeProperties]);
+  const filteredProps = useMemo(() => {
+    return safeProperties.filter((p) => (showArchived ? true : !isArchived(p)));
+  }, [safeProperties, showArchived]);
+
+  const actifsCount = useMemo(() => safeProperties.filter((p) => !isArchived(p)).length, [safeProperties]);
+  const archivedCount = useMemo(() => safeProperties.filter((p) => isArchived(p)).length, [safeProperties]);
 
   const selected = useMemo(() => {
     if (!selectedId) return null;
-    return actifs.find((p) => p?.id === selectedId) || null;
-  }, [actifs, selectedId]);
+    // ⚠️ on cherche dans ALL, pas juste les actifs
+    return safeProperties.find((p) => p?.id === selectedId) || null;
+  }, [safeProperties, selectedId]);
+
+  const selectedIsArchived = selected ? isArchived(selected) : false;
 
   const photosByProperty = useMemo(() => {
     const m = new Map<string, any[]>();
@@ -124,7 +137,6 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     }
   };
 
-  // ✅ SAVE (anti submit + logs)
   const saveProperty = async () => {
     if (!userId) {
       setErr("userId manquant (DashboardShell/useLandlordDashboard).");
@@ -136,8 +148,6 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     setOk(null);
 
     try {
-      console.log("[saveProperty] click", { userId, formId: form.id, supabase: !!supabase, form });
-
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
 
       const vErr = validate(form);
@@ -156,7 +166,9 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
         energy_class: (form.energy_class || "").trim() || null,
         energy_value: form.energy_value ? toNumOrNull(form.energy_value) : null,
         ghg_class: (form.ghg_class || "").trim() || null,
-        status: "active",
+        // 👇 si le bien est archivé et que tu l’édites, on ne le “réactive” pas automatiquement.
+        // Si tu veux le réactiver, utilise “Restaurer”.
+        status: form.id ? (selectedIsArchived ? "archived" : "active") : "active",
       };
 
       if (form.id) {
@@ -172,10 +184,6 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
       }
 
       await safeRefresh();
-
-      // Après refresh, on garde une fiche propre :
-      // - si création, on reste sur le bien créé mais on ne dépend pas des props
-      // - si update, on reste sur l'édition
     } catch (e: any) {
       console.error("[saveProperty] error:", e);
       setErr(e?.message || "Erreur lors de l’enregistrement.");
@@ -192,15 +200,44 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
       if (!userId) throw new Error("userId manquant.");
 
-      const { error } = await supabase.from("properties").update({ status: "archived" }).eq("id", id).eq("user_id", userId);
+      const { error } = await supabase
+        .from("properties")
+        .update({ status: "archived" })
+        .eq("id", id)
+        .eq("user_id", userId);
       if (error) throw error;
 
       setOk("Bien archivé ✅");
-      // si on archive le bien sélectionné, on repasse en “nouveau”
-      if (selectedId === id) resetToCreate();
+
+      // ✅ on ne reset PAS la fiche : on reste sur le bien, juste “archivé”
       await safeRefresh();
+
+      // ✅ si showArchived est off, on l’active automatiquement pour éviter l’effet “disparition”
+      if (!showArchived) setShowArchived(true);
     } catch (e: any) {
       setErr(e?.message || "Impossible d’archiver ce bien.");
+    }
+  };
+
+  const restore = async (id: string) => {
+    setErr(null);
+    setOk(null);
+
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
+      if (!userId) throw new Error("userId manquant.");
+
+      const { error } = await supabase
+        .from("properties")
+        .update({ status: "active" })
+        .eq("id", id)
+        .eq("user_id", userId);
+      if (error) throw error;
+
+      setOk("Bien restauré ✅");
+      await safeRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de restaurer ce bien.");
     }
   };
 
@@ -225,7 +262,6 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     }
   };
 
-  // Upload photo
   const uploadPhoto = async (file: File, propertyId: string) => {
     setErr(null);
     setOk(null);
@@ -266,17 +302,26 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
-      <SectionTitle kicker="Biens" title="Parc immobilier" desc="Sélectionne un bien, puis édite en dessous. Adresse obligatoire. Photos (2 Mo max)." />
+      <SectionTitle
+        kicker="Biens"
+        title="Parc immobilier"
+        desc="Sélectionne un bien, puis édite en dessous. Adresse obligatoire. Photos (2 Mo max)."
+      />
 
-      {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
-      {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
+      {err ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>
+      ) : null}
+      {ok ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div>
+      ) : null}
 
-      {/* ✅ LISTE EN HAUT (UX) */}
+      {/* ✅ LISTE */}
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <p className="text-[0.75rem] font-semibold text-slate-900">Mes biens</p>
-            {badge("slate", `${actifs.length} actif(s)`)}
+            {badge("slate", `${actifsCount} actif(s)`)}
+            {archivedCount ? badge("slate", `${archivedCount} archivé(s)`) : null}
           </div>
 
           <button
@@ -288,15 +333,30 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
           </button>
         </div>
 
-        {actifs.length === 0 ? (
+        {/* ✅ toggle archived */}
+        <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+          <input
+            type="checkbox"
+            checked={showArchived}
+            onChange={(e) => setShowArchived(e.target.checked)}
+          />
+          Afficher les biens archivés
+        </label>
+
+        {filteredProps.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
-            Aucun bien pour le moment. Clique sur <span className="font-semibold">“Nouveau bien”</span>.
+            {safeProperties.length === 0 ? (
+              <>Aucun bien pour le moment. Clique sur <span className="font-semibold">“Nouveau bien”</span>.</>
+            ) : (
+              <>Aucun bien (selon le filtre actuel).</>
+            )}
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {actifs.map((p) => {
-              const isActive = p.id === selectedId;
+            {filteredProps.map((p) => {
+              const isActiveCard = p.id === selectedId;
               const pPhotos = photosByProperty.get(p.id) ?? [];
+              const archived = isArchived(p);
 
               return (
                 <button
@@ -305,16 +365,24 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
                   onClick={() => openEdit(p)}
                   className={
                     "rounded-2xl border p-4 text-left transition " +
-                    (isActive ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50")
+                    (isActiveCard
+                      ? "border-emerald-300 bg-emerald-50"
+                      : "border-slate-200 bg-white hover:bg-slate-50") +
+                    (archived ? " opacity-85" : "")
                   }
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="font-semibold text-slate-900 truncate">{p.label || "Bien"}</p>
                       <p className="mt-1 text-xs text-slate-600 truncate">
-                        {(p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
+                        {(p.type || "—") +
+                          " • " +
+                          (p.address_line1 || "Adresse manquante") +
+                          " • " +
+                          (p.city || "—")}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
+                        {archived ? badge("amber", "Archivé") : badge("emerald", "Actif")}
                         {p.surface_m2 ? badge("slate", `${p.surface_m2} m²`) : null}
                         {p.rooms ? badge("slate", `${p.rooms} pièces`) : null}
                         {pPhotos.length ? badge("emerald", `${pPhotos.length} photo(s)`) : badge("slate", "0 photo")}
@@ -322,7 +390,7 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
                     </div>
 
                     <div className="shrink-0">
-                      {badge(isActive ? "emerald" : "slate", isActive ? "Sélectionné" : "Ouvrir")}
+                      {badge(isActiveCard ? "emerald" : "slate", isActiveCard ? "Sélectionné" : "Ouvrir")}
                     </div>
                   </div>
                 </button>
@@ -332,23 +400,29 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
         )}
       </div>
 
-      {/* ✅ FICHE (édition / création) */}
+      {/* ✅ FICHE */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-[0.75rem] font-semibold text-slate-900">{form.id ? "Fiche du bien" : "Créer un bien"}</p>
             <p className="text-xs text-slate-600">
-              Champs obligatoires : <span className="font-semibold">Nom</span> et <span className="font-semibold">Adresse (ligne 1)</span>.
+              Champs obligatoires : <span className="font-semibold">Nom</span> et{" "}
+              <span className="font-semibold">Adresse (ligne 1)</span>.
             </p>
+            {form.id ? (
+              <p className="mt-1 text-xs text-slate-600">
+                Statut :{" "}
+                <span className={"font-semibold " + (selectedIsArchived ? "text-amber-700" : "text-emerald-700")}>
+                  {selectedIsArchived ? "Archivé" : "Actif"}
+                </span>
+              </p>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => {
-                console.log("[btn] saveProperty clicked", { formId: form.id });
-                saveProperty();
-              }}
+              onClick={saveProperty}
               disabled={saving}
               className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
             >
@@ -357,14 +431,26 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
 
             {form.id ? (
               <>
-                <button
-                  type="button"
-                  onClick={() => archive(form.id!)}
-                  disabled={saving}
-                  className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-                >
-                  Archiver
-                </button>
+                {!selectedIsArchived ? (
+                  <button
+                    type="button"
+                    onClick={() => archive(form.id!)}
+                    disabled={saving}
+                    className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    Archiver
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => restore(form.id!)}
+                    disabled={saving}
+                    className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    Restaurer
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => remove(form.id!)}
@@ -474,7 +560,7 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
           />
         </div>
 
-        {/* ✅ Photos dans la fiche (plus logique) */}
+        {/* ✅ Photos */}
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold text-slate-900">Photos</p>
@@ -493,7 +579,6 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (f && form.id) uploadPhoto(f, form.id);
-                    // reset input pour pouvoir re-uploader le même fichier
                     e.currentTarget.value = "";
                   }}
                   className="mt-1 block text-xs"

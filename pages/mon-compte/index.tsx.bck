@@ -1,0 +1,718 @@
+// pages/mon-compte/index.tsx
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
+import Link from "next/link";
+import AccountLayout from "../../components/account/AccountLayout";
+import { supabase } from "../../lib/supabaseClient";
+
+type Mode = "login" | "register";
+
+type ProfileRow = {
+  id: string;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  postal_code: string | null;
+  city: string | null;
+  country: string | null;
+  account_type: string | null;
+  subscription_plan: string | null;
+  account_tier: string; // enum
+  is_admin: boolean | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+const safeRedirect = (raw: unknown) => {
+  const v = typeof raw === "string" ? raw : "";
+  return v.startsWith("/") ? v : "/mon-compte";
+};
+
+export default function MonCompteHomePage() {
+  const router = useRouter();
+
+  const [mode, setMode] = useState<Mode>("login");
+  const [redirectPath, setRedirectPath] = useState<string>("/mon-compte");
+  const [routerReady, setRouterReady] = useState(false);
+
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authPassword2, setAuthPassword2] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authInfo, setAuthInfo] = useState<string | null>(null);
+  const [resetInfo, setResetInfo] = useState<string | null>(null);
+
+  const [checkingUser, setCheckingUser] = useState(true);
+  const [user, setUser] = useState<any>(null);
+
+  const [projectsCount, setProjectsCount] = useState<number | null>(null);
+  const [projectsCountLoading, setProjectsCountLoading] = useState(false);
+
+  // ✅ PROFILE
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileEdit, setProfileEdit] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<string | null>(null);
+
+  const [profileDraft, setProfileDraft] = useState({
+    first_name: "",
+    last_name: "",
+    phone: "",
+    address_line1: "",
+    address_line2: "",
+    postal_code: "",
+    city: "",
+    country: "FR",
+  });
+
+  const isLoggedIn = !!user?.id;
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    setRouterReady(true);
+
+    const m = router.query.mode as string | undefined;
+    setMode(m === "register" ? "register" : "login");
+
+    setRedirectPath(safeRedirect(router.query.redirect));
+  }, [router.isReady, router.query.mode, router.query.redirect]);
+
+  const redirectAfterAuth = () => {
+    router.replace(redirectPath);
+  };
+
+  const refreshProjectsCount = async (u: any | null) => {
+    if (!supabase || !u?.id) {
+      setProjectsCount(null);
+      return;
+    }
+    try {
+      setProjectsCountLoading(true);
+      const { count, error } = await supabase
+        .from("projects")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", u.id);
+      if (error) throw error;
+      setProjectsCount(count ?? 0);
+    } catch {
+      setProjectsCount(null);
+    } finally {
+      setProjectsCountLoading(false);
+    }
+  };
+
+  // ✅ charge profile + crée si absent
+  const loadProfile = async (userId: string) => {
+    if (!supabase || !userId) return;
+    setProfileLoading(true);
+    setProfileMsg(null);
+
+    try {
+      // 1) fetch
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(
+          "id,full_name,first_name,last_name,phone,address_line1,address_line2,postal_code,city,country,account_type,subscription_plan,account_tier,is_admin,created_at,updated_at"
+        )
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      // 2) si pas de ligne, on crée (upsert)
+      if (!data) {
+        const { error: upErr } = await supabase.from("profiles").upsert(
+          {
+            id: userId,
+            country: "FR",
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        );
+        if (upErr) throw upErr;
+
+        // reload
+        const { data: data2, error: e2 } = await supabase
+          .from("profiles")
+          .select(
+            "id,full_name,first_name,last_name,phone,address_line1,address_line2,postal_code,city,country,account_type,subscription_plan,account_tier,is_admin,created_at,updated_at"
+          )
+          .eq("id", userId)
+          .maybeSingle();
+        if (e2) throw e2;
+
+        setProfile((data2 as any) || null);
+        setProfileDraft({
+          first_name: data2?.first_name || "",
+          last_name: data2?.last_name || "",
+          phone: data2?.phone || "",
+          address_line1: data2?.address_line1 || "",
+          address_line2: data2?.address_line2 || "",
+          postal_code: data2?.postal_code || "",
+          city: data2?.city || "",
+          country: data2?.country || "FR",
+        });
+        return;
+      }
+
+      setProfile(data as any);
+      setProfileDraft({
+        first_name: data.first_name || "",
+        last_name: data.last_name || "",
+        phone: data.phone || "",
+        address_line1: data.address_line1 || "",
+        address_line2: data.address_line2 || "",
+        postal_code: data.postal_code || "",
+        city: data.city || "",
+        country: data.country || "FR",
+      });
+    } catch (e: any) {
+      setProfile(null);
+      setProfileMsg(e?.message || "Impossible de charger le profil.");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    if (!supabase || !user?.id) return;
+    setProfileLoading(true);
+    setProfileMsg(null);
+
+    try {
+      const first = profileDraft.first_name.trim() || null;
+      const last = profileDraft.last_name.trim() || null;
+      const full_name = [first || "", last || ""].filter(Boolean).join(" ").trim() || null;
+
+      const payload = {
+        id: user.id,
+        first_name: first,
+        last_name: last,
+        full_name,
+        phone: profileDraft.phone.trim() || null,
+        address_line1: profileDraft.address_line1.trim() || null,
+        address_line2: profileDraft.address_line2.trim() || null,
+        postal_code: profileDraft.postal_code.trim() || null,
+        city: profileDraft.city.trim() || null,
+        country: (profileDraft.country || "FR").trim() || "FR",
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
+      if (error) throw error;
+
+      setProfileMsg("✅ Profil enregistré.");
+      setProfileEdit(false);
+      await loadProfile(user.id);
+    } catch (e: any) {
+      setProfileMsg("❌ " + (e?.message || "Impossible d’enregistrer le profil."));
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  // bootstrap auth + sync temps réel
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribe: (() => void) | null = null;
+
+    const init = async () => {
+      try {
+        if (!supabase) {
+          if (!mounted) return;
+          setUser(null);
+          setCheckingUser(false);
+          return;
+        }
+
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        const u = data.session?.user ?? null;
+        setUser(u);
+        setCheckingUser(false);
+        refreshProjectsCount(u);
+
+        if (u?.id) loadProfile(u.id);
+
+        const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+          if (!mounted) return;
+          const nextUser = session?.user ?? null;
+          setUser(nextUser);
+          setCheckingUser(false);
+          refreshProjectsCount(nextUser);
+          if (nextUser?.id) loadProfile(nextUser.id);
+          else setProfile(null);
+        });
+
+        unsubscribe = () => sub.subscription.unsubscribe();
+      } catch {
+        if (!mounted) return;
+        setUser(null);
+        setCheckingUser(false);
+      }
+    };
+
+    init();
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await supabase?.auth.signOut();
+    } finally {
+      router.replace("/");
+    }
+  };
+
+  const requestPasswordReset = async () => {
+    setAuthError(null);
+    setAuthInfo(null);
+    setResetInfo(null);
+
+    if (!supabase) return setAuthError("Auth indisponible.");
+    const clean = (authEmail || "").trim();
+    if (!clean) return setAuthError("Renseigne ton e-mail pour recevoir le lien de réinitialisation.");
+
+    try {
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/mon-compte/reset-mot-de-passe`
+          : undefined;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(clean, redirectTo ? { redirectTo } : undefined);
+      if (error) setAuthError(error.message || "Impossible d’envoyer l’e-mail de réinitialisation.");
+      else setResetInfo("✅ Lien envoyé par e-mail (si un compte existe pour cette adresse).");
+    } catch (e: any) {
+      setAuthError(e?.message || "Impossible d’envoyer l’e-mail de réinitialisation.");
+    }
+  };
+
+  const handleLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthInfo(null);
+    setResetInfo(null);
+
+    if (!supabase) return setAuthError("Auth indisponible.");
+
+    setAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: authEmail.trim(),
+        password: authPassword,
+      });
+
+      if (error) setAuthError(error.message || "Erreur de connexion.");
+      else redirectAfterAuth();
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthInfo(null);
+    setResetInfo(null);
+
+    if (!supabase) return setAuthError("Auth indisponible.");
+
+    const email = authEmail.trim();
+    if (!email || !authPassword) return setAuthError("Merci de renseigner un e-mail et un mot de passe.");
+    if (authPassword !== authPassword2) return setAuthError("Les mots de passe ne correspondent pas.");
+
+    setAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password: authPassword,
+      });
+
+      if (error) {
+        const msg = (error.message || "").toLowerCase();
+
+        if (
+          msg.includes("already registered") ||
+          msg.includes("already exists") ||
+          msg.includes("user already") ||
+          (msg.includes("email") && msg.includes("exists"))
+        ) {
+          setAuthError(
+            "Vous avez déjà un compte avec cette adresse e-mail. Merci de vous connecter.\n\n" +
+              "Si vous avez oublié votre mot de passe, cliquez sur « Mot de passe oublié ? »."
+          );
+          setMode("login");
+          return;
+        }
+
+        setAuthError(error.message || "Erreur inscription.");
+        return;
+      }
+
+      setAuthInfo("✅ Compte créé. Vérifiez vos e-mails si la confirmation est activée, puis connectez-vous.");
+      setMode("login");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const landlordActive = useMemo(() => {
+    const meta = user?.user_metadata || {};
+    return !!meta.is_landlord;
+  }, [user]);
+
+  const profileNice = useMemo(() => {
+    const fn = profile?.first_name || "";
+    const ln = profile?.last_name || "";
+    const full = (profile?.full_name || [fn, ln].filter(Boolean).join(" ").trim()) || "—";
+    return full;
+  }, [profile]);
+
+  return (
+    <AccountLayout userEmail={user?.email ?? null} active="dashboard" onLogout={handleLogout}>
+      {checkingUser ? (
+        <p className="text-sm text-slate-500">Chargement…</p>
+      ) : !isLoggedIn ? (
+        <>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Accès à votre espace</p>
+              <h1 className="text-lg font-semibold text-slate-900">{mode === "login" ? "Connexion" : "Créer un compte"}</h1>
+              <p className="text-xs text-slate-500 mt-1">Vous pourrez ensuite accéder à vos outils (quittances, projets, etc.).</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAuthError(null);
+                setAuthInfo(null);
+                setResetInfo(null);
+                setMode(mode === "login" ? "register" : "login");
+              }}
+              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              {mode === "login" ? "Créer un compte" : "J’ai déjà un compte"}
+            </button>
+          </div>
+
+          {authError && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 whitespace-pre-line">
+              {authError}
+            </div>
+          )}
+          {authInfo && (
+            <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              {authInfo}
+            </div>
+          )}
+          {resetInfo && (
+            <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              {resetInfo}
+            </div>
+          )}
+
+          {mode === "login" ? (
+            <form onSubmit={handleLogin} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">Adresse e-mail</label>
+                <input
+                  type="email"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">Mot de passe</label>
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {authLoading ? "Connexion..." : "Se connecter"}
+                </button>
+
+                <button type="button" onClick={requestPasswordReset} className="text-xs text-slate-600 underline">
+                  Mot de passe oublié ?
+                </button>
+
+                <p className="text-[0.7rem] text-slate-500">
+                  Redirection : <span className="font-semibold">{routerReady ? redirectPath : "/mon-compte"}</span>
+                </p>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleRegister} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">Adresse e-mail</label>
+                <input
+                  type="email"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-700">Mot de passe</label>
+                  <input
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    required
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-700">Confirmer</label>
+                  <input
+                    type="password"
+                    value={authPassword2}
+                    onChange={(e) => setAuthPassword2(e.target.value)}
+                    required
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+              >
+                {authLoading ? "Création..." : "Créer mon compte"}
+              </button>
+
+              <p className="text-[0.75rem] text-slate-500">
+                Déjà inscrit ?{" "}
+                <button type="button" onClick={() => setMode("login")} className="underline">
+                  Se connecter
+                </button>
+              </p>
+            </form>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Mon compte</p>
+          <h1 className="text-lg font-semibold text-slate-900">Vue d’ensemble</h1>
+          <p className="text-sm text-slate-600 mt-1 mb-4">Accès rapide + informations de profil (éditables).</p>
+
+          {/* ✅ PROFIL (affiché + éditable) */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Profil</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900 truncate">{profileNice}</p>
+                <p className="mt-1 text-xs text-slate-500 break-all">{user.email}</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileMsg(null);
+                    setProfileEdit((v) => !v);
+                  }}
+                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                  disabled={profileLoading}
+                >
+                  {profileEdit ? "Fermer" : "Modifier"}
+                </button>
+              </div>
+            </div>
+
+            {profileMsg ? (
+              <div className="mt-3 text-xs text-slate-700 whitespace-pre-line">{profileMsg}</div>
+            ) : null}
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">Prénom</label>
+                <input
+                  value={profileEdit ? profileDraft.first_name : profile?.first_name || ""}
+                  onChange={(e) => setProfileDraft((s) => ({ ...s, first_name: e.target.value }))}
+                  disabled={!profileEdit}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">Nom</label>
+                <input
+                  value={profileEdit ? profileDraft.last_name : profile?.last_name || ""}
+                  onChange={(e) => setProfileDraft((s) => ({ ...s, last_name: e.target.value }))}
+                  disabled={!profileEdit}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">Téléphone</label>
+                <input
+                  value={profileEdit ? profileDraft.phone : profile?.phone || ""}
+                  onChange={(e) => setProfileDraft((s) => ({ ...s, phone: e.target.value }))}
+                  disabled={!profileEdit}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">Pays</label>
+                <input
+                  value={profileEdit ? profileDraft.country : profile?.country || "FR"}
+                  onChange={(e) => setProfileDraft((s) => ({ ...s, country: e.target.value }))}
+                  disabled={!profileEdit}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-xs text-slate-700">Adresse</label>
+                <input
+                  value={profileEdit ? profileDraft.address_line1 : profile?.address_line1 || ""}
+                  onChange={(e) => setProfileDraft((s) => ({ ...s, address_line1: e.target.value }))}
+                  disabled={!profileEdit}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-xs text-slate-700">Complément d’adresse</label>
+                <input
+                  value={profileEdit ? profileDraft.address_line2 : profile?.address_line2 || ""}
+                  onChange={(e) => setProfileDraft((s) => ({ ...s, address_line2: e.target.value }))}
+                  disabled={!profileEdit}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">Code postal</label>
+                <input
+                  value={profileEdit ? profileDraft.postal_code : profile?.postal_code || ""}
+                  onChange={(e) => setProfileDraft((s) => ({ ...s, postal_code: e.target.value }))}
+                  disabled={!profileEdit}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs text-slate-700">Ville</label>
+                <input
+                  value={profileEdit ? profileDraft.city : profile?.city || ""}
+                  onChange={(e) => setProfileDraft((s) => ({ ...s, city: e.target.value }))}
+                  disabled={!profileEdit}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-50"
+                />
+              </div>
+            </div>
+
+            {profileEdit ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={saveProfile}
+                  disabled={profileLoading}
+                  className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                >
+                  {profileLoading ? "Enregistrement..." : "Enregistrer"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileMsg(null);
+                    setProfileEdit(false);
+                    setProfileDraft({
+                      first_name: profile?.first_name || "",
+                      last_name: profile?.last_name || "",
+                      phone: profile?.phone || "",
+                      address_line1: profile?.address_line1 || "",
+                      address_line2: profile?.address_line2 || "",
+                      postal_code: profile?.postal_code || "",
+                      city: profile?.city || "",
+                      country: profile?.country || "FR",
+                    });
+                  }}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Annuler
+                </button>
+              </div>
+            ) : null}
+
+            {profileLoading ? <p className="mt-3 text-xs text-slate-500">Chargement profil…</p> : null}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Compte</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">Actif</p>
+              <p className="mt-1 text-xs text-slate-500 break-all">{user.email}</p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Projets</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{projectsCountLoading ? "…" : projectsCount ?? "—"}</p>
+              <Link href="/mon-compte/projets" className="mt-1 inline-block text-xs text-slate-600 underline">
+                Voir mes projets
+              </Link>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Bailleur</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{landlordActive ? "Activé" : "Non activé"}</p>
+              <Link href="/mon-compte/bailleur" className="mt-1 inline-block text-xs text-slate-600 underline">
+                Ouvrir
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Link
+              href="/quittances-loyer"
+              className="inline-flex items-center justify-center rounded-full bg-amber-500 px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-amber-400"
+            >
+              Quittances de loyer
+            </Link>
+            <Link
+              href="/outils-proprietaire"
+              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Outils propriétaire
+            </Link>
+            <Link
+              href="/capacite"
+              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Nouvelle simulation capacité
+            </Link>
+          </div>
+        </>
+      )}
+    </AccountLayout>
+  );
+}

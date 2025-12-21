@@ -10,6 +10,8 @@ export type Tenant = {
   id: string;
   user_id: string;
   full_name: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   email: string | null;
   phone: string | null;
   notes: string | null;
@@ -44,7 +46,7 @@ type Props = {
 const fmt = (v?: string | null) => (v ? v : "—");
 
 /* ======================================================
-   UTIL (anti loading infini)
+   UTIL
 ====================================================== */
 
 const withTimeout = async <T,>(p: Promise<T>, ms = 15000) => {
@@ -59,12 +61,62 @@ const withTimeout = async <T,>(p: Promise<T>, ms = 15000) => {
   }
 };
 
+function cx(...c: Array<string | false | null | undefined>) {
+  return c.filter(Boolean).join(" ");
+}
+
+function buildFullName(first?: string | null, last?: string | null) {
+  const f = (first || "").trim();
+  const l = (last || "").trim();
+  return [f, l].filter(Boolean).join(" ").trim();
+}
+
+function splitFullName(full?: string | null) {
+  const s = (full || "").trim();
+  if (!s) return { first: "", last: "" };
+  const parts = s.split(/\s+/);
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  return { first: parts[0], last: parts.slice(1).join(" ") };
+}
+
+function initialsFromTenant(t: Tenant) {
+  const full =
+    buildFullName(t.first_name, t.last_name) ||
+    (t.full_name || "").trim() ||
+    "Locataire";
+  const parts = full.split(/\s+/).slice(0, 2);
+  const a = parts[0]?.[0] || "L";
+  const b = parts.length > 1 ? parts[1]?.[0] : "";
+  return (a + b).toUpperCase();
+}
+
+function displayNameFromTenant(t: Tenant) {
+  const full = buildFullName(t.first_name, t.last_name) || (t.full_name || "").trim();
+  return full || "Locataire";
+}
+
+function sanitizePhone(p?: string | null) {
+  if (!p) return "";
+  return p.replace(/\s+/g, "");
+}
+
+function copyToClipboard(v: string) {
+  if (!v) return;
+  navigator.clipboard?.writeText(v).catch(() => {});
+}
+
+/* ======================================================
+   COMPONENT
+====================================================== */
+
 export function SectionLocataires({ userId, tenants, leases, properties, onRefresh }: Props) {
   const safeTenants = Array.isArray(tenants) ? tenants : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safeProperties = Array.isArray(properties) ? properties : [];
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<"az" | "recent">("az");
 
   const selected = useMemo(
     () => safeTenants.find((t) => t.id === selectedId) || null,
@@ -75,8 +127,10 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
+  // ✅ Form prénom/nom (et on écrit en DB first_name/last_name + full_name)
   const [form, setForm] = useState({
-    full_name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     phone: "",
     notes: "",
@@ -88,12 +142,21 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
     setErr(null);
 
     if (!selected) {
-      setForm({ full_name: "", email: "", phone: "", notes: "" });
+      setForm({ first_name: "", last_name: "", email: "", phone: "", notes: "" });
       return;
     }
 
+    // ✅ priorité à first/last en DB, fallback split(full_name)
+    const hasSplit =
+      (selected.first_name ?? null) === null && (selected.last_name ?? null) === null;
+
+    const fallback = splitFullName(selected.full_name);
+    const first = (selected.first_name ?? (hasSplit ? fallback.first : "")) || "";
+    const last = (selected.last_name ?? (hasSplit ? fallback.last : "")) || "";
+
     setForm({
-      full_name: selected.full_name || "",
+      first_name: first,
+      last_name: last,
       email: selected.email || "",
       phone: selected.phone || "",
       notes: selected.notes || "",
@@ -110,9 +173,8 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
     return m;
   }, [safeProperties]);
 
-  const activePropertyForTenant = (tenantId: string) => {
+  const activeLeaseForTenant = (tenantId: string) => {
     const now = new Date();
-
     const lease = safeLeases.find((l) => {
       if (!l || l.tenant_id !== tenantId) return false;
 
@@ -123,16 +185,21 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
       return startOk && notEnded;
     });
 
+    return lease || null;
+  };
+
+  const activePropertyForTenant = (tenantId: string) => {
+    const lease = activeLeaseForTenant(tenantId);
     if (!lease) return null;
     return propertyById.get(lease.property_id) || null;
   };
+
+  const hasAnyLeaseForTenant = (tenantId: string) => safeLeases.some((l) => l?.tenant_id === tenantId);
 
   const leasesForSelected = useMemo(() => {
     if (!selectedId) return [];
     return safeLeases.filter((l) => l?.tenant_id === selectedId).slice(0, 12);
   }, [safeLeases, selectedId]);
-
-  const hasAnyLeaseForTenant = (tenantId: string) => safeLeases.some((l) => l?.tenant_id === tenantId);
 
   const safeRefresh = async () => {
     try {
@@ -147,25 +214,61 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
     e.stopPropagation();
   };
 
+  const filteredTenants = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const base = q
+      ? safeTenants.filter((t) => {
+          const name = (displayNameFromTenant(t) || "").toLowerCase();
+          const email = (t.email || "").toLowerCase();
+          const phone = (t.phone || "").toLowerCase();
+          return name.includes(q) || email.includes(q) || phone.includes(q);
+        })
+      : safeTenants.slice();
+
+    if (sort === "recent") {
+      base.sort((a, b) => {
+        const da = new Date(a.updated_at || a.created_at || 0).getTime();
+        const db = new Date(b.updated_at || b.created_at || 0).getTime();
+        return db - da;
+      });
+    } else {
+      base.sort((a, b) => {
+        const na = (displayNameFromTenant(a) || "Locataire").toLowerCase();
+        const nb = (displayNameFromTenant(b) || "Locataire").toLowerCase();
+        return na.localeCompare(nb);
+      });
+    }
+    return base;
+  }, [safeTenants, query, sort]);
+
   /* ======================================================
-     CRUD (ANTI-NAVIGATION + DEBUG RESULT)
+     CRUD
   ====================================================== */
 
   const saveTenant = async () => {
-    if (!userId) return;
+    if (!userId) {
+      setErr("Session introuvable : userId manquant.");
+      return;
+    }
 
     setLoading(true);
     setErr(null);
     setOk(null);
 
     try {
-      console.log("[saveTenant] start", { userId, selectedId, supabase: !!supabase, form });
-
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
+
+      const first = form.first_name.trim();
+      const last = form.last_name.trim();
+
+      // ✅ full_name sert de fallback et de display, mais on enregistre aussi first/last
+      const full_name = buildFullName(first, last) || "Locataire";
 
       const payload = {
         user_id: userId,
-        full_name: form.full_name?.trim() || "Locataire",
+        first_name: first || null,
+        last_name: last || null,
+        full_name, // ok même si trigger le recalcule
         email: form.email?.trim() || null,
         phone: form.phone?.trim() || null,
         notes: form.notes?.trim() || null,
@@ -175,20 +278,30 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
 
       if (selectedId) {
         const res = await withTimeout(
-          supabase.from("tenants").update(payload).eq("id", selectedId).eq("user_id", userId).select("id").single()
+          Promise.resolve(
+            supabase
+              .from("tenants")
+              .update(payload)
+              .eq("id", selectedId)
+              .eq("user_id", userId)
+              .select("id, full_name, first_name, last_name")
+              .single()
+          )
         );
-
-        console.log("[saveTenant] update result", res);
         // @ts-ignore
         if ((res as any)?.error) throw (res as any).error;
 
         setOk("Locataire mis à jour ✅");
       } else {
         const res = await withTimeout(
-          supabase.from("tenants").insert(payload).select("id").single()
+          Promise.resolve(
+            supabase
+              .from("tenants")
+              .insert(payload)
+              .select("id, full_name, first_name, last_name")
+              .single()
+          )
         );
-
-        console.log("[saveTenant] insert result", res);
         // @ts-ignore
         if ((res as any)?.error) throw (res as any).error;
 
@@ -224,10 +337,14 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
 
       const res = await withTimeout(
-        supabase.from("tenants").delete().eq("id", selectedId).eq("user_id", userId)
+        Promise.resolve(
+          supabase
+            .from("tenants")
+            .delete()
+            .eq("id", selectedId)
+            .eq("user_id", userId)
+        )
       );
-
-      console.log("[deleteTenant] result", res);
       // @ts-ignore
       if ((res as any)?.error) throw (res as any).error;
 
@@ -251,20 +368,24 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
       <SectionTitle
         kicker="Locataires"
         title="Gestion des locataires"
-        desc="Créer, modifier, supprimer. Visualisez le bail actif et l’historique des baux."
+        desc="Créez, modifiez, supprimez. Visualisez le bail actif et l’historique des baux."
       />
 
       {err ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {err}
+        </div>
       ) : null}
       {ok ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          {ok}
+        </div>
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr),minmax(0,1.2fr)]">
         {/* LIST */}
         <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Mes locataires</p>
             <button
               type="button"
@@ -278,17 +399,55 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
             </button>
           </div>
 
+          {/* Search + sort */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher (nom, email, téléphone)…"
+                className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-1 inline-flex self-start">
+              <button
+                type="button"
+                onClick={() => setSort("az")}
+                className={cx(
+                  "rounded-lg px-3 py-1.5 text-xs font-semibold transition",
+                  sort === "az" ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                A → Z
+              </button>
+              <button
+                type="button"
+                onClick={() => setSort("recent")}
+                className={cx(
+                  "rounded-lg px-3 py-1.5 text-xs font-semibold transition",
+                  sort === "recent" ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                Récents
+              </button>
+            </div>
+          </div>
+
           {loading ? <p className="text-xs text-slate-500">Chargement…</p> : null}
 
-          {!loading && safeTenants.length === 0 ? (
+          {!loading && filteredTenants.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm text-slate-700">
-              Aucun locataire pour le moment.
+              {safeTenants.length === 0 ? "Aucun locataire pour le moment." : "Aucun résultat."}
             </div>
           ) : (
             <div className="space-y-2">
-              {safeTenants.map((t) => {
+              {filteredTenants.map((t) => {
                 const active = t.id === selectedId;
+                const activeLease = activeLeaseForTenant(t.id);
                 const p = activePropertyForTenant(t.id);
+                const hasLease = hasAnyLeaseForTenant(t.id);
 
                 return (
                   <button
@@ -298,39 +457,149 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                       stop(e);
                       setSelectedId(t.id);
                     }}
-                    className={
-                      "w-full text-left rounded-xl border px-3 py-3 transition " +
-                      (active ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50")
-                    }
+                    className={cx(
+                      "w-full text-left rounded-2xl border px-3 py-3 transition relative overflow-hidden",
+                      active
+                        ? "border-emerald-300 bg-emerald-50"
+                        : "border-slate-200 bg-white hover:bg-slate-50 hover:shadow-sm"
+                    )}
                   >
-                    <p className="text-sm font-semibold text-slate-900">{t.full_name || "Locataire"}</p>
-                    <p className="mt-0.5 text-[0.75rem] text-slate-600">
-                      {(t.email || "—") + (t.phone ? ` • ${t.phone}` : "")}
-                    </p>
-                    <p className="mt-1 text-[0.75rem] text-slate-600">
-                      Bail actif : <span className="font-semibold">{p?.label || "—"}</span>
-                    </p>
+                    <div className={cx("absolute left-0 top-0 h-full w-1", active ? "bg-emerald-500" : "bg-transparent")} />
+
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex items-start gap-3">
+                        <div
+                          className={cx(
+                            "shrink-0 h-10 w-10 rounded-2xl border flex items-center justify-center text-sm font-semibold",
+                            active ? "border-emerald-200 bg-white text-slate-900" : "border-slate-200 bg-slate-50 text-slate-800"
+                          )}
+                          title="Locataire"
+                        >
+                          {initialsFromTenant(t)}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">
+                            {displayNameFromTenant(t)}
+                          </p>
+
+                          <p className="mt-0.5 text-[0.75rem] text-slate-600 truncate">
+                            {(t.email || "—") + (t.phone ? ` • ${t.phone}` : "")}
+                          </p>
+
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            {activeLease ? (
+                              <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-1 text-[0.7rem] font-semibold">
+                                Actif
+                              </span>
+                            ) : hasLease ? (
+                              <span className="inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2.5 py-1 text-[0.7rem] font-semibold">
+                                Historique
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2.5 py-1 text-[0.7rem] font-semibold">
+                                Sans bail
+                              </span>
+                            )}
+
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-800">
+                              🏠 {p?.label || "—"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800">
+                        Ouvrir →
+                      </span>
+                    </div>
                   </button>
                 );
               })}
             </div>
           )}
+
+          <p className="text-[0.7rem] text-slate-500 pt-1">Astuce : recherche instantanée sur nom, email ou téléphone.</p>
         </section>
 
         {/* FORM */}
         <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
-          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-            {selected ? "Modifier le locataire" : "Nouveau locataire"}
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+              {selected ? "Modifier le locataire" : "Nouveau locataire"}
+            </p>
+
+            {selected ? (
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
+                {initialsFromTenant(selected)}
+              </span>
+            ) : null}
+          </div>
+
+          {/* Quick actions */}
+          {selected ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold text-slate-900">Actions rapides</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e);
+                    copyToClipboard(selected.email || "");
+                    setOk(selected.email ? "Email copié ✅" : "Aucun email à copier.");
+                  }}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Copier email
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e);
+                    copyToClipboard(sanitizePhone(selected.phone));
+                    setOk(selected.phone ? "Téléphone copié ✅" : "Aucun téléphone à copier.");
+                  }}
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Copier tél.
+                </button>
+
+                {selected.email ? (
+                  <a
+                    onClick={(e) => e.stopPropagation()}
+                    href={`mailto:${selected.email}`}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
+                  >
+                    Envoyer un email
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           <div className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-[0.7rem] text-slate-700">Nom complet</label>
-              <input
-                value={form.full_name}
-                onChange={(e) => setForm((s) => ({ ...s, full_name: e.target.value }))}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
+            {/* PRENOM / NOM */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-[0.7rem] text-slate-700">Prénom</label>
+                <input
+                  value={form.first_name}
+                  onChange={(e) => setForm((s) => ({ ...s, first_name: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  placeholder="Ex : Marie"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[0.7rem] text-slate-700">Nom</label>
+                <input
+                  value={form.last_name}
+                  onChange={(e) => setForm((s) => ({ ...s, last_name: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  placeholder="Ex : Dupont"
+                />
+              </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -340,15 +609,18 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  placeholder="nom@email.fr"
                 />
               </div>
+
               <div className="space-y-1">
                 <label className="text-[0.7rem] text-slate-700">Téléphone</label>
                 <input
                   value={form.phone}
                   onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  placeholder="06 00 00 00 00"
                 />
               </div>
             </div>
@@ -359,7 +631,8 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                 rows={3}
                 value={form.notes}
                 onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                placeholder="Infos utiles (préférence de contact, particularités, etc.)"
               />
             </div>
 
@@ -369,7 +642,6 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                 onClick={(e) => {
                   stop(e);
                   if (loading) return;
-                  console.log("[btn] saveTenant clicked", { selectedId });
                   saveTenant();
                 }}
                 disabled={loading}
@@ -410,7 +682,7 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
 
           {/* HISTORY */}
           {selectedId ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
               <p className="text-[0.75rem] font-semibold text-slate-900">Historique des baux</p>
 
               <div className="mt-2 space-y-2">
@@ -420,9 +692,9 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                   leasesForSelected.map((l) => {
                     const p = propertyById.get(l.property_id);
                     return (
-                      <div key={l.id} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                      <div key={l.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
                         <p className="text-[0.75rem] font-semibold text-slate-900">
-                          {p?.label || "Bien"} • {fmt(l.status)}
+                          🏠 {p?.label || "Bien"} • {fmt(l.status)}
                         </p>
                         <p className="text-[0.7rem] text-slate-600">
                           Début : {l.start_date} • Fin : {l.end_date || "—"}
