@@ -1,0 +1,161 @@
+// components/landlord/sections/SectionDeclaration.tsx
+import React, { useMemo, useState } from "react";
+
+type Regime = "lmnp" | "nu" | "pinel" | "autre";
+
+function cx(...c: Array<string | false | null | undefined>) {
+  return c.filter(Boolean).join(" ");
+}
+
+export function SectionDeclaration() {
+  const [regime, setRegime] = useState<Regime>("lmnp");
+  const [hasLoan, setHasLoan] = useState(true);
+  const [hasWork, setHasWork] = useState(false);
+  const [furnished, setFurnished] = useState(true);
+
+  const checklist = useMemo(() => {
+    if (regime === "lmnp") {
+      return [
+        "Choisir le régime : Micro-BIC vs Réel (souvent Réel si crédit + charges).",
+        "Rassembler loyers encaissés (année N) + relevés/exports.",
+        "Lister charges déductibles : intérêts, assurance emprunteur, taxe foncière, charges copro, assurance PNO, gestion, travaux (selon nature).",
+        "Amortissements : mobilier + immobilier (hors terrain), à faire via liasse (expert-comptable ou outil).",
+        "Déclaration : 2042 C PRO (micro) ou liasse 2031/2033 (réel) + report 2042 C PRO.",
+      ];
+    }
+    if (regime === "nu") {
+      return [
+        "Choisir : Micro-foncier (si éligible) vs Réel.",
+        "Rassembler loyers encaissés (année N).",
+        "Charges déductibles (réel) : intérêts, assurance, taxe foncière, charges copro, travaux entretien/réparation, gestion.",
+        "Déclaration : 2044 (réel) ou 2042 (micro-foncier).",
+      ];
+    }
+    if (regime === "pinel") {
+      return [
+        "Vérifier éligibilité et engagement (6/9/12 ans).",
+        "Rassembler loyers + justificatifs + plafond loyer/ressources.",
+        "Déclaration : 2044 EB + 2042 RICI (réduction d’impôt).",
+        "Conserver bail + avis d’imposition locataire + attestations.",
+      ];
+    }
+    return [
+      "Identifier le régime exact (LMP, SCI IS/IR, location saisonnière pro, etc.).",
+      "Lister revenus / charges / justificatifs.",
+      "Déterminer les formulaires adaptés.",
+    ];
+  }, [regime]);
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-sky-700">Espace bailleur</p>
+        <h2 className="text-lg sm:text-xl font-semibold text-slate-900 mt-1">Aide à la déclaration</h2>
+        <p className="text-xs text-slate-600 mt-1">
+          Un guide structuré (LMNP, location nue, Pinel…). Objectif : savoir quoi préparer et quoi déclarer.
+        </p>
+      </div>
+
+      {/* Choix régime */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">1) Choisis ton régime</p>
+            <p className="text-xs text-slate-600 mt-1">On adapte la checklist et les formulaires.</p>
+          </div>
+
+          <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
+            {[
+              { k: "lmnp", label: "LMNP" },
+              { k: "nu", label: "Location nue" },
+              { k: "pinel", label: "Pinel" },
+              { k: "autre", label: "Autre" },
+            ].map((x) => (
+              <button
+                key={x.k}
+                type="button"
+                onClick={() => setRegime(x.k as Regime)}
+                className={cx(
+                  "rounded-xl px-3 py-2 text-xs font-semibold transition",
+                  regime === x.k ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-white"
+                )}
+              >
+                {x.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Options utiles */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+            <input
+              type="checkbox"
+              checked={hasLoan}
+              onChange={(e) => setHasLoan(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-slate-300"
+            />
+            <span>
+              <span className="text-sm font-semibold text-slate-900">Crédit</span>
+              <span className="block text-xs text-slate-600">Intérêts / assurance emprunteur</span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+            <input
+              type="checkbox"
+              checked={hasWork}
+              onChange={(e) => setHasWork(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-slate-300"
+            />
+            <span>
+              <span className="text-sm font-semibold text-slate-900">Travaux</span>
+              <span className="block text-xs text-slate-600">Entretien / amélioration</span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+            <input
+              type="checkbox"
+              checked={furnished}
+              onChange={(e) => setFurnished(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-slate-300"
+            />
+            <span>
+              <span className="text-sm font-semibold text-slate-900">Meublé</span>
+              <span className="block text-xs text-slate-600">LMNP / amortissements</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      {/* Checklist */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+        <p className="text-sm font-semibold text-slate-900">2) Checklist</p>
+        <p className="text-xs text-slate-600 mt-1">À préparer avant d’aller sur impots.gouv.</p>
+
+        <ul className="mt-4 space-y-2 text-sm text-slate-800">
+          {checklist.map((c) => (
+            <li key={c} className="flex gap-2">
+              <span className="mt-0.5">✅</span>
+              <span>{c}</span>
+            </li>
+          ))}
+        </ul>
+
+        {(regime === "lmnp" && hasLoan) ? (
+          <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 text-sm text-sky-900">
+            Astuce LMNP : si tu as un crédit + charges, le <span className="font-semibold">réel</span> est souvent plus pertinent
+            que le micro (à valider selon ton cas).
+          </div>
+        ) : null}
+      </div>
+
+      {/* Disclaimer */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+        ⚠️ Guide informatif : pas un conseil fiscal. Pour un montage complexe (réel LMNP, multi-biens, LMP…), privilégie un comptable.
+      </div>
+    </div>
+  );
+}

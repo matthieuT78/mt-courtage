@@ -1,4 +1,3 @@
-// components/landlord/SidebarNav.tsx
 import React from "react";
 import { Pill } from "./UiBits";
 
@@ -11,10 +10,8 @@ export type LandlordSectionKey =
   | "quittances"
   | "loyers"
   | "finance"
-  | "revision"
-  | "compteurs"
   | "inventaire"
-  | "parametres";
+  | "declaration"; // ✅ NEW
 
 type Item = {
   key: LandlordSectionKey;
@@ -59,17 +56,22 @@ export function SidebarNav({
 
     { key: "loyers", label: "Loyers", icon: "💶" },
     { key: "finance", label: "Finance", icon: "📊" },
-    { key: "revision", label: "Révision loyer", icon: "📈", badge: <Pill tone="indigo">Nouveau</Pill> },
-    { key: "compteurs", label: "Compteurs", icon: "⚡", badge: <Pill tone="indigo">Nouveau</Pill> },
     { key: "inventaire", label: "Inventaire", icon: "📦", badge: <Pill tone="indigo">Nouveau</Pill> },
 
-    { key: "parametres", label: "Paramètres", icon: "⚙️", badge: overLimit ? <Pill tone="amber">Pro</Pill> : null },
+    // ✅ NEW
+    {
+      key: "declaration",
+      label: "Aide à la déclaration",
+      icon: "🧾",
+      badge: overLimit ? <Pill tone="amber">Pro</Pill> : <Pill tone="indigo">Guide</Pill>,
+    },
+
+    // ❌ supprimé : revision / compteurs / parametres
   ];
 
   const go = (e: React.SyntheticEvent, key: LandlordSectionKey) => {
     (e as any).preventDefault?.();
     (e as any).stopPropagation?.();
-    console.log("[SidebarNav] click ->", key);
     onChange(key);
   };
 
@@ -77,7 +79,6 @@ export function SidebarNav({
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       e.stopPropagation();
-      console.log("[SidebarNav] key ->", key);
       onChange(key);
     }
   };
@@ -93,9 +94,7 @@ export function SidebarNav({
           </div>
 
           <p className="mt-1 text-sm font-semibold text-slate-900">Espace bailleur</p>
-          <p className="mt-1 text-[0.75rem] text-slate-600">
-            Tout sur une page. Navigation à gauche.
-          </p>
+          <p className="mt-1 text-[0.75rem] text-slate-600">Tout sur une page. Navigation à gauche.</p>
         </div>
 
         {/* Nav items */}
@@ -119,21 +118,12 @@ export function SidebarNav({
               >
                 <span className="flex items-center gap-2 min-w-0">
                   <span className="text-base">{it.icon}</span>
-                  <span
-                    className={
-                      "text-[0.85rem] font-semibold truncate " +
-                      (isActive ? "text-white" : "text-slate-900")
-                    }
-                  >
+                  <span className={"text-[0.85rem] font-semibold truncate " + (isActive ? "text-white" : "text-slate-900")}>
                     {it.label}
                   </span>
                 </span>
 
-                {it.badge ? (
-                  <span className={isActive ? "opacity-95" : ""}>{it.badge}</span>
-                ) : (
-                  <span />
-                )}
+                {it.badge ? <span className={isActive ? "opacity-95" : ""}>{it.badge}</span> : <span />}
               </div>
             );
           })}
