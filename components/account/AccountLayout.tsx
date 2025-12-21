@@ -6,7 +6,7 @@ import AppFooter from "../AppFooter";
 
 type Props = {
   userEmail: string | null;
-  active: "home" | "profile" | "securite" | "projets";
+  active: "home" | "profile" | "securite" | "projets"; // ✅ bailleur supprimé
   onLogout: () => Promise<void> | void;
   children: ReactNode;
 };
