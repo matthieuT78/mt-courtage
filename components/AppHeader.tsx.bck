@@ -7,13 +7,23 @@ import { supabase } from "../lib/supabaseClient";
 type SimpleUser = {
   id: string;
   email?: string;
-  user_metadata?: { full_name?: string };
+  user_metadata?: {
+    first_name?: string | null;
+    last_name?: string | null;
+    full_name?: string | null;
+  };
 };
 
 type NavLink = {
   href: string;
   label: string;
   external?: boolean;
+};
+
+const firstWord = (s?: string | null) => {
+  const v = String(s || "").trim().replace(/\s+/g, " ");
+  if (!v) return "";
+  return v.split(" ")[0];
 };
 
 export default function AppHeader() {
@@ -74,9 +84,19 @@ export default function AppHeader() {
 
   const isLoggedIn = !!user?.id;
 
+  // ✅ Afficher uniquement le prénom (fallbacks propres)
   const displayName = useMemo(() => {
     if (!user) return "Mon compte";
-    return user.user_metadata?.full_name || (user.email ? user.email.split("@")[0] : "Mon compte");
+
+    const meta = user.user_metadata || {};
+    const byFirstName = firstWord(meta.first_name);
+    if (byFirstName) return byFirstName;
+
+    const byFullName = firstWord(meta.full_name);
+    if (byFullName) return byFullName;
+
+    if (user.email) return user.email.split("@")[0];
+    return "Mon compte";
   }, [user]);
 
   const closeMobile = () => setMobileOpen(false);
@@ -128,11 +148,7 @@ export default function AppHeader() {
         <div className="flex items-center justify-between gap-3">
           {/* Brand */}
           <Link href="/" className="flex items-center gap-3" onClick={closeMobile}>
-            <img
-              src="/izimo-logo.png"
-              alt="Izimo"
-              className="h-10 md:h-11 w-auto object-contain"
-            />
+            <img src="/izimo-logo.png" alt="Izimo" className="h-10 md:h-11 w-auto object-contain" />
             <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600 animate-izimo-baseline">
               Simuler • Décider • Gérer
             </span>
@@ -155,9 +171,7 @@ export default function AppHeader() {
                   href={l.href}
                   className={
                     "rounded-full px-3 py-2 text-[0.8rem] font-semibold transition " +
-                    (isActive(l.href)
-                      ? `${brandBg} ${brandText}`
-                      : "text-slate-700 hover:bg-slate-100")
+                    (isActive(l.href) ? `${brandBg} ${brandText}` : "text-slate-700 hover:bg-slate-100")
                   }
                 >
                   {l.label}
@@ -237,9 +251,7 @@ export default function AppHeader() {
                     onClick={closeMobile}
                     className={
                       "rounded-xl px-3 py-2 text-sm font-semibold transition " +
-                      (isActive(l.href)
-                        ? `${brandBg} ${brandText}`
-                        : "text-slate-800 hover:bg-slate-50")
+                      (isActive(l.href) ? `${brandBg} ${brandText}` : "text-slate-800 hover:bg-slate-50")
                     }
                   >
                     {l.label}

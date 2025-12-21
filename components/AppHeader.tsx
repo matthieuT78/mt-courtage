@@ -33,14 +33,6 @@ export default function AppHeader() {
   const [authReady, setAuthReady] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // ✅ SSR-safe
-  const [clientAsPath, setClientAsPath] = useState<string>("/");
-
-  useEffect(() => {
-    if (!router.isReady) return;
-    setClientAsPath(router.asPath || "/");
-  }, [router.isReady, router.asPath]);
-
   useEffect(() => {
     let mounted = true;
     let unsubscribe: (() => void) | null = null;
@@ -123,6 +115,7 @@ export default function AppHeader() {
     { href: "/#faq", label: "FAQ" },
   ];
 
+  // ⚠️ garde si tu veux encore le lien vers /espace-bailleur (sinon supprime la ligne)
   const privateLinks: NavLink[] = [
     { href: "/calculettes", label: "Calculettes" },
     { href: "/espace-bailleur", label: "Boîte à outils bailleur" },
@@ -132,10 +125,12 @@ export default function AppHeader() {
 
   const links = isLoggedIn ? privateLinks : publicLinks;
 
-  const loginHref = useMemo(() => {
-    const redirect = encodeURIComponent(clientAsPath || "/");
-    return `/mon-compte?mode=login&redirect=${redirect}`;
-  }, [clientAsPath]);
+  // ✅ plus de redirect: connexion = login, puis ta page login redirige vers "/"
+  const loginHref = "/mon-compte?mode=login";
+  const registerHref = "/mon-compte?mode=register";
+
+  // ✅ clic prénom => on ouvre directement le profil
+  const accountHref = "/mon-compte/profil";
 
   // 🎨 Brand Izimo
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
@@ -188,7 +183,7 @@ export default function AppHeader() {
             ) : isLoggedIn ? (
               <div className="flex items-center gap-2 pl-2">
                 <Link
-                  href="/mon-compte"
+                  href={accountHref}
                   className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-[0.8rem] font-semibold text-slate-800 hover:bg-slate-50"
                 >
                   {displayName}
@@ -210,7 +205,7 @@ export default function AppHeader() {
                   Connexion
                 </Link>
                 <Link
-                  href="/mon-compte?mode=register"
+                  href={registerHref}
                   className={`inline-flex items-center justify-center rounded-full ${brandBg} px-4 py-2 text-[0.8rem] font-semibold ${brandText} ${brandHover}`}
                 >
                   Créer un compte
@@ -266,7 +261,7 @@ export default function AppHeader() {
               ) : isLoggedIn ? (
                 <div className="flex flex-col gap-2">
                   <Link
-                    href="/mon-compte"
+                    href={accountHref}
                     onClick={closeMobile}
                     className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                   >
@@ -290,7 +285,7 @@ export default function AppHeader() {
                     Connexion
                   </Link>
                   <Link
-                    href="/mon-compte?mode=register"
+                    href={registerHref}
                     onClick={closeMobile}
                     className={`inline-flex items-center justify-center rounded-xl ${brandBg} px-4 py-2 text-sm font-semibold ${brandText} ${brandHover}`}
                   >
