@@ -84,11 +84,6 @@ async function sendEmailViaResend(params: {
   return { ok: true, id: json?.id || null };
 }
 
-function isInternalCall(req: NextApiRequest) {
-  const secret = req.headers["x-internal-secret"];
-  return !!process.env.INTERNAL_API_SECRET && secret === process.env.INTERNAL_API_SECRET;
-}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Json>) {
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -101,9 +96,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       periodEnd,
       receiptId,
       contentText,
-      affectFinance,
-      // optionnel: forcer destinataire (ex: renvoi à une autre adresse)
-      forceToEmail,
+      // ✅ NEW : si false => renvoi / regen PDF + email, sans toucher rent_payments (donc sans impacter Finance)
+      affectFinance = true,
     } = (req.body || {}) as {
       userId?: string;
       leaseId?: string;
@@ -112,71 +106,83 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       receiptId?: string;
       contentText?: string;
       affectFinance?: boolean;
-      forceToEmail?: string;
     };
 
-    // ✅ par défaut on impacte finance
-    const doFinance = affectFinance !== false;
-
-    // ✅ autoriser l'appel interne sans session (confirm)
     if (!userId) return res.status(400).json({ error: "userId requis." });
-    const internal = isInternalCall(req);
 
-    // 1) Charger / créer la quittance
+    // ---------------------------------------------------------------------
+    // 0) Récupérer quittance (par id) OU créer/upsert par (lease_id, period_start, period_end)
+    // ---------------------------------------------------------------------
     let receipt: any = null;
 
     if (receiptId) {
       const r = await supabaseAdmin.from("rent_receipts").select("*").eq("id", receiptId).single();
       if (r.error || !r.data) return res.status(404).json({ error: "Quittance introuvable." });
+
       receipt = r.data;
+
+      // si on passe un contentText, on le stocke (utile si édition côté UI avant envoi)
+      if (typeof contentText === "string" && contentText.trim()) {
+        const updTxt = await supabaseAdmin
+          .from("rent_receipts")
+          .update({ content_text: contentText, edited_at: new Date().toISOString() })
+          .eq("id", receipt.id)
+          .select("*")
+          .single();
+
+        if (!updTxt.error && updTxt.data) receipt = updTxt.data;
+      }
     } else {
       if (!leaseId || !periodStart || !periodEnd) {
         return res.status(400).json({ error: "leaseId + periodStart + periodEnd requis si receiptId absent." });
       }
 
-      const existing = await supabaseAdmin
+      // charger lease pour montants + check ownership
+      const l = await supabaseAdmin.from("leases").select("*").eq("id", leaseId).single();
+      if (l.error || !l.data) return res.status(404).json({ error: "Bail introuvable." });
+      if (l.data.user_id !== userId) return res.status(403).json({ error: "Accès refusé." });
+
+      const rent = Number(l.data.rent_amount || 0);
+      const charges = Number(l.data.charges_amount || 0);
+      const total = rent + charges;
+
+      // ✅ upsert sur la contrainte unique (lease_id, period_start, period_end)
+      // - si existe déjà : on ne casse pas le payment_id, pdf_url etc.
+      // - on met à jour content_text si fourni
+      const up = await supabaseAdmin
         .from("rent_receipts")
-        .select("*")
-        .eq("lease_id", leaseId)
-        .eq("period_start", periodStart)
-        .eq("period_end", periodEnd)
-        .maybeSingle();
-
-      if (existing.data) {
-        receipt = existing.data;
-      } else {
-        const l = await supabaseAdmin.from("leases").select("*").eq("id", leaseId).single();
-        if (l.error || !l.data) return res.status(404).json({ error: "Bail introuvable." });
-        if (l.data.user_id !== userId) return res.status(403).json({ error: "Accès refusé." });
-
-        const rent = Number(l.data.rent_amount || 0);
-        const charges = Number(l.data.charges_amount || 0);
-        const total = rent + charges;
-
-        const ins = await supabaseAdmin
-          .from("rent_receipts")
-          .insert({
+        .upsert(
+          {
             lease_id: leaseId,
             period_start: periodStart,
             period_end: periodEnd,
+
             rent_amount: rent,
             charges_amount: charges,
             total_amount: total,
-            issue_date: toISODate(new Date()),
-            content_text: contentText || "",
-            status: "generated",
-            issued_at: new Date().toISOString(),
-          })
-          .select("*")
-          .single();
 
-        if (ins.error || !ins.data)
-          return res.status(500).json({ error: ins.error?.message || "Création quittance échouée." });
-        receipt = ins.data;
+            issue_date: toISODate(new Date()),
+            issued_at: new Date().toISOString(),
+
+            content_text: safeText(contentText).trim() || "—", // NOT NULL chez toi
+            status: "generated",
+            edited_at: new Date().toISOString(),
+          },
+          { onConflict: "lease_id,period_start,period_end" }
+        )
+        .select("*")
+        .single();
+
+      if (up.error || !up.data) {
+        return res.status(500).json({ error: up.error?.message || "Upsert quittance échoué." });
       }
+
+      receipt = up.data;
     }
 
-    // 2) Charger lease + tenant
+    // ---------------------------------------------------------------------
+    // 1) Charger bail + tenant (pour email / auth)
+    // ---------------------------------------------------------------------
     const leaseRes = await supabaseAdmin.from("leases").select("*").eq("id", receipt.lease_id).single();
     if (leaseRes.error || !leaseRes.data) return res.status(404).json({ error: "Bail introuvable." });
     const lease = leaseRes.data;
@@ -186,12 +192,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const tenantRes = await supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single();
     const tenant = tenantRes.data || null;
 
-    const toEmail = forceToEmail ? String(forceToEmail) : safeText(tenant?.email);
+    const toEmail = safeText(tenant?.email);
     if (!toEmail) {
       return res.status(400).json({ error: "Le locataire n’a pas d’email. Ajoute un email au locataire avant envoi." });
     }
 
-    // 3) Générer PDF
+    // ---------------------------------------------------------------------
+    // 2) Générer PDF
+    // ---------------------------------------------------------------------
     const pdf = await buildPdfBuffer(async (doc) => {
       doc.fontSize(14).text("QUITTANCE DE LOYER", { align: "center" });
       doc.moveDown(0.8);
@@ -199,9 +207,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       doc
         .fontSize(9)
         .fillColor("#444")
-        .text(`Période : ${receipt.period_start} → ${receipt.period_end} • Émise le : ${receipt.issue_date}`, {
-          align: "center",
-        });
+        .text(
+          `Période : ${receipt.period_start} → ${receipt.period_end} • Émise le : ${receipt.issue_date}`,
+          { align: "center" }
+        );
       doc.moveDown(1);
 
       doc.fillColor("#111");
@@ -211,21 +220,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       doc.fillColor("#666").fontSize(8).text("Document généré par ImmoPilot", { align: "center" });
     });
 
-    // 4) Upload Storage
+    // ---------------------------------------------------------------------
+    // 3) Upload storage
+    // ---------------------------------------------------------------------
     const yyyymm = String(receipt.period_start || "").slice(0, 7) || toISODate(new Date()).slice(0, 7);
     const filename = `quittance-${yyyymm}.pdf`;
     const storagePath = `${userId}/${receipt.lease_id}/${receipt.id}/${filename}`;
 
-    const up = await supabaseAdmin.storage.from("rent-receipts-pdfs").upload(storagePath, pdf, {
+    const upPdf = await supabaseAdmin.storage.from("rent-receipts-pdfs").upload(storagePath, pdf, {
       contentType: "application/pdf",
       upsert: true,
     });
-    if (up.error) return res.status(500).json({ error: `Upload PDF échoué: ${up.error.message}` });
+    if (upPdf.error) return res.status(500).json({ error: `Upload PDF échoué: ${upPdf.error.message}` });
 
-    // 5) Finance (optionnel)
+    const pdfUrl = `rent-receipts-pdfs:${storagePath}`;
+
+    // ---------------------------------------------------------------------
+    // 4) Finance: rent_payments (OPTIONNEL) -> seulement si affectFinance === true
+    // ---------------------------------------------------------------------
     let paymentId: string | null = receipt.payment_id || null;
 
-    if (doFinance) {
+    if (affectFinance) {
       const payExisting = await supabaseAdmin
         .from("rent_payments")
         .select("*")
@@ -236,6 +251,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       if (payExisting.data) {
         paymentId = payExisting.data.id;
+
         const updPay = await supabaseAdmin
           .from("rent_payments")
           .update({
@@ -260,7 +276,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             rent_amount: receipt.rent_amount,
             charges_amount: receipt.charges_amount,
             total_amount: receipt.total_amount,
-            due_date: receipt.period_start,
+            due_date: receipt.period_start, // à adapter si tu as une vraie due_date
             paid_at: new Date().toISOString(),
             payment_method: lease.payment_method || null,
             source: "receipt",
@@ -268,13 +284,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           .select("id")
           .single();
 
-        if (insPay.error || !insPay.data)
+        if (insPay.error || !insPay.data) {
           return res.status(500).json({ error: `Insert paiement échoué: ${insPay.error?.message}` });
+        }
         paymentId = insPay.data.id;
       }
     }
 
-    // 6) Email
+    // ---------------------------------------------------------------------
+    // 5) Email (Resend)
+    // ---------------------------------------------------------------------
     const emailSubject = `Quittance de loyer – ${yyyymm}`;
     const emailHtml = `
       <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
@@ -291,67 +310,85 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       attachments: [{ filename, content: pdf }],
     });
 
-    // Log email (si table existe)
-    try {
-      await supabaseAdmin.from("email_logs").insert({
-        user_id: userId,
-        lease_id: receipt.lease_id,
-        receipt_id: receipt.id,
-        to_email: toEmail,
-        subject: emailSubject,
-        body_preview: `Quittance ${yyyymm}`,
-        status: emailResult.ok ? "sent" : "error",
-        error_message: emailResult.ok ? null : emailResult.error,
-        sent_at: new Date().toISOString(),
-      });
-    } catch {
-      // ignore si table pas prête
-    }
+    // log email (best effort)
+    await supabaseAdmin.from("email_logs").insert({
+      user_id: userId,
+      lease_id: receipt.lease_id,
+      receipt_id: receipt.id,
+      to_email: toEmail,
+      subject: emailSubject,
+      body_preview: `Quittance ${yyyymm}`,
+      status: emailResult.ok ? "sent" : "error",
+      error_message: emailResult.ok ? null : emailResult.error,
+      sent_at: new Date().toISOString(),
+    });
 
-    if (!emailResult.ok) {
-      return res.status(400).json({ error: emailResult.error, storage_path: storagePath });
-    }
-
-    // 7) Update rent_receipts (pdf + sent + payment link si doFinance)
-    const pdfUrl = `rent-receipts-pdfs:${storagePath}`;
-
-    const updPayload: any = {
+    // ---------------------------------------------------------------------
+    // 6) Update receipt (PDF + sent/error + payment link si on a touché finance)
+    // ---------------------------------------------------------------------
+    const receiptPatch: any = {
       pdf_url: pdfUrl,
       sent_to_tenant_email: toEmail,
-      sent_at: new Date().toISOString(),
-      status: "sent",
-      updated_at: new Date().toISOString(),
-      archived_at: new Date().toISOString(),
+      edited_at: new Date().toISOString(),
     };
 
-    if (doFinance) {
-      updPayload.payment_id = paymentId;
+    if (emailResult.ok) {
+      receiptPatch.sent_at = new Date().toISOString();
+      receiptPatch.status = "sent";
+      receiptPatch.send_error = null;
+    } else {
+      // on garde le PDF archivé même si l'email échoue
+      receiptPatch.status = receiptPatch.status || "generated";
+      receiptPatch.send_error = emailResult.error;
     }
 
-    const upd = await supabaseAdmin.from("rent_receipts").update(updPayload).eq("id", receipt.id);
-    if (upd.error) return res.status(500).json({ error: `Update quittance échoué: ${upd.error.message}` });
+    if (affectFinance) {
+      receiptPatch.payment_id = paymentId;
+    }
 
-    // 8) Signed URL (ouvrir direct)
+    const updReceipt = await supabaseAdmin
+      .from("rent_receipts")
+      .update(receiptPatch)
+      .eq("id", receipt.id);
+
+    if (updReceipt.error) return res.status(500).json({ error: `Update quittance échoué: ${updReceipt.error.message}` });
+
+    // si email a échoué : on renvoie quand même les infos utiles
+    if (!emailResult.ok) {
+      return res.status(400).json({
+        ok: false,
+        error: emailResult.error,
+        receipt_id: receipt.id,
+        payment_id: paymentId,
+        pdf_url: pdfUrl,
+        storage_path: storagePath,
+      });
+    }
+
+    // ---------------------------------------------------------------------
+    // 7) Signed URL (pour ouvrir direct)
+    // ---------------------------------------------------------------------
     const signed = await supabaseAdmin.storage.from("rent-receipts-pdfs").createSignedUrl(storagePath, 60 * 10);
+
     if (signed.error) {
       return res.status(200).json({
         ok: true,
+        receipt_id: receipt.id,
+        payment_id: paymentId,
         pdf_url: pdfUrl,
         storage_path: storagePath,
-        receipt_id: receipt.id,
-        payment_id: doFinance ? paymentId : null,
-        affectFinance: doFinance,
+        affectFinance,
       });
     }
 
     return res.status(200).json({
       ok: true,
+      receipt_id: receipt.id,
+      payment_id: paymentId,
       pdf_url: pdfUrl,
       storage_path: storagePath,
       signedUrl: signed.data.signedUrl,
-      receipt_id: receipt.id,
-      payment_id: doFinance ? paymentId : null,
-      affectFinance: doFinance,
+      affectFinance,
     });
   } catch (e: any) {
     console.error("[api/receipts/send] error:", e);

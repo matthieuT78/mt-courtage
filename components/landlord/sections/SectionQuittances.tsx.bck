@@ -1,6 +1,7 @@
+// components/landlord/sections/SectionQuittances.tsx
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import { SectionTitle, formatEuro, fmtDate } from "../UiBits";
+import { SectionTitle, fmtDate } from "../UiBits";
 import type {
   RentReceipt,
   Lease,
@@ -38,10 +39,6 @@ const getMonthPeriodFromYYYYMM = (yyyymm: string) => {
   return { start, end };
 };
 
-const toDateOnly = (val: string) => new Date(val + "T00:00:00");
-const isAfterOrEqual = (a: Date, b: Date) => a.getTime() >= b.getTime();
-const isBeforeOrEqual = (a: Date, b: Date) => a.getTime() <= b.getTime();
-
 const formatDateFR = (val?: string | null) => {
   if (!val) return "";
   const d = new Date(val + "T00:00:00");
@@ -52,6 +49,9 @@ const formatDateFR = (val?: string | null) => {
     day: "2-digit",
   });
 };
+
+const formatEuro = (n: number) =>
+  new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n || 0);
 
 const buildPropertyAddress = (p: Property | null) => {
   if (!p) return "";
@@ -133,13 +133,11 @@ function generateQuittanceText(params: {
   lines.push(
     `Je soussigné(e) ${bailleurNom}, propriétaire du logement situé ${
       bienAdresse || "[Adresse]"
-    }, certifie avoir reçu la somme de ${formatEuro(total)} (${formatEuro(
-      loyerHC
-    )} de loyer hors charges et ${formatEuro(
+    }, certifie avoir reçu la somme de ${formatEuro(total)} (${formatEuro(loyerHC)} de loyer hors charges et ${formatEuro(
       charges
-    )} de provisions sur charges) pour la période du ${formatDateFR(
-      periodeDebut
-    )} au ${formatDateFR(periodeFin)}, ${modeLabel}.`
+    )} de provisions sur charges) pour la période du ${formatDateFR(periodeDebut)} au ${formatDateFR(
+      periodeFin
+    )}, ${modeLabel}.`
   );
 
   lines.push("");
@@ -177,6 +175,11 @@ export function SectionQuittances({
   tenantById,
   onRefresh,
 }: Props) {
+  // 🎨 Izimo
+  const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
+  const brandText = "text-white";
+  const brandHover = "hover:opacity-95";
+
   const safeReceipts = Array.isArray(receipts) ? receipts : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
   const propsById = propertyById instanceof Map ? propertyById : new Map();
@@ -209,91 +212,71 @@ export function SectionQuittances({
     return `${p?.label || "Bien"} — ${t?.full_name || "Locataire"}`;
   };
 
+  // receipt du mois si déjà existant (pour bail + période)
+  const existingReceiptForPeriod = useMemo(() => {
+    if (!selectedLeaseId) return null;
+    const { start, end } = getMonthPeriodFromYYYYMM(periodMonth);
+    return (
+      safeReceipts.find(
+        (r) =>
+          r.lease_id === selectedLeaseId &&
+          r.period_start === toISODate(start) &&
+          r.period_end === toISODate(end)
+      ) || null
+    );
+  }, [safeReceipts, selectedLeaseId, periodMonth]);
+
   const previewText = useMemo(() => {
     if (!selectedLease) return "";
 
     const p = propsById.get(selectedLease.property_id) || null;
     const t = tenantsById.get(selectedLease.tenant_id) || null;
-
     const { start, end } = getMonthPeriodFromYYYYMM(periodMonth);
 
     return generateQuittanceText({
-      bailleurNom:
-        (landlord as any)?.display_name || userEmail || "Bailleur",
+      bailleurNom: (landlord as any)?.display_name || userEmail || "Bailleur",
       bailleurAdresse: buildLandlordAddress(landlord ?? null),
       locataireNom: t?.full_name || "Locataire",
       bienAdresse: buildPropertyAddress(p),
-      loyerHC: Number(selectedLease.rent_amount || 0),
-      charges: Number(selectedLease.charges_amount || 0),
+      loyerHC: Number((selectedLease as any).rent_amount || 0),
+      charges: Number((selectedLease as any).charges_amount || 0),
       periodeDebut: toISODate(start),
       periodeFin: toISODate(end),
-      villeQuittance: (landlord as any)?.default_issue_place || p?.city || "",
+      villeQuittance: (landlord as any)?.default_issue_place || (p as any)?.city || "",
       dateQuittance: toISODate(new Date()),
-      modePaiement:
-        (selectedLease.payment_method as PaymentMode) || "virement",
+      modePaiement: ((selectedLease as any).payment_method as PaymentMode) || "virement",
       mentionSolde,
     });
-  }, [selectedLease, periodMonth, mentionSolde, landlord, userEmail]);
+  }, [selectedLease, periodMonth, mentionSolde, landlord, userEmail, propsById, tenantsById]);
 
-  /* Sync editable text */
+  // Sync editable text
   useEffect(() => {
-    if (selectedReceipt?.content_text) {
-      setEditableText(selectedReceipt.content_text);
-    } else {
-      setEditableText(previewText);
-    }
-  }, [selectedReceiptId, previewText]);
+    if (selectedReceipt?.content_text) setEditableText(selectedReceipt.content_text);
+    else if (existingReceiptForPeriod?.content_text) setEditableText(existingReceiptForPeriod.content_text);
+    else setEditableText(previewText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedReceiptId, previewText, existingReceiptForPeriod?.id]);
+
+  const periodLabel = useMemo(() => {
+    const { start, end } = getMonthPeriodFromYYYYMM(periodMonth);
+    return `${fmtDate(toISODate(start))} → ${fmtDate(toISODate(end))}`;
+  }, [periodMonth]);
+
+  const sentInfo = useMemo(() => {
+    const r = selectedReceipt || existingReceiptForPeriod;
+    if (!r) return null;
+    const anyR: any = r;
+    return {
+      sent_at: anyR.sent_at || null,
+      sent_to: anyR.sent_to_tenant_email || null,
+      status: anyR.status || null,
+      pdf: anyR.pdf_url || null,
+    };
+  }, [selectedReceipt, existingReceiptForPeriod]);
 
   /* ------------------------------------------------------------------ */
   /* Actions                                                            */
   /* ------------------------------------------------------------------ */
-
-  const generateReceipt = async () => {
-    if (!userId || !supabase || !selectedLease) return;
-
-    setSaving(true);
-    setErr(null);
-    setOk(null);
-
-    try {
-      const { start, end } = getMonthPeriodFromYYYYMM(periodMonth);
-
-      const existing = safeReceipts.find(
-        (r) =>
-          r.lease_id === selectedLease.id &&
-          r.period_start === toISODate(start) &&
-          r.period_end === toISODate(end)
-      );
-      if (existing) throw new Error("Quittance déjà existante.");
-
-      const { data, error } = await supabase
-        .from("rent_receipts")
-        .insert({
-          lease_id: selectedLease.id,
-          period_start: toISODate(start),
-          period_end: toISODate(end),
-          rent_amount: selectedLease.rent_amount,
-          charges_amount: selectedLease.charges_amount,
-          total_amount:
-            Number(selectedLease.rent_amount || 0) +
-            Number(selectedLease.charges_amount || 0),
-          issue_date: toISODate(new Date()),
-          content_text: editableText,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setSelectedReceiptId(data.id);
-      setOk("Quittance générée ✅");
-      await onRefresh();
-    } catch (e: any) {
-      setErr(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const saveEdits = async () => {
     if (!selectedReceipt || !supabase) return;
@@ -313,7 +296,7 @@ export function SectionQuittances({
       setOk("Quittance mise à jour ✏️");
       await onRefresh();
     } catch (e: any) {
-      setErr(e.message);
+      setErr(e.message || "Erreur lors de l’enregistrement.");
     } finally {
       setSaving(false);
     }
@@ -328,15 +311,126 @@ export function SectionQuittances({
     setOk(null);
 
     try {
-      await supabase.from("rent_receipts").delete().eq("id", selectedReceipt.id);
+      const { error } = await supabase.from("rent_receipts").delete().eq("id", selectedReceipt.id);
+      if (error) throw error;
+
       setSelectedReceiptId(null);
       setOk("Quittance supprimée 🗑️");
       await onRefresh();
     } catch (e: any) {
-      setErr(e.message);
+      setErr(e.message || "Erreur lors de la suppression.");
     } finally {
       setSaving(false);
     }
+  };
+
+  // ✅ Générer + envoyer au locataire + archiver PDF + update finance (manuel)
+  const generateAndSendManual = async () => {
+    if (!selectedLease) return;
+
+    setSaving(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const t = tenantsById.get(selectedLease.tenant_id) as any;
+      if (!t?.email) throw new Error("Le locataire n’a pas d’email. Ajoute un email au locataire avant l’envoi.");
+
+      const { start, end } = getMonthPeriodFromYYYYMM(periodMonth);
+
+      const body = {
+        userId,
+        receiptId: selectedReceipt?.id || existingReceiptForPeriod?.id || null, // si déjà existant
+        leaseId: selectedLease.id,
+        periodStart: toISODate(start),
+        periodEnd: toISODate(end),
+        contentText: editableText || previewText,
+        // 🔥 important : manuel => on update Finance
+        updateFinance: true,
+        // manuel => pas de “mail bailleur”, c'est toi qui déclenches
+        mode: "manual",
+      };
+
+      const r = await fetch("/api/receipts/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const raw = await r.text();
+      let json: any = null;
+      try { json = raw ? JSON.parse(raw) : null; } catch {}
+
+      if (!r.ok) throw new Error(json?.error || raw || `Erreur ${r.status}`);
+
+      setOk("Quittance générée + envoyée ✅ (Finance mise à jour)");
+      await onRefresh();
+
+      if (json?.receipt_id) setSelectedReceiptId(json.receipt_id);
+      if (json?.signedUrl) window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      setErr(e?.message || "Erreur lors de la génération/envoi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ✅ Renvoyer une quittance archivée (SANS impacter Finance)
+  const resendArchived = async () => {
+    const r = selectedReceipt || existingReceiptForPeriod;
+    if (!r) return;
+
+    setSaving(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const lease = safeLeases.find((l) => l.id === r.lease_id) || null;
+      const t = lease ? (tenantsById.get(lease.tenant_id) as any) : null;
+      if (!t?.email) throw new Error("Le locataire n’a pas d’email (impossible de renvoyer).");
+      const anyR: any = r;
+      if (!anyR?.pdf_url) throw new Error("Aucun PDF archivé pour cette quittance.");
+
+      const body = {
+        userId,
+        receiptId: r.id,
+        // 🔒 clé du besoin : ne pas toucher la finance
+        updateFinance: false,
+        mode: "resend_only",
+      };
+
+      const resp = await fetch("/api/receipts/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const raw = await resp.text();
+      let json: any = null;
+      try { json = raw ? JSON.parse(raw) : null; } catch {}
+
+      if (!resp.ok) throw new Error(json?.error || raw || `Erreur ${resp.status}`);
+
+      setOk("Quittance renvoyée ✅ (Finance inchangée)");
+      // optionnel: ouvrir le PDF
+      if (json?.signedUrl) window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      setErr(e?.message || "Erreur lors du renvoi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ✅ ouvrir PDF archivé
+  const openPdf = async () => {
+    const r = selectedReceipt || existingReceiptForPeriod;
+    if (!r) return;
+    const anyR: any = r;
+    if (!anyR?.pdf_url) return;
+
+    // si tu as une signedUrl côté API, c'est mieux (storage privé)
+    // sinon on tente d'ouvrir l'URL directe
+    window.open(anyR.pdf_url, "_blank", "noopener,noreferrer");
   };
 
   /* ------------------------------------------------------------------ */
@@ -347,64 +441,125 @@ export function SectionQuittances({
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
       <SectionTitle
         kicker="Quittances"
-        title="Génération, édition & historique"
-        desc="Preview éditable, modification et suppression incluses."
+        title="Automatique + manuel"
+        desc="Manuel : génère + envoie + archive + met à jour Finance. Renvoi : ré-envoie le PDF sans impacter Finance."
       />
 
-      {err && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {err}
-        </div>
-      )}
-      {ok && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          {ok}
-        </div>
-      )}
+      {err ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>
+      ) : null}
+      {ok ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div>
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-[320px,1fr]">
-        {/* LEFT */}
+        {/* LEFT: Historique */}
         <aside className="space-y-2">
-          {safeReceipts.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => setSelectedReceiptId(r.id)}
-              className={
-                "w-full text-left rounded-lg border px-3 py-2 text-xs " +
-                (r.id === selectedReceiptId
-                  ? "border-amber-400 bg-amber-50"
-                  : "border-slate-200 bg-slate-50")
-              }
-            >
-              <p className="font-semibold">
-                {leaseLabel(
-                  safeLeases.find((l) => l.id === r.lease_id)!
-                )}
-              </p>
-              <p className="text-slate-500">
-                {fmtDate(r.period_start)} → {fmtDate(r.period_end)}
-              </p>
-            </button>
-          ))}
+          {safeReceipts.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
+              Aucune quittance enregistrée pour le moment.
+            </div>
+          ) : (
+            safeReceipts.map((r) => {
+              const lease = safeLeases.find((l) => l.id === r.lease_id);
+              const anyR: any = r;
+              const isSelected = r.id === selectedReceiptId;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    setSelectedReceiptId(r.id);
+                    setSelectedLeaseId(r.lease_id);
+                  }}
+                  className={
+                    "w-full text-left rounded-lg border px-3 py-2 text-xs transition " +
+                    (isSelected
+                      ? "border-cyan-300 bg-cyan-50"
+                      : "border-slate-200 bg-slate-50 hover:bg-slate-100")
+                  }
+                  type="button"
+                >
+                  <p className="font-semibold">{lease ? leaseLabel(lease) : "Bail"}</p>
+                  <p className="text-slate-500">
+                    {fmtDate(r.period_start)} → {fmtDate(r.period_end)}
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[0.65rem] font-semibold text-slate-700">
+                      {anyR.status || "—"}
+                    </span>
+                    {anyR.pdf_url ? (
+                      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-800">
+                        PDF
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })
+          )}
         </aside>
 
-        {/* RIGHT */}
+        {/* RIGHT: Edition + actions */}
         <section className="space-y-4">
-          <select
-            value={selectedLeaseId}
-            onChange={(e) => {
-              setSelectedReceiptId(null);
-              setSelectedLeaseId(e.target.value);
-            }}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="">— Sélectionner un bail —</option>
-            {safeLeases.map((l) => (
-              <option key={l.id} value={l.id}>
-                {leaseLabel(l)}
-              </option>
-            ))}
-          </select>
+          <div className="grid gap-2 md:grid-cols-2">
+            <select
+              value={selectedLeaseId}
+              onChange={(e) => {
+                setSelectedReceiptId(null);
+                setSelectedLeaseId(e.target.value);
+              }}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">— Sélectionner un bail —</option>
+              {safeLeases.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {leaseLabel(l)}
+                </option>
+              ))}
+            </select>
+
+            <input
+              type="month"
+              value={periodMonth}
+              onChange={(e) => {
+                setSelectedReceiptId(null);
+                setPeriodMonth(e.target.value);
+              }}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={mentionSolde}
+              onChange={(e) => setMentionSolde(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Mention “reçu pour solde”
+          </label>
+
+          {sentInfo ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+              <p>
+                Statut : <span className="font-semibold">{sentInfo.status || "—"}</span>
+              </p>
+              <p>
+                Période : <span className="font-semibold">{periodLabel}</span>
+              </p>
+              {sentInfo.sent_at ? (
+                <p>
+                  Envoyée le :{" "}
+                  <span className="font-semibold">
+                    {new Date(sentInfo.sent_at).toLocaleString("fr-FR")}
+                  </span>
+                  {sentInfo.sent_to ? <span className="text-slate-500"> • {sentInfo.sent_to}</span> : null}
+                </p>
+              ) : (
+                <p className="text-slate-600">Non envoyée</p>
+              )}
+            </div>
+          ) : null}
 
           <textarea
             value={editableText}
@@ -413,40 +568,67 @@ export function SectionQuittances({
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-mono"
           />
 
+          {/* Actions */}
           <div className="flex flex-wrap gap-2">
+            {/* ✅ Manuel */}
+            <button
+              type="button"
+              onClick={generateAndSendManual}
+              disabled={saving || !selectedLeaseId}
+              className={`rounded-full px-5 py-2 text-xs font-semibold ${brandBg} ${brandText} ${brandHover} disabled:opacity-50`}
+              title="Génère le PDF, envoie au locataire, archive et met à jour Finance"
+            >
+              ⚡ Générer & envoyer (manuel)
+            </button>
+
+            {/* ✅ Renvoi archivé sans finance */}
+            <button
+              type="button"
+              onClick={resendArchived}
+              disabled={saving || !(selectedReceipt || existingReceiptForPeriod)}
+              className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 disabled:opacity-50 hover:bg-slate-50"
+              title="Renvoyer le PDF archivé au locataire sans modifier Finance"
+            >
+              🔁 Renvoyer (PDF archivé • sans finance)
+            </button>
+
+            {/* ✅ Ouvrir PDF */}
+            <button
+              type="button"
+              onClick={openPdf}
+              disabled={saving || !(sentInfo?.pdf)}
+              className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 disabled:opacity-50 hover:bg-slate-50"
+            >
+              📄 Ouvrir PDF
+            </button>
+
+            {/* Edition/suppression */}
             {selectedReceipt ? (
               <>
                 <button
+                  type="button"
                   onClick={saveEdits}
                   disabled={saving}
-                  className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white"
+                  className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 disabled:opacity-50 hover:bg-slate-50"
                 >
-                  💾 Enregistrer
+                  💾 Enregistrer le texte
                 </button>
+
                 <button
+                  type="button"
                   onClick={deleteReceipt}
                   disabled={saving}
-                  className="rounded-full border border-red-200 px-5 py-2 text-xs text-red-700"
+                  className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 disabled:opacity-50 hover:bg-red-50"
                 >
                   🗑️ Supprimer
                 </button>
-                <button
-                  onClick={() => setSelectedReceiptId(null)}
-                  className="rounded-full border px-5 py-2 text-xs"
-                >
-                  ↩️ Modèle
-                </button>
               </>
-            ) : (
-              <button
-                onClick={generateReceipt}
-                disabled={saving || !selectedLeaseId}
-                className="rounded-full bg-amber-500 px-5 py-2 text-xs font-semibold"
-              >
-                Générer & enregistrer
-              </button>
-            )}
+            ) : null}
           </div>
+
+          <p className="text-xs text-slate-500">
+            Automatique J+2 : à faire côté serveur (cron Supabase) via un endpoint dédié qui envoie un mail au bailleur avec un lien signé.
+          </p>
         </section>
       </div>
     </div>
