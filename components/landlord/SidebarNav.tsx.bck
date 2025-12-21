@@ -35,7 +35,6 @@ export function SidebarNav({
   overLimit: boolean;
 }) {
   const items: Item[] = [
-    // Dashboard en haut (logique)
     {
       key: "dashboard",
       label: "Tableau de bord",
@@ -47,23 +46,38 @@ export function SidebarNav({
       ),
     },
 
-    // ✅ ordre souhaité
     { key: "locataires", label: "Locataires", icon: "👤" },
     { key: "biens", label: "Biens", icon: "🏠" },
     { key: "baux", label: "Baux", icon: "📄" },
     { key: "etat_des_lieux", label: "État des lieux", icon: "📝", badge: <Pill tone="indigo">Nouveau</Pill> },
     { key: "quittances", label: "Quittances", icon: "🧾" },
 
-    // ensuite : exploitation / pilotage
     { key: "loyers", label: "Loyers", icon: "💶" },
     { key: "finance", label: "Finance", icon: "📊" },
     { key: "revision", label: "Révision loyer", icon: "📈", badge: <Pill tone="indigo">Nouveau</Pill> },
     { key: "compteurs", label: "Compteurs", icon: "⚡", badge: <Pill tone="indigo">Nouveau</Pill> },
     { key: "inventaire", label: "Inventaire", icon: "📦", badge: <Pill tone="indigo">Nouveau</Pill> },
 
-    // settings en bas
     { key: "parametres", label: "Paramètres", icon: "⚙️", badge: overLimit ? <Pill tone="amber">Pro</Pill> : null },
   ];
+
+  const go = (e: React.SyntheticEvent, key: LandlordSectionKey) => {
+    // 🔒 empêche tout comportement “navigation / submit / bubbling”
+    // et permet de diagnostiquer si le clic arrive bien ici
+    (e as any).preventDefault?.();
+    (e as any).stopPropagation?.();
+    console.log("[SidebarNav] click ->", key);
+    onChange(key);
+  };
+
+  const onKey = (e: React.KeyboardEvent, key: LandlordSectionKey) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log("[SidebarNav] key ->", key);
+      onChange(key);
+    }
+  };
 
   return (
     <aside className="w-full lg:w-[280px] lg:sticky lg:top-4 h-max">
@@ -77,13 +91,16 @@ export function SidebarNav({
         <div className="mt-2 space-y-1">
           {items.map((it) => {
             const isActive = it.key === active;
+
             return (
-              <button
+              <div
                 key={it.key}
-                type="button"
-                onClick={() => onChange(it.key)}
+                role="button"
+                tabIndex={0}
+                onClick={(e) => go(e, it.key)}
+                onKeyDown={(e) => onKey(e, it.key)}
                 className={
-                  "w-full text-left rounded-xl px-3 py-2 border transition flex items-center justify-between gap-2 " +
+                  "select-none cursor-pointer w-full text-left rounded-xl px-3 py-2 border transition flex items-center justify-between gap-2 " +
                   (isActive
                     ? "bg-slate-900 text-white border-slate-900"
                     : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50")
@@ -96,36 +113,41 @@ export function SidebarNav({
                   </span>
                 </span>
                 {it.badge ? <span className={isActive ? "opacity-95" : ""}>{it.badge}</span> : <span />}
-              </button>
+              </div>
             );
           })}
         </div>
 
-        {/* Raccourcis : je les mets cohérents avec ton nouvel ordre */}
         <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
           <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Raccourcis</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => onChange("biens")}
-              className="rounded-full bg-slate-900 px-3 py-1.5 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={(e) => go(e, "biens")}
+              onKeyDown={(e) => onKey(e, "biens")}
+              className="cursor-pointer select-none rounded-full bg-slate-900 px-3 py-1.5 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
             >
               + Bien
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange("locataires")}
-              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
+            </div>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={(e) => go(e, "locataires")}
+              onKeyDown={(e) => onKey(e, "locataires")}
+              className="cursor-pointer select-none rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
             >
               + Locataire
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange("baux")}
-              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
+            </div>
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={(e) => go(e, "baux")}
+              onKeyDown={(e) => onKey(e, "baux")}
+              className="cursor-pointer select-none rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
             >
               + Bail
-            </button>
+            </div>
           </div>
         </div>
       </div>

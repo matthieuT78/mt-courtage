@@ -110,12 +110,15 @@ export default function CalculettesPage() {
       <main className="flex-1 px-4 py-8">
         <div className="mx-auto max-w-5xl space-y-6">
           {/* HERO */}
-          <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+          {/* ✅ FIX : overflow-hidden pour que le liseré épouse les coins arrondis */}
+          <section className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            {/* liseré “fondu” via overflow-hidden */}
             <div className={`h-1.5 w-full ${brandBg}`} />
+
             <div className="p-7 sm:p-9">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="space-y-3">
-                  {/* Logo Izimo propre (sans halo) */}
+                  {/* Logo Izimo propre */}
                   <div className="inline-flex items-center gap-3">
                     <div className="rounded-2xl bg-white border border-slate-200 p-2 shadow-sm">
                       <img
@@ -210,31 +213,36 @@ export default function CalculettesPage() {
           </section>
 
           {/* CTA Espace bailleur */}
-          <section className="rounded-3xl border border-slate-200 bg-slate-900 text-white shadow-sm p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold">Espace bailleur</p>
-                <p className="text-sm text-slate-200 mt-1">
-                  Gestion locative complète : baux, quittances, cautions, états des lieux.
-                </p>
-                <p className="text-xs text-slate-300 mt-2">
-                  À partir de <span className="font-semibold text-cyan-200">29 € / mois</span>
-                </p>
-              </div>
+          <section className="rounded-3xl border border-slate-200 bg-slate-900 text-white shadow-sm p-6 relative overflow-hidden">
+            <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
+            <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-indigo-600" />
 
-              <div className="flex gap-2">
-                <Link
-                  href="/tarifs"
-                  className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-white/10"
-                >
-                  Voir les tarifs
-                </Link>
-                <Link
-                  href="/espace-bailleur"
-                  className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-[0.8rem] font-semibold ${brandBg} ${brandText} ${brandHover}`}
-                >
-                  Découvrir l’espace bailleur
-                </Link>
+            <div className="relative">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold">Espace bailleur</p>
+                  <p className="text-sm text-slate-200 mt-1">
+                    Gestion locative complète : baux, quittances, cautions, états des lieux.
+                  </p>
+                  <p className="text-xs text-slate-300 mt-2">
+                    À partir de <span className="font-semibold text-cyan-200">29 € / mois</span>
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Link
+                    href="/tarifs"
+                    className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-white/10"
+                  >
+                    Voir les tarifs
+                  </Link>
+                  <Link
+                    href="/espace-bailleur"
+                    className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-[0.8rem] font-semibold ${brandBg} ${brandText} ${brandHover}`}
+                  >
+                    Découvrir l’espace bailleur
+                  </Link>
+                </div>
               </div>
             </div>
           </section>
