@@ -1,0 +1,20 @@
+// pages/api/diagnostics/email.ts
+import type { NextApiRequest, NextApiResponse } from "next";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    const apiKey = process.env.RESEND_API_KEY || "";
+    const from = process.env.RESEND_FROM || "";
+
+    const active = !!apiKey && !!from;
+
+    return res.status(200).json({
+      active,
+      provider: "resend",
+      from: from || null,
+      info: active ? null : "RESEND_API_KEY / RESEND_FROM manquants.",
+    });
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message || "Erreur diagnostic" });
+  }
+}
