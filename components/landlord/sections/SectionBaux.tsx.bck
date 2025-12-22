@@ -192,7 +192,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     payment_method: "virement",
 
     // ✅ plus clair
-    payment_type: "terme_a_echoir", // Début de période par défaut
+    payment_type: "terme_a_echoir",
 
     status: "active",
     auto_quittance_enabled: true,
@@ -230,7 +230,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   const [contactsLoading, setContactsLoading] = useState(false);
   const [guarantorIds, setGuarantorIds] = useState<string[]>([]);
 
-  const activeContacts = useMemo(
+  const activeGuarantors = useMemo(
     () => contacts.filter((c) => (c.contact_type || "") === "guarantor").filter((c) => !isArchivedContact(c)),
     [contacts]
   );
@@ -243,7 +243,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
       const { data, error } = await supabase
         .from("contacts")
-        .select("id,user_id,full_name,first_name,last_name,email,phone,notes,contact_type,archived_at")
+        .select("id,user_id,full_name,first_name,last_name,email,phone,notes,contact_type,archived_at,created_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
@@ -282,17 +282,15 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     setGuarantorIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
+  const removeGuarantorFromSelection = (id: string) => {
+    setGuarantorIds((prev) => prev.filter((x) => x !== id));
+  };
+
   const syncGuarantors = async (leaseId: string) => {
     if (!userId) return;
     if (!supabase) throw new Error("Supabase non initialisé.");
 
-    // stratégie simple : on remplace tout
-    const { error: delErr } = await supabase
-      .from("lease_guarantors")
-      .delete()
-      .eq("user_id", userId)
-      .eq("lease_id", leaseId);
-
+    const { error: delErr } = await supabase.from("lease_guarantors").delete().eq("user_id", userId).eq("lease_id", leaseId);
     if (delErr) throw delErr;
 
     if (!guarantorIds.length) return;
@@ -338,12 +336,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         contact_type: "guarantor",
       };
 
-      const { data, error } = await supabase
-        .from("contacts")
-        .insert(payload)
-        .select("id, full_name")
-        .single();
-
+      const { data, error } = await supabase.from("contacts").insert(payload).select("id").single();
       if (error) throw error;
 
       await loadContacts();
@@ -355,6 +348,99 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       setOk("Garant ajouté ✅");
     } catch (e: any) {
       setErr(e?.message || "Impossible d’ajouter le garant.");
+    }
+  };
+
+  // ✅ MODAL édition garant
+  const [editGuarantorOpen, setEditGuarantorOpen] = useState(false);
+  const [editGuarantorId, setEditGuarantorId] = useState<string | null>(null);
+  const [editGuarantorDraft, setEditGuarantorDraft] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    notes: "",
+  });
+
+  const openEditGuarantor = (c: Contact) => {
+    setEditGuarantorId(c.id);
+    setEditGuarantorDraft({
+      first_name: String(c.first_name || ""),
+      last_name: String(c.last_name || ""),
+      email: String(c.email || ""),
+      phone: String(c.phone || ""),
+      notes: String(c.notes || ""),
+    });
+    setEditGuarantorOpen(true);
+  };
+
+  const updateGuarantor = async () => {
+    if (!userId || !editGuarantorId) return;
+    setErr(null);
+    setOk(null);
+
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé.");
+
+      const full_name = buildFullName(editGuarantorDraft.first_name, editGuarantorDraft.last_name);
+      if (!full_name) throw new Error("Le garant doit avoir au moins un prénom ou un nom.");
+
+      const patch = {
+        first_name: editGuarantorDraft.first_name.trim() || null,
+        last_name: editGuarantorDraft.last_name.trim() || null,
+        full_name: full_name || null,
+        email: editGuarantorDraft.email.trim() || null,
+        phone: editGuarantorDraft.phone.trim() || null,
+        notes: editGuarantorDraft.notes.trim() || null,
+        contact_type: "guarantor",
+        archived_at: null, // si jamais tu ré-édites un contact archivé
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from("contacts").update(patch).eq("id", editGuarantorId).eq("user_id", userId);
+      if (error) throw error;
+
+      await loadContacts();
+      setOk("Garant mis à jour ✅");
+      setEditGuarantorOpen(false);
+      setEditGuarantorId(null);
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de mettre à jour le garant.");
+    }
+  };
+
+  // ✅ suppression = archivage (et unlink si bail existant)
+  const archiveGuarantor = async (contactId: string) => {
+    if (!userId) return;
+    if (!confirm("Archiver ce garant ? (il ne sera plus sélectionnable)")) return;
+
+    setErr(null);
+    setOk(null);
+
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé.");
+
+      const { error } = await supabase
+        .from("contacts")
+        .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", contactId)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      // retire de l'UI
+      removeGuarantorFromSelection(contactId);
+
+      // si on est sur un bail existant (edit/view), on supprime aussi la liaison immédiatement
+      const leaseId = selected?.id || selectedId;
+      if (leaseId) {
+        await supabase.from("lease_guarantors").delete().eq("user_id", userId).eq("lease_id", leaseId).eq("contact_id", contactId);
+      }
+
+      await loadContacts();
+      setOk("Garant archivé 🗑️");
+    } catch (e: any) {
+      setErr(e?.message || "Impossible d’archiver le garant.");
     }
   };
 
@@ -487,10 +573,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         deposit_amount: deposit,
         payment_day: paymentDayNum,
         payment_method: form.payment_method || null,
-
-        // ✅ Échéance
         payment_type: form.payment_type || null,
-
         status: form.status || "active",
         auto_quittance_enabled: !!form.auto_quittance_enabled,
         auto_reminder_enabled: !!form.auto_reminder_enabled,
@@ -517,7 +600,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         setMode("idle");
       }
 
-      // ✅ sync garants (liaison)
       if (leaseId) {
         await syncGuarantors(leaseId);
       }
@@ -542,7 +624,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     try {
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
 
-      // best-effort: supprime la liaison garants d'abord
       await supabase.from("lease_guarantors").delete().eq("user_id", userId).eq("lease_id", selectedId);
 
       const { error } = await supabase.from("leases").delete().eq("id", selectedId).eq("user_id", userId);
@@ -587,47 +668,10 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
-      <SectionTitle kicker="Baux" title="Contrats" desc="Liste + fiche. Ajoute des garants, règle l’échéance et les paiements." />
+      <SectionTitle kicker="Baux" title="Contrats" desc="Liste + fiche. Ajoute/modifie/supprime des garants et synchronise en base." />
 
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
-
-      {/* Premium helper */}
-      <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-amber-50" />
-          <div className="relative p-4 sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Assistant bailleur</p>
-                <p className="text-sm sm:text-base font-semibold text-slate-900">Réparations & entretien : qui est responsable ?</p>
-                <p className="mt-1 text-xs text-slate-600 max-w-2xl">
-                  Ouvre le guide en plein écran (scroll + recherche). Pratique quand un locataire te signale un souci.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <a
-                  href={PDF_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
-                >
-                  Ouvrir dans un onglet
-                </a>
-
-                <button
-                  type="button"
-                  onClick={() => setGuideOpen(true)}
-                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 shadow-sm"
-                >
-                  Ouvrir le guide (premium)
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Toolbar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -846,7 +890,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                         >
                           <option value="">— Sélectionner —</option>
-                          {/* ✅ juste le nom du bien */}
                           {safeProps.map((p) => (
                             <option key={p.id} value={p.id}>
                               {p.label || "Bien"}
@@ -863,7 +906,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                         >
                           <option value="">— Sélectionner —</option>
-                          {/* ✅ juste le nom du locataire */}
                           {safeTenants.map((t) => (
                             <option key={t.id} value={t.id}>
                               {t.full_name || "Locataire"}
@@ -954,7 +996,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                         </select>
                       </div>
 
-                      {/* ✅ "Type" → "Échéance" */}
                       <div className="space-y-1">
                         <label className="text-[0.7rem] text-slate-700">Échéance</label>
                         <select
@@ -965,9 +1006,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                           <option value="terme_a_echoir">Début de période</option>
                           <option value="terme_echu">Fin de période</option>
                         </select>
-                        <p className="text-[0.7rem] text-slate-500">
-                          Début = à échoir • Fin = à échu
-                        </p>
+                        <p className="text-[0.7rem] text-slate-500">Début = à échoir • Fin = à échu</p>
                       </div>
                     </div>
 
@@ -1089,33 +1128,56 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                       </div>
                     </div>
 
-                    {/* Sélection garants */}
+                    {/* Sélection + actions (modifier/supprimer) */}
                     {contactsLoading ? (
                       <p className="text-xs text-slate-600">Chargement…</p>
-                    ) : activeContacts.length === 0 ? (
+                    ) : activeGuarantors.length === 0 ? (
                       <p className="text-sm text-slate-700">Aucun garant disponible.</p>
                     ) : (
-                      <div className="space-y-2 max-h-44 overflow-auto pr-1">
-                        {activeContacts.map((c) => {
+                      <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                        {activeGuarantors.map((c) => {
                           const checked = guarantorIds.includes(c.id);
+
                           return (
-                            <label key={c.id} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => toggleGuarantor(c.id)}
-                                className="mt-1"
-                              />
-                              <span className="min-w-0">
-                                <span className="block text-sm font-semibold text-slate-900 truncate">
-                                  {c.full_name || "Garant"}
-                                </span>
-                              </span>
-                            </label>
+                            <div key={c.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                              <div className="flex items-start gap-2">
+                                <input type="checkbox" checked={checked} onChange={() => toggleGuarantor(c.id)} className="mt-1" />
+
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-slate-900 truncate">{c.full_name || "Garant"}</p>
+                                  {(c.email || c.phone) ? (
+                                    <p className="mt-0.5 text-xs text-slate-600 truncate">
+                                      {c.email ? c.email : ""}{c.email && c.phone ? " • " : ""}{c.phone ? c.phone : ""}
+                                    </p>
+                                  ) : null}
+                                </div>
+
+                                <div className="shrink-0 flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditGuarantor(c)}
+                                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                                  >
+                                    Modifier
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => archiveGuarantor(c.id)}
+                                    className="rounded-full border border-red-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-red-700 hover:bg-red-50"
+                                  >
+                                    Supprimer
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
                     )}
+
+                    <p className="text-[0.7rem] text-slate-500">
+                      Astuce : décocher = retire du bail. “Supprimer” = archive le garant (il n’apparaît plus).
+                    </p>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -1151,16 +1213,92 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         </div>
       ) : null}
 
-      {/* PREMIUM MODAL PDF */}
+      {/* MODAL EDIT GARANT */}
+      {editGuarantorOpen ? (
+        <div className="fixed inset-0 z-[60]">
+          <button type="button" className="absolute inset-0 bg-black/40" onClick={() => setEditGuarantorOpen(false)} />
+          <div className="absolute inset-0 p-3 sm:p-6 flex items-center justify-center">
+            <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Garant</p>
+                  <p className="text-base font-semibold text-slate-900 truncate">Modifier le garant</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditGuarantorOpen(false)}
+                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Fermer
+                </button>
+              </div>
+
+              <div className="p-5 space-y-3">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    placeholder="Prénom"
+                    value={editGuarantorDraft.first_name}
+                    onChange={(e) => setEditGuarantorDraft((s) => ({ ...s, first_name: e.target.value }))}
+                  />
+                  <input
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    placeholder="Nom"
+                    value={editGuarantorDraft.last_name}
+                    onChange={(e) => setEditGuarantorDraft((s) => ({ ...s, last_name: e.target.value }))}
+                  />
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    type="email"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    placeholder="Email (optionnel)"
+                    value={editGuarantorDraft.email}
+                    onChange={(e) => setEditGuarantorDraft((s) => ({ ...s, email: e.target.value }))}
+                  />
+                  <input
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    placeholder="Téléphone (optionnel)"
+                    value={editGuarantorDraft.phone}
+                    onChange={(e) => setEditGuarantorDraft((s) => ({ ...s, phone: e.target.value }))}
+                  />
+                </div>
+
+                <textarea
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                  placeholder="Notes (optionnel)"
+                  value={editGuarantorDraft.notes}
+                  onChange={(e) => setEditGuarantorDraft((s) => ({ ...s, notes: e.target.value }))}
+                />
+              </div>
+
+              <div className="px-5 py-4 border-t border-slate-200 bg-white flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditGuarantorOpen(false)}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={updateGuarantor}
+                  className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* PREMIUM MODAL PDF (inchangé) */}
       {guideOpen ? (
         <div className="fixed inset-0 z-[60]">
-          <button
-            type="button"
-            aria-label="Fermer le guide"
-            onClick={() => setGuideOpen(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          />
-
+          <button type="button" aria-label="Fermer le guide" onClick={() => setGuideOpen(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="absolute inset-0 p-3 sm:p-6">
             <div className="h-full w-full rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
               <div className="px-4 sm:px-5 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
@@ -1170,19 +1308,10 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <a
-                    href={PDF_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
-                  >
+                  <a href={PDF_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50">
                     Ouvrir dans un onglet
                   </a>
-                  <button
-                    type="button"
-                    onClick={() => setGuideOpen(false)}
-                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                  >
+                  <button type="button" onClick={() => setGuideOpen(false)} className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
                     Fermer (ESC)
                   </button>
                 </div>

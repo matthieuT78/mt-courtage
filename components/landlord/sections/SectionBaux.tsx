@@ -1,3 +1,4 @@
+// components/landlord/sections/SectionBaux.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
@@ -131,6 +132,90 @@ const buildFullName = (first?: string, last?: string) =>
 const isArchivedContact = (c: Contact) => !!c.archived_at;
 
 /* ======================================================
+   QUITTANCES: TIMELINE HELPERS (UX)
+====================================================== */
+
+const parisNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Paris" }));
+
+const fmtFR = (d: Date) =>
+  d.toLocaleDateString("fr-FR", { year: "numeric", month: "short", day: "2-digit", timeZone: "Europe/Paris" });
+
+const yyyymmFR = (d: Date) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", timeZone: "Europe/Paris" });
+
+const monthStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+const monthEnd = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
+
+const lastDayOfMonth = (y: number, m0: number) => new Date(y, m0 + 1, 0).getDate();
+const clampDay = (y: number, m0: number, day: number) => Math.min(Math.max(1, day), lastDayOfMonth(y, m0));
+
+type ReceiptSchedule = {
+  periodStart: Date;
+  periodEnd: Date;
+  dueDate: Date;
+  generateAt: Date;
+  label: string; // ex: "décembre 2025"
+};
+
+function paymentTypeLabel(v?: string | null) {
+  return (v || "").toLowerCase() === "terme_echu" ? "Fin de période (terme échu)" : "Début de période (terme à échoir)";
+}
+function paymentTypeShort(v?: string | null) {
+  return (v || "").toLowerCase() === "terme_echu" ? "terme échu" : "terme à échoir";
+}
+
+// Prochain run "génération quittance" (>= now), cohérent avec ton cron:
+// - terme_a_echoir: échéance sur le mois de la période
+// - terme_echu: échéance sur le mois suivant la période
+function nextReceiptScheduleForLease(
+  lease: { payment_day?: number | null; payment_type?: string | null },
+  now = parisNow()
+): ReceiptSchedule {
+  const paymentDayRaw = Number(lease.payment_day || 1);
+  const pType = (lease.payment_type || "terme_a_echoir").toLowerCase();
+
+  for (let add = -1; add <= 3; add++) {
+    const base = new Date(now.getFullYear(), now.getMonth() + add, 1);
+
+    if (pType === "terme_a_echoir") {
+      const ps = monthStart(base);
+      const pe = monthEnd(base);
+      const day = clampDay(ps.getFullYear(), ps.getMonth(), paymentDayRaw);
+      const due = new Date(ps.getFullYear(), ps.getMonth(), day);
+
+      const gen = new Date(due);
+      gen.setDate(gen.getDate() + 2);
+
+      if (gen.getTime() >= now.getTime()) {
+        return { periodStart: ps, periodEnd: pe, dueDate: due, generateAt: gen, label: yyyymmFR(ps) };
+      }
+    } else {
+      const ps = monthStart(base);
+      const pe = monthEnd(base);
+
+      const nextMonth = new Date(ps.getFullYear(), ps.getMonth() + 1, 1);
+      const day = clampDay(nextMonth.getFullYear(), nextMonth.getMonth(), paymentDayRaw);
+      const due = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day);
+
+      const gen = new Date(due);
+      gen.setDate(gen.getDate() + 2);
+
+      if (gen.getTime() >= now.getTime()) {
+        return { periodStart: ps, periodEnd: pe, dueDate: due, generateAt: gen, label: yyyymmFR(ps) };
+      }
+    }
+  }
+
+  // fallback
+  const ps = monthStart(now);
+  const pe = monthEnd(now);
+  const day = clampDay(now.getFullYear(), now.getMonth(), paymentDayRaw);
+  const due = new Date(now.getFullYear(), now.getMonth(), day);
+  const gen = new Date(due);
+  gen.setDate(gen.getDate() + 2);
+  return { periodStart: ps, periodEnd: pe, dueDate: due, generateAt: gen, label: yyyymmFR(ps) };
+}
+
+/* ======================================================
    COMPONENT
 ====================================================== */
 
@@ -262,11 +347,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     try {
       if (!supabase) throw new Error("Supabase non initialisé.");
 
-      const { data, error } = await supabase
-        .from("lease_guarantors")
-        .select("contact_id")
-        .eq("user_id", userId)
-        .eq("lease_id", leaseId);
+      const { data, error } = await supabase.from("lease_guarantors").select("contact_id").eq("user_id", userId).eq("lease_id", leaseId);
 
       if (error) throw error;
 
@@ -393,7 +474,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         phone: editGuarantorDraft.phone.trim() || null,
         notes: editGuarantorDraft.notes.trim() || null,
         contact_type: "guarantor",
-        archived_at: null, // si jamais tu ré-édites un contact archivé
+        archived_at: null,
         updated_at: new Date().toISOString(),
       };
 
@@ -409,7 +490,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     }
   };
 
-  // ✅ suppression = archivage (et unlink si bail existant)
   const archiveGuarantor = async (contactId: string) => {
     if (!userId) return;
     if (!confirm("Archiver ce garant ? (il ne sera plus sélectionnable)")) return;
@@ -428,10 +508,8 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
       if (error) throw error;
 
-      // retire de l'UI
       removeGuarantorFromSelection(contactId);
 
-      // si on est sur un bail existant (edit/view), on supprime aussi la liaison immédiatement
       const leaseId = selected?.id || selectedId;
       if (leaseId) {
         await supabase.from("lease_guarantors").delete().eq("user_id", userId).eq("lease_id", leaseId).eq("contact_id", contactId);
@@ -444,13 +522,11 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     }
   };
 
-  // init contacts au montage
   useEffect(() => {
     loadContacts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // Quand on ouvre “create”
   const openCreate = () => {
     setErr(null);
     setOk(null);
@@ -460,7 +536,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     setMode("create");
   };
 
-  // Quand on ouvre “view”
   const openView = async (id: string) => {
     setErr(null);
     setOk(null);
@@ -469,7 +544,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     await loadGuarantorsForLease(id);
   };
 
-  // Quand on passe en “edit”
   const openEdit = async () => {
     if (!selected) return;
     setErr(null);
@@ -509,30 +583,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       console.warn("[SectionBaux] refresh skipped:", e?.message || e);
     }
   };
-
-  /* ======================================================
-     PDF MODAL (premium) - inchangé
-  ====================================================== */
-
-  const PDF_URL = "/docs/votre-habitat-repare-entretien.pdf";
-  const [guideOpen, setGuideOpen] = useState(false);
-
-  useEffect(() => {
-    if (!guideOpen) return;
-
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setGuideOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [guideOpen]);
 
   /* ======================================================
      CRUD
@@ -668,7 +718,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
-      <SectionTitle kicker="Baux" title="Contrats" desc="Liste + fiche. Ajoute/modifie/supprime des garants et synchronise en base." />
+      <SectionTitle kicker="Baux" title="Contrats" desc="Liste + fiche. Et maintenant une cinématique quittance claire (auto J+2 + terme à échoir/échu)." />
 
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
@@ -715,6 +765,8 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         <div className="grid gap-3 sm:grid-cols-2">
           {filteredLeases.map((l) => {
             const meta = leaseCardLabel(l);
+            const sched = nextReceiptScheduleForLease(l);
+
             return (
               <button
                 key={l.id}
@@ -729,13 +781,31 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-900 truncate">{meta.title}</p>
                     <p className="mt-1 text-xs text-slate-600">{meta.sub}</p>
+
                     <p className="mt-2 text-xs text-slate-700">
                       Total mensuel : <span className="font-semibold">{formatEuro(meta.total)}</span>{" "}
                       <span className="text-slate-500">
                         ({formatEuro(l.rent_amount)} + {formatEuro(l.charges_amount)})
                       </span>
                     </p>
+
+                    {/* ✅ résumé quittance */}
+                    <p className="mt-2 text-xs text-slate-700">
+                      Quittance :{" "}
+                      <span className="font-semibold">{l.auto_quittance_enabled ? "auto" : "manuel"}</span>{" "}
+                      <span className="text-slate-500">• {paymentTypeShort(l.payment_type)}</span>
+                    </p>
+
+                    {l.auto_quittance_enabled ? (
+                      <p className="mt-1 text-xs text-slate-600">
+                        Prochaine génération : <span className="font-semibold">{fmtFR(sched.generateAt)}</span>{" "}
+                        <span className="text-slate-500">(période {sched.label})</span>
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-slate-500">(Auto OFF) → génération depuis la section Quittances</p>
+                    )}
                   </div>
+
                   <div className="shrink-0 flex flex-col items-end gap-2">
                     {badge(statusTone(l.status), (l.status || "—").toUpperCase())}
                     {badge(l.auto_quittance_enabled ? "emerald" : "amber", l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel")}
@@ -799,20 +869,14 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                           <p className="text-xs text-slate-500">Total mensuel</p>
                           <p className="font-semibold">{formatEuro(Number(selected.rent_amount || 0) + Number(selected.charges_amount || 0))}</p>
                         </div>
+
                         <div>
                           <p className="text-xs text-slate-500">Paiement</p>
                           <p className="font-semibold">
                             Jour {selected.payment_day ?? "—"} • {selected.payment_method || "—"}
                           </p>
                           <p className="text-xs text-slate-500">
-                            Échéance :{" "}
-                            <span className="font-semibold">
-                              {selected.payment_type === "terme_echu"
-                                ? "Fin de période"
-                                : selected.payment_type === "terme_a_echoir"
-                                ? "Début de période"
-                                : "—"}
-                            </span>
+                            Échéance : <span className="font-semibold">{paymentTypeLabel(selected.payment_type)}</span>
                           </p>
                         </div>
 
@@ -826,6 +890,50 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                         </div>
                       </div>
                     </div>
+
+                    {/* ✅ Cinématique quittance */}
+                    {(() => {
+                      const sched = nextReceiptScheduleForLease(selected);
+                      return (
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <p className="text-xs font-semibold text-slate-900">Cinématique quittance (V1)</p>
+
+                          <div className="mt-2 grid gap-2 text-sm text-slate-700">
+                            <p>
+                              1) Échéance : <span className="font-semibold">Jour {selected.payment_day ?? "—"}</span>{" "}
+                              <span className="text-slate-500">({paymentTypeLabel(selected.payment_type)})</span>
+                            </p>
+
+                            <p>
+                              2) Génération PDF : <span className="font-semibold">J+2 après l’échéance</span>{" "}
+                              <span className="text-slate-500">(cron 09:00 Europe/Paris)</span>
+                            </p>
+
+                            <p>
+                              3) Action propriétaire : lien “Avez-vous reçu le loyer ?”
+                              <span className="text-slate-500"> → crée l’entrée Finance + envoie au locataire</span>
+                            </p>
+
+                            {selected.auto_quittance_enabled ? (
+                              <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                                <p className="text-sm text-emerald-900 font-semibold">Prochaine génération automatique</p>
+                                <p className="text-sm text-emerald-900">
+                                  {fmtFR(sched.generateAt)} <span className="text-emerald-700">• période {sched.label}</span>
+                                </p>
+                                <p className="text-xs text-emerald-800 mt-1">Échéance estimée : {fmtFR(sched.dueDate)}</p>
+                              </div>
+                            ) : (
+                              <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                                <p className="text-sm text-amber-900 font-semibold">Quittance auto désactivée</p>
+                                <p className="text-xs text-amber-900 mt-1">
+                                  Active “Quittance auto” pour générer le PDF automatiquement à J+2.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Garants (view) */}
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -1010,6 +1118,26 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                       </div>
                     </div>
 
+                    {/* ✅ Aperçu planning quittance */}
+                    {(() => {
+                      const fakeLease = { payment_day: Number(form.payment_day || 1), payment_type: form.payment_type };
+                      const sched = nextReceiptScheduleForLease(fakeLease as any, parisNow());
+                      return (
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                          <p className="text-xs font-semibold text-slate-900">Aperçu planning quittance</p>
+                          <p className="mt-1 text-sm text-slate-700">
+                            Échéance : <span className="font-semibold">Jour {form.payment_day}</span> •{" "}
+                            <span className="text-slate-600">{paymentTypeLabel(form.payment_type)}</span>
+                          </p>
+                          <p className="mt-1 text-sm text-slate-700">
+                            Génération PDF : <span className="font-semibold">{fmtFR(sched.generateAt)}</span>{" "}
+                            <span className="text-slate-500">(période {sched.label})</span>
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">Règle : génération automatique à J+2 après l’échéance (cron 09:00 Europe/Paris).</p>
+                        </div>
+                      );
+                    })()}
+
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
                         <label className="text-[0.7rem] text-slate-700">Statut</label>
@@ -1145,9 +1273,11 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
                                 <div className="min-w-0 flex-1">
                                   <p className="text-sm font-semibold text-slate-900 truncate">{c.full_name || "Garant"}</p>
-                                  {(c.email || c.phone) ? (
+                                  {c.email || c.phone ? (
                                     <p className="mt-0.5 text-xs text-slate-600 truncate">
-                                      {c.email ? c.email : ""}{c.email && c.phone ? " • " : ""}{c.phone ? c.phone : ""}
+                                      {c.email ? c.email : ""}
+                                      {c.email && c.phone ? " • " : ""}
+                                      {c.phone ? c.phone : ""}
                                     </p>
                                   ) : null}
                                 </div>
@@ -1289,42 +1419,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                 >
                   Enregistrer
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* PREMIUM MODAL PDF (inchangé) */}
-      {guideOpen ? (
-        <div className="fixed inset-0 z-[60]">
-          <button type="button" aria-label="Fermer le guide" onClick={() => setGuideOpen(false)} className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="absolute inset-0 p-3 sm:p-6">
-            <div className="h-full w-full rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
-              <div className="px-4 sm:px-5 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Guide</p>
-                  <p className="text-sm font-semibold text-slate-900 truncate">Réparations locatives — qui paie quoi ?</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <a href={PDF_URL} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50">
-                    Ouvrir dans un onglet
-                  </a>
-                  <button type="button" onClick={() => setGuideOpen(false)} className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
-                    Fermer (ESC)
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 bg-white">
-                <iframe title="Guide réparations locatives" src={`${PDF_URL}#view=FitH`} className="w-full h-full" />
-              </div>
-
-              <div className="px-4 sm:px-5 py-3 border-t border-slate-200 bg-white">
-                <p className="text-[0.75rem] text-slate-500">
-                  Astuce : pour chercher dans le PDF, utilise <span className="font-semibold">Ctrl+F</span> (ou ⌘F).
-                </p>
               </div>
             </div>
           </div>
