@@ -4,7 +4,9 @@ import PDFDocument from "pdfkit";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 type Json = Record<string, any>;
-const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const toISODateLocal = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
 function buildPdfBuffer(build: (doc: PDFDocument) => Promise<void>) {
   return new Promise<Buffer>(async (resolve, reject) => {
@@ -36,7 +38,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     };
 
     if (!userId) return res.status(400).json({ error: "userId requis." });
-    if (!leaseId || !periodStart || !periodEnd) return res.status(400).json({ error: "leaseId + periodStart + periodEnd requis." });
+    if (!leaseId || !periodStart || !periodEnd)
+      return res.status(400).json({ error: "leaseId + periodStart + periodEnd requis." });
 
     // lease
     const leaseRes = await supabaseAdmin.from("leases").select("*").eq("id", leaseId).single();
@@ -64,14 +67,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .update({
           content_text: contentText || existing.data.content_text,
           edited_at: contentText ? new Date().toISOString() : existing.data.edited_at,
-          issue_date: toISODate(new Date()),
+          issue_date: toISODateLocal(new Date()),
           status: existing.data.status || "generated",
         })
         .eq("id", existing.data.id)
         .select("*")
         .single();
 
-      if (upd.error || !upd.data) return res.status(500).json({ error: upd.error?.message || "Update quittance échoué." });
+      if (upd.error || !upd.data)
+        return res.status(500).json({ error: upd.error?.message || "Update quittance échoué." });
       receipt = upd.data;
     } else {
       const ins = await supabaseAdmin
@@ -83,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           rent_amount: rent,
           charges_amount: charges,
           total_amount: total,
-          issue_date: toISODate(new Date()),
+          issue_date: toISODateLocal(new Date()),
           issued_at: new Date().toISOString(),
           content_text: contentText || "",
           status: "generated",
@@ -92,7 +96,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .select("*")
         .single();
 
-      if (ins.error || !ins.data) return res.status(500).json({ error: ins.error?.message || "Création quittance échouée." });
+      if (ins.error || !ins.data)
+        return res.status(500).json({ error: ins.error?.message || "Création quittance échouée." });
       receipt = ins.data;
     }
 
@@ -112,7 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // upload storage
-    const yyyymm = String(receipt.period_start || "").slice(0, 7) || toISODate(new Date()).slice(0, 7);
+    const yyyymm = String(receipt.period_start || "").slice(0, 7) || toISODateLocal(new Date()).slice(0, 7);
     const filename = `quittance-${yyyymm}.pdf`;
     const storagePath = `${userId}/${receipt.lease_id}/${receipt.id}/${filename}`;
 
