@@ -8,10 +8,17 @@ type ResendResult =
   | { ok: true; id: string | null }
   | { ok: false; error: string; disabled?: boolean };
 
-// ✅ TS-safe : pas de "&&" avec accès à r.disabled sur une union
+// ✅ Guard ultra robuste (ne dépend pas du narrowing TS)
 function isResendDisabled(r: ResendResult): r is { ok: false; error: string; disabled: true } {
-  if (r.ok) return false;
-  return r.disabled === true;
+  if ((r as any)?.ok === true) return false;
+  const obj = r as unknown as Record<string, unknown>;
+  return obj["disabled"] === true;
+}
+
+function getResendError(r: ResendResult): string | null {
+  if ((r as any)?.ok === true) return null;
+  const obj = r as unknown as Record<string, unknown>;
+  return typeof obj["error"] === "string" ? (obj["error"] as string) : "Erreur email inconnue";
 }
 
 async function sendEmailViaResend(params: {
@@ -137,11 +144,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       attachments: [{ filename, contentBase64: pdfBuf.toString("base64") }],
     });
 
-    // 5.b) log email (non bloquant) — ✅ TS-safe
-    try {
-      const status = email.ok ? "sent" : isResendDisabled(email) ? "disabled" : "error";
-      const error_message = email.ok ? null : email.error;
+    const disabled = isResendDisabled(email);
+    const emailError = getResendError(email);
+    const logStatus = (email as any)?.ok === true ? "sent" : disabled ? "disabled" : "error";
 
+    // 5.b) log email (non bloquant)
+    try {
       await supabaseAdmin.from("email_logs").insert({
         user_id: userId,
         lease_id: receipt.lease_id,
@@ -149,8 +157,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         to_email: toEmail,
         subject,
         body_preview: `Quittance ${yyyymm}`,
-        status,
-        error_message,
+        status: logStatus,
+        error_message: (email as any)?.ok === true ? null : emailError,
         sent_at: new Date().toISOString(),
       });
     } catch {
@@ -158,12 +166,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // ✅ 6) si email désactivé => on NE FAIL PAS
-    if (!email.ok && isResendDisabled(email)) {
+    if ((email as any)?.ok !== true && disabled) {
       await supabaseAdmin
         .from("rent_receipts")
         .update({
           status: receipt.status || "generated",
-          send_error: email.error,
+          send_error: emailError,
           updated_at: new Date().toISOString(),
         })
         .eq("id", receipt.id);
@@ -171,7 +179,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(200).json({
         ok: true,
         email_disabled: true,
-        message: email.error,
+        message: emailError,
         receipt_id: receipt.id,
         signedUrl: signed.data.signedUrl,
         resendOnly: !!resendOnly,
@@ -179,16 +187,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // ❌ vrai échec Resend
-    if (!email.ok) {
+    if ((email as any)?.ok !== true) {
       await supabaseAdmin
         .from("rent_receipts")
         .update({
-          send_error: email.error,
+          send_error: emailError,
           updated_at: new Date().toISOString(),
         })
         .eq("id", receipt.id);
 
-      return res.status(400).json({ error: email.error });
+      return res.status(400).json({ error: emailError });
     }
 
     // ✅ 7) update receipt "sent"
