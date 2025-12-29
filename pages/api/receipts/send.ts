@@ -8,6 +8,10 @@ type ResendResult =
   | { ok: true; id: string | null }
   | { ok: false; error: string; disabled?: boolean };
 
+function isResendDisabled(r: ResendResult): r is { ok: false; error: string; disabled: true } {
+  return r.ok === false && r.disabled === true;
+}
+
 async function sendEmailViaResend(params: {
   to: string;
   subject: string;
@@ -17,7 +21,7 @@ async function sendEmailViaResend(params: {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;
 
-  // ✅ IMPORTANT : on ne considère plus ça comme une "erreur fatale"
+  // ✅ Pas une "erreur fatale" : on considère l'email désactivé
   if (!apiKey || !from) {
     return {
       ok: false,
@@ -124,7 +128,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       </div>
     `;
 
-    const email = await sendEmailViaResend({
+    const email: ResendResult = await sendEmailViaResend({
       to: toEmail,
       subject,
       html,
@@ -133,6 +137,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 5.b) log email (non bloquant)
     try {
+      const status = email.ok ? "sent" : isResendDisabled(email) ? "disabled" : "error";
+      const error_message = email.ok ? null : email.error;
+
       await supabaseAdmin.from("email_logs").insert({
         user_id: userId,
         lease_id: receipt.lease_id,
@@ -140,8 +147,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         to_email: toEmail,
         subject,
         body_preview: `Quittance ${yyyymm}`,
-        status: email.ok ? "sent" : email.disabled ? "disabled" : "error",
-        error_message: email.ok ? null : (email as any).error,
+        status,
+        error_message,
         sent_at: new Date().toISOString(),
       });
     } catch {
@@ -149,14 +156,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // ✅ 6) si email désactivé (pas de Resend), on NE FAIL PAS
-    if (!email.ok && (email as any).disabled) {
-      // On garde la quittance archivée, mais on note le problème d’envoi
+    if (!email.ok && isResendDisabled(email)) {
       await supabaseAdmin
         .from("rent_receipts")
         .update({
-          // tu peux aussi choisir status: "email_disabled" si tu préfères un statut dédié
           status: receipt.status || "generated",
-          send_error: (email as any).error,
+          send_error: email.error,
           updated_at: new Date().toISOString(),
         })
         .eq("id", receipt.id);
@@ -164,7 +169,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(200).json({
         ok: true,
         email_disabled: true,
-        message: (email as any).error,
+        message: email.error,
         receipt_id: receipt.id,
         signedUrl: signed.data.signedUrl,
         resendOnly: !!resendOnly,
@@ -176,12 +181,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       await supabaseAdmin
         .from("rent_receipts")
         .update({
-          send_error: (email as any).error,
+          send_error: email.error,
           updated_at: new Date().toISOString(),
         })
         .eq("id", receipt.id);
 
-      return res.status(400).json({ error: (email as any).error });
+      return res.status(400).json({ error: email.error });
     }
 
     // ✅ 7) update receipt "sent"
