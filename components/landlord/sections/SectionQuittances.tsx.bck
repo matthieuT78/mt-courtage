@@ -25,14 +25,6 @@ type EmailDiag = {
 };
 
 const toMonthISO = (d: Date) => d.toISOString().slice(0, 7);
-const toISODate = (d: Date) => d.toISOString().slice(0, 10);
-
-const monthStartEnd = (yyyymm: string) => {
-  const [y, m] = yyyymm.split("-").map(Number);
-  const start = new Date(y, m - 1, 1);
-  const end = new Date(y, m, 0);
-  return { start, end };
-};
 
 function cx(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -51,26 +43,67 @@ function yyyymmFromReceipt(r: any) {
   return ps ? ps.slice(0, 7) : "";
 }
 
-function isSameMonth(d: Date, yyyymm: string) {
-  const m = toMonthISO(d);
-  return m === yyyymm;
-}
-
 function safeDate(val?: string | null) {
   if (!val) return null;
   const d = new Date(val);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/**
- * Détermine la date de "due" (payment_day + 2) pour un mois donné
- * ex: payment_day=4 => due=6 du mois
- */
-function dueDateForMonth(yyyymm: string, paymentDay: number) {
+/* ======================================================
+   CALENDRIER (terme à échoir / terme échu) + J+2
+====================================================== */
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+// ⚠️ ISO “calendaire” en local (pas UTC drift)
+const toISODateLocal = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+const lastDayOfMonth = (yyyy: number, month0: number) => new Date(yyyy, month0 + 1, 0).getDate();
+const clampDayInMonth = (yyyy: number, month0: number, day1to31: number) => {
+  const last = lastDayOfMonth(yyyy, month0);
+  return Math.min(Math.max(1, day1to31), last);
+};
+
+function monthStartEnd(yyyymm: string) {
   const [y, m] = yyyymm.split("-").map(Number);
-  const base = new Date(y, m - 1, Math.max(1, Math.min(28, Number(paymentDay || 1)))); // clamp simple
-  base.setDate(base.getDate() + 2);
-  return base;
+  const start = new Date(y, m - 1, 1);
+  const end = new Date(y, m, 0);
+  return { start, end };
+}
+
+/**
+ * Calcul “échéance” + “date génération (J+2)” pour la période yyyymm,
+ * selon payment_type :
+ * - terme_a_echoir  => échéance dans le mois de la période
+ * - terme_echu      => échéance dans le mois suivant la période
+ */
+function scheduleForPeriod(yyyymmPeriod: string, lease: any) {
+  const paymentDayRaw = Number(lease?.payment_day || 1);
+  const paymentType = String(lease?.payment_type || "terme_a_echoir").toLowerCase();
+
+  const [y, m1] = yyyymmPeriod.split("-").map(Number);
+  const month0 = m1 - 1;
+
+  const periodStart = new Date(y, month0, 1);
+  const periodEnd = new Date(y, month0 + 1, 0);
+
+  let dueYear = y;
+  let dueMonth0 = month0;
+
+  if (paymentType === "terme_echu") {
+    // échéance dans le mois suivant la période
+    const next = new Date(y, month0 + 1, 1);
+    dueYear = next.getFullYear();
+    dueMonth0 = next.getMonth();
+  }
+
+  const dueDay = clampDayInMonth(dueYear, dueMonth0, paymentDayRaw);
+  const dueDate = new Date(dueYear, dueMonth0, dueDay);
+
+  const generateAt = new Date(dueDate);
+  generateAt.setDate(generateAt.getDate() + 2);
+
+  return { periodStart, periodEnd, dueDate, generateAt, paymentType };
 }
 
 function pillTone(status: string) {
@@ -88,6 +121,11 @@ function statusLabel(status?: string | null) {
   if (s === "error") return "Erreur";
   if (!s) return "—";
   return status!;
+}
+
+function paymentTypeLabel(v?: string | null) {
+  const t = String(v || "terme_a_echoir").toLowerCase();
+  return t === "terme_echu" ? "Fin de période (terme échu)" : "Début de période (terme à échoir)";
 }
 
 function Card({
@@ -114,15 +152,7 @@ function Card({
   );
 }
 
-function Kpi({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: React.ReactNode;
-  sub?: React.ReactNode;
-}) {
+function Kpi({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
       <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
@@ -177,8 +207,6 @@ export function SectionQuittances({
     let cancelled = false;
 
     (async () => {
-      // Optionnel: si tu crées /api/diagnostics/email, la page l'utilise.
-      // Sinon: fallback sur message statique (utile sans domaine).
       try {
         const r = await fetch("/api/diagnostics/email");
         if (!r.ok) throw new Error("no_diag");
@@ -219,16 +247,20 @@ export function SectionQuittances({
     return monthReceipts.filter((r: any) => String(r.status || "").toLowerCase() === "sent");
   }, [monthReceipts]);
 
-  // ---------- Retards = quittances generated dont due_date (payment_day+2) est passée
+  // ---------- Retards = quittances generated dont la date de génération attendue (J+2) est passée
   const lateThisMonth = useMemo(() => {
     const now = new Date();
     return pendingThisMonth.filter((r: any) => {
       const lease = safeLeases.find((l: any) => l.id === r.lease_id) as any;
-      const payDay = Number(lease?.payment_day || 1);
-      const due = dueDateForMonth(month, payDay);
-      return now.getTime() > due.getTime();
+      if (!lease) return false;
+
+      const yyyymm = yyyymmFromReceipt(r);
+      if (!yyyymm) return false;
+
+      const sched = scheduleForPeriod(yyyymm, lease);
+      return now.getTime() > sched.generateAt.getTime(); // retard = après la date où ça devrait être généré/présenté
     });
-  }, [pendingThisMonth, safeLeases, month]);
+  }, [pendingThisMonth, safeLeases]);
 
   // ---------- Dashboard “où j’en suis”
   const dashboard = useMemo(() => {
@@ -237,7 +269,6 @@ export function SectionQuittances({
     const sent = sentThisMonth.length;
     const late = lateThisMonth.length;
 
-    // last sent (global, sur baux actifs)
     const lastSent = safeReceipts
       .filter((r: any) => (r.sent_at ? true : false))
       .map((r: any) => safeDate(r.sent_at))
@@ -246,7 +277,7 @@ export function SectionQuittances({
     const lastSentAt = lastSent.length ? new Date(Math.max(...lastSent.map((d) => d.getTime()))) : null;
 
     return { total, pending, sent, late, lastSentAt };
-  }, [monthReceipts, pendingThisMonth.length, sentThisMonth.length, lateThisMonth.length, safeReceipts]);
+  }, [monthReceipts.length, pendingThisMonth.length, sentThisMonth.length, lateThisMonth.length, safeReceipts]);
 
   // ---------- Archives groupées (Biens -> Année -> Mois)
   const archives = useMemo(() => {
@@ -280,7 +311,6 @@ export function SectionQuittances({
       byProperty.set(propertyId, bucket);
     }
 
-    // tri interne
     const propsArr = Array.from(byProperty.values()).sort((a, b) => a.label.localeCompare(b.label));
     for (const p of propsArr) {
       for (const [y, arr] of p.years.entries()) {
@@ -324,13 +354,6 @@ export function SectionQuittances({
     }
   };
 
-  /**
-   * Workaround “Confirm paiement” depuis l’app (utile même sans email configuré)
-   * => doit déclencher la logique métier de confirmation
-   * - crée/MAJ paiement
-   * - crée l'entrée Finance (rent)
-   * - tente email locataire + cc bailleur (si email configuré)
-   */
   const confirmPaidFromApp = async (receipt: any) => {
     setErr(null);
     setOk(null);
@@ -360,10 +383,6 @@ export function SectionQuittances({
     }
   };
 
-  /**
-   * Renvoyer une quittance déjà archivée sans toucher la finance
-   * -> utilise /api/receipts/send (ton endpoint actuel de resend)
-   */
   const resendArchivedNoFinance = async (receipt: any) => {
     setErr(null);
     setOk(null);
@@ -404,7 +423,7 @@ export function SectionQuittances({
       <SectionTitle
         kicker="Quittances"
         title="Suivi clair : générées → confirmées → envoyées"
-        desc="V1 : la quittance est générée automatiquement (J+2 après le jour de paiement). La Finance ne bouge qu’au moment où tu confirmes le paiement."
+        desc="V1 : PDF généré automatiquement (J+2 après l’échéance). La Finance ne bouge qu’au moment où tu confirmes le paiement."
       />
 
       {/* Notice “comment ça marche” */}
@@ -414,7 +433,12 @@ export function SectionQuittances({
             <p className="text-sm font-semibold text-slate-900">Comment ça marche (simple)</p>
             <ol className="mt-2 space-y-1 text-sm text-slate-700 list-decimal pl-5">
               <li>
-                <span className="font-semibold">J+2</span> après le <span className="font-semibold">jour de paiement</span> du bail : quittance PDF{" "}
+                Le bail définit l’<span className="font-semibold">échéance</span> :{" "}
+                <span className="font-semibold">début de période</span> (terme à échoir) ou{" "}
+                <span className="font-semibold">fin de période</span> (terme échu).
+              </li>
+              <li>
+                <span className="font-semibold">J+2</span> après l’échéance : quittance PDF{" "}
                 <span className="font-semibold">générée</span> et archivée.
               </li>
               <li>
@@ -425,6 +449,9 @@ export function SectionQuittances({
                 Quand tu confirmes “payé” : <span className="font-semibold">Finance mise à jour</span> + envoi au locataire (si email dispo).
               </li>
             </ol>
+            <p className="mt-2 text-xs text-slate-500">
+              Important : “Retard” = la quittance est encore “à confirmer” alors que la date de génération attendue (J+2) est passée.
+            </p>
           </div>
 
           {/* Email diagnostic */}
@@ -469,7 +496,7 @@ export function SectionQuittances({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-end gap-3">
           <div className="space-y-1">
-            <label className="text-[0.7rem] text-slate-700">Mois</label>
+            <label className="text-[0.7rem] text-slate-700">Mois (période)</label>
             <input
               type="month"
               value={month}
@@ -502,25 +529,17 @@ export function SectionQuittances({
               setLoading(false);
             }
           }}
-          className={cx(
-            "rounded-full px-4 py-2 text-sm font-semibold text-white",
-            "bg-slate-900 hover:bg-slate-800",
-            loading && "opacity-60"
-          )}
+          className={cx("rounded-full px-4 py-2 text-sm font-semibold text-white", "bg-slate-900 hover:bg-slate-800", loading && "opacity-60")}
         >
           {loading ? "…" : "Rafraîchir"}
         </button>
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
-        <Kpi label="Quittances (mois)" value={dashboard.total} sub="générées + envoyées" />
+        <Kpi label="Quittances (période)" value={dashboard.total} sub="générées + envoyées" />
         <Kpi label="À confirmer" value={dashboard.pending} sub="ne bouge pas la Finance" />
         <Kpi label="Confirmées" value={dashboard.sent} sub="Finance + locataire" />
-        <Kpi
-          label="Retards"
-          value={<span className={dashboard.late > 0 ? "text-red-700" : ""}>{dashboard.late}</span>}
-          sub="en attente après J+2"
-        />
+        <Kpi label="Retards" value={<span className={dashboard.late > 0 ? "text-red-700" : ""}>{dashboard.late}</span>} sub="après J+2 (échéance)" />
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -529,9 +548,7 @@ export function SectionQuittances({
           Dernière quittance envoyée :{" "}
           <span className="font-semibold">{dashboard.lastSentAt ? dashboard.lastSentAt.toLocaleString("fr-FR") : "—"}</span>
         </p>
-        <p className="mt-1 text-xs text-slate-500">
-          “Envoyée” = l’info la plus importante : c’est l’état final après confirmation de paiement.
-        </p>
+        <p className="mt-1 text-xs text-slate-500">“Envoyée” est l’état final utile (après confirmation de paiement).</p>
       </div>
 
       {/* Bloc principal : A confirmer + courant */}
@@ -548,16 +565,14 @@ export function SectionQuittances({
                 {lateThisMonth.length} en retard
               </span>
             ) : (
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                OK
-              </span>
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">OK</span>
             )
           }
           tone="muted"
         >
           {pendingThisMonth.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm text-slate-700">
-              Rien à confirmer pour ce mois 🎉
+              Rien à confirmer pour cette période 🎉
             </div>
           ) : (
             <div className="space-y-2">
@@ -565,18 +580,16 @@ export function SectionQuittances({
                 const lease = safeLeases.find((l: any) => l.id === r.lease_id) as any;
                 const label = lease ? leaseLabel(lease) : `Bail ${r.lease_id}`;
                 const yyyymm = yyyymmFromReceipt(r);
-                const due = lease ? dueDateForMonth(yyyymm, Number(lease.payment_day || 1)) : null;
-                const isLate = due ? Date.now() > due.getTime() : false;
+
+                const sched = lease && yyyymm ? scheduleForPeriod(yyyymm, lease) : null;
+                const isLate = sched ? Date.now() > sched.generateAt.getTime() : false;
 
                 const lastSent = r.sent_at ? new Date(r.sent_at).toLocaleString("fr-FR") : "—";
 
                 return (
                   <div
                     key={r.id}
-                    className={cx(
-                      "rounded-2xl border p-3 bg-white flex flex-col gap-2",
-                      isLate ? "border-red-200" : "border-slate-200"
-                    )}
+                    className={cx("rounded-2xl border p-3 bg-white flex flex-col gap-2", isLate ? "border-red-200" : "border-slate-200")}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -584,12 +597,29 @@ export function SectionQuittances({
                         <p className="text-xs text-slate-600">
                           Période : {fmtDate(r.period_start)} → {fmtDate(r.period_end)}
                         </p>
+
+                        {lease && yyyymm && sched ? (
+                          <p className="mt-1 text-xs text-slate-500">
+                            Échéance :{" "}
+                            <span className="font-semibold">
+                              {toISODateLocal(sched.dueDate)}
+                            </span>{" "}
+                            <span className="text-slate-400">•</span>{" "}
+                            <span className="text-slate-600">{paymentTypeLabel(lease.payment_type)}</span>{" "}
+                            <span className="text-slate-400">•</span>{" "}
+                            Génération attendue :{" "}
+                            <span className="font-semibold">{toISODateLocal(sched.generateAt)}</span>
+                          </p>
+                        ) : null}
+
                         <p className="text-xs text-slate-500">
                           Statut :{" "}
                           <span className={cx("inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold", pillTone(r.status))}>
                             {statusLabel(r.status)}
                           </span>
-                          <span className="ml-2">• Last sent : <span className="font-semibold">{lastSent}</span></span>
+                          <span className="ml-2">
+                            • Last sent : <span className="font-semibold">{lastSent}</span>
+                          </span>
                         </p>
                       </div>
 
@@ -598,11 +628,7 @@ export function SectionQuittances({
                           type="button"
                           disabled={loading}
                           onClick={() => confirmPaidFromApp(r)}
-                          className={cx(
-                            "rounded-full px-4 py-2 text-xs font-semibold text-white",
-                            "bg-slate-900 hover:bg-slate-800",
-                            loading && "opacity-60"
-                          )}
+                          className={cx("rounded-full px-4 py-2 text-xs font-semibold text-white", "bg-slate-900 hover:bg-slate-800", loading && "opacity-60")}
                           title="Confirme le paiement : met à jour Finance + tente l’envoi au locataire."
                         >
                           ✅ Confirmer paiement
@@ -612,11 +638,7 @@ export function SectionQuittances({
                           type="button"
                           disabled={loading}
                           onClick={() => openPdf(r)}
-                          className={cx(
-                            "rounded-full px-4 py-2 text-xs font-semibold",
-                            "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
-                            loading && "opacity-60"
-                          )}
+                          className={cx("rounded-full px-4 py-2 text-xs font-semibold", "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50", loading && "opacity-60")}
                           title="Ouvrir la quittance PDF générée"
                         >
                           👁️ Voir PDF
@@ -624,9 +646,10 @@ export function SectionQuittances({
                       </div>
                     </div>
 
-                    {isLate ? (
+                    {isLate && sched ? (
                       <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                        En retard : dû le <span className="font-semibold">{due?.toLocaleDateString("fr-FR")}</span> (J+2 après paiement).
+                        En retard : la génération attendue était le{" "}
+                        <span className="font-semibold">{toISODateLocal(sched.generateAt)}</span>.
                       </div>
                     ) : null}
                   </div>
@@ -636,10 +659,10 @@ export function SectionQuittances({
           )}
         </Card>
 
-        <Card title="Quittances envoyées (ce mois)" right={<span className="text-sm text-slate-500">{sentThisMonth.length}</span>}>
+        <Card title="Quittances envoyées (période)" right={<span className="text-sm text-slate-500">{sentThisMonth.length}</span>}>
           {sentThisMonth.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
-              Aucune quittance envoyée ce mois-ci.
+              Aucune quittance envoyée sur cette période.
             </div>
           ) : (
             <div className="space-y-2">
@@ -658,9 +681,7 @@ export function SectionQuittances({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-slate-900 truncate">{label}</p>
-                      <span className={cx("rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold", pillTone(r.status))}>
-                        {statusLabel(r.status)}
-                      </span>
+                      <span className={cx("rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold", pillTone(r.status))}>{statusLabel(r.status)}</span>
                     </div>
                     <p className="text-xs text-slate-600">
                       {fmtDate(r.period_start)} → {fmtDate(r.period_end)}
@@ -671,9 +692,7 @@ export function SectionQuittances({
                   </button>
                 );
               })}
-              {sentThisMonth.length > 8 ? (
-                <p className="text-xs text-slate-500">+ {sentThisMonth.length - 8} autres (voir archives en bas)</p>
-              ) : null}
+              {sentThisMonth.length > 8 ? <p className="text-xs text-slate-500">+ {sentThisMonth.length - 8} autres (voir archives en bas)</p> : null}
             </div>
           )}
 
@@ -706,9 +725,7 @@ export function SectionQuittances({
                 </button>
               </div>
 
-              <p className="text-xs text-slate-500">
-                “Renvoyer” ne crée pas de paiement, ne modifie pas la Finance. Ça ne fait que renvoyer le PDF.
-              </p>
+              <p className="text-xs text-slate-500">“Renvoyer” ne crée pas de paiement et ne modifie pas la Finance. Ça renvoie juste le PDF.</p>
             </div>
           ) : null}
         </Card>
@@ -763,6 +780,7 @@ export function SectionQuittances({
                               {arr.map((r: any) => {
                                 const lease = safeLeases.find((l: any) => l.id === r.lease_id) as any;
                                 const t = lease ? tenantsById.get(String(lease.tenant_id)) : null;
+
                                 return (
                                   <tr key={r.id} className="border-b border-slate-100">
                                     <td className="px-3 py-2 text-slate-700">
@@ -774,9 +792,7 @@ export function SectionQuittances({
                                         {statusLabel(r.status)}
                                       </span>
                                     </td>
-                                    <td className="px-3 py-2 text-slate-700">
-                                      {r.sent_at ? new Date(r.sent_at).toLocaleString("fr-FR") : "—"}
-                                    </td>
+                                    <td className="px-3 py-2 text-slate-700">{r.sent_at ? new Date(r.sent_at).toLocaleString("fr-FR") : "—"}</td>
                                     <td className="px-3 py-2 text-right">
                                       <div className="inline-flex gap-2">
                                         <button

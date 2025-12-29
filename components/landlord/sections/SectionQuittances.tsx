@@ -312,12 +312,15 @@ export function SectionQuittances({
     }
 
     const propsArr = Array.from(byProperty.values()).sort((a, b) => a.label.localeCompare(b.label));
+
+    // ✅ FIX Vercel/TS target: itération sûre via Array.from()
     for (const p of propsArr) {
-      for (const [y, arr] of p.years.entries()) {
+      for (const [y, arr] of Array.from(p.years.entries())) {
         arr.sort((a: any, b: any) => String(b.period_start).localeCompare(String(a.period_start)));
         p.years.set(y, arr);
       }
     }
+
     return propsArr;
   }, [safeReceipts, safeLeases, propsById]);
 
@@ -539,7 +542,11 @@ export function SectionQuittances({
         <Kpi label="Quittances (période)" value={dashboard.total} sub="générées + envoyées" />
         <Kpi label="À confirmer" value={dashboard.pending} sub="ne bouge pas la Finance" />
         <Kpi label="Confirmées" value={dashboard.sent} sub="Finance + locataire" />
-        <Kpi label="Retards" value={<span className={dashboard.late > 0 ? "text-red-700" : ""}>{dashboard.late}</span>} sub="après J+2 (échéance)" />
+        <Kpi
+          label="Retards"
+          value={<span className={dashboard.late > 0 ? "text-red-700" : ""}>{dashboard.late}</span>}
+          sub="après J+2 (échéance)"
+        />
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -600,14 +607,10 @@ export function SectionQuittances({
 
                         {lease && yyyymm && sched ? (
                           <p className="mt-1 text-xs text-slate-500">
-                            Échéance :{" "}
-                            <span className="font-semibold">
-                              {toISODateLocal(sched.dueDate)}
-                            </span>{" "}
+                            Échéance : <span className="font-semibold">{toISODateLocal(sched.dueDate)}</span>{" "}
                             <span className="text-slate-400">•</span>{" "}
                             <span className="text-slate-600">{paymentTypeLabel(lease.payment_type)}</span>{" "}
-                            <span className="text-slate-400">•</span>{" "}
-                            Génération attendue :{" "}
+                            <span className="text-slate-400">•</span> Génération attendue :{" "}
                             <span className="font-semibold">{toISODateLocal(sched.generateAt)}</span>
                           </p>
                         ) : null}
