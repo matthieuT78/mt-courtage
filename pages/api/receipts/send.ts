@@ -8,8 +8,10 @@ type ResendResult =
   | { ok: true; id: string | null }
   | { ok: false; error: string; disabled?: boolean };
 
+// ✅ TS-safe : pas de "&&" avec accès à r.disabled sur une union
 function isResendDisabled(r: ResendResult): r is { ok: false; error: string; disabled: true } {
-  return !r.ok && !!r.disabled;
+  if (r.ok) return false;
+  return r.disabled === true;
 }
 
 async function sendEmailViaResend(params: {
@@ -21,7 +23,7 @@ async function sendEmailViaResend(params: {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;
 
-  // ✅ IMPORTANT : on ne considère plus ça comme une "erreur fatale"
+  // ✅ Email "désactivé" si pas de config
   if (!apiKey || !from) {
     return {
       ok: false,
@@ -135,14 +137,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       attachments: [{ filename, contentBase64: pdfBuf.toString("base64") }],
     });
 
-    // 5.b) log email (non bloquant) — ✅ version TS-safe
+    // 5.b) log email (non bloquant) — ✅ TS-safe
     try {
       const status = email.ok ? "sent" : isResendDisabled(email) ? "disabled" : "error";
-
-      let error_message: string | null = null;
-      if (!email.ok) {
-        error_message = email.error;
-      }
+      const error_message = email.ok ? null : email.error;
 
       await supabaseAdmin.from("email_logs").insert({
         user_id: userId,
@@ -159,13 +157,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       // non bloquant
     }
 
-    // ✅ 6) si email désactivé (pas de Resend), on NE FAIL PAS
+    // ✅ 6) si email désactivé => on NE FAIL PAS
     if (!email.ok && isResendDisabled(email)) {
-      // On garde la quittance archivée, mais on note le problème d’envoi
       await supabaseAdmin
         .from("rent_receipts")
         .update({
-          // tu peux aussi choisir status: "email_disabled" si tu préfères un statut dédié
           status: receipt.status || "generated",
           send_error: email.error,
           updated_at: new Date().toISOString(),
@@ -182,7 +178,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       });
     }
 
-    // ❌ vrai échec Resend (API down, etc) => on renvoie 400 (mais quittance reste dispo)
+    // ❌ vrai échec Resend
     if (!email.ok) {
       await supabaseAdmin
         .from("rent_receipts")
