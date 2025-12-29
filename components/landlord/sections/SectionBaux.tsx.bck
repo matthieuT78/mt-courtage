@@ -140,7 +140,8 @@ const parisNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "
 const fmtFR = (d: Date) =>
   d.toLocaleDateString("fr-FR", { year: "numeric", month: "short", day: "2-digit", timeZone: "Europe/Paris" });
 
-const yyyymmFR = (d: Date) => d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", timeZone: "Europe/Paris" });
+const yyyymmFR = (d: Date) =>
+  d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", timeZone: "Europe/Paris" });
 
 const monthStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
 const monthEnd = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
@@ -163,9 +164,6 @@ function paymentTypeShort(v?: string | null) {
   return (v || "").toLowerCase() === "terme_echu" ? "terme échu" : "terme à échoir";
 }
 
-// Prochain run "génération quittance" (>= now), cohérent avec ton cron:
-// - terme_a_echoir: échéance sur le mois de la période
-// - terme_echu: échéance sur le mois suivant la période
 function nextReceiptScheduleForLease(
   lease: { payment_day?: number | null; payment_type?: string | null },
   now = parisNow()
@@ -205,7 +203,6 @@ function nextReceiptScheduleForLease(
     }
   }
 
-  // fallback
   const ps = monthStart(now);
   const pe = monthEnd(now);
   const day = clampDay(now.getFullYear(), now.getMonth(), paymentDayRaw);
@@ -256,7 +253,16 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         if (!query) return true;
         const p = propertyById.get(l.property_id);
         const t = tenantById.get(l.tenant_id);
-        const hay = [p?.label, t?.full_name, l.start_date, l.end_date || "", String(l.rent_amount ?? "")]
+        const hay = [
+          p?.label,
+          p?.city,
+          t?.full_name,
+          t?.email,
+          l.start_date,
+          l.end_date || "",
+          String(l.rent_amount ?? ""),
+          String(l.charges_amount ?? ""),
+        ]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
@@ -275,10 +281,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     deposit_amount: "",
     payment_day: "1",
     payment_method: "virement",
-
-    // ✅ plus clair
     payment_type: "terme_a_echoir",
-
     status: "active",
     auto_quittance_enabled: true,
     auto_reminder_enabled: false,
@@ -347,7 +350,11 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     try {
       if (!supabase) throw new Error("Supabase non initialisé.");
 
-      const { data, error } = await supabase.from("lease_guarantors").select("contact_id").eq("user_id", userId).eq("lease_id", leaseId);
+      const { data, error } = await supabase
+        .from("lease_guarantors")
+        .select("contact_id")
+        .eq("user_id", userId)
+        .eq("lease_id", leaseId);
 
       if (error) throw error;
 
@@ -355,7 +362,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       setGuarantorIds(ids);
     } catch (e: any) {
       console.error("[SectionBaux] loadGuarantorsForLease error:", e);
-      // pas bloquant
     }
   };
 
@@ -527,6 +533,18 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  const safeRefresh = async () => {
+    try {
+      await withTimeout(onRefresh(), 4000);
+    } catch (e: any) {
+      console.warn("[SectionBaux] refresh skipped:", e?.message || e);
+    }
+  };
+
+  /* ======================================================
+     NAV (in-frame, no drawer)
+  ====================================================== */
+
   const openCreate = () => {
     setErr(null);
     setOk(null);
@@ -571,22 +589,70 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     setMode("edit");
   };
 
-  const closeDrawer = () => {
+  const closeDetail = () => {
     setMode("idle");
+    setSelectedId(null);
     setErr(null);
-  };
-
-  const safeRefresh = async () => {
-    try {
-      await withTimeout(onRefresh(), 4000);
-    } catch (e: any) {
-      console.warn("[SectionBaux] refresh skipped:", e?.message || e);
-    }
   };
 
   /* ======================================================
      CRUD
   ====================================================== */
+
+  const patchLease = async (leaseId: string, patch: Partial<Lease>) => {
+    if (!userId) throw new Error("userId manquant.");
+    if (!supabase) throw new Error("Supabase non initialisé.");
+
+    const payload: any = { ...patch, updated_at: new Date().toISOString() };
+    const { error } = await supabase.from("leases").update(payload).eq("id", leaseId).eq("user_id", userId);
+    if (error) throw error;
+  };
+
+  const quickEndLease = async (lease: Lease) => {
+    if (!userId) return;
+    const p = propertyById.get(lease.property_id);
+    const t = tenantById.get(lease.tenant_id);
+    const label = `${p?.label || "Bien"} • ${t?.full_name || "Locataire"}`;
+
+    if (!confirm(`Mettre fin au bail :\n${label}\n\n→ Statut: ended\n→ Date de fin: ${lease.end_date || todayISO()}\n\nConfirmer ?`))
+      return;
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      await patchLease(lease.id, {
+        status: "ended",
+        end_date: lease.end_date || todayISO(),
+      });
+      setOk("Bail terminé ✅");
+      await safeRefresh();
+      // garder le détail ouvert si on y est
+      setSelectedId((prev) => prev);
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de mettre fin au bail.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const quickToggleQuittance = async (lease: Lease) => {
+    if (!userId) return;
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      await patchLease(lease.id, { auto_quittance_enabled: !lease.auto_quittance_enabled });
+      setOk(`Quittance auto ${!lease.auto_quittance_enabled ? "activée" : "désactivée"} ✅`);
+      await safeRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de modifier l’option quittance.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const saveLease = async () => {
     if (!userId) {
@@ -631,6 +697,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         reminder_email: form.reminder_email ? form.reminder_email : null,
         tenant_receipt_email: form.tenant_receipt_email ? form.tenant_receipt_email : null,
         timezone: form.timezone || "Europe/Paris",
+        updated_at: new Date().toISOString(),
       };
 
       let leaseId = selectedId;
@@ -646,15 +713,19 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         if (error) throw error;
         leaseId = (data as any)?.id ?? null;
         setOk("Bail créé ✅");
-        setSelectedId(leaseId);
-        setMode("idle");
+        if (leaseId) {
+          setSelectedId(leaseId);
+          setMode("view");
+        } else {
+          setMode("idle");
+        }
       }
 
       if (leaseId) {
         await syncGuarantors(leaseId);
       }
 
-      safeRefresh();
+      await safeRefresh();
     } catch (e: any) {
       console.error("[saveLease] error:", e);
       setErr(e?.message || "Erreur lors de l’enregistrement.");
@@ -682,7 +753,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       setOk("Bail supprimé ✅");
       setSelectedId(null);
       setMode("idle");
-      safeRefresh();
+      await safeRefresh();
     } catch (e: any) {
       console.error("[SectionBaux] delete error:", e);
       setErr(e?.message || "Suppression impossible (quittances/loyers existants ?).");
@@ -695,13 +766,20 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
      UI HELPERS
   ====================================================== */
 
-  const leaseCardLabel = (l: Lease) => {
+  const leaseMeta = (l: Lease) => {
     const p = propertyById.get(l.property_id);
     const t = tenantById.get(l.tenant_id);
+    const total = Number(l.rent_amount || 0) + Number(l.charges_amount || 0);
+
+    const tenantLine = t?.email ? `${t?.full_name || "Locataire"} • ${t.email}` : t?.full_name || "Locataire";
+    const propertyLine = [p?.label || "Bien", p?.city ? `(${p.city})` : ""].filter(Boolean).join(" ");
+
     return {
       title: `${p?.label || "Bien"} • ${t?.full_name || "Locataire"}`,
-      sub: `Début : ${l.start_date}${l.end_date ? ` • Fin : ${l.end_date}` : ""}`,
-      total: Number(l.rent_amount || 0) + Number(l.charges_amount || 0),
+      propertyLine,
+      tenantLine,
+      dates: `Début : ${l.start_date}${l.end_date ? ` • Fin : ${l.end_date}` : ""}`,
+      total,
     };
   };
 
@@ -713,12 +791,18 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     return "slate" as const;
   };
 
-  const drawerOpen = mode !== "idle";
-  const drawerTitle = mode === "create" ? "Nouveau bail" : mode === "edit" ? "Modifier le bail" : "Consulter le bail";
+  const isActiveLease = (l: Lease) => (l.status || "").toLowerCase() === "active";
+
+  const rightTitle =
+    mode === "create" ? "Nouveau bail" : mode === "edit" ? "Modifier le bail" : mode === "view" ? "Détail du bail" : "Détail";
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
-      <SectionTitle kicker="Baux" title="Contrats" desc="Liste + fiche. Et maintenant une cinématique quittance claire (auto J+2 + terme à échoir/échu)." />
+      <SectionTitle
+        kicker="Baux"
+        title="Contrats"
+        desc="Liste + fiche détaillée dans le cadre (pas de drawer). Actions rapides directement dans la liste."
+      />
 
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
@@ -729,8 +813,8 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Rechercher (bien, locataire, date…)…"
-            className="w-full sm:w-80 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+            placeholder="Rechercher (bien, locataire, email, date, montant…)…"
+            className="w-full sm:w-96 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
           />
           <select
             value={statusFilter}
@@ -756,592 +840,775 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         </button>
       </div>
 
-      {/* List */}
-      {filteredLeases.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-700">
-          Aucun bail. Clique sur <span className="font-semibold">“Nouveau bail”</span>.
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {filteredLeases.map((l) => {
-            const meta = leaseCardLabel(l);
-            const sched = nextReceiptScheduleForLease(l);
-
-            return (
+      {/* Master / Detail (in-frame) */}
+      <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
+        {/* LEFT: LIST */}
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Liste</p>
+              <p className="text-sm font-semibold text-slate-900">{filteredLeases.length} bail{filteredLeases.length > 1 ? "x" : ""}</p>
+            </div>
+            {selected ? (
               <button
-                key={l.id}
                 type="button"
                 onClick={(e) => {
                   stop(e);
-                  openView(l.id);
+                  closeDetail();
                 }}
-                className="rounded-2xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50 transition"
+                className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">{meta.title}</p>
-                    <p className="mt-1 text-xs text-slate-600">{meta.sub}</p>
-
-                    <p className="mt-2 text-xs text-slate-700">
-                      Total mensuel : <span className="font-semibold">{formatEuro(meta.total)}</span>{" "}
-                      <span className="text-slate-500">
-                        ({formatEuro(l.rent_amount)} + {formatEuro(l.charges_amount)})
-                      </span>
-                    </p>
-
-                    {/* ✅ résumé quittance */}
-                    <p className="mt-2 text-xs text-slate-700">
-                      Quittance :{" "}
-                      <span className="font-semibold">{l.auto_quittance_enabled ? "auto" : "manuel"}</span>{" "}
-                      <span className="text-slate-500">• {paymentTypeShort(l.payment_type)}</span>
-                    </p>
-
-                    {l.auto_quittance_enabled ? (
-                      <p className="mt-1 text-xs text-slate-600">
-                        Prochaine génération : <span className="font-semibold">{fmtFR(sched.generateAt)}</span>{" "}
-                        <span className="text-slate-500">(période {sched.label})</span>
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-xs text-slate-500">(Auto OFF) → génération depuis la section Quittances</p>
-                    )}
-                  </div>
-
-                  <div className="shrink-0 flex flex-col items-end gap-2">
-                    {badge(statusTone(l.status), (l.status || "—").toUpperCase())}
-                    {badge(l.auto_quittance_enabled ? "emerald" : "amber", l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel")}
-                  </div>
-                </div>
+                Désélectionner
               </button>
-            );
-          })}
+            ) : null}
+          </div>
+
+          {filteredLeases.length === 0 ? (
+            <div className="px-4 py-5 text-sm text-slate-700">
+              Aucun bail. Clique sur <span className="font-semibold">“Nouveau bail”</span>.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-200">
+              {filteredLeases.map((l) => {
+                const meta = leaseMeta(l);
+                const sched = nextReceiptScheduleForLease(l);
+                const isSelected = l.id === selectedId;
+
+                return (
+                  <div
+                    key={l.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openView(l.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") openView(l.id);
+                    }}
+                    className={
+                      "p-4 hover:bg-slate-50 transition cursor-pointer " +
+                      (isSelected ? "bg-slate-50" : "bg-white")
+                    }
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{meta.title}</p>
+                          <span className="hidden sm:inline">{badge(statusTone(l.status), (l.status || "—").toUpperCase())}</span>
+                        </div>
+
+                        <p className="mt-1 text-xs text-slate-700">
+                          <span className="font-semibold">{meta.propertyLine}</span>
+                          <span className="text-slate-500"> • </span>
+                          <span className="truncate">{meta.tenantLine}</span>
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-600">{meta.dates}</p>
+
+                        <div className="mt-2 grid gap-1 text-xs text-slate-700">
+                          <p>
+                            Total mensuel : <span className="font-semibold">{formatEuro(meta.total)}</span>{" "}
+                            <span className="text-slate-500">
+                              ({formatEuro(l.rent_amount)} + {formatEuro(l.charges_amount)})
+                            </span>
+                          </p>
+
+                          <p>
+                            Paiement :{" "}
+                            <span className="font-semibold">
+                              J{l.payment_day ?? "—"} • {l.payment_method || "—"}
+                            </span>{" "}
+                            <span className="text-slate-500">• {paymentTypeShort(l.payment_type)}</span>
+                          </p>
+
+                          <p>
+                            Quittance :{" "}
+                            <span className="font-semibold">{l.auto_quittance_enabled ? "auto" : "manuel"}</span>{" "}
+                            {l.auto_quittance_enabled ? (
+                              <span className="text-slate-500">• prochaine génération {fmtFR(sched.generateAt)}</span>
+                            ) : (
+                              <span className="text-slate-500">• auto OFF</span>
+                            )}
+                          </p>
+                        </div>
+
+                        {/* Actions rapides */}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              stop(e);
+                              openView(l.id);
+                            }}
+                            className="rounded-full bg-slate-900 px-3.5 py-1.5 text-[0.72rem] font-semibold text-white hover:bg-slate-800"
+                          >
+                            Détail
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={(e) => {
+                              stop(e);
+                              setSelectedId(l.id);
+                              setMode("view");
+                              loadGuarantorsForLease(l.id);
+                              // puis basculer edit
+                              setTimeout(() => {
+                                // petit garde-fou: si pas sélectionné entre-temps, on n'ouvre pas
+                                if (l.id) openEdit();
+                              }, 0);
+                            }}
+                            className="rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-[0.72rem] font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            Modifier
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={(e) => {
+                              stop(e);
+                              quickToggleQuittance(l);
+                            }}
+                            className="rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-[0.72rem] font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            Quittance {l.auto_quittance_enabled ? "ON" : "OFF"}
+                          </button>
+
+                          {isActiveLease(l) ? (
+                            <button
+                              type="button"
+                              disabled={loading}
+                              onClick={(e) => {
+                                stop(e);
+                                quickEndLease(l);
+                              }}
+                              className="rounded-full border border-amber-300 bg-white px-3.5 py-1.5 text-[0.72rem] font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-60"
+                            >
+                              Mettre fin
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex flex-col items-end gap-2">
+                        <span className="sm:hidden">{badge(statusTone(l.status), (l.status || "—").toUpperCase())}</span>
+                        {badge(l.auto_quittance_enabled ? "emerald" : "amber", l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel")}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Drawer */}
-      {drawerOpen ? (
-        <div className="fixed inset-0 z-50">
-          <button type="button" onClick={closeDrawer} className="absolute inset-0 bg-black/30" aria-label="Fermer" />
+        {/* RIGHT: DETAIL / FORM */}
+        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Baux</p>
+              <p className="text-sm font-semibold text-slate-900">{rightTitle}</p>
+              {mode !== "create" && selected ? (
+                <p className="mt-1 text-xs text-slate-600 truncate">{leaseMeta(selected).title}</p>
+              ) : (
+                <p className="mt-1 text-xs text-slate-600">Sélectionne un bail dans la liste.</p>
+              )}
+            </div>
 
-          <div className="absolute right-0 top-0 h-full w-full max-w-xl bg-white shadow-2xl border-l border-slate-200 flex flex-col">
-            <div className="p-4 border-b border-slate-200 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Baux</p>
-                <p className="text-base font-semibold text-slate-900">{drawerTitle}</p>
-                {mode !== "create" && selected ? <p className="mt-1 text-xs text-slate-600">{leaseCardLabel(selected).title}</p> : null}
-              </div>
+            <div className="shrink-0 flex gap-2">
+              {mode === "view" && selected ? (
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={(e) => {
+                    stop(e);
+                    openEdit();
+                  }}
+                  className="rounded-full bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                >
+                  Modifier
+                </button>
+              ) : null}
+
+              {mode === "view" && selected ? (
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={(e) => {
+                    stop(e);
+                    onDelete();
+                  }}
+                  className="rounded-full border border-red-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                >
+                  Supprimer
+                </button>
+              ) : null}
 
               <button
                 type="button"
-                onClick={closeDrawer}
-                className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                onClick={(e) => {
+                  stop(e);
+                  closeDetail();
+                }}
+                className="rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
               >
-                Fermer
+                Retour
               </button>
             </div>
+          </div>
 
-            <div className="p-4 overflow-auto space-y-4">
-              {/* VIEW */}
-              {mode === "view" ? (
-                !selected ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-                    Bail introuvable (rafraîchis la liste).
-                  </div>
-                ) : (
-                  <>
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {badge(statusTone(selected.status), (selected.status || "—").toUpperCase())}
-                        {badge(selected.auto_quittance_enabled ? "emerald" : "amber", selected.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel")}
-                        {badge(selected.auto_reminder_enabled ? "emerald" : "slate", selected.auto_reminder_enabled ? "Rappel ON" : "Rappel OFF")}
-                      </div>
+          <div className="p-4 overflow-auto space-y-4">
+            {/* EMPTY */}
+            {mode === "idle" && !selected ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-700">
+                Clique sur un bail à gauche pour afficher une fiche complète ici.
+              </div>
+            ) : null}
 
-                      <div className="grid gap-2 sm:grid-cols-2 mt-3 text-sm text-slate-800">
-                        <div>
-                          <p className="text-xs text-slate-500">Début</p>
-                          <p className="font-semibold">{selected.start_date}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500">Fin</p>
-                          <p className="font-semibold">{selected.end_date || "—"}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs text-slate-500">Total mensuel</p>
-                          <p className="font-semibold">{formatEuro(Number(selected.rent_amount || 0) + Number(selected.charges_amount || 0))}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs text-slate-500">Paiement</p>
-                          <p className="font-semibold">
-                            Jour {selected.payment_day ?? "—"} • {selected.payment_method || "—"}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            Échéance : <span className="font-semibold">{paymentTypeLabel(selected.payment_type)}</span>
-                          </p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs text-slate-500">Dépôt</p>
-                          <p className="font-semibold">{formatEuro(selected.deposit_amount)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500">Timezone</p>
-                          <p className="font-semibold">{selected.timezone || "Europe/Paris"}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ✅ Cinématique quittance */}
-                    {(() => {
-                      const sched = nextReceiptScheduleForLease(selected);
-                      return (
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <p className="text-xs font-semibold text-slate-900">Cinématique quittance (V1)</p>
-
-                          <div className="mt-2 grid gap-2 text-sm text-slate-700">
-                            <p>
-                              1) Échéance : <span className="font-semibold">Jour {selected.payment_day ?? "—"}</span>{" "}
-                              <span className="text-slate-500">({paymentTypeLabel(selected.payment_type)})</span>
-                            </p>
-
-                            <p>
-                              2) Génération PDF : <span className="font-semibold">J+2 après l’échéance</span>{" "}
-                              <span className="text-slate-500">(cron 09:00 Europe/Paris)</span>
-                            </p>
-
-                            <p>
-                              3) Action propriétaire : lien “Avez-vous reçu le loyer ?”
-                              <span className="text-slate-500"> → crée l’entrée Finance + envoie au locataire</span>
-                            </p>
-
-                            {selected.auto_quittance_enabled ? (
-                              <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-                                <p className="text-sm text-emerald-900 font-semibold">Prochaine génération automatique</p>
-                                <p className="text-sm text-emerald-900">
-                                  {fmtFR(sched.generateAt)} <span className="text-emerald-700">• période {sched.label}</span>
-                                </p>
-                                <p className="text-xs text-emerald-800 mt-1">Échéance estimée : {fmtFR(sched.dueDate)}</p>
-                              </div>
-                            ) : (
-                              <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                                <p className="text-sm text-amber-900 font-semibold">Quittance auto désactivée</p>
-                                <p className="text-xs text-amber-900 mt-1">
-                                  Active “Quittance auto” pour générer le PDF automatiquement à J+2.
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Garants (view) */}
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-xs font-semibold text-slate-900">Garants</p>
-                      {guarantorIds.length === 0 ? (
-                        <p className="mt-2 text-sm text-slate-600">Aucun garant associé.</p>
-                      ) : (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {guarantorIds
-                            .map((id) => contacts.find((c) => c.id === id))
-                            .filter(Boolean)
-                            .map((c) => (
-                              <span
-                                key={(c as any).id}
-                                className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-800"
-                              >
-                                {(c as any).full_name || "Garant"}
-                              </span>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          stop(e);
-                          openEdit();
-                        }}
-                        className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                        disabled={loading}
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          stop(e);
-                          onDelete();
-                        }}
-                        className="rounded-full border border-red-300 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                        disabled={loading}
-                      >
-                        Supprimer
-                      </button>
-                    </div>
-                  </>
-                )
-              ) : null}
-
-              {/* CREATE / EDIT */}
-              {mode === "create" || mode === "edit" ? (
-                <div className="space-y-3" data-stop-nav>
+            {/* VIEW */}
+            {mode === "view" ? (
+              !selected ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+                  Bail introuvable (rafraîchis la liste).
+                </div>
+              ) : (
+                <>
                   <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Bien</label>
-                        <select
-                          value={form.property_id}
-                          onChange={(e) => setForm((s) => ({ ...s, property_id: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                          <option value="">— Sélectionner —</option>
-                          {safeProps.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.label || "Bien"}
-                            </option>
-                          ))}
-                        </select>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {badge(statusTone(selected.status), (selected.status || "—").toUpperCase())}
+                      {badge(selected.auto_quittance_enabled ? "emerald" : "amber", selected.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel")}
+                      {badge(selected.auto_reminder_enabled ? "emerald" : "slate", selected.auto_reminder_enabled ? "Rappel ON" : "Rappel OFF")}
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 text-sm text-slate-800">
+                      <div>
+                        <p className="text-xs text-slate-500">Bien</p>
+                        <p className="font-semibold">{propertyById.get(selected.property_id)?.label || "—"}</p>
+                        {propertyById.get(selected.property_id)?.city ? (
+                          <p className="text-xs text-slate-600">{propertyById.get(selected.property_id)?.city}</p>
+                        ) : null}
                       </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Locataire</label>
-                        <select
-                          value={form.tenant_id}
-                          onChange={(e) => setForm((s) => ({ ...s, tenant_id: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                          <option value="">— Sélectionner —</option>
-                          {safeTenants.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.full_name || "Locataire"}
-                            </option>
-                          ))}
-                        </select>
+                      <div>
+                        <p className="text-xs text-slate-500">Locataire</p>
+                        <p className="font-semibold">{tenantById.get(selected.tenant_id)?.full_name || "—"}</p>
+                        {tenantById.get(selected.tenant_id)?.email ? (
+                          <p className="text-xs text-slate-600">{tenantById.get(selected.tenant_id)?.email}</p>
+                        ) : null}
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-slate-500">Dates</p>
+                        <p className="font-semibold">Début : {selected.start_date}</p>
+                        <p className="text-sm text-slate-700">Fin : {selected.end_date || "—"}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-slate-500">Paiement</p>
+                        <p className="font-semibold">
+                          Jour {selected.payment_day ?? "—"} • {selected.payment_method || "—"}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Échéance : <span className="font-semibold">{paymentTypeLabel(selected.payment_type)}</span>
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-slate-500">Montants</p>
+                        <p className="font-semibold">
+                          Total : {formatEuro(Number(selected.rent_amount || 0) + Number(selected.charges_amount || 0))}
+                        </p>
+                        <p className="text-sm text-slate-700">
+                          Loyer {formatEuro(selected.rent_amount)} • Charges {formatEuro(selected.charges_amount)}
+                        </p>
+                        <p className="text-sm text-slate-700">Dépôt {formatEuro(selected.deposit_amount)}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-slate-500">Paramètres</p>
+                        <p className="text-sm text-slate-800">
+                          Timezone : <span className="font-semibold">{selected.timezone || "Europe/Paris"}</span>
+                        </p>
+                        <p className="text-sm text-slate-800">
+                          Statut : <span className="font-semibold">{(selected.status || "—").toUpperCase()}</span>
+                        </p>
                       </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Début de bail *</label>
-                        <input
-                          type="date"
-                          value={form.start_date}
-                          onChange={(e) => setForm((s) => ({ ...s, start_date: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Fin (optionnel)</label>
-                        <input
-                          type="date"
-                          value={form.end_date}
-                          onChange={(e) => setForm((s) => ({ ...s, end_date: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Loyer (€)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={form.rent_amount}
-                          onChange={(e) => setForm((s) => ({ ...s, rent_amount: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Charges (€)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={form.charges_amount}
-                          onChange={(e) => setForm((s) => ({ ...s, charges_amount: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Dépôt (€)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={form.deposit_amount}
-                          onChange={(e) => setForm((s) => ({ ...s, deposit_amount: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Jour paiement (1–31)</label>
-                        <input
-                          type="number"
-                          min={1}
-                          max={31}
-                          value={form.payment_day}
-                          onChange={(e) => setForm((s) => ({ ...s, payment_day: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Mode paiement</label>
-                        <select
-                          value={form.payment_method}
-                          onChange={(e) => setForm((s) => ({ ...s, payment_method: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {isActiveLease(selected) ? (
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={(e) => {
+                            stop(e);
+                            quickEndLease(selected);
+                          }}
+                          className="rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-60"
                         >
-                          <option value="virement">Virement</option>
-                          <option value="prelevement">Prélèvement</option>
-                          <option value="cheque">Chèque</option>
-                          <option value="especes">Espèces</option>
-                        </select>
-                      </div>
+                          Mettre fin au bail
+                        </button>
+                      ) : null}
 
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Échéance</label>
-                        <select
-                          value={form.payment_type}
-                          onChange={(e) => setForm((s) => ({ ...s, payment_type: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                          <option value="terme_a_echoir">Début de période</option>
-                          <option value="terme_echu">Fin de période</option>
-                        </select>
-                        <p className="text-[0.7rem] text-slate-500">Début = à échoir • Fin = à échu</p>
-                      </div>
-                    </div>
-
-                    {/* ✅ Aperçu planning quittance */}
-                    {(() => {
-                      const fakeLease = { payment_day: Number(form.payment_day || 1), payment_type: form.payment_type };
-                      const sched = nextReceiptScheduleForLease(fakeLease as any, parisNow());
-                      return (
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                          <p className="text-xs font-semibold text-slate-900">Aperçu planning quittance</p>
-                          <p className="mt-1 text-sm text-slate-700">
-                            Échéance : <span className="font-semibold">Jour {form.payment_day}</span> •{" "}
-                            <span className="text-slate-600">{paymentTypeLabel(form.payment_type)}</span>
-                          </p>
-                          <p className="mt-1 text-sm text-slate-700">
-                            Génération PDF : <span className="font-semibold">{fmtFR(sched.generateAt)}</span>{" "}
-                            <span className="text-slate-500">(période {sched.label})</span>
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">Règle : génération automatique à J+2 après l’échéance (cron 09:00 Europe/Paris).</p>
-                        </div>
-                      );
-                    })()}
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Statut</label>
-                        <select
-                          value={form.status}
-                          onChange={(e) => setForm((s) => ({ ...s, status: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                          <option value="active">Actif</option>
-                          <option value="ended">Terminé</option>
-                          <option value="draft">Brouillon</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Timezone</label>
-                        <select
-                          value={form.timezone}
-                          onChange={(e) => setForm((s) => ({ ...s, timezone: e.target.value }))}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                          <option value="Europe/Paris">Europe/Paris</option>
-                          <option value="Europe/London">Europe/London</option>
-                          <option value="UTC">UTC</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-2 sm:grid-cols-2 pt-1">
-                      <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={!!form.auto_quittance_enabled}
-                          onChange={(e) => setForm((s) => ({ ...s, auto_quittance_enabled: e.target.checked }))}
-                          className="h-4 w-4"
-                        />
-                        Quittance auto
-                      </label>
-
-                      <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                        <input
-                          type="checkbox"
-                          checked={!!form.auto_reminder_enabled}
-                          onChange={(e) => setForm((s) => ({ ...s, auto_reminder_enabled: e.target.checked }))}
-                          className="h-4 w-4"
-                        />
-                        Rappel auto
-                      </label>
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={(e) => {
+                          stop(e);
+                          quickToggleQuittance(selected);
+                        }}
+                        className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        Quittance {selected.auto_quittance_enabled ? "ON" : "OFF"}
+                      </button>
                     </div>
                   </div>
 
-                  {/* ✅ GARANTS */}
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                  {/* Cinématique quittance */}
+                  {(() => {
+                    const sched = nextReceiptScheduleForLease(selected);
+                    return (
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p className="text-xs font-semibold text-slate-900">Cinématique quittance</p>
+
+                        <div className="mt-2 grid gap-2 text-sm text-slate-700">
+                          <p>
+                            1) Échéance : <span className="font-semibold">Jour {selected.payment_day ?? "—"}</span>{" "}
+                            <span className="text-slate-500">({paymentTypeLabel(selected.payment_type)})</span>
+                          </p>
+
+                          <p>
+                            2) Génération PDF : <span className="font-semibold">J+2 après l’échéance</span>{" "}
+                            <span className="text-slate-500">(cron 09:00 Europe/Paris)</span>
+                          </p>
+
+                          {selected.auto_quittance_enabled ? (
+                            <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                              <p className="text-sm text-emerald-900 font-semibold">Prochaine génération automatique</p>
+                              <p className="text-sm text-emerald-900">
+                                {fmtFR(sched.generateAt)} <span className="text-emerald-700">• période {sched.label}</span>
+                              </p>
+                              <p className="text-xs text-emerald-800 mt-1">Échéance estimée : {fmtFR(sched.dueDate)}</p>
+                            </div>
+                          ) : (
+                            <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                              <p className="text-sm text-amber-900 font-semibold">Quittance auto désactivée</p>
+                              <p className="text-xs text-amber-900 mt-1">
+                                Active “Quittance auto” pour générer le PDF automatiquement à J+2.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Garants (view) */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold text-slate-900">Garants</p>
                       <button
                         type="button"
-                        onClick={() => loadContacts()}
+                        onClick={() => selected?.id && loadGuarantorsForLease(selected.id)}
                         className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
                       >
                         Rafraîchir
                       </button>
                     </div>
 
-                    {/* Ajout garant */}
-                    <div className="rounded-xl border border-slate-200 bg-white p-3">
-                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Ajouter un garant</p>
-
-                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                        <input
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                          placeholder="Prénom"
-                          value={guarantorForm.first_name}
-                          onChange={(e) => setGuarantorForm((s) => ({ ...s, first_name: e.target.value }))}
-                        />
-                        <input
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                          placeholder="Nom"
-                          value={guarantorForm.last_name}
-                          onChange={(e) => setGuarantorForm((s) => ({ ...s, last_name: e.target.value }))}
-                        />
-                      </div>
-
-                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                        <input
-                          type="email"
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                          placeholder="Email (optionnel)"
-                          value={guarantorForm.email}
-                          onChange={(e) => setGuarantorForm((s) => ({ ...s, email: e.target.value }))}
-                        />
-                        <input
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                          placeholder="Téléphone (optionnel)"
-                          value={guarantorForm.phone}
-                          onChange={(e) => setGuarantorForm((s) => ({ ...s, phone: e.target.value }))}
-                        />
-                      </div>
-
-                      <textarea
-                        rows={2}
-                        className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        placeholder="Notes (optionnel)"
-                        value={guarantorForm.notes}
-                        onChange={(e) => setGuarantorForm((s) => ({ ...s, notes: e.target.value }))}
-                      />
-
-                      <div className="mt-2 flex gap-2">
-                        <button
-                          type="button"
-                          onClick={createGuarantor}
-                          className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                        >
-                          + Ajouter
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Sélection + actions (modifier/supprimer) */}
-                    {contactsLoading ? (
-                      <p className="text-xs text-slate-600">Chargement…</p>
-                    ) : activeGuarantors.length === 0 ? (
-                      <p className="text-sm text-slate-700">Aucun garant disponible.</p>
+                    {guarantorIds.length === 0 ? (
+                      <p className="mt-2 text-sm text-slate-600">Aucun garant associé.</p>
                     ) : (
-                      <div className="space-y-2 max-h-56 overflow-auto pr-1">
-                        {activeGuarantors.map((c) => {
-                          const checked = guarantorIds.includes(c.id);
-
-                          return (
-                            <div key={c.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                              <div className="flex items-start gap-2">
-                                <input type="checkbox" checked={checked} onChange={() => toggleGuarantor(c.id)} className="mt-1" />
-
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-semibold text-slate-900 truncate">{c.full_name || "Garant"}</p>
-                                  {c.email || c.phone ? (
-                                    <p className="mt-0.5 text-xs text-slate-600 truncate">
-                                      {c.email ? c.email : ""}
-                                      {c.email && c.phone ? " • " : ""}
-                                      {c.phone ? c.phone : ""}
-                                    </p>
-                                  ) : null}
-                                </div>
-
-                                <div className="shrink-0 flex gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => openEditGuarantor(c)}
-                                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
-                                  >
-                                    Modifier
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => archiveGuarantor(c.id)}
-                                    className="rounded-full border border-red-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-red-700 hover:bg-red-50"
-                                  >
-                                    Supprimer
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {guarantorIds
+                          .map((id) => contacts.find((c) => c.id === id))
+                          .filter(Boolean)
+                          .map((c) => (
+                            <span
+                              key={(c as any).id}
+                              className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-800"
+                            >
+                              {(c as any).full_name || "Garant"}
+                            </span>
+                          ))}
                       </div>
                     )}
 
-                    <p className="text-[0.7rem] text-slate-500">
-                      Astuce : décocher = retire du bail. “Supprimer” = archive le garant (il n’apparaît plus).
-                    </p>
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          stop(e);
+                          openEdit();
+                        }}
+                        className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                      >
+                        Modifier les garants (via édition)
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )
+            ) : null}
+
+            {/* CREATE / EDIT */}
+            {mode === "create" || mode === "edit" ? (
+              <div className="space-y-3" data-stop-nav>
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Bien</label>
+                      <select
+                        value={form.property_id}
+                        onChange={(e) => setForm((s) => ({ ...s, property_id: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="">— Sélectionner —</option>
+                        {safeProps.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label || "Bien"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Locataire</label>
+                      <select
+                        value={form.tenant_id}
+                        onChange={(e) => setForm((s) => ({ ...s, tenant_id: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="">— Sélectionner —</option>
+                        {safeTenants.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.full_name || "Locataire"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={(e) => {
-                        stop(e);
-                        if (loading) return;
-                        saveLease();
-                      }}
-                      className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-                    >
-                      {loading ? "Enregistrement…" : mode === "edit" ? "Mettre à jour" : "Créer"}
-                    </button>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Début de bail *</label>
+                      <input
+                        type="date"
+                        value={form.start_date}
+                        onChange={(e) => setForm((s) => ({ ...s, start_date: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Fin (optionnel)</label>
+                      <input
+                        type="date"
+                        value={form.end_date}
+                        onChange={(e) => setForm((s) => ({ ...s, end_date: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        stop(e);
-                        if (mode === "edit") setMode("view");
-                        else closeDrawer();
-                      }}
-                      className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                    >
-                      Annuler
-                    </button>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Loyer (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={form.rent_amount}
+                        onChange={(e) => setForm((s) => ({ ...s, rent_amount: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Charges (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={form.charges_amount}
+                        onChange={(e) => setForm((s) => ({ ...s, charges_amount: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Dépôt (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={form.deposit_amount}
+                        onChange={(e) => setForm((s) => ({ ...s, deposit_amount: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Jour paiement (1–31)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={form.payment_day}
+                        onChange={(e) => setForm((s) => ({ ...s, payment_day: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Mode paiement</label>
+                      <select
+                        value={form.payment_method}
+                        onChange={(e) => setForm((s) => ({ ...s, payment_method: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="virement">Virement</option>
+                        <option value="prelevement">Prélèvement</option>
+                        <option value="cheque">Chèque</option>
+                        <option value="especes">Espèces</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Échéance</label>
+                      <select
+                        value={form.payment_type}
+                        onChange={(e) => setForm((s) => ({ ...s, payment_type: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="terme_a_echoir">Début de période</option>
+                        <option value="terme_echu">Fin de période</option>
+                      </select>
+                      <p className="text-[0.7rem] text-slate-500">Début = à échoir • Fin = à échu</p>
+                    </div>
+                  </div>
+
+                  {/* Aperçu planning quittance */}
+                  {(() => {
+                    const fakeLease = { payment_day: Number(form.payment_day || 1), payment_type: form.payment_type };
+                    const sched = nextReceiptScheduleForLease(fakeLease as any, parisNow());
+                    return (
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-xs font-semibold text-slate-900">Aperçu planning quittance</p>
+                        <p className="mt-1 text-sm text-slate-700">
+                          Échéance : <span className="font-semibold">Jour {form.payment_day}</span> •{" "}
+                          <span className="text-slate-600">{paymentTypeLabel(form.payment_type)}</span>
+                        </p>
+                        <p className="mt-1 text-sm text-slate-700">
+                          Génération PDF : <span className="font-semibold">{fmtFR(sched.generateAt)}</span>{" "}
+                          <span className="text-slate-500">(période {sched.label})</span>
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Règle : génération automatique à J+2 après l’échéance (cron 09:00 Europe/Paris).
+                        </p>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Statut</label>
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm((s) => ({ ...s, status: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="active">Actif</option>
+                        <option value="ended">Terminé</option>
+                        <option value="draft">Brouillon</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Timezone</label>
+                      <select
+                        value={form.timezone}
+                        onChange={(e) => setForm((s) => ({ ...s, timezone: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="Europe/Paris">Europe/Paris</option>
+                        <option value="Europe/London">Europe/London</option>
+                        <option value="UTC">UTC</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-2 pt-1">
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={!!form.auto_quittance_enabled}
+                        onChange={(e) => setForm((s) => ({ ...s, auto_quittance_enabled: e.target.checked }))}
+                        className="h-4 w-4"
+                      />
+                      Quittance auto
+                    </label>
+
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={!!form.auto_reminder_enabled}
+                        onChange={(e) => setForm((s) => ({ ...s, auto_reminder_enabled: e.target.checked }))}
+                        className="h-4 w-4"
+                      />
+                      Rappel auto
+                    </label>
                   </div>
                 </div>
-              ) : null}
-            </div>
+
+                {/* GARANTS */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-slate-900">Garants</p>
+                    <button
+                      type="button"
+                      onClick={() => loadContacts()}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                    >
+                      Rafraîchir
+                    </button>
+                  </div>
+
+                  {/* Ajout garant */}
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Ajouter un garant</p>
+
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <input
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        placeholder="Prénom"
+                        value={guarantorForm.first_name}
+                        onChange={(e) => setGuarantorForm((s) => ({ ...s, first_name: e.target.value }))}
+                      />
+                      <input
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        placeholder="Nom"
+                        value={guarantorForm.last_name}
+                        onChange={(e) => setGuarantorForm((s) => ({ ...s, last_name: e.target.value }))}
+                      />
+                    </div>
+
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <input
+                        type="email"
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        placeholder="Email (optionnel)"
+                        value={guarantorForm.email}
+                        onChange={(e) => setGuarantorForm((s) => ({ ...s, email: e.target.value }))}
+                      />
+                      <input
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        placeholder="Téléphone (optionnel)"
+                        value={guarantorForm.phone}
+                        onChange={(e) => setGuarantorForm((s) => ({ ...s, phone: e.target.value }))}
+                      />
+                    </div>
+
+                    <textarea
+                      rows={2}
+                      className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      placeholder="Notes (optionnel)"
+                      value={guarantorForm.notes}
+                      onChange={(e) => setGuarantorForm((s) => ({ ...s, notes: e.target.value }))}
+                    />
+
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={createGuarantor}
+                        className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                      >
+                        + Ajouter
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sélection + actions (modifier/supprimer) */}
+                  {contactsLoading ? (
+                    <p className="text-xs text-slate-600">Chargement…</p>
+                  ) : activeGuarantors.length === 0 ? (
+                    <p className="text-sm text-slate-700">Aucun garant disponible.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                      {activeGuarantors.map((c) => {
+                        const checked = guarantorIds.includes(c.id);
+
+                        return (
+                          <div key={c.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                            <div className="flex items-start gap-2">
+                              <input type="checkbox" checked={checked} onChange={() => toggleGuarantor(c.id)} className="mt-1" />
+
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-slate-900 truncate">{c.full_name || "Garant"}</p>
+                                {c.email || c.phone ? (
+                                  <p className="mt-0.5 text-xs text-slate-600 truncate">
+                                    {c.email ? c.email : ""}
+                                    {c.email && c.phone ? " • " : ""}
+                                    {c.phone ? c.phone : ""}
+                                  </p>
+                                ) : null}
+                              </div>
+
+                              <div className="shrink-0 flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openEditGuarantor(c)}
+                                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                                >
+                                  Modifier
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => archiveGuarantor(c.id)}
+                                  className="rounded-full border border-red-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-red-700 hover:bg-red-50"
+                                >
+                                  Supprimer
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <p className="text-[0.7rem] text-slate-500">
+                    Astuce : décocher = retire du bail. “Supprimer” = archive le garant (il n’apparaît plus).
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={(e) => {
+                      stop(e);
+                      if (loading) return;
+                      saveLease();
+                    }}
+                    className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                  >
+                    {loading ? "Enregistrement…" : mode === "edit" ? "Mettre à jour" : "Créer"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      stop(e);
+                      if (mode === "edit") setMode("view");
+                      else closeDetail();
+                    }}
+                    className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
-      ) : null}
+      </div>
 
       {/* MODAL EDIT GARANT */}
       {editGuarantorOpen ? (

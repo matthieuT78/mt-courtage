@@ -20,7 +20,6 @@ export type Lease = {
   payment_day: number | null;
   payment_method: string | null;
 
-  // ✅ Nouveau (plus clair que "type")
   payment_type?: string | null; // "terme_a_echoir" | "terme_echu"
 
   status: string | null;
@@ -57,6 +56,8 @@ type Contact = {
   notes?: string | null;
   contact_type?: string | null; // "guarantor"
   archived_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 type Props = {
@@ -72,6 +73,10 @@ type Mode = "idle" | "view" | "edit" | "create";
 /* ======================================================
    HELPERS
 ====================================================== */
+
+function cx(...c: Array<string | false | null | undefined>) {
+  return c.filter(Boolean).join(" ");
+}
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -96,22 +101,6 @@ const formatEuro = (val: number | null | undefined) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-};
-
-const badge = (tone: "slate" | "emerald" | "amber" | "red", label: string) => {
-  const cls =
-    tone === "emerald"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-      : tone === "amber"
-      ? "border-amber-200 bg-amber-50 text-amber-900"
-      : tone === "red"
-      ? "border-red-200 bg-red-50 text-red-900"
-      : "border-slate-200 bg-slate-50 text-slate-800";
-  return (
-    <span className={"inline-flex items-center rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold " + cls}>
-      {label}
-    </span>
-  );
 };
 
 const withTimeout = async <T,>(p: Promise<T>, ms = 4000): Promise<T> => {
@@ -213,6 +202,59 @@ function nextReceiptScheduleForLease(
 }
 
 /* ======================================================
+   UI ATOMS
+====================================================== */
+
+function Badge({ tone, children }: { tone: "slate" | "emerald" | "amber" | "red"; children: React.ReactNode }) {
+  const cls =
+    tone === "emerald"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      : tone === "amber"
+      ? "border-amber-200 bg-amber-50 text-amber-900"
+      : tone === "red"
+      ? "border-red-200 bg-red-50 text-red-900"
+      : "border-slate-200 bg-slate-50 text-slate-800";
+
+  return <span className={cx("inline-flex items-center rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold", cls)}>{children}</span>;
+}
+
+function SectionCard({
+  title,
+  subtitle,
+  right,
+  children,
+  defaultOpen,
+}: {
+  title: string;
+  subtitle?: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details open={defaultOpen} className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+      <summary className="cursor-pointer list-none px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">{title}</p>
+          {subtitle ? <p className="mt-0.5 text-xs text-slate-600">{subtitle}</p> : null}
+        </div>
+        {right ? <div className="shrink-0">{right}</div> : <span className="text-xs text-slate-500">Ouvrir/Fermer</span>}
+      </summary>
+      <div className="p-4">{children}</div>
+    </details>
+  );
+}
+
+function TinyKpi({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+/* ======================================================
    COMPONENT
 ====================================================== */
 
@@ -241,7 +283,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  // Mini-filtres
+  // Filtres
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "ended" | "draft">("all");
 
@@ -269,6 +311,15 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         return hay.includes(query);
       });
   }, [safeLeases, q, statusFilter, propertyById, tenantById]);
+
+  // KPIs
+  const stats = useMemo(() => {
+    const total = safeLeases.length;
+    const active = safeLeases.filter((l) => (l.status || "").toLowerCase() === "active").length;
+    const ended = safeLeases.filter((l) => (l.status || "").toLowerCase() === "ended").length;
+    const draft = safeLeases.filter((l) => (l.status || "").toLowerCase() === "draft").length;
+    return { total, active, ended, draft };
+  }, [safeLeases]);
 
   // Form (create/edit)
   const [form, setForm] = useState({
@@ -313,7 +364,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     });
   };
 
-  // Garants (contacts + liaison)
+  // Garants
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [guarantorIds, setGuarantorIds] = useState<string[]>([]);
@@ -331,7 +382,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
       const { data, error } = await supabase
         .from("contacts")
-        .select("id,user_id,full_name,first_name,last_name,email,phone,notes,contact_type,archived_at,created_at")
+        .select("id,user_id,full_name,first_name,last_name,email,phone,notes,contact_type,archived_at,created_at,updated_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
@@ -438,7 +489,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     }
   };
 
-  // ✅ MODAL édition garant
+  // Modal édition garant
   const [editGuarantorOpen, setEditGuarantorOpen] = useState(false);
   const [editGuarantorId, setEditGuarantorId] = useState<string | null>(null);
   const [editGuarantorDraft, setEditGuarantorDraft] = useState({
@@ -498,6 +549,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
   const archiveGuarantor = async (contactId: string) => {
     if (!userId) return;
+    // eslint-disable-next-line no-alert
     if (!confirm("Archiver ce garant ? (il ne sera plus sélectionnable)")) return;
 
     setErr(null);
@@ -542,7 +594,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   };
 
   /* ======================================================
-     NAV (in-frame, no drawer)
+     NAV
   ====================================================== */
 
   const openCreate = () => {
@@ -566,6 +618,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     if (!selected) return;
     setErr(null);
     setOk(null);
+
     setForm({
       property_id: selected.property_id || "",
       tenant_id: selected.tenant_id || "",
@@ -585,6 +638,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       tenant_receipt_email: selected.tenant_receipt_email || "",
       timezone: selected.timezone || "Europe/Paris",
     });
+
     await loadGuarantorsForLease(selected.id);
     setMode("edit");
   };
@@ -608,14 +662,41 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     if (error) throw error;
   };
 
+  const statusTone = (s?: string | null) => {
+    const v = (s || "").toLowerCase();
+    if (v === "active") return "emerald" as const;
+    if (v === "ended") return "amber" as const;
+    if (v === "draft") return "slate" as const;
+    return "slate" as const;
+  };
+
+  const isActiveLease = (l: Lease) => (l.status || "").toLowerCase() === "active";
+
+  const leaseMeta = (l: Lease) => {
+    const p = propertyById.get(l.property_id);
+    const t = tenantById.get(l.tenant_id);
+    const total = Number(l.rent_amount || 0) + Number(l.charges_amount || 0);
+
+    const tenantLine = t?.email ? `${t?.full_name || "Locataire"} • ${t.email}` : t?.full_name || "Locataire";
+    const propertyLine = [p?.label || "Bien", p?.city ? `(${p.city})` : ""].filter(Boolean).join(" ");
+
+    return {
+      title: `${p?.label || "Bien"} • ${t?.full_name || "Locataire"}`,
+      propertyLine,
+      tenantLine,
+      dates: `Début : ${l.start_date}${l.end_date ? ` • Fin : ${l.end_date}` : ""}`,
+      total,
+    };
+  };
+
   const quickEndLease = async (lease: Lease) => {
     if (!userId) return;
     const p = propertyById.get(lease.property_id);
     const t = tenantById.get(lease.tenant_id);
     const label = `${p?.label || "Bien"} • ${t?.full_name || "Locataire"}`;
 
-    if (!confirm(`Mettre fin au bail :\n${label}\n\n→ Statut: ended\n→ Date de fin: ${lease.end_date || todayISO()}\n\nConfirmer ?`))
-      return;
+    // eslint-disable-next-line no-alert
+    if (!confirm(`Mettre fin au bail :\n${label}\n\n→ Statut: ended\n→ Date de fin: ${lease.end_date || todayISO()}\n\nConfirmer ?`)) return;
 
     setLoading(true);
     setErr(null);
@@ -628,7 +709,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       });
       setOk("Bail terminé ✅");
       await safeRefresh();
-      // garder le détail ouvert si on y est
       setSelectedId((prev) => prev);
     } catch (e: any) {
       setErr(e?.message || "Impossible de mettre fin au bail.");
@@ -736,6 +816,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
   const onDelete = async () => {
     if (!userId || !selectedId) return;
+    // eslint-disable-next-line no-alert
     if (!confirm("Supprimer ce bail ? (Quittances/loyers liés peuvent empêcher la suppression)")) return;
 
     setLoading(true);
@@ -762,59 +843,26 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     }
   };
 
-  /* ======================================================
-     UI HELPERS
-  ====================================================== */
-
-  const leaseMeta = (l: Lease) => {
-    const p = propertyById.get(l.property_id);
-    const t = tenantById.get(l.tenant_id);
-    const total = Number(l.rent_amount || 0) + Number(l.charges_amount || 0);
-
-    const tenantLine = t?.email ? `${t?.full_name || "Locataire"} • ${t.email}` : t?.full_name || "Locataire";
-    const propertyLine = [p?.label || "Bien", p?.city ? `(${p.city})` : ""].filter(Boolean).join(" ");
-
-    return {
-      title: `${p?.label || "Bien"} • ${t?.full_name || "Locataire"}`,
-      propertyLine,
-      tenantLine,
-      dates: `Début : ${l.start_date}${l.end_date ? ` • Fin : ${l.end_date}` : ""}`,
-      total,
-    };
-  };
-
-  const statusTone = (s?: string | null) => {
-    const v = (s || "").toLowerCase();
-    if (v === "active") return "emerald" as const;
-    if (v === "ended") return "amber" as const;
-    if (v === "draft") return "slate" as const;
-    return "slate" as const;
-  };
-
-  const isActiveLease = (l: Lease) => (l.status || "").toLowerCase() === "active";
-
   const rightTitle =
     mode === "create" ? "Nouveau bail" : mode === "edit" ? "Modifier le bail" : mode === "view" ? "Détail du bail" : "Détail";
 
+  const computedTotal = (toNumberOrNull(form.rent_amount) ?? 0) + (toNumberOrNull(form.charges_amount) ?? 0);
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
-      <SectionTitle
-        kicker="Baux"
-        title="Contrats"
-        desc="Liste + fiche détaillée dans le cadre (pas de drawer). Actions rapides directement dans la liste."
-      />
+      <SectionTitle kicker="Baux" title="Contrats" desc="Vue moderne : liste claire + détail en sections repliables." />
 
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
       {/* Toolbar */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Rechercher (bien, locataire, email, date, montant…)…"
-            className="w-full sm:w-96 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+            className="w-full sm:w-[420px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
           />
           <select
             value={statusFilter}
@@ -828,27 +876,39 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            stop(e);
-            openCreate();
-          }}
-          className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-        >
-          + Nouveau bail
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <TinyKpi label="Total" value={stats.total} />
+            <TinyKpi label="Actifs" value={stats.active} />
+            <TinyKpi label="Terminés" value={stats.ended} />
+            <TinyKpi label="Brouillons" value={stats.draft} />
+          </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              stop(e);
+              openCreate();
+            }}
+            className="mt-2 sm:mt-0 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+          >
+            + Nouveau bail
+          </button>
+        </div>
       </div>
 
-      {/* Master / Detail (in-frame) */}
+      {/* Master / Detail */}
       <div className="grid gap-4 lg:grid-cols-[1.15fr_1fr]">
         {/* LEFT: LIST */}
         <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
             <div className="min-w-0">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Liste</p>
-              <p className="text-sm font-semibold text-slate-900">{filteredLeases.length} bail{filteredLeases.length > 1 ? "x" : ""}</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {filteredLeases.length} bail{filteredLeases.length > 1 ? "x" : ""}
+              </p>
             </div>
+
             {selected ? (
               <button
                 type="button"
@@ -883,21 +943,24 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") openView(l.id);
                     }}
-                    className={
-                      "p-4 hover:bg-slate-50 transition cursor-pointer " +
-                      (isSelected ? "bg-slate-50" : "bg-white")
-                    }
+                    className={cx(
+                      "p-4 cursor-pointer transition",
+                      isSelected ? "bg-slate-50" : "bg-white hover:bg-slate-50"
+                    )}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-semibold text-slate-900 truncate">{meta.title}</p>
-                          <span className="hidden sm:inline">{badge(statusTone(l.status), (l.status || "—").toUpperCase())}</span>
+                          <Badge tone={statusTone(l.status)}>{(l.status || "—").toUpperCase()}</Badge>
+                          <Badge tone={l.auto_quittance_enabled ? "emerald" : "amber"}>
+                            {l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"}
+                          </Badge>
                         </div>
 
                         <p className="mt-1 text-xs text-slate-700">
                           <span className="font-semibold">{meta.propertyLine}</span>
-                          <span className="text-slate-500"> • </span>
+                          <span className="text-slate-400"> • </span>
                           <span className="truncate">{meta.tenantLine}</span>
                         </p>
 
@@ -910,27 +973,23 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                               ({formatEuro(l.rent_amount)} + {formatEuro(l.charges_amount)})
                             </span>
                           </p>
-
                           <p>
-                            Paiement :{" "}
-                            <span className="font-semibold">
-                              J{l.payment_day ?? "—"} • {l.payment_method || "—"}
-                            </span>{" "}
+                            Paiement : <span className="font-semibold">J{l.payment_day ?? "—"}</span>{" "}
+                            <span className="text-slate-500">•</span>{" "}
+                            <span className="font-semibold">{l.payment_method || "—"}</span>{" "}
                             <span className="text-slate-500">• {paymentTypeShort(l.payment_type)}</span>
                           </p>
-
                           <p>
-                            Quittance :{" "}
-                            <span className="font-semibold">{l.auto_quittance_enabled ? "auto" : "manuel"}</span>{" "}
+                            Prochaine quittance :{" "}
                             {l.auto_quittance_enabled ? (
-                              <span className="text-slate-500">• prochaine génération {fmtFR(sched.generateAt)}</span>
+                              <span className="font-semibold">{fmtFR(sched.generateAt)}</span>
                             ) : (
-                              <span className="text-slate-500">• auto OFF</span>
+                              <span className="text-slate-500">auto OFF</span>
                             )}
+                            <span className="text-slate-500"> • période {sched.label}</span>
                           </p>
                         </div>
 
-                        {/* Actions rapides */}
                         <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             type="button"
@@ -940,7 +999,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                             }}
                             className="rounded-full bg-slate-900 px-3.5 py-1.5 text-[0.72rem] font-semibold text-white hover:bg-slate-800"
                           >
-                            Détail
+                            Ouvrir
                           </button>
 
                           <button
@@ -951,9 +1010,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                               setSelectedId(l.id);
                               setMode("view");
                               loadGuarantorsForLease(l.id);
-                              // puis basculer edit
                               setTimeout(() => {
-                                // petit garde-fou: si pas sélectionné entre-temps, on n'ouvre pas
                                 if (l.id) openEdit();
                               }, 0);
                             }}
@@ -990,9 +1047,11 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                         </div>
                       </div>
 
-                      <div className="shrink-0 flex flex-col items-end gap-2">
-                        <span className="sm:hidden">{badge(statusTone(l.status), (l.status || "—").toUpperCase())}</span>
-                        {badge(l.auto_quittance_enabled ? "emerald" : "amber", l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel")}
+                      <div className="shrink-0 hidden xl:flex flex-col items-end gap-2">
+                        <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-right">
+                          <p className="text-[0.7rem] text-slate-500">Total</p>
+                          <p className="text-sm font-semibold text-slate-900">{formatEuro(meta.total)}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1011,11 +1070,11 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
               {mode !== "create" && selected ? (
                 <p className="mt-1 text-xs text-slate-600 truncate">{leaseMeta(selected).title}</p>
               ) : (
-                <p className="mt-1 text-xs text-slate-600">Sélectionne un bail dans la liste.</p>
+                <p className="mt-1 text-xs text-slate-600">{mode === "create" ? "Crée un nouveau bail en quelques champs." : "Sélectionne un bail dans la liste."}</p>
               )}
             </div>
 
-            <div className="shrink-0 flex gap-2">
+            <div className="shrink-0 flex flex-wrap gap-2">
               {mode === "view" && selected ? (
                 <button
                   type="button"
@@ -1066,198 +1125,263 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
             ) : null}
 
             {/* VIEW */}
-            {mode === "view" ? (
-              !selected ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-                  Bail introuvable (rafraîchis la liste).
-                </div>
-              ) : (
-                <>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {badge(statusTone(selected.status), (selected.status || "—").toUpperCase())}
-                      {badge(selected.auto_quittance_enabled ? "emerald" : "amber", selected.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel")}
-                      {badge(selected.auto_reminder_enabled ? "emerald" : "slate", selected.auto_reminder_enabled ? "Rappel ON" : "Rappel OFF")}
-                    </div>
+            {mode === "view" && selected ? (
+              <>
+                {/* Bandeau résumé */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={statusTone(selected.status)}>{(selected.status || "—").toUpperCase()}</Badge>
+                    <Badge tone={selected.auto_quittance_enabled ? "emerald" : "amber"}>
+                      {selected.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"}
+                    </Badge>
+                    <Badge tone={selected.auto_reminder_enabled ? "emerald" : "slate"}>
+                      {selected.auto_reminder_enabled ? "Rappel ON" : "Rappel OFF"}
+                    </Badge>
+                  </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2 text-sm text-slate-800">
-                      <div>
-                        <p className="text-xs text-slate-500">Bien</p>
-                        <p className="font-semibold">{propertyById.get(selected.property_id)?.label || "—"}</p>
-                        {propertyById.get(selected.property_id)?.city ? (
-                          <p className="text-xs text-slate-600">{propertyById.get(selected.property_id)?.city}</p>
-                        ) : null}
-                      </div>
+                  <div className="mt-3 grid gap-2 text-sm text-slate-800">
+                    <p>
+                      Total mensuel :{" "}
+                      <span className="font-semibold">
+                        {formatEuro(Number(selected.rent_amount || 0) + Number(selected.charges_amount || 0))}
+                      </span>{" "}
+                      <span className="text-slate-500">
+                        (loyer {formatEuro(selected.rent_amount)} + charges {formatEuro(selected.charges_amount)})
+                      </span>
+                    </p>
+                    <p className="text-sm text-slate-700">
+                      Paiement : <span className="font-semibold">J{selected.payment_day ?? "—"}</span>{" "}
+                      <span className="text-slate-400">•</span>{" "}
+                      <span className="font-semibold">{selected.payment_method || "—"}</span>{" "}
+                      <span className="text-slate-400">•</span>{" "}
+                      <span className="font-semibold">{paymentTypeShort(selected.payment_type)}</span>
+                    </p>
+                  </div>
 
-                      <div>
-                        <p className="text-xs text-slate-500">Locataire</p>
-                        <p className="font-semibold">{tenantById.get(selected.tenant_id)?.full_name || "—"}</p>
-                        {tenantById.get(selected.tenant_id)?.email ? (
-                          <p className="text-xs text-slate-600">{tenantById.get(selected.tenant_id)?.email}</p>
-                        ) : null}
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-slate-500">Dates</p>
-                        <p className="font-semibold">Début : {selected.start_date}</p>
-                        <p className="text-sm text-slate-700">Fin : {selected.end_date || "—"}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-slate-500">Paiement</p>
-                        <p className="font-semibold">
-                          Jour {selected.payment_day ?? "—"} • {selected.payment_method || "—"}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          Échéance : <span className="font-semibold">{paymentTypeLabel(selected.payment_type)}</span>
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-slate-500">Montants</p>
-                        <p className="font-semibold">
-                          Total : {formatEuro(Number(selected.rent_amount || 0) + Number(selected.charges_amount || 0))}
-                        </p>
-                        <p className="text-sm text-slate-700">
-                          Loyer {formatEuro(selected.rent_amount)} • Charges {formatEuro(selected.charges_amount)}
-                        </p>
-                        <p className="text-sm text-slate-700">Dépôt {formatEuro(selected.deposit_amount)}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-slate-500">Paramètres</p>
-                        <p className="text-sm text-slate-800">
-                          Timezone : <span className="font-semibold">{selected.timezone || "Europe/Paris"}</span>
-                        </p>
-                        <p className="text-sm text-slate-800">
-                          Statut : <span className="font-semibold">{(selected.status || "—").toUpperCase()}</span>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {isActiveLease(selected) ? (
-                        <button
-                          type="button"
-                          disabled={loading}
-                          onClick={(e) => {
-                            stop(e);
-                            quickEndLease(selected);
-                          }}
-                          className="rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-60"
-                        >
-                          Mettre fin au bail
-                        </button>
-                      ) : null}
-
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {isActiveLease(selected) ? (
                       <button
                         type="button"
                         disabled={loading}
                         onClick={(e) => {
                           stop(e);
-                          quickToggleQuittance(selected);
+                          quickEndLease(selected);
                         }}
-                        className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                        className="rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-60"
                       >
-                        Quittance {selected.auto_quittance_enabled ? "ON" : "OFF"}
+                        Mettre fin au bail
                       </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={(e) => {
+                        stop(e);
+                        quickToggleQuittance(selected);
+                      }}
+                      className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      Quittance {selected.auto_quittance_enabled ? "ON" : "OFF"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sections repliables (VIEW) */}
+                <SectionCard title="Bien & locataire" subtitle="Informations principales" defaultOpen>
+                  <div className="grid gap-3 sm:grid-cols-2 text-sm text-slate-800">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs text-slate-500">Bien</p>
+                      <p className="mt-1 font-semibold">{propertyById.get(selected.property_id)?.label || "—"}</p>
+                      {propertyById.get(selected.property_id)?.city ? (
+                        <p className="text-xs text-slate-600">{propertyById.get(selected.property_id)?.city}</p>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs text-slate-500">Locataire</p>
+                      <p className="mt-1 font-semibold">{tenantById.get(selected.tenant_id)?.full_name || "—"}</p>
+                      {tenantById.get(selected.tenant_id)?.email ? (
+                        <p className="text-xs text-slate-600">{tenantById.get(selected.tenant_id)?.email}</p>
+                      ) : null}
                     </div>
                   </div>
+                </SectionCard>
 
-                  {/* Cinématique quittance */}
+                <SectionCard title="Contrat" subtitle="Dates, statut, timezone" defaultOpen={false}>
+                  <div className="grid gap-3 sm:grid-cols-2 text-sm text-slate-800">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs text-slate-500">Dates</p>
+                      <p className="mt-1 font-semibold">Début : {selected.start_date}</p>
+                      <p className="text-sm text-slate-700">Fin : {selected.end_date || "—"}</p>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                      <p className="text-xs text-slate-500">Paramètres</p>
+                      <p className="mt-1 text-sm text-slate-800">
+                        Timezone : <span className="font-semibold">{selected.timezone || "Europe/Paris"}</span>
+                      </p>
+                      <p className="text-sm text-slate-800">
+                        Statut : <span className="font-semibold">{(selected.status || "—").toUpperCase()}</span>
+                      </p>
+                    </div>
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Paiement" subtitle="Jour, mode, échéance" defaultOpen={false}>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-800">
+                    <p>
+                      Jour : <span className="font-semibold">{selected.payment_day ?? "—"}</span>
+                    </p>
+                    <p className="mt-1">
+                      Mode : <span className="font-semibold">{selected.payment_method || "—"}</span>
+                    </p>
+                    <p className="mt-1 text-slate-700">
+                      Échéance : <span className="font-semibold">{paymentTypeLabel(selected.payment_type)}</span>
+                    </p>
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Cinématique quittance" subtitle="Prochaine génération, règle J+2" defaultOpen={false}>
                   {(() => {
                     const sched = nextReceiptScheduleForLease(selected);
                     return (
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <p className="text-xs font-semibold text-slate-900">Cinématique quittance</p>
-
-                        <div className="mt-2 grid gap-2 text-sm text-slate-700">
+                      <div className="space-y-3">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
                           <p>
                             1) Échéance : <span className="font-semibold">Jour {selected.payment_day ?? "—"}</span>{" "}
                             <span className="text-slate-500">({paymentTypeLabel(selected.payment_type)})</span>
                           </p>
-
-                          <p>
+                          <p className="mt-1">
                             2) Génération PDF : <span className="font-semibold">J+2 après l’échéance</span>{" "}
                             <span className="text-slate-500">(cron 09:00 Europe/Paris)</span>
                           </p>
-
-                          {selected.auto_quittance_enabled ? (
-                            <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-                              <p className="text-sm text-emerald-900 font-semibold">Prochaine génération automatique</p>
-                              <p className="text-sm text-emerald-900">
-                                {fmtFR(sched.generateAt)} <span className="text-emerald-700">• période {sched.label}</span>
-                              </p>
-                              <p className="text-xs text-emerald-800 mt-1">Échéance estimée : {fmtFR(sched.dueDate)}</p>
-                            </div>
-                          ) : (
-                            <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                              <p className="text-sm text-amber-900 font-semibold">Quittance auto désactivée</p>
-                              <p className="text-xs text-amber-900 mt-1">
-                                Active “Quittance auto” pour générer le PDF automatiquement à J+2.
-                              </p>
-                            </div>
-                          )}
                         </div>
+
+                        {selected.auto_quittance_enabled ? (
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                            <p className="text-sm text-emerald-900 font-semibold">Prochaine génération automatique</p>
+                            <p className="mt-1 text-sm text-emerald-900">
+                              {fmtFR(sched.generateAt)} <span className="text-emerald-700">• période {sched.label}</span>
+                            </p>
+                            <p className="text-xs text-emerald-800 mt-1">Échéance estimée : {fmtFR(sched.dueDate)}</p>
+                          </div>
+                        ) : (
+                          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                            <p className="text-sm text-amber-900 font-semibold">Quittance auto désactivée</p>
+                            <p className="text-xs text-amber-900 mt-1">Active “Quittance auto” pour générer le PDF automatiquement à J+2.</p>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
+                </SectionCard>
 
-                  {/* Garants (view) */}
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-slate-900">Garants</p>
-                      <button
-                        type="button"
-                        onClick={() => selected?.id && loadGuarantorsForLease(selected.id)}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
-                      >
-                        Rafraîchir
-                      </button>
+                <SectionCard
+                  title="Garants"
+                  subtitle="Contacts liés au bail"
+                  defaultOpen={false}
+                  right={
+                    <button
+                      type="button"
+                      onClick={() => selected?.id && loadGuarantorsForLease(selected.id)}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                    >
+                      Rafraîchir
+                    </button>
+                  }
+                >
+                  {guarantorIds.length === 0 ? (
+                    <p className="text-sm text-slate-600">Aucun garant associé.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {guarantorIds
+                        .map((id) => contacts.find((c) => c.id === id))
+                        .filter(Boolean)
+                        .map((c) => (
+                          <span
+                            key={(c as any).id}
+                            className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-800"
+                          >
+                            {(c as any).full_name || "Garant"}
+                          </span>
+                        ))}
                     </div>
+                  )}
 
-                    {guarantorIds.length === 0 ? (
-                      <p className="mt-2 text-sm text-slate-600">Aucun garant associé.</p>
-                    ) : (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {guarantorIds
-                          .map((id) => contacts.find((c) => c.id === id))
-                          .filter(Boolean)
-                          .map((c) => (
-                            <span
-                              key={(c as any).id}
-                              className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-800"
-                            >
-                              {(c as any).full_name || "Garant"}
-                            </span>
-                          ))}
-                      </div>
-                    )}
-
-                    <div className="mt-3">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          stop(e);
-                          openEdit();
-                        }}
-                        className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                      >
-                        Modifier les garants (via édition)
-                      </button>
-                    </div>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        stop(e);
+                        openEdit();
+                      }}
+                      className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                    >
+                      Modifier les garants (via édition)
+                    </button>
                   </div>
-                </>
-              )
+                </SectionCard>
+              </>
             ) : null}
 
             {/* CREATE / EDIT */}
             {mode === "create" || mode === "edit" ? (
-              <div className="space-y-3" data-stop-nav>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+              <div className="space-y-4" data-stop-nav>
+                {/* Résumé + actions */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Résumé</p>
+                      <p className="mt-1 text-sm text-slate-800">
+                        Bien : <span className="font-semibold">{propertyById.get(form.property_id)?.label || "—"}</span>
+                        <span className="text-slate-400"> • </span>
+                        Locataire : <span className="font-semibold">{tenantById.get(form.tenant_id)?.full_name || "—"}</span>
+                      </p>
+                      <p className="mt-1 text-sm text-slate-700">
+                        Total : <span className="font-semibold">{formatEuro(computedTotal)}</span>
+                        <span className="text-slate-400"> • </span>
+                        Paiement : <span className="font-semibold">J{form.payment_day}</span>
+                        <span className="text-slate-400"> • </span>
+                        <span className="font-semibold">{form.payment_method || "—"}</span>
+                        <span className="text-slate-400"> • </span>
+                        <span className="font-semibold">{paymentTypeShort(form.payment_type)}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={(e) => {
+                          stop(e);
+                          if (loading) return;
+                          saveLease();
+                        }}
+                        className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                      >
+                        {loading ? "Enregistrement…" : mode === "edit" ? "Mettre à jour" : "Créer"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          stop(e);
+                          if (mode === "edit") setMode("view");
+                          else closeDetail();
+                        }}
+                        className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <SectionCard title="Identité du bail" subtitle="Bien, locataire, dates, statut" defaultOpen>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Bien</label>
+                      <label className="text-[0.7rem] text-slate-700">Bien *</label>
                       <select
                         value={form.property_id}
                         onChange={(e) => setForm((s) => ({ ...s, property_id: e.target.value }))}
@@ -1273,7 +1397,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Locataire</label>
+                      <label className="text-[0.7rem] text-slate-700">Locataire *</label>
                       <select
                         value={form.tenant_id}
                         onChange={(e) => setForm((s) => ({ ...s, tenant_id: e.target.value }))}
@@ -1289,7 +1413,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Début de bail *</label>
                       <input
@@ -1310,6 +1434,36 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                     </div>
                   </div>
 
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Statut</label>
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm((s) => ({ ...s, status: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="active">Actif</option>
+                        <option value="ended">Terminé</option>
+                        <option value="draft">Brouillon</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Timezone</label>
+                      <select
+                        value={form.timezone}
+                        onChange={(e) => setForm((s) => ({ ...s, timezone: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="Europe/Paris">Europe/Paris</option>
+                        <option value="Europe/London">Europe/London</option>
+                        <option value="UTC">UTC</option>
+                      </select>
+                    </div>
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Paiement & montants" subtitle="Loyer, charges, dépôt, échéance" defaultOpen={false}>
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Loyer (€)</label>
@@ -1343,7 +1497,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="mt-3 grid gap-3 sm:grid-cols-3">
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Jour paiement (1–31)</label>
                       <input
@@ -1389,7 +1543,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                     const fakeLease = { payment_day: Number(form.payment_day || 1), payment_type: form.payment_type };
                     const sched = nextReceiptScheduleForLease(fakeLease as any, parisNow());
                     return (
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <p className="text-xs font-semibold text-slate-900">Aperçu planning quittance</p>
                         <p className="mt-1 text-sm text-slate-700">
                           Échéance : <span className="font-semibold">Jour {form.payment_day}</span> •{" "}
@@ -1399,42 +1553,14 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                           Génération PDF : <span className="font-semibold">{fmtFR(sched.generateAt)}</span>{" "}
                           <span className="text-slate-500">(période {sched.label})</span>
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Règle : génération automatique à J+2 après l’échéance (cron 09:00 Europe/Paris).
-                        </p>
+                        <p className="mt-1 text-xs text-slate-500">Règle : génération automatique à J+2 après l’échéance (cron 09:00 Europe/Paris).</p>
                       </div>
                     );
                   })()}
+                </SectionCard>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Statut</label>
-                      <select
-                        value={form.status}
-                        onChange={(e) => setForm((s) => ({ ...s, status: e.target.value }))}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                      >
-                        <option value="active">Actif</option>
-                        <option value="ended">Terminé</option>
-                        <option value="draft">Brouillon</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Timezone</label>
-                      <select
-                        value={form.timezone}
-                        onChange={(e) => setForm((s) => ({ ...s, timezone: e.target.value }))}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                      >
-                        <option value="Europe/Paris">Europe/Paris</option>
-                        <option value="Europe/London">Europe/London</option>
-                        <option value="UTC">UTC</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2 sm:grid-cols-2 pt-1">
+                <SectionCard title="Automatisations" subtitle="Quittance auto + rappel auto" defaultOpen={false}>
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <label className="inline-flex items-center gap-2 text-sm text-slate-700">
                       <input
                         type="checkbox"
@@ -1455,12 +1581,50 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                       Rappel auto
                     </label>
                   </div>
-                </div>
+
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Jour rappel (1–31)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={form.reminder_day_of_month}
+                        onChange={(e) => setForm((s) => ({ ...s, reminder_day_of_month: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] text-slate-700">Email rappel (optionnel)</label>
+                      <input
+                        type="email"
+                        value={form.reminder_email}
+                        onChange={(e) => setForm((s) => ({ ...s, reminder_email: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        placeholder="ex: moi@domaine.fr"
+                      />
+                    </div>
+
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-[0.7rem] text-slate-700">Email quittance locataire (optionnel)</label>
+                      <input
+                        type="email"
+                        value={form.tenant_receipt_email}
+                        onChange={(e) => setForm((s) => ({ ...s, tenant_receipt_email: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        placeholder="si différent de la fiche locataire"
+                      />
+                    </div>
+                  </div>
+                </SectionCard>
 
                 {/* GARANTS */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-semibold text-slate-900">Garants</p>
+                <SectionCard
+                  title="Garants"
+                  subtitle="Sélection, ajout, modification, archivage"
+                  defaultOpen={false}
+                  right={
                     <button
                       type="button"
                       onClick={() => loadContacts()}
@@ -1468,10 +1632,10 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                     >
                       Rafraîchir
                     </button>
-                  </div>
-
+                  }
+                >
                   {/* Ajout garant */}
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3">
                     <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Ajouter un garant</p>
 
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -1524,86 +1688,66 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                     </div>
                   </div>
 
-                  {/* Sélection + actions (modifier/supprimer) */}
-                  {contactsLoading ? (
-                    <p className="text-xs text-slate-600">Chargement…</p>
-                  ) : activeGuarantors.length === 0 ? (
-                    <p className="text-sm text-slate-700">Aucun garant disponible.</p>
-                  ) : (
-                    <div className="space-y-2 max-h-56 overflow-auto pr-1">
-                      {activeGuarantors.map((c) => {
-                        const checked = guarantorIds.includes(c.id);
+                  {/* Sélection + actions */}
+                  <div className="mt-3">
+                    {contactsLoading ? (
+                      <p className="text-xs text-slate-600">Chargement…</p>
+                    ) : activeGuarantors.length === 0 ? (
+                      <p className="text-sm text-slate-700">Aucun garant disponible.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                        {activeGuarantors.map((c) => {
+                          const checked = guarantorIds.includes(c.id);
 
-                        return (
-                          <div key={c.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                            <div className="flex items-start gap-2">
-                              <input type="checkbox" checked={checked} onChange={() => toggleGuarantor(c.id)} className="mt-1" />
+                          return (
+                            <div key={c.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                              <div className="flex items-start gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleGuarantor(c.id)}
+                                  className="mt-1"
+                                />
 
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-slate-900 truncate">{c.full_name || "Garant"}</p>
-                                {c.email || c.phone ? (
-                                  <p className="mt-0.5 text-xs text-slate-600 truncate">
-                                    {c.email ? c.email : ""}
-                                    {c.email && c.phone ? " • " : ""}
-                                    {c.phone ? c.phone : ""}
-                                  </p>
-                                ) : null}
-                              </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-slate-900 truncate">{c.full_name || "Garant"}</p>
+                                  {c.email || c.phone ? (
+                                    <p className="mt-0.5 text-xs text-slate-600 truncate">
+                                      {c.email ? c.email : ""}
+                                      {c.email && c.phone ? " • " : ""}
+                                      {c.phone ? c.phone : ""}
+                                    </p>
+                                  ) : null}
+                                </div>
 
-                              <div className="shrink-0 flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => openEditGuarantor(c)}
-                                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
-                                >
-                                  Modifier
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => archiveGuarantor(c.id)}
-                                  className="rounded-full border border-red-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-red-700 hover:bg-red-50"
-                                >
-                                  Supprimer
-                                </button>
+                                <div className="shrink-0 flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditGuarantor(c)}
+                                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
+                                  >
+                                    Modifier
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => archiveGuarantor(c.id)}
+                                    className="rounded-full border border-red-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-red-700 hover:bg-red-50"
+                                  >
+                                    Supprimer
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    )}
 
-                  <p className="text-[0.7rem] text-slate-500">
-                    Astuce : décocher = retire du bail. “Supprimer” = archive le garant (il n’apparaît plus).
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={(e) => {
-                      stop(e);
-                      if (loading) return;
-                      saveLease();
-                    }}
-                    className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-                  >
-                    {loading ? "Enregistrement…" : mode === "edit" ? "Mettre à jour" : "Créer"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      stop(e);
-                      if (mode === "edit") setMode("view");
-                      else closeDetail();
-                    }}
-                    className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                  >
-                    Annuler
-                  </button>
-                </div>
+                    <p className="mt-2 text-[0.7rem] text-slate-500">
+                      Astuce : décocher = retire du bail. “Supprimer” = archive le garant (il n’apparaît plus).
+                    </p>
+                  </div>
+                </SectionCard>
               </div>
             ) : null}
           </div>
