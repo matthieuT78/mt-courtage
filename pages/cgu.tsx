@@ -10,7 +10,7 @@ export default function CGUPage() {
           <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6">
             <h1 className="text-xl font-semibold text-slate-900">Conditions Générales d’Utilisation (CGU)</h1>
             <p className="text-sm text-slate-600 mt-2">
-              Cette page décrit les conditions d’utilisation du service Izimo.
+              Cette page décrit les conditions d’utilisation du service lokt.fr.
             </p>
 
             <div className="mt-4 space-y-3 text-sm text-slate-700">

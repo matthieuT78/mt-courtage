@@ -29,7 +29,7 @@ const toNumOrNull = (v: string) => {
   return Number.isFinite(n) ? n : null;
 };
 
-const badge = (tone: "slate" | "emerald" | "amber" | "red", label: string) => {
+const badge = (tone: "slate" | "emerald" | "amber" | "red" | "sky", label: string) => {
   const cls =
     tone === "emerald"
       ? "border-emerald-200 bg-emerald-50 text-emerald-900"
@@ -37,7 +37,10 @@ const badge = (tone: "slate" | "emerald" | "amber" | "red", label: string) => {
       ? "border-amber-200 bg-amber-50 text-amber-900"
       : tone === "red"
       ? "border-red-200 bg-red-50 text-red-900"
+      : tone === "sky"
+      ? "border-sky-200 bg-sky-50 text-sky-900"
       : "border-slate-200 bg-slate-50 text-slate-800";
+
   return (
     <span className={"inline-flex items-center rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold " + cls}>
       {label}
@@ -45,23 +48,47 @@ const badge = (tone: "slate" | "emerald" | "amber" | "red", label: string) => {
   );
 };
 
+function cx(...c: Array<string | false | null | undefined>) {
+  return c.filter(Boolean).join(" ");
+}
+
+function plural(n: number, one: string, many: string) {
+  return n > 1 ? many : one;
+}
+
+function isArchived(p: any) {
+  return (p?.status || "").toLowerCase() === "archived";
+}
+
 export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
   const safeProperties = Array.isArray(properties) ? properties : [];
   const safePhotos = Array.isArray(photos) ? photos : [];
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Sections repliables
+  const [openActive, setOpenActive] = useState(true);
+  const [openArchived, setOpenArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+
+  // expandedKey = "new" ou propertyId
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  const actifs = useMemo(() => safeProperties.filter((p) => p?.status !== "archived"), [safeProperties]);
+  const stop = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
 
-  const selected = useMemo(() => {
-    if (!selectedId) return null;
-    return actifs.find((p) => p?.id === selectedId) || null;
-  }, [actifs, selectedId]);
+  const safeRefresh = async () => {
+    try {
+      await onRefresh?.();
+    } catch (e) {
+      console.error("[SectionBiens] onRefresh error:", e);
+    }
+  };
 
   const photosByProperty = useMemo(() => {
     const m = new Map<string, any[]>();
@@ -74,10 +101,23 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     return m;
   }, [safePhotos]);
 
+  const actifs = useMemo(() => safeProperties.filter((p) => !isArchived(p)), [safeProperties]);
+  const archived = useMemo(() => safeProperties.filter((p) => isArchived(p)), [safeProperties]);
+
+  const actifsCount = actifs.length;
+  const archivedCount = archived.length;
+
+  const selectedProperty = useMemo(() => {
+    if (!expandedKey || expandedKey === "new") return null;
+    return safeProperties.find((p) => p?.id === expandedKey) || null;
+  }, [safeProperties, expandedKey]);
+
+  const selectedIsArchived = selectedProperty ? isArchived(selectedProperty) : false;
+
   const selectedPhotos = useMemo(() => {
-    if (!selectedId) return [];
-    return photosByProperty.get(selectedId) ?? [];
-  }, [photosByProperty, selectedId]);
+    if (!selectedProperty?.id) return [];
+    return photosByProperty.get(selectedProperty.id) ?? [];
+  }, [photosByProperty, selectedProperty?.id]);
 
   const validate = (f: typeof EMPTY) => {
     const label = (f.label || "").trim();
@@ -87,17 +127,20 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     return null;
   };
 
-  const resetToCreate = () => {
+  const resetFormToEmpty = () => setForm(EMPTY);
+
+  const openCreate = () => {
     setErr(null);
     setOk(null);
-    setSelectedId(null);
-    setForm(EMPTY);
+    resetFormToEmpty();
+    setExpandedKey("new");
+    setOpenActive(true);
   };
 
   const openEdit = (p: any) => {
     setErr(null);
     setOk(null);
-    setSelectedId(p.id);
+    setExpandedKey(p.id);
 
     setForm({
       ...EMPTY,
@@ -116,15 +159,28 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     });
   };
 
-  const safeRefresh = async () => {
-    try {
-      await onRefresh?.();
-    } catch (e) {
-      console.error("[SectionBiens] onRefresh error:", e);
-    }
+  const toggleExpand = (key: string) => {
+    setErr(null);
+    setOk(null);
+
+    setExpandedKey((prev) => {
+      const next = prev === key ? null : key;
+
+      // si on ouvre “new” on reset le form
+      if (next === "new") {
+        resetFormToEmpty();
+      }
+
+      // si on ouvre un bien, on charge le form depuis la ligne
+      if (next && next !== "new") {
+        const p = safeProperties.find((x) => x?.id === next);
+        if (p) openEdit(p);
+      }
+
+      return next;
+    });
   };
 
-  // ✅ SAVE (anti submit + logs)
   const saveProperty = async () => {
     if (!userId) {
       setErr("userId manquant (DashboardShell/useLandlordDashboard).");
@@ -136,8 +192,6 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     setOk(null);
 
     try {
-      console.log("[saveProperty] click", { userId, formId: form.id, supabase: !!supabase, form });
-
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
 
       const vErr = validate(form);
@@ -156,7 +210,7 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
         energy_class: (form.energy_class || "").trim() || null,
         energy_value: form.energy_value ? toNumOrNull(form.energy_value) : null,
         ghg_class: (form.ghg_class || "").trim() || null,
-        status: "active",
+        status: form.id ? (selectedIsArchived ? "archived" : "active") : "active",
       };
 
       if (form.id) {
@@ -166,16 +220,14 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
       } else {
         const { data, error } = await supabase.from("properties").insert(payload).select("id").single();
         if (error) throw error;
+
         const newId = (data as any)?.id ?? null;
         setOk("Bien créé ✅");
-        setSelectedId(newId);
+        setExpandedKey(newId);
+        setOpenActive(true);
       }
 
       await safeRefresh();
-
-      // Après refresh, on garde une fiche propre :
-      // - si création, on reste sur le bien créé mais on ne dépend pas des props
-      // - si update, on reste sur l'édition
     } catch (e: any) {
       console.error("[saveProperty] error:", e);
       setErr(e?.message || "Erreur lors de l’enregistrement.");
@@ -196,11 +248,31 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
       if (error) throw error;
 
       setOk("Bien archivé ✅");
-      // si on archive le bien sélectionné, on repasse en “nouveau”
-      if (selectedId === id) resetToCreate();
       await safeRefresh();
+
+      if (!showArchived) setShowArchived(true);
+      setOpenArchived(true);
     } catch (e: any) {
       setErr(e?.message || "Impossible d’archiver ce bien.");
+    }
+  };
+
+  const restore = async (id: string) => {
+    setErr(null);
+    setOk(null);
+
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
+      if (!userId) throw new Error("userId manquant.");
+
+      const { error } = await supabase.from("properties").update({ status: "active" }).eq("id", id).eq("user_id", userId);
+      if (error) throw error;
+
+      setOk("Bien restauré ✅");
+      await safeRefresh();
+      setOpenActive(true);
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de restaurer ce bien.");
     }
   };
 
@@ -218,14 +290,16 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
       if (error) throw error;
 
       setOk("Bien supprimé ✅");
-      if (selectedId === id) resetToCreate();
+      if (expandedKey === id) {
+        setExpandedKey(null);
+        resetFormToEmpty();
+      }
       await safeRefresh();
     } catch (e: any) {
       setErr(e?.message || "Suppression impossible (baux existants ?).");
     }
   };
 
-  // Upload photo
   const uploadPhoto = async (file: File, propertyId: string) => {
     setErr(null);
     setOk(null);
@@ -264,265 +338,523 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     }
   };
 
+  // UI : row helpers
+  const PropertyRow = ({ p }: { p: any }) => {
+    const expanded = expandedKey === p.id;
+    const archived = isArchived(p);
+    const pPhotos = photosByProperty.get(p.id) ?? [];
+
+    const address = [p.address_line1, p.postal_code, p.city].filter(Boolean).join(", ") || "Adresse manquante";
+
+    return (
+      <div className={cx("rounded-2xl border overflow-hidden", expanded ? "border-emerald-300 bg-emerald-50/40" : "border-slate-200 bg-white", archived && "opacity-90")}>
+        {/* Ligne cliquable */}
+        <button
+          type="button"
+          onClick={() => toggleExpand(p.id)}
+          className={cx("w-full text-left px-4 py-3 flex items-start justify-between gap-3", expanded ? "hover:bg-emerald-50" : "hover:bg-slate-50")}
+        >
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-slate-900 truncate">{p.label || "Bien"}</p>
+              {archived ? badge("amber", "Archivé") : badge("emerald", "Actif")}
+              {p.surface_m2 ? badge("slate", `${p.surface_m2} m²`) : null}
+              {p.rooms ? badge("slate", `${p.rooms} pièces`) : null}
+              {pPhotos.length ? badge("emerald", `${pPhotos.length} photo(s)`) : badge("slate", "0 photo")}
+            </div>
+
+            <p className="mt-1 text-[0.75rem] text-slate-600 truncate">
+              {p.type || "—"} • {address}
+            </p>
+          </div>
+
+          <span className={cx("shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold border", expanded ? "border-emerald-200 bg-emerald-100 text-emerald-900" : "border-slate-300 bg-white text-slate-800")}>
+            {expanded ? "Réduire" : "Détails"}
+          </span>
+        </button>
+
+        {/* Détails */}
+        {expanded ? (
+          <div className="px-4 pb-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
+              {/* Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-slate-900">Fiche du bien</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      stop(e);
+                      saveProperty();
+                    }}
+                    disabled={saving}
+                    className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                  >
+                    {saving ? "Enregistrement…" : "Mettre à jour"}
+                  </button>
+
+                  {!archived ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        stop(e);
+                        archive(p.id);
+                      }}
+                      disabled={saving}
+                      className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      Archiver
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        stop(e);
+                        restore(p.id);
+                      }}
+                      disabled={saving}
+                      className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      Restaurer
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      stop(e);
+                      remove(p.id);
+                    }}
+                    disabled={saving}
+                    className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+
+              {/* Form (lié à ton state form) */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Nom du bien *</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.label}
+                    onChange={(e) => setForm((s) => ({ ...s, label: e.target.value }))}
+                    placeholder="Ex : T2 Paris 11"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Type</label>
+                  <select
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.type}
+                    onChange={(e) => setForm((s) => ({ ...s, type: e.target.value }))}
+                  >
+                    <option value="apartment">Appartement</option>
+                    <option value="house">Maison</option>
+                    <option value="garage">Garage</option>
+                    <option value="parking">Parking</option>
+                    <option value="other">Autre</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[0.7rem] text-slate-700">Adresse (ligne 1) *</label>
+                <input
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  value={form.address_line1}
+                  onChange={(e) => setForm((s) => ({ ...s, address_line1: e.target.value }))}
+                  placeholder="Ex : 12 rue Victor Hugo"
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Code postal</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.postal_code}
+                    onChange={(e) => setForm((s) => ({ ...s, postal_code: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Ville</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.city}
+                    onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Surface (m²)</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.surface_m2}
+                    onChange={(e) => setForm((s) => ({ ...s, surface_m2: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Pièces</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.rooms}
+                    onChange={(e) => setForm((s) => ({ ...s, rooms: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">DPE (A-G)</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.energy_class}
+                    onChange={(e) => setForm((s) => ({ ...s, energy_class: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">kWh/m²/an</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.energy_value}
+                    onChange={(e) => setForm((s) => ({ ...s, energy_value: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">GES (A-G)</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.ghg_class}
+                    onChange={(e) => setForm((s) => ({ ...s, ghg_class: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[0.7rem] text-slate-700">Description</label>
+                <textarea
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  value={form.description}
+                  onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
+                />
+              </div>
+
+              {/* Photos */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">Photos</p>
+                  {badge("slate", `${selectedPhotos.length} ${plural(selectedPhotos.length, "photo", "photos")}`)}
+                </div>
+
+                <div>
+                  <label className="text-[0.7rem] text-slate-600">Ajouter une photo (2 Mo max)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) uploadPhoto(f, p.id);
+                      e.currentTarget.value = "";
+                    }}
+                    className="mt-1 block text-xs"
+                  />
+                </div>
+
+                {selectedPhotos.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedPhotos.slice(0, 12).map((ph: any) => (
+                      <a
+                        key={ph.id || ph.url}
+                        href={ph.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-white"
+                        title="Ouvrir"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={ph.url} alt="" className="h-full w-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-600">Aucune photo pour l’instant.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
+  const NewRow = () => {
+    const expanded = expandedKey === "new";
+
+    return (
+      <div className={cx("rounded-2xl border overflow-hidden", expanded ? "border-sky-300 bg-sky-50" : "border-sky-200 bg-sky-50/60")}>
+        {/* Ligne cliquable */}
+        <button
+          type="button"
+          onClick={() => toggleExpand("new")}
+          className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 hover:bg-sky-50"
+        >
+          <div className="min-w-0 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl border border-sky-200 bg-white text-sky-900 flex items-center justify-center text-sm font-semibold">
+              +
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-semibold text-slate-900">Nouveau bien</p>
+                {badge("sky", "Création")}
+              </div>
+              <p className="mt-0.5 text-[0.75rem] text-slate-700">Cliquer pour ouvrir le formulaire</p>
+            </div>
+          </div>
+
+          <span className="shrink-0 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-900">
+            {expanded ? "Réduire" : "Créer"}
+          </span>
+        </button>
+
+        {expanded ? (
+          <div className="px-4 pb-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-slate-900">Créer un bien</p>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e);
+                    saveProperty();
+                  }}
+                  disabled={saving}
+                  className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                >
+                  {saving ? "Création…" : "Créer"}
+                </button>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Nom du bien *</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.label}
+                    onChange={(e) => setForm((s) => ({ ...s, label: e.target.value }))}
+                    placeholder="Ex : Studio Levallois"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Type</label>
+                  <select
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.type}
+                    onChange={(e) => setForm((s) => ({ ...s, type: e.target.value }))}
+                  >
+                    <option value="apartment">Appartement</option>
+                    <option value="house">Maison</option>
+                    <option value="garage">Garage</option>
+                    <option value="parking">Parking</option>
+                    <option value="other">Autre</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[0.7rem] text-slate-700">Adresse (ligne 1) *</label>
+                <input
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  value={form.address_line1}
+                  onChange={(e) => setForm((s) => ({ ...s, address_line1: e.target.value }))}
+                  placeholder="Ex : 12 rue Victor Hugo"
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Code postal</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.postal_code}
+                    onChange={(e) => setForm((s) => ({ ...s, postal_code: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Ville</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.city}
+                    onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Surface (m²)</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.surface_m2}
+                    onChange={(e) => setForm((s) => ({ ...s, surface_m2: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">Pièces</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.rooms}
+                    onChange={(e) => setForm((s) => ({ ...s, rooms: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[0.7rem] text-slate-700">DPE (A-G)</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    value={form.energy_class}
+                    onChange={(e) => setForm((s) => ({ ...s, energy_class: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[0.7rem] text-slate-700">Description</label>
+                <textarea
+                  rows={3}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  value={form.description}
+                  onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e);
+                    saveProperty();
+                  }}
+                  disabled={saving}
+                  className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                >
+                  {saving ? "Création…" : "Créer"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e);
+                    setExpandedKey(null);
+                    resetFormToEmpty();
+                  }}
+                  className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                >
+                  Annuler
+                </button>
+              </div>
+
+              <p className="text-[0.7rem] text-slate-500">
+                Photos : disponibles après création du bien.
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
-      <SectionTitle kicker="Biens" title="Parc immobilier" desc="Sélectionne un bien, puis édite en dessous. Adresse obligatoire. Photos (2 Mo max)." />
+      <SectionTitle
+        kicker="Biens"
+        title="Parc immobilier"
+        desc="Deux sections repliables + lignes cliquables. Détails expand sous la ligne. Adresse obligatoire. Photos (2 Mo max)."
+      />
 
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
-      {/* ✅ LISTE EN HAUT (UX) */}
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <p className="text-[0.75rem] font-semibold text-slate-900">Mes biens</p>
-            {badge("slate", `${actifs.length} actif(s)`)}
-          </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <label className="inline-flex items-center gap-2 text-xs text-slate-700">
+          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+          Afficher la section “archivés”
+        </label>
 
-          <button
-            type="button"
-            onClick={resetToCreate}
-            className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-          >
-            + Nouveau bien
-          </button>
+        <div className="text-xs text-slate-600">
+          {safeProperties.length === 0
+            ? "Aucun bien"
+            : `${safeProperties.length} ${plural(safeProperties.length, "bien", "biens")} • ${actifsCount} actifs • ${archivedCount} archivés`}
         </div>
-
-        {actifs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm text-slate-700">
-            Aucun bien pour le moment. Clique sur <span className="font-semibold">“Nouveau bien”</span>.
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {actifs.map((p) => {
-              const isActive = p.id === selectedId;
-              const pPhotos = photosByProperty.get(p.id) ?? [];
-
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => openEdit(p)}
-                  className={
-                    "rounded-2xl border p-4 text-left transition " +
-                    (isActive ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50")
-                  }
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-slate-900 truncate">{p.label || "Bien"}</p>
-                      <p className="mt-1 text-xs text-slate-600 truncate">
-                        {(p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {p.surface_m2 ? badge("slate", `${p.surface_m2} m²`) : null}
-                        {p.rooms ? badge("slate", `${p.rooms} pièces`) : null}
-                        {pPhotos.length ? badge("emerald", `${pPhotos.length} photo(s)`) : badge("slate", "0 photo")}
-                      </div>
-                    </div>
-
-                    <div className="shrink-0">
-                      {badge(isActive ? "emerald" : "slate", isActive ? "Sélectionné" : "Ouvrir")}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
 
-      {/* ✅ FICHE (édition / création) */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-[0.75rem] font-semibold text-slate-900">{form.id ? "Fiche du bien" : "Créer un bien"}</p>
-            <p className="text-xs text-slate-600">
-              Champs obligatoires : <span className="font-semibold">Nom</span> et <span className="font-semibold">Adresse (ligne 1)</span>.
+      {/* Actifs */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
+        <button type="button" onClick={() => setOpenActive((v) => !v)} className="w-full px-4 py-3 flex items-center justify-between text-left">
+          <div className="min-w-0">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Biens actifs</p>
+            <p className="text-sm font-semibold text-slate-900">
+              {actifsCount === 0 ? "Aucun" : `${actifsCount} ${plural(actifsCount, "bien", "biens")}`}
             </p>
           </div>
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800">
+            {openActive ? "Réduire" : "Ouvrir"}
+          </span>
+        </button>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                console.log("[btn] saveProperty clicked", { formId: form.id });
-                saveProperty();
-              }}
-              disabled={saving}
-              className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-            >
-              {saving ? "Enregistrement…" : form.id ? "Mettre à jour" : "Créer"}
-            </button>
-
-            {form.id ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => archive(form.id!)}
-                  disabled={saving}
-                  className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-                >
-                  Archiver
-                </button>
-                <button
-                  type="button"
-                  onClick={() => remove(form.id!)}
-                  disabled={saving}
-                  className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                >
-                  Supprimer
-                </button>
-              </>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={resetToCreate}
-              disabled={saving}
-              className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-            >
-              Nouveau
-            </button>
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Nom du bien *"
-            value={form.label}
-            onChange={(e) => setForm((s) => ({ ...s, label: e.target.value }))}
-          />
-
-          <select
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            value={form.type}
-            onChange={(e) => setForm((s) => ({ ...s, type: e.target.value }))}
-          >
-            <option value="apartment">Appartement</option>
-            <option value="house">Maison</option>
-            <option value="garage">Garage</option>
-            <option value="parking">Parking</option>
-            <option value="other">Autre</option>
-          </select>
-        </div>
-
-        <input
-          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-          placeholder="Adresse (ligne 1) *"
-          value={form.address_line1}
-          onChange={(e) => setForm((s) => ({ ...s, address_line1: e.target.value }))}
-        />
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Code postal"
-            value={form.postal_code}
-            onChange={(e) => setForm((s) => ({ ...s, postal_code: e.target.value }))}
-          />
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Ville"
-            value={form.city}
-            onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))}
-          />
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Surface (m²)"
-            value={form.surface_m2}
-            onChange={(e) => setForm((s) => ({ ...s, surface_m2: e.target.value }))}
-          />
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Pièces"
-            value={form.rooms}
-            onChange={(e) => setForm((s) => ({ ...s, rooms: e.target.value }))}
-          />
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="DPE (A-G)"
-            value={form.energy_class}
-            onChange={(e) => setForm((s) => ({ ...s, energy_class: e.target.value }))}
-          />
-        </div>
-
-        <textarea
-          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-          rows={3}
-          placeholder="Description (étage, balcon, etc.)"
-          value={form.description}
-          onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
-        />
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="kWh/m²/an"
-            value={form.energy_value}
-            onChange={(e) => setForm((s) => ({ ...s, energy_value: e.target.value }))}
-          />
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="GES (A-G)"
-            value={form.ghg_class}
-            onChange={(e) => setForm((s) => ({ ...s, ghg_class: e.target.value }))}
-          />
-        </div>
-
-        {/* ✅ Photos dans la fiche (plus logique) */}
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-slate-900">Photos</p>
-            {form.id ? badge("emerald", `${selectedPhotos.length} photo(s)`) : badge("slate", "Crée d’abord le bien")}
-          </div>
-
-          {!form.id ? (
-            <p className="text-sm text-slate-700">Crée le bien pour pouvoir ajouter des photos.</p>
-          ) : (
-            <>
-              <div>
-                <label className="text-[0.7rem] text-slate-600">Ajouter une photo (2 Mo max)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f && form.id) uploadPhoto(f, form.id);
-                    // reset input pour pouvoir re-uploader le même fichier
-                    e.currentTarget.value = "";
-                  }}
-                  className="mt-1 block text-xs"
-                />
+        {openActive ? (
+          <div className="px-4 pb-4 space-y-2">
+            <NewRow />
+            {actifsCount === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm text-slate-700">
+                Aucun bien actif.
               </div>
+            ) : (
+              actifs.map((p) => <PropertyRow key={p.id} p={p} />)
+            )}
+          </div>
+        ) : null}
+      </div>
 
-              {selectedPhotos.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedPhotos.slice(0, 10).map((ph: any) => (
-                    <a
-                      key={ph.id || ph.url}
-                      href={ph.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-white"
-                      title="Ouvrir"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={ph.url} alt="" className="h-full w-full object-cover" />
-                    </a>
-                  ))}
+      {/* Archivés */}
+      {showArchived ? (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden">
+          <button type="button" onClick={() => setOpenArchived((v) => !v)} className="w-full px-4 py-3 flex items-center justify-between text-left">
+            <div className="min-w-0">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Biens archivés</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {archivedCount === 0 ? "Aucun" : `${archivedCount} ${plural(archivedCount, "bien", "biens")}`}
+              </p>
+            </div>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800">
+              {openArchived ? "Réduire" : "Ouvrir"}
+            </span>
+          </button>
+
+          {openArchived ? (
+            <div className="px-4 pb-4 space-y-2">
+              {archivedCount === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm text-slate-700">
+                  Aucun bien archivé.
                 </div>
               ) : (
-                <p className="text-sm text-slate-600">Aucune photo pour l’instant.</p>
+                archived.map((p) => <PropertyRow key={p.id} p={p} />)
               )}
-            </>
-          )}
+            </div>
+          ) : null}
         </div>
-      </div>
+      ) : null}
+
+      <p className="text-[0.7rem] text-slate-500">
+        Astuce : archive plutôt que supprimer si tu as des baux liés.
+      </p>
     </div>
   );
 }

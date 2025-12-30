@@ -132,7 +132,7 @@ export default function AppHeader() {
   // ✅ clic prénom => on ouvre directement le profil
   const accountHref = "/mon-compte/profil";
 
-  // 🎨 Brand Izimo
+  // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
@@ -143,8 +143,8 @@ export default function AppHeader() {
         <div className="flex items-center justify-between gap-3">
           {/* Brand */}
           <Link href="/" className="flex items-center gap-3" onClick={closeMobile}>
-            <img src="/izimo-logo.png" alt="Izimo" className="h-10 md:h-11 w-auto object-contain" />
-            <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600 animate-izimo-baseline">
+            <img src="/LOKT_LOGO.jpg" alt="lokt.fr" className="h-10 md:h-11 w-auto object-contain" />
+            <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600 animate-lokt.fr-baseline">
               Simuler • Décider • Gérer
             </span>
           </Link>

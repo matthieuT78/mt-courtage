@@ -130,7 +130,7 @@ export default function DeclarationPage() {
               Me connecter
             </button>
             <p className="mt-3 text-xs text-slate-500">
-              * Izimo fournit une aide à la saisie et à l’organisation. Ce n’est pas un conseil fiscal.
+              * lokt.fr fournit une aide à la saisie et à l’organisation. Ce n’est pas un conseil fiscal.
             </p>
           </div>
         </main>
@@ -154,7 +154,7 @@ export default function DeclarationPage() {
               Choisis ton régime (LMNP, location nue…), retrouve les chiffres clés et exporte un dossier clair.
             </p>
             <p className="mt-2 text-xs text-slate-500">
-              * Izimo fournit une aide à la saisie et à l’organisation. Ce n’est pas un conseil fiscal.
+              * lokt.fr fournit une aide à la saisie et à l’organisation. Ce n’est pas un conseil fiscal.
             </p>
           </div>
         </section>
@@ -215,7 +215,7 @@ export default function DeclarationPage() {
 
                 {suggested ? (
                   <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                    Suggestion Izimo : <span className="ml-1 font-semibold">{suggested === "micro" ? "Micro" : "Réel"}</span>
+                    Suggestion lokt.fr : <span className="ml-1 font-semibold">{suggested === "micro" ? "Micro" : "Réel"}</span>
                   </span>
                 ) : null}
               </div>

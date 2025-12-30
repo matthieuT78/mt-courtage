@@ -98,7 +98,7 @@ export default function CalculettesPage() {
 
   const loginHref = `/mon-compte?mode=login&redirect=%2Fcalculettes`;
 
-  // 🎨 Brand Izimo
+  // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
@@ -118,12 +118,12 @@ export default function CalculettesPage() {
             <div className="p-7 sm:p-9">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="space-y-3">
-                  {/* Logo Izimo propre */}
+                  {/* Logo lokt.fr propre */}
                   <div className="inline-flex items-center gap-3">
                     <div className="rounded-2xl bg-white border border-slate-200 p-2 shadow-sm">
                       <img
-                        src="/izimo-logo.png"
-                        alt="Izimo"
+                        src="/LOKT_LOGO.jpg"
+                        alt="lokt.fr"
                         className="h-9 sm:h-10 w-auto object-contain"
                       />
                     </div>
@@ -133,7 +133,7 @@ export default function CalculettesPage() {
                   </div>
 
                   <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
-                    {displayName ? `Bonjour ${displayName}.` : "Toutes les calculettes Izimo."}
+                    {displayName ? `Bonjour ${displayName}.` : "Toutes les calculettes lokt.fr."}
                   </h1>
 
                   <p className="text-sm text-slate-700 max-w-xl">

@@ -140,7 +140,7 @@ export default function AuthPage() {
       <header className="relative border-b border-white/10 bg-slate-950/40 backdrop-blur">
         <div className="max-w-md mx-auto px-4 py-5 flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[0.7rem] uppercase tracking-[0.22em] text-slate-400">Izimo</p>
+            <p className="text-[0.7rem] uppercase tracking-[0.22em] text-slate-400">lokt.fr</p>
             <h1 className="text-xl font-semibold text-white tracking-tight truncate">
               Connexion &amp; Inscription
             </h1>

@@ -126,7 +126,7 @@ export default function TarifsPage() {
     return "Facturation annuelle";
   };
 
-  // 🎨 Brand Izimo
+  // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
@@ -137,7 +137,7 @@ export default function TarifsPage() {
 
       <main className="flex-1 px-4 py-8">
         <div className="max-w-5xl mx-auto space-y-8">
-          {/* HERO (Izimo) */}
+          {/* HERO (lokt.fr) */}
           <section className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className={`h-1.5 w-full ${brandBg}`} />
             <div className="p-7 sm:p-9">
@@ -147,8 +147,8 @@ export default function TarifsPage() {
                   <div className="inline-flex items-center gap-3">
                     <div className="rounded-2xl bg-white border border-slate-200 p-2 shadow-sm">
                       <img
-                        src="/izimo-logo.png"
-                        alt="Izimo"
+                        src="/LOKT_LOGO.jpg"
+                        alt="lokt.fr"
                         className="h-9 sm:h-10 w-auto object-contain"
                       />
                     </div>
@@ -371,7 +371,7 @@ export default function TarifsPage() {
 
               <div className="mt-5">
                 <a
-                  href="mailto:mtcourtage@gmail.com?subject=Offre%20Agence%20-%20Izimo"
+                  href="mailto:mtcourtage@gmail.com?subject=Offre%20Agence%20-%20lokt.fr"
                   className="w-full inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
                 >
                   {plans.agence.cta}

@@ -32,7 +32,7 @@ function currentYear() {
 }
 
 export function SectionDeclaration({ userId }: { userId: string }) {
-  // 🎨 Brand Izimo
+  // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
@@ -326,7 +326,7 @@ export function SectionDeclaration({ userId }: { userId: string }) {
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Espace bailleur</p>
               <h2 className="mt-1 text-lg sm:text-xl font-semibold text-slate-900">Aide à la déclaration</h2>
               <p className="mt-1 text-sm text-slate-600 max-w-2xl">
-                Mode <span className="font-semibold">manuel + assisté</span> : tu saisis tes montants, Izimo te dit
+                Mode <span className="font-semibold">manuel + assisté</span> : tu saisis tes montants, lokt.fr te dit
                 <span className="font-semibold"> quoi reporter et où</span>. (Quand tu auras une table d’encaissements,
                 on pourra proposer un mode “auto”.)
               </p>
@@ -587,7 +587,7 @@ export function SectionDeclaration({ userId }: { userId: string }) {
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">3) Izimo → impots.gouv</p>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">3) lokt.fr → impots.gouv</p>
             <h3 className="mt-1 text-base font-semibold text-slate-900">{guidance.title}</h3>
             <p className="mt-1 text-sm text-slate-600">{guidance.form}</p>
           </div>

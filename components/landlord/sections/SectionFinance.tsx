@@ -128,7 +128,7 @@ function num(v: any) {
 }
 
 export function SectionFinance({ userId, leases, payments, receipts, propertyById, onRefresh }: Props) {
-  // 🎨 Izimo
+  // 🎨 lokt.fr
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";

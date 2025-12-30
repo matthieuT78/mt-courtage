@@ -7,7 +7,7 @@ import { DashboardShell } from "../components/landlord/DashboardShell";
 export default function EspaceBailleurPage() {
   const d = useLandlordDashboard();
 
-  // 🎨 Brand Izimo
+  // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
 
@@ -27,7 +27,7 @@ export default function EspaceBailleurPage() {
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Espace bailleur</p>
                     <p className="text-sm text-slate-600">
-                      Chargement de votre espace Izimo…
+                      Chargement de votre espace lokt.fr…
                     </p>
                   </div>
                 </div>
@@ -84,7 +84,7 @@ export default function EspaceBailleurPage() {
                       Actualisation des données…
                     </p>
                     <span className="text-[0.7rem] text-slate-500">
-                      Izimo • Espace bailleur
+                      lokt.fr • Espace bailleur
                     </span>
                   </div>
                 </div>
@@ -99,7 +99,7 @@ export default function EspaceBailleurPage() {
       )}
 
       <footer className="border-t border-slate-200 py-5 text-center text-xs text-slate-500 bg-white">
-        <p>© {new Date().getFullYear()} Izimo – Espace bailleur.</p>
+        <p>© {new Date().getFullYear()} lokt.fr – Espace bailleur.</p>
         <p className="mt-1">
           Contact :{" "}
           <a href="mailto:mtcourtage@gmail.com" className="underline">

@@ -68,7 +68,7 @@ export default function Home() {
     else router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
   };
 
-  // 🎨 Brand Izimo
+  // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
@@ -92,8 +92,8 @@ export default function Home() {
                   <div className="space-y-5">
                     <div className="flex items-center gap-4">
                       <img
-                        src="/izimo-logo.png"
-                        alt="Izimo"
+                        src="/LOKT_LOGO.jpg"
+                        alt="lokt.fr"
                         className="h-16 sm:h-20 w-auto object-contain"
                       />
                       <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
@@ -102,7 +102,7 @@ export default function Home() {
                     </div>
 
                     <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 leading-tight">
-                      Izimo vous aide à{" "}
+                      lokt.fr vous aide à{" "}
                       <span className="text-slate-900">acheter</span>,{" "}
                       <span className="text-slate-900">investir</span> et surtout{" "}
                       <span className="text-slate-900">gérer vos locations</span>.
@@ -120,7 +120,7 @@ export default function Home() {
                         onClick={goToLandlordTool}
                         className={`inline-flex items-center justify-center rounded-full ${brandBg} px-6 py-3 text-sm font-semibold ${brandText} ${brandHover} shadow-md`}
                       >
-                        Découvrir l’Espace bailleur Izimo
+                        Découvrir l’Espace bailleur lokt.fr
                       </button>
 
                       <Link
@@ -199,11 +199,11 @@ export default function Home() {
               </div>
             </section>
 
-            {/* “Izimo c’est…” : suite de calculettes */}
+            {/* “lokt.fr c’est…” : suite de calculettes */}
             <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8">
               <div className="space-y-2">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                  Izimo, en bref
+                  lokt.fr, en bref
                 </p>
                 <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
                   Les calculettes pour décider + l’outil pour gérer
@@ -294,7 +294,7 @@ export default function Home() {
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <p className="text-sm font-semibold text-slate-900">Simple & rapide</p>
                 <p className="text-sm text-slate-600 mt-2">
-                  Izimo va droit au but : chiffres utiles, décisions plus rapides.
+                  lokt.fr va droit au but : chiffres utiles, décisions plus rapides.
                 </p>
               </div>
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -335,8 +335,8 @@ export default function Home() {
                 <div className="inline-flex items-center gap-3">
                   <div className="rounded-2xl bg-white border border-slate-200 p-2 shadow-sm">
                     <img
-                      src="/izimo-logo.png"
-                      alt="Izimo"
+                      src="/LOKT_LOGO.jpg"
+                      alt="lokt.fr"
                       className="h-9 sm:h-10 w-auto object-contain"
                     />
                   </div>
@@ -350,7 +350,7 @@ export default function Home() {
                 </h1>
 
                 <p className="text-sm text-slate-600 max-w-3xl">
-                  Votre espace Izimo est prêt. Lancez une simulation, comparez vos scénarios, puis
+                  Votre espace lokt.fr est prêt. Lancez une simulation, comparez vos scénarios, puis
                   centralisez votre gestion locative dans l’espace bailleur.
                 </p>
 

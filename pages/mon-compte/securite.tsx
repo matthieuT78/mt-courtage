@@ -123,7 +123,7 @@ export default function MonCompteSecuritePage() {
             <p className="uppercase tracking-[0.18em] text-[0.7rem] text-sky-600 mb-1">Sécurité</p>
             <h1 className="text-lg font-semibold text-slate-900">Mot de passe & préférences</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Ici tu peux modifier ton mot de passe et gérer les emails Izimo.
+              Ici tu peux modifier ton mot de passe et gérer les emails lokt.fr.
             </p>
           </div>
 
@@ -176,7 +176,7 @@ export default function MonCompteSecuritePage() {
 
           {/* Newsletter */}
           <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-5">
-            <p className="text-sm font-semibold text-slate-900">Emails Izimo</p>
+            <p className="text-sm font-semibold text-slate-900">Emails lokt.fr</p>
             <p className="mt-1 text-sm text-slate-600">
               Gère la réception d’emails (actu produit, conseils…).
             </p>
@@ -196,7 +196,7 @@ export default function MonCompteSecuritePage() {
                   onChange={(e) => setNewsletterOptIn(e.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-sky-600"
                 />
-                <span>Je souhaite recevoir des emails Izimo.</span>
+                <span>Je souhaite recevoir des emails lokt.fr.</span>
               </label>
 
               <button

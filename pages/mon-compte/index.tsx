@@ -229,7 +229,7 @@ export default function MonCompteIndexPage() {
                     {mode === "login" ? "Connexion" : "Créer un compte"}
                   </h1>
                   <p className="text-xs text-slate-500 mt-1">
-                    {mode === "login" ? "Connectez-vous pour accéder à Izimo." : "Créez votre compte Izimo."}
+                    {mode === "login" ? "Connectez-vous pour accéder à lokt.fr." : "Créez votre compte lokt.fr."}
                   </p>
                 </div>
 
@@ -641,7 +641,7 @@ export default function MonCompteIndexPage() {
                           onChange={(e) => setMarketingOptIn(e.target.checked)}
                           className="mt-0.5 h-4 w-4 rounded border-slate-300"
                         />
-                        <span>Je souhaite recevoir des e-mails d’Izimo.</span>
+                        <span>Je souhaite recevoir des e-mails d’lokt.fr.</span>
                       </label>
                     </div>
 

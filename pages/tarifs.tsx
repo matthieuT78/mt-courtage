@@ -105,7 +105,7 @@ function PlanCard({
       <div className="mt-5">
         {plan.cta.kind === "mailto" ? (
           <a
-            href="mailto:mtcourtage@gmail.com?subject=Offre%20Agence%20-%20Izimo"
+            href="mailto:mtcourtage@gmail.com?subject=Offre%20Agence%20-%20lokt.fr"
             className={ctaClass}
           >
             {plan.cta.label}
@@ -250,7 +250,7 @@ export default function TarifsPage() {
                 <div className="space-y-3">
                   <div className="inline-flex items-center gap-3">
                     <div className="rounded-2xl bg-white border border-slate-200 p-2 shadow-sm">
-                      <img src="/izimo-logo.png" alt="Izimo" className="h-9 sm:h-10 w-auto object-contain" />
+                      <img src="/LOKT_LOGO.jpg" alt="lokt.fr" className="h-9 sm:h-10 w-auto object-contain" />
                     </div>
                     <p className="hidden sm:block text-xs font-semibold tracking-wide text-slate-600">
                       Simuler • Décider • Gérer

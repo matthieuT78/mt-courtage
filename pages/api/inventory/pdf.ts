@@ -76,10 +76,10 @@ function buildPdfBuffer(build: (doc: PDFDocument) => Promise<void>) {
         const pageNumber = i - range.start + 1;
         const total = range.count;
 
-        // petite signature Izimo à gauche
+        // petite signature lokt.fr à gauche
         doc.font("Helvetica").fontSize(9).fillColor("#6b7280");
         doc.text(
-          "Izimo • État des lieux",
+          "lokt.fr • État des lieux",
           doc.page.margins.left,
           doc.page.height - doc.page.margins.bottom + 16,
           {
@@ -113,7 +113,7 @@ function ensureSpace(doc: PDFDocument, needed = 120) {
 }
 
 /**
- * Header brandé Izimo + logo (optionnel)
+ * Header brandé lokt.fr + logo (optionnel)
  * logoBuf : Buffer PNG/JPG (idéalement PNG transparent)
  */
 function drawHeaderBand(doc: PDFDocument, title: string, subtitle: string, logoBuf?: Buffer | null) {
@@ -341,10 +341,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { reportId, userId } = (req.body || {}) as { reportId?: string; userId?: string };
     if (!reportId || !userId) return res.status(400).json({ error: "reportId et userId requis." });
 
-    // ✅ charge logo Izimo depuis /public
+    // ✅ charge logo lokt.fr depuis /public
     let logoBuf: Buffer | null = null;
     try {
-      const logoPath = path.join(process.cwd(), "public", "brand", "izimo-logo.png");
+      const logoPath = path.join(process.cwd(), "public", "brand", "LOKT_LOGO.jpg");
       if (fs.existsSync(logoPath)) {
         logoBuf = fs.readFileSync(logoPath);
       }
@@ -437,7 +437,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         pageNum += 1;
       };
 
-      drawHeaderBand(doc, title, `Izimo — Document généré le ${new Date().toLocaleDateString("fr-FR")}`, logoBuf);
+      drawHeaderBand(doc, title, `lokt.fr — Document généré le ${new Date().toLocaleDateString("fr-FR")}`, logoBuf);
 
       drawSectionTitle(doc, "Résumé");
       drawKeyValueRow(doc, "Bailleur", landlordName);
