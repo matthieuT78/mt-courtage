@@ -20,7 +20,8 @@ export default function CapaciteEmpruntPage() {
     const fetchSession = async () => {
       try {
         if (!supabase) return;
-        const { data } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
         if (!isMounted) return;
         setUser(data.session?.user ?? null);
       } catch (e) {
@@ -30,7 +31,9 @@ export default function CapaciteEmpruntPage() {
 
     fetchSession();
 
-    const { data: authListener } =
+    const {
+      data: { subscription },
+    } =
       supabase?.auth.onAuthStateChange((_event, session) => {
         if (!isMounted) return;
         setUser(session?.user ?? null);
@@ -38,7 +41,7 @@ export default function CapaciteEmpruntPage() {
 
     return () => {
       isMounted = false;
-      authListener?.subscription?.unsubscribe?.();
+      subscription?.unsubscribe?.();
     };
   }, []);
 
@@ -54,41 +57,45 @@ export default function CapaciteEmpruntPage() {
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header de la page */}
+          {/* Titre / intro spécifique page capacité */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-2">
             <p className="text-xs uppercase tracking-[0.18em] text-emerald-600">
               Calculette capacité d&apos;emprunt
             </p>
-
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
               {displayName
                 ? `Bonjour ${displayName}, estimez précisément votre capacité d’emprunt.`
                 : "Estimez précisément votre capacité d’emprunt immobilier."}
             </h1>
-
             <p className="text-xs text-slate-600 max-w-2xl">
               Parcours guidé en plusieurs étapes : revenus, charges, crédits en cours,
-              loyers locatifs pris à 70 %, et paramètres de votre futur prêt.
-              Le résultat est structuré pour correspondre à la lecture bancaire réelle.
+              loyers locatifs pris à 70&nbsp;% et paramètres de votre futur prêt.
+              Résultat épuré, prêt à être présenté à votre banque ou à votre courtier.
             </p>
 
             {!isLoggedIn && (
               <p className="text-[0.7rem] text-slate-500">
-                Sans compte, vous accédez à la simulation et à la synthèse.
-                En créant votre espace, vous pourrez sauvegarder vos scénarios
-                et accéder aux autres outils (investissement, prêt relais, parc immobilier).
+                Sans compte, vous accédez gratuitement à la calculette et à une
+                synthèse simplifiée. En créant votre espace, vous débloquez la
+                sauvegarde de vos simulations et une analyse plus complète avec
+                les autres outils (investissement locatif, achat revente, parc
+                immobilier…).
               </p>
             )}
           </section>
 
-          {/* Calculette */}
-          <CapaciteWizard showSaveButton={isLoggedIn} />
+          {/* 🧮 Calculette capacité – même composant que sur la home */}
+          <CapaciteWizard
+            showSaveButton={isLoggedIn}
+            blurAnalysis={!isLoggedIn}
+          />
         </div>
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage & Investissement — Simulations indicatives.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement –
+          Simulations indicatives.
         </p>
         <p className="mt-1">
           Contact :{" "}
