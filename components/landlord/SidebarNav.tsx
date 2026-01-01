@@ -90,7 +90,7 @@ export function SidebarNav({
         <div className="px-2 pt-1 pb-3">
           <div className="flex items-center gap-2">
             <span className={`h-2 w-2 rounded-full ${brandBg}`} />
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600">lokt.fr</p>
+            <p className="text-[0.7rem] lowercase tracking-[0.18em] text-slate-600">lokt.fr</p>
           </div>
 
           <p className="mt-1 text-sm font-semibold text-slate-900">Espace bailleur</p>

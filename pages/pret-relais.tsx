@@ -1,6 +1,6 @@
 // pages/pret-relais.tsx
 import type { NextPage } from "next";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
@@ -43,8 +43,11 @@ type ResumeRelais = {
 };
 
 const PretRelaisPage: NextPage = () => {
-  // ✅ Auth (pour floutage)
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // ---------------------------
+  // Session
+  // ---------------------------
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -53,15 +56,18 @@ const PretRelaisPage: NextPage = () => {
       try {
         const { data } = await supabase.auth.getSession();
         if (!mounted) return;
-        setIsLoggedIn(!!data.session);
+        setSessionEmail(data.session?.user?.email ?? null);
+        setSessionUserId(data.session?.user?.id ?? null);
       } catch {
         if (!mounted) return;
-        setIsLoggedIn(false);
+        setSessionEmail(null);
+        setSessionUserId(null);
       }
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-      setIsLoggedIn(!!session);
+      setSessionEmail(session?.user?.email ?? null);
+      setSessionUserId(session?.user?.id ?? null);
     });
 
     return () => {
@@ -70,6 +76,11 @@ const PretRelaisPage: NextPage = () => {
     };
   }, []);
 
+  const isLoggedIn = !!sessionUserId;
+
+  // ---------------------------
+  // Inputs
+  // ---------------------------
   // Revenus & charges
   const [revMensuels, setRevMensuels] = useState(4500);
   const [autresMensualites, setAutresMensualites] = useState(0);
@@ -89,15 +100,44 @@ const PretRelaisPage: NextPage = () => {
   const [dureeNouveau, setDureeNouveau] = useState(25);
   const [prixCible, setPrixCible] = useState(450000);
 
+  // Résultats
   const [resume, setResume] = useState<ResumeRelais | null>(null);
   const [texteDetail, setTexteDetail] = useState<string>("");
 
-  // Sauvegarde
+  // ---------------------------
+  // Lead gate (email + consent)
+  // ---------------------------
+  const [unlocked, setUnlocked] = useState<boolean>(false);
+  const [leadEmail, setLeadEmail] = useState<string>("");
+  const [leadPhone, setLeadPhone] = useState<string>("");
+  const [leadPostalCode, setLeadPostalCode] = useState<string>("");
+  const [leadCity, setLeadCity] = useState<string>("");
+
+  const [consentKeepData, setConsentKeepData] = useState<boolean>(false);
+  const [unlocking, setUnlocking] = useState<boolean>(false);
+  const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
+
+  // Préremplir email si connecté
+  useEffect(() => {
+    if (sessionEmail) setLeadEmail(sessionEmail);
+  }, [sessionEmail]);
+
+  // ---------------------------
+  // Sauvegarde projet (compte)
+  // ---------------------------
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  const handlePrintPDF = () => {
+    if (typeof window !== "undefined") window.print();
+  };
+
+  // ---------------------------
+  // Calcul
+  // ---------------------------
   const handleCalculRelais = () => {
     setSaveMessage(null);
+    setUnlockMsg(null);
 
     const revenus = revMensuels || 0;
     const autresMens = autresMensualites || 0;
@@ -227,8 +267,14 @@ const PretRelaisPage: NextPage = () => {
       budgetMax,
     });
     setTexteDetail(message);
+
+    // Reset gate à chaque nouveau calcul (sauf si connecté)
+    if (!isLoggedIn) setUnlocked(false);
   };
 
+  // ---------------------------
+  // Render blocs d'analyse
+  // ---------------------------
   const renderAnalysisBlocks = (text: string) => {
     if (!text) return null;
 
@@ -259,7 +305,10 @@ const PretRelaisPage: NextPage = () => {
                 {title}
               </p>
               {body.map((line, i) => (
-                <p key={i} className="text-[0.8rem] text-slate-700 leading-relaxed">
+                <p
+                  key={i}
+                  className="text-[0.8rem] text-slate-700 leading-relaxed"
+                >
                   {line}
                 </p>
               ))}
@@ -270,10 +319,111 @@ const PretRelaisPage: NextPage = () => {
     );
   };
 
-  const handlePrintPDF = () => {
-    if (typeof window !== "undefined") window.print();
+  // ---------------------------
+  // RPC capture (FLAT -> lead_events pr_*)
+  // ---------------------------
+  const capturePretRelaisViaRpc = async (args: {
+    email: string;
+    phone: string;
+    postal_code: string;
+    city: string;
+  }) => {
+    if (!supabase) throw new Error("Supabase non configuré.");
+
+    const email = (args.email || "").trim().toLowerCase();
+    if (!email || !email.includes("@")) throw new Error("Email invalide.");
+
+    if (!resume || !texteDetail) throw new Error("Aucun résultat à enregistrer.");
+
+    const { error } = await supabase.rpc("upsert_lead_pret_relais_v1", {
+      // identité / meta
+      p_email: email,
+      p_phone: (args.phone || "").trim() || null,
+      p_postal_code: (args.postal_code || "").trim() || null,
+      p_city: (args.city || "").trim() || null,
+      p_source: "pret_relais_page",
+      p_utm: null,
+      p_user_id: sessionUserId || null,
+
+      // inputs pret relais
+      p_pr_rev_mensuels: revMensuels || null,
+      p_pr_autres_mensualites: autresMensualites || null,
+      p_pr_taux_endettement_cible: tauxEndettement || null,
+      p_pr_valeur_bien_actuel: valeurBienActuel || null,
+      p_pr_crd_actuel: crdActuel || null,
+      p_pr_pct_retenu: pctRetenu || null,
+      p_pr_taux_relais: tauxRelais || null,
+      p_pr_apport_perso: apportPerso || null,
+      p_pr_taux_nouveau: tauxNouveau || null,
+      p_pr_duree_nouveau: dureeNouveau || null,
+      p_pr_prix_cible: prixCible || null,
+
+      // outputs
+      p_pr_montant_relais: resume.montantRelais ?? null,
+      p_pr_mensualite_nouveau_max: resume.mensualiteNouveauMax ?? null,
+      p_pr_capital_nouveau: resume.capitalNouveau ?? null,
+      p_pr_budget_max: resume.budgetMax ?? null,
+      p_pr_analysis_text: texteDetail || null,
+
+      // payload léger (debug / version)
+      p_payload: {
+        meta: { tool: "pret-relais", version: "v1_flat" },
+        createdAtClient: new Date().toISOString(),
+      },
+    });
+
+    if (error) {
+      // debug clair côté navigateur
+      // eslint-disable-next-line no-console
+      console.warn("[rpc upsert_lead_pret_relais_v1] error:", error);
+      throw new Error(error.message || "Erreur RPC");
+    }
   };
 
+  const handleUnlock = async () => {
+    setUnlockMsg(null);
+
+    if (!resume || !texteDetail) {
+      setUnlockMsg("Calculez d’abord votre budget avant de débloquer l’analyse.");
+      return;
+    }
+
+    const email = (leadEmail || "").trim().toLowerCase();
+    if (!email || !email.includes("@")) {
+      setUnlockMsg("Merci de renseigner une adresse e-mail valide.");
+      return;
+    }
+
+    if (!consentKeepData) {
+      setUnlockMsg(
+        "Pour débloquer l’analyse, merci d’accepter l’utilisation de vos données (Lokt.fr)."
+      );
+      return;
+    }
+
+    setUnlocking(true);
+    try {
+      await capturePretRelaisViaRpc({
+        email,
+        phone: leadPhone,
+        postal_code: leadPostalCode,
+        city: leadCity,
+      });
+
+      setUnlocked(true);
+      setUnlockMsg("✅ Analyse débloquée. (Votre simulation est bien enregistrée.)");
+    } catch (e: any) {
+      setUnlockMsg(
+        "❌ Impossible d’enregistrer la simulation : " + (e?.message || "erreur inconnue")
+      );
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  // ---------------------------
+  // Save project (compte)
+  // ---------------------------
   const handleSaveProject = async () => {
     if (!resume || !texteDetail) return;
     setSaving(true);
@@ -328,8 +478,14 @@ const PretRelaisPage: NextPage = () => {
     }
   };
 
-  const canShowFullAnalysis = isLoggedIn;
+  const canShowFullAnalysis = useMemo(() => {
+    // connecté => OK, sinon => email+consent (unlocked)
+    return isLoggedIn || unlocked;
+  }, [isLoggedIn, unlocked]);
 
+  // ---------------------------
+  // UI
+  // ---------------------------
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <AppHeader />
@@ -518,7 +674,7 @@ const PretRelaisPage: NextPage = () => {
                 </p>
               </div>
 
-              {resume && (
+              {resume && isLoggedIn && (
                 <div className="flex flex-col items-end gap-1">
                   <button
                     onClick={handleSaveProject}
@@ -601,20 +757,105 @@ const PretRelaisPage: NextPage = () => {
 
                 {!canShowFullAnalysis && (
                   <div className="absolute inset-0 flex items-center justify-center p-3">
-                    <div className="max-w-sm w-full rounded-2xl border border-slate-200 bg-white/95 shadow-lg p-4 text-center">
-                      <p className="text-sm font-semibold text-slate-900">
-                        Analyse réservée aux inscrits
+                    <div className="max-w-md w-full rounded-2xl border border-slate-200 bg-white/95 shadow-lg p-4">
+                      <p className="text-sm font-semibold text-slate-900 text-center">
+                        Débloquer l’analyse
                       </p>
-                      <p className="mt-1 text-xs text-slate-600">
-                        Crée un compte gratuit pour accéder à l’analyse complète,
-                        sauvegarder tes projets et comparer tes simulations.
+                      <p className="mt-1 text-xs text-slate-600 text-center">
+                        Renseignez votre e-mail et acceptez l’utilisation de vos données pour
+                        enregistrer votre simulation.
                       </p>
-                      <a
-                        href="/mon-compte?mode=register&redirect=%2Fpret-relais"
-                        className="mt-3 inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div className="sm:col-span-2 space-y-1">
+                          <label className="text-xs text-slate-700 font-semibold">
+                            E-mail (obligatoire)
+                          </label>
+                          <input
+                            type="email"
+                            value={leadEmail}
+                            onChange={(e) => setLeadEmail(e.target.value)}
+                            placeholder="ex: prenom.nom@gmail.com"
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">
+                            Code postal (optionnel)
+                          </label>
+                          <input
+                            type="text"
+                            value={leadPostalCode}
+                            onChange={(e) => setLeadPostalCode(e.target.value)}
+                            placeholder="75008"
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">
+                            Ville (optionnel)
+                          </label>
+                          <input
+                            type="text"
+                            value={leadCity}
+                            onChange={(e) => setLeadCity(e.target.value)}
+                            placeholder="Paris"
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2 space-y-1">
+                          <label className="text-xs text-slate-700">
+                            Téléphone (optionnel)
+                          </label>
+                          <input
+                            type="tel"
+                            value={leadPhone}
+                            onChange={(e) => setLeadPhone(e.target.value)}
+                            placeholder="06 12 34 56 78"
+                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-lg bg-slate-50 border border-slate-200 p-3">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={consentKeepData}
+                            onChange={(e) => setConsentKeepData(e.target.checked)}
+                            className="mt-1 h-4 w-4 rounded border-slate-300"
+                          />
+                          <span className="text-[0.75rem] text-slate-700 leading-relaxed">
+                            <span className="font-semibold">J’accepte</span> que mes données soient
+                            utilisées pour enregistrer ma simulation et améliorer les services
+                            (statistiques anonymisées).
+                          </span>
+                        </label>
+                        <p className="mt-2 text-[0.7rem] text-slate-500">
+                          Aucun consentement “contact partenaire” n’est demandé ici.
+                        </p>
+                      </div>
+
+                      {unlockMsg && (
+                        <p className="mt-3 text-[0.75rem] text-slate-600 text-center">
+                          {unlockMsg}
+                        </p>
+                      )}
+
+                      <button
+                        onClick={handleUnlock}
+                        disabled={unlocking}
+                        className="mt-4 w-full rounded-full bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
                       >
-                        Créer un compte gratuit
-                      </a>
+                        {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
+                      </button>
+
+                      <p className="mt-3 text-[0.65rem] text-slate-500 text-center">
+                        Résultats indicatifs. Ne constitue pas une offre de prêt.
+                      </p>
                     </div>
                   </div>
                 )}
