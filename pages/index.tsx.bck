@@ -34,98 +34,82 @@ function ToolCard({
   desc,
   href,
   onClick,
-  highlight = false,
   badge,
   requiresAuth = false,
+  featured = false,
 }: {
   title: string;
   desc: string;
   href?: string;
   onClick?: () => void;
-  highlight?: boolean;
   badge?: string;
   requiresAuth?: boolean;
+  featured?: boolean;
 }) {
   const base =
-    "h-full rounded-3xl border border-slate-200 transition flex flex-col " +
-    (highlight
-      ? "bg-slate-900 text-white hover:opacity-95"
-      : "bg-slate-50 hover:bg-white hover:shadow-md");
-
-  // Mobile plus compact, desktop identique
-  const pad = "p-4 sm:p-5";
+    "h-full rounded-3xl border transition flex flex-col overflow-hidden " +
+    (featured
+      ? "border-cyan-200 bg-white shadow-sm hover:shadow-md"
+      : "border-slate-200 bg-slate-50 hover:bg-white hover:shadow-md");
 
   const content = (
-    <div className={`${base} ${pad}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={"text-sm font-semibold " + (highlight ? "text-white" : "text-slate-900")}>
-            {title}
-          </p>
+    <div className={base}>
+      {featured ? (
+        <div className="h-1.5 w-full bg-gradient-to-r from-indigo-700 to-cyan-500" />
+      ) : (
+        <div className="h-1 w-full bg-slate-100" />
+      )}
 
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            {badge ? (
-              <p
-                className={
-                  "text-[0.65rem] uppercase tracking-[0.18em] " +
-                  (highlight ? "text-cyan-200" : "text-slate-500")
-                }
-              >
-                {badge}
-              </p>
-            ) : null}
+      <div className="p-4 sm:p-5 flex flex-col h-full relative">
+        {featured ? (
+          <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-cyan-200/40 blur-3xl" />
+        ) : null}
 
-            {requiresAuth ? (
-              <span
-                className={
-                  "inline-flex items-center rounded-full px-2 py-0.5 text-[0.65rem] font-semibold border " +
-                  (highlight
-                    ? "bg-white/10 text-white border-white/10"
-                    : "bg-white text-slate-700 border-slate-200")
-                }
-              >
-                Compte requis
-              </span>
-            ) : null}
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-slate-900">{title}</p>
+
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              {badge ? (
+                <p className="text-[0.65rem] uppercase tracking-[0.18em] text-slate-500">
+                  {badge}
+                </p>
+              ) : null}
+
+              {requiresAuth ? (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[0.65rem] font-semibold border bg-white text-slate-700 border-slate-200">
+                  Compte requis
+                </span>
+              ) : null}
+
+              {featured ? (
+                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[0.65rem] font-semibold border border-cyan-200 bg-cyan-50 text-cyan-800">
+                  Recommandé
+                </span>
+              ) : null}
+            </div>
           </div>
+
+          <span className="shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-[0.65rem] font-semibold border bg-white text-slate-700 border-slate-200">
+            Calculette
+          </span>
         </div>
 
-        <span
-          className={
-            "shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-[0.65rem] font-semibold border " +
-            (highlight
-              ? "bg-white/10 text-white border-white/10"
-              : "bg-white text-slate-700 border-slate-200")
-          }
-        >
-          Outil
-        </span>
-      </div>
-
-      <p
-        className={
-          "mt-2 leading-relaxed " +
-          (highlight ? "text-slate-200" : "text-slate-600") +
-          " text-[0.78rem] sm:text-xs"
-        }
-      >
-        {desc}
-      </p>
-
-      <div className="mt-auto pt-4">
-        <p
-          className={
-            "text-xs font-semibold underline decoration-slate-300 " +
-            (highlight ? "text-white decoration-white/30" : "text-slate-900")
-          }
-        >
-          Ouvrir →
+        <p className="relative mt-2 leading-relaxed text-[0.78rem] sm:text-xs text-slate-600">
+          {desc}
         </p>
+
+        <div className="mt-auto pt-4 relative">
+          <p className="text-xs font-semibold underline decoration-slate-300 text-slate-900">
+            Ouvrir →
+          </p>
+        </div>
       </div>
     </div>
   );
 
   if (href) return <Link href={href} className="block h-full">{content}</Link>;
+
   return (
     <button type="button" onClick={onClick} className="text-left block h-full w-full">
       {content}
@@ -135,17 +119,17 @@ function ToolCard({
 
 function ProgressMini() {
   const steps = [
-    { n: 1, label: "Choisir le projet" },
-    { n: 2, label: "Renseigner la situation" },
-    { n: 3, label: "Obtenir l’analyse" },
+    { n: 1, label: "Choisir la calculette" },
+    { n: 2, label: "Renseigner votre situation" },
+    { n: 3, label: "Lire l’analyse" },
   ];
 
   return (
-    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+    <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         {steps.map((s, idx) => (
           <div key={s.n} className="flex items-center gap-3 min-w-0">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-white text-[0.75rem] font-semibold">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-r from-indigo-700 to-cyan-500 text-white text-[0.75rem] font-semibold">
               {s.n}
             </div>
             <p className="text-[0.8rem] text-slate-700 font-medium truncate">{s.label}</p>
@@ -156,8 +140,51 @@ function ProgressMini() {
         ))}
       </div>
       <p className="mt-2 text-[0.72rem] text-slate-500">
-        Un parcours simple : vous choisissez la calculette, vous saisissez les informations clés, et lokt.fr produit une lecture structurée.
+        Parcours rapide, résultats clairs, lecture structurée.
       </p>
+    </div>
+  );
+}
+
+function AbstractHeroArt() {
+  // Micro-illustration abstraite (CSS only) : sobre + joyeux, sans “gadget”
+  return (
+    <div className="relative h-44 sm:h-52 lg:h-full min-h-[12rem] rounded-3xl border border-slate-200 bg-white overflow-hidden">
+      {/* Fond doux */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-50" />
+
+      {/* Halos colorés */}
+      <div className="absolute -top-20 -right-24 h-64 w-64 rounded-full bg-cyan-200/60 blur-3xl" />
+      <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-indigo-200/55 blur-3xl" />
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 h-40 w-40 rounded-full bg-sky-200/30 blur-3xl" />
+
+      {/* Formes “premium” */}
+      <div className="absolute right-6 top-6 h-24 w-24 rounded-2xl border border-slate-200 bg-white/60 backdrop-blur-sm shadow-sm rotate-6" />
+      <div className="absolute right-16 top-20 h-20 w-20 rounded-2xl border border-slate-200 bg-white/50 backdrop-blur-sm shadow-sm -rotate-6" />
+      <div className="absolute left-6 bottom-6 h-12 w-40 rounded-full border border-slate-200 bg-white/60 backdrop-blur-sm shadow-sm" />
+
+      {/* Mini “graph” abstrait */}
+      <div className="absolute left-8 top-8 right-8">
+        <div className="rounded-2xl border border-slate-200 bg-white/70 backdrop-blur-sm p-4 shadow-sm">
+          <p className="text-[0.65rem] uppercase tracking-[0.18em] text-slate-500">
+            Analyse structurée
+          </p>
+          <div className="mt-3 space-y-2">
+            <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div className="h-full w-[78%] bg-gradient-to-r from-indigo-700 to-cyan-500" />
+            </div>
+            <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div className="h-full w-[56%] bg-gradient-to-r from-indigo-700 to-cyan-500" />
+            </div>
+            <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div className="h-full w-[88%] bg-gradient-to-r from-indigo-700 to-cyan-500" />
+            </div>
+          </div>
+          <p className="mt-3 text-[0.72rem] text-slate-600">
+            Un résultat lisible, utile pour décider.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -205,7 +232,7 @@ export default function Home() {
     else router.push(`/mon-compte?mode=login&redirect=${encodeURIComponent(path)}`);
   };
 
-  const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
+  const brandBar = "bg-gradient-to-r from-indigo-700 to-cyan-500";
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -214,10 +241,11 @@ export default function Home() {
       <main className="flex-1 px-4 py-10">
         <div className="max-w-6xl mx-auto space-y-10">
           {/* =========================================================
-              1) HERO — simple + 4 calculettes alignées
+              1) HERO — section clé + micro illustration abstraite
           ========================================================== */}
           <section className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-            <div className={`h-1.5 w-full ${brandBg}`} />
+            <div className={`h-1.5 w-full ${brandBar}`} />
+
             <div className="p-7 sm:p-10">
               <div className="space-y-6">
                 <div className="flex flex-wrap items-center gap-2">
@@ -227,39 +255,43 @@ export default function Home() {
                   <Pill>Parc immobilier</Pill>
                 </div>
 
-                <div className="space-y-3">
-                  <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 leading-tight">
-                    {isLoggedIn && displayName ? (
-                      <>
-                        Bonjour {displayName}.<br />
-                        Les calculettes immobilières essentielles, au même endroit.
-                      </>
-                    ) : (
-                      <>
-                        Les calculettes immobilières
-                        <br />
-                        essentielles, au même endroit.
-                      </>
-                    )}
-                  </h1>
+                <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+                  <div className="space-y-3">
+                    <h1 className="text-3xl sm:text-4xl font-semibold text-slate-900 leading-tight">
+                      {isLoggedIn && displayName ? (
+                        <>
+                          Bonjour {displayName}.<br />
+                          Lancez vos simulations avec lokt.fr.
+                        </>
+                      ) : (
+                        <>
+                          Lancez vos simulations
+                          <br />
+                          immobilières avec lokt.fr.
+                        </>
+                      )}
+                    </h1>
 
-                  <p className="text-sm text-slate-600 max-w-3xl">
-                    Commencez par la capacité d’emprunt pour cadrer votre budget. Ensuite, choisissez la calculette adaptée
-                    à votre projet : achat-revente, investissement ou consolidation.
-                  </p>
-                </div>
+                    <p className="text-sm text-slate-600 max-w-2xl">
+                      Quatre calculettes essentielles pour cadrer un budget, comparer un projet et avancer
+                      avec une analyse structurée.
+                    </p>
 
-                {/* CTA unique */}
-                <div className="pt-1">
-                  <Link
-                    href="/commencer"
-                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-                  >
-                    Commencer à calculer
-                  </Link>
+                    {/* CTA unique */}
+                    <div className="pt-1">
+                      <Link
+                        href="/commencer"
+                        className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-700 to-cyan-500 px-6 py-3 text-sm font-semibold text-white shadow-md hover:opacity-95"
+                      >
+                        Commencer à calculer
+                      </Link>
+                    </div>
 
-                  {/* (7) mini barre de progression */}
-                  <ProgressMini />
+                    <ProgressMini />
+                  </div>
+
+                  {/* Micro illustration abstraite */}
+                  <AbstractHeroArt />
                 </div>
 
                 {/* 4 cartes alignées */}
@@ -269,7 +301,7 @@ export default function Home() {
                     badge="La plus recherchée"
                     desc="Mensualité maximale, capital empruntable et budget indicatif, avec une lecture structurée."
                     href="/capacite"
-                    highlight
+                    featured
                   />
 
                   <ToolCard
@@ -301,98 +333,144 @@ export default function Home() {
           </section>
 
           {/* =========================================================
-              2) MARKETING — “Ce que lokt.fr calcule en plus”
+              2) QUALITÉ D’ANALYSE — plus “waou” + intelligent
           ========================================================== */}
           <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8">
-            <div className="space-y-3">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                Qualité d’analyse
-              </p>
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+              <div className="space-y-3">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                  Qualité d’analyse
+                </p>
 
-              <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
-                Au-delà d’un chiffre : lokt.fr structure l’analyse pour la rendre exploitable.
-              </h2>
+                <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
+                  lokt.fr transforme un résultat en décision.
+                </h2>
 
-              <p className="text-sm text-slate-600 max-w-4xl">
-                Beaucoup d’outils du marché se limitent à un résultat “brut”. lokt.fr ajoute de la structure :
-                explication, cohérence du dossier et points d’attention, afin d’aider à arbitrer et à préparer une discussion.
-              </p>
+                <p className="text-sm text-slate-600 max-w-3xl">
+                  Une calculette standard donne un chiffre. lokt.fr vous donne la lecture derrière le chiffre :
+                  ce qui explique le résultat, ce qui pèse réellement, et ce que vous pouvez ajuster.
+                </p>
 
-              {/* (3) mini comparaison claire */}
-              <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-semibold text-slate-900">Calculette classique</p>
-                  <p className="mt-1 text-xs text-slate-600">
-                    Un résultat utile pour “se faire une idée”, mais souvent difficile à interpréter.
-                  </p>
-                  <ul className="mt-3 space-y-2 text-xs text-slate-700">
-                    <li className="flex gap-2">
-                      <span className="mt-1 h-2 w-2 rounded-full bg-slate-400" />
-                      <span>Chiffre final (budget / rendement) avec peu de contexte</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="mt-1 h-2 w-2 rounded-full bg-slate-400" />
-                      <span>Peu de lecture “dossier” (charges, cohérence, points faibles)</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="mt-1 h-2 w-2 rounded-full bg-slate-400" />
-                      <span>Peu d’aide pour décider ou prioriser les leviers</span>
-                    </li>
-                  </ul>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+                    <p className="text-sm font-semibold text-slate-900">Ce que font la plupart</p>
+                    <ul className="mt-3 space-y-2 text-xs text-slate-700">
+                      <li className="flex gap-2">
+                        <span className="mt-1 h-2 w-2 rounded-full bg-slate-400" />
+                        <span>Un chiffre final, peu contextualisé</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="mt-1 h-2 w-2 rounded-full bg-slate-400" />
+                        <span>Pas de lecture “structure du dossier”</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <span className="mt-1 h-2 w-2 rounded-full bg-slate-400" />
+                        <span>Peu d’aide pour arbitrer (ou prioriser)</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="rounded-3xl border border-cyan-200 bg-white p-5 relative overflow-hidden">
+                    <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-cyan-200/50 blur-3xl" />
+                    <div className="relative">
+                      <div className="inline-flex items-center gap-2">
+                        <div className="h-2.5 w-2.5 rounded-full bg-gradient-to-r from-indigo-700 to-cyan-500" />
+                        <p className="text-sm font-semibold text-slate-900">Ce que fait lokt.fr</p>
+                      </div>
+
+                      <ul className="mt-3 space-y-2 text-xs text-slate-700">
+                        <li className="flex gap-2">
+                          <span className="mt-1 h-2 w-2 rounded-full bg-cyan-600" />
+                          <span>Résultat + explication structurée</span>
+                        </li>
+                        <li className="flex gap-2">
+                          <span className="mt-1 h-2 w-2 rounded-full bg-cyan-600" />
+                          <span>Repérage des leviers (ce qui change le plus)</span>
+                        </li>
+                        <li className="flex gap-2">
+                          <span className="mt-1 h-2 w-2 rounded-full bg-cyan-600" />
+                          <span>Sortie plus facile à comparer et à réutiliser</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-white p-5">
-                  <p className="text-sm font-semibold text-slate-900">lokt.fr</p>
-                  <p className="mt-1 text-xs text-slate-600">
-                    Des résultats + une lecture structurée, orientée décision.
+                <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5">
+                  <p className="text-sm font-semibold text-slate-900">Pourquoi ça fait la différence</p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Parce qu’un projet se gagne rarement sur “le montant” uniquement : il se joue sur la cohérence globale
+                    (charges, effort mensuel, marge de sécurité, et lisibilité du dossier).
                   </p>
-                  <ul className="mt-3 space-y-2 text-xs text-slate-700">
-                    <li className="flex gap-2">
-                      <span className="mt-1 h-2 w-2 rounded-full bg-slate-900" />
-                      <span>Chiffres + explication organisée (compréhensible et réutilisable)</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="mt-1 h-2 w-2 rounded-full bg-slate-900" />
-                      <span>Lecture plus proche d’un dossier réel : charges, effort, zones de vigilance</span>
-                    </li>
-                    <li className="flex gap-2">
-                      <span className="mt-1 h-2 w-2 rounded-full bg-slate-900" />
-                      <span>Leviers identifiés : ce qui améliore réellement la situation</span>
-                    </li>
-                  </ul>
+                </div>
+              </div>
 
-                  <div className="mt-4">
-                    <Link
-                      href="/capacite"
-                      className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                      Voir sur la capacité d’emprunt →
-                    </Link>
+              {/* “Méthode” + preuve */}
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+                <p className="text-sm font-semibold text-slate-900">La méthode lokt.fr</p>
+                <p className="text-xs text-slate-600 mt-1">
+                  Une analyse orientée action : comprendre → arbitrer → optimiser.
+                </p>
+
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold text-slate-900">1) Clarifier</p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Les données saisies sont remises dans un cadre (revenus, charges, paramètres) pour éviter les conclusions trompeuses.
+                    </p>
                   </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold text-slate-900">2) Expliquer</p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Le résultat est détaillé : ce qui fait monter/descendre le budget, ce qui est sensible, ce qui est stable.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-semibold text-slate-900">3) Orienter</p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Une sortie exploitable pour arbitrer : ajuster durée/taux, scénarios, ordre des leviers.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href="/commencer"
+                    className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-indigo-700 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-95"
+                  >
+                    Lancer une simulation →
+                  </Link>
+
+                  <Link
+                    href="/capacite"
+                    className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                  >
+                    Voir la capacité →
+                  </Link>
                 </div>
               </div>
             </div>
           </section>
 
           {/* =========================================================
-              4) Bandeau bailleur — inchangé
+              4) BANDEAU BAILLEUR — couleurs logo + bouton tarifs qui ressort
           ========================================================== */}
           <section className="rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="bg-slate-900 text-white p-7 sm:p-10 relative overflow-hidden">
-              <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-25 blur-3xl bg-emerald-400" />
-              <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-cyan-500" />
+            <div className={`p-7 sm:p-10 relative overflow-hidden ${brandBar} text-white`}>
+              <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-25 blur-3xl bg-white/30" />
+              <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-white/25" />
 
               <div className="relative grid gap-6 lg:grid-cols-2 lg:items-center">
                 <div className="space-y-3">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-300">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-white/80">
                     Pour aller plus loin
                   </p>
-                  <h3 className="text-2xl font-semibold">
-                    Espace bailleur : centralisez votre gestion locative
-                  </h3>
-                  <p className="text-sm text-slate-200 max-w-2xl">
-                    Quittances, dépôts de garantie, états des lieux, rappels et documents : un espace
-                    dédié pour structurer votre gestion et gagner du temps.
+                  <h3 className="text-2xl font-semibold">Espace bailleur : centralisez votre gestion locative</h3>
+                  <p className="text-sm text-white/90 max-w-2xl">
+                    Quittances, dépôts de garantie, états des lieux, rappels et documents : un espace dédié
+                    pour structurer votre gestion et gagner du temps.
                   </p>
 
                   <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -402,31 +480,33 @@ export default function Home() {
                     >
                       Découvrir l’espace bailleur →
                     </Link>
+
+                    {/* Bouton tarifs qui ressort */}
                     <Link
                       href="/tarifs"
-                      className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10"
+                      className="inline-flex items-center justify-center rounded-full border border-white/30 bg-slate-900/25 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-900/35"
                     >
-                      Voir les tarifs →
+                      Tarifs
                     </Link>
                   </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                  <div className="rounded-2xl bg-white/15 border border-white/20 p-4 backdrop-blur-sm">
                     <p className="text-sm font-semibold">Quittances & documents</p>
-                    <p className="text-xs text-slate-200 mt-1">Génération, archivage, historique.</p>
+                    <p className="text-xs text-white/85 mt-1">Génération, archivage, historique.</p>
                   </div>
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                  <div className="rounded-2xl bg-white/15 border border-white/20 p-4 backdrop-blur-sm">
                     <p className="text-sm font-semibold">Dépôts de garantie</p>
-                    <p className="text-xs text-slate-200 mt-1">Suivi, restitutions et rappels.</p>
+                    <p className="text-xs text-white/85 mt-1">Suivi, restitutions et rappels.</p>
                   </div>
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                  <div className="rounded-2xl bg-white/15 border border-white/20 p-4 backdrop-blur-sm">
                     <p className="text-sm font-semibold">États des lieux</p>
-                    <p className="text-xs text-slate-200 mt-1">Modèles et organisation.</p>
+                    <p className="text-xs text-white/85 mt-1">Modèles et organisation.</p>
                   </div>
-                  <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                  <div className="rounded-2xl bg-white/15 border border-white/20 p-4 backdrop-blur-sm">
                     <p className="text-sm font-semibold">Échéances</p>
-                    <p className="text-xs text-slate-200 mt-1">Alertes, révisions, renouvellements.</p>
+                    <p className="text-xs text-white/85 mt-1">Alertes, révisions, renouvellements.</p>
                   </div>
                 </div>
               </div>
