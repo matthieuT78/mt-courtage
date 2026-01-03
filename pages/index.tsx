@@ -30,16 +30,14 @@ function Pill({ children }: { children: React.ReactNode }) {
 
 function AbstractHeroArt() {
   // micro-illustration abstraite, légère (sans “encadré” / squelette)
+  // ✅ point bleu en haut à droite supprimé
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-0 overflow-hidden"
-    >
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
       <div className="absolute -top-32 -right-32 h-72 w-72 rounded-full bg-cyan-400/25 blur-3xl" />
       <div className="absolute -bottom-36 -left-36 h-80 w-80 rounded-full bg-indigo-600/20 blur-3xl" />
       <div className="absolute top-1/2 left-1/2 h-56 w-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-300/10 blur-3xl" />
+
       <div className="absolute top-10 left-12 h-3 w-3 rounded-full bg-cyan-500/40" />
-      <div className="absolute top-24 right-24 h-2.5 w-2.5 rounded-full bg-indigo-600/40" />
       <div className="absolute bottom-12 left-24 h-2 w-2 rounded-full bg-emerald-500/30" />
     </div>
   );
@@ -79,7 +77,9 @@ function ToolCard({
         <span
           className={
             "shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-[0.65rem] font-semibold border " +
-            (highlight ? "bg-indigo-50 text-indigo-800 border-indigo-200" : "bg-white text-slate-700 border-slate-200")
+            (highlight
+              ? "bg-indigo-50 text-indigo-800 border-indigo-200"
+              : "bg-white text-slate-700 border-slate-200")
           }
         >
           Calculette
@@ -151,7 +151,7 @@ export default function Home() {
       <main className="flex-1 px-4 py-10">
         <div className="max-w-6xl mx-auto space-y-10">
           {/* =========================================================
-              1) HERO — section clé : 4 calculettes + CTA (joyeux / coloré)
+              1) HERO — section clé : 4 calculettes (sans bouton CTA)
           ========================================================== */}
           <section className="relative rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className={`h-1.5 w-full ${brandGrad}`} />
@@ -171,7 +171,7 @@ export default function Home() {
                     {isLoggedIn && displayName ? (
                       <>
                         Bonjour {displayName}.<br />
-                        Lancez vos simulations avec lokt.r
+                        Lancez vos simulations immobilières avec lokt.fr
                       </>
                     ) : (
                       <>
@@ -183,46 +183,43 @@ export default function Home() {
                   </h1>
 
                   <p className="text-sm text-slate-600 max-w-3xl">
-                    Quatre calculettes essentielles pour cadrer un budget, comparer un projet et avancer
-                    avec une analyse structurée — lisible et exploitable.
+                    Choisissez directement la calculette qui correspond à votre situation — achat,
+                    investissement, relais ou consolidation de patrimoine.
                   </p>
-                </div>
 
-                {/* CTA principal */}
-                <div className="pt-1">
-                  <Link
-                    href="/commencer"
-                    className={`inline-flex items-center justify-center rounded-full ${brandGrad} px-7 py-3 text-sm font-semibold text-white shadow-md hover:opacity-95`}
-                  >
-                    Commencer à calculer
-                  </Link>
+                  <p className="text-[0.85rem] text-slate-700 max-w-3xl">
+                    <span className="font-semibold">Par où commencer ?</span>{" "}
+                    Si c’est votre premier achat, commencez par la <span className="font-semibold">capacité d’emprunt</span>.
+                    Si vous hésitez entre plusieurs scénarios, testez la calculette la plus proche de votre objectif,
+                    puis comparez.
+                  </p>
                 </div>
 
                 {/* 4 cartes alignées / mêmes tailles */}
                 <div className="pt-2 grid gap-4 md:grid-cols-2 lg:grid-cols-4 items-stretch">
                   <ToolCard
                     title="Capacité d’emprunt"
-                    badge="La plus recherchée"
-                    desc="Mensualité maximale, capital empruntable et budget indicatif, avec une lecture structurée."
+                    badge="Le point de départ"
+                    desc="Vous achetez (ou vous envisagez d’acheter) ? Estimez votre mensualité cible, votre capital empruntable et un budget réaliste."
                     href="/capacite"
                     highlight
                   />
 
                   <ToolCard
                     title="Prêt relais"
-                    desc="Budget d’achat maximal : estimation du relais, capacité du nouveau prêt et comparaison avec votre cible."
+                    desc="Vous voulez acheter avant d’avoir vendu ? Estimez le relais, la capacité du nouveau prêt et votre budget maximal."
                     href="/pret-relais"
                   />
 
                   <ToolCard
                     title="Rentabilité locative"
-                    desc="Cash-flow net, rendement, effort d’épargne et scénarios de financement."
+                    desc="Vous voulez mesurer la rentabilité d’un bien locatif ? Calculez cash-flow, rendement et effort d’épargne pour décider (ou ajuster)."
                     href="/investissement"
                   />
 
                   <ToolCard
                     title="Parc immobilier"
-                    desc="Vision globale du patrimoine : consolidation, encours et flux (cash-flow total)."
+                    desc="Vous avez plusieurs biens ? Obtenez une vision consolidée : encours, flux mensuels et lecture globale de votre patrimoine."
                     href="/parc-immobilier"
                   />
                 </div>
@@ -243,55 +240,47 @@ export default function Home() {
               <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
                 <div className="space-y-3">
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                    Qualité d’analyse
+                    Ce que lokt.fr apporte de plus qu’une simple calculette
                   </p>
                   <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
-                    Au-delà du résultat : une lecture “dossier” plus proche de la réalité.
+                    Une analyse conçue pour décider — et pour être comprise.
                   </h2>
                   <p className="text-sm text-slate-600 max-w-2xl">
-                    Là où beaucoup de calculettes s’arrêtent à un chiffre, lokt.fr met en forme les éléments
-                    qui comptent pour décider — et pour préparer un échange efficace avec une banque ou un courtier.
+                    Un “bon résultat” n’a de valeur que s’il est <span className="font-semibold">exploitable</span>.
+                    lokt.fr met en avant les hypothèses, clarifie les leviers, et propose une lecture homogène entre outils,
+                    afin que vous puissiez arbitrer avec méthode.
                   </p>
 
                   <div className="pt-3 space-y-3">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-sm font-semibold text-slate-900">
-                        Une analyse structurée, pas une sortie “brute”
+                        Une lecture structurée (comme un dossier)
                       </p>
                       <p className="mt-1 text-sm text-slate-600">
-                        Résultats expliqués, hypothèses visibles, cohérence globale : vous comprenez ce qui
-                        améliore (ou dégrade) le projet.
+                        Revenus, charges, endettement, hypothèses : tout est présenté de façon lisible.
+                        Vous savez ce qui “tient” et ce qui doit être optimisé.
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-sm font-semibold text-slate-900">
-                        Des leviers actionnables, orientés décision
+                        Des leviers concrets plutôt qu’un chiffre isolé
                       </p>
                       <p className="mt-1 text-sm text-slate-600">
-                        Vous identifiez rapidement ce qui bouge le plus : durée, charges, apport, taux, structure du financement,
-                        et l’impact concret sur votre budget ou votre effort mensuel.
+                        Ajustez durée, taux, apport ou structure : vous voyez l’impact réel sur la mensualité,
+                        le budget, l’effort d’épargne ou la rentabilité.
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-sm font-semibold text-slate-900">
-                        Une base solide pour comparer des scénarios
+                        Une cohérence entre les calculettes
                       </p>
                       <p className="mt-1 text-sm text-slate-600">
-                        Même projet, différentes hypothèses : vous pouvez tester et arbitrer avec des résultats cohérents
-                        et une lecture homogène entre les outils.
+                        Même logique de lecture entre capacité, relais, investissement et parc : vous comparez
+                        des scénarios sans biais d’outil.
                       </p>
                     </div>
-                  </div>
-
-                  <div className="pt-2">
-                    <Link
-                      href="/capacite"
-                      className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-                    >
-                      Voir la calculette capacité →
-                    </Link>
                   </div>
                 </div>
 
@@ -299,42 +288,36 @@ export default function Home() {
                 <div className="rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6">
                   <p className="text-sm font-semibold text-slate-900">Ce qui fait la différence</p>
                   <p className="text-xs text-slate-600 mt-1">
-                    Une expérience pensée pour des décisions immobilières, pas pour “faire joli”.
+                    Une expérience pensée pour des décisions immobilières.
                   </p>
 
                   <div className="mt-4 grid gap-3">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-xs font-semibold text-slate-900">Lisibilité immédiate</p>
                       <p className="mt-1 text-xs text-slate-600">
-                        Synthèse claire + détails consultables : vous savez où vous en êtes en quelques secondes.
+                        Une synthèse claire, puis le détail si vous en avez besoin.
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-xs font-semibold text-slate-900">Cohérence entre calculettes</p>
+                      <p className="text-xs font-semibold text-slate-900">Arbitrage plus rapide</p>
                       <p className="mt-1 text-xs text-slate-600">
-                        Même logique de lecture : vous passez de “capacité” à “relais” ou “investissement”
-                        sans réapprendre un outil.
+                        Vous identifiez rapidement le scénario le plus cohérent (budget, effort, rentabilité).
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-xs font-semibold text-slate-900">Exploitable, tout simplement</p>
+                      <p className="text-xs font-semibold text-slate-900">Résultats utilisables</p>
                       <p className="mt-1 text-xs text-slate-600">
-                        Un rendu qui sert à arbitrer et à échanger, plutôt qu’un chiffre isolé.
+                        Un rendu pensé pour comprendre, décider, et préparer un échange efficace.
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-5">
-                    <Link
-                      href="/commencer"
-                      className={`inline-flex w-full items-center justify-center rounded-full ${brandGrad} px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-95`}
-                    >
-                      Commencer avec un projet →
-                    </Link>
-                    <p className="mt-2 text-[0.7rem] text-slate-500 text-center">
-                      Choisissez votre objectif, puis la calculette adaptée.
+                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs text-slate-600">
+                      Conseil pratique : commencez par la calculette la plus proche de votre objectif,
+                      puis utilisez les autres pour valider ou affiner votre décision.
                     </p>
                   </div>
                 </div>
@@ -347,7 +330,6 @@ export default function Home() {
           ========================================================== */}
           <section className="rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className={`relative ${brandGrad} text-white p-7 sm:p-10 overflow-hidden`}>
-              {/* halos plus “joyeux” */}
               <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full opacity-25 blur-3xl bg-white" />
               <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full opacity-20 blur-3xl bg-indigo-900" />
 
