@@ -13,8 +13,7 @@ type SimpleUser = {
 };
 
 function firstNameFromUser(user: SimpleUser | null) {
-  const raw =
-    user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "");
+  const raw = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "");
   const first = String(raw || "").trim().split(/\s+/)[0] || "";
   if (!first) return "";
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
@@ -68,18 +67,14 @@ function ToolCard({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">{title}</p>
           {badge ? (
-            <p className="mt-1 text-[0.7rem] uppercase tracking-[0.18em] text-indigo-700">
-              {badge}
-            </p>
+            <p className="mt-1 text-[0.7rem] uppercase tracking-[0.18em] text-indigo-700">{badge}</p>
           ) : null}
         </div>
 
         <span
           className={
             "shrink-0 inline-flex items-center rounded-full px-2.5 py-1 text-[0.65rem] font-semibold border " +
-            (highlight
-              ? "bg-indigo-50 text-indigo-800 border-indigo-200"
-              : "bg-white text-slate-700 border-slate-200")
+            (highlight ? "bg-indigo-50 text-indigo-800 border-indigo-200" : "bg-white text-slate-700 border-slate-200")
           }
         >
           Calculette
@@ -89,9 +84,7 @@ function ToolCard({
       <p className="mt-2 text-xs leading-relaxed text-slate-600">{desc}</p>
 
       <div className="mt-auto pt-4">
-        <p className="text-xs font-semibold underline decoration-slate-300 text-slate-900">
-          Ouvrir →
-        </p>
+        <p className="text-xs font-semibold underline decoration-slate-300 text-slate-900">Ouvrir →</p>
       </div>
     </div>
   );
@@ -183,15 +176,14 @@ export default function Home() {
                   </h1>
 
                   <p className="text-sm text-slate-600 max-w-3xl">
-                    Choisissez directement la calculette qui correspond à votre situation — achat,
-                    investissement, relais ou consolidation de patrimoine.
+                    Choisissez directement la calculette qui correspond à votre situation — achat, investissement, relais
+                    ou consolidation de patrimoine.
                   </p>
 
                   <p className="text-[0.85rem] text-slate-700 max-w-3xl">
-                    <span className="font-semibold">Par où commencer ?</span>{" "}
-                    Si c’est votre premier achat, commencez par la <span className="font-semibold">capacité d’emprunt</span>.
-                    Si vous hésitez entre plusieurs scénarios, testez la calculette la plus proche de votre objectif,
-                    puis comparez.
+                    <span className="font-semibold">Par où commencer ?</span> Si c’est votre premier achat, commencez
+                    par la <span className="font-semibold">capacité d’emprunt</span>. Si vous hésitez entre plusieurs
+                    scénarios, testez la calculette la plus proche de votre objectif, puis comparez.
                   </p>
                 </div>
 
@@ -213,9 +205,8 @@ export default function Home() {
 
                   <ToolCard
                     title="Rentabilité locative"
-                desc="Vous souhaitez investir dans l’immobilier ? Cette calculette vous aide à projeter votre futur achat et à calculer sa rentabilité réelle."
-  href="/investissement"  
-		href="/investissement"
+                    desc="Vous souhaitez investir dans l’immobilier ? Cette calculette vous aide à projeter votre futur achat et à calculer sa rentabilité réelle."
+                    href="/investissement"
                   />
 
                   <ToolCard
@@ -226,7 +217,8 @@ export default function Home() {
                 </div>
 
                 <p className="text-[0.75rem] text-slate-500">
-                  Résultats indicatifs. Certaines fonctionnalités (sauvegarde, analyses avancées) peuvent dépendre de votre accès.
+                  Résultats indicatifs. Certaines fonctionnalités (sauvegarde, analyses avancées) peuvent dépendre de
+                  votre accès.
                 </p>
               </div>
             </div>
@@ -240,26 +232,27 @@ export default function Home() {
             <div className="p-6 sm:p-8">
               <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
                 <div className="space-y-3">
-<p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-  Ce que <span className="lowercase">lokt.fr</span> apporte de plus qu’une simple calculette
-</p>                  
-<h2 className="text-lg sm:text-xl font-semibold text-slate-900">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                    Ce que <span className="lowercase">lokt.fr</span> apporte de plus qu’une simple calculette
+                  </p>
+
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
                     Une analyse conçue pour décider — et pour être comprise.
                   </h2>
+
                   <p className="text-sm text-slate-600 max-w-2xl">
-                    Un “bon résultat” n’a de valeur que s’il est <span className="font-semibold">exploitable</span>.
-                    lokt.fr met en avant les hypothèses, clarifie les leviers, et propose une lecture homogène entre outils,
-                    afin que vous puissiez arbitrer avec méthode.
+                    Un “bon résultat” n’a de valeur que s’il est{" "}
+                    <span className="font-semibold">exploitable</span>. lokt.fr met en avant les hypothèses, clarifie
+                    les leviers, et propose une lecture homogène entre outils, afin que vous puissiez arbitrer avec
+                    méthode.
                   </p>
 
                   <div className="pt-3 space-y-3">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-sm font-semibold text-slate-900">
-                        Une lecture structurée (comme un dossier)
-                      </p>
+                      <p className="text-sm font-semibold text-slate-900">Une lecture structurée (comme un dossier)</p>
                       <p className="mt-1 text-sm text-slate-600">
-                        Revenus, charges, endettement, hypothèses : tout est présenté de façon lisible.
-                        Vous savez ce qui “tient” et ce qui doit être optimisé.
+                        Revenus, charges, endettement, hypothèses : tout est présenté de façon lisible. Vous savez ce
+                        qui “tient” et ce qui doit être optimisé.
                       </p>
                     </div>
 
@@ -268,18 +261,16 @@ export default function Home() {
                         Des leviers concrets plutôt qu’un chiffre isolé
                       </p>
                       <p className="mt-1 text-sm text-slate-600">
-                        Ajustez durée, taux, apport ou structure : vous voyez l’impact réel sur la mensualité,
-                        le budget, l’effort d’épargne ou la rentabilité.
+                        Ajustez durée, taux, apport ou structure : vous voyez l’impact réel sur la mensualité, le
+                        budget, l’effort d’épargne ou la rentabilité.
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-sm font-semibold text-slate-900">
-                        Une cohérence entre les calculettes
-                      </p>
+                      <p className="text-sm font-semibold text-slate-900">Une cohérence entre les calculettes</p>
                       <p className="mt-1 text-sm text-slate-600">
-                        Même logique de lecture entre capacité, relais, investissement et parc : vous comparez
-                        des scénarios sans biais d’outil.
+                        Même logique de lecture entre capacité, relais, investissement et parc : vous comparez des
+                        scénarios sans biais d’outil.
                       </p>
                     </div>
                   </div>
@@ -288,9 +279,7 @@ export default function Home() {
                 {/* Bloc “preuve” marketing — visuel + bullets */}
                 <div className="rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6">
                   <p className="text-sm font-semibold text-slate-900">Ce qui fait la différence</p>
-                  <p className="text-xs text-slate-600 mt-1">
-                    Une expérience pensée pour des décisions immobilières.
-                  </p>
+                  <p className="text-xs text-slate-600 mt-1">Une expérience pensée pour des décisions immobilières.</p>
 
                   <div className="mt-4 grid gap-3">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -317,8 +306,8 @@ export default function Home() {
 
                   <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
                     <p className="text-xs text-slate-600">
-                      Conseil pratique : commencez par la calculette la plus proche de votre objectif,
-                      puis utilisez les autres pour valider ou affiner votre décision.
+                      Conseil pratique : commencez par la calculette la plus proche de votre objectif, puis utilisez les
+                      autres pour valider ou affiner votre décision.
                     </p>
                   </div>
                 </div>
@@ -336,13 +325,11 @@ export default function Home() {
 
               <div className="relative grid gap-6 lg:grid-cols-2 lg:items-center">
                 <div className="space-y-3">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-white/80">
-                    Pour aller plus loin
-                  </p>
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-white/80">Pour aller plus loin</p>
                   <h3 className="text-2xl font-semibold">Espace bailleur</h3>
                   <p className="text-sm text-white/90 max-w-2xl">
-                    Centralisez quittances, dépôts de garantie, états des lieux, rappels et documents.
-                    Un espace dédié pour structurer votre gestion et gagner du temps.
+                    Centralisez quittances, dépôts de garantie, états des lieux, rappels et documents. Un espace dédié
+                    pour structurer votre gestion et gagner du temps.
                   </p>
 
                   <div className="flex flex-col sm:flex-row gap-3 pt-2">
