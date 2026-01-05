@@ -50,8 +50,7 @@ type ResumeCapacite = {
   tauxEndettementAvecProjet: number;
 
   mensualiteMax: number; // capacité max "banque" (selon cible)
-  montantMax: number; // capital max empruntable (référence 25 ans)
-  mensualiteProjet: number; // mensualité nécessaire pour emprunter montantMax sur la durée choisie
+  montantMax: number; // capital max empruntable avec mensualiteMax
 
   // apport + budget max (apport inclus)
   apport: number;
@@ -159,32 +158,6 @@ function round0(n: number) {
   return Math.round(n);
 }
 
-/* ------------------------ Loan helpers (monthly) ------------------------ */
-function monthlyPayment(principal: number, annualRatePct: number, years: number) {
-  const P = Math.max(0, principal || 0);
-  const n = Math.max(0, Math.round((years || 0) * 12));
-  const r = Math.max(0, (annualRatePct || 0) / 100) / 12;
-
-  if (P <= 0 || n <= 0) return 0;
-  if (r === 0) return P / n;
-
-  // M = P * r / (1 - (1+r)^-n)
-  return (P * r) / (1 - Math.pow(1 + r, -n));
-}
-
-function principalFromPayment(payment: number, annualRatePct: number, years: number) {
-  const M = Math.max(0, payment || 0);
-  const n = Math.max(0, Math.round((years || 0) * 12));
-  const r = Math.max(0, (annualRatePct || 0) / 100) / 12;
-
-  if (M <= 0 || n <= 0) return 0;
-  if (r === 0) return M * n;
-
-  // P = M * ( (1+r)^n - 1 ) / ( r * (1+r)^n )
-  const f = Math.pow(1 + r, n);
-  return M * ((f - 1) / (r * f));
-}
-
 function computeUC(nbAdultes: number, nbEnfants: number) {
   // unité de consommation (approx INSEE) : 1 + 0.5*(adultes-1) + 0.3*enfants
   const a = Math.max(1, nbAdultes || 1);
@@ -213,7 +186,7 @@ function proStabilityFactor(proStatus: ProStatus) {
  * - DTI au-dessus de la cible => caps progressifs
  * - Apport < frais => cap score max (banque souvent bloquante)
  *
- * NOTE: la version est 100% "mode simple" : on score sur la mensualité PROJET (qui dépend de la durée).
+ * NOTE: la version est 100% "mode simple" : on score sur la mensualité max (capacité).
  */
 function computeLoktScore(params: {
   resume: ResumeCapacite;
@@ -248,8 +221,8 @@ function computeLoktScore(params: {
   // Charges actuelles
   const chargesActuelles = resume.mensualitesExistantes + resume.chargesHorsCredits;
 
-  // ✅ Mensualité utilisée pour le scoring : mensualité projet (dépend de la durée)
-  const mensualiteScore = resume.mensualiteProjet || 0;
+  // ✅ Mensualité utilisée pour le scoring : mensu max (capacité) => lecture prudente
+  const mensualiteScore = resume.mensualiteMax || 0;
 
   // ✅ Reste à vivre APRÈS PROJET : on NE CLAMP PAS à 0
   const resteApresProjet = (resume.revenusPrisEnCompte || 0) - (chargesActuelles + (mensualiteScore || 0));
@@ -832,13 +805,19 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
     const tauxActuel = revenusPrisEnCompte > 0 ? (chargesActuelles / revenusPrisEnCompte) * 100 : 0;
 
-    // ✅ NOUVELLE LOGIQUE:
-    // - montantMax = capacité max calculée sur 25 ans (référence)
-    // - mensualiteProjet = mensualité nécessaire pour emprunter ce montantMax sur la durée choisie
-    const DUREE_REFERENCE = 25;
+    const tAnnuel = (tauxCreditCible || 0) / 100;
+    const i = tAnnuel / 12;
+    const n = (dureeCreditCible || 0) * 12;
 
-    const montantMax = principalFromPayment(capaciteMensuelle, tauxCreditCible, DUREE_REFERENCE);
-    const mensualiteProjet = monthlyPayment(montantMax, tauxCreditCible, dureeCreditCible);
+    // Capital max empruntable à partir de la capacité mensuelle
+    let montantMax = 0;
+    if (capaciteMensuelle > 0 && n > 0) {
+      if (i === 0) montantMax = capaciteMensuelle * n;
+      else {
+        const facteur = Math.pow(1 + i, n);
+        montantMax = capaciteMensuelle * ((facteur - 1) / (i * facteur));
+      }
+    }
 
     // Frais selon type de projet (approx + cohérent)
     const tauxNotaire = projectType === "neuf" ? 0.025 : projectType === "terrain" ? 0.07 : 0.075;
@@ -866,9 +845,10 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     const apportMinRecommande = Math.max(0, fraisNotaireEstimes + coussinGarantie);
     const apportCouvreFrais = apport >= apportMinRecommande && apportMinRecommande > 0;
 
-    // ✅ Endettement projeté : on prend la mensualité projet (dépend de la durée)
+    // ✅ Endettement projeté (mode simple) : on reste sur la mensualité max (capacité)
+    const mensualiteProjetPourDti = capaciteMensuelle;
     const tauxAvecProjet =
-      revenusPrisEnCompte > 0 ? ((chargesActuelles + (mensualiteProjet || 0)) / revenusPrisEnCompte) * 100 : 0;
+      revenusPrisEnCompte > 0 ? ((chargesActuelles + (mensualiteProjetPourDti || 0)) / revenusPrisEnCompte) * 100 : 0;
 
     const resume: ResumeCapacite = {
       revenusPrisEnCompte,
@@ -878,7 +858,6 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       tauxEndettementAvecProjet: tauxAvecProjet,
       mensualiteMax: capaciteMensuelle,
       montantMax,
-      mensualiteProjet,
       apport,
       budgetTotalMax,
       apportMinRecommande,
@@ -913,17 +892,12 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         tauxActuel
       )}.`,
       capaciteMensuelle > 0
-        ? `Votre capacité mensuelle “max” (cible ${formatPct(tauxEndettementCible)}) est ${formatEuro(
+        ? `La mensualité “max” théorique disponible (cible ${formatPct(tauxEndettementCible)}) est ${formatEuro(
             capaciteMensuelle
-          )}. Référence : cela donne ~${formatEuro(montantMax)} de capital sur ${DUREE_REFERENCE} ans à ~${tauxCreditCible.toLocaleString("fr-FR", {
+          )}. Cela correspond à ~${formatEuro(montantMax)} de capital sur ${dureeCreditCible} ans à ~${tauxCreditCible.toLocaleString("fr-FR", {
             maximumFractionDigits: 2,
           })} %.`
         : `Avec les paramètres actuels, aucune capacité mensuelle n’apparaît si l’on reste sur un taux d’endettement cible de ${formatPct(tauxEndettementCible)}.`,
-      montantMax > 0
-        ? `Si vous gardez ce capital (~${formatEuro(montantMax)}) et changez la durée à ${dureeCreditCible} ans, la mensualité nécessaire serait ~${formatEuro(
-            mensualiteProjet
-          )} (ce qui fait varier l’endettement et le score).`
-        : `La mensualité projetée n’est pas calculable sans capital.`,
       `Hypothèses frais (${projectTypeLabel}) : notaire ~${(tauxNotaire * 100).toLocaleString("fr-FR", {
         maximumFractionDigits: 1,
       })}%${tauxAgence > 0 ? `, agence ~${(tauxAgence * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}%` : ""}.`,
@@ -935,7 +909,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             prixBienMax
           )} (coût total projet ~${formatEuro(coutTotalProjetMax)}).`
         : `La projection d’un budget max n’est pas pertinente avec ces paramètres : retravaillez durée, taux ou charges.`,
-      `Mode “what-if durée” : le capital max est calculé sur 25 ans, puis la durée change la mensualité et donc le score.`,
+      `Mode simple : le score se base sur votre capacité maximale (lecture prudente).`,
     ];
 
     const texte = lignes.join("\n");
@@ -1807,7 +1781,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                 <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Capital empruntable</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.montantMax)}</p>
                 <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                  Référence : 25 ans à ~{tauxCreditCible.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%.
+                  Sur {dureeCreditCible} ans à ~{tauxCreditCible.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%.
                 </p>
               </div>
 
@@ -1830,25 +1804,6 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                 <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Endettement</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{formatPct(resumeCapacite!.tauxEndettementAvecProjet)}</p>
                 <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">Actuel : {formatPct(resumeCapacite!.tauxEndettementActuel)}</p>
-              </div>
-            </div>
-
-            {/* ✅ Nouvelle carte "Mensualité projet" */}
-            <div className="grid gap-3 sm:grid-cols-4 items-stretch mt-3">
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2 h-full flex flex-col">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Mensualité estimée (pour garder le capital)</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.mensualiteProjet)}</p>
-                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                  Sur {dureeCreditCible} ans à ~{tauxCreditCible.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%, pour emprunter {formatEuro(resumeCapacite!.montantMax)}.
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2 h-full flex flex-col">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Lecture</p>
-                <p className="mt-1 text-[0.75rem] text-slate-700 leading-relaxed">
-                  La durée ne change pas votre “capacité” (mensualité max), mais change la mensualité nécessaire si vous gardez le même capital — et donc l’endettement & le score.
-                </p>
-                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">C’est exactement l’effet “25 ans → 2 ans”.</p>
               </div>
             </div>
 
