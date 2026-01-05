@@ -43,8 +43,7 @@ export default function CapaciteEmpruntPage() {
   }, []);
 
   const displayName =
-    user?.user_metadata?.full_name ||
-    (user?.email ? user.email.split("@")[0] : null);
+    user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
 
   const isLoggedIn = !!user;
 
@@ -54,11 +53,18 @@ export default function CapaciteEmpruntPage() {
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header de la page */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-2">
-            <p className="text-xs uppercase tracking-[0.18em] text-emerald-600">
-              Calculette capacité d&apos;emprunt
-            </p>
+          {/* Header de la page (identité visuelle capacité) */}
+          <section className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm p-5 space-y-3">
+            {/* Titre calculette (plus gros + style différent) */}
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+                CALCULETTE CAPACITÉ D&apos;EMPRUNT
+              </p>
+
+              <span className="hidden sm:inline-flex items-center rounded-full border border-emerald-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-emerald-700">
+                Lokt.fr
+              </span>
+            </div>
 
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
               {displayName
@@ -73,11 +79,13 @@ export default function CapaciteEmpruntPage() {
             </p>
 
             {!isLoggedIn && (
-              <p className="text-[0.7rem] text-slate-500">
-                Sans compte, vous accédez à la simulation et à la synthèse.
-                En créant votre espace, vous pourrez sauvegarder vos scénarios
-                et accéder aux autres outils (investissement, prêt relais, parc immobilier).
-              </p>
+              <div className="rounded-xl border border-emerald-200/70 bg-white/70 p-3">
+                <p className="text-[0.7rem] text-slate-600">
+                  Sans compte, vous accédez à la simulation et à la synthèse.
+                  En créant votre espace, vous pourrez sauvegarder vos scénarios
+                  et accéder aux autres outils (investissement, prêt relais, parc immobilier).
+                </p>
+              </div>
             )}
           </section>
 
@@ -87,9 +95,7 @@ export default function CapaciteEmpruntPage() {
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
-        <p>
-          © {new Date().getFullYear()} MT Courtage & Investissement — Simulations indicatives.
-        </p>
+        <p>© {new Date().getFullYear()} MT Courtage & Investissement — Simulations indicatives.</p>
         <p className="mt-1">
           Contact :{" "}
           <a href="mailto:mtcourtage@gmail.com" className="underline">

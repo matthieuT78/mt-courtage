@@ -1,9 +1,7 @@
 // pages/parc-immobilier.tsx
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import AppHeader from "../components/AppHeader";
-import { supabase } from "../lib/supabaseClient";
 
 import {
   Chart as ChartJS,
@@ -34,7 +32,7 @@ const Line = dynamic(() => import("react-chartjs-2").then((m) => m.Line), {
 });
 
 function formatEuro(val: number) {
-  if (Number.isNaN(val)) return "-";
+  if (!Number.isFinite(val)) return "-";
   return val.toLocaleString("fr-FR", {
     style: "currency",
     currency: "EUR",
@@ -43,12 +41,16 @@ function formatEuro(val: number) {
 }
 
 function formatPct(val: number) {
-  if (Number.isNaN(val)) return "-";
+  if (!Number.isFinite(val)) return "-";
   return (
     val.toLocaleString("fr-FR", {
       maximumFractionDigits: 2,
     }) + " %"
   );
+}
+
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
 }
 
 type Bien = {
@@ -59,9 +61,27 @@ type Bien = {
   chargesAnnuelles: number;
   mensualiteCredit: number;
   assuranceEmprunteurAnnuelle: number;
+
+  // Calculs "simples" (brut)
   resultatNetAnnuel: number;
   cashflowMensuel: number;
   rendementNet: number;
+
+  // Paramètres par bien (avancé)
+  vacancePct: number; // %
+  gestionPct: number; // %
+  impotsPct: number; // % (simplifié)
+  fraisVentePct: number; // %
+
+  // Calculs avancés (ajusté)
+  resultatNetAnnuelAjuste: number;
+  cashflowMensuelAjuste: number;
+  rendementNetAjuste: number;
+
+  // Indicateurs avancés
+  dscr: number;
+  ltv: number;
+  breakevenVente: number;
 };
 
 type ResumeGlobal = {
@@ -69,6 +89,12 @@ type ResumeGlobal = {
   encoursCredit: number;
   cashflowMensuelGlobal: number;
   rendementNetMoyen: number;
+
+  // Avancé
+  cashflowMensuelGlobalAjuste: number;
+  rendementNetMoyenAjuste: number;
+  ltvGlobal: number;
+  dscrGlobal: number;
 };
 
 function InfoBadge({ text }: { text: string }) {
@@ -84,85 +110,63 @@ function InfoBadge({ text }: { text: string }) {
   );
 }
 
+function defaultBien(idx: number): Bien {
+  return {
+    nom: idx === 0 ? "Appartement #1" : `Bien #${idx + 1}`,
+    valeurBien: idx === 0 ? 250000 : 0,
+    capitalRestantDu: idx === 0 ? 150000 : 0,
+    loyerMensuel: idx === 0 ? 900 : 0,
+    chargesAnnuelles: idx === 0 ? 3000 : 0,
+    mensualiteCredit: idx === 0 ? 650 : 0,
+    assuranceEmprunteurAnnuelle: idx === 0 ? 400 : 0,
+
+    resultatNetAnnuel: 0,
+    cashflowMensuel: 0,
+    rendementNet: 0,
+
+    // Paramètres par bien (avancé) - valeurs "raisonnables" par défaut
+    vacancePct: 5,
+    gestionPct: 7,
+    impotsPct: 0,
+    fraisVentePct: 7,
+
+    resultatNetAnnuelAjuste: 0,
+    cashflowMensuelAjuste: 0,
+    rendementNetAjuste: 0,
+
+    dscr: 0,
+    ltv: 0,
+    breakevenVente: 0,
+  };
+}
+
 export default function ParcImmobilierPage() {
   /* ============================
-     AUTH (comme investissement)
+     MODE SIMPLE vs AVANCÉ
   ============================ */
-  const [user, setUser] = useState<any>(null);
-  const [checkingUser, setCheckingUser] = useState(true);
-  const isLoggedIn = !!user?.id;
-
-  useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setUser(data.session?.user ?? null);
-      setCheckingUser(false);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-      if (!mounted) return;
-      setUser(session?.user ?? null);
-      setCheckingUser(false);
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
+  const [advancedMode, setAdvancedMode] = useState<boolean>(false);
 
   /* ============================
      STATE CALCULETTE
   ============================ */
   const [nbBiens, setNbBiens] = useState(1);
-  const [biens, setBiens] = useState<Bien[]>([
-    {
-      nom: "Appartement #1",
-      valeurBien: 250000,
-      capitalRestantDu: 150000,
-      loyerMensuel: 900,
-      chargesAnnuelles: 3000,
-      mensualiteCredit: 650,
-      assuranceEmprunteurAnnuelle: 400,
-      resultatNetAnnuel: 0,
-      cashflowMensuel: 0,
-      rendementNet: 0,
-    },
-  ]);
+  const [biens, setBiens] = useState<Bien[]>([defaultBien(0)]);
 
   const [resumeGlobal, setResumeGlobal] = useState<ResumeGlobal | null>(null);
   const [analyseTexte, setAnalyseTexte] = useState<string>("");
+
   const [barData, setBarData] = useState<any | null>(null);
   const [lineData, setLineData] = useState<any | null>(null);
 
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
-
   const hasSimulation = !!resumeGlobal && !!barData && !!lineData;
-
-  const shouldBlurAnalysis = hasSimulation && !isLoggedIn;
 
   const handleNbBiensChange = (value: number) => {
     const n = Math.min(Math.max(value, 1), 20);
     setNbBiens(n);
+
     setBiens((prev) => {
       const arr = [...prev];
-      while (arr.length < n) {
-        arr.push({
-          nom: `Bien #${arr.length + 1}`,
-          valeurBien: 0,
-          capitalRestantDu: 0,
-          loyerMensuel: 0,
-          chargesAnnuelles: 0,
-          mensualiteCredit: 0,
-          assuranceEmprunteurAnnuelle: 0,
-          resultatNetAnnuel: 0,
-          cashflowMensuel: 0,
-          rendementNet: 0,
-        });
-      }
+      while (arr.length < n) arr.push(defaultBien(arr.length));
       return arr.slice(0, n);
     });
   };
@@ -171,79 +175,134 @@ export default function ParcImmobilierPage() {
     setBiens((prev) => {
       const arr = [...prev];
       const bien = { ...arr[index] };
+
       if (field === "nom") {
         bien.nom = value;
       } else {
         (bien as any)[field] = parseFloat(value) || 0;
       }
+
       arr[index] = bien;
       return arr;
     });
   };
 
-  const handleCalculParc = () => {
-    setSaveMessage(null);
+  const computeAdjusted = (b: Bien) => {
+    const loyersAnnuels = (b.loyerMensuel || 0) * 12;
+    const chargesAnnuelles = b.chargesAnnuelles || 0;
 
+    const vacance = loyersAnnuels * clamp((b.vacancePct || 0) / 100, 0, 1);
+    const gestion = loyersAnnuels * clamp((b.gestionPct || 0) / 100, 0, 1);
+
+    const revenuAvantImpots = loyersAnnuels - chargesAnnuelles - vacance - gestion;
+    const impots = Math.max(0, revenuAvantImpots * clamp((b.impotsPct || 0) / 100, 0, 1));
+
+    return {
+      loyersAnnuels,
+      chargesAnnuelles,
+      revenuNetAvantCredit: loyersAnnuels - chargesAnnuelles, // "brut"
+      revenuAvantImpots,
+      impots,
+      revenuApresImpots: revenuAvantImpots - impots,
+    };
+  };
+
+  const handleCalculParc = () => {
     const updatedBiens: Bien[] = biens.slice(0, nbBiens).map((b) => {
       const loyersAnnuels = (b.loyerMensuel || 0) * 12;
       const chargesAnnuelles = b.chargesAnnuelles || 0;
       const annuiteCredit = (b.mensualiteCredit || 0) * 12;
       const annuiteAssurance = b.assuranceEmprunteurAnnuelle || 0;
+      const serviceDette = annuiteCredit + annuiteAssurance;
 
+      // SIMPLE (identique à ta version précédente)
       const revenuNetAvantCredit = loyersAnnuels - chargesAnnuelles;
-      const resultatNetAnnuel =
-        revenuNetAvantCredit - annuiteCredit - annuiteAssurance;
+      const resultatNetAnnuel = revenuNetAvantCredit - serviceDette;
       const cashflowMensuel = resultatNetAnnuel / 12;
+      const rendementNet = b.valeurBien > 0 ? (revenuNetAvantCredit / b.valeurBien) * 100 : 0;
 
-      const rendementNet =
-        b.valeurBien > 0 ? (revenuNetAvantCredit / b.valeurBien) * 100 : 0;
+      // AVANCÉ (ajusté) — uniquement utilisé si advancedMode=true mais on calcule quand même
+      const adj = computeAdjusted(b);
+      const resultatNetAnnuelAjuste = adj.revenuApresImpots - serviceDette;
+      const cashflowMensuelAjuste = resultatNetAnnuelAjuste / 12;
+      const rendementNetAjuste = b.valeurBien > 0 ? (adj.revenuAvantImpots / b.valeurBien) * 100 : 0;
+
+      // Indicateurs avancés
+      const dscr = serviceDette > 0 ? revenuNetAvantCredit / serviceDette : 0;
+      const ltv = b.valeurBien > 0 ? (b.capitalRestantDu / b.valeurBien) * 100 : 0;
+
+      const fraisV = clamp((b.fraisVentePct || 0) / 100, 0, 0.3);
+      const breakevenVente =
+        (b.capitalRestantDu || 0) > 0 && (1 - fraisV) > 0 ? (b.capitalRestantDu || 0) / (1 - fraisV) : 0;
 
       return {
         ...b,
         resultatNetAnnuel,
         cashflowMensuel,
         rendementNet,
+        resultatNetAnnuelAjuste,
+        cashflowMensuelAjuste,
+        rendementNetAjuste,
+        dscr,
+        ltv,
+        breakevenVente,
       };
     });
 
     setBiens(updatedBiens);
 
-    const valeurParc = updatedBiens.reduce(
-      (sum, b) => sum + (b.valeurBien || 0),
-      0
-    );
-    const encoursCredit = updatedBiens.reduce(
-      (sum, b) => sum + (b.capitalRestantDu || 0),
-      0
-    );
-    const cashflowMensuelGlobal = updatedBiens.reduce(
-      (sum, b) => sum + (b.cashflowMensuel || 0),
-      0
-    );
+    const valeurParc = updatedBiens.reduce((sum, b) => sum + (b.valeurBien || 0), 0);
+    const encoursCredit = updatedBiens.reduce((sum, b) => sum + (b.capitalRestantDu || 0), 0);
 
+    const cashflowMensuelGlobal = updatedBiens.reduce((sum, b) => sum + (b.cashflowMensuel || 0), 0);
     const rendementNetMoyen =
       updatedBiens.length > 0
-        ? updatedBiens.reduce((sum, b) => sum + (b.rendementNet || 0), 0) /
-          updatedBiens.length
+        ? updatedBiens.reduce((sum, b) => sum + (b.rendementNet || 0), 0) / updatedBiens.length
         : 0;
 
-    const resume: ResumeGlobal = {
+    const cashflowMensuelGlobalAjuste = updatedBiens.reduce((sum, b) => sum + (b.cashflowMensuelAjuste || 0), 0);
+    const rendementNetMoyenAjuste =
+      updatedBiens.length > 0
+        ? updatedBiens.reduce((sum, b) => sum + (b.rendementNetAjuste || 0), 0) / updatedBiens.length
+        : 0;
+
+    // Global LTV & DSCR (brut)
+    const totalRevenuNetAvantCredit = updatedBiens.reduce((sum, b) => {
+      const loyersAnnuels = (b.loyerMensuel || 0) * 12;
+      const charges = b.chargesAnnuelles || 0;
+      return sum + (loyersAnnuels - charges);
+    }, 0);
+
+    const totalServiceDette = updatedBiens.reduce((sum, b) => {
+      const annuiteCredit = (b.mensualiteCredit || 0) * 12;
+      const annuiteAssurance = b.assuranceEmprunteurAnnuelle || 0;
+      return sum + (annuiteCredit + annuiteAssurance);
+    }, 0);
+
+    const ltvGlobal = valeurParc > 0 ? (encoursCredit / valeurParc) * 100 : 0;
+    const dscrGlobal = totalServiceDette > 0 ? totalRevenuNetAvantCredit / totalServiceDette : 0;
+
+    setResumeGlobal({
       valeurParc,
       encoursCredit,
       cashflowMensuelGlobal,
       rendementNetMoyen,
-    };
-    setResumeGlobal(resume);
+      cashflowMensuelGlobalAjuste,
+      rendementNetMoyenAjuste,
+      ltvGlobal,
+      dscrGlobal,
+    });
 
+    // Graphs: en simple = brut, en avancé = ajusté
     const labels = updatedBiens.map((b, idx) => b.nom || `Bien #${idx + 1}`);
-    const cashFlows = updatedBiens.map((b) => b.resultatNetAnnuel || 0);
-    const rendements = updatedBiens.map((b) => b.rendementNet || 0);
+    const cashFlows = updatedBiens.map((b) => (advancedMode ? b.resultatNetAnnuelAjuste : b.resultatNetAnnuel) || 0);
+    const rendements = updatedBiens.map((b) => (advancedMode ? b.rendementNetAjuste : b.rendementNet) || 0);
 
     setBarData({
       labels,
       datasets: [
         {
-          label: "Cash-flow annuel (€)",
+          label: advancedMode ? "Cash-flow annuel ajusté (€)" : "Cash-flow annuel (€)",
           data: cashFlows,
           backgroundColor: cashFlows.map((v) => (v >= 0 ? "#22c55e" : "#ef4444")),
         },
@@ -254,7 +313,7 @@ export default function ParcImmobilierPage() {
       labels,
       datasets: [
         {
-          label: "Rendement net (%)",
+          label: advancedMode ? "Rendement net ajusté (%)" : "Rendement net (%)",
           data: rendements,
           borderColor: "#0f172a",
           backgroundColor: "rgba(15,23,42,0.08)",
@@ -263,87 +322,51 @@ export default function ParcImmobilierPage() {
       ],
     });
 
+    // Analyse texte (simple vs avancé)
     let bienTop = updatedBiens[0];
     let bienWorst = updatedBiens[0];
+
     updatedBiens.forEach((b) => {
-      if (b.rendementNet > bienTop.rendementNet) bienTop = b;
-      if (b.rendementNet < bienWorst.rendementNet) bienWorst = b;
+      const r = advancedMode ? (b.rendementNetAjuste || 0) : (b.rendementNet || 0);
+      const topR = advancedMode ? (bienTop.rendementNetAjuste || 0) : (bienTop.rendementNet || 0);
+      const worstR = advancedMode ? (bienWorst.rendementNetAjuste || 0) : (bienWorst.rendementNet || 0);
+
+      if (r > topR) bienTop = b;
+      if (r < worstR) bienWorst = b;
     });
 
     const lignes: string[] = [
-      `Votre parc se compose de ${updatedBiens.length} bien(s) pour une valeur totale estimée de ${formatEuro(
-        valeurParc
-      )} et un encours de crédit d’environ ${formatEuro(encoursCredit)}.`,
-      `En agrégé, le cash-flow mensuel ressort à ${formatEuro(
-        cashflowMensuelGlobal
-      )}. Un cash-flow positif signifie que vos loyers couvrent les charges et crédits, tout en laissant un excédent. Un cash-flow légèrement négatif peut rester acceptable si la localisation et le potentiel de revalorisation sont forts.`,
-      `Le rendement net moyen (avant impôts) sur l’ensemble des biens est d’environ ${formatPct(
-        rendementNetMoyen
-      )}.`,
-      `Le bien le plus performant est ${
-        bienTop.nom
-      } avec un rendement net d’environ ${formatPct(
-        bienTop.rendementNet
-      )} et un cash-flow annuel de ${formatEuro(
-        bienTop.resultatNetAnnuel
-      )}. À l’inverse, le bien le moins performant est ${
-        bienWorst.nom
-      } avec un rendement net d’environ ${formatPct(
-        bienWorst.rendementNet
-      )} et un cash-flow annuel de ${formatEuro(
-        bienWorst.resultatNetAnnuel
-      )}.`,
-      `Cette photographie vous permet d’identifier les biens qui tirent votre parc vers le haut (candidats à d’éventuels travaux de valorisation ou de maintien) et ceux qui le pénalisent (candidats à renégociation de crédit, optimisation du loyer ou arbitrage de vente).`,
+      `Votre parc se compose de ${updatedBiens.length} bien(s) pour une valeur totale estimée de ${formatEuro(valeurParc)} et un encours de crédit d’environ ${formatEuro(encoursCredit)}.`,
     ];
 
-    setAnalyseTexte(lignes.join("\n"));
-  };
-
-  const handlePrintPDF = () => {
-    if (typeof window !== "undefined") window.print();
-  };
-
-  const handleSaveProject = async () => {
-    if (!resumeGlobal || !biens.length) return;
-
-    setSaving(true);
-    setSaveMessage(null);
-
-    try {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-
-      const session = sessionData?.session;
-      if (!session) {
-        if (typeof window !== "undefined") {
-          window.location.href =
-            "/mon-compte?mode=login&redirect=/parc-immobilier";
-        }
-        return;
-      }
-
-      const { error } = await supabase.from("projects").insert({
-        user_id: session.user.id,
-        type: "parc",
-        title: "Analyse parc immobilier",
-        data: {
-          biens,
-          resumeGlobal,
-          texte: analyseTexte,
-        },
-      });
-
-      if (error) throw error;
-      setSaveMessage("✅ Analyse du parc sauvegardée dans votre espace.");
-    } catch (err: any) {
-      setSaveMessage(
-        "❌ Erreur lors de la sauvegarde du projet : " +
-          (err?.message || "erreur inconnue")
+    if (!advancedMode) {
+      lignes.push(
+        `En agrégé, le cash-flow mensuel ressort à ${formatEuro(cashflowMensuelGlobal)}. Un cash-flow positif signifie que vos loyers couvrent les charges et crédits, tout en laissant un excédent. Un cash-flow légèrement négatif peut rester acceptable si la localisation et le potentiel de revalorisation sont forts.`
       );
-    } finally {
-      setSaving(false);
+      lignes.push(`Le rendement net moyen (avant impôts) sur l’ensemble des biens est d’environ ${formatPct(rendementNetMoyen)}.`);
+      lignes.push(
+        `Le bien le plus performant est ${bienTop.nom} avec un rendement net d’environ ${formatPct(bienTop.rendementNet)} et un cash-flow annuel de ${formatEuro(bienTop.resultatNetAnnuel)}. À l’inverse, le bien le moins performant est ${bienWorst.nom} avec un rendement net d’environ ${formatPct(bienWorst.rendementNet)} et un cash-flow annuel de ${formatEuro(bienWorst.resultatNetAnnuel)}.`
+      );
+      lignes.push(
+        `Cette photographie vous permet d’identifier les biens qui tirent votre parc vers le haut (candidats à d’éventuels travaux de valorisation ou de maintien) et ceux qui le pénalisent (candidats à renégociation de crédit, optimisation du loyer ou arbitrage de vente).`
+      );
+    } else {
+      lignes.push(
+        `En version avancée (paramètres par bien : vacance/gestion/impôts), le cash-flow mensuel ajusté ressort à ${formatEuro(cashflowMensuelGlobalAjuste)}.`
+      );
+      lignes.push(`Le rendement moyen ajusté est d’environ ${formatPct(rendementNetMoyenAjuste)}.`);
+      lignes.push(
+        `Indicateurs : LTV global ~${formatPct(ltvGlobal)} et DSCR global ~${Number.isFinite(dscrGlobal) ? dscrGlobal.toFixed(2) : "-"}.`
+      );
+      lignes.push(
+        `Le bien le plus performant (ajusté) est ${bienTop.nom} avec ~${formatPct(bienTop.rendementNetAjuste)} et un cash-flow annuel ajusté de ${formatEuro(bienTop.resultatNetAnnuelAjuste)}. À l’inverse, le bien le moins performant est ${bienWorst.nom} avec ~${formatPct(bienWorst.rendementNetAjuste)} et un cash-flow annuel ajusté de ${formatEuro(bienWorst.resultatNetAnnuelAjuste)}.`
+      );
+      lignes.push(
+        `Astuce : si un bien a un DSCR < 1,10 ou un cash-flow ajusté négatif, c’est un bon candidat à optimiser (loyer, charges, renégociation) ou à arbitrer.`
+      );
     }
+
+    setAnalyseTexte(lignes.join("\n"));
   };
 
   const renderAnalysisBlocks = (text: string) => {
@@ -358,17 +381,70 @@ export default function ParcImmobilierPage() {
             className="flex items-start gap-2 rounded-lg border border-slate-200 bg-white/70 px-3 py-2"
           >
             <span className="mt-1 text-xs text-indigo-600">●</span>
-            <p className="text-[0.8rem] text-slate-800 leading-relaxed">
-              {line}
-            </p>
+            <p className="text-[0.8rem] text-slate-800 leading-relaxed">{line}</p>
           </div>
         ))}
       </div>
     );
   };
 
+  const advancedCards = useMemo(() => {
+    if (!resumeGlobal) return null;
+
+    const dscr = resumeGlobal.dscrGlobal;
+    const ltv = resumeGlobal.ltvGlobal;
+
+    const dscrHint =
+      dscr >= 1.2 ? "Solide : le parc couvre bien sa dette."
+      : dscr >= 1.05 ? "Correct : marge faible, surveiller."
+      : "Sous tension : parc fragile côté dette.";
+
+    const ltvHint =
+      ltv <= 60 ? "Prudent."
+      : ltv <= 80 ? "Standard."
+      : "Élevé : levier important.";
+
+    return (
+      <div className="grid gap-3 sm:grid-cols-4 mt-3">
+        <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+          <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">LTV global</p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">{formatPct(ltv)}</p>
+          <p className="mt-1 text-[0.7rem] text-slate-500">{ltvHint}</p>
+        </div>
+
+        <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+          <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">DSCR global</p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">
+            {Number.isFinite(dscr) ? dscr.toFixed(2) : "-"}
+          </p>
+          <p className="mt-1 text-[0.7rem] text-slate-500">{dscrHint}</p>
+        </div>
+
+        <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+          <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Cash-flow ajusté</p>
+          <p
+            className={
+              "mt-1 text-sm font-semibold " +
+              (resumeGlobal.cashflowMensuelGlobalAjuste >= 0 ? "text-emerald-700" : "text-red-600")
+            }
+          >
+            {formatEuro(resumeGlobal.cashflowMensuelGlobalAjuste)}
+          </p>
+          <p className="mt-1 text-[0.7rem] text-slate-500">Après vacance/gestion/impôts.</p>
+        </div>
+
+        <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+          <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Rendement ajusté</p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">{formatPct(resumeGlobal.rendementNetMoyenAjuste)}</p>
+          <p className="mt-1 text-[0.7rem] text-slate-500">Lecture plus “terrain”.</p>
+        </div>
+      </div>
+    );
+  }, [resumeGlobal]);
+
   const renderRecapTable = () => {
     if (!hasSimulation) return null;
+
     const dataBiens = biens.slice(0, nbBiens);
 
     let totalValeur = 0;
@@ -378,6 +454,10 @@ export default function ParcImmobilierPage() {
     let totalCreditAssuranceAnnuel = 0;
     let totalResultatNetAnnuel = 0;
     let totalCashflowMensuel = 0;
+
+    let totalResultatNetAnnuelAdj = 0;
+    let totalCashflowMensuelAdj = 0;
+
     let totalRevenuNetAvantCredit = 0;
 
     dataBiens.forEach((b) => {
@@ -385,121 +465,136 @@ export default function ParcImmobilierPage() {
       const charges = b.chargesAnnuelles || 0;
       const annuiteCredit = (b.mensualiteCredit || 0) * 12;
       const annuiteAssurance = b.assuranceEmprunteurAnnuelle || 0;
+      const serviceDette = annuiteCredit + annuiteAssurance;
+
       const revenuNetAvantCredit = loyersAnnuels - charges;
 
       totalValeur += b.valeurBien || 0;
       totalCRD += b.capitalRestantDu || 0;
       totalLoyersAnnuels += loyersAnnuels;
       totalChargesAnnuelles += charges;
-      totalCreditAssuranceAnnuel += annuiteCredit + annuiteAssurance;
+      totalCreditAssuranceAnnuel += serviceDette;
+
       totalResultatNetAnnuel += b.resultatNetAnnuel || 0;
       totalCashflowMensuel += b.cashflowMensuel || 0;
+
+      totalResultatNetAnnuelAdj += b.resultatNetAnnuelAjuste || 0;
+      totalCashflowMensuelAdj += b.cashflowMensuelAjuste || 0;
+
       totalRevenuNetAvantCredit += revenuNetAvantCredit;
     });
 
-    const rendementGlobal =
-      totalValeur > 0 ? (totalRevenuNetAvantCredit / totalValeur) * 100 : 0;
+    const rendementGlobal = totalValeur > 0 ? (totalRevenuNetAvantCredit / totalValeur) * 100 : 0;
 
     return (
-      <section className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-md p-4 space-y-4 relative">
-        <div
-          className={
-            shouldBlurAnalysis ? "blur-sm select-none pointer-events-none" : ""
-          }
-        >
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-              Synthèse globale du parc
-            </p>
-            <table className="w-full text-[0.75rem] text-slate-800">
-              <tbody>
-                <tr>
-                  <td className="py-1 pr-2">Valeur totale du parc</td>
-                  <td className="py-1 text-right font-semibold">
-                    {formatEuro(totalValeur)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1 pr-2">Encours de crédit total</td>
-                  <td className="py-1 text-right font-semibold">
-                    {formatEuro(totalCRD)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1 pr-2">Loyers annuels totaux</td>
-                  <td className="py-1 text-right font-semibold">
-                    {formatEuro(totalLoyersAnnuels)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1 pr-2">Charges annuelles totales</td>
-                  <td className="py-1 text-right font-semibold">
-                    {formatEuro(totalChargesAnnuelles)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1 pr-2">Crédit + assurance (annuels)</td>
-                  <td className="py-1 text-right font-semibold">
-                    {formatEuro(totalCreditAssuranceAnnuel)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1 pr-2">Résultat net annuel global</td>
-                  <td className="py-1 text-right font-semibold">
-                    {formatEuro(totalResultatNetAnnuel)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1 pr-2">Cash-flow mensuel global</td>
-                  <td className="py-1 text-right font-semibold">
-                    {formatEuro(totalCashflowMensuel)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1 pr-2">Rendement net global</td>
-                  <td className="py-1 text-right font-semibold">
-                    {formatPct(rendementGlobal)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+      <section className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-md p-4 space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+            Synthèse globale du parc
+          </p>
+          <table className="w-full text-[0.75rem] text-slate-800">
+            <tbody>
+              <tr>
+                <td className="py-1 pr-2">Valeur totale du parc</td>
+                <td className="py-1 text-right font-semibold">{formatEuro(totalValeur)}</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Encours de crédit total</td>
+                <td className="py-1 text-right font-semibold">{formatEuro(totalCRD)}</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Loyers annuels totaux</td>
+                <td className="py-1 text-right font-semibold">{formatEuro(totalLoyersAnnuels)}</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Charges annuelles totales</td>
+                <td className="py-1 text-right font-semibold">{formatEuro(totalChargesAnnuelles)}</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Crédit + assurance (annuels)</td>
+                <td className="py-1 text-right font-semibold">{formatEuro(totalCreditAssuranceAnnuel)}</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Résultat net annuel global</td>
+                <td className="py-1 text-right font-semibold">{formatEuro(totalResultatNetAnnuel)}</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Cash-flow mensuel global</td>
+                <td className="py-1 text-right font-semibold">{formatEuro(totalCashflowMensuel)}</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-2">Rendement net global</td>
+                <td className="py-1 text-right font-semibold">{formatPct(rendementGlobal)}</td>
+              </tr>
+
+              {advancedMode ? (
+                <>
+                  <tr>
+                    <td className="py-1 pr-2">Résultat net annuel (ajusté)</td>
+                    <td className="py-1 text-right font-semibold">{formatEuro(totalResultatNetAnnuelAdj)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1 pr-2">Cash-flow mensuel (ajusté)</td>
+                    <td className="py-1 text-right font-semibold">{formatEuro(totalCashflowMensuelAdj)}</td>
+                  </tr>
+                </>
+              ) : null}
+            </tbody>
+          </table>
         </div>
 
-        {!checkingUser && shouldBlurAnalysis && (
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            <div className="max-w-md rounded-2xl border border-slate-200 bg-white/90 backdrop-blur px-5 py-4 shadow-lg">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-indigo-700 mb-1">
-                Analyse réservée aux inscrits
-              </p>
-              <p className="text-sm font-semibold text-slate-900">
-                Débloquez l’analyse complète
-              </p>
-              <p className="text-xs text-slate-600 mt-1">
-                Créez un compte gratuit pour accéder à l’analyse détaillée, au
-                tableau récapitulatif et sauvegarder vos projets.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <Link
-                  href={`/mon-compte?mode=register&redirect=${encodeURIComponent(
-                    "/parc-immobilier"
-                  )}`}
-                  className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
-                >
-                  Créer un compte gratuit
-                </Link>
-                <Link
-                  href={`/mon-compte?mode=login&redirect=${encodeURIComponent(
-                    "/parc-immobilier"
-                  )}`}
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800"
-                >
-                  J’ai déjà un compte
-                </Link>
-              </div>
+        {/* Détail par bien uniquement en avancé (sinon on reste simple) */}
+        {advancedMode ? (
+          <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+              Détail par bien (avancé)
+            </p>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-[980px] w-full text-[0.72rem] text-slate-800">
+                <thead>
+                  <tr className="text-slate-500">
+                    <th className="text-left font-semibold py-2 pr-3">Bien</th>
+                    <th className="text-right font-semibold py-2 pr-3">LTV</th>
+                    <th className="text-right font-semibold py-2 pr-3">DSCR</th>
+                    <th className="text-right font-semibold py-2 pr-3">CF mensuel ajusté</th>
+                    <th className="text-right font-semibold py-2 pr-3">Rendement ajusté</th>
+                    <th className="text-right font-semibold py-2 pr-3">Vacance</th>
+                    <th className="text-right font-semibold py-2 pr-3">Gestion</th>
+                    <th className="text-right font-semibold py-2 pr-3">Impôts</th>
+                    <th className="text-right font-semibold py-2">Break-even vente</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dataBiens.map((b, idx) => (
+                    <tr key={idx} className="border-t border-slate-100">
+                      <td className="py-2 pr-3">{b.nom || `Bien #${idx + 1}`}</td>
+                      <td className="py-2 pr-3 text-right">{formatPct(b.ltv || 0)}</td>
+                      <td className="py-2 pr-3 text-right">{Number.isFinite(b.dscr || 0) ? (b.dscr || 0).toFixed(2) : "-"}</td>
+                      <td
+                        className={
+                          "py-2 pr-3 text-right font-semibold " +
+                          ((b.cashflowMensuelAjuste || 0) >= 0 ? "text-emerald-700" : "text-red-600")
+                        }
+                      >
+                        {formatEuro(b.cashflowMensuelAjuste || 0)}
+                      </td>
+                      <td className="py-2 pr-3 text-right">{formatPct(b.rendementNetAjuste || 0)}</td>
+                      <td className="py-2 pr-3 text-right">{formatPct(b.vacancePct || 0)}</td>
+                      <td className="py-2 pr-3 text-right">{formatPct(b.gestionPct || 0)}</td>
+                      <td className="py-2 pr-3 text-right">{formatPct(b.impotsPct || 0)}</td>
+                      <td className="py-2 text-right">{formatEuro(b.breakevenVente || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+
+            <p className="mt-2 text-[0.68rem] text-slate-500">
+              Break-even vente = prix minimum estimé pour solder le capital restant dû (avec frais de vente du bien).
+            </p>
           </div>
-        )}
+        ) : null}
       </section>
     );
   };
@@ -512,16 +607,28 @@ export default function ParcImmobilierPage() {
         <section className="grid gap-4 lg:grid-cols-2">
           {/* Formulaire biens */}
           <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-            <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-indigo-600 mb-1">
-                Calculette
-              </p>
-              <h2 className="text-lg font-semibold text-slate-900">
-                Décrivez vos biens locatifs
-              </h2>
-              <p className="text-xs text-slate-500">
-                Valeur actuelle, loyer, charges, capital restant dû et crédit.
-              </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-indigo-600 mb-1">Calculette</p>
+                <h2 className="text-lg font-semibold text-slate-900">Décrivez vos biens locatifs</h2>
+                <p className="text-xs text-slate-500">Valeur actuelle, loyer, charges, capital restant dû et crédit.</p>
+              </div>
+
+              {/* Toggle avancé */}
+              <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={advancedMode}
+                    onChange={(e) => setAdvancedMode(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <span className="text-[0.75rem] font-semibold text-slate-700">Version avancée</span>
+                </label>
+                <p className="text-[0.65rem] text-slate-500 mt-1 max-w-[180px]">
+                  Paramètres par bien + indicateurs (DSCR/LTV).
+                </p>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -535,9 +642,7 @@ export default function ParcImmobilierPage() {
                   min={1}
                   max={20}
                   value={nbBiens}
-                  onChange={(e) =>
-                    handleNbBiensChange(parseInt(e.target.value, 10) || 1)
-                  }
+                  onChange={(e) => handleNbBiensChange(parseInt(e.target.value, 10) || 1)}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
@@ -545,56 +650,35 @@ export default function ParcImmobilierPage() {
               {Array.from({ length: nbBiens }).map((_, idx) => {
                 const b = biens[idx];
                 return (
-                  <div
-                    key={idx}
-                    className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 space-y-2"
-                  >
-                    <p className="text-[0.7rem] font-semibold text-slate-700">
-                      Bien #{idx + 1}
-                    </p>
+                  <div key={idx} className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 space-y-2">
+                    <p className="text-[0.7rem] font-semibold text-slate-700">Bien #{idx + 1}</p>
 
                     <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">
-                        Nom du bien (libellé)
-                      </label>
+                      <label className="text-[0.7rem] text-slate-700">Nom du bien (libellé)</label>
                       <input
                         type="text"
                         value={b.nom}
-                        onChange={(e) =>
-                          updateBienField(idx, "nom", e.target.value)
-                        }
+                        onChange={(e) => updateBienField(idx, "nom", e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
 
                     <div className="grid gap-2 sm:grid-cols-2">
                       <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">
-                          Valeur actuelle estimée (€)
-                        </label>
+                        <label className="text-[0.7rem] text-slate-700">Valeur actuelle estimée (€)</label>
                         <input
                           type="number"
                           value={b.valeurBien}
-                          onChange={(e) =>
-                            updateBienField(idx, "valeurBien", e.target.value)
-                          }
+                          onChange={(e) => updateBienField(idx, "valeurBien", e.target.value)}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">
-                          Capital restant dû (€)
-                        </label>
+                        <label className="text-[0.7rem] text-slate-700">Capital restant dû (€)</label>
                         <input
                           type="number"
                           value={b.capitalRestantDu}
-                          onChange={(e) =>
-                            updateBienField(
-                              idx,
-                              "capitalRestantDu",
-                              e.target.value
-                            )
-                          }
+                          onChange={(e) => updateBienField(idx, "capitalRestantDu", e.target.value)}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
@@ -602,19 +686,11 @@ export default function ParcImmobilierPage() {
 
                     <div className="grid gap-2 sm:grid-cols-2">
                       <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">
-                          Loyer mensuel hors charges (€)
-                        </label>
+                        <label className="text-[0.7rem] text-slate-700">Loyer mensuel hors charges (€)</label>
                         <input
                           type="number"
                           value={b.loyerMensuel}
-                          onChange={(e) =>
-                            updateBienField(
-                              idx,
-                              "loyerMensuel",
-                              e.target.value
-                            )
-                          }
+                          onChange={(e) => updateBienField(idx, "loyerMensuel", e.target.value)}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
@@ -626,13 +702,7 @@ export default function ParcImmobilierPage() {
                         <input
                           type="number"
                           value={b.chargesAnnuelles}
-                          onChange={(e) =>
-                            updateBienField(
-                              idx,
-                              "chargesAnnuelles",
-                              e.target.value
-                            )
-                          }
+                          onChange={(e) => updateBienField(idx, "chargesAnnuelles", e.target.value)}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
@@ -640,40 +710,91 @@ export default function ParcImmobilierPage() {
 
                     <div className="grid gap-2 sm:grid-cols-2">
                       <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">
-                          Mensualité de crédit (€ / mois)
-                        </label>
+                        <label className="text-[0.7rem] text-slate-700">Mensualité de crédit (€ / mois)</label>
                         <input
                           type="number"
                           value={b.mensualiteCredit}
-                          onChange={(e) =>
-                            updateBienField(
-                              idx,
-                              "mensualiteCredit",
-                              e.target.value
-                            )
-                          }
+                          onChange={(e) => updateBienField(idx, "mensualiteCredit", e.target.value)}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">
-                          Assurance emprunteur (€/an)
-                        </label>
+                        <label className="text-[0.7rem] text-slate-700">Assurance emprunteur (€/an)</label>
                         <input
                           type="number"
                           value={b.assuranceEmprunteurAnnuelle}
-                          onChange={(e) =>
-                            updateBienField(
-                              idx,
-                              "assuranceEmprunteurAnnuelle",
-                              e.target.value
-                            )
-                          }
+                          onChange={(e) => updateBienField(idx, "assuranceEmprunteurAnnuelle", e.target.value)}
                           className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                       </div>
                     </div>
+
+                    {/* Paramètres par bien — uniquement si avancé */}
+                    {advancedMode ? (
+                      <div className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-3">
+                        <p className="text-[0.65rem] uppercase tracking-[0.16em] text-slate-500 mb-2">
+                          Paramètres avancés (par bien)
+                        </p>
+
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="space-y-1">
+                            <label className="text-[0.7rem] text-slate-700 flex items-center gap-1">
+                              Vacance (%)
+                              <InfoBadge text="Périodes sans locataire. Exemple : 5% ≈ ~18 jours/an." />
+                            </label>
+                            <input
+                              type="number"
+                              value={b.vacancePct}
+                              onChange={(e) => updateBienField(idx, "vacancePct", e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[0.7rem] text-slate-700 flex items-center gap-1">
+                              Gestion (%)
+                              <InfoBadge text="Gestion locative (agence) ou coût implicite si vous gérez." />
+                            </label>
+                            <input
+                              type="number"
+                              value={b.gestionPct}
+                              onChange={(e) => updateBienField(idx, "gestionPct", e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[0.7rem] text-slate-700 flex items-center gap-1">
+                              Impôts (%)
+                              <InfoBadge text="Approximation simplifiée. Mets 0 si tu ne veux pas l’intégrer." />
+                            </label>
+                            <input
+                              type="number"
+                              value={b.impotsPct}
+                              onChange={(e) => updateBienField(idx, "impotsPct", e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[0.7rem] text-slate-700 flex items-center gap-1">
+                              Frais vente (%)
+                              <InfoBadge text="Pour le break-even vente (agent + divers). Sert à estimer le prix mini pour solder le CRD." />
+                            </label>
+                            <input
+                              type="number"
+                              value={b.fraisVentePct}
+                              onChange={(e) => updateBienField(idx, "fraisVentePct", e.target.value)}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                          </div>
+                        </div>
+
+                        <p className="mt-2 text-[0.65rem] text-slate-500">
+                          Ces paramètres ne remplacent pas une étude fiscale complète (LMNP/réel/amortissements).
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -693,39 +814,13 @@ export default function ParcImmobilierPage() {
           <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 flex flex-col gap-3">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-indigo-600 mb-1">
-                  Résultats
-                </p>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  Vue d&apos;ensemble de votre parc
-                </h2>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-indigo-600 mb-1">Résultats</p>
+                <h2 className="text-lg font-semibold text-slate-900">Vue d&apos;ensemble de votre parc</h2>
                 <p className="text-xs text-slate-500">
                   Cash-flow global, encours, rendements et biens à surveiller.
                 </p>
               </div>
-
-              {hasSimulation && (
-                <div className="flex flex-col items-end gap-2">
-                  <button
-                    onClick={handlePrintPDF}
-                    className="inline-flex items-center justify-center rounded-full border border-amber-400/80 bg-amber-400 px-3 py-1.5 text-[0.7rem] font-semibold text-slate-900 shadow-sm hover:bg-amber-300"
-                  >
-                    PDF
-                  </button>
-                  <button
-                    onClick={handleSaveProject}
-                    disabled={saving}
-                    className="inline-flex items-center justify-center rounded-full border border-emerald-500/80 bg-emerald-500 px-3 py-1.5 text-[0.7rem] font-semibold text-white shadow-sm hover:bg-emerald-400 disabled:opacity-60"
-                  >
-                    {saving ? "Sauvegarde..." : "Sauvegarder ce projet"}
-                  </button>
-                  {saveMessage && (
-                    <p className="text-[0.65rem] text-slate-500 max-w-[220px] text-right">
-                      {saveMessage}
-                    </p>
-                  )}
-                </div>
-              )}
+              {/* ✅ PDF + sauvegarde supprimés */}
             </div>
 
             {hasSimulation ? (
@@ -733,51 +828,54 @@ export default function ParcImmobilierPage() {
                 {/* Cartes de synthèse */}
                 <div className="grid gap-3 sm:grid-cols-4 mt-1">
                   <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Valeur du parc
-                    </p>
+                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Valeur du parc</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                       {formatEuro(resumeGlobal!.valeurParc)}
                     </p>
                   </div>
                   <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Encours de crédit
-                    </p>
+                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Encours de crédit</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                       {formatEuro(resumeGlobal!.encoursCredit)}
                     </p>
                   </div>
+
                   <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Cash-flow mensuel global
+                      {advancedMode ? "Cash-flow mensuel ajusté" : "Cash-flow mensuel global"}
                     </p>
                     <p
                       className={
                         "mt-1 text-sm font-semibold " +
-                        (resumeGlobal!.cashflowMensuelGlobal >= 0
+                        ((advancedMode ? resumeGlobal!.cashflowMensuelGlobalAjuste : resumeGlobal!.cashflowMensuelGlobal) >= 0
                           ? "text-emerald-700"
                           : "text-red-600")
                       }
                     >
-                      {formatEuro(resumeGlobal!.cashflowMensuelGlobal)}
+                      {formatEuro(
+                        advancedMode ? resumeGlobal!.cashflowMensuelGlobalAjuste : resumeGlobal!.cashflowMensuelGlobal
+                      )}
                     </p>
                   </div>
+
                   <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
                     <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
-                      Rendement net moyen
+                      {advancedMode ? "Rendement moyen ajusté" : "Rendement net moyen"}
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {formatPct(resumeGlobal!.rendementNetMoyen)}
+                      {formatPct(advancedMode ? resumeGlobal!.rendementNetMoyenAjuste : resumeGlobal!.rendementNetMoyen)}
                     </p>
                   </div>
                 </div>
 
-                {/* Graphiques (laissés visibles même en visiteur) */}
+                {/* Cartes avancées */}
+                {advancedMode ? advancedCards : null}
+
+                {/* Graphiques */}
                 <div className="grid gap-4 lg:grid-cols-2 mt-3">
                   <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
                     <p className="text-xs text-slate-600 mb-2">
-                      Cash-flow annuel par bien.
+                      {advancedMode ? "Cash-flow annuel ajusté par bien." : "Cash-flow annuel par bien."}
                     </p>
                     {barData && (
                       <Bar
@@ -785,14 +883,8 @@ export default function ParcImmobilierPage() {
                         options={{
                           plugins: { legend: { display: false } },
                           scales: {
-                            x: {
-                              ticks: { color: "#0f172a", font: { size: 9 } },
-                              grid: { color: "#e5e7eb" },
-                            },
-                            y: {
-                              ticks: { color: "#0f172a", font: { size: 10 } },
-                              grid: { color: "#e5e7eb" },
-                            },
+                            x: { ticks: { color: "#0f172a", font: { size: 9 } }, grid: { color: "#e5e7eb" } },
+                            y: { ticks: { color: "#0f172a", font: { size: 10 } }, grid: { color: "#e5e7eb" } },
                           },
                         }}
                       />
@@ -801,26 +893,18 @@ export default function ParcImmobilierPage() {
 
                   <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
                     <p className="text-xs text-slate-600 mb-2">
-                      Rendement net par bien (avant impôts).
+                      {advancedMode ? "Rendement net ajusté par bien." : "Rendement net par bien (avant impôts)."}
                     </p>
                     {lineData && (
                       <Line
                         data={lineData}
                         options={{
                           plugins: {
-                            legend: {
-                              labels: { color: "#0f172a", font: { size: 11 } },
-                            },
+                            legend: { labels: { color: "#0f172a", font: { size: 11 } } },
                           },
                           scales: {
-                            x: {
-                              ticks: { color: "#0f172a", font: { size: 9 } },
-                              grid: { color: "#e5e7eb" },
-                            },
-                            y: {
-                              ticks: { color: "#0f172a", font: { size: 10 } },
-                              grid: { color: "#e5e7eb" },
-                            },
+                            x: { ticks: { color: "#0f172a", font: { size: 9 } }, grid: { color: "#e5e7eb" } },
+                            y: { ticks: { color: "#0f172a", font: { size: 10 } }, grid: { color: "#e5e7eb" } },
                           },
                         }}
                       />
@@ -828,82 +912,29 @@ export default function ParcImmobilierPage() {
                   </div>
                 </div>
 
-                {/* Analyse globale (floutée si visiteur) */}
-                <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3 relative">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-                    Analyse globale
+                {/* Analyse globale */}
+                <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">Analyse globale</p>
+                  {renderAnalysisBlocks(analyseTexte)}
+                  <p className="mt-2 text-[0.7rem] text-slate-500">
+                    Analyse indicative. En avancé : vacance/gestion/impôts sont des approximations.
                   </p>
-
-                  <div
-                    className={
-                      shouldBlurAnalysis
-                        ? "blur-sm select-none pointer-events-none"
-                        : ""
-                    }
-                  >
-                    {renderAnalysisBlocks(analyseTexte)}
-                    <p className="mt-2 text-[0.7rem] text-slate-500">
-                      Cette analyse est fournie hors fiscalité détaillée (régimes
-                      micro, réel, LMNP, etc.) et hors revalorisation future des
-                      loyers et des prix de marché.
-                    </p>
-                  </div>
-
-                  {!checkingUser && shouldBlurAnalysis && (
-                    <div className="absolute inset-0 flex items-center justify-center p-4">
-                      <div className="max-w-md rounded-2xl border border-slate-200 bg-white/90 backdrop-blur px-5 py-4 shadow-lg">
-                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-indigo-700 mb-1">
-                          Analyse réservée aux inscrits
-                        </p>
-                        <p className="text-sm font-semibold text-slate-900">
-                          Débloquez l’analyse complète
-                        </p>
-                        <p className="text-xs text-slate-600 mt-1">
-                          Créez un compte gratuit pour accéder à l’analyse
-                          complète, sauvegarder vos projets et comparer vos
-                          simulations.
-                        </p>
-                        <div className="mt-3 flex gap-2">
-                          <Link
-                            href={`/mon-compte?mode=register&redirect=${encodeURIComponent(
-                              "/parc-immobilier"
-                            )}`}
-                            className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
-                          >
-                            Créer un compte gratuit
-                          </Link>
-                          <Link
-                            href={`/mon-compte?mode=login&redirect=${encodeURIComponent(
-                              "/parc-immobilier"
-                            )}`}
-                            className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800"
-                          >
-                            J’ai déjà un compte
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </>
             ) : (
               <p className="text-sm text-slate-500">
-                Renseignez vos biens et cliquez sur “Calculer la rentabilité du
-                parc” pour obtenir une vue d&apos;ensemble complète.
+                Renseignez vos biens et cliquez sur “Calculer la rentabilité du parc” pour obtenir une vue d&apos;ensemble complète.
               </p>
             )}
           </div>
         </section>
 
-        {/* Récap table (floutée si visiteur) */}
+        {/* Récap table (simple + avancé) */}
         {renderRecapTable()}
       </main>
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
-        <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement –
-          Simulations indicatives.
-        </p>
+        <p>© {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations indicatives.</p>
         <p className="mt-1">
           Contact :{" "}
           <a href="mailto:mtcourtage@gmail.com" className="underline">

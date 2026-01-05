@@ -213,8 +213,9 @@ export default function Home() {
 
                   <ToolCard
                     title="Rentabilité locative"
-                    desc="Vous voulez mesurer la rentabilité d’un bien locatif ? Calculez cash-flow, rendement et effort d’épargne pour décider (ou ajuster)."
-                    href="/investissement"
+                desc="Vous souhaitez investir dans l’immobilier ? Cette calculette vous aide à projeter votre futur achat et à calculer sa rentabilité réelle."
+  href="/investissement"  
+		href="/investissement"
                   />
 
                   <ToolCard
@@ -239,10 +240,10 @@ export default function Home() {
             <div className="p-6 sm:p-8">
               <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
                 <div className="space-y-3">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                    Ce que lokt.fr apporte de plus qu’une simple calculette
-                  </p>
-                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
+<p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+  Ce que <span className="lowercase">lokt.fr</span> apporte de plus qu’une simple calculette
+</p>                  
+<h2 className="text-lg sm:text-xl font-semibold text-slate-900">
                     Une analyse conçue pour décider — et pour être comprise.
                   </h2>
                   <p className="text-sm text-slate-600 max-w-2xl">
