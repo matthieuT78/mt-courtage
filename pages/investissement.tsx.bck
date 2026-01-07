@@ -1,6 +1,6 @@
 // pages/investissement.tsx
 import { usePermissions } from "../components/PermissionProvider";
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import AppHeader from "../components/AppHeader";
 import ListingAnalysisSection from "../components/investissement/ListingAnalysisSection";
@@ -102,119 +102,9 @@ function InfoBadge({ text }: { text: string }) {
   );
 }
 
-/* ------------------------ Gate / lead (même UX que les autres pages) ------------------------ */
-const LOKT_INVEST_CONSENT_STORAGE_KEY = "lokt_invest_consent_v1"; // { email: string, consent: true, ts: string }
-
-function getUtmFromUrl(): Record<string, string> | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const sp = new URLSearchParams(window.location.search);
-    const keys = [
-      "utm_source",
-      "utm_medium",
-      "utm_campaign",
-      "utm_term",
-      "utm_content",
-      "gclid",
-      "fbclid",
-      "msclkid",
-    ];
-    const utm: Record<string, string> = {};
-    for (const k of keys) {
-      const v = sp.get(k);
-      if (v) utm[k] = v;
-    }
-    return Object.keys(utm).length ? utm : null;
-  } catch {
-    return null;
-  }
-}
-
-function getSourceLabel(): string {
-  if (typeof window === "undefined") return "investissement";
-  try {
-    const ref = document.referrer || "";
-    if (!ref) return "direct";
-    const refHost = new URL(ref).host;
-    const curHost = window.location.host;
-    if (refHost && curHost && refHost === curHost) return "internal";
-    return `ref:${refHost || "unknown"}`;
-  } catch {
-    return "direct";
-  }
-}
-
 export default function InvestissementPage() {
-  const { canSeeCalcDetails, isLoggedIn } = usePermissions();
-
-  /* ======================== Session (pour préremplir email si connecté) ======================== */
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
-  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    const run = async () => {
-      try {
-        if (!supabase) return;
-        const { data } = await supabase.auth.getSession();
-        const s = data.session;
-        if (!mounted) return;
-        setSessionEmail(s?.user?.email ?? null);
-        setSessionUserId(s?.user?.id ?? null);
-      } catch {
-        // silence
-      }
-    };
-    run();
-
-    const sub =
-      supabase?.auth.onAuthStateChange((_e, s) => {
-        setSessionEmail(s?.user?.email ?? null);
-        setSessionUserId(s?.user?.id ?? null);
-      }) ?? null;
-
-    return () => {
-      mounted = false;
-      sub?.data?.subscription?.unsubscribe?.();
-    };
-  }, []);
-
-  /* ======================== Gate states ======================== */
-  const [unlocked, setUnlocked] = useState<boolean>(false);
-  const [leadEmail, setLeadEmail] = useState<string>("");
-  const [leadPhone, setLeadPhone] = useState<string>("");
-  const [consentLokt, setConsentLokt] = useState<boolean>(false);
-  const [unlocking, setUnlocking] = useState<boolean>(false);
-  const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
-
-  // Restore prior consent/email
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = window.localStorage.getItem(LOKT_INVEST_CONSENT_STORAGE_KEY);
-      if (!raw) return;
-      const data = JSON.parse(raw);
-      const email = (data?.email || "").toString().trim().toLowerCase();
-      const ok = !!data?.consent;
-      if (email && ok) {
-        setLeadEmail((prev) => (prev ? prev : email));
-        setConsentLokt(true);
-        setUnlocked(true);
-      }
-    } catch {
-      // silence
-    }
-  }, []);
-
-  useEffect(() => {
-    if (sessionEmail && !leadEmail) setLeadEmail(sessionEmail);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionEmail]);
-
-  const normalizedLeadEmail = (leadEmail || "").trim().toLowerCase();
-  const leadEmailValid = normalizedLeadEmail.length > 3 && normalizedLeadEmail.includes("@");
-
-  // Onglets
+  const { canSeeCalcDetails, isLoggedIn } = usePermissions();  
+// Onglets
   const [onglet, setOnglet] = useState<Onglet>("couts");
 
   // Prix / coûts
@@ -262,13 +152,16 @@ export default function InvestissementPage() {
 
   // Résultats
   const [resultRendementTexte, setResultRendementTexte] = useState<string>("");
-  const [resumeRendement, setResumeRendement] = useState<ResumeRendement | null>(null);
+  const [resumeRendement, setResumeRendement] =
+    useState<ResumeRendement | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
 
   // 🧮 Score d'opportunité & axes d'amélioration
   const [opportunityScore, setOpportunityScore] = useState<number | null>(null);
   const [opportunityComment, setOpportunityComment] = useState<string>("");
-  const [opportunityImprovements, setOpportunityImprovements] = useState<string[]>([]);
+  const [opportunityImprovements, setOpportunityImprovements] = useState<
+    string[]
+  >([]);
 
   // 🔎 Données marché (prix / m² & loyer / m²)
   const [marketPriceM2, setMarketPriceM2] = useState<number | null>(null);
@@ -285,6 +178,7 @@ export default function InvestissementPage() {
   const resultSectionRef = useRef<HTMLDivElement | null>(null);
 
   // --- Helpers d'affichage ---
+
   const selectedCityLabel =
     selectedCity != null
       ? `${selectedCity.name} (${selectedCity.postalCode})`
@@ -293,6 +187,7 @@ export default function InvestissementPage() {
       : "";
 
   // --- Gestion des champs ---
+
   const handlePrixBienChange = (value: number) => {
     const newPrix = value || 0;
     setPrixBien(newPrix);
@@ -371,6 +266,7 @@ export default function InvestissementPage() {
     locationTypes.slice(0, nbApparts).some((t) => t === "airbnb");
 
   // --- Navigation onglets (précédent / suivant) ---
+
   const ordreOnglets: Onglet[] = ["couts", "revenus", "charges", "credit"];
 
   const handleNext = () => {
@@ -388,6 +284,7 @@ export default function InvestissementPage() {
   };
 
   // --- Auto-complétion ville / code postal ---
+
   const fetchCitySuggestions = async (q: string) => {
     const query = q.trim();
     if (query.length < 2) {
@@ -399,7 +296,9 @@ export default function InvestissementPage() {
     try {
       setCityLoading(true);
       setCityError(null);
-      const res = await fetch(`/api/cities-search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(
+        `/api/cities-search?q=${encodeURIComponent(query)}`
+      );
       if (!res.ok) {
         throw new Error("Impossible de récupérer les communes pour cette saisie.");
       }
@@ -421,7 +320,7 @@ export default function InvestissementPage() {
 
   const handleCityInputChange = (value: string) => {
     setCityQuery(value);
-    setSelectedCity(null);
+    setSelectedCity(null); // on invalide la ville sélectionnée précédente
     setShowCitySuggestions(true);
     void fetchCitySuggestions(value);
   };
@@ -435,6 +334,7 @@ export default function InvestissementPage() {
   };
 
   // --- Récupération des benchmarks marché via API interne ---
+
   const fetchMarketBenchmarks = async (
     city: CitySuggestion,
     surface: number
@@ -455,6 +355,7 @@ export default function InvestissementPage() {
       const res = await fetch(`/api/market-benchmarks?${params.toString()}`);
       const raw = await res.json();
 
+      // 🔍 Log pour voir exactement ce que renvoie l’API
       console.log("[market-benchmarks] raw response", raw);
 
       if (!res.ok) {
@@ -464,17 +365,31 @@ export default function InvestissementPage() {
         throw new Error(msg);
       }
 
+      // 🔄 Supporte plusieurs formats possibles:
+      //  - { inseeCode, cityName, ... }
+      //  - { data: { inseeCode, cityName, ... }, error?: string }
       const payload: any =
-        raw && raw.data && !("referencePriceM2Sale" in raw) ? raw.data : raw;
+        raw && raw.data && !("referencePriceM2Sale" in raw)
+          ? raw.data
+          : raw;
 
+      // Si l’API renvoie { error: "..." } en 200
       if (payload && payload.error && !payload.referencePriceM2Sale) {
         throw new Error(payload.error);
       }
 
       const data = payload as MarketBenchmarks;
 
-      setMarketPriceM2(typeof data.referencePriceM2Sale === "number" ? data.referencePriceM2Sale : null);
-      setMarketRentM2(typeof data.referenceRentM2 === "number" ? data.referenceRentM2 : null);
+      setMarketPriceM2(
+        typeof data.referencePriceM2Sale === "number"
+          ? data.referencePriceM2Sale
+          : null
+      );
+      setMarketRentM2(
+        typeof data.referenceRentM2 === "number"
+          ? data.referenceRentM2
+          : null
+      );
       setMarketSource(data.source ?? null);
 
       return data;
@@ -494,8 +409,10 @@ export default function InvestissementPage() {
   };
 
   // --- Calcul principal ---
+
   const handleCalculRendement = async () => {
-    setSaveMessage(null);
+    setSaveMessage(null); // reset message sauvegarde
+    // reset du score & des axes d'amélioration à chaque calcul
     setOpportunityScore(null);
     setOpportunityComment("");
     setOpportunityImprovements([]);
@@ -527,7 +444,10 @@ export default function InvestissementPage() {
       }
     }
 
-    const loyerTotalMensuel = loyersMensuelsArray.reduce((sum, v) => sum + (v || 0), 0);
+    const loyerTotalMensuel = loyersMensuelsArray.reduce(
+      (sum, v) => sum + (v || 0),
+      0
+    );
     const loyersAnnuels = loyerTotalMensuel * 12;
 
     if (coutTotal <= 0 || loyersAnnuels <= 0) {
@@ -565,6 +485,7 @@ export default function InvestissementPage() {
     }
     const annuiteCreditNue = mensualiteCreditNue * 12;
 
+    // Assurance emprunteur (approximation sur capital initial)
     const tAssEmp = (tauxAssuranceEmp || 0) / 100;
     const annuiteAssuranceEmp = montantEmprunte * tAssEmp;
     const mensualiteAssuranceEmp = annuiteAssuranceEmp / 12;
@@ -575,12 +496,13 @@ export default function InvestissementPage() {
     const resultatNetAnnuel = revenuNetAvantCredit - annuiteTotale;
     const cashflowMensuel = resultatNetAnnuel / 12;
 
+    // 📊 Option : récupération des données marché si ville sélectionnée + surface renseignée
     let market: MarketBenchmarks | null = null;
     if (selectedCity && surfaceM2 > 0) {
       market = await fetchMarketBenchmarks(selectedCity, surfaceM2);
     }
 
-    // Score simple (inchangé)
+    // 🔢 Score de rentabilité (1 à 10) + axes d'amélioration
     let score = 5;
     if (rendementNetAvantCredit >= 8) score = 9;
     else if (rendementNetAvantCredit >= 6) score = 8;
@@ -595,6 +517,7 @@ export default function InvestissementPage() {
 
     const improvements: string[] = [];
 
+    // Analyse marché : prix au m² & loyer au m²
     let prixM2Annonce: number | null = null;
     let ecartPrixPourcent: number | null = null;
     let loyerM2Annonce: number | null = null;
@@ -605,26 +528,38 @@ export default function InvestissementPage() {
 
       if (market?.referencePriceM2Sale) {
         ecartPrixPourcent =
-          ((prixM2Annonce - market.referencePriceM2Sale) / market.referencePriceM2Sale) * 100;
+          ((prixM2Annonce - market.referencePriceM2Sale) /
+            market.referencePriceM2Sale) *
+          100;
       }
 
       if (market?.referenceRentM2) {
         loyerM2Annonce = loyerTotalMensuel / surfaceM2;
         ecartLoyerPourcent =
-          ((loyerM2Annonce - market.referenceRentM2) / market.referenceRentM2) * 100;
+          ((loyerM2Annonce - market.referenceRentM2) /
+            market.referenceRentM2) *
+          100;
       }
     }
 
+    // Ajustement du score en fonction du prix au m² marché
     if (ecartPrixPourcent !== null) {
-      if (ecartPrixPourcent > 20) score -= 2;
-      else if (ecartPrixPourcent > 10) score -= 1;
-      else if (ecartPrixPourcent < -5) score += 1;
+      if (ecartPrixPourcent > 20) {
+        score -= 2;
+      } else if (ecartPrixPourcent > 10) {
+        score -= 1;
+      } else if (ecartPrixPourcent < -5) {
+        score += 1; // sous le marché : intéressant
+      }
     }
 
+    // Ajustement du score en fonction du loyer au m²
     if (ecartLoyerPourcent !== null && market?.referenceRentM2) {
       if (ecartLoyerPourcent > 25) {
+        // loyer trop optimiste
         score -= 1;
       } else if (ecartLoyerPourcent < -10) {
+        // loyer sous le marché -> potentiel d'upside
         improvements.push(
           `Votre loyer envisagé semble en dessous du loyer médian local. Le marché suggère un loyer autour de ${formatEuro(
             market.referenceRentM2 * surfaceM2
@@ -636,11 +571,20 @@ export default function InvestissementPage() {
     score = Math.max(1, Math.min(10, score));
 
     let comment: string;
-    if (score >= 9) comment = "Opportunité très rentable et bien positionnée sur son marché.";
-    else if (score >= 7) comment = "Projet globalement intéressant, avec quelques paramètres à affiner (prix, loyer ou financement).";
-    else if (score >= 5) comment = "Projet correct mais tendu : une optimisation est recommandée avant de signer.";
-    else comment = "Projet fragile : à retravailler en profondeur (prix, loyer, durée de crédit ou travaux).";
+    if (score >= 9) {
+      comment = "Opportunité très rentable et bien positionnée sur son marché.";
+    } else if (score >= 7) {
+      comment =
+        "Projet globalement intéressant, avec quelques paramètres à affiner (prix, loyer ou financement).";
+    } else if (score >= 5) {
+      comment =
+        "Projet correct mais tendu : une optimisation est recommandée avant de signer.";
+    } else {
+      comment =
+        "Projet fragile : à retravailler en profondeur (prix, loyer, durée de crédit ou travaux).";
+    }
 
+    // Loyer cible pour cash-flow neutre
     const neutralLoyersAnnuels = chargesTotales + annuiteTotale;
     const neutralLoyerMensuel = neutralLoyersAnnuels / 12;
     const deltaLoyerMensuel = neutralLoyerMensuel - loyerTotalMensuel;
@@ -649,11 +593,14 @@ export default function InvestissementPage() {
       improvements.push(
         `Pour atteindre un cash-flow neutre, le loyer global devrait se situer autour de ${formatEuro(
           neutralLoyerMensuel
-        )} par mois (soit environ ${formatEuro(deltaLoyerMensuel)} de plus que vos loyers actuels).`
+        )} par mois (soit environ ${formatEuro(
+          deltaLoyerMensuel
+        )} de plus que vos loyers actuels).`
       );
     }
 
-    const cibleNet = 5;
+    // Marge de négociation sur le coût global pour viser un net "cible"
+    const cibleNet = 5; // 5 % net avant crédit
     if (rendementNetAvantCredit < cibleNet && revenuNetAvantCredit > 0.01) {
       const coutCible = revenuNetAvantCredit / (cibleNet / 100);
       if (coutCible < coutTotal) {
@@ -676,9 +623,14 @@ export default function InvestissementPage() {
       );
     }
 
-    if (ecartPrixPourcent !== null && market?.referencePriceM2Sale && surfaceM2 > 0) {
+    // Recommandation spécifique sur le prix au m²
+    if (
+      ecartPrixPourcent !== null &&
+      market?.referencePriceM2Sale &&
+      surfaceM2 > 0
+    ) {
       if (ecartPrixPourcent > 10) {
-        const prixCibleM2 = market.referencePriceM2Sale * 1.05;
+        const prixCibleM2 = market.referencePriceM2Sale * 1.05; // marché +5%
         const prixCible = prixCibleM2 * surfaceM2;
         const margePrix = prixBien - prixCible;
         if (margePrix > 1000) {
@@ -687,12 +639,16 @@ export default function InvestissementPage() {
               1
             )} %. Une cible de prix autour de ${formatEuro(
               prixCible
-            )} (soit ~${formatEuro(margePrix)} de moins) permettrait de repositionner ce bien dans une zone plus cohérente avec les ventes observées.`
+            )} (soit ~${formatEuro(
+              margePrix
+            )} de moins) permettrait de repositionner ce bien dans une zone plus cohérente avec les ventes observées.`
           );
         }
       } else if (ecartPrixPourcent < -5) {
         improvements.push(
-          `Le prix au m² de l'annonce apparaît inférieur au marché local d'environ ${Math.abs(ecartPrixPourcent).toFixed(
+          `Le prix au m² de l'annonce apparaît inférieur au marché local d'environ ${Math.abs(
+            ecartPrixPourcent
+          ).toFixed(
             1
           )} %, ce qui renforce l'intérêt de cette opportunité (sous réserve de la qualité du bien et de son état réel).`
         );
@@ -715,35 +671,48 @@ export default function InvestissementPage() {
       )}.`,
       `Les loyers annuels bruts atteignent environ ${formatEuro(
         loyersAnnuels
-      )}, soit un rendement brut de ${formatPct(rendementBrut)} par rapport au coût complet du projet.`,
+      )}, soit un rendement brut de ${formatPct(
+        rendementBrut
+      )} par rapport au coût complet du projet.`,
       `Une fois intégrées les charges récurrentes (copropriété, taxe foncière, assurance, frais de gestion ou conciergerie), le revenu net avant crédit ressort à ${formatEuro(
         revenuNetAvantCredit
-      )} par an, soit un rendement net avant remboursement du prêt de ${formatPct(rendementNetAvantCredit)}.`,
-      `Avec un apport personnel de ${formatEuro(apportVal)}, le montant emprunté est d’environ ${formatEuro(
+      )} par an, soit un rendement net avant remboursement du prêt de ${formatPct(
+        rendementNetAvantCredit
+      )}.`,
+      `Avec un apport personnel de ${formatEuro(
+        apportVal
+      )}, le montant emprunté est d’environ ${formatEuro(
         montantEmprunte
       )}. À un taux de ${tauxCredLoc.toLocaleString("fr-FR", {
         maximumFractionDigits: 2,
       })} % sur ${dureeCredLoc} ans, la mensualité de crédit (hors assurance emprunteur) est de l’ordre de ${formatEuro(
         mensualiteCreditNue
       )}.`,
-      `En ajoutant une estimation d’assurance emprunteur de ${tauxAssuranceEmp.toLocaleString("fr-FR", {
-        maximumFractionDigits: 2,
-      })} % par an sur le capital emprunté, la mensualité totale crédit + assurance ressort autour de ${formatEuro(
+      `En ajoutant une estimation d’assurance emprunteur de ${tauxAssuranceEmp.toLocaleString(
+        "fr-FR",
+        { maximumFractionDigits: 2 }
+      )} % par an sur le capital emprunté, la mensualité totale crédit + assurance ressort autour de ${formatEuro(
         mensualiteTotale
       )}, soit ${formatEuro(annuiteTotale)} par an.`,
       `Au global, une fois les charges, le crédit et l’assurance intégrés, le projet dégage un résultat net annuel de ${formatEuro(
         resultatNetAnnuel
-      )}, correspondant à un cash-flow mensuel de ${formatEuro(cashflowMensuel)}.`,
+      )}, correspondant à un cash-flow mensuel de ${formatEuro(
+        cashflowMensuel
+      )}.`,
       resultatNetAnnuel >= 0
-        ? `Le cash-flow positif indique que le bien s’autofinance et génère un excédent.`
+        ? `Le cash-flow positif indique que le bien s’autofinance et génère un excédent, ce qui constitue un argument fort auprès d’un banquier : le projet ne vient pas dégrader votre budget mensuel, il le renforce.`
         : `Le cash-flow légèrement négatif signifie que le projet nécessite un effort d’épargne mensuel d’environ ${formatEuro(
             -cashflowMensuel
-          )}.`,
-      `Cette simulation reste indicative : elle ne tient pas compte de la fiscalité, ni de futures évolutions réglementaires.`,
+          )}. Présenté correctement, cet effort peut être perçu comme une contribution maîtrisée à un actif patrimonial, surtout si l’emplacement et le potentiel de revalorisation à long terme sont solides.`,
+      `Cette simulation reste indicative : elle ne tient pas compte de la fiscalité, de l’éventuelle revalorisation des loyers, ni de futures évolutions réglementaires. Elle vous donne toutefois une base structurée pour discuter avec votre banque ou votre courtier et affiner votre montage (durée, apport, type de location, etc.).`,
     ].join("\n");
 
     setResultRendementTexte(texte);
-    setResumeRendement({ cashflowMensuel, resultatNetAnnuel, rendementNetAvantCredit });
+    setResumeRendement({
+      cashflowMensuel,
+      resultatNetAnnuel,
+      rendementNetAvantCredit,
+    });
     setGraphData({
       loyersAnnuels,
       chargesTotales,
@@ -755,21 +724,6 @@ export default function InvestissementPage() {
       rendementNetAvantCredit,
       dureeCredLoc,
     });
-
-    // Si déjà consenti précédemment (et email valide), on auto-enregistre sans refaire gate
-    const email = (leadEmail || "").trim().toLowerCase();
-    const hasValidEmail = email && email.includes("@");
-    if (!isLoggedIn && consentLokt && unlocked && hasValidEmail) {
-      try {
-        await captureLeadViaRpc({
-          email,
-          phone: (leadPhone || "").trim() || null,
-          payload: buildLeadPayload(),
-        });
-      } catch {
-        // silence
-      }
-    }
   };
 
   const handleGoToResults = async () => {
@@ -812,7 +766,7 @@ export default function InvestissementPage() {
     }
   };
 
-  // 🔹 Demande d'analyse premium (conservée : bouton email simple)
+  // 🔹 Demande d'analyse premium (optimisation locative)
   const handleRequestPremiumAnalysis = () => {
     if (typeof window === "undefined") return;
 
@@ -832,7 +786,9 @@ export default function InvestissementPage() {
         ? `Localité du bien : ${selectedCityLabel}`
         : "(Localité non renseignée dans la simulation.)",
       surfaceM2 > 0
-        ? `Surface : ${surfaceM2.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} m²`
+        ? `Surface : ${surfaceM2.toLocaleString("fr-FR", {
+            maximumFractionDigits: 0,
+          })} m²`
         : "(Surface non renseignée dans la simulation.)",
       "",
       "Résumé de ma simulation actuelle :",
@@ -855,6 +811,7 @@ export default function InvestissementPage() {
   };
 
   // --- Sauvegarde du projet investissement ---
+
   const handleSaveProject = async () => {
     if (!resumeRendement || !graphData) return;
     setSaving(true);
@@ -943,6 +900,7 @@ export default function InvestissementPage() {
   };
 
   // --- Préparation des graphiques ---
+
   let barData;
   let lineData;
   if (graphData) {
@@ -991,15 +949,12 @@ export default function InvestissementPage() {
   }
 
   const hasSimulation = !!resumeRendement && !!graphData;
-
-  // Afficher l’analyse d’annonce uniquement si simulation + surface + localité renseignée
-  const canShowAnalysis =
-    hasSimulation &&
-    surfaceM2 > 0 &&
-    (selectedCity !== null || cityQuery.trim().length > 0);
-
-  // 🔐 Lecture finale des droits : connecté OU débloqué
-  const canShowFullDetails = (canSeeCalcDetails && isLoggedIn) || unlocked;
+  
+// Afficher l’analyse uniquement si simulation + surface + une localité renseignée
+const canShowAnalysis =
+  hasSimulation &&
+  surfaceM2 > 0 &&
+  (selectedCity !== null || cityQuery.trim().length > 0);
 
   const ongletClasses = (key: Onglet) =>
     [
@@ -1014,155 +969,6 @@ export default function InvestissementPage() {
   const secondaryNavButtonClass =
     "rounded-full border border-slate-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 hover:bg-slate-50";
 
-  /* ======================== Lead capture via RPC (optionnel, comme les autres pages) ======================== */
-  const buildLeadPayload = () => {
-    return {
-      meta: { tool: "investissement", version: "v1_gate_like_capacite" },
-      inputs: {
-        prixBien,
-        fraisNotaire,
-        fraisAgence,
-        travaux,
-        nbApparts,
-        loyersApparts,
-        locationTypes,
-        airbnbNuitees,
-        airbnbOccupation,
-        chargesCopro,
-        taxeFonc,
-        assurance,
-        tauxGestion,
-        apport,
-        tauxCredLoc,
-        dureeCredLoc,
-        tauxAssuranceEmp,
-        listingUrl,
-        localite: selectedCityLabel,
-        surfaceM2,
-        city: selectedCity
-          ? {
-              name: selectedCity.name,
-              postalCode: selectedCity.postalCode,
-              inseeCode: selectedCity.inseeCode,
-            }
-          : null,
-      },
-      output: {
-        resume: resumeRendement,
-        graphData,
-        analyse: resultRendementTexte,
-        market: {
-          referencePriceM2Sale: marketPriceM2,
-          referenceRentM2: marketRentM2,
-          source: marketSource,
-        },
-        opportunity: {
-          score: opportunityScore,
-          comment: opportunityComment,
-          improvements: opportunityImprovements,
-        },
-      },
-      tracking: {
-        source: getSourceLabel(),
-        utm: (typeof window !== "undefined" ? getUtmFromUrl() : null) ?? null,
-        referrer: typeof window !== "undefined" ? document.referrer || null : null,
-        path: typeof window !== "undefined" ? window.location.pathname : null,
-        createdAtClient: new Date().toISOString(),
-      },
-      user: { user_id: sessionUserId || null, email: sessionEmail || null },
-      consent: {
-        consent_contact: !!(leadPhone && leadPhone.trim()),
-        consent_analysis: !!consentLokt,
-      },
-    };
-  };
-
-  const captureLeadViaRpc = async (params: {
-    email: string;
-    phone: string | null;
-    payload: any;
-  }) => {
-    if (!supabase) throw new Error("Supabase non configuré.");
-
-    const email = params.email.trim().toLowerCase();
-    if (!email) throw new Error("Email manquant.");
-
-    const utm = (typeof window !== "undefined" ? getUtmFromUrl() : null) ?? null;
-    const source = getSourceLabel();
-
-    // Si ta RPC attend un enum tool strict, adapte "investissement" à ce que tu utilises côté DB.
-    const { error } = await supabase.rpc("upsert_lead_v1", {
-      p_tool: "investissement",
-      p_email: email,
-      p_payload: params.payload,
-      p_postal_code: selectedCity?.postalCode ?? null,
-      p_city: selectedCity?.name ?? null,
-      p_phone: params.phone,
-      p_source: source,
-      p_utm: utm,
-      p_lead_age: null,
-      p_project_property_kind: null,
-      p_project_usage: null,
-      p_project_timeline: null,
-      p_project_budget_target: prixBien || null,
-    });
-
-    if (error) {
-      console.warn("[rpc upsert_lead_v1] error:", error);
-      throw new Error(error.message || "Erreur RPC");
-    }
-  };
-
-  const handleUnlock = async () => {
-    setUnlockMsg(null);
-
-    if (!hasSimulation) {
-      setUnlockMsg("Calculez d’abord votre rentabilité pour débloquer l’analyse.");
-      return;
-    }
-
-    const email = (leadEmail || "").trim().toLowerCase();
-    if (!email || !email.includes("@")) {
-      setUnlockMsg("Merci de renseigner une adresse e-mail valide.");
-      return;
-    }
-
-    if (!consentLokt) {
-      setUnlockMsg("Pour débloquer l’analyse, merci d’accepter l’utilisation de vos données (Lokt.fr).");
-      return;
-    }
-
-    setUnlocking(true);
-    try {
-      // Enregistrer le lead (si RPC dispo)
-      try {
-        await captureLeadViaRpc({
-          email,
-          phone: (leadPhone || "").trim() || null,
-          payload: buildLeadPayload(),
-        });
-      } catch {
-        // on ne bloque pas l'UX si RPC indispo
-      }
-
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(
-          LOKT_INVEST_CONSENT_STORAGE_KEY,
-          JSON.stringify({ email, consent: true, ts: new Date().toISOString() })
-        );
-      }
-
-      setUnlocked(true);
-      setUnlockMsg("✅ Analyse débloquée.");
-    } catch (e: any) {
-      setUnlockMsg("❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue"));
-    } finally {
-      setUnlocking(false);
-    }
-  };
-
-  const canClickUnlock = hasSimulation && leadEmailValid && consentLokt && !unlocking;
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       {/* Header global */}
@@ -1172,16 +978,28 @@ export default function InvestissementPage() {
         {/* Onglets */}
         <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-4">
           <div className="flex flex-wrap gap-2">
-            <button className={ongletClasses("couts")} onClick={() => setOnglet("couts")}>
+            <button
+              className={ongletClasses("couts")}
+              onClick={() => setOnglet("couts")}
+            >
               Coûts du projet
             </button>
-            <button className={ongletClasses("revenus")} onClick={() => setOnglet("revenus")}>
+            <button
+              className={ongletClasses("revenus")}
+              onClick={() => setOnglet("revenus")}
+            >
               Revenus locatifs
             </button>
-            <button className={ongletClasses("charges")} onClick={() => setOnglet("charges")}>
+            <button
+              className={ongletClasses("charges")}
+              onClick={() => setOnglet("charges")}
+            >
               Charges & gestion
             </button>
-            <button className={ongletClasses("credit")} onClick={() => setOnglet("credit")}>
+            <button
+              className={ongletClasses("credit")}
+              onClick={() => setOnglet("credit")}
+            >
               Crédit & financement
             </button>
           </div>
@@ -1192,8 +1010,12 @@ export default function InvestissementPage() {
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 1</p>
-                <h2 className="text-lg font-semibold text-slate-900">Coût global du projet</h2>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Étape 1
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Coût global du projet
+                </h2>
                 <p className="text-xs text-slate-500">
                   Prix du bien, frais de notaire, frais d&apos;agence et travaux.
                 </p>
@@ -1207,11 +1029,15 @@ export default function InvestissementPage() {
 
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs text-slate-700">Prix du bien (€)</label>
+                <label className="text-xs text-slate-700">
+                  Prix du bien (€)
+                </label>
                 <input
                   type="number"
                   value={prixBien}
-                  onChange={(e) => handlePrixBienChange(parseFloat(e.target.value) || 0)}
+                  onChange={(e) =>
+                    handlePrixBienChange(parseFloat(e.target.value) || 0)
+                  }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -1221,23 +1047,29 @@ export default function InvestissementPage() {
                 <div className="relative space-y-1 sm:col-span-2">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Localité du bien (optionnel)
-                    <InfoBadge text="Tapez un code postal ou le nom de la commune, puis sélectionnez dans la liste." />
+                    <InfoBadge text="Tapez un code postal ou le nom de la commune, puis sélectionnez dans la liste. Cela permet de comparer le prix et les loyers à des données publiques (via votre API marché)." />
                   </label>
                   <input
                     type="text"
                     value={cityQuery}
                     onChange={(e) => handleCityInputChange(e.target.value)}
                     onFocus={() => {
-                      if (citySuggestions.length > 0) setShowCitySuggestions(true);
+                      if (citySuggestions.length > 0) {
+                        setShowCitySuggestions(true);
+                      }
                     }}
                     placeholder="Ex. 75015, Paris, Lyon, Cargèse…"
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                   {cityLoading && (
-                    <p className="mt-1 text-[0.7rem] text-slate-500">Recherche des communes…</p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                      Recherche des communes…
+                    </p>
                   )}
                   {cityError && (
-                    <p className="mt-1 text-[0.7rem] text-red-600">{cityError}</p>
+                    <p className="mt-1 text-[0.7rem] text-red-600">
+                      {cityError}
+                    </p>
                   )}
 
                   {showCitySuggestions && citySuggestions.length > 0 && (
@@ -1250,7 +1082,10 @@ export default function InvestissementPage() {
                           className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs hover:bg-slate-50"
                         >
                           <span>
-                            {city.name} <span className="text-slate-500">({city.postalCode})</span>
+                            {city.name}{" "}
+                            <span className="text-slate-500">
+                              ({city.postalCode})
+                            </span>
                           </span>
                           <span className="text-[0.65rem] text-slate-400">
                             INSEE {city.inseeCode}
@@ -1264,12 +1099,14 @@ export default function InvestissementPage() {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Surface habitable (m²)
-                    <InfoBadge text="Permet de comparer prix/m² et loyer/m² au marché." />
+                    <InfoBadge text="Permet de calculer le prix au m² de l'annonce et de le comparer au marché, ainsi que le loyer au m²." />
                   </label>
                   <input
                     type="number"
                     value={surfaceM2 || ""}
-                    onChange={(e) => setSurfaceM2(parseFloat(e.target.value) || 0)}
+                    onChange={(e) =>
+                      setSurfaceM2(parseFloat(e.target.value) || 0)
+                    }
                     placeholder="Ex. 55"
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
@@ -1280,7 +1117,7 @@ export default function InvestissementPage() {
               <div className="space-y-1">
                 <label className="text-xs text-slate-700 flex items-center gap-1">
                   Lien de l&apos;annonce (optionnel)
-                  <InfoBadge text="Collez ici le lien Leboncoin, SeLoger, PAP… (pas aspiré automatiquement)." />
+                  <InfoBadge text="Collez ici le lien Leboncoin, SeLoger, PAP… Il sert de référence dans vos rapports et dans le bloc d’analyse, mais n’est pas aspiré automatiquement." />
                 </label>
                 <input
                   type="url"
@@ -1290,13 +1127,16 @@ export default function InvestissementPage() {
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <p className="text-[0.7rem] text-slate-500">
-                  Optionnel, mais pratique pour rattacher la simulation à une annonce.
+                  Optionnel, mais très pratique pour rattacher cette simulation à
+                  une annonce précise.
                 </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Frais de notaire (€)</label>
+                  <label className="text-xs text-slate-700">
+                    Frais de notaire (€)
+                  </label>
                   <input
                     type="number"
                     value={fraisNotaire}
@@ -1306,11 +1146,15 @@ export default function InvestissementPage() {
                     }}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
-                  <p className="text-[0.7rem] text-slate-500">Pré-rempli à ~7,5 %, modifiable.</p>
+                  <p className="text-[0.7rem] text-slate-500">
+                    Pré-rempli à ~7,5 % du prix, modifiable.
+                  </p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Frais d&apos;agence (€)</label>
+                  <label className="text-xs text-slate-700">
+                    Frais d&apos;agence (€)
+                  </label>
                   <input
                     type="number"
                     value={fraisAgence}
@@ -1320,11 +1164,15 @@ export default function InvestissementPage() {
                     }}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
-                  <p className="text-[0.7rem] text-slate-500">Pré-rempli à ~4 %, modifiable.</p>
+                  <p className="text-[0.7rem] text-slate-500">
+                    Pré-rempli à ~4 % du prix, modifiable.
+                  </p>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Travaux (€)</label>
+                  <label className="text-xs text-slate-700">
+                    Travaux (€)
+                  </label>
                   <input
                     type="number"
                     value={travaux}
@@ -1349,16 +1197,22 @@ export default function InvestissementPage() {
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 2</p>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Étape 2
+                </p>
                 <h2 className="text-lg font-semibold text-slate-900">
                   Revenus locatifs : longue durée & saisonnière
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Configurez le nombre d&apos;appartements et le mode de location pour chacun.
+                  Configurez le nombre d&apos;appartements et le mode de location
+                  pour chacun.
                 </p>
               </div>
               <div className="flex gap-2">
-                <button onClick={handlePrev} className={secondaryNavButtonClass}>
+                <button
+                  onClick={handlePrev}
+                  className={secondaryNavButtonClass}
+                >
                   Précédent
                 </button>
                 <button onClick={handleNext} className={primaryNavButtonClass}>
@@ -1369,13 +1223,17 @@ export default function InvestissementPage() {
 
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs text-slate-700">Nombre d&apos;appartements dans ce projet</label>
+                <label className="text-xs text-slate-700">
+                  Nombre d&apos;appartements dans ce projet
+                </label>
                 <input
                   type="number"
                   value={nbApparts}
                   min={1}
                   max={10}
-                  onChange={(e) => handleNbAppartsChange(parseInt(e.target.value, 10) || 1)}
+                  onChange={(e) =>
+                    handleNbAppartsChange(parseInt(e.target.value, 10) || 1)
+                  }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -1383,9 +1241,8 @@ export default function InvestissementPage() {
               <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs text-slate-600 flex items-center">
                   Paramétrage des loyers / revenus par appartement
-                  <InfoBadge text="Pour chaque lot, choisissez entre longue durée (loyer mensuel) et saisonnière (Airbnb), convertie en revenu mensuel équivalent." />
+                  <InfoBadge text="Pour chaque lot, choisissez entre location longue durée (loyer mensuel) et location saisonnière (type Airbnb), convertie automatiquement en revenu mensuel équivalent." />
                 </p>
-
                 {Array.from({ length: nbApparts }).map((_, idx) => {
                   const type = locationTypes[idx] || "longue";
                   return (
@@ -1399,21 +1256,37 @@ export default function InvestissementPage() {
                         </p>
                         <select
                           value={type}
-                          onChange={(e) => handleLocationTypeChange(idx, e.target.value as LocationType)}
+                          onChange={(e) =>
+                            handleLocationTypeChange(
+                              idx,
+                              e.target.value as LocationType
+                            )
+                          }
                           className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         >
-                          <option value="longue">Location longue durée (loyer mensuel)</option>
-                          <option value="airbnb">Location saisonnière (type Airbnb)</option>
+                          <option value="longue">
+                            Location longue durée (loyer mensuel)
+                          </option>
+                          <option value="airbnb">
+                            Location saisonnière (type Airbnb)
+                          </option>
                         </select>
                       </div>
 
                       {type === "longue" ? (
                         <div className="mt-2 space-y-1">
-                          <label className="text-[0.7rem] text-slate-700">Loyer mensuel envisagé (€)</label>
+                          <label className="text-[0.7rem] text-slate-700">
+                            Loyer mensuel envisagé (€)
+                          </label>
                           <input
                             type="number"
                             value={loyersApparts[idx] || 0}
-                            onChange={(e) => handleLoyerAppartChange(idx, parseFloat(e.target.value) || 0)}
+                            onChange={(e) =>
+                              handleLoyerAppartChange(
+                                idx,
+                                parseFloat(e.target.value) || 0
+                              )
+                            }
                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             placeholder="Loyer mensuel (€)"
                           />
@@ -1422,28 +1295,43 @@ export default function InvestissementPage() {
                         <div className="mt-2 space-y-2">
                           <div className="grid gap-2 sm:grid-cols-2">
                             <div className="space-y-1">
-                              <label className="text-[0.7rem] text-slate-700">Prix moyen par nuit (€)</label>
+                              <label className="text-[0.7rem] text-slate-700">
+                                Prix moyen par nuit (€)
+                              </label>
                               <input
                                 type="number"
                                 value={airbnbNuitees[idx] || 0}
-                                onChange={(e) => handleAirbnbNuiteeChange(idx, parseFloat(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  handleAirbnbNuiteeChange(
+                                    idx,
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
                                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                 placeholder="Ex. 90 €"
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[0.7rem] text-slate-700">Taux d&apos;occupation (% de l&apos;année)</label>
+                              <label className="text-[0.7rem] text-slate-700">
+                                Taux d&apos;occupation (% de l&apos;année)
+                              </label>
                               <input
                                 type="number"
                                 value={airbnbOccupation[idx] || 0}
-                                onChange={(e) => handleAirbnbOccupationChange(idx, parseFloat(e.target.value) || 0)}
+                                onChange={(e) =>
+                                  handleAirbnbOccupationChange(
+                                    idx,
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
                                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                                 placeholder="Ex. 60 %"
                               />
                             </div>
                           </div>
                           <p className="text-[0.65rem] text-slate-500">
-                            Converti en revenu mensuel (nuit × occ × 365 / 12).
+                            Converti automatiquement en revenu locatif mensuel
+                            (nuit × taux d&apos;occupation × 365 / 12).
                           </p>
                         </div>
                       )}
@@ -1460,14 +1348,22 @@ export default function InvestissementPage() {
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 3</p>
-                <h2 className="text-lg font-semibold text-slate-900">Charges récurrentes & gestion</h2>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Étape 3
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Charges récurrentes & gestion
+                </h2>
                 <p className="text-xs text-slate-500">
-                  Copropriété, taxe foncière, assurance, gestion locative / conciergerie.
+                  Copropriété, taxe foncière, assurance, gestion locative ou
+                  conciergerie.
                 </p>
               </div>
               <div className="flex gap-2">
-                <button onClick={handlePrev} className={secondaryNavButtonClass}>
+                <button
+                  onClick={handlePrev}
+                  className={secondaryNavButtonClass}
+                >
                   Précédent
                 </button>
                 <button onClick={handleNext} className={primaryNavButtonClass}>
@@ -1479,29 +1375,41 @@ export default function InvestissementPage() {
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Charges de copro (€/an)</label>
+                  <label className="text-xs text-slate-700">
+                    Charges de copro (€/an)
+                  </label>
                   <input
                     type="number"
                     value={chargesCopro}
-                    onChange={(e) => setChargesCopro(parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setChargesCopro(parseFloat(e.target.value))
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Taxe foncière (€/an)</label>
+                  <label className="text-xs text-slate-700">
+                    Taxe foncière (€/an)
+                  </label>
                   <input
                     type="number"
                     value={taxeFonc}
-                    onChange={(e) => setTaxeFonc(parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setTaxeFonc(parseFloat(e.target.value))
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Assurance PNO / habitation (€/an)</label>
+                  <label className="text-xs text-slate-700">
+                    Assurance PNO / habitation (€/an)
+                  </label>
                   <input
                     type="number"
                     value={assurance}
-                    onChange={(e) => setAssurance(parseFloat(e.target.value))}
+                    onChange={(e) =>
+                      setAssurance(parseFloat(e.target.value))
+                    }
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -1511,13 +1419,15 @@ export default function InvestissementPage() {
                 <label className="text-xs text-slate-700 flex items-center gap-1">
                   Frais de gestion / conciergerie (% des loyers)
                   {hasAirbnb && (
-                    <InfoBadge text="Pour la saisonnière, ce champ représente les frais de conciergerie." />
+                    <InfoBadge text="Pour la saisonnière, ce champ représente les frais de conciergerie (10–25 %). Pour la longue durée, il couvre les frais de gestion locative si vous déléguez." />
                   )}
                 </label>
                 <input
                   type="number"
                   value={tauxGestion}
-                  onChange={(e) => setTauxGestion(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setTauxGestion(parseFloat(e.target.value))
+                  }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -1530,17 +1440,27 @@ export default function InvestissementPage() {
           <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 4</p>
-                <h2 className="text-lg font-semibold text-slate-900">Paramètres du financement</h2>
+                <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                  Étape 4
+                </p>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Paramètres du financement
+                </h2>
                 <p className="text-xs text-slate-500">
-                  Apport, taux, durée du crédit et assurance emprunteur.
+                  Apport personnel, taux, durée du crédit et assurance emprunteur.
                 </p>
               </div>
               <div className="flex gap-2">
-                <button onClick={handlePrev} className={secondaryNavButtonClass}>
+                <button
+                  onClick={handlePrev}
+                  className={secondaryNavButtonClass}
+                >
                   Précédent
                 </button>
-                <button onClick={handleGoToResults} className={primaryNavButtonClass}>
+                <button
+                  onClick={handleGoToResults}
+                  className={primaryNavButtonClass}
+                >
                   Aller aux résultats
                 </button>
               </div>
@@ -1548,7 +1468,9 @@ export default function InvestissementPage() {
 
             <div className="grid gap-3 sm:grid-cols-4 mt-2">
               <div className="space-y-1">
-                <label className="text-xs text-slate-700">Apport personnel (€)</label>
+                <label className="text-xs text-slate-700">
+                  Apport personnel (€)
+                </label>
                 <input
                   type="number"
                   value={apport}
@@ -1557,32 +1479,42 @@ export default function InvestissementPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-slate-700">Taux crédit (annuel, en %)</label>
+                <label className="text-xs text-slate-700">
+                  Taux crédit (annuel, en %)
+                </label>
                 <input
                   type="number"
                   value={tauxCredLoc}
-                  onChange={(e) => setTauxCredLoc(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setTauxCredLoc(parseFloat(e.target.value))
+                  }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-slate-700">Durée du crédit (années)</label>
+                <label className="text-xs text-slate-700">
+                  Durée du crédit (années)
+                </label>
                 <input
                   type="number"
                   value={dureeCredLoc}
-                  onChange={(e) => setDureeCredLoc(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setDureeCredLoc(parseFloat(e.target.value))
+                  }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-slate-700 flex items-center gap-1">
                   Taux assurance emprunteur (annuel, en %)
-                  <InfoBadge text="Approche simplifiée : taux annuel sur capital initial emprunté." />
+                  <InfoBadge text="Taux annuel appliqué au capital emprunté (contrat groupe ~0,20–0,40 % en moyenne). Approche simplifiée pour estimer la mensualité totale crédit + assurance." />
                 </label>
                 <input
                   type="number"
                   value={tauxAssuranceEmp}
-                  onChange={(e) => setTauxAssuranceEmp(parseFloat(e.target.value))}
+                  onChange={(e) =>
+                    setTauxAssuranceEmp(parseFloat(e.target.value))
+                  }
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -1597,11 +1529,25 @@ export default function InvestissementPage() {
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Synthèse</p>
-              <h2 className="text-lg font-semibold text-slate-900">Résultats & dashboard de rentabilité</h2>
-              <p className="text-xs text-slate-500">Lancez le calcul puis analysez vos chiffres.</p>
-              {marketError && <p className="mt-1 text-[0.7rem] text-red-600">{marketError}</p>}
-              {marketLoading && <p className="mt-1 text-[0.7rem] text-slate-500">Récupération des données marché…</p>}
+              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
+                Synthèse
+              </p>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Résultats & dashboard de rentabilité
+              </h2>
+              <p className="text-xs text-slate-500">
+                Lancez le calcul puis analysez en détail vos chiffres.
+              </p>
+              {marketError && (
+                <p className="mt-1 text-[0.7rem] text-red-600">
+                  {marketError}
+                </p>
+              )}
+              {marketLoading && (
+                <p className="mt-1 text-[0.7rem] text-slate-500">
+                  Récupération des données marché en cours…
+                </p>
+              )}
             </div>
 
             {hasSimulation && (
@@ -1636,11 +1582,16 @@ export default function InvestissementPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 mt-3">
-            <button onClick={() => void handleCalculRendement()} className={primaryNavButtonClass}>
+            <button
+              onClick={() => void handleCalculRendement()}
+              className={primaryNavButtonClass}
+            >
               Calculer / Mettre à jour la rentabilité
             </button>
             <p className="text-xs text-slate-500">
-              La localité + surface permettent une analyse marché plus fine, mais restent optionnelles.
+              Assurez-vous que les onglets Coûts, Revenus, Charges et Crédit sont
+              correctement renseignés. La localité + surface permettent une
+              analyse marché plus fine, mais restent optionnelles.
             </p>
           </div>
 
@@ -1649,25 +1600,33 @@ export default function InvestissementPage() {
               {/* Cartes de synthèse */}
               <div className="grid gap-4 sm:grid-cols-4 mt-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Coût total projet</p>
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Coût total projet
+                  </p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">
                     {formatEuro(graphData!.coutTotal)}
                   </p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Rendement brut</p>
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Rendement brut
+                  </p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">
                     {formatPct(graphData!.rendementBrut)}
                   </p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Rendement net avant crédit</p>
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Rendement net avant crédit
+                  </p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">
                     {formatPct(graphData!.rendementNetAvantCredit)}
                   </p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Mensualité totale crédit + assurance</p>
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Mensualité totale crédit + assurance
+                  </p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">
                     {formatEuro(graphData!.mensualiteCredit)}
                   </p>
@@ -1677,34 +1636,64 @@ export default function InvestissementPage() {
               {/* Cash-flow & résultat */}
               <div className="grid gap-4 sm:grid-cols-3 mt-4">
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 sm:col-span-2 flex flex-col justify-center">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700 mb-1">Cash-flow & rentabilité</p>
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700 mb-1">
+                    Cash-flow & rentabilité
+                  </p>
                   <div className="flex flex-wrap gap-6">
                     <div>
-                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Cash-flow mensuel</p>
-                      <p className={"mt-1 text-lg font-semibold " + (resumeRendement!.cashflowMensuel >= 0 ? "text-emerald-700" : "text-red-600")}>
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Cash-flow mensuel
+                      </p>
+                      <p
+                        className={
+                          "mt-1 text-lg font-semibold " +
+                          (resumeRendement!.cashflowMensuel >= 0
+                            ? "text-emerald-700"
+                            : "text-red-600")
+                        }
+                      >
                         {formatEuro(resumeRendement!.cashflowMensuel)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Résultat net annuel</p>
-                      <p className={"mt-1 text-lg font-semibold " + (resumeRendement!.resultatNetAnnuel >= 0 ? "text-emerald-700" : "text-red-600")}>
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Résultat net annuel
+                      </p>
+                      <p
+                        className={
+                          "mt-1 text-lg font-semibold " +
+                          (resumeRendement!.resultatNetAnnuel >= 0
+                            ? "text-emerald-700"
+                            : "text-red-600")
+                        }
+                      >
                         {formatEuro(resumeRendement!.resultatNetAnnuel)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Rendement net</p>
+                      <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Rendement net
+                      </p>
                       <p className="mt-1 text-lg font-semibold text-slate-900">
-                        {formatPct(resumeRendement!.rendementNetAvantCredit)}
+                        {formatPct(
+                          resumeRendement!.rendementNetAvantCredit
+                        )}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Durée du crédit</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">{graphData!.dureeCredLoc} ans</p>
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">
+                    Durée du crédit
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    {graphData!.dureeCredLoc} ans
+                  </p>
                   <p className="mt-2 text-[0.7rem] text-slate-500">
-                    Le graphique illustre le cash-flow cumulé (hypothèse paramètres constants).
+                    Le graphique de droite illustre l&apos;accumulation théorique
+                    du cash-flow sur la durée du prêt (hors revalorisation et
+                    fiscalité).
                   </p>
                 </div>
               </div>
@@ -1713,16 +1702,30 @@ export default function InvestissementPage() {
               <div className="grid gap-4 lg:grid-cols-2 mt-4">
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
                   <p className="text-xs text-slate-600 mb-2">
-                    Flux annuels : loyers, charges, crédit + assurance et résultat net.
+                    Flux annuels : loyers bruts, charges, crédit + assurance et
+                    résultat net.
                   </p>
                   {barData && (
                     <Bar
                       data={barData}
                       options={{
-                        plugins: { legend: { labels: { color: "#0f172a", font: { size: 11 } } } },
+                        plugins: {
+                          legend: {
+                            labels: {
+                              color: "#0f172a",
+                              font: { size: 11 },
+                            },
+                          },
+                        },
                         scales: {
-                          x: { ticks: { color: "#0f172a", font: { size: 10 } }, grid: { color: "#e5e7eb" } },
-                          y: { ticks: { color: "#0f172a", font: { size: 10 } }, grid: { color: "#e5e7eb" } },
+                          x: {
+                            ticks: { color: "#0f172a", font: { size: 10 } },
+                            grid: { color: "#e5e7eb" },
+                          },
+                          y: {
+                            ticks: { color: "#0f172a", font: { size: 10 } },
+                            grid: { color: "#e5e7eb" },
+                          },
                         },
                       }}
                     />
@@ -1730,15 +1733,31 @@ export default function InvestissementPage() {
                 </div>
 
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                  <p className="text-xs text-slate-600 mb-2">Cash-flow cumulé année par année.</p>
+                  <p className="text-xs text-slate-600 mb-2">
+                    Cash-flow cumulé année par année (hypothèse de paramètres
+                    constants).
+                  </p>
                   {lineData && (
                     <Line
                       data={lineData}
                       options={{
-                        plugins: { legend: { labels: { color: "#0f172a", font: { size: 11 } } } },
+                        plugins: {
+                          legend: {
+                            labels: {
+                              color: "#0f172a",
+                              font: { size: 11 },
+                            },
+                          },
+                        },
                         scales: {
-                          x: { ticks: { color: "#0f172a", font: { size: 9 } }, grid: { color: "#e5e7eb" } },
-                          y: { ticks: { color: "#0f172a", font: { size: 10 } }, grid: { color: "#e5e7eb" } },
+                          x: {
+                            ticks: { color: "#0f172a", font: { size: 9 } },
+                            grid: { color: "#e5e7eb" },
+                          },
+                          y: {
+                            ticks: { color: "#0f172a", font: { size: 10 } },
+                            grid: { color: "#e5e7eb" },
+                          },
                         },
                       }}
                     />
@@ -1746,269 +1765,138 @@ export default function InvestissementPage() {
                 </div>
               </div>
 
-              {/* 🔍 Encadré annonce / analyse marché */}
-              {hasSimulation && (
-                <>
-                  {!canShowAnalysis && (
-                    <p className="mt-2 text-[0.7rem] text-slate-500">
-                      Pour afficher l’analyse détaillée du bien, merci de renseigner :<br />
-                      • la localité du bien<br />
-                      • la surface en m²
-                    </p>
-                  )}
+{/* 🔍 Encadré dédié à l'annonce / analyse marché */}
+{hasSimulation && (
+  <>
+    {/* Message d’explication si on n’a pas les infos pour analyser l’annonce */}
+    {!canShowAnalysis && (
+      <p className="mt-2 text-[0.7rem] text-slate-500">
+        Pour afficher l’analyse détaillée du bien, merci de renseigner :
+        <br />• la localité du bien<br />• la surface en m²
+      </p>
+    )}
 
-                  {/* On affiche la section, mais on la floute tant que pas débloqué */}
-                  {canShowAnalysis && (
-                    <div className="relative">
-                      <div className={canShowFullDetails ? "" : "blur-sm select-none pointer-events-none"}>
-                        <ListingAnalysisSection
-                          hasSimulation={hasSimulation}
-                          canShowAnalysis={canShowAnalysis}
-                          listingUrl={listingUrl}
-                          selectedCityLabel={selectedCityLabel}
-                          surfaceM2={surfaceM2}
-                          prixBien={prixBien}
-                          graphData={graphData}
-                          resumeRendement={resumeRendement}
-                          opportunityScore={opportunityScore}
-                          opportunityComment={opportunityComment}
-                          opportunityImprovements={opportunityImprovements}
-                          marketPriceM2={marketPriceM2}
-                          marketRentM2={marketRentM2}
-                          marketSource={marketSource}
-                        />
-                      </div>
+    {/* Bloc complet d’analyse de l’annonce, affiché uniquement si localité + surface */}
+    {canShowAnalysis && (
+      <ListingAnalysisSection
+        hasSimulation={hasSimulation}
+        canShowAnalysis={canShowAnalysis}
+        listingUrl={listingUrl}
+        selectedCityLabel={selectedCityLabel}
+        surfaceM2={surfaceM2}
+        prixBien={prixBien}
+        graphData={graphData}
+        resumeRendement={resumeRendement}
+        opportunityScore={opportunityScore}
+        opportunityComment={opportunityComment}
+        opportunityImprovements={opportunityImprovements}
+        marketPriceM2={marketPriceM2}
+        marketRentM2={marketRentM2}
+        marketSource={marketSource}
+      />
+    )}
+  </>
+)}
 
-                      {!canShowFullDetails && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-xl">
-                          {/* Gate */}
-                          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
-                            <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
-                            <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
+              {/* Analyse narrative aérée */}
+            <div className="relative rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4 overflow-hidden">
+  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+    Analyse détaillée
+  </p>
 
-                            <div className="relative space-y-3">
-                              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">
-                                DÉBLOQUER L’ANALYSE COMPLÈTE
-                              </p>
-                              <h3 className="text-lg font-semibold">
-                                Vos chiffres sont prêts. Débloquez l’analyse détaillée.
-                              </h3>
-                              <p className="text-sm text-slate-200">
-                                Débloquez l’analyse (et conservez l’accès) en laissant un e-mail.
-                              </p>
+  {/* CONTENU */}
+  <div className={canSeeCalcDetails ? "" : "blur-sm select-none pointer-events-none"}>
+    {renderAnalysisBlocks(resultRendementTexte)}
+  </div>
 
-                              <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4">
-                                <div className="grid gap-3 sm:grid-cols-2 items-start">
-                                  <div className="space-y-1 sm:col-span-2">
-                                    <label className="text-xs text-slate-100 font-semibold">
-                                      Votre e-mail (obligatoire)
-                                    </label>
-                                    <input
-                                      type="email"
-                                      value={leadEmail}
-                                      onChange={(e) => setLeadEmail(e.target.value)}
-                                      placeholder="ex: prenom.nom@gmail.com"
-                                      className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-                                    />
-                                    <p className="text-[0.7rem] text-slate-300">
-                                      On l’utilise pour enregistrer votre analyse et mesurer la demande.
-                                    </p>
-                                  </div>
+  {/* OVERLAY SI BLOQUÉ */}
+  {!canSeeCalcDetails && (
+    <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+      <div className="max-w-sm rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-lg">
+        <p className="text-sm font-semibold text-slate-900">
+          Analyse réservée aux inscrits
+        </p>
+        <p className="mt-1 text-xs text-slate-600">
+          Crée un compte gratuit pour accéder à l’analyse complète,
+          sauvegarder tes projets et comparer tes simulations.
+        </p>
 
-                                  <div className="space-y-1 sm:col-span-2">
-                                    <label className="text-xs text-slate-100 font-semibold">
-                                      Téléphone (optionnel)
-                                    </label>
-                                    <input
-                                      type="tel"
-                                      value={leadPhone}
-                                      onChange={(e) => setLeadPhone(e.target.value)}
-                                      placeholder="06 12 34 56 78"
-                                      className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-                                    />
-                                    <p className="text-[0.7rem] text-slate-300">
-                                      Si vous souhaitez être recontacté (sinon laissez vide).
-                                    </p>
-                                  </div>
+        {!isLoggedIn && (
+          <a
+            href={`/mon-compte?mode=register&redirect=${encodeURIComponent("/investissement")}`}
+            className="inline-flex mt-4 items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+          >
+            Créer un compte gratuit
+          </a>
+        )}
+      </div>
+    </div>
+  )}
+</div>
 
-                                  <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
-                                    <label className="flex items-start gap-3 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={consentLokt}
-                                        onChange={(e) => setConsentLokt(e.target.checked)}
-                                        className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-                                      />
-                                      <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                                        <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour enregistrer mon analyse et améliorer Lokt.fr (stats anonymisées).
-                                      </span>
-                                    </label>
-                                    <p className="mt-2 text-[0.7rem] text-slate-300">
-                                      Pas de démarchage partenaire ici.
-                                    </p>
-                                  </div>
-
-                                  <div className="sm:col-span-2 flex items-end">
-                                    <button
-                                      type="button"
-                                      onClick={handleUnlock}
-                                      disabled={!canClickUnlock}
-                                      className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
-                                    >
-                                      {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {unlockMsg && (
-                                  <p className="mt-3 text-[0.75rem] text-slate-200">{unlockMsg}</p>
-                                )}
-
-                                {!leadEmailValid ? (
-                                  <p className="mt-2 text-[0.7rem] text-slate-300">
-                                    Astuce : renseigne un email valide pour activer le bouton.
-                                  </p>
-                                ) : !consentLokt ? (
-                                  <p className="mt-2 text-[0.7rem] text-slate-300">
-                                    Astuce : coche le consentement pour activer le bouton.
-                                  </p>
-                                ) : null}
-
-                                {!isLoggedIn && (
-                                  <div className="mt-3 pt-3 border-t border-white/10">
-                                    <a
-                                      href={`/mon-compte?mode=register&redirect=${encodeURIComponent("/investissement")}`}
-                                      className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15"
-                                    >
-                                      Ou créer un compte gratuit
-                                    </a>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Analyse narrative */}
-              <div className="relative rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4 overflow-hidden">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-                  Analyse détaillée
-                </p>
-
-                <div className={canShowFullDetails ? "" : "blur-sm select-none pointer-events-none"}>
-                  {renderAnalysisBlocks(resultRendementTexte)}
+              {/* 🔥 Bloc Analyse Premium & optimisation locative */}
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-amber-50 to-emerald-50 px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-700">
+                    Service d&apos;accompagnement
+                  </p>
+                  <h3 className="text-sm sm:text-base font-semibold text-slate-900">
+                    Analyse Premium & optimisation de votre investissement locatif
+                  </h3>
+                  <p className="text-[0.8rem] text-slate-700">
+                    Transformez cette simulation en plan d&apos;action concret :
+                    choix du régime fiscal, stratégie d&apos;arbitrage, scénarios de
+                    loyers et présentation prête à l&apos;emploi pour votre banquier.
+                  </p>
+                  <ul className="mt-2 space-y-1.5 text-[0.75rem] text-slate-700">
+                    <li>• Audit détaillé de votre projet à partir de ces chiffres</li>
+                    <li>
+                      • Meilleur scénario d&apos;optimisation (fiscalité, durée,
+                      loyers…)
+                    </li>
+                    <li>• Recommandations écrites et priorisées</li>
+                    <li>• Synthèse claire à envoyer à la banque / au conseiller</li>
+                  </ul>
                 </div>
-
-                {!canShowFullDetails && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm">
-                    {/* Gate (même) */}
-                    <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
-                      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
-                      <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
-
-                      <div className="relative space-y-3">
-                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">
-                          DÉBLOQUER L’ANALYSE COMPLÈTE
-                        </p>
-                        <h3 className="text-lg font-semibold">
-                          Débloquez l’analyse complète
-                        </h3>
-                        <p className="text-sm text-slate-200">
-                          L’analyse détaillée est masquée tant que vous n’êtes pas connecté ou débloqué.
-                        </p>
-
-                        <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4">
-                          <div className="grid gap-3 sm:grid-cols-2 items-start">
-                            <div className="space-y-1 sm:col-span-2">
-                              <label className="text-xs text-slate-100 font-semibold">
-                                Votre e-mail (obligatoire)
-                              </label>
-                              <input
-                                type="email"
-                                value={leadEmail}
-                                onChange={(e) => setLeadEmail(e.target.value)}
-                                placeholder="ex: prenom.nom@gmail.com"
-                                className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-                              />
-                            </div>
-
-                            <div className="space-y-1 sm:col-span-2">
-                              <label className="text-xs text-slate-100 font-semibold">
-                                Téléphone (optionnel)
-                              </label>
-                              <input
-                                type="tel"
-                                value={leadPhone}
-                                onChange={(e) => setLeadPhone(e.target.value)}
-                                placeholder="06 12 34 56 78"
-                                className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-                              />
-                            </div>
-
-                            <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
-                              <label className="flex items-start gap-3 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={consentLokt}
-                                  onChange={(e) => setConsentLokt(e.target.checked)}
-                                  className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-                                />
-                                <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                                  <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour enregistrer mon analyse et améliorer Lokt.fr (stats anonymisées).
-                                </span>
-                              </label>
-                              <p className="mt-2 text-[0.7rem] text-slate-300">
-                                Pas de démarchage partenaire ici.
-                              </p>
-                            </div>
-
-                            <div className="sm:col-span-2 flex items-end">
-                              <button
-                                type="button"
-                                onClick={handleUnlock}
-                                disabled={!canClickUnlock}
-                                className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
-                              >
-                                {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
-                              </button>
-                            </div>
-                          </div>
-
-                          {unlockMsg && (
-                            <p className="mt-3 text-[0.75rem] text-slate-200">{unlockMsg}</p>
-                          )}
-
-                          {!isLoggedIn && (
-                            <div className="mt-3 pt-3 border-t border-white/10">
-                              <a
-                                href={`/mon-compte?mode=register&redirect=${encodeURIComponent("/investissement")}`}
-                                className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15"
-                              >
-                                Ou créer un compte gratuit
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                <div className="shrink-0 flex flex-col items-start md:items-end gap-2">
+                  <div className="text-right">
+                    <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.18em]">
+                      Prestation sur mesure
+                    </p>
+                    <p className="text-lg font-semibold text-slate-900">
+                      Tarif sur devis
+                    </p>
+                    <p className="text-[0.7rem] text-slate-500">
+                      Facturation distincte de l&apos;abonnement.
+                    </p>
                   </div>
-                )}
+                  <button
+                    type="button"
+                    onClick={handleRequestPremiumAnalysis}
+                    className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-md hover:bg-slate-800"
+                  >
+                    Demander une optimisation personnalisée
+                  </button>
+                  <p className="text-[0.65rem] text-slate-500 max-w-[220px] text-right">
+                    Votre mail prérempli inclura automatiquement les chiffres de
+                    cette simulation (et la localité / le lien si renseignés) pour
+                    que je puisse commencer à travailler.
+                  </p>
+                </div>
               </div>
 
-              {/* ✅ BANDEAU "Service d'accompagnement" SUPPRIMÉ (comme demandé) */}
-
               <p className="mt-2 text-[0.7rem] text-slate-500">
-                Ces calculs sont fournis à titre indicatif, hors fiscalité et évolution future des loyers, taux, charges et réglementation.
+                Ces calculs sont fournis à titre indicatif, hors fiscalité et
+                évolution future des loyers, taux, charges et réglementation.
               </p>
             </>
           ) : (
             <p className="mt-4 text-sm text-slate-500">
-              Complétez les onglets puis cliquez sur “Calculer / Mettre à jour la rentabilité” ou “Aller aux résultats”.
+              Complétez les onglets Coûts, Revenus, Charges et Crédit (vous
+              pouvez aussi renseigner la localité et la surface pour une analyse
+              marché plus fine), puis cliquez sur “Calculer / Mettre à jour la
+              rentabilité” ou sur “Aller aux résultats” pour afficher le dashboard
+              détaillé et accéder à l&apos;offre d&apos;optimisation.
             </p>
           )}
         </section>
@@ -2016,7 +1904,8 @@ export default function InvestissementPage() {
 
       <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
         <p>
-          © {new Date().getFullYear()} MT Courtage &amp; Investissement – Simulations indicatives.
+          © {new Date().getFullYear()} MT Courtage &amp; Investissement –
+          Simulations indicatives.
         </p>
         <p className="mt-1">
           Contact :{" "}

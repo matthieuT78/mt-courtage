@@ -1,16 +1,12 @@
 // components/CapaciteWizard.tsx
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import LeadGate from "./LeadGate";
-import {
-  safeEmail,
-  loadLeadEmail,
-  persistLeadEmail,
-  isUnlockedForEmail,
-  persistUnlock,
-} from "../lib/leads";
 
 const CAPACITE_STORAGE_KEY = "capacite_simulation_v19_simple_only_no_advanced";
+
+// ✅ unlock + email spécifiques à CETTE calculette (pas cross-sim)
+const CAPACITE_UNLOCK_KEY = "capacite_unlock_v1"; // { email: string, unlockedAt: string }
+const CAPACITE_EMAIL_KEY = "capacite_email_v1"; // string
 
 /* ------------------------ Format helpers ------------------------ */
 function formatEuro(val: number) {
@@ -56,15 +52,17 @@ type ResumeCapacite = {
   tauxEndettementActuel: number;
   tauxEndettementAvecProjet: number;
 
-  mensualiteMax: number;
-  montantMax: number;
-  mensualiteProjet: number;
+  mensualiteMax: number; // capacité max "banque" (selon cible)
+  montantMax: number; // capital max empruntable (référence 25 ans)
+  mensualiteProjet: number; // mensualité nécessaire pour emprunter montantMax sur la durée choisie
 
+  // apport + budget max (apport inclus)
   apport: number;
-  budgetTotalMax: number;
-  apportMinRecommande: number;
+  budgetTotalMax: number; // montantMax + apport
+  apportMinRecommande: number; // ~ frais notaire + frais de dossier/garantie (approx)
   apportCouvreFrais: boolean;
 
+  // Budget max
   prixBienMax: number;
   fraisNotaireEstimes: number;
   fraisAgenceEstimes: number;
@@ -72,11 +70,11 @@ type ResumeCapacite = {
 };
 
 type BankabilityAssessment = {
-  score: number;
+  score: number; // 0–100
   label: string;
   comment: string;
   details: {
-    dtiRatio: number;
+    dtiRatio: number; // dtiProjet / cible
     resteAVivreParUC: number;
     resteApresProjet: number;
     hardCapsApplied: {
@@ -154,10 +152,12 @@ const USAGE_UI_TO_DB: Record<ProjectUsageUI, ProjectUsageDB> = {
   invest: "investissement",
 };
 
-/* ------------------------ Lokt Score helpers ------------------------ */
+/* ------------------------ Lokt Score (plus strict & bancaire) ------------------------ */
+
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
+
 function round0(n: number) {
   return Math.round(n);
 }
@@ -171,6 +171,7 @@ function monthlyPayment(principal: number, annualRatePct: number, years: number)
   if (P <= 0 || n <= 0) return 0;
   if (r === 0) return P / n;
 
+  // M = P * r / (1 - (1+r)^-n)
   return (P * r) / (1 - Math.pow(1 + r, -n));
 }
 
@@ -182,11 +183,13 @@ function principalFromPayment(payment: number, annualRatePct: number, years: num
   if (M <= 0 || n <= 0) return 0;
   if (r === 0) return M * n;
 
+  // P = M * ( (1+r)^n - 1 ) / ( r * (1+r)^n )
   const f = Math.pow(1 + r, n);
   return M * ((f - 1) / (r * f));
 }
 
 function computeUC(nbAdultes: number, nbEnfants: number) {
+  // unité de consommation (approx INSEE) : 1 + 0.5*(adultes-1) + 0.3*enfants
   const a = Math.max(1, nbAdultes || 1);
   const e = Math.max(0, nbEnfants || 0);
   return 1 + 0.5 * Math.max(0, a - 1) + 0.3 * e;
@@ -207,7 +210,14 @@ function proStabilityFactor(proStatus: ProStatus) {
   }
 }
 
-/* ------------------------ Score Lokt (inchangé) ------------------------ */
+/**
+ * Score bancaire "explicable" + HARD CAPS (red flags) :
+ * - RAV négatif => cap score max (refus probable)
+ * - DTI au-dessus de la cible => caps progressifs
+ * - Apport < frais => cap score max (banque souvent bloquante)
+ *
+ * NOTE: la version est 100% "mode simple" : on score sur la mensualité PROJET (qui dépend de la durée).
+ */
 function computeLoktScore(params: {
   resume: ResumeCapacite;
   tauxEndettementCible: number;
@@ -238,21 +248,28 @@ function computeLoktScore(params: {
   const cible = tauxEndettementCible > 0 ? tauxEndettementCible : 35;
   const dtiRatio = cible > 0 ? resume.tauxEndettementAvecProjet / cible : 1;
 
+  // Charges actuelles
   const chargesActuelles = resume.mensualitesExistantes + resume.chargesHorsCredits;
+
+  // ✅ Mensualité utilisée pour le scoring : mensualité projet (dépend de la durée)
   const mensualiteScore = resume.mensualiteProjet || 0;
 
+  // ✅ Reste à vivre APRÈS PROJET : on NE CLAMP PAS à 0
   const resteApresProjet = (resume.revenusPrisEnCompte || 0) - (chargesActuelles + (mensualiteScore || 0));
+
   const uc = computeUC(nbAdultes, nbEnfants);
   const resteAVivreParUC = uc > 0 ? resteApresProjet / uc : resteApresProjet;
 
+  // Sous-score DTI (ratio projet/cible)
   let s_dti = 60;
   if (!Number.isFinite(dtiRatio)) s_dti = 50;
   else if (dtiRatio <= 0.7) s_dti = 100;
-  else if (dtiRatio <= 0.9) s_dti = 100 - ((dtiRatio - 0.7) / 0.2) * 15;
-  else if (dtiRatio <= 1.0) s_dti = 85 - ((dtiRatio - 0.9) / 0.1) * 15;
-  else if (dtiRatio <= 1.15) s_dti = 70 - ((dtiRatio - 1.0) / 0.15) * 25;
+  else if (dtiRatio <= 0.9) s_dti = 100 - ((dtiRatio - 0.7) / 0.2) * 15; // 100 -> 85
+  else if (dtiRatio <= 1.0) s_dti = 85 - ((dtiRatio - 0.9) / 0.1) * 15; // 85 -> 70
+  else if (dtiRatio <= 1.15) s_dti = 70 - ((dtiRatio - 1.0) / 0.15) * 25; // 70 -> 45
   else s_dti = 15;
 
+  // ✅ Sous-score reste à vivre (par UC) : pénalité très forte si négatif
   let s_rav = 55;
   if (!Number.isFinite(resteAVivreParUC)) s_rav = 30;
   else if (resteAVivreParUC < 0) {
@@ -265,8 +282,10 @@ function computeLoktScore(params: {
   else if (resteAVivreParUC >= 700) s_rav = 40;
   else s_rav = 20;
 
+  // Sous-score stabilité (statut)
   const s_stability = proStabilityFactor(proStatus) * 100;
 
+  // Sous-score âge fin de prêt
   const a1 = Math.max(0, ageEmprunteur || 0);
   const a2 = Math.max(0, ageCoEmprunteur || 0);
   const ageMax = Math.max(a1, a2);
@@ -279,6 +298,7 @@ function computeLoktScore(params: {
   else if (ageFin <= 85) s_age = 55;
   else if (ageFin > 85) s_age = 35;
 
+  // Sous-score conso (poids des crédits conso)
   const consoIdx: number[] = [];
   for (let i = 0; i < Math.max(0, nbCredits || 0); i++) {
     const t = typesCredits[i];
@@ -291,6 +311,7 @@ function computeLoktScore(params: {
   const penCount = clamp(consoCount * 6, 0, 20);
   const s_conso = clamp(100 - (penMontant + penCount), 25, 100);
 
+  // ✅ Sous-score apport : plus dur si apport < frais estimés
   let s_apport = 65;
   if (resume.apportMinRecommande <= 0) s_apport = 65;
   else if (resume.apport >= resume.apportMinRecommande) s_apport = 100;
@@ -299,16 +320,25 @@ function computeLoktScore(params: {
     s_apport = 10 + 90 * Math.pow(ratio, 1.3);
   }
 
+  // ✅ Score final pondéré
   const rawScore = 0.42 * s_dti + 0.24 * s_rav + 0.13 * s_stability + 0.08 * s_age + 0.05 * s_conso + 0.08 * s_apport;
+
   let scoreR = clamp(round0(rawScore), 0, 100);
 
-  const hardCaps = { ravNegative: false, dtiHigh: false, apportLow: false };
+  // ✅ HARD CAPS
+  const hardCaps = {
+    ravNegative: false,
+    dtiHigh: false,
+    apportLow: false,
+  };
 
+  // 1) RAV négatif
   if (resteApresProjet < 0) {
     hardCaps.ravNegative = true;
     scoreR = Math.min(scoreR, 40);
   }
 
+  // 2) DTI au-dessus de la cible
   const dti = resume.tauxEndettementAvecProjet || 0;
   if (Number.isFinite(dti) && Number.isFinite(cible) && cible > 0) {
     const delta = dti - cible;
@@ -321,12 +351,14 @@ function computeLoktScore(params: {
     }
   }
 
+  // 3) Apport < frais
   if (resume.apportMinRecommande > 0 && resume.apport < resume.apportMinRecommande) {
     hardCaps.apportLow = true;
     scoreR = Math.min(scoreR, 55);
     if (hardCaps.ravNegative || hardCaps.dtiHigh) scoreR = Math.min(scoreR, 40);
   }
 
+  // Labels
   let label = "À optimiser";
   if (hardCaps.ravNegative || (hardCaps.dtiHigh && (dti - cible > 10))) label = "Refus probable";
   else if (scoreR >= 85) label = "Très solide";
@@ -391,7 +423,9 @@ function computeLoktScore(params: {
   };
 }
 
-/* ------------------------ Action plan (inchangé) ------------------------ */
+/**
+ * Plan d'action : sections + narration
+ */
 function buildActionPlan(
   resume: ResumeCapacite,
   assessment: BankabilityAssessment,
@@ -430,6 +464,7 @@ function buildActionPlan(
   }
 
   const tauxNegocieCible = Math.max(tauxCreditCible - 0.3, 0.5);
+
   const blocks: string[] = [];
 
   blocks.push(
@@ -524,8 +559,13 @@ function buildActionPlan(
 }
 
 export type CapaciteWizardProps = {
+  // gardé pour compat (mais le bouton est supprimé de cette page)
   showSaveButton?: boolean;
 };
+
+function safeEmail(v: string) {
+  return (v || "").trim().toLowerCase();
+}
 
 export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizardProps) {
   /* ======================== Session ======================== */
@@ -575,10 +615,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     if (t <= maxStepReached) setStep(t);
   };
 
-  const stepLabels = useMemo(
-    () => ["Votre projet", "Votre profil", "Vos revenus", "Charges & crédits", "Paramètres du prêt"],
-    []
-  );
+  const stepLabels = useMemo(() => ["Votre projet", "Votre profil", "Vos revenus", "Charges & crédits", "Paramètres du prêt"], []);
 
   /* ======================== Common input styles ======================== */
   const inputBase =
@@ -593,7 +630,9 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
     "focus:outline-none focus:ring-1 focus:ring-emerald-500";
 
+  // ✅ FIX ALIGNEMENT
   const labelBase = "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
+  const labelSmall = "text-[0.7rem] text-slate-700 leading-tight min-h-[2rem] flex items-center gap-1";
 
   /* ======================== Step 1: Votre projet ======================== */
   const [projectDepartment, setProjectDepartment] = useState<string>("");
@@ -601,11 +640,13 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
   const [projectType, setProjectType] = useState<ProjectType>("ancien");
   const [projectUsageUI, setProjectUsageUI] = useState<ProjectUsageUI>("rp");
   const [projectTimelineUI, setProjectTimelineUI] = useState<ProjectTimelineUI>("3_6m");
+
+  // ✅ Apport demandé
   const [apportPersonnel, setApportPersonnel] = useState<number>(0);
 
   /* ======================== Step 2: Votre profil ======================== */
   const [ageEmprunteur, setAgeEmprunteur] = useState<number>(35);
-  const [ageCoEmprunteur, setAgeCoEmprunteur] = useState<number>(0);
+  const [ageCoEmprunteur, setAgeCoEmprunteur] = useState<number>(0); // 0 = non renseigné
   const [proStatus, setProStatus] = useState<ProStatus>("cdi");
   const [nbAdultes, setNbAdultes] = useState<number>(2);
   const [nbEnfants, setNbEnfants] = useState<number>(0);
@@ -637,43 +678,46 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
   const hasResult = !!resumeCapacite;
 
-  /* ======================== Gate (par calculette) ======================== */
+  /* ======================== Gate / lead (par calculette) ======================== */
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [leadEmail, setLeadEmail] = useState<string>("");
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
+
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
 
-  // 1) Restore email depuis session OU localStorage tool-specific
+  /**
+   * ✅ Restore leadEmail :
+   * 1) session (si connecté)
+   * 2) localStorage spécifique calculette
+   */
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // si loggé -> pas de gate
-    if (isLoggedIn) {
-      setUnlocked(true);
-      setConsentLokt(true);
-      if (sessionEmail && !leadEmail) setLeadEmail(sessionEmail);
-      return;
-    }
-
     const fromSession = safeEmail(sessionEmail ?? "");
-    const fromStorage = loadLeadEmail("capacite");
-    const next = fromSession || fromStorage;
+    const fromStorage = safeEmail(window.localStorage.getItem(CAPACITE_EMAIL_KEY) ?? "");
 
+    const next = fromSession || fromStorage;
     if (next && safeEmail(leadEmail) !== next) {
       setLeadEmail(next);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionEmail, isLoggedIn]);
+  }, [sessionEmail]); // volontairement pas leadEmail (évite loop)
 
-  // 2) Persist email au fil de l’eau (tool-specific)
+  /**
+   * ✅ Persiste l'email dès qu'il change (spécifique calculette)
+   */
   useEffect(() => {
-    const e = safeEmail(leadEmail);
-    if (!e) return;
-    persistLeadEmail("capacite", e);
+    if (typeof window === "undefined") return;
+    const email = safeEmail(leadEmail);
+    if (!email) return;
+    window.localStorage.setItem(CAPACITE_EMAIL_KEY, email);
   }, [leadEmail]);
 
-  // 3) Restore unlock tool-specific (et invalide si email change)
+  /**
+   * ✅ Restore unlock (spécifique calculette)
+   * - si loggé => pas de gate
+   * - sinon => unlock uniquement si l'email correspond
+   */
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -683,16 +727,31 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       return;
     }
 
-    const e = safeEmail(leadEmail);
-    if (!e) {
+    const currentEmail = safeEmail(leadEmail || sessionEmail || "");
+    if (!currentEmail) {
       setUnlocked(false);
+      setConsentLokt(false);
       return;
     }
 
-    const ok = isUnlockedForEmail("capacite", e);
-    setUnlocked(ok);
-    if (ok) setConsentLokt(true);
-  }, [leadEmail, isLoggedIn]);
+    try {
+      const raw = window.localStorage.getItem(CAPACITE_UNLOCK_KEY);
+      if (!raw) {
+        setUnlocked(false);
+        return;
+      }
+      const u = JSON.parse(raw);
+      const savedEmail = safeEmail(u?.email || "");
+      if (savedEmail && savedEmail === currentEmail) {
+        setUnlocked(true);
+        setConsentLokt(true);
+      } else {
+        setUnlocked(false);
+      }
+    } catch {
+      setUnlocked(false);
+    }
+  }, [leadEmail, sessionEmail, isLoggedIn]);
 
   /* ======================== Labels ======================== */
   const projectTypeLabel = useMemo(() => {
@@ -820,15 +879,20 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
     const tauxActuel = revenusPrisEnCompte > 0 ? (chargesActuelles / revenusPrisEnCompte) * 100 : 0;
 
+    // ✅ NOUVELLE LOGIQUE:
+    // - montantMax = capacité max calculée sur 25 ans (référence)
+    // - mensualiteProjet = mensualité nécessaire pour emprunter montantMax sur la durée choisie
     const DUREE_REFERENCE = 25;
 
     const montantMax = principalFromPayment(capaciteMensuelle, tauxCreditCible, DUREE_REFERENCE);
     const mensualiteProjet = monthlyPayment(montantMax, tauxCreditCible, dureeCreditCible);
 
+    // Frais selon type de projet (approx + cohérent)
     const tauxNotaire = projectType === "neuf" ? 0.025 : projectType === "terrain" ? 0.07 : 0.075;
     const tauxAgence = projectType === "neuf" ? 0.0 : 0.04;
     const denom = 1 + tauxNotaire + tauxAgence;
 
+    // Budget max en incluant l’apport
     const apport = Math.max(0, apportPersonnel || 0);
     const budgetTotalMax = Math.max(0, (montantMax || 0) + apport);
 
@@ -844,10 +908,12 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       coutTotalProjetMax = prixBienMax + fraisNotaireEstimes + fraisAgenceEstimes;
     }
 
+    // ✅ Apport minimum recommandé : notaire + un petit coussin "garantie/dossier"
     const coussinGarantie = prixBienMax > 0 ? Math.min(Math.max(prixBienMax * 0.012, 0) + 1500, 6000) : 0;
     const apportMinRecommande = Math.max(0, fraisNotaireEstimes + coussinGarantie);
     const apportCouvreFrais = apport >= apportMinRecommande && apportMinRecommande > 0;
 
+    // ✅ Endettement projeté : on prend la mensualité projet (dépend de la durée)
     const tauxAvecProjet =
       revenusPrisEnCompte > 0 ? ((chargesActuelles + (mensualiteProjet || 0)) / revenusPrisEnCompte) * 100 : 0;
 
@@ -870,6 +936,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       coutTotalProjetMax,
     };
 
+    // Alerte âge fin de prêt
     const age1 = Math.max(ageEmprunteur || 0, 0);
     const age2 = Math.max(ageCoEmprunteur || 0, 0);
     const ageMax = Math.max(age1, age2);
@@ -895,7 +962,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       capaciteMensuelle > 0
         ? `Votre capacité mensuelle “max” (cible ${formatPct(tauxEndettementCible)}) est ${formatEuro(
             capaciteMensuelle
-          )}. Référence : cela donne ~${formatEuro(montantMax)} de capital sur 25 ans à ~${tauxCreditCible.toLocaleString("fr-FR", {
+          )}. Référence : cela donne ~${formatEuro(montantMax)} de capital sur ${DUREE_REFERENCE} ans à ~${tauxCreditCible.toLocaleString("fr-FR", {
             maximumFractionDigits: 2,
           })} %.`
         : `Avec les paramètres actuels, aucune capacité mensuelle n’apparaît si l’on reste sur un taux d’endettement cible de ${formatPct(tauxEndettementCible)}.`,
@@ -965,13 +1032,16 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         projectUsageUI,
         projectTimelineUI,
         apportPersonnel,
+
         ageEmprunteur,
         ageCoEmprunteur,
         proStatus,
         nbAdultes,
         nbEnfants,
+
         revenusNetMensuels,
         autresRevenusMensuels,
+
         chargesMensuellesHorsCredits,
         nbCredits,
         typesCredits,
@@ -979,11 +1049,24 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         resteAnneesCredits,
         tauxCredits,
         revenusLocatifs,
+
         tauxCreditCible,
         dureeCreditCible,
         tauxEndettementCible,
       };
       window.localStorage.setItem(CAPACITE_STORAGE_KEY, JSON.stringify(payload));
+    }
+
+    // ✅ si déjà unlock (même email) => on peut enregistrer silencieusement après recalcul, sans re-gate
+    const email = safeEmail(leadEmail || sessionEmail || "");
+    const hasValidEmail = email && email.includes("@");
+
+    if (!isLoggedIn && unlocked && consentLokt && hasValidEmail) {
+      try {
+        await captureLeadViaRpc({ email, computed });
+      } catch {
+        // silence
+      }
     }
 
     const el = document.getElementById("resultats-capacite");
@@ -1013,7 +1096,9 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       setNbEnfants(saved.nbEnfants ?? 0);
 
       setRevenusNetMensuels(saved.revenusNetMensuels ?? 4000);
-      setAutresRevenusMensuels(saved.autresRevenusMensuels ?? 0);
+      setAutresRevenusMensuels(
+
+saved.autresRevenusMensuels ?? 0);
 
       setChargesMensuellesHorsCredits(saved.chargesMensuellesHorsCredits ?? 0);
 
@@ -1034,9 +1119,10 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     } catch (e) {
       console.error("Erreur de restauration de la simulation capacité :", e);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ======================== RPC lead capture ======================== */
+  /* ======================== RPC lead capture (bypass RLS) ======================== */
   const captureLeadViaRpc = async (params: {
     email: string;
     computed: { resume: ResumeCapacite; texte: string; assessment: BankabilityAssessment; actionPlan: string };
@@ -1108,9 +1194,10 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         path: typeof window !== "undefined" ? window.location.pathname : null,
         createdAtClient: new Date().toISOString(),
       },
+      // ✅ RGPD : pas de consentement "contact", uniquement analyse + stats anonymisées
       consent: {
-        consent_analysis: true,
         consent_contact: false,
+        consent_analysis: !!consentLokt,
       },
       user: { user_id: sessionUserId || null, email: sessionEmail || null },
     };
@@ -1121,7 +1208,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       p_payload: payload,
       p_postal_code: null,
       p_city: null,
-      p_phone: null,
+      p_phone: null, // ✅ jamais de téléphone ici
       p_source: source,
       p_utm: utm,
       p_lead_age: lead_age,
@@ -1145,7 +1232,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       return;
     }
 
-    const email = safeEmail(leadEmail);
+    const email = safeEmail(leadEmail || sessionEmail || "");
     if (!email || !email.includes("@")) {
       setUnlockMsg("Merci de renseigner une adresse e-mail valide.");
       return;
@@ -1162,14 +1249,16 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     try {
       await captureLeadViaRpc({ email, computed });
 
-      // ✅ persist tool-specific unlock
-      persistLeadEmail("capacite", email);
-      persistUnlock("capacite", email);
+      // ✅ persiste unlock + email (spécifique calculette)
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(CAPACITE_EMAIL_KEY, email);
+        window.localStorage.setItem(CAPACITE_UNLOCK_KEY, JSON.stringify({ email, unlockedAt: new Date().toISOString() }));
+      }
 
       setUnlocked(true);
       setUnlockMsg("✅ Analyse débloquée. (Votre simulation est bien enregistrée.)");
     } catch (e: any) {
-      setUnlockMsg("❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue"));
+      setUnlockMsg("❌ Impossible d’enregistrer la simulation : " + (e?.message || "erreur inconnue"));
     } finally {
       setUnlocking(false);
     }
@@ -1248,6 +1337,11 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
   const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
 
+  // ✅ Helpers gate UX
+  const normalizedLeadEmail = safeEmail(leadEmail || "");
+  const leadEmailValid = normalizedLeadEmail.length > 3 && normalizedLeadEmail.includes("@");
+  const canClickUnlock = hasResult && leadEmailValid && consentLokt && !unlocking;
+
   /* ======================== UI ======================== */
   return (
     <div className="space-y-6">
@@ -1284,11 +1378,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                     <span
                       className={
                         "flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] font-semibold " +
-                        (active
-                          ? "bg-white text-slate-900"
-                          : done
-                          ? "bg-emerald-500 text-white"
-                          : "bg-slate-200 text-slate-700")
+                        (active ? "bg-white text-slate-900" : done ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-700")
                       }
                     >
                       {num}
@@ -1321,11 +1411,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                     Type de bien
                     <InfoBadge text="Aide à qualifier le projet (sans être trop intrusif)." />
                   </label>
-                  <select
-                    value={propertyKind}
-                    onChange={(e) => setPropertyKind(e.target.value as PropertyKind)}
-                    className={selectBase}
-                  >
+                  <select value={propertyKind} onChange={(e) => setPropertyKind(e.target.value as PropertyKind)} className={selectBase}>
                     <option value="appartement">Appartement</option>
                     <option value="maison">Maison</option>
                     <option value="terrain">Terrain</option>
@@ -1734,6 +1820,8 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             <h2 className="text-sm font-semibold text-slate-900">Votre capacité d&apos;emprunt et votre budget indicatif</h2>
             <p className="text-[0.75rem] text-slate-600">Chiffres “bruts” pour vous positionner. Le Score Lokt.fr™ et le plan d’action sont débloqués ensuite.</p>
           </div>
+
+          {showSaveButton ? null : null}
         </div>
 
         {!hasResult ? (
@@ -1778,6 +1866,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
               </div>
             </div>
 
+            {/* Mensualité projet */}
             <div className="grid gap-3 sm:grid-cols-4 items-stretch mt-3">
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2 h-full flex flex-col">
                 <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Mensualité estimée (pour garder le capital)</p>
@@ -1792,24 +1881,106 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                 <p className="mt-1 text-[0.75rem] text-slate-700 leading-relaxed">
                   La durée ne change pas votre “capacité” (mensualité max), mais change la mensualité nécessaire si vous gardez le même capital — et donc l’endettement & le score.
                 </p>
-                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">C’est exactement l’effet “25 ans → 2 ans”.</p>
+                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">C’est exactement l’effet “25 ans → 20 ans”.</p>
               </div>
             </div>
 
-            {/* 🔒 Gate : composant factorisé */}
+            {/* Bien envisageable */}
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">Bien envisageable (estimation)</p>
+              <div className="grid gap-3 sm:grid-cols-4 items-stretch">
+                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2 h-full flex flex-col">
+                  <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Prix de bien indicatif</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.prixBienMax)}</p>
+                  <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">Calculé à partir du budget max (financement + apport).</p>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
+                  <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Frais notaire</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.fraisNotaireEstimes)}</p>
+                  <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">{projectTypeLabel}</p>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
+                  <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Frais agence</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.fraisAgenceEstimes)}</p>
+                  <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">Hypothèse simple</p>
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-xl bg-slate-900 text-white px-3 py-3">
+                <p className="text-[0.65rem] uppercase tracking-[0.14em] text-slate-200">Coût total projet estimé</p>
+                <p className="mt-1 text-lg font-semibold">{formatEuro(resumeCapacite!.coutTotalProjetMax)}</p>
+                <p className="mt-1 text-[0.7rem] text-slate-200">Prix + notaire + agence (selon hypothèses).</p>
+              </div>
+            </div>
+
+            {/* 🔒 Gate */}
             {!canShowFullAnalysis ? (
-              <LeadGate
-                theme="cyan-emerald"
-                title="Débloquer le Score Lokt.fr™"
-                subtitle="Débloquez votre score et un plan d’action concret. Pas de démarchage : on enregistre uniquement la simulation et des stats agrégées."
-                email={leadEmail}
-                setEmail={setLeadEmail}
-                consent={consentLokt}
-                setConsent={setConsentLokt}
-                unlocking={unlocking}
-                unlockMsg={unlockMsg}
-                onUnlock={handleUnlock}
-              />
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden">
+                <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
+                <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
+
+                <div className="relative space-y-3">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE COMPLÈTE</p>
+                  <h3 className="text-lg font-semibold">Débloquez votre Score Lokt.fr™ et votre plan d’action.</h3>
+                  <p className="text-sm text-slate-200 max-w-3xl">
+                    L’email sert uniquement à <span className="font-semibold">enregistrer cette simulation</span> et à mesurer la demande (statistiques anonymisées).
+                    <br />
+                    <span className="font-semibold">Aucun consentement “recontact”</span> — et aucun démarchage.
+                  </p>
+
+                  <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4">
+                    <div className="grid gap-3 sm:grid-cols-2 items-start">
+                      <div className="sm:col-span-2 space-y-1">
+                        <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
+                        <input
+                          type="email"
+                          value={leadEmail}
+                          onChange={(e) => setLeadEmail(e.target.value)}
+                          placeholder="ex: prenom.nom@gmail.com"
+                          className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
+                        />
+                        <p className="text-[0.7rem] text-slate-300">On n’enregistre pas de téléphone sur cette calculette.</p>
+                      </div>
+
+                      <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={consentLokt}
+                            onChange={(e) => setConsentLokt(e.target.checked)}
+                            className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
+                          />
+                          <span className="text-[0.75rem] text-slate-200 leading-relaxed">
+                            <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour enregistrer ma simulation, afficher l’analyse, et améliorer lokt.fr (statistiques anonymisées).
+                          </span>
+                        </label>
+                        <p className="mt-2 text-[0.7rem] text-slate-300">Pas de recontact, pas de partenaires, pas de revente.</p>
+                      </div>
+
+                      <div className="sm:col-span-2 flex items-end">
+                        <button
+                          type="button"
+                          onClick={handleUnlock}
+                          disabled={!canClickUnlock}
+                          className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
+                        >
+                          {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {unlockMsg && <p className="mt-3 text-[0.75rem] text-slate-200">{unlockMsg}</p>}
+
+                    {!leadEmailValid ? (
+                      <p className="mt-2 text-[0.7rem] text-slate-300">Astuce : renseigne un email valide pour activer le bouton.</p>
+                    ) : !consentLokt ? (
+                      <p className="mt-2 text-[0.7rem] text-slate-300">Astuce : coche le consentement pour activer le bouton.</p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             ) : null}
 
             {/* ✅ Partie débloquée */}
