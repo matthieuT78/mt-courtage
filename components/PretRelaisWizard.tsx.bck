@@ -4,11 +4,13 @@ import { supabase } from "../lib/supabaseClient";
 
 const PRET_RELAIS_STORAGE_KEY = "pret_relais_simulation_v2";
 
-// ✅ NEW: persistance du déblocage (pour ne pas re-gater après un recalcul / reload)
+// ✅ persistance du déblocage (pour ne pas re-gater après un recalcul / reload)
 const PRET_RELAIS_UNLOCK_KEY = "pret_relais_unlock_v1";
 
-// ✅ même principe que la page Capacité : on ne score PAS sur une mensualité “max” pleine (sinon ça colle toujours à la cible)
-// => on applique un buffer prudent (Lokt) sur la mensualité disponible
+// ✅ NEW: persistance de l'email du lead (pour ne pas le redemander après navigation)
+const PRET_RELAIS_EMAIL_KEY = "pret_relais_email_v1";
+
+// ✅ même principe que la page Capacité : on ne score PAS sur une mensualité “max” pleine
 const LOKT_MENSUALITE_BUFFER = 0.9;
 
 function formatEuro(val: number) {
@@ -41,7 +43,7 @@ function InfoBadge({ text }: { text: string }) {
 type ProStatus = "cdi" | "fonctionnaire" | "independant" | "retraite" | "autre";
 type ProjectType = "ancien" | "neuf" | "terrain";
 
-// ✅ DB constraints (tu les as données)
+// ✅ DB constraints
 type ProjectUsageDB = "residence_principale" | "residence_secondaire" | "investissement";
 type ProjectTimelineDB = "0_3_mois" | "3_6_mois" | "6_12_mois" | "12_plus" | "juste_info";
 
@@ -53,14 +55,14 @@ type ResumeRelais = {
 
   // ✅ pour le Score Lokt.fr™
   revenusPrisEnCompte: number;
-  mensualitesExistantes: number; // ici: autresMensualites (hors projet)
-  chargesHorsCredits: number; // ici: 0 (pas demandé)
+  mensualitesExistantes: number;
+  chargesHorsCredits: number;
   tauxEndettementActuel: number;
-  tauxEndettementAvecProjet: number; // avec buffer Lokt
+  tauxEndettementAvecProjet: number;
 };
 
 type BankabilityAssessment = {
-  score: number; // 0–100
+  score: number;
   label: string;
   comment: string;
 };
@@ -122,6 +124,10 @@ export type PretRelaisWizardProps = {
   showSaveButton?: boolean;
 };
 
+function safeEmail(v: string) {
+  return (v || "").trim().toLowerCase();
+}
+
 export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWizardProps) {
   // ---------------------------
   // Session
@@ -177,14 +183,14 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
   // ---------------------------
   const [projectUsageDb, setProjectUsageDb] = useState<ProjectUsageDB>("residence_principale");
   const [timelineDb, setTimelineDb] = useState<ProjectTimelineDB>("3_6_mois");
-  const [department, setDepartment] = useState<string>(""); // ex: "78"
-  const [projectType, setProjectType] = useState<ProjectType>("ancien"); // utilisé pour project_property_kind (colonne)
+  const [department, setDepartment] = useState<string>("");
+  const [projectType, setProjectType] = useState<ProjectType>("ancien");
 
   // ---------------------------
   // Inputs — Profil
   // ---------------------------
   const [ageEmprunteur, setAgeEmprunteur] = useState<number>(35);
-  const [ageCoEmprunteur, setAgeCoEmprunteur] = useState<number>(0); // 0 = non renseigné
+  const [ageCoEmprunteur, setAgeCoEmprunteur] = useState<number>(0);
   const [proStatus, setProStatus] = useState<ProStatus>("cdi");
   const [nbAdultes, setNbAdultes] = useState<number>(2);
   const [nbEnfants, setNbEnfants] = useState<number>(0);
@@ -209,12 +215,12 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
   const [tauxRelais, setTauxRelais] = useState(4);
 
   // ---------------------------
-  // Inputs — Nouveau projet (paramètres de prêt)
+  // Inputs — Nouveau projet
   // ---------------------------
   const [apportPerso, setApportPerso] = useState(30000);
   const [tauxNouveau, setTauxNouveau] = useState(3.5);
   const [dureeNouveau, setDureeNouveau] = useState(25);
-  const [prixCible, setPrixCible] = useState(450000); // juste comparaison
+  const [prixCible, setPrixCible] = useState(450000);
 
   // ---------------------------
   // Résultats
@@ -222,7 +228,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
   const [resume, setResume] = useState<ResumeRelais | null>(null);
   const [texteDetail, setTexteDetail] = useState<string>("");
 
-  // ✅ Score Lokt.fr™ (comme Capacité)
+  // ✅ Score Lokt.fr™
   const [bankabilityScore, setBankabilityScore] = useState<number | null>(null);
   const [bankabilityLabel, setBankabilityLabel] = useState<string>("");
   const [bankabilityComment, setBankabilityComment] = useState<string>("");
@@ -238,32 +244,73 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (sessionEmail) setLeadEmail(sessionEmail);
-  }, [sessionEmail]);
-
-  // ✅ NEW: si on a déjà unlocké pour cet email (localStorage), on restaure automatiquement
+  /**
+   * ✅ NEW: restore leadEmail depuis
+   * 1) sessionEmail (si connecté)
+   * 2) localStorage (si déjà saisi auparavant)
+   */
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const fromSession = safeEmail(sessionEmail ?? "");
+    const fromStorage = safeEmail(window.localStorage.getItem(PRET_RELAIS_EMAIL_KEY) ?? "");
+
+    const nextEmail = fromSession || fromStorage;
+
+    if (nextEmail && safeEmail(leadEmail) !== nextEmail) {
+      setLeadEmail(nextEmail);
+    }
+  }, [sessionEmail]); // volontairement pas leadEmail en deps (évite loop)
+
+  /**
+   * ✅ NEW: persiste l'email dès qu'il est saisi/modifié (utile si user revient plus tard)
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const email = safeEmail(leadEmail);
+    if (!email) return;
+    window.localStorage.setItem(PRET_RELAIS_EMAIL_KEY, email);
+  }, [leadEmail]);
+
+  /**
+   * ✅ Restore unlock si déjà unlocké pour cet email.
+   * + invalide l'unlock si l'email change.
+   */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // si user est loggé, pas besoin de gate
+    if (isLoggedIn) {
+      setUnlocked(true);
+      return;
+    }
+
+    const currentEmail = safeEmail(leadEmail || sessionEmail || "");
+    if (!currentEmail) {
+      setUnlocked(false);
+      return;
+    }
+
     try {
       const raw = window.localStorage.getItem(PRET_RELAIS_UNLOCK_KEY);
-      if (!raw) return;
+      if (!raw) {
+        setUnlocked(false);
+        return;
+      }
 
       const u = JSON.parse(raw);
-      const savedEmail = (u?.email || "").trim().toLowerCase();
-      if (!savedEmail) return;
+      const savedEmail = safeEmail(u?.email || "");
 
-      const currentEmail = (sessionEmail ?? leadEmail ?? "").trim().toLowerCase();
-      if (currentEmail && savedEmail === currentEmail) {
+      if (savedEmail && savedEmail === currentEmail) {
         setUnlocked(true);
-        // optionnel : évite de redemander de cocher si tu veux
         setConsentLokt(true);
+      } else {
+        setUnlocked(false);
       }
     } catch {
-      // silence
+      setUnlocked(false);
     }
-  }, [sessionEmail, leadEmail]);
+  }, [leadEmail, sessionEmail, isLoggedIn]);
 
   // ---------------------------
   // Sauvegarde projet (compte)
@@ -327,7 +374,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
   }, [bankabilityScore]);
 
   // ---------------------------
-  // Calcul (logique conservée, + Score Lokt.fr™ corrigé)
+  // Calcul
   // ---------------------------
   const computeAll = () => {
     const revenus = revMensuels || 0;
@@ -358,7 +405,6 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
     const plafondEndettement = revenus * endettementMax;
     const mensualiteNouveauMax = plafondEndettement - autresMens;
 
-    // ✅ Lokt: score basé sur une mensualité projetée “prudente”, pas sur le max plein
     const mensualiteLokt = Math.max(mensualiteNouveauMax, 0) * LOKT_MENSUALITE_BUFFER;
 
     const tauxActuel = revenus > 0 ? (autresMens / revenus) * 100 : 0;
@@ -494,12 +540,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
 
     const assessment = computeBankabilityScore(resumeOk, tauxEndettement);
 
-    return {
-      ok: true as const,
-      resume: resumeOk,
-      texte: message,
-      assessment,
-    };
+    return { ok: true as const, resume: resumeOk, texte: message, assessment };
   };
 
   const handleCalculRelais = () => {
@@ -510,27 +551,21 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
     setResume(computed.resume);
     setTexteDetail(computed.texte);
 
-    // ✅ Score Lokt.fr™ calculé dès le calcul (et affiché quand débloqué / logged)
     setBankabilityScore(computed.assessment?.score ?? null);
     setBankabilityLabel(computed.assessment?.label ?? "");
     setBankabilityComment(computed.assessment?.comment ?? "");
 
     if (typeof window !== "undefined") {
       const payload = {
-        // projet
         projectUsageDb,
         timelineDb,
         department,
         projectType,
-
-        // profil
         ageEmprunteur,
         ageCoEmprunteur,
         proStatus,
         nbAdultes,
         nbEnfants,
-
-        // finances
         revMensuels,
         autresMensualites,
         tauxEndettement,
@@ -546,9 +581,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
       window.localStorage.setItem(PRET_RELAIS_STORAGE_KEY, JSON.stringify(payload));
     }
 
-    // ✅ PATCH IMPORTANT :
-    // On ne "re-lock" PAS l'analyse au recalcul.
-    // (Avant: if (!isLoggedIn) setUnlocked(false);)
+    // ✅ ne pas relocker ici
 
     const el = document.getElementById("resultats-pret-relais");
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -565,20 +598,17 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
     try {
       const saved = JSON.parse(raw);
 
-      // projet
       setProjectUsageDb(saved.projectUsageDb ?? "residence_principale");
       setTimelineDb(saved.timelineDb ?? "3_6_mois");
       setDepartment(saved.department ?? "");
       setProjectType(saved.projectType ?? "ancien");
 
-      // profil
       setAgeEmprunteur(saved.ageEmprunteur ?? 35);
       setAgeCoEmprunteur(saved.ageCoEmprunteur ?? 0);
       setProStatus(saved.proStatus ?? "cdi");
       setNbAdultes(saved.nbAdultes ?? 2);
       setNbEnfants(saved.nbEnfants ?? 0);
 
-      // finances
       setRevMensuels(saved.revMensuels ?? 4500);
       setAutresMensualites(saved.autresMensualites ?? 0);
       setTauxEndettement(saved.tauxEndettement ?? 35);
@@ -593,11 +623,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
       setDureeNouveau(saved.dureeNouveau ?? 25);
       setPrixCible(saved.prixCible ?? 450000);
 
-      // NB: on ne force plus unlocked=false ici,
-      // car l'état peut être restauré via PRET_RELAIS_UNLOCK_KEY.
       setUnlockMsg(null);
-
-      // score recalculé au prochain “Calculer”
       setBankabilityScore(null);
       setBankabilityLabel("");
       setBankabilityComment("");
@@ -613,7 +639,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
   const capturePretRelaisViaRpc = async () => {
     if (!supabase) throw new Error("Supabase non configuré.");
 
-    const email = (leadEmail || "").trim().toLowerCase();
+    const email = safeEmail(leadEmail);
     if (!email || !email.includes("@")) throw new Error("Email invalide.");
     if (!resume || !texteDetail) throw new Error("Aucun résultat à enregistrer.");
 
@@ -637,7 +663,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
           };
 
     const payload = {
-      meta: { tool: "pret-relais", version: "v2_score_lokt_fix_buffer_unlock_persist" },
+      meta: { tool: "pret-relais", version: "v2_score_lokt_fix_buffer_unlock_email_persist" },
       user: { email: sessionEmail ?? null, user_id: sessionUserId ?? null },
       project: {
         usage_db: projectUsageDb,
@@ -669,9 +695,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
         resume,
         texte: texteDetail,
         bankability:
-          bankabilityScore !== null
-            ? { score: bankabilityScore, label: bankabilityLabel, comment: bankabilityComment }
-            : null,
+          bankabilityScore !== null ? { score: bankabilityScore, label: bankabilityLabel, comment: bankabilityComment } : null,
       },
       consent: { consent_analysis: true, consent_contact: false },
       tracking,
@@ -682,7 +706,6 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
       p_email: email,
       p_payload: payload,
 
-      // on ne redemande pas ville/cp/tel ici (UX) => null
       p_postal_code: null,
       p_city: null,
       p_phone: null,
@@ -690,12 +713,11 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
       p_source: "pret_relais_wizard",
       p_utm: null,
 
-      // ✅ nouvelles colonnes leads
       p_lead_age: ageEmprunteur || null,
-      p_project_property_kind: projectType || null, // (colonne) : ancien|neuf|terrain
-      p_project_usage: projectUsageDb || null, // contraintes OK
-      p_project_timeline: timelineDb || null, // contraintes OK
-      p_project_budget_target: budgetTarget, // int
+      p_project_property_kind: projectType || null,
+      p_project_usage: projectUsageDb || null,
+      p_project_timeline: timelineDb || null,
+      p_project_budget_target: budgetTarget,
     });
 
     if (error) {
@@ -713,7 +735,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
       return;
     }
 
-    const email = (leadEmail || "").trim().toLowerCase();
+    const email = safeEmail(leadEmail);
     if (!email || !email.includes("@")) {
       setUnlockMsg("Merci de renseigner une adresse e-mail valide.");
       return;
@@ -730,8 +752,9 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
       setUnlocked(true);
       setUnlockMsg("✅ Analyse débloquée. (Votre simulation est bien enregistrée.)");
 
-      // ✅ PATCH: on persiste le déblocage pour cet email
+      // ✅ persiste unlock + email (pour navigation/reload)
       if (typeof window !== "undefined") {
+        window.localStorage.setItem(PRET_RELAIS_EMAIL_KEY, email);
         const unlockPayload = { email, unlockedAt: new Date().toISOString() };
         window.localStorage.setItem(PRET_RELAIS_UNLOCK_KEY, JSON.stringify(unlockPayload));
       }
@@ -796,9 +819,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
           resume,
           analyse: texteDetail,
           loktScore:
-            bankabilityScore !== null
-              ? { score: bankabilityScore, label: bankabilityLabel, comment: bankabilityComment }
-              : null,
+            bankabilityScore !== null ? { score: bankabilityScore, label: bankabilityLabel, comment: bankabilityComment } : null,
         },
       });
 
@@ -856,7 +877,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
     <div className="space-y-6">
       {/* Wizard */}
       <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 sm:p-6 space-y-5">
-        {/* Stepper (1 ligne, cliquable) */}
+        {/* Stepper */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex-1 overflow-x-auto">
             <div className="flex items-center gap-2 min-w-max">
@@ -908,6 +929,10 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
 
         {/* Contenu */}
         <div className="border border-slate-100 rounded-xl bg-slate-50/70 p-4 space-y-3">
+          {/* --- (identique à ton UI : steps 1..5) --- */}
+          {/* ✅ IMPORTANT : je n'ai pas modifié le contenu des steps pour éviter les régressions */}
+          {/* Tu peux garder ton JSX tel quel ici (copie/colle depuis ton fichier actuel) */}
+          {/* START: steps */}
           {step === 1 && (
             <>
               <h2 className="text-sm font-semibold text-slate-900">Votre projet</h2>
@@ -1245,6 +1270,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
               </div>
             </>
           )}
+          {/* END: steps */}
         </div>
 
         {/* Navigation */}
@@ -1279,10 +1305,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
       </section>
 
       {/* Résultats */}
-      <section
-        id="resultats-pret-relais"
-        className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4"
-      >
+      <section id="resultats-pret-relais" className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-700 mb-1">Résultats</p>
@@ -1299,9 +1322,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
               >
                 {saving ? "Sauvegarde..." : "Sauvegarder dans mon espace"}
               </button>
-              {saveMessage && (
-                <p className="text-[0.65rem] text-slate-500 text-right max-w-[220px]">{saveMessage}</p>
-              )}
+              {saveMessage && <p className="text-[0.65rem] text-slate-500 text-right max-w-[220px]">{saveMessage}</p>}
             </div>
           )}
         </div>
@@ -1339,7 +1360,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
               </div>
             </div>
 
-            {/* ✅ Score Lokt.fr™ (visible seulement si analysis visible) */}
+            {/* Score Lokt.fr™ */}
             {canShowFullAnalysis && bankabilityScore !== null ? (
               <div className="mt-4 grid gap-3 sm:grid-cols-4">
                 <div className="rounded-xl bg-slate-900 text-white px-3 py-2.5 sm:col-span-2">
@@ -1354,16 +1375,15 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
                 <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2">
                   <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Comment c’est calculé</p>
                   <p className="mt-1 text-[0.75rem] text-slate-700">
-                    Le score se base sur l’endettement projeté{" "}
-                    <span className="font-semibold">avec une marge de prudence</span> (on retient ~
-                    {Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de la mensualité disponible), pour éviter un score “bloqué”
-                    au seuil cible.
+                    Le score se base sur l’endettement projeté <span className="font-semibold">avec une marge de prudence</span>{" "}
+                    (on retient ~{Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de la mensualité disponible), pour éviter un score
+                    “bloqué” au seuil cible.
                   </p>
                 </div>
               </div>
             ) : null}
 
-            {/* Gate (email + consent uniquement) */}
+            {/* Gate */}
             {!canShowFullAnalysis ? (
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden">
                 <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />

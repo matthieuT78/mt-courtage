@@ -1,6 +1,7 @@
 // pages/parc-immobilier.tsx
 import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
+import AppFooter from "../components/AppFooter";
 import ParcImmobilierWizard from "../components/ParcImmobilierWizard";
 import { supabase } from "../lib/supabaseClient";
 
@@ -92,15 +93,7 @@ export default function ParcImmobilierPage() {
         </div>
       </main>
 
-      <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
-        <p>© {new Date().getFullYear()} MT Courtage &amp; Investissement — Simulations indicatives.</p>
-        <p className="mt-1">
-          Contact :{" "}
-          <a href="mailto:mtcourtage@gmail.com" className="underline">
-            mtcourtage@gmail.com
-          </a>
-        </p>
-      </footer>
+      <AppFooter />
     </div>
   );
 }

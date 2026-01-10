@@ -1,6 +1,7 @@
 // pages/investissement.tsx
 import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
+import AppFooter from "../components/AppFooter";
 import InvestissementWizard from "../components/InvestissementWizard";
 import { supabase } from "../lib/supabaseClient";
 
@@ -72,17 +73,17 @@ export default function InvestissementPage() {
             </h1>
 
             <p className="text-xs text-slate-600 max-w-3xl">
-              Parcours guidé en plusieurs étapes : coûts d’acquisition, revenus (longue durée / Airbnb),
-              charges et gestion, puis financement. Le résultat est structuré pour analyser
-              la rentabilité réelle de votre projet.
+              Parcours guidé en plusieurs étapes : coûts d’acquisition, revenus (longue durée /
+              Airbnb), charges et gestion, puis financement. Le résultat est structuré pour
+              analyser la rentabilité réelle de votre projet.
             </p>
 
             {!isLoggedIn && (
               <div className="rounded-xl border border-amber-200/70 bg-white/70 p-3">
                 <p className="text-[0.7rem] text-slate-600">
-                  Sans compte, vous accédez à la simulation et à la synthèse.
-                  En créant votre espace, vous pourrez sauvegarder vos projets
-                  et accéder aux autres outils (capacité, prêt relais, parc immobilier).
+                  Sans compte, vous accédez à la simulation et à la synthèse. En créant votre
+                  espace, vous pourrez sauvegarder vos projets et accéder aux autres outils
+                  (capacité, prêt relais, parc immobilier).
                 </p>
               </div>
             )}
@@ -93,15 +94,7 @@ export default function InvestissementPage() {
         </div>
       </main>
 
-      <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
-        <p>© {new Date().getFullYear()} MT Courtage & Investissement — Simulations indicatives.</p>
-        <p className="mt-1">
-          Contact :{" "}
-          <a href="mailto:mtcourtage@gmail.com" className="underline">
-            mtcourtage@gmail.com
-          </a>
-        </p>
-      </footer>
+      <AppFooter />
     </div>
   );
 }

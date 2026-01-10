@@ -1,18 +1,14 @@
 // components/AppHeader.tsx
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { supabase } from "../lib/supabaseClient";
 
-type SimpleUser = {
-  id: string;
-  email?: string;
-  user_metadata?: {
-    first_name?: string | null;
-    last_name?: string | null;
-    full_name?: string | null;
-  };
-};
+/**
+ * ✅ LOKT V1 (landing-first)
+ * - Pas de nav "Calculettes", pas de "Tarifs", pas de compte (pas prêt), pas d'espace bailleur.
+ * - Header minimal : Logo + (optionnel) FAQ + Contact.
+ *
+ * Quand tu passeras à la V2 SaaS : tu pourras remettre la logique auth/nav.
+ */
 
 type NavLink = {
   href: string;
@@ -20,222 +16,55 @@ type NavLink = {
   external?: boolean;
 };
 
-const firstWord = (s?: string | null) => {
-  const v = String(s || "").trim().replace(/\s+/g, " ");
-  if (!v) return "";
-  return v.split(" ")[0];
-};
-
 export default function AppHeader() {
   const router = useRouter();
 
-  const [user, setUser] = useState<SimpleUser | null>(null);
-  const [authReady, setAuthReady] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  // ✅ Toggle simple : V1 landing
+  const LOKT_V1_LANDING = true;
 
-  useEffect(() => {
-    let mounted = true;
-    let unsubscribe: (() => void) | null = null;
-
-    const init = async () => {
-      try {
-        if (!supabase) {
-          if (!mounted) return;
-          setUser(null);
-          setAuthReady(true);
-          return;
-        }
-
-        const { data } = await supabase.auth.getSession();
-        if (!mounted) return;
-
-        setUser((data.session?.user as any) ?? null);
-        setAuthReady(true);
-
-        const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-          if (!mounted) return;
-          setUser((session?.user as any) ?? null);
-          setAuthReady(true);
-        });
-
-        unsubscribe = () => sub.subscription.unsubscribe();
-      } catch {
-        if (!mounted) return;
-        setUser(null);
-        setAuthReady(true);
-      }
-    };
-
-    init();
-
-    return () => {
-      mounted = false;
-      unsubscribe?.();
-    };
-  }, []);
-
-  const isLoggedIn = !!user?.id;
-
-  // ✅ Afficher uniquement le prénom (fallbacks propres)
-  const displayName = useMemo(() => {
-    if (!user) return "Mon compte";
-
-    const meta = user.user_metadata || {};
-    const byFirstName = firstWord(meta.first_name);
-    if (byFirstName) return byFirstName;
-
-    const byFullName = firstWord(meta.full_name);
-    if (byFullName) return byFullName;
-
-    if (user.email) return user.email.split("@")[0];
-    return "Mon compte";
-  }, [user]);
-
-  const closeMobile = () => setMobileOpen(false);
-
-  const signOut = async () => {
-    try {
-      await supabase?.auth.signOut();
-    } finally {
-      closeMobile();
-      router.replace("/").catch(() => {
-        window.location.href = "/";
-      });
-    }
-  };
+  // Liens minimalistes V1
+  const v1Links: NavLink[] = [
+    { href: "/#faq", label: "FAQ" },
+    { href: "mailto:contact@lokt.fr", label: "Contact", external: true },
+  ];
 
   const isActive = (href: string) => {
+    if (href.startsWith("/#")) return false;
     if (href === "/") return router.pathname === "/";
     return router.pathname === href || router.pathname.startsWith(href + "/");
   };
 
-  const publicLinks: NavLink[] = [
-    { href: "/calculettes", label: "Calculettes (gratuit)" },
-    { href: "/tarifs", label: "Tarifs" },
-    { href: "/#faq", label: "FAQ" },
-  ];
-
-  // ⚠️ garde si tu veux encore le lien vers /espace-bailleur (sinon supprime la ligne)
-  const privateLinks: NavLink[] = [
-    { href: "/calculettes", label: "Calculettes" },
-    { href: "/espace-bailleur", label: "Boîte à outils bailleur" },
-    { href: "/tarifs", label: "Tarifs" },
-    { href: "mailto:mtcourtage@gmail.com", label: "Contact", external: true },
-  ];
-
-  const links = isLoggedIn ? privateLinks : publicLinks;
-
-  // ✅ plus de redirect: connexion = login, puis ta page login redirige vers "/"
-  const loginHref = "/mon-compte?mode=login";
-  const registerHref = "/mon-compte?mode=register";
-
-  // ✅ clic prénom => on ouvre directement le profil
-  const accountHref = "/mon-compte/profil";
-
-  // 🎨 Brand lokt.fr
+  // 🎨 Brand lokt.fr (accent global)
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
 
-  return (
-    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto max-w-5xl px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          {/* Brand */}
-          <Link href="/" className="flex items-center gap-3" onClick={closeMobile}>
-            <img src="/LOKT_LOGO.jpg" alt="lokt.fr" className="h-10 md:h-11 w-auto object-contain" />
-            <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600 animate-lokt.fr-baseline">
-              Simuler • Décider • Gérer
-            </span>
-          </Link>
+  // Header V1 : minimal
+  if (LOKT_V1_LANDING) {
+    return (
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto max-w-5xl px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            {/* Brand */}
+            <Link href="/" className="flex items-center gap-3">
+              <img
+                src="/LOKT_LOGO.jpg"
+                alt="lokt.fr"
+                className="h-10 md:h-11 w-auto object-contain"
+              />
+              <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600">
+                Simuler • Décider • Optimiser
+              </span>
+            </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-2">
-            {links.map((l) =>
-              l.external ? (
-                <a
-                  key={l.label}
-                  href={l.href}
-                  className="rounded-full px-3 py-2 text-[0.8rem] font-semibold text-slate-700 hover:bg-slate-100"
-                >
-                  {l.label}
-                </a>
-              ) : (
-                <Link
-                  key={l.label}
-                  href={l.href}
-                  className={
-                    "rounded-full px-3 py-2 text-[0.8rem] font-semibold transition " +
-                    (isActive(l.href) ? `${brandBg} ${brandText}` : "text-slate-700 hover:bg-slate-100")
-                  }
-                >
-                  {l.label}
-                </Link>
-              )
-            )}
-
-            {/* CTAs */}
-            {!authReady ? (
-              <div className="flex items-center gap-2 pl-2">
-                <div className="h-9 w-28 rounded-full bg-slate-100 animate-pulse" />
-                <div className="h-9 w-28 rounded-full bg-slate-100 animate-pulse" />
-              </div>
-            ) : isLoggedIn ? (
-              <div className="flex items-center gap-2 pl-2">
-                <Link
-                  href={accountHref}
-                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-[0.8rem] font-semibold text-slate-800 hover:bg-slate-50"
-                >
-                  {displayName}
-                </Link>
-                <button
-                  type="button"
-                  onClick={signOut}
-                  className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
-                >
-                  Déconnexion
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 pl-2">
-                <Link
-                  href={loginHref}
-                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-[0.8rem] font-semibold text-slate-800 hover:bg-slate-50"
-                >
-                  Connexion
-                </Link>
-                <Link
-                  href={registerHref}
-                  className={`inline-flex items-center justify-center rounded-full ${brandBg} px-4 py-2 text-[0.8rem] font-semibold ${brandText} ${brandHover}`}
-                >
-                  Créer un compte
-                </Link>
-              </div>
-            )}
-          </nav>
-
-          {/* Mobile button */}
-          <button
-            type="button"
-            onClick={() => setMobileOpen((s) => !s)}
-            className="md:hidden inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800"
-            aria-label="Menu"
-          >
-            {mobileOpen ? "Fermer" : "Menu"}
-          </button>
-        </div>
-
-        {/* Mobile panel */}
-        {mobileOpen && (
-          <div className="md:hidden mt-3 rounded-2xl border border-slate-200 bg-white shadow-sm p-3">
-            <div className="flex flex-col gap-1">
-              {links.map((l) =>
+            {/* Minimal links */}
+            <nav className="flex items-center gap-2">
+              {v1Links.map((l) =>
                 l.external ? (
                   <a
                     key={l.label}
                     href={l.href}
-                    onClick={closeMobile}
-                    className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                    className="rounded-full px-3 py-2 text-[0.8rem] font-semibold text-slate-700 hover:bg-slate-100"
                   >
                     {l.label}
                   </a>
@@ -243,10 +72,11 @@ export default function AppHeader() {
                   <Link
                     key={l.label}
                     href={l.href}
-                    onClick={closeMobile}
                     className={
-                      "rounded-xl px-3 py-2 text-sm font-semibold transition " +
-                      (isActive(l.href) ? `${brandBg} ${brandText}` : "text-slate-800 hover:bg-slate-50")
+                      "rounded-full px-3 py-2 text-[0.8rem] font-semibold transition " +
+                      (isActive(l.href)
+                        ? `${brandBg} ${brandText} ${brandHover}`
+                        : "text-slate-700 hover:bg-slate-100")
                     }
                   >
                     {l.label}
@@ -254,48 +84,33 @@ export default function AppHeader() {
                 )
               )}
 
-              <div className="my-2 h-px bg-slate-200" />
-
-              {!authReady ? (
-                <p className="px-3 py-2 text-sm text-slate-500">Chargement…</p>
-              ) : isLoggedIn ? (
-                <div className="flex flex-col gap-2">
-                  <Link
-                    href={accountHref}
-                    onClick={closeMobile}
-                    className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                  >
-                    {displayName}
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={signOut}
-                    className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                  >
-                    Déconnexion
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <Link
-                    href={loginHref}
-                    onClick={closeMobile}
-                    className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                  >
-                    Connexion
-                  </Link>
-                  <Link
-                    href={registerHref}
-                    onClick={closeMobile}
-                    className={`inline-flex items-center justify-center rounded-xl ${brandBg} px-4 py-2 text-sm font-semibold ${brandText} ${brandHover}`}
-                  >
-                    Créer un compte
-                  </Link>
-                </div>
-              )}
-            </div>
+              {/* Optionnel : petit badge produit */}
+              <span className="hidden sm:inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-600">
+                lokt.fr
+              </span>
+            </nav>
           </div>
-        )}
+        </div>
+      </header>
+    );
+  }
+
+  // (Réservé V2 si tu veux réactiver un header SaaS plus tard)
+  return (
+    <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <div className="mx-auto max-w-5xl px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/" className="flex items-center gap-3">
+            <img
+              src="/LOKT_LOGO.jpg"
+              alt="lokt.fr"
+              className="h-10 md:h-11 w-auto object-contain"
+            />
+            <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600">
+              Simuler • Décider • Optimiser
+            </span>
+          </Link>
+        </div>
       </div>
     </header>
   );

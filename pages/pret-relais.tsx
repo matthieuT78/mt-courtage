@@ -1,6 +1,7 @@
 // pages/pret-relais.tsx
 import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
+import AppFooter from "../components/AppFooter";
 import PretRelaisWizard from "../components/PretRelaisWizard";
 import { supabase } from "../lib/supabaseClient";
 
@@ -73,17 +74,18 @@ export default function PretRelaisPage() {
             </h1>
 
             <p className="text-xs text-slate-600 max-w-2xl">
-              Parcours guidé en plusieurs étapes : estimation du relais (valeur du bien actuel, capital restant dû,
-              conditions de vente), apport disponible, et paramètres du futur prêt.
-              Le résultat est structuré pour une lecture claire (relais + nouveau prêt + apport).
+              Parcours guidé en plusieurs étapes : estimation du relais (valeur du bien actuel,
+              capital restant dû, conditions de vente), apport disponible, et paramètres du futur
+              prêt. Le résultat est structuré pour une lecture claire (relais + nouveau prêt +
+              apport).
             </p>
 
             {!isLoggedIn && (
               <div className="rounded-xl border border-amber-200/70 bg-white/70 p-3">
                 <p className="text-[0.7rem] text-slate-600">
-                  Sans compte, vous accédez à la simulation et à la synthèse.
-                  En créant votre espace, vous pourrez sauvegarder vos scénarios
-                  et accéder aux autres outils (capacité, investissement, parc immobilier).
+                  Sans compte, vous accédez à la simulation et à la synthèse. En créant votre
+                  espace, vous pourrez sauvegarder vos scénarios et accéder aux autres outils
+                  (capacité, investissement, parc immobilier).
                 </p>
               </div>
             )}
@@ -94,15 +96,7 @@ export default function PretRelaisPage() {
         </div>
       </main>
 
-      <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
-        <p>© {new Date().getFullYear()} MT Courtage & Investissement — Simulations indicatives.</p>
-        <p className="mt-1">
-          Contact :{" "}
-          <a href="mailto:mtcourtage@gmail.com" className="underline">
-            mtcourtage@gmail.com
-          </a>
-        </p>
-      </footer>
+      <AppFooter />
     </div>
   );
 }

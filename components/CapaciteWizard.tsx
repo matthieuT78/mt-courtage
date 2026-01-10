@@ -1312,7 +1312,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             <>
               <h2 className="text-sm font-semibold text-slate-900">Votre projet</h2>
               <p className="text-[0.75rem] text-slate-600">
-                Version simple : on vous positionne avec une capacité de financement + un prix de bien “envisageable”.
+                On vous positionne avec une capacité de financement + un prix de bien “envisageable”.
               </p>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

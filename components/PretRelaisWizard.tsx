@@ -313,12 +313,6 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
   }, [leadEmail, sessionEmail, isLoggedIn]);
 
   // ---------------------------
-  // Sauvegarde projet (compte)
-  // ---------------------------
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
-
-  // ---------------------------
   // Helpers labels
   // ---------------------------
   const proStatusLabel = useMemo(() => {
@@ -544,7 +538,6 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
   };
 
   const handleCalculRelais = () => {
-    setSaveMessage(null);
     setUnlockMsg(null);
 
     const computed = computeAll();
@@ -762,73 +755,6 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
       setUnlockMsg("❌ Impossible d’enregistrer la simulation : " + (e?.message || "erreur inconnue"));
     } finally {
       setUnlocking(false);
-    }
-  };
-
-  // ---------------------------
-  // Save project (compte)
-  // ---------------------------
-  const handleSaveProject = async () => {
-    if (!showSaveButton) return;
-    if (!resume || !texteDetail) return;
-
-    setSaving(true);
-    setSaveMessage(null);
-
-    try {
-      if (!supabase) throw new Error("Supabase non configuré.");
-
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-
-      const session = sessionData?.session;
-      if (!session) {
-        if (typeof window !== "undefined") {
-          window.location.href = "/mon-compte?mode=login&redirect=/pret-relais";
-        }
-        return;
-      }
-
-      const { error } = await supabase.from("projects").insert({
-        user_id: session.user.id,
-        type: "pret-relais",
-        title: "Simulation prêt relais",
-        data: {
-          inputs: {
-            projectUsageDb,
-            timelineDb,
-            department,
-            projectType,
-            ageEmprunteur,
-            ageCoEmprunteur: ageCoEmprunteur || null,
-            proStatus,
-            nbAdultes,
-            nbEnfants,
-            revMensuels,
-            autresMensualites,
-            tauxEndettement,
-            valeurBienActuel,
-            crdActuel,
-            pctRetenu,
-            tauxRelais,
-            apportPerso,
-            tauxNouveau,
-            dureeNouveau,
-            prixCible,
-          },
-          resume,
-          analyse: texteDetail,
-          loktScore:
-            bankabilityScore !== null ? { score: bankabilityScore, label: bankabilityLabel, comment: bankabilityComment } : null,
-        },
-      });
-
-      if (error) throw error;
-      setSaveMessage("✅ Projet sauvegardé dans votre espace.");
-    } catch (err: any) {
-      setSaveMessage("❌ Erreur lors de la sauvegarde : " + (err?.message || "erreur inconnue"));
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -1312,19 +1238,6 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
             <h2 className="text-sm font-semibold text-slate-900">Prêt relais, nouveau prêt et budget maximal</h2>
             <p className="text-[0.75rem] text-slate-600">Synthèse claire + analyse détaillée (débloquée après).</p>
           </div>
-
-          {hasResult && isLoggedIn && showSaveButton && (
-            <div className="flex flex-col items-end gap-1">
-              <button
-                onClick={handleSaveProject}
-                disabled={saving}
-                className="inline-flex items-center justify-center rounded-full border border-amber-600/80 bg-amber-600 px-3 py-1.5 text-[0.7rem] font-semibold text-white shadow-sm hover:bg-amber-500 disabled:opacity-60"
-              >
-                {saving ? "Sauvegarde..." : "Sauvegarder dans mon espace"}
-              </button>
-              {saveMessage && <p className="text-[0.65rem] text-slate-500 text-right max-w-[220px]">{saveMessage}</p>}
-            </div>
-          )}
         </div>
 
         {!hasResult ? (
