@@ -1,5 +1,4 @@
 // pages/index.tsx
-import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
@@ -149,56 +148,8 @@ export default function Home() {
   const brandGrad = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandGradSoft = "bg-gradient-to-r from-indigo-50 to-cyan-50";
 
-  // SEO
-  const siteUrl = "https://lokt.fr";
-  const pageUrl = `${siteUrl}/`;
-  const title = "Simulateur immobilier — capacité d’emprunt, prêt relais & rentabilité | lokt.fr";
-  const description =
-    "Calculez votre capacité d’emprunt, votre budget avec prêt relais, la rentabilité de vos investissements et la performance de votre parc immobilier. Simulateurs immobiliers gratuits.";
-
-  // ✅ OG IMAGE : fichier qui existe bien dans /public
-  const ogImage = `${siteUrl}/logo-transparent-Lokt.jpg`;
-
-  // (Optionnel) JSON-LD basique : WebSite
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "lokt.fr",
-    url: siteUrl,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${siteUrl}/?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      <Head>
-        <title>{title}</title>
-        <meta name="description" content={description} />
-        <meta name="robots" content="index, follow" />
-        <link rel="canonical" href={pageUrl} />
-
-        {/* Open Graph */}
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="lokt.fr" />
-        <meta property="og:title" content={title} />
-        <meta property="og:description" content={description} />
-        <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content={ogImage} />
-        <meta property="og:image:secure_url" content={ogImage} />
-
-        {/* Twitter */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={title} />
-        <meta name="twitter:description" content={description} />
-        <meta name="twitter:image" content={ogImage} />
-
-        {/* JSON-LD */}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      </Head>
-
       <AppHeader />
 
       <main className="flex-1 px-4 py-10">
@@ -486,7 +437,7 @@ export default function Home() {
                     </div>
                     <div className="rounded-2xl bg-white/10 border border-white/20 p-4">
                       <p className="text-sm font-semibold">Templates</p>
-                      <p className="text-xs text-white/85 mt-1">Constituer et réutiliser vos modèles.</p>
+                      <p className="text-xs text-white/85 mt-1">Des/compiler et réutiliser vos modèles.</p>
                     </div>
                   </div>
                 </div>
@@ -600,7 +551,10 @@ export default function Home() {
                   }
                 />
 
-                <FaqItem q="Est-ce que lokt.fr revend mes données ?" a={<>Non. Les données ne sont pas revendues à des tiers.</>} />
+                <FaqItem
+                  q="Est-ce que lokt.fr revend mes données ?"
+                  a={<>Non. Les données ne sont pas revendues à des tiers.</>}
+                />
 
                 <FaqItem
                   q="Dois-je créer un compte ?"

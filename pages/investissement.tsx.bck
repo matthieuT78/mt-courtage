@@ -1,6 +1,8 @@
 // pages/investissement.tsx
+import Head from "next/head";
 import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
+import AppFooter from "../components/AppFooter";
 import InvestissementWizard from "../components/InvestissementWizard";
 import { supabase } from "../lib/supabaseClient";
 
@@ -47,8 +49,66 @@ export default function InvestissementPage() {
 
   const isLoggedIn = !!user;
 
+  // --- SEO
+  const siteUrl = "https://lokt.fr";
+  const pageUrl = `${siteUrl}/investissement`;
+  const title = "Simulateur rentabilité locative — cash-flow & rendement | lokt.fr";
+  const description =
+    "Calculez la rentabilité locative d’un projet (cash-flow, rendement, charges, financement). Simulation longue durée ou Airbnb avec une lecture structurée et comparable.";
+  const ogImage = `${siteUrl}/lokt-logo.jpg`; // fichier existant dans /public
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: title,
+    url: pageUrl,
+    description,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "lokt.fr",
+      url: siteUrl,
+    },
+    about: {
+      "@type": "Service",
+      name: "Simulateur de rentabilité locative",
+      provider: {
+        "@type": "Organization",
+        name: "lokt.fr",
+        url: siteUrl,
+      },
+    },
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
+      <Head>
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href={pageUrl} />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="lokt.fr" />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={ogImage} />
+
+        {/* JSON-LD */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </Head>
+
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
@@ -72,17 +132,17 @@ export default function InvestissementPage() {
             </h1>
 
             <p className="text-xs text-slate-600 max-w-3xl">
-              Parcours guidé en plusieurs étapes : coûts d’acquisition, revenus (longue durée / Airbnb),
-              charges et gestion, puis financement. Le résultat est structuré pour analyser
-              la rentabilité réelle de votre projet.
+              Parcours guidé en plusieurs étapes : coûts d’acquisition, revenus (longue durée /
+              Airbnb), charges et gestion, puis financement. Le résultat est structuré pour
+              analyser la rentabilité réelle de votre projet.
             </p>
 
             {!isLoggedIn && (
               <div className="rounded-xl border border-amber-200/70 bg-white/70 p-3">
                 <p className="text-[0.7rem] text-slate-600">
-                  Sans compte, vous accédez à la simulation et à la synthèse.
-                  En créant votre espace, vous pourrez sauvegarder vos projets
-                  et accéder aux autres outils (capacité, prêt relais, parc immobilier).
+                  Sans compte, vous accédez à la simulation et à la synthèse. En créant votre
+                  espace, vous pourrez sauvegarder vos projets et accéder aux autres outils
+                  (capacité, prêt relais, parc immobilier).
                 </p>
               </div>
             )}
@@ -90,18 +150,30 @@ export default function InvestissementPage() {
 
           {/* Calculette */}
           <InvestissementWizard showSaveButton={isLoggedIn} />
+
+          {/* Bloc SEO discret */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 className="text-sm font-semibold text-slate-900">
+              Simulateur de rentabilité locative : cash-flow, charges et financement
+            </h2>
+
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              Cette calculette de rentabilité locative vous aide à projeter un investissement en
+              tenant compte des coûts d’acquisition, des revenus (location longue durée ou saisonnière),
+              des charges (copropriété, travaux, gestion…) et du financement (taux, durée, apport).
+              L’objectif : obtenir une lecture simple et comparable entre scénarios.
+            </p>
+
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              Les résultats sont indicatifs et dépendent de vos hypothèses. Utilisez l’outil
+              pour comparer plusieurs biens, tester différents niveaux de loyers/occupation, et
+              identifier les leviers qui améliorent réellement le cash-flow.
+            </p>
+          </section>
         </div>
       </main>
 
-      <footer className="border-t border-slate-200 py-4 text-center text-xs text-slate-500 bg-white">
-        <p>© {new Date().getFullYear()} MT Courtage & Investissement — Simulations indicatives.</p>
-        <p className="mt-1">
-          Contact :{" "}
-          <a href="mailto:mtcourtage@gmail.com" className="underline">
-            mtcourtage@gmail.com
-          </a>
-        </p>
-      </footer>
+      <AppFooter />
     </div>
   );
 }

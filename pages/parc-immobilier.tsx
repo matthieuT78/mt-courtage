@@ -1,4 +1,5 @@
 // pages/parc-immobilier.tsx
+import Head from "next/head";
 import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
@@ -48,13 +49,72 @@ export default function ParcImmobilierPage() {
 
   const isLoggedIn = !!user;
 
+  // --- SEO
+  const siteUrl = "https://lokt.fr";
+  const pageUrl = `${siteUrl}/parc-immobilier`;
+  const title =
+    "Simulateur parc immobilier — analyse multi-biens, cash-flow & ratios | lokt.fr";
+  const description =
+    "Analysez votre parc immobilier (1 à 20 biens) : valeur, encours, cash-flow global, rendements et indicateurs (DSCR, LTV). Une vue consolidée pour piloter votre patrimoine.";
+  const ogImage = `${siteUrl}/lokt-logo.jpg`; // fichier existant dans /public
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: title,
+    url: pageUrl,
+    description,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "lokt.fr",
+      url: siteUrl,
+    },
+    about: {
+      "@type": "Service",
+      name: "Analyse de parc immobilier (multi-biens)",
+      provider: {
+        "@type": "Organization",
+        name: "lokt.fr",
+        url: siteUrl,
+      },
+    },
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
+      <Head>
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href={pageUrl} />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="lokt.fr" />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={ogImage} />
+
+        {/* JSON-LD */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </Head>
+
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-5xl mx-auto space-y-6">
-          {/* Header de la page (même logique que capacite/investissement) */}
+          {/* Header de la page */}
           <section className="rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-indigo-700">
@@ -73,23 +133,36 @@ export default function ParcImmobilierPage() {
             </h1>
 
             <p className="text-xs text-slate-600 max-w-3xl">
-              Ajoutez 1 à 20 biens locatifs et obtenez une synthèse globale : valeur du parc, encours,
-              cash-flow, rendements, graphiques. Activez la version avancée pour intégrer vacance/gestion/impôts
-              et afficher les indicateurs DSCR/LTV.
+              Ajoutez 1 à 20 biens locatifs et obtenez une synthèse globale : valeur du parc,
+              encours, cash-flow, rendements, graphiques. Activez la version avancée pour intégrer
+              vacance/gestion/impôts et afficher les indicateurs DSCR/LTV.
             </p>
 
-            {!isLoggedIn && (
-              <div className="rounded-xl border border-indigo-200/70 bg-white/70 p-3">
-                <p className="text-[0.7rem] text-slate-600">
-                  Sans compte, vous avez accès à la simulation et à la synthèse.
-                  En créant votre espace, vous pourrez sauvegarder vos scénarios et retrouver vos analyses.
-                </p>
-              </div>
-            )}
+            {/* ⚠️ Supprimé : le bloc “Sans compte… créer un espace” car la création de compte n’est pas ouverte */}
           </section>
 
-          {/* Wizard (comme CapaciteWizard / InvestissementWizard) */}
+          {/* Wizard */}
           <ParcImmobilierWizard />
+
+          {/* Bloc SEO discret */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 className="text-sm font-semibold text-slate-900">
+              Analyse de parc immobilier : vue consolidée multi-biens
+            </h2>
+
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              Ce simulateur de parc immobilier consolide plusieurs biens locatifs pour vous donner une vision
+              globale : valeur totale, encours de crédit, cash-flow mensuel, rendements et ratios de pilotage
+              comme le <span className="font-semibold">LTV</span> (Loan-to-Value) et le{" "}
+              <span className="font-semibold">DSCR</span> (Debt Service Coverage Ratio) lorsque la version avancée
+              est activée.
+            </p>
+
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              L’objectif est de comparer des scénarios (nouvel achat, refinancement, vacance, hausse de charges)
+              avec une lecture homogène, plutôt que de multiplier les tableurs.
+            </p>
+          </section>
         </div>
       </main>
 

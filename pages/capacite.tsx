@@ -1,4 +1,5 @@
 // pages/capacite.tsx
+import Head from "next/head";
 import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
@@ -48,15 +49,76 @@ export default function CapaciteEmpruntPage() {
 
   const isLoggedIn = !!user;
 
+  // --- SEO
+  const siteUrl = "https://lokt.fr";
+  const pageUrl = `${siteUrl}/capacite`;
+  const title = "Simulateur de capacité d’emprunt immobilier | lokt.fr";
+  const description =
+    "Estimez votre capacité d’emprunt immobilier : mensualité cible, capital empruntable, budget d’achat. Simulation gratuite avec lecture bancaire (revenus, charges, crédits, loyers à 70%).";
+
+  // OG image : utilise ton logo existant dans /public
+  const ogImage = `${siteUrl}/lokt-logo.jpg`;
+
+  // JSON-LD : WebPage + Service
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: title,
+    url: pageUrl,
+    description,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "lokt.fr",
+      url: siteUrl,
+    },
+    about: {
+      "@type": "Service",
+      name: "Simulateur de capacité d’emprunt immobilier",
+      provider: {
+        "@type": "Organization",
+        name: "lokt.fr",
+        url: siteUrl,
+      },
+    },
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
+      <Head>
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href={pageUrl} />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="lokt.fr" />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={ogImage} />
+
+        {/* JSON-LD */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </Head>
+
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Header de la page (identité visuelle capacité) */}
           <section className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm p-5 space-y-3">
-            {/* Titre calculette (plus gros + style différent) */}
+            {/* Titre calculette */}
             <div className="flex items-center justify-between gap-3">
               <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
                 CALCULETTE CAPACITÉ D&apos;EMPRUNT
@@ -74,24 +136,36 @@ export default function CapaciteEmpruntPage() {
             </h1>
 
             <p className="text-xs text-slate-600 max-w-2xl">
-              Parcours guidé en plusieurs étapes : revenus, charges, crédits en cours, loyers
-              locatifs pris à 70 %, et paramètres de votre futur prêt. Le résultat est structuré
-              pour correspondre à la lecture bancaire réelle.
+              Parcours guidé en plusieurs étapes : revenus, charges, crédits en cours, loyers locatifs pris
+              à 70 %, et paramètres de votre futur prêt. Le résultat est structuré pour correspondre à la
+              lecture bancaire réelle.
             </p>
 
-            {!isLoggedIn && (
-              <div className="rounded-xl border border-emerald-200/70 bg-white/70 p-3">
-                <p className="text-[0.7rem] text-slate-600">
-                  Sans compte, vous accédez à la simulation et à la synthèse. En créant votre
-                  espace, vous pourrez sauvegarder vos scénarios et accéder aux autres outils
-                  (investissement, prêt relais, parc immobilier).
-                </p>
-              </div>
-            )}
+            {/* ⚠️ Supprimé : le bloc “Sans compte… créer un espace” car la création de compte n’est pas ouverte */}
           </section>
 
           {/* Calculette */}
           <CapaciteWizard showSaveButton={isLoggedIn} />
+
+          {/* Bloc SEO (discret mais indexable) */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 className="text-sm font-semibold text-slate-900">
+              Simulateur de capacité d’emprunt immobilier
+            </h2>
+
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              Cette calculette vous aide à estimer un budget immobilier cohérent à partir de vos revenus,
+              charges et crédits en cours. Vous obtenez une mensualité cible, un capital empruntable et un
+              budget d’achat réaliste, selon une lecture proche des pratiques bancaires.
+            </p>
+
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              Si vous avez des revenus locatifs, ils peuvent être intégrés de manière prudente (prise en
+              compte partielle) afin de comparer vos scénarios avec plus de fiabilité. Les résultats restent
+              indicatifs : ils dépendent des conditions de crédit (taux, durée, assurance) et des critères
+              propres à chaque banque.
+            </p>
+          </section>
         </div>
       </main>
 

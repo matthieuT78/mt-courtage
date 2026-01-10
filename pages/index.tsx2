@@ -149,17 +149,15 @@ export default function Home() {
   const brandGrad = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandGradSoft = "bg-gradient-to-r from-indigo-50 to-cyan-50";
 
-  // SEO
+  // SEO — ajuste si tu as un logo/og-image
   const siteUrl = "https://lokt.fr";
   const pageUrl = `${siteUrl}/`;
   const title = "Simulateur immobilier — capacité d’emprunt, prêt relais & rentabilité | lokt.fr";
   const description =
     "Calculez votre capacité d’emprunt, votre budget avec prêt relais, la rentabilité de vos investissements et la performance de votre parc immobilier. Simulateurs immobiliers gratuits.";
+  const ogImage = `${siteUrl}/og.png`; // optionnel : mets une vraie image si tu en as une
 
-  // ✅ OG IMAGE : fichier qui existe bien dans /public
-  const ogImage = `${siteUrl}/logo-transparent-Lokt.jpg`;
-
-  // (Optionnel) JSON-LD basique : WebSite
+  // (Optionnel) JSON-LD basique : Organisation + WebSite
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -187,7 +185,6 @@ export default function Home() {
         <meta property="og:description" content={description} />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
-        <meta property="og:image:secure_url" content={ogImage} />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
