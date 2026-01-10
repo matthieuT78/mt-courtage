@@ -53,41 +53,43 @@ export default function InvestissementPage() {
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-5xl mx-auto space-y-6">
-          {/* Header page (même UX que capacité / les autres calculettes) */}
-          <section className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm p-5 space-y-3">
+          {/* Header de la page (identité visuelle RENTABILITÉ – AMBER) */}
+          <section className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
-                CALCULETTE INVESTISSEMENT LOCATIF
+              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">
+                CALCULETTE RENTABILITÉ LOCATIVE
               </p>
 
-              <span className="hidden sm:inline-flex items-center rounded-full border border-emerald-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-emerald-700">
+              <span className="hidden sm:inline-flex items-center rounded-full border border-amber-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-amber-700">
                 Lokt.fr
               </span>
             </div>
 
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
               {displayName
-                ? `Bonjour ${displayName}, analysez la rentabilité de votre investissement locatif.`
-                : "Analysez la rentabilité de votre investissement locatif."}
+                ? `Bonjour ${displayName}, calculez votre cash-flow et votre rendement.`
+                : "Calculez votre cash-flow et votre rendement locatif."}
             </h1>
 
             <p className="text-xs text-slate-600 max-w-3xl">
-              Parcours guidé : coûts d’acquisition, loyers, charges, financement.
-              Résultat structuré : cash-flow, rendements et synthèse visuelle.
+              Parcours guidé en plusieurs étapes : coûts d’acquisition, revenus (longue durée / Airbnb),
+              charges et gestion, puis financement. Le résultat est structuré pour analyser
+              la rentabilité réelle de votre projet.
             </p>
 
             {!isLoggedIn && (
-              <div className="rounded-xl border border-emerald-200/70 bg-white/70 p-3">
+              <div className="rounded-xl border border-amber-200/70 bg-white/70 p-3">
                 <p className="text-[0.7rem] text-slate-600">
                   Sans compte, vous accédez à la simulation et à la synthèse.
-                  En créant votre espace, vous pourrez sauvegarder vos projets et retrouver vos analyses.
+                  En créant votre espace, vous pourrez sauvegarder vos projets
+                  et accéder aux autres outils (capacité, prêt relais, parc immobilier).
                 </p>
               </div>
             )}
           </section>
 
-          {/* Wizard */}
-          <InvestissementWizard />
+          {/* Calculette */}
+          <InvestissementWizard showSaveButton={isLoggedIn} />
         </div>
       </main>
 

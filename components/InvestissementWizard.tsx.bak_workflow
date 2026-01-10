@@ -319,15 +319,6 @@ export default function InvestissementWizard({
   const canShowFullDetails = (canSeeCalcDetails && isLoggedIn) || unlocked;
 
   const resultSectionRef = useRef<HTMLDivElement | null>(null);
-  const didAutoCalcRef = useRef(false);
-
-  useEffect(() => {
-    if (step !== "resultats") return;
-    if (!hasSimulation && !didAutoCalcRef.current) {
-      didAutoCalcRef.current = true;
-      void handleCalculRendement();
-    }
-  }, [step, hasSimulation]);
 
   /* ======================== Handlers ======================== */
   const handlePrixBienChange = (value: number) => {
@@ -1521,9 +1512,13 @@ export default function InvestissementWizard({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 mt-3">
-            
+            <button onClick={() => void handleCalculRendement()} className={primaryNavButtonClass}>
+              Calculer / Mettre à jour la rentabilité
+            </button>
             <div className="flex gap-2">
-              
+              <button onClick={goPrev} className={secondaryNavButtonClass}>
+                Retour à l’étape 4
+              </button>
             </div>
           </div>
 
