@@ -49,7 +49,7 @@ export default function CapaciteEmpruntPage() {
 
   const isLoggedIn = !!user;
 
-  // --- SEO
+  // ---- SEO
   const siteUrl = "https://lokt.fr";
   const pageUrl = `${siteUrl}/capacite`;
   const title = "Simulateur de capacité d’emprunt immobilier | lokt.fr";
