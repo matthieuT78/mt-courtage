@@ -30,9 +30,9 @@ type PermissionsState = {
 
 const DEFAULT_PLAN: Plan = "calc_blur";
 
-// ✅ Fallback SSR/export : évite le crash pendant le prerender
-const DEFAULT_STATE: PermissionsState = {
-  loading: true,
+// ✅ Valeur SSR-safe utilisée UNIQUEMENT pendant le prerender/export
+const SSR_FALLBACK_STATE: PermissionsState = {
+  loading: false, // important pour ne pas casser l'UX au 1er paint
   plan: DEFAULT_PLAN,
   isLoggedIn: false,
 
@@ -40,12 +40,10 @@ const DEFAULT_STATE: PermissionsState = {
   canUseLandlord: planAllowsLandlord(DEFAULT_PLAN),
   maxActiveLeases: landlordMaxActiveLeases(DEFAULT_PLAN),
 
-  // no-op safe (évite undefined)
   refresh: async () => {},
 };
 
-// ✅ IMPORTANT : on met un default non-null pour éviter le throw en prerender
-const PermissionsContext = createContext<PermissionsState>(DEFAULT_STATE);
+const PermissionsContext = createContext<PermissionsState | null>(null);
 
 export function PermissionProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
@@ -84,11 +82,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       // 2) plan (⚠️ peut planter → on catch)
       let nextPlan: Plan = DEFAULT_PLAN;
       try {
-        // si tu veux : tu peux décider de ne PAS appeler fetchEffectivePlan si pas loggé
-        // (ça dépend de ton produit : plan invité ou non)
         nextPlan = await fetchEffectivePlan();
       } catch (e) {
-        // important : ne jamais crasher l’app pour un problème de plan
         console.error("[PermissionProvider] fetchEffectivePlan failed:", e);
         nextPlan = DEFAULT_PLAN;
       }
@@ -149,6 +144,13 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
 }
 
 export function usePermissions() {
-  // ✅ plus de throw : en export/prerender, on obtient DEFAULT_STATE
-  return useContext(PermissionsContext);
+  const ctx = useContext(PermissionsContext);
+
+  // ✅ Pendant le prerender/export (serveur), on NE CRASH PAS
+  if (!ctx && typeof window === "undefined") return SSR_FALLBACK_STATE;
+
+  // ✅ Dans le navigateur, on garde le comportement strict d'avant
+  if (!ctx) throw new Error("usePermissions doit être utilisé dans <PermissionProvider />");
+
+  return ctx;
 }
