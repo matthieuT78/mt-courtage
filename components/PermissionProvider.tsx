@@ -1,5 +1,12 @@
 // components/PermissionProvider.tsx
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { supabase } from "../lib/supabaseClient";
 import { fetchEffectivePlan } from "../lib/subscriptions";
 import {
@@ -23,7 +30,22 @@ type PermissionsState = {
 
 const DEFAULT_PLAN: Plan = "calc_blur";
 
-const PermissionsContext = createContext<PermissionsState | null>(null);
+// ✅ Fallback SSR/export : évite le crash pendant le prerender
+const DEFAULT_STATE: PermissionsState = {
+  loading: true,
+  plan: DEFAULT_PLAN,
+  isLoggedIn: false,
+
+  canSeeCalcDetails: planShowsCalcDetails(DEFAULT_PLAN),
+  canUseLandlord: planAllowsLandlord(DEFAULT_PLAN),
+  maxActiveLeases: landlordMaxActiveLeases(DEFAULT_PLAN),
+
+  // no-op safe (évite undefined)
+  refresh: async () => {},
+};
+
+// ✅ IMPORTANT : on met un default non-null pour éviter le throw en prerender
+const PermissionsContext = createContext<PermissionsState>(DEFAULT_STATE);
 
 export function PermissionProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
@@ -119,11 +141,14 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     };
   }, [loading, plan, isLoggedIn]);
 
-  return <PermissionsContext.Provider value={value}>{children}</PermissionsContext.Provider>;
+  return (
+    <PermissionsContext.Provider value={value}>
+      {children}
+    </PermissionsContext.Provider>
+  );
 }
 
 export function usePermissions() {
-  const ctx = useContext(PermissionsContext);
-  if (!ctx) throw new Error("usePermissions doit être utilisé dans <PermissionProvider />");
-  return ctx;
+  // ✅ plus de throw : en export/prerender, on obtient DEFAULT_STATE
+  return useContext(PermissionsContext);
 }
