@@ -91,7 +91,7 @@ function ToolCard({
   );
 
   return (
-    <Link href={href} className="block h-full">
+    <Link href={href} className="block h-full" aria-label={`Ouvrir ${title}`}>
       {content}
     </Link>
   );
@@ -152,25 +152,93 @@ export default function Home() {
   // SEO
   const siteUrl = "https://lokt.fr";
   const pageUrl = `${siteUrl}/`;
-  const title = "Simulateur immobilier — capacité d’emprunt, prêt relais & rentabilité | lokt.fr";
-  const description =
-    "Calculez votre capacité d’emprunt, votre budget avec prêt relais, la rentabilité de vos investissements et la performance de votre parc immobilier. Simulateurs immobiliers gratuits.";
 
-  // ✅ OG IMAGE : fichier qui existe bien dans /public
+  const title =
+    "Simulateurs immobiliers — capacité d’emprunt, prêt relais, rentabilité & parc immobilier | lokt.fr";
+  const description =
+    "Simulateurs immobiliers gratuits : capacité d’emprunt, budget avec prêt relais, rentabilité locative (cash-flow) et analyse de parc immobilier. Une lecture claire pour comparer vos scénarios.";
+
+  // OG IMAGE (doit exister dans /public)
   const ogImage = `${siteUrl}/logo-transparent-Lokt.jpg`;
 
-  // (Optionnel) JSON-LD basique : WebSite
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "lokt.fr",
-    url: siteUrl,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${siteUrl}/?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
-  };
+  const faqData = useMemo(
+    () => [
+      {
+        q: "Les résultats sont-ils fiables ?",
+        a: "Les calculs sont indicatifs : ils dépendent de vos hypothèses (loyers, charges, vacance, travaux, financement). lokt.fr aide à comparer des scénarios et à structurer une analyse, mais ne remplace pas un conseil professionnel.",
+      },
+      {
+        q: "Est-ce que lokt.fr est gratuit ?",
+        a: "La V1 met à disposition des calculettes gratuites. Certaines fonctions (comme l’espace bailleur) sont en préparation : l’objectif actuel est de proposer un socle simple, rapide et utile.",
+      },
+      {
+        q: "Par où commencer si je débute ?",
+        a: "Si vous achetez votre résidence principale, commencez par la capacité d’emprunt. Si vous achetez avant de vendre, utilisez le prêt relais. Pour un achat locatif, partez sur la rentabilité locative. Si vous avez déjà plusieurs biens, utilisez le parc immobilier pour consolider.",
+      },
+      {
+        q: "Quelles hypothèses de crédit utilisez-vous ?",
+        a: "Les mensualités sont calculées selon une méthode standard (taux annuel / 12, durée en mois). Selon la calculette, l’assurance emprunteur peut être estimée de façon simplifiée afin d’obtenir un ordre de grandeur.",
+      },
+      {
+        q: "La fiscalité est-elle prise en compte ?",
+        a: "Pas encore sur la V1 (ou de façon volontairement simplifiée selon l’outil). L’objectif est d’abord de fiabiliser la rentabilité “économique” (loyers, charges, financement). La fiscalité pourra être ajoutée progressivement.",
+      },
+      {
+        q: "Location longue durée vs saisonnière : comment comparez-vous ?",
+        a: "Pour la saisonnière, les revenus sont convertis en équivalent mensuel à partir d’un prix par nuit et d’un taux d’occupation. C’est utile pour comparer des scénarios, mais la saisonnière peut varier selon la saison et le marché local.",
+      },
+      {
+        q: "Que faites-vous de mes données ?",
+        a: "Les données saisies peuvent être stockées uniquement pour améliorer le site et restituer des analyses. Vous pouvez demander la suppression de vos données à tout moment en écrivant à contact@lokt.fr.",
+      },
+      {
+        q: "Est-ce que lokt.fr revend mes données ?",
+        a: "Non. Les données ne sont pas revendues à des tiers.",
+      },
+      {
+        q: "Dois-je créer un compte ?",
+        a: "Non pour la V1 : vous pouvez utiliser les calculettes librement. Certaines fonctions à venir pourront nécessiter un compte.",
+      },
+      {
+        q: "Comment vous contacter ?",
+        a: "Par email : contact@lokt.fr.",
+      },
+    ],
+    []
+  );
+
+  const jsonLd = useMemo(() => {
+    const webSite = {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "lokt.fr",
+      url: siteUrl,
+    };
+
+    const organization = {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "lokt.fr",
+      url: siteUrl,
+      logo: ogImage,
+      email: "contact@lokt.fr",
+    };
+
+    const faqPage = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqData.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: f.a,
+        },
+      })),
+    };
+
+    return [webSite, organization, faqPage];
+  }, [faqData, ogImage]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -183,11 +251,13 @@ export default function Home() {
         {/* Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="lokt.fr" />
+        <meta property="og:locale" content="fr_FR" />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:secure_url" content={ogImage} />
+        <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -196,7 +266,10 @@ export default function Home() {
         <meta name="twitter:image" content={ogImage} />
 
         {/* JSON-LD */}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </Head>
 
       <AppHeader />
@@ -242,8 +315,9 @@ export default function Home() {
 
                   <p className="text-[0.85rem] text-slate-700 max-w-3xl">
                     <span className="font-semibold">Par où commencer ?</span> Si c’est votre premier achat, commencez
-                    par la <span className="font-semibold">capacité d’emprunt</span>. Si vous hésitez entre plusieurs
-                    scénarios, testez la calculette la plus proche de votre objectif, puis comparez.
+                    par la <span className="font-semibold">capacité d’emprunt</span>. Si vous achetez avant de vendre,
+                    utilisez le <span className="font-semibold">prêt relais</span>. Pour investir, lancez une{" "}
+                    <span className="font-semibold">simulation de rentabilité locative</span>.
                   </p>
                 </div>
 
@@ -276,8 +350,55 @@ export default function Home() {
                 </div>
 
                 <p className="text-[0.75rem] text-slate-500">
-                  Résultats indicatifs. Certaines fonctionnalités (analyses avancées) peuvent évoluer.
+                  Résultats indicatifs. Les fonctionnalités peuvent évoluer.
                 </p>
+              </div>
+            </div>
+          </section>
+
+          {/* =========================================================
+              1bis) TEXTE SEO DISCRET + MAILLAGE INTERNE
+          ========================================================== */}
+          <section className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className={`h-1.5 w-full ${brandGradSoft}`} />
+            <div className="p-6 sm:p-8">
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
+                Simulateurs immobiliers : comparez vos scénarios (achat, relais, investissement)
+              </h2>
+
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed max-w-4xl">
+                lokt.fr regroupe des <strong>simulateurs immobiliers</strong> conçus pour obtenir une lecture claire et
+                comparable : <strong>capacité d’emprunt</strong> (mensualité, capital, budget),{" "}
+                <strong>prêt relais</strong> (acheter avant de vendre), <strong>rentabilité locative</strong> (cash-flow
+                / rendement) et <strong>analyse de parc immobilier</strong> (vision consolidée). L’objectif est de
+                gagner du temps et d’arbitrer avec méthode.
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link
+                  href="/capacite"
+                  className="text-sm font-semibold underline decoration-slate-300 text-slate-900"
+                >
+                  Simulateur de capacité d’emprunt →
+                </Link>
+                <Link
+                  href="/pret-relais"
+                  className="text-sm font-semibold underline decoration-slate-300 text-slate-900"
+                >
+                  Simulateur de prêt relais →
+                </Link>
+                <Link
+                  href="/investissement"
+                  className="text-sm font-semibold underline decoration-slate-300 text-slate-900"
+                >
+                  Simulateur de rentabilité locative →
+                </Link>
+                <Link
+                  href="/parc-immobilier"
+                  className="text-sm font-semibold underline decoration-slate-300 text-slate-900"
+                >
+                  Simulateur de parc immobilier →
+                </Link>
               </div>
             </div>
           </section>
@@ -373,7 +494,7 @@ export default function Home() {
           </section>
 
           {/* =========================================================
-              3) Bandeau bailleur — teaser (à venir) + screenshot + template docs
+              3) Bandeau bailleur — teaser (à venir)
           ========================================================== */}
           <section className="rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className={`relative ${brandGrad} text-white p-7 sm:p-10 overflow-hidden`}>
@@ -425,7 +546,7 @@ export default function Home() {
                       <li>• Gérer les échéances (rappels, révisions, renouvellements)</li>
                       <li>
                         • <span className="font-semibold">Templates de documents</span> : des dizaines de modèles prêts
-                        à l’emploi pour l’immobilier (courriers, quittances, attestations, états des lieux, etc.)
+                        à l’emploi pour l’immobilier
                       </li>
                     </ul>
 
@@ -468,6 +589,7 @@ export default function Home() {
                       src="/ESPACEBAILLEURSCREENSHOT.png"
                       alt="Aperçu espace bailleur lokt.fr"
                       className="w-full rounded-2xl border border-white/10 shadow-sm object-cover"
+                      loading="lazy"
                     />
                   </div>
 
@@ -590,8 +712,8 @@ export default function Home() {
                   a={
                     <>
                       Les données saisies peuvent être stockées uniquement pour améliorer le site et restituer des
-                      dashboards / analyses (ex. résultats, synthèses, comparatifs). Vous pouvez demander la suppression
-                      de vos données à tout moment en écrivant à{" "}
+                      dashboards / analyses. Vous pouvez demander la suppression de vos données à tout moment en écrivant
+                      à{" "}
                       <a className="underline" href="mailto:contact@lokt.fr">
                         contact@lokt.fr
                       </a>
@@ -600,14 +722,17 @@ export default function Home() {
                   }
                 />
 
-                <FaqItem q="Est-ce que lokt.fr revend mes données ?" a={<>Non. Les données ne sont pas revendues à des tiers.</>} />
+                <FaqItem
+                  q="Est-ce que lokt.fr revend mes données ?"
+                  a={<>Non. Les données ne sont pas revendues à des tiers.</>}
+                />
 
                 <FaqItem
                   q="Dois-je créer un compte ?"
                   a={
                     <>
-                      Non pour la V1 : vous pouvez utiliser les calculettes librement. Certaines fonctions à venir (ex.
-                      espace bailleur, sauvegardes avancées) pourront nécessiter un compte.
+                      Non pour la V1 : vous pouvez utiliser les calculettes librement. Certaines fonctions à venir
+                      pourront nécessiter un compte.
                     </>
                   }
                 />
