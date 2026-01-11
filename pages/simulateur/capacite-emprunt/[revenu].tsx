@@ -1,15 +1,19 @@
 import Head from "next/head";
 import Link from "next/link";
 import type { GetStaticPaths, GetStaticProps } from "next";
-import AppHeader from "../../components/AppHeader";
-import AppFooter from "../../components/AppFooter";
+import AppHeader from "../../../components/AppHeader";
+import AppFooter from "../../../components/AppFooter";
 
 // ✅ JSON-LD SAFE: évite tout crash si un schema est undefined/malformé
 function JsonLd({ data }: { data: any }) {
   const items = Array.isArray(data) ? data : [data];
 
   const safeItems = items.filter(
-    (x) => x && typeof x === "object" && typeof x["@context"] === "string" && x["@context"].length > 0
+    (x) =>
+      x &&
+      typeof x === "object" &&
+      typeof x["@context"] === "string" &&
+      x["@context"].length > 0
   );
 
   return (
@@ -39,7 +43,8 @@ function clamp(n: number, min: number, max: number) {
 
 // ✅ Liste des revenus que TU veux générer en pages SEO
 const REVENUS = [
-  1500, 1800, 2000, 2200, 2500, 2800, 3000, 3200, 3500, 3800, 4000, 4500, 5000, 5500, 6000, 7000, 8000,
+  1500, 1800, 2000, 2200, 2500, 2800, 3000, 3200, 3500, 3800, 4000, 4500, 5000,
+  5500, 6000, 7000, 8000,
 ];
 
 type Props = {
@@ -48,24 +53,24 @@ type Props = {
 
 export default function CapaciteEmpruntRevenuPage({ revenu }: Props) {
   const siteUrl = "https://lokt.fr";
-  const pagePath = `/simulateur/capacite-emprunt-${revenu}`;
+
+  // ✅ URL dynamique (slash) - compatible Next + SEO
+  const pagePath = `/simulateur/capacite-emprunt/${revenu}`;
   const pageUrl = `${siteUrl}${pagePath}`;
 
-  const title = `Capacité d’emprunt avec ${formatEuro(revenu)}€ — combien puis-je emprunter ? | lokt.fr`;
+  const title = `Capacité d’emprunt avec ${formatEuro(
+    revenu
+  )}€ — combien puis-je emprunter ? | lokt.fr`;
+
   const description = `Estimez votre capacité d’emprunt avec ${formatEuro(
     revenu
   )}€ de revenus mensuels : mensualité cible, capital empruntable et budget d’achat. Simulation gratuite avec lecture claire sur lokt.fr.`;
 
-  // OG image : adapte si tu veux
   const ogImage = `${siteUrl}/logo-transparent-Lokt.jpg`;
 
-  // Petite “approx” uniquement pour donner du contenu utile sur la page (SEO + UX)
-  // ⚠️ On reste prudent : ce n’est pas le résultat officiel (la vraie simulation est dans /capacite)
+  // Repère indicatif (prudence)
   const tauxEndettement = 0.35;
   const mensualiteIndicative = Math.round(revenu * tauxEndettement);
-
-  // Exemples de fourchettes de capital (très approximatif) juste pour contextualiser
-  // On évite de faire du “chiffre magique” trop précis.
   const mensualite = clamp(mensualiteIndicative, 300, 5000);
 
   const jsonLd = [
@@ -87,8 +92,18 @@ export default function CapaciteEmpruntRevenuPage({ revenu }: Props) {
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Accueil", item: `${siteUrl}/` },
-        { "@type": "ListItem", position: 2, name: "Capacité d’emprunt", item: `${siteUrl}/capacite` },
-        { "@type": "ListItem", position: 3, name: `Revenu ${formatEuro(revenu)}€`, item: pageUrl },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Capacité d’emprunt",
+          item: `${siteUrl}/capacite`,
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: `Revenu ${formatEuro(revenu)}€`,
+          item: pageUrl,
+        },
       ],
     },
   ];
@@ -162,7 +177,9 @@ export default function CapaciteEmpruntRevenuPage({ revenu }: Props) {
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-xs font-semibold text-slate-900">Mensualité “repère” (indicatif)</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">≈ {formatEuro(mensualite)}€ / mois</p>
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
+                    ≈ {formatEuro(mensualite)}€ / mois
+                  </p>
                   <p className="mt-1 text-xs text-slate-600">Base simple à 35% des revenus (hors règles banque).</p>
                 </div>
 
@@ -233,15 +250,17 @@ export default function CapaciteEmpruntRevenuPage({ revenu }: Props) {
             </p>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              {REVENUS.filter((r) => r !== revenu).slice(0, 12).map((r) => (
-                <Link
-                  key={r}
-                  href={`/simulateur/capacite-emprunt-${r}`}
-                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-900 hover:bg-white"
-                >
-                  {formatEuro(r)}€
-                </Link>
-              ))}
+              {REVENUS.filter((r) => r !== revenu)
+                .slice(0, 12)
+                .map((r) => (
+                  <Link
+                    key={r}
+                    href={`/simulateur/capacite-emprunt/${r}`}
+                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-900 hover:bg-white"
+                  >
+                    {formatEuro(r)}€
+                  </Link>
+                ))}
             </div>
 
             <p className="mt-4 text-xs text-slate-500">
@@ -263,7 +282,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
 
   return {
     paths,
-    fallback: false, // ✅ toutes les pages sont générées au build
+    fallback: false,
   };
 };
 
@@ -275,7 +294,6 @@ export const getStaticProps: GetStaticProps<Props> = async (ctx) => {
     return { notFound: true };
   }
 
-  // Si quelqu’un tape une valeur hors liste, on renvoie 404 (cohérent et propre)
   if (!REVENUS.includes(revenuNum)) {
     return { notFound: true };
   }

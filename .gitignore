@@ -119,3 +119,5 @@ Desktop.ini
 # Generated images or temporary exports
 exports/
 screenshots/
+.vercel
+.env*.local
