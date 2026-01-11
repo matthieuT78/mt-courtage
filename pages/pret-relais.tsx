@@ -1,6 +1,6 @@
 // pages/pret-relais.tsx
 import Head from "next/head";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import PretRelaisWizard from "../components/PretRelaisWizard";
@@ -12,6 +12,39 @@ type SimpleUser = {
     full_name?: string;
   };
 };
+
+// ✅ JSON-LD SAFE: évite tout crash si un schema est undefined/malformé
+function JsonLd({ data }: { data: any }) {
+  const items = Array.isArray(data) ? data : [data];
+
+  const safeItems = items.filter(
+    (x) => x && typeof x === "object" && typeof x["@context"] === "string" && x["@context"].length > 0
+  );
+
+  return (
+    <>
+      {safeItems.map((schema, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+    </>
+  );
+}
+
+function FaqItem({ q, a }: { q: string; a: React.ReactNode }) {
+  return (
+    <details className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <summary className="cursor-pointer list-none font-semibold text-slate-900 flex items-center justify-between">
+        <span className="pr-4">{q}</span>
+        <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
+      </summary>
+      <div className="mt-2 text-sm text-slate-700 leading-relaxed">{a}</div>
+    </details>
+  );
+}
 
 export default function PretRelaisPage() {
   const [user, setUser] = useState<SimpleUser | null>(null);
@@ -44,43 +77,97 @@ export default function PretRelaisPage() {
     };
   }, []);
 
-  const displayName =
-    user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
-
+  const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
   const isLoggedIn = !!user;
 
   // --- SEO
   const siteUrl = "https://lokt.fr";
-  const pageUrl = `${siteUrl}/pret-relais`;
+  const pagePath = "/pret-relais";
+  const pageUrl = `${siteUrl}${pagePath}`;
+
   const title = "Simulateur de prêt relais — budget d’achat avant revente | lokt.fr";
   const description =
     "Estimez votre budget d’achat avec un prêt relais : montant du relais, nouveau prêt possible, apport et budget maximal. Simulation gratuite avec lecture claire (relais + nouveau prêt + apport).";
 
-  // OG image : utilise ton logo existant dans /public
-  const ogImage = `${siteUrl}/lokt-logo.jpg`;
+  const ogImage = `${siteUrl}/lokt-logo.jpg`; // doit exister dans /public
 
-  // JSON-LD : WebPage + Service
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebPage",
-    name: title,
-    url: pageUrl,
-    description,
-    isPartOf: {
-      "@type": "WebSite",
-      name: "lokt.fr",
-      url: siteUrl,
-    },
-    about: {
+  const faqData = useMemo(
+    () => [
+      {
+        q: "Qu’est-ce qu’un prêt relais ?",
+        a: "Un prêt relais permet d’acheter un nouveau bien avant d’avoir vendu le bien actuel. La banque avance une partie de la valeur du bien à vendre (après déduction du capital restant dû).",
+      },
+      {
+        q: "Quel montant de relais puis-je obtenir ?",
+        a: "Cela dépend notamment de la valeur estimée du bien, du capital restant dû et du pourcentage retenu par la banque (souvent une décote). La calculette vous donne un ordre de grandeur.",
+      },
+      {
+        q: "Comment calculez-vous le budget total ?",
+        a: "Le budget est généralement la somme : prêt relais + nouveau prêt + apport. La simulation aide à comparer plusieurs hypothèses (prix de vente, durée, taux, apport).",
+      },
+      {
+        q: "Les résultats sont-ils fiables ?",
+        a: "Les résultats sont indicatifs : chaque banque a ses règles (durée du relais, franchise, assurance, frais, décote). Utilisez l’outil pour préparer votre scénario et vos échanges.",
+      },
+      {
+        q: "Dois-je créer un compte ?",
+        a: "Non pour la V1 : vous pouvez utiliser la calculette librement. Certaines fonctionnalités à venir pourront nécessiter un compte.",
+      },
+    ],
+    []
+  );
+
+  const jsonLd = useMemo(() => {
+    const webPage = {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: title,
+      url: pageUrl,
+      description,
+      inLanguage: "fr-FR",
+      isPartOf: {
+        "@type": "WebSite",
+        name: "lokt.fr",
+        url: siteUrl,
+      },
+    };
+
+    const breadcrumb = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Accueil", item: `${siteUrl}/` },
+        { "@type": "ListItem", position: 2, name: "Prêt relais", item: pageUrl },
+      ],
+    };
+
+    const service = {
+      "@context": "https://schema.org",
       "@type": "Service",
       name: "Simulateur de prêt relais",
       provider: {
         "@type": "Organization",
         name: "lokt.fr",
         url: siteUrl,
+        logo: ogImage,
       },
-    },
-  };
+      areaServed: "FR",
+      serviceType: "Simulation prêt relais",
+      url: pageUrl,
+    };
+
+    const faqPage = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqData.map((f) => ({
+        "@type": "Question",
+        name: f.q,
+        acceptedAnswer: { "@type": "Answer", text: f.a },
+      })),
+    };
+
+    return [webPage, breadcrumb, service, faqPage];
+  }, [title, description, pageUrl, siteUrl, ogImage, faqData]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -93,10 +180,12 @@ export default function PretRelaisPage() {
         {/* Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="lokt.fr" />
+        <meta property="og:locale" content="fr_FR" />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
+        <meta property="og:image:secure_url" content={ogImage} />
         <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers" />
 
         {/* Twitter */}
@@ -105,20 +194,16 @@ export default function PretRelaisPage() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
 
-        {/* JSON-LD */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        {/* ✅ JSON-LD (SAFE) */}
+        <JsonLd data={jsonLd} />
       </Head>
 
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header de la page (identité visuelle prêt relais) */}
+          {/* Header */}
           <section className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-sm p-5 space-y-3">
-            {/* Titre calculette */}
             <div className="flex items-center justify-between gap-3">
               <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">
                 CALCULETTE PRÊT RELAIS
@@ -136,12 +221,9 @@ export default function PretRelaisPage() {
             </h1>
 
             <p className="text-xs text-slate-600 max-w-2xl">
-              Parcours guidé en plusieurs étapes : estimation du relais (valeur du bien actuel, capital restant
-              dû, conditions de vente), apport disponible, et paramètres du futur prêt. Le résultat est structuré
-              pour une lecture claire (relais + nouveau prêt + apport).
+              Parcours guidé : estimation du relais (valeur du bien actuel, capital restant dû, conditions de vente),
+              apport, puis paramètres du futur prêt. Résultat structuré pour une lecture claire (relais + nouveau prêt + apport).
             </p>
-
-            {/* ⚠️ Supprimé : le bloc “Sans compte… créer un espace” car la création de compte n’est pas ouverte */}
           </section>
 
           {/* Calculette */}
@@ -149,22 +231,57 @@ export default function PretRelaisPage() {
 
           {/* Bloc SEO discret */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Simulateur de prêt relais : acheter avant d’avoir vendu
-            </h2>
+            <h2 className="text-sm font-semibold text-slate-900">Simulateur de prêt relais : acheter avant d’avoir vendu</h2>
 
             <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Cette calculette de prêt relais vous permet d’estimer le montant de relais mobilisable à partir
-              de la valeur de votre bien actuel, du capital restant dû et du pourcentage retenu par la banque.
-              Elle projette ensuite votre capacité pour un nouveau prêt et votre budget d’achat total
-              (relais + nouveau prêt + apport).
+              Cette calculette de prêt relais vous permet d’estimer le montant de relais mobilisable à partir de la valeur
+              de votre bien actuel, du capital restant dû et du pourcentage retenu par la banque. Elle projette ensuite
+              votre capacité pour un nouveau prêt et votre budget d’achat total (relais + nouveau prêt + apport).
             </p>
 
             <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Les résultats restent indicatifs : chaque banque applique ses propres règles (durée du relais,
-              franchise, intérêts intercalaires, assurance, frais). Utilisez l’outil pour comparer des scénarios
-              et préparer un échange plus efficace avec un conseiller.
+              Les résultats restent indicatifs : chaque banque applique ses propres règles (durée du relais, franchise,
+              intérêts intercalaires, assurance, frais). Utilisez l’outil pour comparer des scénarios et préparer un échange
+              plus efficace avec un conseiller.
             </p>
+          </section>
+
+          {/* FAQ */}
+          <section id="faq" className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="h-1.5 w-full bg-gradient-to-r from-amber-50 to-white" />
+            <div className="p-6 sm:p-8">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-slate-600">
+                    FAQ
+                  </p>
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900 mt-1">
+                    Questions fréquentes sur le prêt relais
+                  </h2>
+                  <p className="text-sm text-slate-600 mt-2 max-w-3xl">
+                    Des réponses rapides pour comprendre le relais, le budget total et les hypothèses.
+                  </p>
+                </div>
+
+                <span className="hidden sm:inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-600">
+                  lokt.fr
+                </span>
+              </div>
+
+              <div className="mt-6 grid gap-3">
+                {faqData.map((f) => (
+                  <FaqItem key={f.q} q={f.q} a={<>{f.a}</>} />
+                ))}
+              </div>
+
+              <p className="mt-6 text-xs text-slate-500">
+                Une question ? Écrivez-nous à{" "}
+                <a className="underline" href="mailto:contact@lokt.fr">
+                  contact@lokt.fr
+                </a>
+                .
+              </p>
+            </div>
           </section>
         </div>
       </main>
