@@ -15,9 +15,32 @@ type SimpleUser = {
 
 function firstNameFromUser(user: SimpleUser | null) {
   const raw = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "");
-  const first = String(raw || "").trim().split(/\s+/)[0] || "";
+  const first = String(raw || "")
+    .trim()
+    .split(/\s+/)[0] || "";
   if (!first) return "";
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
+// ✅ JSON-LD SAFE: évite tout crash si un schema est undefined/malformé
+function JsonLd({ data }: { data: any }) {
+  const items = Array.isArray(data) ? data : [data];
+
+  const safeItems = items.filter(
+    (x) => x && typeof x === "object" && typeof x["@context"] === "string" && x["@context"].length > 0
+  );
+
+  return (
+    <>
+      {safeItems.map((schema, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+    </>
+  );
 }
 
 function Pill({ children }: { children: React.ReactNode }) {
@@ -238,7 +261,7 @@ export default function Home() {
     };
 
     return [webSite, organization, faqPage];
-  }, [faqData, ogImage]);
+  }, [faqData, ogImage, siteUrl]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -265,11 +288,8 @@ export default function Home() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
 
-        {/* JSON-LD */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        {/* JSON-LD (SAFE) */}
+        <JsonLd data={jsonLd} />
       </Head>
 
       <AppHeader />
@@ -349,9 +369,7 @@ export default function Home() {
                   />
                 </div>
 
-                <p className="text-[0.75rem] text-slate-500">
-                  Résultats indicatifs. Les fonctionnalités peuvent évoluer.
-                </p>
+                <p className="text-[0.75rem] text-slate-500">Résultats indicatifs. Les fonctionnalités peuvent évoluer.</p>
               </div>
             </div>
           </section>
@@ -375,16 +393,10 @@ export default function Home() {
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link
-                  href="/capacite"
-                  className="text-sm font-semibold underline decoration-slate-300 text-slate-900"
-                >
+                <Link href="/capacite" className="text-sm font-semibold underline decoration-slate-300 text-slate-900">
                   Simulateur de capacité d’emprunt →
                 </Link>
-                <Link
-                  href="/pret-relais"
-                  className="text-sm font-semibold underline decoration-slate-300 text-slate-900"
-                >
+                <Link href="/pret-relais" className="text-sm font-semibold underline decoration-slate-300 text-slate-900">
                   Simulateur de prêt relais →
                 </Link>
                 <Link
@@ -420,10 +432,9 @@ export default function Home() {
                   </h2>
 
                   <p className="text-sm text-slate-600 max-w-2xl">
-                    Un “bon résultat” n’a de valeur que s’il est{" "}
-                    <span className="font-semibold">exploitable</span>. lokt.fr met en avant les hypothèses, clarifie
-                    les leviers, et propose une lecture homogène entre outils, afin que vous puissiez arbitrer avec
-                    méthode.
+                    Un “bon résultat” n’a de valeur que s’il est <span className="font-semibold">exploitable</span>.
+                    lokt.fr met en avant les hypothèses, clarifie les leviers, et propose une lecture homogène entre
+                    outils, afin que vous puissiez arbitrer avec méthode.
                   </p>
 
                   <div className="pt-3 space-y-3">
@@ -436,9 +447,7 @@ export default function Home() {
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-sm font-semibold text-slate-900">
-                        Des leviers concrets plutôt qu’un chiffre isolé
-                      </p>
+                      <p className="text-sm font-semibold text-slate-900">Des leviers concrets plutôt qu’un chiffre isolé</p>
                       <p className="mt-1 text-sm text-slate-600">
                         Ajustez durée, taux, apport ou structure : vous voyez l’impact réel sur la mensualité, le
                         budget, l’effort d’épargne ou la rentabilité.
@@ -462,9 +471,7 @@ export default function Home() {
                   <div className="mt-4 grid gap-3">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-xs font-semibold text-slate-900">Lisibilité immédiate</p>
-                      <p className="mt-1 text-xs text-slate-600">
-                        Une synthèse claire, puis le détail si vous en avez besoin.
-                      </p>
+                      <p className="mt-1 text-xs text-slate-600">Une synthèse claire, puis le détail si vous en avez besoin.</p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -544,10 +551,7 @@ export default function Home() {
                       <li>• Centraliser vos documents (quittances, états des lieux, pièces clés)</li>
                       <li>• Suivre dépôts de garantie et restitutions</li>
                       <li>• Gérer les échéances (rappels, révisions, renouvellements)</li>
-                      <li>
-                        • <span className="font-semibold">Templates de documents</span> : des dizaines de modèles prêts
-                        à l’emploi pour l’immobilier
-                      </li>
+                      <li>• <span className="font-semibold">Templates de documents</span> : des dizaines de modèles prêts à l’emploi pour l’immobilier</li>
                     </ul>
 
                     <div className="mt-4 pt-4 border-t border-white/15">
@@ -639,116 +643,27 @@ export default function Home() {
               </div>
 
               <div className="mt-6 grid gap-3">
-                <FaqItem
-                  q="Les résultats sont-ils fiables ?"
-                  a={
-                    <>
-                      Les calculs sont indicatifs : ils dépendent de vos hypothèses (loyers, charges, vacance, travaux,
-                      financement). lokt.fr aide à comparer des scénarios et à structurer une analyse, mais ne remplace
-                      pas un conseil professionnel.
-                    </>
-                  }
-                />
-
-                <FaqItem
-                  q="Est-ce que lokt.fr est gratuit ?"
-                  a={
-                    <>
-                      La V1 met à disposition des calculettes gratuites. Certaines fonctions (comme l’espace bailleur)
-                      sont en préparation : l’objectif actuel est de proposer un socle simple, rapide et utile.
-                    </>
-                  }
-                />
-
-                <FaqItem
-                  q="Par où commencer si je débute ?"
-                  a={
-                    <>
-                      Si vous achetez votre résidence principale, commencez par{" "}
-                      <span className="font-semibold">la capacité d’emprunt</span>. Si vous achetez avant de vendre,
-                      utilisez <span className="font-semibold">le prêt relais</span>. Pour un achat locatif, partez sur{" "}
-                      <span className="font-semibold">la rentabilité locative</span>. Si vous avez déjà plusieurs biens,
-                      utilisez <span className="font-semibold">le parc immobilier</span> pour consolider.
-                    </>
-                  }
-                />
-
-                <FaqItem
-                  q="Quelles hypothèses de crédit utilisez-vous ?"
-                  a={
-                    <>
-                      Les mensualités sont calculées selon une méthode standard (taux annuel / 12, durée en mois).
-                      Selon la calculette, l’assurance emprunteur peut être estimée de façon simplifiée (taux annuel
-                      appliqué sur le capital emprunté) afin d’obtenir un ordre de grandeur.
-                    </>
-                  }
-                />
-
-                <FaqItem
-                  q="La fiscalité est-elle prise en compte ?"
-                  a={
-                    <>
-                      Pas encore sur la V1 (ou de façon volontairement simplifiée selon l’outil). L’objectif est d’abord
-                      de fiabiliser la rentabilité “économique” (loyers, charges, financement). La fiscalité pourra être
-                      ajoutée progressivement.
-                    </>
-                  }
-                />
-
-                <FaqItem
-                  q="Location longue durée vs saisonnière : comment comparez-vous ?"
-                  a={
-                    <>
-                      Pour la saisonnière, les revenus sont convertis en équivalent mensuel à partir d’un{" "}
-                      <span className="font-semibold">prix par nuit</span> et d’un{" "}
-                      <span className="font-semibold">taux d’occupation</span>. C’est utile pour comparer des scénarios,
-                      mais la saisonnière peut varier selon la saison et le marché local.
-                    </>
-                  }
-                />
-
-                <FaqItem
-                  q="Que faites-vous de mes données ?"
-                  a={
-                    <>
-                      Les données saisies peuvent être stockées uniquement pour améliorer le site et restituer des
-                      dashboards / analyses. Vous pouvez demander la suppression de vos données à tout moment en écrivant
-                      à{" "}
-                      <a className="underline" href="mailto:contact@lokt.fr">
-                        contact@lokt.fr
-                      </a>
-                      .
-                    </>
-                  }
-                />
-
-                <FaqItem
-                  q="Est-ce que lokt.fr revend mes données ?"
-                  a={<>Non. Les données ne sont pas revendues à des tiers.</>}
-                />
-
-                <FaqItem
-                  q="Dois-je créer un compte ?"
-                  a={
-                    <>
-                      Non pour la V1 : vous pouvez utiliser les calculettes librement. Certaines fonctions à venir
-                      pourront nécessiter un compte.
-                    </>
-                  }
-                />
-
-                <FaqItem
-                  q="Comment vous contacter ?"
-                  a={
-                    <>
-                      Par email :{" "}
-                      <a className="underline" href="mailto:contact@lokt.fr">
-                        contact@lokt.fr
-                      </a>
-                      .
-                    </>
-                  }
-                />
+                {faqData.map((f) => (
+                  <FaqItem
+                    key={f.q}
+                    q={f.q}
+                    a={
+                      <>
+                        {f.a.includes("contact@lokt.fr") ? (
+                          <>
+                            {f.a.split("contact@lokt.fr")[0]}
+                            <a className="underline" href="mailto:contact@lokt.fr">
+                              contact@lokt.fr
+                            </a>
+                            {f.a.split("contact@lokt.fr")[1] ?? ""}
+                          </>
+                        ) : (
+                          f.a
+                        )}
+                      </>
+                    }
+                  />
+                ))}
               </div>
 
               <p className="mt-6 text-xs text-slate-500">
