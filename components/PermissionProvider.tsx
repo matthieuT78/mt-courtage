@@ -1,12 +1,5 @@
 // components/PermissionProvider.tsx
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { fetchEffectivePlan } from "../lib/subscriptions";
 import {
@@ -29,19 +22,6 @@ type PermissionsState = {
 };
 
 const DEFAULT_PLAN: Plan = "calc_blur";
-
-// ✅ Valeur SSR-safe utilisée UNIQUEMENT pendant le prerender/export
-const SSR_FALLBACK_STATE: PermissionsState = {
-  loading: false, // important pour ne pas casser l'UX au 1er paint
-  plan: DEFAULT_PLAN,
-  isLoggedIn: false,
-
-  canSeeCalcDetails: planShowsCalcDetails(DEFAULT_PLAN),
-  canUseLandlord: planAllowsLandlord(DEFAULT_PLAN),
-  maxActiveLeases: landlordMaxActiveLeases(DEFAULT_PLAN),
-
-  refresh: async () => {},
-};
 
 const PermissionsContext = createContext<PermissionsState | null>(null);
 
@@ -136,21 +116,11 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     };
   }, [loading, plan, isLoggedIn]);
 
-  return (
-    <PermissionsContext.Provider value={value}>
-      {children}
-    </PermissionsContext.Provider>
-  );
+  return <PermissionsContext.Provider value={value}>{children}</PermissionsContext.Provider>;
 }
 
 export function usePermissions() {
   const ctx = useContext(PermissionsContext);
-
-  // ✅ Pendant le prerender/export (serveur), on NE CRASH PAS
-  if (!ctx && typeof window === "undefined") return SSR_FALLBACK_STATE;
-
-  // ✅ Dans le navigateur, on garde le comportement strict d'avant
   if (!ctx) throw new Error("usePermissions doit être utilisé dans <PermissionProvider />");
-
   return ctx;
 }
