@@ -1,4 +1,3 @@
-// pages/capacite.tsx
 import Head from "next/head";
 import { useEffect, useState } from "react";
 import AppHeader from "../components/AppHeader";
@@ -54,31 +53,27 @@ export default function CapaciteEmpruntPage() {
   const pageUrl = `${siteUrl}/capacite`;
   const title = "Simulateur de capacité d’emprunt immobilier | lokt.fr";
   const description =
-    "Estimez votre capacité d’emprunt immobilier : mensualité cible, capital empruntable, budget d’achat. Simulation gratuite avec lecture bancaire (revenus, charges, crédits, loyers à 70%).";
+    "Estimez votre capacité d’emprunt immobilier : mensualité cible, capital empruntable et budget d’achat selon vos revenus, charges et crédits. Simulation gratuite.";
 
-  // OG image : utilise ton logo existant dans /public
-  const ogImage = `${siteUrl}/lokt-logo.jpg`;
+  // Utilise une image qui existe vraiment dans /public
+  const ogImage = `${siteUrl}/logo-transparent-Lokt.jpg`;
 
-  // JSON-LD : WebPage + Service
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "WebPage",
-    name: title,
+    "@type": "WebApplication",
+    name: "Simulateur de capacité d’emprunt immobilier",
     url: pageUrl,
     description,
-    isPartOf: {
-      "@type": "WebSite",
+    applicationCategory: "FinanceApplication",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "EUR",
+    },
+    publisher: {
+      "@type": "Organization",
       name: "lokt.fr",
       url: siteUrl,
-    },
-    about: {
-      "@type": "Service",
-      name: "Simulateur de capacité d’emprunt immobilier",
-      provider: {
-        "@type": "Organization",
-        name: "lokt.fr",
-        url: siteUrl,
-      },
     },
   };
 
@@ -97,7 +92,7 @@ export default function CapaciteEmpruntPage() {
         <meta property="og:description" content={description} />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
-        <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers" />
+        <meta property="og:image:alt" content="Simulateur de capacité d’emprunt lokt.fr" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -105,7 +100,6 @@ export default function CapaciteEmpruntPage() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
 
-        {/* JSON-LD */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -116,55 +110,95 @@ export default function CapaciteEmpruntPage() {
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header de la page (identité visuelle capacité) */}
+          {/* Header */}
           <section className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm p-5 space-y-3">
-            {/* Titre calculette */}
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
-                CALCULETTE CAPACITÉ D&apos;EMPRUNT
-              </p>
-
-              <span className="hidden sm:inline-flex items-center rounded-full border border-emerald-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-emerald-700">
-                Lokt.fr
-              </span>
-            </div>
+            <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+              CALCULETTE CAPACITÉ D’EMPRUNT
+            </p>
 
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              {displayName
-                ? `Bonjour ${displayName}, estimez précisément votre capacité d’emprunt.`
-                : "Estimez précisément votre capacité d’emprunt immobilier."}
+              Simulateur de capacité d’emprunt immobilier
             </h1>
 
+            {displayName ? (
+              <p className="text-sm text-slate-700">
+                Bonjour {displayName} — estimez précisément votre capacité d’emprunt.
+              </p>
+            ) : null}
+
             <p className="text-xs text-slate-600 max-w-2xl">
-              Parcours guidé en plusieurs étapes : revenus, charges, crédits en cours, loyers locatifs pris
-              à 70 %, et paramètres de votre futur prêt. Le résultat est structuré pour correspondre à la
-              lecture bancaire réelle.
+              Estimez votre budget immobilier à partir de vos revenus, charges, crédits en cours et
+              loyers locatifs (pris en compte de manière prudente). Le calcul est structuré pour
+              correspondre à une lecture bancaire réaliste.
             </p>
 
-            {/* ⚠️ Supprimé : le bloc “Sans compte… créer un espace” car la création de compte n’est pas ouverte */}
+            <div className="flex flex-wrap gap-3 pt-2">
+              <a href="/pret-relais" className="text-xs font-semibold underline text-emerald-700">
+                Calculer un prêt relais →
+              </a>
+              <a href="/investissement" className="text-xs font-semibold underline text-emerald-700">
+                Calculer une rentabilité locative →
+              </a>
+            </div>
           </section>
 
-          {/* Calculette */}
+          {/* Wizard */}
           <CapaciteWizard showSaveButton={isLoggedIn} />
 
-          {/* Bloc SEO (discret mais indexable) */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+          {/* SEO content */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
             <h2 className="text-sm font-semibold text-slate-900">
-              Simulateur de capacité d’emprunt immobilier
+              Comment est calculée votre capacité d’emprunt ?
             </h2>
 
-            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Cette calculette vous aide à estimer un budget immobilier cohérent à partir de vos revenus,
-              charges et crédits en cours. Vous obtenez une mensualité cible, un capital empruntable et un
-              budget d’achat réaliste, selon une lecture proche des pratiques bancaires.
+            <p className="text-sm text-slate-600 leading-relaxed">
+              La capacité d’emprunt correspond au montant maximum que vous pouvez emprunter en
+              fonction de votre mensualité supportable. Celle-ci est généralement limitée par un
+              taux d’endettement (souvent 35 %) et par votre reste à vivre après paiement des charges.
             </p>
 
-            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Si vous avez des revenus locatifs, ils peuvent être intégrés de manière prudente (prise en
-              compte partielle) afin de comparer vos scénarios avec plus de fiabilité. Les résultats restent
-              indicatifs : ils dépendent des conditions de crédit (taux, durée, assurance) et des critères
-              propres à chaque banque.
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Les revenus locatifs peuvent être intégrés partiellement (souvent autour de 70 %) afin
+              de tenir compte des charges, de la vacance et des imprévus. La durée du crédit, le taux
+              d’intérêt et l’assurance influencent fortement le capital empruntable.
             </p>
+          </section>
+
+          {/* FAQ */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 className="text-sm font-semibold text-slate-900">Questions fréquentes</h2>
+
+            <div className="mt-3 space-y-3 text-sm text-slate-600">
+              <details className="rounded-xl border border-slate-200 p-3">
+                <summary className="font-semibold text-slate-900 cursor-pointer">
+                  Quel salaire faut-il pour emprunter ?
+                </summary>
+                <p className="mt-2">
+                  Cela dépend de votre mensualité maximale, de la durée du crédit et du taux.
+                  La calculette estime ces paramètres pour donner un ordre de grandeur réaliste.
+                </p>
+              </details>
+
+              <details className="rounded-xl border border-slate-200 p-3">
+                <summary className="font-semibold text-slate-900 cursor-pointer">
+                  Pourquoi les loyers sont-ils pris à 70 % ?
+                </summary>
+                <p className="mt-2">
+                  Les banques appliquent souvent un abattement pour couvrir les charges et la
+                  vacance locative. Cela permet une estimation plus prudente.
+                </p>
+              </details>
+
+              <details className="rounded-xl border border-slate-200 p-3">
+                <summary className="font-semibold text-slate-900 cursor-pointer">
+                  Le résultat est-il garanti par une banque ?
+                </summary>
+                <p className="mt-2">
+                  Non. Il s’agit d’une estimation. Chaque banque applique ses propres critères
+                  (reste à vivre, stabilité des revenus, type de projet).
+                </p>
+              </details>
+            </div>
           </section>
         </div>
       </main>
