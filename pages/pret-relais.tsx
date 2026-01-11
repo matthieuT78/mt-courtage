@@ -13,6 +13,27 @@ type SimpleUser = {
   };
 };
 
+// ✅ JSON-LD SAFE: évite tout crash si un schema est undefined/malformé
+function JsonLd({ data }: { data: any }) {
+  const items = Array.isArray(data) ? data : [data];
+
+  const safeItems = items.filter(
+    (x) => x && typeof x === "object" && typeof x["@context"] === "string" && x["@context"].length > 0
+  );
+
+  return (
+    <>
+      {safeItems.map((schema, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+    </>
+  );
+}
+
 function FaqItem({ q, a }: { q: string; a: React.ReactNode }) {
   return (
     <details className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -56,9 +77,7 @@ export default function PretRelaisPage() {
     };
   }, []);
 
-  const displayName =
-    user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
-
+  const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
   const isLoggedIn = !!user;
 
   // --- SEO
@@ -117,18 +136,8 @@ export default function PretRelaisPage() {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        {
-          "@type": "ListItem",
-          position: 1,
-          name: "Accueil",
-          item: `${siteUrl}/`,
-        },
-        {
-          "@type": "ListItem",
-          position: 2,
-          name: "Prêt relais",
-          item: pageUrl,
-        },
+        { "@type": "ListItem", position: 1, name: "Accueil", item: `${siteUrl}/` },
+        { "@type": "ListItem", position: 2, name: "Prêt relais", item: pageUrl },
       ],
     };
 
@@ -153,10 +162,7 @@ export default function PretRelaisPage() {
       mainEntity: faqData.map((f) => ({
         "@type": "Question",
         name: f.q,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: f.a,
-        },
+        acceptedAnswer: { "@type": "Answer", text: f.a },
       })),
     };
 
@@ -188,18 +194,15 @@ export default function PretRelaisPage() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
 
-        {/* JSON-LD */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
+        {/* ✅ JSON-LD (SAFE) */}
+        <JsonLd data={jsonLd} />
       </Head>
 
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header de la page (identité visuelle prêt relais) */}
+          {/* Header */}
           <section className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">
@@ -228,9 +231,7 @@ export default function PretRelaisPage() {
 
           {/* Bloc SEO discret */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Simulateur de prêt relais : acheter avant d’avoir vendu
-            </h2>
+            <h2 className="text-sm font-semibold text-slate-900">Simulateur de prêt relais : acheter avant d’avoir vendu</h2>
 
             <p className="mt-2 text-sm text-slate-600 leading-relaxed">
               Cette calculette de prêt relais vous permet d’estimer le montant de relais mobilisable à partir de la valeur
@@ -245,7 +246,7 @@ export default function PretRelaisPage() {
             </p>
           </section>
 
-          {/* FAQ (alignée avec index) */}
+          {/* FAQ */}
           <section id="faq" className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="h-1.5 w-full bg-gradient-to-r from-amber-50 to-white" />
             <div className="p-6 sm:p-8">
