@@ -1,9 +1,13 @@
+// pages/_app.tsx
+import "../styles/globals.css"; // 🔥 C’EST ÇA QUI FAISAIT TOUT DISPARAÎTRE
+
 import type { AppProps } from "next/app";
 import Script from "next/script";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
+import { PermissionProvider } from "../components/PermissionProvider";
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID || "G-0J8NXZ3SBD"; // tu peux enlever le fallback après
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID || "G-0J8NXZ3SBD";
 
 declare global {
   interface Window {
@@ -25,6 +29,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <>
+      {/* Google Analytics */}
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
         strategy="afterInteractive"
@@ -38,7 +43,10 @@ export default function App({ Component, pageProps }: AppProps) {
         `}
       </Script>
 
-      <Component {...pageProps} />
+      {/* 🔥 Permissions globales (sinon /investissement crash en build) */}
+      <PermissionProvider>
+        <Component {...pageProps} />
+      </PermissionProvider>
     </>
   );
 }
