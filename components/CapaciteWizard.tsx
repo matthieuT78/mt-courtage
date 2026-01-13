@@ -31,6 +31,29 @@ function formatPct(val: number) {
   );
 }
 
+/** conserve uniquement les chiffres, mais autorise la chaîne vide */
+function onlyDigits(s: string) {
+  return s.replace(/[^\d]/g, "");
+}
+
+/** autorise chiffres + un seul séparateur "." (on remplace "," par ".") */
+function onlyNumberLike(s: string) {
+  const cleaned = s.replace(",", ".").replace(/[^0-9.]/g, "");
+  const parts = cleaned.split(".");
+  if (parts.length <= 1) return cleaned;
+  return parts[0] + "." + parts.slice(1).join("");
+}
+
+function toInt(v: string, fallback = 0) {
+  const x = parseInt(v, 10);
+  return Number.isFinite(x) ? x : fallback;
+}
+
+function toFloat(v: string, fallback = 0) {
+  const x = parseFloat(v);
+  return Number.isFinite(x) ? x : fallback;
+}
+
 /* ------------------------ Types ------------------------ */
 type TypeCredit = "immo" | "perso" | "auto" | "conso";
 
@@ -45,8 +68,16 @@ type ProjectUsageUI = "rp" | "rs" | "invest";
 type ProjectTimelineUI = "0_3m" | "3_6m" | "6_12m" | "12m_plus" | "juste_info";
 
 // DB values (CHECK)
-type ProjectUsageDB = "residence_principale" | "residence_secondaire" | "investissement";
-type ProjectTimelineDB = "0_3_mois" | "3_6_mois" | "6_12_mois" | "12_plus" | "juste_info";
+type ProjectUsageDB =
+  | "residence_principale"
+  | "residence_secondaire"
+  | "investissement";
+type ProjectTimelineDB =
+  | "0_3_mois"
+  | "3_6_mois"
+  | "6_12_mois"
+  | "12_plus"
+  | "juste_info";
 
 type ResumeCapacite = {
   revenusPrisEnCompte: number;
@@ -113,7 +144,16 @@ function getUtmFromUrl(): Record<string, string> | null {
   if (typeof window === "undefined") return null;
   try {
     const sp = new URLSearchParams(window.location.search);
-    const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "fbclid", "msclkid"];
+    const keys = [
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_term",
+      "utm_content",
+      "gclid",
+      "fbclid",
+      "msclkid",
+    ];
     const utm: Record<string, string> = {};
     for (const k of keys) {
       const v = sp.get(k);
@@ -163,7 +203,11 @@ function round0(n: number) {
 }
 
 /* ------------------------ Loan helpers (monthly) ------------------------ */
-function monthlyPayment(principal: number, annualRatePct: number, years: number) {
+function monthlyPayment(
+  principal: number,
+  annualRatePct: number,
+  years: number
+) {
   const P = Math.max(0, principal || 0);
   const n = Math.max(0, Math.round((years || 0) * 12));
   const r = Math.max(0, (annualRatePct || 0) / 100) / 12;
@@ -174,7 +218,11 @@ function monthlyPayment(principal: number, annualRatePct: number, years: number)
   return (P * r) / (1 - Math.pow(1 + r, -n));
 }
 
-function principalFromPayment(payment: number, annualRatePct: number, years: number) {
+function principalFromPayment(
+  payment: number,
+  annualRatePct: number,
+  years: number
+) {
   const M = Math.max(0, payment || 0);
   const n = Math.max(0, Math.round((years || 0) * 12));
   const r = Math.max(0, (annualRatePct || 0) / 100) / 12;
@@ -207,7 +255,7 @@ function proStabilityFactor(proStatus: ProStatus) {
   }
 }
 
-/* ------------------------ Score Lokt (inchangé) ------------------------ */
+/* ------------------------ Score Lokt ------------------------ */
 function computeLoktScore(params: {
   resume: ResumeCapacite;
   tauxEndettementCible: number;
@@ -238,10 +286,13 @@ function computeLoktScore(params: {
   const cible = tauxEndettementCible > 0 ? tauxEndettementCible : 35;
   const dtiRatio = cible > 0 ? resume.tauxEndettementAvecProjet / cible : 1;
 
-  const chargesActuelles = resume.mensualitesExistantes + resume.chargesHorsCredits;
+  const chargesActuelles =
+    resume.mensualitesExistantes + resume.chargesHorsCredits;
   const mensualiteScore = resume.mensualiteProjet || 0;
 
-  const resteApresProjet = (resume.revenusPrisEnCompte || 0) - (chargesActuelles + (mensualiteScore || 0));
+  const resteApresProjet =
+    (resume.revenusPrisEnCompte || 0) -
+    (chargesActuelles + (mensualiteScore || 0));
   const uc = computeUC(nbAdultes, nbEnfants);
   const resteAVivreParUC = uc > 0 ? resteApresProjet / uc : resteApresProjet;
 
@@ -270,7 +321,8 @@ function computeLoktScore(params: {
   const a1 = Math.max(0, ageEmprunteur || 0);
   const a2 = Math.max(0, ageCoEmprunteur || 0);
   const ageMax = Math.max(a1, a2);
-  const ageFin = ageMax > 0 ? ageMax + Math.max(0, dureeCreditCible || 0) : 0;
+  const ageFin =
+    ageMax > 0 ? ageMax + Math.max(0, dureeCreditCible || 0) : 0;
 
   let s_age = 80;
   if (ageFin > 0 && ageFin <= 70) s_age = 100;
@@ -285,7 +337,10 @@ function computeLoktScore(params: {
     if (t === "perso" || t === "auto" || t === "conso") consoIdx.push(i);
   }
   const consoCount = consoIdx.length;
-  const totalMensuConso = consoIdx.reduce((s, idx) => s + (mensualitesCredits[idx] || 0), 0);
+  const totalMensuConso = consoIdx.reduce(
+    (s, idx) => s + (mensualitesCredits[idx] || 0),
+    0
+  );
 
   const penMontant = clamp((totalMensuConso / 100) * 8, 0, 40);
   const penCount = clamp(consoCount * 6, 0, 20);
@@ -299,7 +354,13 @@ function computeLoktScore(params: {
     s_apport = 10 + 90 * Math.pow(ratio, 1.3);
   }
 
-  const rawScore = 0.42 * s_dti + 0.24 * s_rav + 0.13 * s_stability + 0.08 * s_age + 0.05 * s_conso + 0.08 * s_apport;
+  const rawScore =
+    0.42 * s_dti +
+    0.24 * s_rav +
+    0.13 * s_stability +
+    0.08 * s_age +
+    0.05 * s_conso +
+    0.08 * s_apport;
   let scoreR = clamp(round0(rawScore), 0, 100);
 
   const hardCaps = { ravNegative: false, dtiHigh: false, apportLow: false };
@@ -328,14 +389,23 @@ function computeLoktScore(params: {
   }
 
   let label = "À optimiser";
-  if (hardCaps.ravNegative || (hardCaps.dtiHigh && (dti - cible > 10))) label = "Refus probable";
+  if (hardCaps.ravNegative || (hardCaps.dtiHigh && dti - cible > 10)) label = "Refus probable";
   else if (scoreR >= 85) label = "Très solide";
   else if (scoreR >= 70) label = "Solide";
   else if (scoreR >= 55) label = "À optimiser";
   else label = "Sous tension";
 
-  const subs = { dti: s_dti, rav: s_rav, stability: s_stability, age: s_age, conso: s_conso, apport: s_apport };
-  const weakest = (Object.keys(subs) as (keyof typeof subs)[]).sort((a, b) => subs[a] - subs[b])[0];
+  const subs = {
+    dti: s_dti,
+    rav: s_rav,
+    stability: s_stability,
+    age: s_age,
+    conso: s_conso,
+    apport: s_apport,
+  };
+  const weakest = (Object.keys(subs) as (keyof typeof subs)[]).sort(
+    (a, b) => subs[a] - subs[b]
+  )[0];
 
   let comment = "Votre dossier est globalement cohérent, avec quelques optimisations possibles.";
 
@@ -391,7 +461,7 @@ function computeLoktScore(params: {
   };
 }
 
-/* ------------------------ Action plan (inchangé) ------------------------ */
+/* ------------------------ Action plan ------------------------ */
 function buildActionPlan(
   resume: ResumeCapacite,
   assessment: BankabilityAssessment,
@@ -410,7 +480,15 @@ function buildActionPlan(
   const margeSousCible = tauxEndettementCible - resume.tauxEndettementAvecProjet;
   const depassementCible = resume.tauxEndettementAvecProjet - tauxEndettementCible;
 
-  const { nbCredits, typesCredits, mensualitesCredits, resteAnneesCredits, tauxCredits, tauxCreditCible, dureeCreditCible } = context;
+  const {
+    nbCredits,
+    typesCredits,
+    mensualitesCredits,
+    resteAnneesCredits,
+    tauxCredits,
+    tauxCreditCible,
+    dureeCreditCible,
+  } = context;
 
   const consoIdxs: number[] = [];
   for (let i = 0; i < nbCredits; i++) {
@@ -442,7 +520,9 @@ function buildActionPlan(
   if (assessment.details.hardCapsApplied.ravNegative) {
     blocks.push(
       `### 2) Signal rouge : reste-à-vivre négatif\n` +
-        `Après projet, votre reste-à-vivre estimé est **négatif** (${formatEuro(assessment.details.resteApresProjet)}). Dans cette configuration, la banque refusera très probablement.\n` +
+        `Après projet, votre reste-à-vivre estimé est **négatif** (${formatEuro(
+          assessment.details.resteApresProjet
+        )}). Dans cette configuration, la banque refusera très probablement.\n` +
         `Le levier prioritaire : baisser la mensualité (durée/taux), réduire les charges/crédits, ou augmenter fortement l’apport.`
     );
   }
@@ -494,9 +574,10 @@ function buildActionPlan(
       const reste = resteAnneesCredits[biggestIdx] || 0;
       const taux = tauxCredits[biggestIdx] || 0;
       detailGros =
-        `Le crédit conso le plus “lourd” pèse environ ${formatEuro(biggestMensu)}/mois (reste ~${reste} an(s), taux ~${taux.toLocaleString("fr-FR", {
-          maximumFractionDigits: 2,
-        })}%). ` + `Si tu ne devais en attaquer qu’un en priorité, c’est celui-là.`;
+        `Le crédit conso le plus “lourd” pèse environ ${formatEuro(biggestMensu)}/mois (reste ~${reste} an(s), taux ~${taux.toLocaleString(
+          "fr-FR",
+          { maximumFractionDigits: 2 }
+        )}%). ` + `Si tu ne devais en attaquer qu’un en priorité, c’est celui-là.`;
     }
 
     blocks.push(
@@ -601,33 +682,33 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
   const [projectType, setProjectType] = useState<ProjectType>("ancien");
   const [projectUsageUI, setProjectUsageUI] = useState<ProjectUsageUI>("rp");
   const [projectTimelineUI, setProjectTimelineUI] = useState<ProjectTimelineUI>("3_6m");
-  const [apportPersonnel, setApportPersonnel] = useState<number>(0);
+  const [apportPersonnel, setApportPersonnel] = useState<string>("");
 
   /* ======================== Step 2: Votre profil ======================== */
-  const [ageEmprunteur, setAgeEmprunteur] = useState<number>(35);
-  const [ageCoEmprunteur, setAgeCoEmprunteur] = useState<number>(0);
+  const [ageEmprunteur, setAgeEmprunteur] = useState<string>("35");
+  const [ageCoEmprunteur, setAgeCoEmprunteur] = useState<string>("");
   const [proStatus, setProStatus] = useState<ProStatus>("cdi");
-  const [nbAdultes, setNbAdultes] = useState<number>(2);
-  const [nbEnfants, setNbEnfants] = useState<number>(0);
+  const [nbAdultes, setNbAdultes] = useState<string>("2");
+  const [nbEnfants, setNbEnfants] = useState<string>("0");
 
   /* ======================== Step 3: Vos revenus ======================== */
-  const [revenusNetMensuels, setRevenusNetMensuels] = useState(4000);
-  const [autresRevenusMensuels, setAutresRevenusMensuels] = useState(0);
+  const [revenusNetMensuels, setRevenusNetMensuels] = useState<string>("4000");
+  const [autresRevenusMensuels, setAutresRevenusMensuels] = useState<string>("");
 
   /* ======================== Step 4: Charges & crédits ======================== */
-  const [chargesMensuellesHorsCredits, setChargesMensuellesHorsCredits] = useState(0);
+  const [chargesMensuellesHorsCredits, setChargesMensuellesHorsCredits] = useState<string>("");
 
-  const [nbCredits, setNbCredits] = useState(0);
+  const [nbCredits, setNbCredits] = useState<number>(0);
   const [typesCredits, setTypesCredits] = useState<TypeCredit[]>([]);
-  const [mensualitesCredits, setMensualitesCredits] = useState<number[]>([]);
-  const [resteAnneesCredits, setResteAnneesCredits] = useState<number[]>([]);
-  const [tauxCredits, setTauxCredits] = useState<number[]>([]);
-  const [revenusLocatifs, setRevenusLocatifs] = useState<number[]>([]);
+  const [mensualitesCredits, setMensualitesCredits] = useState<string[]>([]);
+  const [resteAnneesCredits, setResteAnneesCredits] = useState<string[]>([]);
+  const [tauxCredits, setTauxCredits] = useState<string[]>([]);
+  const [revenusLocatifs, setRevenusLocatifs] = useState<string[]>([]);
 
   /* ======================== Step 5: Paramètres du prêt ======================== */
-  const [tauxEndettementCible, setTauxEndettementCible] = useState(35);
-  const [tauxCreditCible, setTauxCreditCible] = useState(3.5);
-  const [dureeCreditCible, setDureeCreditCible] = useState(25);
+  const [tauxEndettementCible, setTauxEndettementCible] = useState<string>("35");
+  const [tauxCreditCible, setTauxCreditCible] = useState<string>("3.5");
+  const [dureeCreditCible, setDureeCreditCible] = useState<string>("25");
 
   /* ======================== Résultats ======================== */
   const [resumeCapacite, setResumeCapacite] = useState<ResumeCapacite | null>(null);
@@ -740,24 +821,28 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       while (arr.length < n) arr.push("immo");
       return arr.slice(0, n);
     });
+
     setMensualitesCredits((prev) => {
       const arr = [...prev];
-      while (arr.length < n) arr.push(0);
+      while (arr.length < n) arr.push("");
       return arr.slice(0, n);
     });
+
     setResteAnneesCredits((prev) => {
       const arr = [...prev];
-      while (arr.length < n) arr.push(10);
+      while (arr.length < n) arr.push("10");
       return arr.slice(0, n);
     });
+
     setTauxCredits((prev) => {
       const arr = [...prev];
-      while (arr.length < n) arr.push(1.5);
+      while (arr.length < n) arr.push("1.5");
       return arr.slice(0, n);
     });
+
     setRevenusLocatifs((prev) => {
       const arr = [...prev];
-      while (arr.length < n) arr.push(0);
+      while (arr.length < n) arr.push("");
       return arr.slice(0, n);
     });
   };
@@ -769,28 +854,32 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       return arr;
     });
   };
-  const handleMensualiteChange = (index: number, value: number) => {
+
+  const handleMensualiteChange = (index: number, value: string) => {
     setMensualitesCredits((prev) => {
       const arr = [...prev];
       arr[index] = value;
       return arr;
     });
   };
-  const handleResteAnneesChange = (index: number, value: number) => {
+
+  const handleResteAnneesChange = (index: number, value: string) => {
     setResteAnneesCredits((prev) => {
       const arr = [...prev];
       arr[index] = value;
       return arr;
     });
   };
-  const handleTauxCreditChange = (index: number, value: number) => {
+
+  const handleTauxCreditChange = (index: number, value: string) => {
     setTauxCredits((prev) => {
       const arr = [...prev];
       arr[index] = value;
       return arr;
     });
   };
-  const handleRevenuLocatifChange = (index: number, value: number) => {
+
+  const handleRevenuLocatifChange = (index: number, value: string) => {
     setRevenusLocatifs((prev) => {
       const arr = [...prev];
       arr[index] = value;
@@ -800,36 +889,60 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
   /* ======================== Calcul global ======================== */
   const computeAll = () => {
-    const revenusBase = (revenusNetMensuels || 0) + (autresRevenusMensuels || 0);
+    // conversions (permet de garder UI en string)
+    const revenusNet = toInt(revenusNetMensuels, 0);
+    const autresRev = toInt(autresRevenusMensuels, 0);
+    const chargesHors = toInt(chargesMensuellesHorsCredits, 0);
+
+    const apport = toInt(apportPersonnel, 0);
+
+    const age1 = toInt(ageEmprunteur, 0);
+    const age2 = toInt(ageCoEmprunteur, 0);
+
+    const adultes = Math.max(1, toInt(nbAdultes, 1));
+    const enfants = Math.max(0, toInt(nbEnfants, 0));
+
+    const tauxEndettement = toFloat(tauxEndettementCible, 35);
+    const tauxCredit = toFloat(tauxCreditCible, 3.5);
+    const dureeCredit = toInt(dureeCreditCible, 25);
+
+    const mensualitesNums = mensualitesCredits.map((v) => toInt(v, 0));
+    const resteAnneesNums = resteAnneesCredits.map((v) => toInt(v, 0));
+    const tauxCreditsNums = tauxCredits.map((v) => toFloat(v, 0));
+    const loyersNums = revenusLocatifs.map((v) => toInt(v, 0));
+
+    const revenusBase = revenusNet + autresRev;
 
     let revenuLocatifPrisEnCompte = 0;
     for (let i = 0; i < nbCredits; i++) {
       if (typesCredits[i] === "immo") {
-        const loyer = revenusLocatifs[i] || 0;
+        const loyer = loyersNums[i] || 0;
         revenuLocatifPrisEnCompte += loyer * 0.7;
       }
     }
 
     const revenusPrisEnCompte = revenusBase + revenuLocatifPrisEnCompte;
-    const mensualitesExistantes = mensualitesCredits.slice(0, nbCredits).reduce((sum, v) => sum + (v || 0), 0);
+    const mensualitesExistantes = mensualitesNums
+      .slice(0, nbCredits)
+      .reduce((sum, v) => sum + (v || 0), 0);
 
-    const chargesHors = chargesMensuellesHorsCredits || 0;
-    const enveloppeMax = revenusPrisEnCompte * ((tauxEndettementCible || 0) / 100);
+    const enveloppeMax = revenusPrisEnCompte * ((tauxEndettement || 0) / 100);
     const chargesActuelles = mensualitesExistantes + chargesHors;
     const capaciteMensuelle = Math.max(enveloppeMax - chargesActuelles, 0);
 
-    const tauxActuel = revenusPrisEnCompte > 0 ? (chargesActuelles / revenusPrisEnCompte) * 100 : 0;
+    const tauxActuel =
+      revenusPrisEnCompte > 0 ? (chargesActuelles / revenusPrisEnCompte) * 100 : 0;
 
     const DUREE_REFERENCE = 25;
 
-    const montantMax = principalFromPayment(capaciteMensuelle, tauxCreditCible, DUREE_REFERENCE);
-    const mensualiteProjet = monthlyPayment(montantMax, tauxCreditCible, dureeCreditCible);
+    const montantMax = principalFromPayment(capaciteMensuelle, tauxCredit, DUREE_REFERENCE);
+    const mensualiteProjet = monthlyPayment(montantMax, tauxCredit, dureeCredit);
 
-    const tauxNotaire = projectType === "neuf" ? 0.025 : projectType === "terrain" ? 0.07 : 0.075;
+    const tauxNotaire =
+      projectType === "neuf" ? 0.025 : projectType === "terrain" ? 0.07 : 0.075;
     const tauxAgence = projectType === "neuf" ? 0.0 : 0.04;
     const denom = 1 + tauxNotaire + tauxAgence;
 
-    const apport = Math.max(0, apportPersonnel || 0);
     const budgetTotalMax = Math.max(0, (montantMax || 0) + apport);
 
     let prixBienMax = 0;
@@ -844,12 +957,17 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       coutTotalProjetMax = prixBienMax + fraisNotaireEstimes + fraisAgenceEstimes;
     }
 
-    const coussinGarantie = prixBienMax > 0 ? Math.min(Math.max(prixBienMax * 0.012, 0) + 1500, 6000) : 0;
+    const coussinGarantie =
+      prixBienMax > 0
+        ? Math.min(Math.max(prixBienMax * 0.012, 0) + 1500, 6000)
+        : 0;
     const apportMinRecommande = Math.max(0, fraisNotaireEstimes + coussinGarantie);
     const apportCouvreFrais = apport >= apportMinRecommande && apportMinRecommande > 0;
 
     const tauxAvecProjet =
-      revenusPrisEnCompte > 0 ? ((chargesActuelles + (mensualiteProjet || 0)) / revenusPrisEnCompte) * 100 : 0;
+      revenusPrisEnCompte > 0
+        ? ((chargesActuelles + (mensualiteProjet || 0)) / revenusPrisEnCompte) * 100
+        : 0;
 
     const resume: ResumeCapacite = {
       revenusPrisEnCompte,
@@ -870,44 +988,47 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       coutTotalProjetMax,
     };
 
-    const age1 = Math.max(ageEmprunteur || 0, 0);
-    const age2 = Math.max(ageCoEmprunteur || 0, 0);
     const ageMax = Math.max(age1, age2);
-    const ageFin = ageMax + (dureeCreditCible || 0);
-    const ageWarn = ageMax > 0 && (dureeCreditCible || 0) > 0 && ageFin >= 85;
+    const ageFin = ageMax + (dureeCredit || 0);
+    const ageWarn = ageMax > 0 && (dureeCredit || 0) > 0 && ageFin >= 85;
 
     const lignes: string[] = [
       `Projet : ${propertyKindLabel} — ${projectTypeLabel} — ${projectUsageLabel} — horizon ${projectTimelineLabel}.`,
       projectDepartment?.trim()
         ? `Département (zone de recherche) : ${projectDepartment.trim()}.`
         : `Département (zone de recherche) : non renseigné.`,
-      `Statut : ${proStatusLabel}. Foyer : ${nbAdultes} adulte(s)${nbEnfants > 0 ? `, ${nbEnfants} enfant(s)` : ""}.`,
+      `Statut : ${proStatusLabel}. Foyer : ${adultes} adulte(s)${enfants > 0 ? `, ${enfants} enfant(s)` : ""}.`,
       age1 > 0
         ? `Âge(s) déclaré(s) : emprunteur ${age1} an(s)${age2 > 0 ? `, co-emprunteur ${age2} an(s)` : ""}.`
         : `Âge(s) déclaré(s) : non renseigné.`,
       ageWarn
-        ? `⚠️ Attention : à ${dureeCreditCible} ans de durée, l’âge à la fin du prêt serait ~${ageFin} ans (variable selon banques/profil).`
+        ? `⚠️ Attention : à ${dureeCredit} ans de durée, l’âge à la fin du prêt serait ~${ageFin} ans (variable selon banques/profil).`
         : `Âge fin de prêt estimé : ~${ageFin > 0 ? ageFin : "-"} ans.`,
       `Vos revenus mensuels pris en compte (salaires, autres revenus et 70 % des loyers locatifs) s’élèvent à ${formatEuro(revenusPrisEnCompte)}.`,
       `Vos charges récurrentes (crédits et autres charges) représentent ${formatEuro(chargesActuelles)} par mois, soit un taux d’endettement actuel d’environ ${formatPct(
         tauxActuel
       )}.`,
       capaciteMensuelle > 0
-        ? `Votre capacité mensuelle “max” (cible ${formatPct(tauxEndettementCible)}) est ${formatEuro(
+        ? `Votre capacité mensuelle “max” (cible ${formatPct(tauxEndettement)}) est ${formatEuro(
             capaciteMensuelle
-          )}. Référence : cela donne ~${formatEuro(montantMax)} de capital sur 25 ans à ~${tauxCreditCible.toLocaleString("fr-FR", {
-            maximumFractionDigits: 2,
-          })} %.`
-        : `Avec les paramètres actuels, aucune capacité mensuelle n’apparaît si l’on reste sur un taux d’endettement cible de ${formatPct(tauxEndettementCible)}.`,
+          )}. Référence : cela donne ~${formatEuro(montantMax)} de capital sur 25 ans à ~${tauxCredit.toLocaleString(
+            "fr-FR",
+            { maximumFractionDigits: 2 }
+          )} %.`
+        : `Avec les paramètres actuels, aucune capacité mensuelle n’apparaît si l’on reste sur un taux d’endettement cible de ${formatPct(
+            tauxEndettement
+          )}.`,
       montantMax > 0
-        ? `Si vous gardez ce capital (~${formatEuro(montantMax)}) et changez la durée à ${dureeCreditCible} ans, la mensualité nécessaire serait ~${formatEuro(
+        ? `Si vous gardez ce capital (~${formatEuro(montantMax)}) et changez la durée à ${dureeCredit} ans, la mensualité nécessaire serait ~${formatEuro(
             mensualiteProjet
           )} (ce qui fait varier l’endettement et le score).`
         : `La mensualité projetée n’est pas calculable sans capital.`,
       `Hypothèses frais (${projectTypeLabel}) : notaire ~${(tauxNotaire * 100).toLocaleString("fr-FR", {
         maximumFractionDigits: 1,
       })}%${tauxAgence > 0 ? `, agence ~${(tauxAgence * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}%` : ""}.`,
-      `Apport déclaré : ${formatEuro(apport)}. Apport minimum recommandé (≈ notaire + garantie/dossier) : ${formatEuro(apportMinRecommande)}. ${
+      `Apport déclaré : ${formatEuro(apport)}. Apport minimum recommandé (≈ notaire + garantie/dossier) : ${formatEuro(
+        apportMinRecommande
+      )}. ${
         apportMinRecommande > 0 ? (apportCouvreFrais ? "✅ Apport ≥ frais." : "⚠️ Apport < frais : souvent bloquant.") : ""
       }`,
       prixBienMax > 0
@@ -922,29 +1043,51 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
     const assessment = computeLoktScore({
       resume,
-      tauxEndettementCible,
+      tauxEndettementCible: tauxEndettement,
       proStatus,
-      ageEmprunteur,
-      ageCoEmprunteur,
-      nbAdultes,
-      nbEnfants,
-      dureeCreditCible,
+      ageEmprunteur: age1,
+      ageCoEmprunteur: age2,
+      nbAdultes: adultes,
+      nbEnfants: enfants,
+      dureeCreditCible: dureeCredit,
       nbCredits,
       typesCredits,
-      mensualitesCredits,
+      mensualitesCredits: mensualitesNums,
     });
 
-    const actionPlan = buildActionPlan(resume, assessment, tauxEndettementCible, {
+    const actionPlan = buildActionPlan(resume, assessment, tauxEndettement, {
       nbCredits,
       typesCredits,
-      mensualitesCredits,
-      resteAnneesCredits,
-      tauxCredits,
-      tauxCreditCible,
-      dureeCreditCible,
+      mensualitesCredits: mensualitesNums,
+      resteAnneesCredits: resteAnneesNums,
+      tauxCredits: tauxCreditsNums,
+      tauxCreditCible: tauxCredit,
+      dureeCreditCible: dureeCredit,
     });
 
-    return { resume, texte, assessment, actionPlan };
+    return {
+      resume,
+      texte,
+      assessment,
+      actionPlan,
+      parsed: {
+        revenusNet,
+        autresRev,
+        chargesHors,
+        apport,
+        age1,
+        age2,
+        adultes,
+        enfants,
+        tauxEndettement,
+        tauxCredit,
+        dureeCredit,
+        mensualitesNums,
+        resteAnneesNums,
+        tauxCreditsNums,
+        loyersNums,
+      },
+    };
   };
 
   const handleCalculCapacite = async () => {
@@ -1004,29 +1147,31 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       setProjectType(saved.projectType ?? "ancien");
       setProjectUsageUI(saved.projectUsageUI ?? "rp");
       setProjectTimelineUI(saved.projectTimelineUI ?? "3_6m");
-      setApportPersonnel(saved.apportPersonnel ?? 0);
+      setApportPersonnel(saved.apportPersonnel ? String(saved.apportPersonnel) : "");
 
-      setAgeEmprunteur(saved.ageEmprunteur ?? 35);
-      setAgeCoEmprunteur(saved.ageCoEmprunteur ?? 0);
+      setAgeEmprunteur(saved.ageEmprunteur ? String(saved.ageEmprunteur) : "35");
+      setAgeCoEmprunteur(saved.ageCoEmprunteur ? String(saved.ageCoEmprunteur) : "");
+      setNbAdultes(saved.nbAdultes ? String(saved.nbAdultes) : "2");
+      setNbEnfants(saved.nbEnfants !== undefined ? String(saved.nbEnfants) : "0");
       setProStatus(saved.proStatus ?? "cdi");
-      setNbAdultes(saved.nbAdultes ?? 2);
-      setNbEnfants(saved.nbEnfants ?? 0);
 
-      setRevenusNetMensuels(saved.revenusNetMensuels ?? 4000);
-      setAutresRevenusMensuels(saved.autresRevenusMensuels ?? 0);
+      setRevenusNetMensuels(saved.revenusNetMensuels ? String(saved.revenusNetMensuels) : "4000");
+      setAutresRevenusMensuels(saved.autresRevenusMensuels ? String(saved.autresRevenusMensuels) : "");
 
-      setChargesMensuellesHorsCredits(saved.chargesMensuellesHorsCredits ?? 0);
+      setChargesMensuellesHorsCredits(
+        saved.chargesMensuellesHorsCredits ? String(saved.chargesMensuellesHorsCredits) : ""
+      );
 
       setNbCredits(saved.nbCredits ?? 0);
       setTypesCredits(saved.typesCredits ?? []);
-      setMensualitesCredits(saved.mensualitesCredits ?? []);
-      setResteAnneesCredits(saved.resteAnneesCredits ?? []);
-      setTauxCredits(saved.tauxCredits ?? []);
-      setRevenusLocatifs(saved.revenusLocatifs ?? []);
+      setMensualitesCredits((saved.mensualitesCredits ?? []).map((x: any) => (x ? String(x) : "")));
+      setResteAnneesCredits((saved.resteAnneesCredits ?? []).map((x: any) => (x ? String(x) : "10")));
+      setTauxCredits((saved.tauxCredits ?? []).map((x: any) => (x ? String(x) : "1.5")));
+      setRevenusLocatifs((saved.revenusLocatifs ?? []).map((x: any) => (x ? String(x) : "")));
 
-      setTauxCreditCible(saved.tauxCreditCible ?? 3.5);
-      setDureeCreditCible(saved.dureeCreditCible ?? 25);
-      setTauxEndettementCible(saved.tauxEndettementCible ?? 35);
+      setTauxCreditCible(saved.tauxCreditCible ? String(saved.tauxCreditCible) : "3.5");
+      setDureeCreditCible(saved.dureeCreditCible ? String(saved.dureeCreditCible) : "25");
+      setTauxEndettementCible(saved.tauxEndettementCible ? String(saved.tauxEndettementCible) : "35");
 
       setUnlockMsg(null);
       setMaxStepReached(1);
@@ -1039,24 +1184,26 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
   /* ======================== RPC lead capture ======================== */
   const captureLeadViaRpc = async (params: {
     email: string;
-    computed: { resume: ResumeCapacite; texte: string; assessment: BankabilityAssessment; actionPlan: string };
+    computed: ReturnType<typeof computeAll>;
   }) => {
     if (!supabase) throw new Error("Supabase non configuré.");
 
     const email = safeEmail(params.email);
     if (!email) throw new Error("Email manquant.");
 
-    const { resume, texte, assessment, actionPlan } = params.computed;
+    const { resume, texte, assessment, actionPlan, parsed } = params.computed;
 
     const utm = (typeof window !== "undefined" ? getUtmFromUrl() : null) ?? null;
     const source = getSourceLabel();
 
-    const lead_age = Number.isFinite(ageEmprunteur) && ageEmprunteur > 0 ? Math.round(ageEmprunteur) : null;
-    const project_budget_target = resume?.prixBienMax && resume.prixBienMax > 0 ? Math.round(resume.prixBienMax) : null;
+    const lead_age = parsed.age1 > 0 ? Math.round(parsed.age1) : null;
+    const project_budget_target =
+      resume?.prixBienMax && resume.prixBienMax > 0 ? Math.round(resume.prixBienMax) : null;
 
     const timelineDb: ProjectTimelineDB = TIMELINE_UI_TO_DB[projectTimelineUI];
     const usageDb: ProjectUsageDB = USAGE_UI_TO_DB[projectUsageUI];
 
+    // payload "propre" (numérisé)
     const payload = {
       meta: { tool: "capacite", version: "v19_simple_only_no_advanced" },
       project: {
@@ -1069,26 +1216,26 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         timeline_db: timelineDb,
       },
       profile: {
-        ageEmprunteur,
-        ageCoEmprunteur: ageCoEmprunteur || null,
+        ageEmprunteur: parsed.age1,
+        ageCoEmprunteur: parsed.age2 > 0 ? parsed.age2 : null,
         proStatus,
-        nbAdultes,
-        nbEnfants,
+        nbAdultes: parsed.adultes,
+        nbEnfants: parsed.enfants,
       },
       input: {
-        revenusNetMensuels,
-        autresRevenusMensuels,
-        chargesMensuellesHorsCredits,
-        tauxEndettementCible,
+        revenusNetMensuels: parsed.revenusNet,
+        autresRevenusMensuels: parsed.autresRev,
+        chargesMensuellesHorsCredits: parsed.chargesHors,
+        tauxEndettementCible: parsed.tauxEndettement,
         nbCredits,
         typesCredits,
-        mensualitesCredits,
-        resteAnneesCredits,
-        tauxCredits,
-        revenusLocatifs,
-        tauxCreditCible,
-        dureeCreditCible,
-        apportPersonnel,
+        mensualitesCredits: parsed.mensualitesNums,
+        resteAnneesCredits: parsed.resteAnneesNums,
+        tauxCredits: parsed.tauxCreditsNums,
+        revenusLocatifs: parsed.loyersNums,
+        tauxCreditCible: parsed.tauxCredit,
+        dureeCreditCible: parsed.dureeCredit,
+        apportPersonnel: parsed.apport,
       },
       output: {
         resume,
@@ -1162,7 +1309,6 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     try {
       await captureLeadViaRpc({ email, computed });
 
-      // ✅ persist tool-specific unlock
       persistLeadEmail("capacite", email);
       persistUnlock("capacite", email);
 
@@ -1247,6 +1393,10 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
   }, [bankability]);
 
   const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
+
+  const tauxCreditNum = toFloat(tauxCreditCible, 0);
+  const dureeCreditNum = toInt(dureeCreditCible, 0);
+  const tauxEndettementNum = toFloat(tauxEndettementCible, 0);
 
   /* ======================== UI ======================== */
   return (
@@ -1391,21 +1541,29 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                     Apport personnel (€)
                     <InfoBadge text="Clé : beaucoup de banques attendent au moins les frais (notaire + garantie/dossier) en apport (minimum) sauf profils très premium." />
                   </label>
-                  <input type="number" value={apportPersonnel} onChange={(e) => setApportPersonnel(parseFloat(e.target.value) || 0)} className={inputBase} />
+                  <input
+                    inputMode="numeric"
+                    value={apportPersonnel}
+                    onChange={(e) => setApportPersonnel(onlyDigits(e.target.value))}
+                    placeholder="Ex: 20000"
+                    className={inputBase}
+                  />
                 </div>
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <p className="text-[0.75rem] text-slate-700">
-                  Résumé : <span className="font-semibold">{propertyKindLabel}</span>, <span className="font-semibold">{projectTypeLabel}</span>,{" "}
-                  <span className="font-semibold">{projectUsageLabel}</span>, horizon <span className="font-semibold">{projectTimelineLabel}</span>
+                  Résumé : <span className="font-semibold">{propertyKindLabel}</span>,{" "}
+                  <span className="font-semibold">{projectTypeLabel}</span>,{" "}
+                  <span className="font-semibold">{projectUsageLabel}</span>, horizon{" "}
+                  <span className="font-semibold">{projectTimelineLabel}</span>
                   {projectDepartment?.trim() ? (
                     <>
                       {" "}
                       — département <span className="font-semibold">{projectDepartment.trim()}</span>
                     </>
                   ) : null}
-                  . Apport <span className="font-semibold">{formatEuro(apportPersonnel || 0)}</span>.
+                  . Apport <span className="font-semibold">{formatEuro(toInt(apportPersonnel, 0))}</span>.
                 </p>
               </div>
             </>
@@ -1415,7 +1573,9 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
           {step === 2 && (
             <>
               <h2 className="text-sm font-semibold text-slate-900">Votre profil</h2>
-              <p className="text-[0.75rem] text-slate-600">Ces infos servent à “mimer” la lecture banque : âge, composition du foyer et statut pro.</p>
+              <p className="text-[0.75rem] text-slate-600">
+                Ces infos servent à “mimer” la lecture banque : âge, composition du foyer et statut pro.
+              </p>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-1">
@@ -1437,7 +1597,12 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                     Âge emprunteur (ans)
                     <InfoBadge text="Impacte la durée possible : la banque raisonne en âge à la fin du prêt." />
                   </label>
-                  <input type="number" min={18} max={95} value={ageEmprunteur} onChange={(e) => setAgeEmprunteur(parseFloat(e.target.value) || 0)} className={inputBase} />
+                  <input
+                    inputMode="numeric"
+                    value={ageEmprunteur}
+                    onChange={(e) => setAgeEmprunteur(onlyDigits(e.target.value))}
+                    className={inputBase}
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -1446,13 +1611,11 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                     <InfoBadge text="S’il y a 2 emprunteurs, la banque retient souvent l’âge le plus élevé." />
                   </label>
                   <input
-                    type="number"
-                    min={0}
-                    max={95}
+                    inputMode="numeric"
                     value={ageCoEmprunteur}
-                    onChange={(e) => setAgeCoEmprunteur(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setAgeCoEmprunteur(onlyDigits(e.target.value))}
                     className={inputBase}
-                    placeholder="0 = non renseigné"
+                    placeholder="Laisser vide si non"
                   />
                 </div>
 
@@ -1461,7 +1624,12 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                     Adultes dans le foyer
                     <InfoBadge text="Aide à estimer le reste-à-vivre par personne." />
                   </label>
-                  <input type="number" min={1} max={10} value={nbAdultes} onChange={(e) => setNbAdultes(parseFloat(e.target.value) || 1)} className={inputBase} />
+                  <input
+                    inputMode="numeric"
+                    value={nbAdultes}
+                    onChange={(e) => setNbAdultes(onlyDigits(e.target.value))}
+                    className={inputBase}
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -1469,17 +1637,23 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                     Enfants à charge
                     <InfoBadge text="Le reste-à-vivre attendu augmente avec le nombre d’enfants." />
                   </label>
-                  <input type="number" min={0} max={10} value={nbEnfants} onChange={(e) => setNbEnfants(parseFloat(e.target.value) || 0)} className={inputBase} />
+                  <input
+                    inputMode="numeric"
+                    value={nbEnfants}
+                    onChange={(e) => setNbEnfants(onlyDigits(e.target.value))}
+                    className={inputBase}
+                  />
                 </div>
 
                 <div className="rounded-xl border border-slate-200 bg-white p-3 sm:col-span-2 lg:col-span-3">
                   <p className="text-[0.75rem] text-slate-700">
                     Lecture banque : <span className="font-semibold">{proStatusLabel}</span> — foyer{" "}
                     <span className="font-semibold">
-                      {nbAdultes} adulte(s){nbEnfants > 0 ? `, ${nbEnfants} enfant(s)` : ""}
+                      {toInt(nbAdultes, 1)} adulte(s)
+                      {toInt(nbEnfants, 0) > 0 ? `, ${toInt(nbEnfants, 0)} enfant(s)` : ""}
                     </span>
                     — âge emprunteur <span className="font-semibold">{ageEmprunteur || "-"}</span>
-                    {ageCoEmprunteur > 0 ? (
+                    {ageCoEmprunteur ? (
                       <>
                         {" "}
                         / co-emprunteur <span className="font-semibold">{ageCoEmprunteur}</span>
@@ -1503,18 +1677,34 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700">Revenus nets du foyer (€/mois)</label>
-                  <input type="number" value={revenusNetMensuels} onChange={(e) => setRevenusNetMensuels(parseFloat(e.target.value) || 0)} className={inputBase} />
+                  <input
+                    inputMode="numeric"
+                    value={revenusNetMensuels}
+                    onChange={(e) => setRevenusNetMensuels(onlyDigits(e.target.value))}
+                    className={inputBase}
+                  />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Autres revenus (pensions, primes récurrentes, etc.) (€/mois)</label>
-                  <input type="number" value={autresRevenusMensuels} onChange={(e) => setAutresRevenusMensuels(parseFloat(e.target.value) || 0)} className={inputBase} />
+                  <label className="text-xs text-slate-700">
+                    Autres revenus (pensions, primes récurrentes, etc.) (€/mois)
+                  </label>
+                  <input
+                    inputMode="numeric"
+                    value={autresRevenusMensuels}
+                    onChange={(e) => setAutresRevenusMensuels(onlyDigits(e.target.value))}
+                    className={inputBase}
+                  />
                 </div>
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <p className="text-[0.75rem] text-slate-700">
-                  Revenus déclarés : <span className="font-semibold">{formatEuro((revenusNetMensuels || 0) + (autresRevenusMensuels || 0))}</span> / mois (hors loyers).
+                  Revenus déclarés :{" "}
+                  <span className="font-semibold">
+                    {formatEuro(toInt(revenusNetMensuels, 0) + toInt(autresRevenusMensuels, 0))}
+                  </span>{" "}
+                  / mois (hors loyers).
                 </p>
               </div>
             </>
@@ -1524,15 +1714,17 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
           {step === 4 && (
             <>
               <h2 className="text-sm font-semibold text-slate-900">Charges & crédits</h2>
-              <p className="text-[0.75rem] text-slate-600">On recense vos charges fixes hors crédits, puis vos crédits en cours (immo / conso / auto…).</p>
+              <p className="text-[0.75rem] text-slate-600">
+                On recense vos charges fixes hors crédits, puis vos crédits en cours (immo / conso / auto…).
+              </p>
 
               <div className="grid gap-3 sm:grid-cols-2 items-end">
                 <div className="space-y-1">
                   <label className={labelBase}>Autres charges mensuelles hors crédits (€/mois)</label>
                   <input
-                    type="number"
+                    inputMode="numeric"
                     value={chargesMensuellesHorsCredits}
-                    onChange={(e) => setChargesMensuellesHorsCredits(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setChargesMensuellesHorsCredits(onlyDigits(e.target.value))}
                     className={inputSmall}
                   />
                 </div>
@@ -1581,9 +1773,9 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                         <div className="space-y-1">
                           <label className="text-[0.7rem] text-slate-700">Mensualité (€/mois)</label>
                           <input
-                            type="number"
-                            value={mensualitesCredits[index] || 0}
-                            onChange={(e) => handleMensualiteChange(index, parseFloat(e.target.value) || 0)}
+                            inputMode="numeric"
+                            value={mensualitesCredits[index] ?? ""}
+                            onChange={(e) => handleMensualiteChange(index, onlyDigits(e.target.value))}
                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         </div>
@@ -1593,9 +1785,9 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                         <div className="space-y-1">
                           <label className="text-[0.7rem] text-slate-700">Durée restante (années)</label>
                           <input
-                            type="number"
-                            value={resteAnneesCredits[index] || 0}
-                            onChange={(e) => handleResteAnneesChange(index, parseFloat(e.target.value) || 0)}
+                            inputMode="numeric"
+                            value={resteAnneesCredits[index] ?? ""}
+                            onChange={(e) => handleResteAnneesChange(index, onlyDigits(e.target.value))}
                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         </div>
@@ -1603,9 +1795,9 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                         <div className="space-y-1">
                           <label className="text-[0.7rem] text-slate-700">Taux du crédit (%)</label>
                           <input
-                            type="number"
-                            value={tauxCredits[index] || 0}
-                            onChange={(e) => handleTauxCreditChange(index, parseFloat(e.target.value) || 0)}
+                            inputMode="decimal"
+                            value={tauxCredits[index] ?? ""}
+                            onChange={(e) => handleTauxCreditChange(index, onlyNumberLike(e.target.value))}
                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           />
                         </div>
@@ -1614,9 +1806,9 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                           <div className="space-y-1">
                             <label className="text-[0.7rem] text-slate-700">Loyer associé (€/mois)</label>
                             <input
-                              type="number"
-                              value={revenusLocatifs[index] || 0}
-                              onChange={(e) => handleRevenuLocatifChange(index, parseFloat(e.target.value) || 0)}
+                              inputMode="numeric"
+                              value={revenusLocatifs[index] ?? ""}
+                              onChange={(e) => handleRevenuLocatifChange(index, onlyDigits(e.target.value))}
                               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                             />
                             <p className="text-[0.65rem] text-slate-500">70 % de ce loyer sera intégré à vos revenus.</p>
@@ -1624,7 +1816,12 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                         ) : (
                           <div className="space-y-1 opacity-0 pointer-events-none select-none">
                             <label className="text-[0.7rem] text-slate-700">—</label>
-                            <input type="text" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" value="" readOnly />
+                            <input
+                              type="text"
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              value=""
+                              readOnly
+                            />
                           </div>
                         )}
                       </div>
@@ -1639,15 +1836,17 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
           {step === 5 && (
             <>
               <h2 className="text-sm font-semibold text-slate-900">Paramètres du prêt</h2>
-              <p className="text-[0.75rem] text-slate-600">Ajustez durée, taux et cible d’endettement pour estimer capital, budget max (avec apport) et score.</p>
+              <p className="text-[0.75rem] text-slate-600">
+                Ajustez durée, taux et cible d’endettement pour estimer capital, budget max (avec apport) et score.
+              </p>
 
               <div className="grid gap-3 sm:grid-cols-3 items-end">
                 <div className="space-y-1">
                   <label className={labelBase}>Taux du crédit (annuel, %)</label>
                   <input
-                    type="number"
+                    inputMode="decimal"
                     value={tauxCreditCible}
-                    onChange={(e) => setTauxCreditCible(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setTauxCreditCible(onlyNumberLike(e.target.value))}
                     className={inputSmall}
                   />
                 </div>
@@ -1658,9 +1857,9 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                     <InfoBadge text="La faisabilité dépend aussi de l’âge (âge fin de prêt selon banques/profil)." />
                   </label>
                   <input
-                    type="number"
+                    inputMode="numeric"
                     value={dureeCreditCible}
-                    onChange={(e) => setDureeCreditCible(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setDureeCreditCible(onlyDigits(e.target.value))}
                     className={inputSmall}
                   />
                 </div>
@@ -1671,9 +1870,9 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                     <InfoBadge text="Souvent autour de 33–35 %, parfois plus selon profil/patrimoine." />
                   </label>
                   <input
-                    type="number"
+                    inputMode="numeric"
                     value={tauxEndettementCible}
-                    onChange={(e) => setTauxEndettementCible(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => setTauxEndettementCible(onlyDigits(e.target.value))}
                     className={inputSmall}
                   />
                 </div>
@@ -1681,8 +1880,8 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
               <div className="rounded-xl border border-slate-200 bg-white p-3">
                 <p className="text-[0.75rem] text-slate-700">
-                  Hypothèse : {dureeCreditCible} ans à ~{tauxCreditCible.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%, cible endettement{" "}
-                  {tauxEndettementCible}%.
+                  Hypothèse : {dureeCreditNum} ans à ~{tauxCreditNum.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%,
+                  cible endettement {tauxEndettementNum}%.
                 </p>
               </div>
             </>
@@ -1732,12 +1931,16 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
           <div>
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600 mb-1">Résultats de votre simulation</p>
             <h2 className="text-sm font-semibold text-slate-900">Votre capacité d&apos;emprunt et votre budget indicatif</h2>
-            <p className="text-[0.75rem] text-slate-600">Chiffres “bruts” pour vous positionner. Le Score Lokt.fr™ et le plan d’action sont débloqués ensuite.</p>
+            <p className="text-[0.75rem] text-slate-600">
+              Chiffres “bruts” pour vous positionner. Le Score Lokt.fr™ et le plan d’action sont débloqués ensuite.
+            </p>
           </div>
         </div>
 
         {!hasResult ? (
-          <p className="text-[0.8rem] text-slate-600">Complétez les 5 étapes puis cliquez sur « Calculer ma capacité » pour afficher vos résultats.</p>
+          <p className="text-[0.8rem] text-slate-600">
+            Complétez les 5 étapes puis cliquez sur « Calculer ma capacité » pour afficher vos résultats.
+          </p>
         ) : (
           <>
             {/* Cartes visibles (gratuites) */}
@@ -1752,7 +1955,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                 <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Capital empruntable</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.montantMax)}</p>
                 <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                  Référence : 25 ans à ~{tauxCreditCible.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%.
+                  Référence : 25 ans à ~{tauxCreditNum.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%.
                 </p>
               </div>
 
@@ -1774,16 +1977,21 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
                 <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Endettement</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{formatPct(resumeCapacite!.tauxEndettementAvecProjet)}</p>
-                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">Actuel : {formatPct(resumeCapacite!.tauxEndettementActuel)}</p>
+                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
+                  Actuel : {formatPct(resumeCapacite!.tauxEndettementActuel)}
+                </p>
               </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-4 items-stretch mt-3">
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2 h-full flex flex-col">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Mensualité estimée (pour garder le capital)</p>
+                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                  Mensualité estimée (pour garder le capital)
+                </p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.mensualiteProjet)}</p>
                 <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                  Sur {dureeCreditCible} ans à ~{tauxCreditCible.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%, pour emprunter {formatEuro(resumeCapacite!.montantMax)}.
+                  Sur {dureeCreditNum} ans à ~{tauxCreditNum.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%,
+                  pour emprunter {formatEuro(resumeCapacite!.montantMax)}.
                 </p>
               </div>
 
@@ -1796,7 +2004,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
               </div>
             </div>
 
-            {/* 🔒 Gate : composant factorisé */}
+            {/* 🔒 Gate */}
             {!canShowFullAnalysis ? (
               <LeadGate
                 theme="cyan-emerald"
@@ -1835,7 +2043,9 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                       <div className="mt-2 grid gap-2 sm:grid-cols-2">
                         <div className="rounded-lg border border-slate-200 bg-white px-2 py-2">
                           <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Ratio endettement</p>
-                          <p className="text-[0.8rem] text-slate-900 mt-0.5">{(bankability.details.dtiRatio * 100).toFixed(0)}% de la cible</p>
+                          <p className="text-[0.8rem] text-slate-900 mt-0.5">
+                            {(bankability.details.dtiRatio * 100).toFixed(0)}% de la cible
+                          </p>
                         </div>
                         <div className="rounded-lg border border-slate-200 bg-white px-2 py-2">
                           <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">RAV / UC</p>
@@ -1844,7 +2054,11 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
                         <div className="rounded-lg border border-slate-200 bg-white px-2 py-2 sm:col-span-2">
                           <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Reste à vivre total après projet</p>
-                          <p className={`text-[0.8rem] mt-0.5 ${bankability.details.resteApresProjet < 0 ? "text-red-700 font-semibold" : "text-slate-900"}`}>
+                          <p
+                            className={`text-[0.8rem] mt-0.5 ${
+                              bankability.details.resteApresProjet < 0 ? "text-red-700 font-semibold" : "text-slate-900"
+                            }`}
+                          >
                             {formatEuro(bankability.details.resteApresProjet)}
                           </p>
                           {bankability.details.resteApresProjet < 0 ? (
