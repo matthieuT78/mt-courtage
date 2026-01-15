@@ -56,6 +56,18 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(Math.max(n, min), max);
 }
 
+function onlyNumberInput(s: string) {
+  // autorise vide, chiffres, point, virgule (on stocke en string)
+  return (s || "").replace(/[^\d.,]/g, "");
+}
+
+function toFloat(v: string, fallback = 0) {
+  const norm = (v || "").replace(",", ".").trim();
+  if (!norm) return fallback;
+  const x = parseFloat(norm);
+  return Number.isFinite(x) ? x : fallback;
+}
+
 /* ======================== Types ======================== */
 type ResumeRendement = {
   cashflowMensuel: number;
@@ -190,9 +202,7 @@ export default function InvestissementWizard({
     };
   }, []);
 
-  /* ======================== Identité visuelle INVEST ======================== */
-  const toolGrad = "bg-gradient-to-r from-emerald-500 via-sky-500 to-indigo-500";
-  const toolSoft = "bg-gradient-to-b from-emerald-50 via-sky-50 to-white";
+  const DEFAULT_AIRBNB_OCCUPATION = 60; // % si champ vide
 
   /* ======================== Steps ======================== */
   const steps: StepKey[] = ["couts", "revenus", "charges", "credit", "resultats"];
@@ -204,20 +214,24 @@ export default function InvestissementWizard({
 
   /* ======================== Inputs ======================== */
   // Prix / coûts
-  const [prixBien, setPrixBien] = useState(200000);
-  const [fraisNotaire, setFraisNotaire] = useState(Math.round(200000 * 0.075));
+
+  const [prixBien, setPrixBien] = useState<string>("200000");
+  const [prixBienError, setPrixBienError] = useState<string | null>(null);
+
+  const [fraisNotaire, setFraisNotaire] = useState<string>(String(Math.round(200000 * 0.075)));
   const [notaireCustom, setNotaireCustom] = useState(false);
 
-  const [fraisAgence, setFraisAgence] = useState(Math.round(200000 * 0.04));
+  const [fraisAgence, setFraisAgence] = useState<string>(String(Math.round(200000 * 0.04)));
   const [agenceCustom, setAgenceCustom] = useState(false);
 
-  const [travaux, setTravaux] = useState(10000);
+  const [travaux, setTravaux] = useState<string>("10000");
+
+  // Surface optionnelle (mais plus de 0 forcé)
+  const [surfaceM2, setSurfaceM2] = useState<string>("");
 
   // 🔗 Lien annonce
   const [listingUrl, setListingUrl] = useState("");
 
-  // 📍 Surface (analyse marché)
-  const [surfaceM2, setSurfaceM2] = useState<number>(0);
 
   // Auto-complétion ville / CP
   const [cityQuery, setCityQuery] = useState("");
@@ -229,22 +243,22 @@ export default function InvestissementWizard({
 
   // Lots
   const [nbApparts, setNbApparts] = useState(1);
-  const [loyersApparts, setLoyersApparts] = useState<number[]>([900]);
+  const [loyersApparts, setLoyersApparts] = useState<string[]>(["900"]);
+  const [airbnbNuitees, setAirbnbNuitees] = useState<string[]>(["90"]);
+  const [airbnbOccupation, setAirbnbOccupation] = useState<string[]>(["65"]);
   const [locationTypes, setLocationTypes] = useState<LocationType[]>(["longue"]);
-  const [airbnbNuitees, setAirbnbNuitees] = useState<number[]>([90]);
-  const [airbnbOccupation, setAirbnbOccupation] = useState<number[]>([65]);
 
   // Charges
-  const [chargesCopro, setChargesCopro] = useState(1200);
-  const [taxeFonc, setTaxeFonc] = useState(900);
-  const [assurance, setAssurance] = useState(200);
-  const [tauxGestion, setTauxGestion] = useState(10);
+  const [chargesCopro, setChargesCopro] = useState<string>("1200");
+  const [taxeFonc, setTaxeFonc] = useState<string>("900");
+  const [assurance, setAssurance] = useState<string>("200");
+  const [tauxGestion, setTauxGestion] = useState<string>("10");
 
   // Crédit
-  const [apport, setApport] = useState(20000);
-  const [tauxCredLoc, setTauxCredLoc] = useState(3.5);
-  const [dureeCredLoc, setDureeCredLoc] = useState(25);
-  const [tauxAssuranceEmp, setTauxAssuranceEmp] = useState(0.25);
+  const [apport, setApport] = useState<string>("20000");
+  const [tauxCredLoc, setTauxCredLoc] = useState<string>("3.5");
+  const [dureeCredLoc, setDureeCredLoc] = useState<string>("25");
+  const [tauxAssuranceEmp, setTauxAssuranceEmp] = useState<string>("0.25");
 
   /* ======================== Results ======================== */
   const [resultRendementTexte, setResultRendementTexte] = useState<string>("");
@@ -268,7 +282,6 @@ export default function InvestissementWizard({
   /* ======================== Gate states ======================== */
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [leadEmail, setLeadEmail] = useState<string>("");
-  const [leadPhone, setLeadPhone] = useState<string>("");
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
@@ -313,9 +326,11 @@ export default function InvestissementWizard({
 
   const hasSimulation = !!resumeRendement && !!graphData;
 
-  const canShowAnalysis =
-    hasSimulation && surfaceM2 > 0 && (selectedCity !== null || cityQuery.trim().length > 0);
+  const surfaceNum = useMemo(() => toFloat(surfaceM2, 0), [surfaceM2]);
+  const prixNum = useMemo(() => toFloat(prixBien, 0), [prixBien]);
 
+  const canShowAnalysis =
+  hasSimulation && surfaceNum > 0 && (selectedCity !== null || cityQuery.trim().length > 0);
   const canShowFullDetails = (canSeeCalcDetails && isLoggedIn) || unlocked;
 
   const resultSectionRef = useRef<HTMLDivElement | null>(null);
@@ -330,12 +345,14 @@ export default function InvestissementWizard({
   }, [step, hasSimulation]);
 
   /* ======================== Handlers ======================== */
-  const handlePrixBienChange = (value: number) => {
-    const newPrix = value || 0;
-    setPrixBien(newPrix);
+  const handlePrixBienChange = (raw: string) => {
+    setPrixBienError(null);
+    const v = onlyNumberInput(raw);
+    setPrixBien(v);
 
-    if (!notaireCustom) setFraisNotaire(Math.round(newPrix * 0.075));
-    if (!agenceCustom) setFraisAgence(Math.round(newPrix * 0.04));
+    const newPrix = toFloat(v, 0);
+    if (!notaireCustom && v.trim() !== "") setFraisNotaire(String(Math.round(newPrix * 0.075)));
+    if (!agenceCustom && v.trim() !== "") setFraisAgence(String(Math.round(newPrix * 0.04)));
   };
 
   const handleNbAppartsChange = (value: number) => {
@@ -344,7 +361,7 @@ export default function InvestissementWizard({
 
     setLoyersApparts((prev) => {
       const arr = [...prev];
-      while (arr.length < n) arr.push(0);
+      while (arr.length < n) arr.push("");
       return arr.slice(0, n);
     });
 
@@ -356,24 +373,24 @@ export default function InvestissementWizard({
 
     setAirbnbNuitees((prev) => {
       const arr = [...prev];
-      while (arr.length < n) arr.push(90);
+      while (arr.length < n) arr.push("90");
       return arr.slice(0, n);
     });
 
     setAirbnbOccupation((prev) => {
       const arr = [...prev];
-      while (arr.length < n) arr.push(65);
+      while (arr.length < n) arr.push("65");
       return arr.slice(0, n);
     });
   };
 
-  const handleLoyerAppartChange = (index: number, value: number) => {
-    setLoyersApparts((prev) => {
-      const arr = [...prev];
-      arr[index] = value;
-      return arr;
-    });
-  };
+    const handleLoyerAppartChange = (index: number, value: string) => {
+      setLoyersApparts((prev) => {
+        const arr = [...prev];
+        arr[index] = value;
+        return arr;
+      });
+    };
 
   const handleLocationTypeChange = (index: number, value: LocationType) => {
     setLocationTypes((prev) => {
@@ -383,7 +400,7 @@ export default function InvestissementWizard({
     });
   };
 
-  const handleAirbnbNuiteeChange = (index: number, value: number) => {
+  const handleAirbnbNuiteeChange = (index: number, value: string) => {
     setAirbnbNuitees((prev) => {
       const arr = [...prev];
       arr[index] = value;
@@ -391,7 +408,7 @@ export default function InvestissementWizard({
     });
   };
 
-  const handleAirbnbOccupationChange = (index: number, value: number) => {
+  const handleAirbnbOccupationChange = (index: number, value: string) => {
     setAirbnbOccupation((prev) => {
       const arr = [...prev];
       arr[index] = value;
@@ -550,18 +567,18 @@ export default function InvestissementWizard({
         createdAtClient: new Date().toISOString(),
       },
       user: { user_id: sessionUserId || null, email: sessionEmail || null },
-      consent: {
-        consent_contact: !!(leadPhone && leadPhone.trim()),
+        consent: {
+        consent_contact: false,
         consent_analysis: !!consentLokt,
       },
+        
     };
   };
 
-  const captureLeadViaRpc = async (params: {
-    email: string;
-    phone: string | null;
-    payload: any;
-  }) => {
+    const captureLeadViaRpc = async (params: {
+      email: string;
+      payload: any;
+    }) => {
     if (!supabase) throw new Error("Supabase non configuré.");
 
     const email = params.email.trim().toLowerCase();
@@ -576,7 +593,7 @@ export default function InvestissementWizard({
       p_payload: params.payload,
       p_postal_code: selectedCity?.postalCode ?? null,
       p_city: selectedCity?.name ?? null,
-      p_phone: params.phone,
+      p_phone: null,
       p_source: source,
       p_utm: utm,
       p_lead_age: null,
@@ -597,30 +614,40 @@ export default function InvestissementWizard({
     setOpportunityImprovements([]);
     setMarketError(null);
 
-    const prix = prixBien || 0;
-    const notaire = fraisNotaire || 0;
-    const trvx = travaux || 0;
-    const agence = fraisAgence || 0;
+    const prix = toFloat(prixBien, 0);
+    const notaire = toFloat(fraisNotaire, 0);
+    const trvx = toFloat(travaux, 0);
+    const agence = toFloat(fraisAgence, 0);
 
-    const copro = chargesCopro || 0;
-    const tax = taxeFonc || 0;
-    const assurPNO = assurance || 0;
-    const gestionPct = (tauxGestion || 0) / 100;
+    const copro = toFloat(chargesCopro, 0);
+    const tax = toFloat(taxeFonc, 0);
+    const assurPNO = toFloat(assurance, 0);
+    const gestionPct = toFloat(tauxGestion, 0) / 100;
+
+    const apportVal = toFloat(apport, 0);
+    const tAnnuelCred = toFloat(tauxCredLoc, 0) / 100;
+    const nMensualites = Math.round(toFloat(dureeCredLoc, 0) * 12);
+    const tAssEmp = toFloat(tauxAssuranceEmp, 0) / 100;
 
     const coutTotal = prix + notaire + trvx + agence;
 
-    // loyers
+   // loyers
     const loyersMensuelsArray: number[] = [];
     for (let i = 0; i < nbApparts; i++) {
       const type = locationTypes[i] || "longue";
+
       if (type === "longue") {
-        loyersMensuelsArray.push(loyersApparts[i] || 0);
+        loyersMensuelsArray.push(toFloat(loyersApparts[i] ?? "", 0));
       } else {
-        const prixNuit = airbnbNuitees[i] || 0;
-        const tauxOcc = (airbnbOccupation[i] || 0) / 100;
+        const prixNuit = toFloat(airbnbNuitees[i] ?? "", 0);
+        const occRaw = (airbnbOccupation[i] ?? "").trim();
+        const occ = occRaw
+          ? toFloat(occRaw, DEFAULT_AIRBNB_OCCUPATION)
+          : DEFAULT_AIRBNB_OCCUPATION;
+
+        const tauxOcc = occ / 100;
         const revenuAnnuelAirbnb = prixNuit * tauxOcc * 365;
-        const revenuMensuelAirbnb = revenuAnnuelAirbnb / 12;
-        loyersMensuelsArray.push(revenuMensuelAirbnb);
+        loyersMensuelsArray.push(revenuAnnuelAirbnb / 12);
       }
     }
 
@@ -644,11 +671,8 @@ export default function InvestissementWizard({
     const revenuNetAvantCredit = loyersAnnuels - chargesTotales;
     const rendementNetAvantCredit = (revenuNetAvantCredit / coutTotal) * 100;
 
-    const apportVal = apport || 0;
-    const montantEmprunte = Math.max(coutTotal - apportVal, 0);
-    const tAnnuelCred = (tauxCredLoc || 0) / 100;
-    const nMensualites = (dureeCredLoc || 0) * 12;
-    const tMensuel = tAnnuelCred / 12;
+    const montantEmprunte = Math.max(coutTotal - (apportVal || 0), 0);
+    const tMensuel = (tAnnuelCred || 0) / 12;
 
     let mensualiteCreditNue = 0;
     if (montantEmprunte > 0 && nMensualites > 0) {
@@ -661,8 +685,7 @@ export default function InvestissementWizard({
     }
     const annuiteCreditNue = mensualiteCreditNue * 12;
 
-    const tAssEmp = (tauxAssuranceEmp || 0) / 100;
-    const annuiteAssuranceEmp = montantEmprunte * tAssEmp;
+    const annuiteAssuranceEmp = montantEmprunte * (tAssEmp || 0);
     const mensualiteAssuranceEmp = annuiteAssuranceEmp / 12;
 
     const mensualiteTotale = mensualiteCreditNue + mensualiteAssuranceEmp;
@@ -672,8 +695,8 @@ export default function InvestissementWizard({
     const cashflowMensuel = resultatNetAnnuel / 12;
 
     let market: MarketBenchmarks | null = null;
-    if (selectedCity && surfaceM2 > 0) {
-      market = await fetchMarketBenchmarks(selectedCity, surfaceM2);
+    if (selectedCity && surfaceNum > 0) {
+    market = await fetchMarketBenchmarks(selectedCity, surfaceNum);
     }
 
     // score
@@ -694,18 +717,16 @@ export default function InvestissementWizard({
     let ecartPrixPourcent: number | null = null;
     let ecartLoyerPourcent: number | null = null;
 
-    if (surfaceM2 > 0) {
-      const prixM2Annonce = prixBien / surfaceM2;
+    if (surfaceNum > 0) {
+      const prixM2Annonce = prix / surfaceNum;
 
       if (market?.referencePriceM2Sale) {
-        ecartPrixPourcent =
-          ((prixM2Annonce - market.referencePriceM2Sale) / market.referencePriceM2Sale) * 100;
+        ecartPrixPourcent = ((prixM2Annonce - market.referencePriceM2Sale) / market.referencePriceM2Sale) * 100;
       }
 
       if (market?.referenceRentM2) {
-        const loyerM2Annonce = loyerTotalMensuel / surfaceM2;
-        ecartLoyerPourcent =
-          ((loyerM2Annonce - market.referenceRentM2) / market.referenceRentM2) * 100;
+        const loyerM2Annonce = loyerTotalMensuel / surfaceNum;
+        ecartLoyerPourcent = ((loyerM2Annonce - market.referenceRentM2) / market.referenceRentM2) * 100;
       }
     }
 
@@ -721,7 +742,7 @@ export default function InvestissementWizard({
       } else if (ecartLoyerPourcent < -10) {
         improvements.push(
           `Votre loyer envisagé semble en dessous du loyer médian local. Le marché suggère un loyer autour de ${formatEuro(
-            market.referenceRentM2 * surfaceM2
+            market.referenceRentM2 * surfaceNum
           )} par mois pour cette surface, ce qui offre une marge potentielle de revalorisation.`
         );
       }
@@ -797,16 +818,16 @@ export default function InvestissementWizard({
       )}.`,
       `Avec un apport personnel de ${formatEuro(apportVal)}, le montant emprunté est d’environ ${formatEuro(
         montantEmprunte
-      )}. À un taux de ${tauxCredLoc.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} % sur ${
-        dureeCredLoc
-      } ans, la mensualité de crédit (hors assurance emprunteur) est de l’ordre de ${formatEuro(
+      )}. À un taux de ${toFloat(tauxCredLoc, 0).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} % sur ${toFloat(dureeCredLoc, 0)} ans
+       la mensualité de crédit (hors assurance emprunteur) est de l’ordre de ${formatEuro(
         mensualiteCreditNue
       )}.`,
-      `En ajoutant une estimation d’assurance emprunteur de ${tauxAssuranceEmp.toLocaleString("fr-FR", {
-        maximumFractionDigits: 2,
-      })} % par an sur le capital emprunté, la mensualité totale crédit + assurance ressort autour de ${formatEuro(
-        mensualiteTotale
-      )}, soit ${formatEuro(annuiteTotale)} par an.`,
+      `En ajoutant une estimation d’assurance emprunteur de ${toFloat(tauxAssuranceEmp, 0).toLocaleString(
+  "fr-FR",
+  { maximumFractionDigits: 2 }
+)} % par an sur le capital emprunté, la mensualité totale crédit + assurance ressort autour de ${formatEuro(
+  mensualiteTotale
+)}, soit ${formatEuro(annuiteTotale)} par an.`,
       `Au global, une fois les charges, le crédit et l’assurance intégrés, le projet dégage un résultat net annuel de ${formatEuro(
         resultatNetAnnuel
       )}, correspondant à un cash-flow mensuel de ${formatEuro(cashflowMensuel)}.`,
@@ -829,7 +850,7 @@ export default function InvestissementWizard({
       mensualiteCredit: mensualiteTotale,
       rendementBrut,
       rendementNetAvantCredit,
-      dureeCredLoc,
+      dureeCredLoc: toFloat(dureeCredLoc, 0),
     });
 
     // auto-capture si déjà consenti
@@ -839,7 +860,6 @@ export default function InvestissementWizard({
       try {
         await captureLeadViaRpc({
           email,
-          phone: (leadPhone || "").trim() || null,
           payload: buildLeadPayload(),
         });
       } catch {
@@ -875,9 +895,9 @@ export default function InvestissementWizard({
         ? `Lien de l'annonce analysée : ${listingUrl}`
         : "(Aucun lien d'annonce n'a été renseigné dans la simulation.)",
       selectedCityLabel ? `Localité du bien : ${selectedCityLabel}` : "(Localité non renseignée dans la simulation.)",
-      surfaceM2 > 0
-        ? `Surface : ${surfaceM2.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} m²`
-        : "(Surface non renseignée dans la simulation.)",
+      surfaceNum > 0
+      ? `Surface : ${surfaceNum.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} m²`
+      : "(Surface non renseignée dans la simulation.)",
       "",
       "Résumé de ma simulation actuelle :",
       "",
@@ -996,7 +1016,6 @@ export default function InvestissementWizard({
       try {
         await captureLeadViaRpc({
           email,
-          phone: (leadPhone || "").trim() || null,
           payload: buildLeadPayload(),
         });
       } catch {
@@ -1027,18 +1046,7 @@ export default function InvestissementWizard({
   const secondaryNavButtonClass =
     "rounded-full border border-slate-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 hover:bg-slate-50";
 
-  const StepPill = ({ label, active }: { label: string; active?: boolean }) => (
-    <span
-      className={[
-        "inline-flex items-center rounded-full border px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.16em]",
-        active
-          ? "border-emerald-200 bg-white text-emerald-700"
-          : "border-slate-200 bg-white text-slate-500",
-      ].join(" ")}
-    >
-      {label}
-    </span>
-  );
+  
 
   const renderAnalysisBlocks = (text: string) => {
     if (!text) return null;
@@ -1118,21 +1126,40 @@ export default function InvestissementWizard({
               <p className="text-xs text-slate-500">Prix, notaire, agence, travaux (+ localité & surface optionnelles).</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={goNext} className={primaryNavButtonClass}>
-                Suivant
-              </button>
+              <button
+              type="button"
+              onClick={() => {
+                const prix = toFloat(prixBien, 0);
+                if (!prixBien.trim() || prix <= 0) {
+                  setPrixBienError("Prix du bien obligatoire (montant > 0).");
+                  return;
+                }
+                setPrixBienError(null);
+                goNext();
+              }}
+              className={primaryNavButtonClass}
+            >
+              Suivant
+            </button>
             </div>
           </div>
 
           <div className="space-y-3">
             <div className="space-y-1">
               <label className="text-xs text-slate-700">Prix du bien (€)</label>
-              <input
-                type="number"
+                <input
+                type="text"
+                inputMode="numeric"
+                required
                 value={prixBien}
-                onChange={(e) => handlePrixBienChange(parseFloat(e.target.value) || 0)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                onChange={(e) => handlePrixBienChange(e.target.value)}
+                className={
+                  "w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 " +
+                  (prixBienError ? "border-red-400 focus:ring-red-500" : "border-slate-300 focus:ring-emerald-500")
+                }
+                aria-invalid={!!prixBienError}
               />
+            {prixBienError && <p className="text-[0.7rem] text-red-600">{prixBienError}</p>}
             </div>
 
             {/* Localité & surface */}
@@ -1180,9 +1207,10 @@ export default function InvestissementWizard({
                   <InfoBadge text="Permet de comparer prix/m² et loyer/m² au marché." />
                 </label>
                 <input
-                  type="number"
-                  value={surfaceM2 || ""}
-                  onChange={(e) => setSurfaceM2(parseFloat(e.target.value) || 0)}
+                  type="text"
+                  inputMode="decimal"
+                  value={surfaceM2}
+                  onChange={(e) => setSurfaceM2(onlyNumberInput(e.target.value))}
                   placeholder="Ex. 55"
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
@@ -1209,11 +1237,12 @@ export default function InvestissementWizard({
               <div className="space-y-1">
                 <label className="text-xs text-slate-700">Frais de notaire (€)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={fraisNotaire}
                   onChange={(e) => {
                     setNotaireCustom(true);
-                    setFraisNotaire(parseFloat(e.target.value) || 0);
+                    setFraisNotaire(onlyNumberInput(e.target.value));
                   }}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
@@ -1223,11 +1252,12 @@ export default function InvestissementWizard({
               <div className="space-y-1">
                 <label className="text-xs text-slate-700">Frais d&apos;agence (€)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={fraisAgence}
                   onChange={(e) => {
                     setAgenceCustom(true);
-                    setFraisAgence(parseFloat(e.target.value) || 0);
+                    setFraisAgence(onlyNumberInput(e.target.value));
                   }}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
@@ -1237,9 +1267,10 @@ export default function InvestissementWizard({
               <div className="space-y-1">
                 <label className="text-xs text-slate-700">Travaux (€)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={travaux}
-                  onChange={(e) => setTravaux(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setTravaux(onlyNumberInput(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -1247,7 +1278,12 @@ export default function InvestissementWizard({
 
             <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-sm text-slate-800">
               Coût total actuel (bien + notaire + agence + travaux) :{" "}
-              <span className="font-semibold">{formatEuro(prixBien + fraisNotaire + fraisAgence + travaux)}</span>
+              <span className="font-semibold">{formatEuro(
+                toFloat(prixBien, 0) +
+                  toFloat(fraisNotaire, 0) +
+                  toFloat(fraisAgence, 0) +
+                  toFloat(travaux, 0)
+              )}</span>
             </div>
           </div>
         </section>
@@ -1263,12 +1299,12 @@ export default function InvestissementWizard({
               <p className="text-xs text-slate-500">Configurez le nombre de lots et le mode de location.</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={goPrev} className={secondaryNavButtonClass}>
-                Précédent
-              </button>
-              <button onClick={goNext} className={primaryNavButtonClass}>
-                Suivant
-              </button>
+              <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>
+              Précédent
+            </button>
+            <button type="button" onClick={goNext} className={primaryNavButtonClass}>
+              Suivant
+            </button>
             </div>
           </div>
 
@@ -1315,8 +1351,9 @@ export default function InvestissementWizard({
                         <label className="text-[0.7rem] text-slate-700">Loyer mensuel envisagé (€)</label>
                         <input
                           type="number"
-                          value={loyersApparts[idx] || 0}
-                          onChange={(e) => handleLoyerAppartChange(idx, parseFloat(e.target.value) || 0)}
+                          value={loyersApparts[idx] ?? ""}
+                          onChange={(e) => handleLoyerAppartChange(idx, onlyNumberInput(e.target.value))}
+                          required
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           placeholder="Loyer mensuel (€)"
                         />
@@ -1328,8 +1365,9 @@ export default function InvestissementWizard({
                             <label className="text-[0.7rem] text-slate-700">Prix moyen par nuit (€)</label>
                             <input
                               type="number"
-                              value={airbnbNuitees[idx] || 0}
-                              onChange={(e) => handleAirbnbNuiteeChange(idx, parseFloat(e.target.value) || 0)}
+                              value={airbnbNuitees[idx] ?? ""}
+                              onChange={(e) => handleAirbnbNuiteeChange(idx, onlyNumberInput(e.target.value))}
+                              required
                               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                               placeholder="Ex. 90 €"
                             />
@@ -1338,10 +1376,10 @@ export default function InvestissementWizard({
                             <label className="text-[0.7rem] text-slate-700">Taux d&apos;occupation (% de l&apos;année)</label>
                             <input
                               type="number"
-                              value={airbnbOccupation[idx] || 0}
-                              onChange={(e) => handleAirbnbOccupationChange(idx, parseFloat(e.target.value) || 0)}
+                              value={airbnbOccupation[idx] ?? ""}
+                              onChange={(e) => handleAirbnbOccupationChange(idx, onlyNumberInput(e.target.value))}
                               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                              placeholder="Ex. 60 %"
+                              placeholder={`Ex. ${DEFAULT_AIRBNB_OCCUPATION} %`}
                             />
                           </div>
                         </div>
@@ -1380,27 +1418,30 @@ export default function InvestissementWizard({
               <div className="space-y-1">
                 <label className="text-xs text-slate-700">Charges de copro (€/an)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={chargesCopro}
-                  onChange={(e) => setChargesCopro(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setChargesCopro(onlyNumberInput(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-slate-700">Taxe foncière (€/an)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={taxeFonc}
-                  onChange={(e) => setTaxeFonc(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setTaxeFonc(onlyNumberInput(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-slate-700">Assurance PNO / habitation (€/an)</label>
                 <input
-                  type="number"
+                   type="text"
+                  inputMode="numeric"
                   value={assurance}
-                  onChange={(e) => setAssurance(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => setAssurance(onlyNumberInput(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
@@ -1412,9 +1453,10 @@ export default function InvestissementWizard({
                 {hasAirbnb && <InfoBadge text="Pour la saisonnière, ce champ représente les frais de conciergerie." />}
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={tauxGestion}
-                onChange={(e) => setTauxGestion(parseFloat(e.target.value) || 0)}
+                onChange={(e) => setTauxGestion(onlyNumberInput(e.target.value))}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
@@ -1442,46 +1484,62 @@ export default function InvestissementWizard({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-4 mt-2">
-            <div className="space-y-1">
-              <label className="text-xs text-slate-700">Apport personnel (€)</label>
-              <input
-                type="number"
-                value={apport}
-                onChange={(e) => setApport(parseFloat(e.target.value) || 0)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-slate-700">Taux crédit (annuel, en %)</label>
-              <input
-                type="number"
-                value={tauxCredLoc}
-                onChange={(e) => setTauxCredLoc(parseFloat(e.target.value) || 0)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-slate-700">Durée du crédit (années)</label>
-              <input
-                type="number"
-                value={dureeCredLoc}
-                onChange={(e) => setDureeCredLoc(parseFloat(e.target.value) || 0)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs text-slate-700 flex items-center gap-1">
-                Taux assurance emprunteur (annuel, en %)
-                <InfoBadge text="Approche simplifiée : taux annuel sur capital initial emprunté." />
-              </label>
-              <input
-                type="number"
-                value={tauxAssuranceEmp}
-                onChange={(e) => setTauxAssuranceEmp(parseFloat(e.target.value) || 0)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
+  <div className="space-y-1">
+    <label className="min-h-[2.25rem] flex items-start text-xs text-slate-700">
+      Apport personnel (€)
+    </label>
+    <input
+      type="text"
+      inputMode="numeric"
+      value={apport}
+      onChange={(e) => setApport(onlyNumberInput(e.target.value))}
+      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+    />
+  </div>
+
+  <div className="space-y-1">
+    <label className="min-h-[2.25rem] flex items-start text-xs text-slate-700">
+      Taux crédit (annuel, en %)
+    </label>
+    <input
+      type="text"
+      inputMode="decimal"
+      value={tauxCredLoc}
+      onChange={(e) => setTauxCredLoc(onlyNumberInput(e.target.value))}
+      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      placeholder="Ex. 3,5"
+    />
+  </div>
+
+  <div className="space-y-1">
+    <label className="min-h-[2.25rem] flex items-start text-xs text-slate-700">
+      Durée du crédit (années)
+    </label>
+    <input
+      type="text"
+      inputMode="numeric"
+      value={dureeCredLoc}
+      onChange={(e) => setDureeCredLoc(onlyNumberInput(e.target.value))}
+      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      placeholder="Ex. 25"
+    />
+  </div>
+
+  <div className="space-y-1">
+    <label className="min-h-[2.25rem] flex items-start gap-1 text-xs text-slate-700">
+      <span>Taux assurance emprunteur (annuel, en %)</span>
+      <InfoBadge text="Approche simplifiée : taux annuel sur capital initial emprunté." />
+    </label>
+    <input
+      type="text"
+      inputMode="decimal"
+      value={tauxAssuranceEmp}
+      onChange={(e) => setTauxAssuranceEmp(onlyNumberInput(e.target.value))}
+      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      placeholder="Ex. 0,25"
+    />
+  </div>
+</div>
         </section>
       )}
 
@@ -1658,8 +1716,8 @@ export default function InvestissementWizard({
                           canShowAnalysis={canShowAnalysis}
                           listingUrl={listingUrl}
                           selectedCityLabel={selectedCityLabel}
-                          surfaceM2={surfaceM2}
-                          prixBien={prixBien}
+                          surfaceM2={surfaceNum}
+                          prixBien={prixNum}
                           graphData={graphData}
                           resumeRendement={resumeRendement}
                           opportunityScore={opportunityScore}
@@ -1704,20 +1762,6 @@ export default function InvestissementWizard({
                                     </p>
                                   </div>
 
-                                  <div className="space-y-1 sm:col-span-2">
-                                    <label className="text-xs text-slate-100 font-semibold">Téléphone (optionnel)</label>
-                                    <input
-                                      type="tel"
-                                      value={leadPhone}
-                                      onChange={(e) => setLeadPhone(e.target.value)}
-                                      placeholder="06 12 34 56 78"
-                                      className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-                                    />
-                                    <p className="text-[0.7rem] text-slate-300">
-                                      Si vous souhaitez être recontacté (sinon laissez vide).
-                                    </p>
-                                  </div>
-
                                   <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
                                     <label className="flex items-start gap-3 cursor-pointer">
                                       <input
@@ -1757,17 +1801,6 @@ export default function InvestissementWizard({
                                     Astuce : coche le consentement pour activer le bouton.
                                   </p>
                                 ) : null}
-
-                                {!isLoggedIn && (
-                                  <div className="mt-3 pt-3 border-t border-white/10">
-                                    <a
-                                      href={`/mon-compte?mode=register&redirect=${encodeURIComponent("/investissement")}`}
-                                      className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15"
-                                    >
-                                      Ou créer un compte gratuit
-                                    </a>
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </div>
@@ -1810,17 +1843,6 @@ export default function InvestissementWizard({
                               />
                             </div>
 
-                            <div className="space-y-1 sm:col-span-2">
-                              <label className="text-xs text-slate-100 font-semibold">Téléphone (optionnel)</label>
-                              <input
-                                type="tel"
-                                value={leadPhone}
-                                onChange={(e) => setLeadPhone(e.target.value)}
-                                placeholder="06 12 34 56 78"
-                                className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-                              />
-                            </div>
-
                             <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
                               <label className="flex items-start gap-3 cursor-pointer">
                                 <input
@@ -1851,16 +1873,6 @@ export default function InvestissementWizard({
 
                           {unlockMsg && <p className="mt-3 text-[0.75rem] text-slate-200">{unlockMsg}</p>}
 
-                          {!isLoggedIn && (
-                            <div className="mt-3 pt-3 border-t border-white/10">
-                              <a
-                                href={`/mon-compte?mode=register&redirect=${encodeURIComponent("/investissement")}`}
-                                className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15"
-                              >
-                                Ou créer un compte gratuit
-                              </a>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -1882,3 +1894,4 @@ export default function InvestissementWizard({
     </div>
   );
 }
+
