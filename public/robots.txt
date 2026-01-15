@@ -1,11 +1,14 @@
 User-agent: *
 Allow: /
 
+# Bloquer uniquement le back-office / V2
 Disallow: /admin
 Disallow: /mon-compte
 Disallow: /espace-bailleur
 Disallow: /tarifs
 Disallow: /blog
-Disallow: /simulateur/
+
+# IMPORTANT : on ne bloque PAS /simulateur
+# Disallow: /simulateur   ❌ INTERDIT
 
 Sitemap: https://lokt.fr/sitemap.xml
