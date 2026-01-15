@@ -52,23 +52,39 @@ function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
 
+function onlyNumberInput(s: string) {
+  // autorise vide, chiffres, point, virgule (on stocke en string)
+  return (s || "").replace(/[^\d.,]/g, "");
+}
+
+function toFloat(v: string, fallback = 0) {
+  const norm = (v || "").replace(",", ".").trim();
+  if (!norm) return fallback;
+  const x = parseFloat(norm);
+  return Number.isFinite(x) ? x : fallback;
+}
+
 type Bien = {
   nom: string;
-  valeurBien: number;
-  capitalRestantDu: number;
-  loyerMensuel: number;
-  chargesAnnuelles: number;
-  mensualiteCredit: number;
-  assuranceEmprunteurAnnuelle: number;
 
+  // ✅ Champs saisissables : strings pour ne pas forcer 0 à l’édition
+  valeurBien: string;
+  capitalRestantDu: string;
+  loyerMensuel: string;
+  chargesAnnuelles: string;
+  mensualiteCredit: string;
+  assuranceEmprunteurAnnuelle: string;
+
+  // ✅ calculés
   resultatNetAnnuel: number;
   cashflowMensuel: number;
   rendementNet: number;
 
-  vacancePct: number;
-  gestionPct: number;
-  impotsPct: number;
-  fraisVentePct: number;
+  // ✅ avancé (strings aussi)
+  vacancePct: string;
+  gestionPct: string;
+  impotsPct: string;
+  fraisVentePct: string;
 
   resultatNetAnnuelAjuste: number;
   cashflowMensuelAjuste: number;
@@ -107,21 +123,22 @@ function InfoBadge({ text }: { text: string }) {
 function defaultBien(idx: number): Bien {
   return {
     nom: idx === 0 ? "Appartement #1" : `Bien #${idx + 1}`,
-    valeurBien: idx === 0 ? 250000 : 0,
-    capitalRestantDu: idx === 0 ? 150000 : 0,
-    loyerMensuel: idx === 0 ? 900 : 0,
-    chargesAnnuelles: idx === 0 ? 3000 : 0,
-    mensualiteCredit: idx === 0 ? 650 : 0,
-    assuranceEmprunteurAnnuelle: idx === 0 ? 400 : 0,
+
+    valeurBien: idx === 0 ? "250000" : "",
+    capitalRestantDu: idx === 0 ? "150000" : "",
+    loyerMensuel: idx === 0 ? "900" : "",
+    chargesAnnuelles: idx === 0 ? "3000" : "",
+    mensualiteCredit: idx === 0 ? "650" : "",
+    assuranceEmprunteurAnnuelle: idx === 0 ? "400" : "",
 
     resultatNetAnnuel: 0,
     cashflowMensuel: 0,
     rendementNet: 0,
 
-    vacancePct: 5,
-    gestionPct: 7,
-    impotsPct: 0,
-    fraisVentePct: 7,
+    vacancePct: "5",
+    gestionPct: "7",
+    impotsPct: "0",
+    fraisVentePct: "7",
 
     resultatNetAnnuelAjuste: 0,
     cashflowMensuelAjuste: 0,
@@ -135,6 +152,7 @@ function defaultBien(idx: number): Bien {
 
 export default function ParcImmobilierWizard() {
   const [advancedMode, setAdvancedMode] = useState<boolean>(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [nbBiens, setNbBiens] = useState(1);
   const [biens, setBiens] = useState<Bien[]>([defaultBien(0)]);
@@ -159,84 +177,116 @@ export default function ParcImmobilierWizard() {
   };
 
   const updateBienField = (index: number, field: keyof Bien, value: string) => {
-    setBiens((prev) => {
-      const arr = [...prev];
-      const bien = { ...arr[index] };
+  if (formError) setFormError(null);
 
-      if (field === "nom") {
-        bien.nom = value;
-      } else {
-        (bien as any)[field] = parseFloat(value) || 0;
-      }
+  setBiens((prev) => {
+    const arr = [...prev];
+    const bien = { ...arr[index] };
 
-      arr[index] = bien;
-      return arr;
-    });
-  };
+    if (field === "nom") {
+      bien.nom = value;
+    } else {
+      (bien as any)[field] = onlyNumberInput(value);
+    }
+
+    arr[index] = bien;
+    return arr;
+  });
+};
 
   const computeAdjusted = (b: Bien) => {
-    const loyersAnnuels = (b.loyerMensuel || 0) * 12;
-    const chargesAnnuelles = b.chargesAnnuelles || 0;
+  const loyerMensuel = toFloat(b.loyerMensuel, 0);
+  const chargesAnnuelles = toFloat(b.chargesAnnuelles, 0);
 
-    const vacance = loyersAnnuels * clamp((b.vacancePct || 0) / 100, 0, 1);
-    const gestion = loyersAnnuels * clamp((b.gestionPct || 0) / 100, 0, 1);
+  const vacancePct = toFloat(b.vacancePct, 0);
+  const gestionPct = toFloat(b.gestionPct, 0);
+  const impotsPct = toFloat(b.impotsPct, 0);
 
-    const revenuAvantImpots = loyersAnnuels - chargesAnnuelles - vacance - gestion;
-    const impots = Math.max(0, revenuAvantImpots * clamp((b.impotsPct || 0) / 100, 0, 1));
+  const loyersAnnuels = loyerMensuel * 12;
 
-    return {
-      loyersAnnuels,
-      chargesAnnuelles,
-      revenuNetAvantCredit: loyersAnnuels - chargesAnnuelles,
-      revenuAvantImpots,
-      impots,
-      revenuApresImpots: revenuAvantImpots - impots,
-    };
+  const vacance = loyersAnnuels * clamp(vacancePct / 100, 0, 1);
+  const gestion = loyersAnnuels * clamp(gestionPct / 100, 0, 1);
+
+  const revenuAvantImpots = loyersAnnuels - chargesAnnuelles - vacance - gestion;
+  const impots = Math.max(0, revenuAvantImpots * clamp(impotsPct / 100, 0, 1));
+
+  return {
+    loyersAnnuels,
+    chargesAnnuelles,
+    revenuNetAvantCredit: loyersAnnuels - chargesAnnuelles,
+    revenuAvantImpots,
+    impots,
+    revenuApresImpots: revenuAvantImpots - impots,
   };
+};
 
   const handleCalculParc = () => {
+    setFormError(null);
+
+for (let i = 0; i < Math.min(nbBiens, biens.length); i++) {
+  const b = biens[i];
+
+  const valeur = toFloat(b.valeurBien, 0);
+  const loyerStr = (b.loyerMensuel || "").trim();
+
+  if (!b.valeurBien.trim() || valeur <= 0) {
+    setFormError(`Bien #${i + 1} : la valeur du bien est obligatoire (montant > 0).`);
+    return;
+  }
+  if (loyerStr.length === 0) {
+    setFormError(`Bien #${i + 1} : le loyer mensuel doit être renseigné (0 possible si vacant).`);
+    return;
+  }
+}
     const updatedBiens: Bien[] = biens.slice(0, nbBiens).map((b) => {
-      const loyersAnnuels = (b.loyerMensuel || 0) * 12;
-      const chargesAnnuelles = b.chargesAnnuelles || 0;
-      const annuiteCredit = (b.mensualiteCredit || 0) * 12;
-      const annuiteAssurance = b.assuranceEmprunteurAnnuelle || 0;
-      const serviceDette = annuiteCredit + annuiteAssurance;
+  const valeurBien = toFloat(b.valeurBien, 0);
+  const capitalRestantDu = toFloat(b.capitalRestantDu, 0);
+  const loyerMensuel = toFloat(b.loyerMensuel, 0);
+  const chargesAnn = toFloat(b.chargesAnnuelles, 0);
+  const mensualiteCredit = toFloat(b.mensualiteCredit, 0);
+  const assuranceAnnuelle = toFloat(b.assuranceEmprunteurAnnuelle, 0);
+  const fraisVentePct = toFloat(b.fraisVentePct, 0);
 
-      const revenuNetAvantCredit = loyersAnnuels - chargesAnnuelles;
-      const resultatNetAnnuel = revenuNetAvantCredit - serviceDette;
-      const cashflowMensuel = resultatNetAnnuel / 12;
-      const rendementNet = b.valeurBien > 0 ? (revenuNetAvantCredit / b.valeurBien) * 100 : 0;
+  const loyersAnnuels = loyerMensuel * 12;
+  const annuiteCredit = mensualiteCredit * 12;
+  const annuiteAssurance = assuranceAnnuelle;
+  const serviceDette = annuiteCredit + annuiteAssurance;
 
-      const adj = computeAdjusted(b);
-      const resultatNetAnnuelAjuste = adj.revenuApresImpots - serviceDette;
-      const cashflowMensuelAjuste = resultatNetAnnuelAjuste / 12;
-      const rendementNetAjuste = b.valeurBien > 0 ? (adj.revenuAvantImpots / b.valeurBien) * 100 : 0;
+  const revenuNetAvantCredit = loyersAnnuels - chargesAnn;
+  const resultatNetAnnuel = revenuNetAvantCredit - serviceDette;
+  const cashflowMensuel = resultatNetAnnuel / 12;
+  const rendementNet = valeurBien > 0 ? (revenuNetAvantCredit / valeurBien) * 100 : 0;
 
-      const dscr = serviceDette > 0 ? revenuNetAvantCredit / serviceDette : 0;
-      const ltv = b.valeurBien > 0 ? (b.capitalRestantDu / b.valeurBien) * 100 : 0;
+  const adj = computeAdjusted(b);
+  const resultatNetAnnuelAjuste = adj.revenuApresImpots - serviceDette;
+  const cashflowMensuelAjuste = resultatNetAnnuelAjuste / 12;
+  const rendementNetAjuste = valeurBien > 0 ? (adj.revenuAvantImpots / valeurBien) * 100 : 0;
 
-      const fraisV = clamp((b.fraisVentePct || 0) / 100, 0, 0.3);
-      const breakevenVente =
-        (b.capitalRestantDu || 0) > 0 && (1 - fraisV) > 0 ? (b.capitalRestantDu || 0) / (1 - fraisV) : 0;
+  const dscr = serviceDette > 0 ? revenuNetAvantCredit / serviceDette : 0;
+  const ltv = valeurBien > 0 ? (capitalRestantDu / valeurBien) * 100 : 0;
 
-      return {
-        ...b,
-        resultatNetAnnuel,
-        cashflowMensuel,
-        rendementNet,
-        resultatNetAnnuelAjuste,
-        cashflowMensuelAjuste,
-        rendementNetAjuste,
-        dscr,
-        ltv,
-        breakevenVente,
-      };
-    });
+  const fraisV = clamp((fraisVentePct || 0) / 100, 0, 0.3);
+  const breakevenVente =
+    capitalRestantDu > 0 && (1 - fraisV) > 0 ? capitalRestantDu / (1 - fraisV) : 0;
+
+  return {
+    ...b,
+    resultatNetAnnuel,
+    cashflowMensuel,
+    rendementNet,
+    resultatNetAnnuelAjuste,
+    cashflowMensuelAjuste,
+    rendementNetAjuste,
+    dscr,
+    ltv,
+    breakevenVente,
+  };
+});
 
     setBiens(updatedBiens);
 
-    const valeurParc = updatedBiens.reduce((sum, b) => sum + (b.valeurBien || 0), 0);
-    const encoursCredit = updatedBiens.reduce((sum, b) => sum + (b.capitalRestantDu || 0), 0);
+const valeurParc = updatedBiens.reduce((sum, b) => sum + toFloat(b.valeurBien, 0), 0);
+const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRestantDu, 0), 0);
 
     const cashflowMensuelGlobal = updatedBiens.reduce((sum, b) => sum + (b.cashflowMensuel || 0), 0);
     const rendementNetMoyen =
@@ -250,17 +300,17 @@ export default function ParcImmobilierWizard() {
         ? updatedBiens.reduce((sum, b) => sum + (b.rendementNetAjuste || 0), 0) / updatedBiens.length
         : 0;
 
-    const totalRevenuNetAvantCredit = updatedBiens.reduce((sum, b) => {
-      const loyersAnnuels = (b.loyerMensuel || 0) * 12;
-      const charges = b.chargesAnnuelles || 0;
+   const totalRevenuNetAvantCredit = updatedBiens.reduce((sum, b) => {
+      const loyersAnnuels = toFloat(b.loyerMensuel, 0) * 12;
+      const charges = toFloat(b.chargesAnnuelles, 0);
       return sum + (loyersAnnuels - charges);
     }, 0);
 
-    const totalServiceDette = updatedBiens.reduce((sum, b) => {
-      const annuiteCredit = (b.mensualiteCredit || 0) * 12;
-      const annuiteAssurance = b.assuranceEmprunteurAnnuelle || 0;
-      return sum + (annuiteCredit + annuiteAssurance);
-    }, 0);
+   const totalServiceDette = updatedBiens.reduce((sum, b) => {
+  const annuiteCredit = toFloat(b.mensualiteCredit, 0) * 12;
+  const annuiteAssurance = toFloat(b.assuranceEmprunteurAnnuelle, 0);
+  return sum + (annuiteCredit + annuiteAssurance);
+}, 0);
 
     const ltvGlobal = valeurParc > 0 ? (encoursCredit / valeurParc) * 100 : 0;
     const dscrGlobal = totalServiceDette > 0 ? totalRevenuNetAvantCredit / totalServiceDette : 0;
@@ -443,28 +493,30 @@ export default function ParcImmobilierWizard() {
     let totalRevenuNetAvantCredit = 0;
 
     dataBiens.forEach((b) => {
-      const loyersAnnuels = (b.loyerMensuel || 0) * 12;
-      const charges = b.chargesAnnuelles || 0;
-      const annuiteCredit = (b.mensualiteCredit || 0) * 12;
-      const annuiteAssurance = b.assuranceEmprunteurAnnuelle || 0;
-      const serviceDette = annuiteCredit + annuiteAssurance;
+    const valeurBien = toFloat(b.valeurBien, 0);
+    const crd = toFloat(b.capitalRestantDu, 0);
+    const loyersAnnuels = toFloat(b.loyerMensuel, 0) * 12;
+    const charges = toFloat(b.chargesAnnuelles, 0);
+    const annuiteCredit = toFloat(b.mensualiteCredit, 0) * 12;
+    const annuiteAssurance = toFloat(b.assuranceEmprunteurAnnuelle, 0);
+    const serviceDette = annuiteCredit + annuiteAssurance;
 
-      const revenuNetAvantCredit = loyersAnnuels - charges;
+    const revenuNetAvantCredit = loyersAnnuels - charges;
 
-      totalValeur += b.valeurBien || 0;
-      totalCRD += b.capitalRestantDu || 0;
-      totalLoyersAnnuels += loyersAnnuels;
-      totalChargesAnnuelles += charges;
-      totalCreditAssuranceAnnuel += serviceDette;
+    totalValeur += valeurBien;
+    totalCRD += crd;
+    totalLoyersAnnuels += loyersAnnuels;
+    totalChargesAnnuelles += charges;
+    totalCreditAssuranceAnnuel += serviceDette;
 
-      totalResultatNetAnnuel += b.resultatNetAnnuel || 0;
-      totalCashflowMensuel += b.cashflowMensuel || 0;
+    totalResultatNetAnnuel += b.resultatNetAnnuel || 0;
+    totalCashflowMensuel += b.cashflowMensuel || 0;
 
-      totalResultatNetAnnuelAdj += b.resultatNetAnnuelAjuste || 0;
-      totalCashflowMensuelAdj += b.cashflowMensuelAjuste || 0;
+    totalResultatNetAnnuelAdj += b.resultatNetAnnuelAjuste || 0;
+    totalCashflowMensuelAdj += b.cashflowMensuelAjuste || 0;
 
-      totalRevenuNetAvantCredit += revenuNetAvantCredit;
-    });
+    totalRevenuNetAvantCredit += revenuNetAvantCredit;
+  });
 
     const rendementGlobal = totalValeur > 0 ? (totalRevenuNetAvantCredit / totalValeur) * 100 : 0;
 
@@ -592,20 +644,22 @@ export default function ParcImmobilierWizard() {
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Valeur actuelle estimée (€)</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={b.valeurBien}
                         onChange={(e) => updateBienField(idx, "valeurBien", e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      />
+                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Capital restant dû (€)</label>
                       <input
-                        type="number"
-                        value={b.capitalRestantDu}
-                        onChange={(e) => updateBienField(idx, "capitalRestantDu", e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      />
+                      type="text"
+                      inputMode="numeric"
+                      value={b.capitalRestantDu}
+                      onChange={(e) => updateBienField(idx, "capitalRestantDu", e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
                     </div>
                   </div>
 
@@ -613,7 +667,8 @@ export default function ParcImmobilierWizard() {
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Loyer mensuel hors charges (€)</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={b.loyerMensuel}
                         onChange={(e) => updateBienField(idx, "loyerMensuel", e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -625,7 +680,8 @@ export default function ParcImmobilierWizard() {
                         <InfoBadge text="Copropriété, taxe foncière, assurance PNO/habitation, petits entretiens… hors crédit." />
                       </label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={b.chargesAnnuelles}
                         onChange={(e) => updateBienField(idx, "chargesAnnuelles", e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -637,7 +693,8 @@ export default function ParcImmobilierWizard() {
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Mensualité de crédit (€ / mois)</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={b.mensualiteCredit}
                         onChange={(e) => updateBienField(idx, "mensualiteCredit", e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -646,7 +703,8 @@ export default function ParcImmobilierWizard() {
                     <div className="space-y-1">
                       <label className="text-[0.7rem] text-slate-700">Assurance emprunteur (€/an)</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         value={b.assuranceEmprunteurAnnuelle}
                         onChange={(e) => updateBienField(idx, "assuranceEmprunteurAnnuelle", e.target.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -667,7 +725,8 @@ export default function ParcImmobilierWizard() {
                             <InfoBadge text="Périodes sans locataire. Exemple : 5% ≈ ~18 jours/an." />
                           </label>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={b.vacancePct}
                             onChange={(e) => updateBienField(idx, "vacancePct", e.target.value)}
                             className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -680,7 +739,8 @@ export default function ParcImmobilierWizard() {
                             <InfoBadge text="Gestion locative (agence) ou coût implicite si vous gérez." />
                           </label>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={b.gestionPct}
                             onChange={(e) => updateBienField(idx, "gestionPct", e.target.value)}
                             className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -692,12 +752,13 @@ export default function ParcImmobilierWizard() {
                             Impôts (%)
                             <InfoBadge text="Approximation simplifiée. Mets 0 si tu ne veux pas l’intégrer." />
                           </label>
-                          <input
-                            type="number"
-                            value={b.impotsPct}
-                            onChange={(e) => updateBienField(idx, "impotsPct", e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          />
+                         <input
+                          type="text"
+                          inputMode="decimal"
+                          value={b.impotsPct}
+                          onChange={(e) => updateBienField(idx, "impotsPct", e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        />
                         </div>
 
                         <div className="space-y-1">
@@ -706,7 +767,8 @@ export default function ParcImmobilierWizard() {
                             <InfoBadge text="Pour le break-even vente (agent + divers). Sert à estimer le prix mini pour solder le CRD." />
                           </label>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={b.fraisVentePct}
                             onChange={(e) => updateBienField(idx, "fraisVentePct", e.target.value)}
                             className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -724,6 +786,8 @@ export default function ParcImmobilierWizard() {
             })}
 
             <div className="mt-3">
+              {formError && <p className="mb-2 text-[0.75rem] text-red-600">{formError}</p>}
+
               <button
                 onClick={handleCalculParc}
                 className="rounded-full bg-gradient-to-r from-indigo-500 to-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-2xl active:scale-[0.99]"
@@ -853,3 +917,4 @@ export default function ParcImmobilierWizard() {
     </div>
   );
 }
+
