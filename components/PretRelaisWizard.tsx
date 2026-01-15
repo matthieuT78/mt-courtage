@@ -27,6 +27,16 @@ function formatPct(val: number) {
   return val.toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + " %";
 }
 
+// ✅ AJOUTE ÇA ICI
+function onlyDigits(s: string) {
+  return (s || "").replace(/[^\d]/g, "");
+}
+
+function toInt(v: string, fallback = 0) {
+  const x = parseInt(v, 10);
+  return Number.isFinite(x) ? x : fallback;
+}
+
 function InfoBadge({ text }: { text: string }) {
   return (
     <span className="relative inline-flex items-center group ml-1 align-middle">
@@ -128,7 +138,7 @@ function safeEmail(v: string) {
   return (v || "").trim().toLowerCase();
 }
 
-export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWizardProps) {
+export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   // ---------------------------
   // Session
   // ---------------------------
@@ -198,7 +208,8 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
   // ---------------------------
   // Inputs — Revenus
   // ---------------------------
-  const [revMensuels, setRevMensuels] = useState(4500);
+  const [revMensuels, setRevMensuels] = useState<string>("4500");
+  const [revError, setRevError] = useState<string | null>(null);
 
   // ---------------------------
   // Inputs — Charges & crédits (hors projet)
@@ -371,7 +382,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
   // Calcul
   // ---------------------------
   const computeAll = () => {
-    const revenus = revMensuels || 0;
+    const revenus = toInt(revMensuels, 0);
     const autresMens = autresMensualites || 0;
     const endettementMax = (tauxEndettement || 35) / 100;
 
@@ -602,7 +613,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
       setNbAdultes(saved.nbAdultes ?? 2);
       setNbEnfants(saved.nbEnfants ?? 0);
 
-      setRevMensuels(saved.revMensuels ?? 4500);
+      setRevMensuels(saved.revMensuels !== undefined ? String(saved.revMensuels) : "4500");
       setAutresMensualites(saved.autresMensualites ?? 0);
       setTauxEndettement(saved.tauxEndettement ?? 35);
 
@@ -760,45 +771,50 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
 
   const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
 
+  const labelBase =
+  "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
+
   const renderAnalysisBlocks = (text: string) => {
-    if (!text) return null;
+  if (!text) return null;
 
-    const sections = text
-      .split(/\n\s*\n/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+  const sections = text
+    .split(/\n\s*\n/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
 
-    return (
-      <div className="space-y-3">
-        {sections.map((section, idx) => {
-          const lines = section
-            .split("\n")
-            .map((l) => l.trim())
-            .filter((l) => l.length > 0);
+  return (
+    <div className="space-y-3">
+      {sections.map((section, idx) => {
+        const lines = section
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
 
-          if (!lines.length) return null;
+        if (!lines.length) return null;
 
-          const title = lines[0];
-          const body = lines.slice(1);
+        const title = lines[0];
+        const body = lines.slice(1);
 
-          return (
-            <div key={idx} className="rounded-xl border border-slate-200 bg-white/80 px-3 py-3">
-              <p className="text-[0.75rem] font-semibold text-slate-900 mb-1">{title}</p>
-              {body.map((line, i) => (
-                <p key={i} className="text-[0.8rem] text-slate-700 leading-relaxed">
-                  {line}
-                </p>
-              ))}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+        return (
+          <div key={idx} className="rounded-xl border border-slate-200 bg-white/80 px-3 py-3">
+            <p className="text-[0.75rem] font-semibold text-slate-900 mb-1">{title}</p>
+            {body.map((line, i) => (
+              <p key={i} className="text-[0.8rem] text-slate-700 leading-relaxed">
+                {line}
+              </p>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 
   // ---------------------------
   // UI
   // ---------------------------
+
   return (
     <div className="space-y-6">
       {/* Wizard */}
@@ -953,7 +969,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                  <label className={labelBase}>
                     Statut principal
                     <InfoBadge text="Les banques n’évaluent pas un revenu de la même façon selon le statut." />
                   </label>
@@ -971,7 +987,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Âge emprunteur (ans)</label>
+                  <label className={labelBase}>Âge emprunteur (ans)</label>
                   <input
                     type="number"
                     min={18}
@@ -983,7 +999,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Âge co-emprunteur (optionnel)</label>
+                  <label className={labelBase}>Âge co-emprunteur (optionnel)</label>
                   <input
                     type="number"
                     min={0}
@@ -1033,13 +1049,22 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
 
               <div className="space-y-2">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Revenus nets mensuels du foyer (€)</label>
+                  <label className={labelBase}>Revenus nets mensuels du foyer (€)</label>
                   <input
-                    type="number"
+                    required
+                    inputMode="numeric"
                     value={revMensuels}
-                    onChange={(e) => setRevMensuels(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    onChange={(e) => {
+                      setRevMensuels(onlyDigits(e.target.value));
+                      setRevError(null);
+                    }}
+                    className={
+                      "w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 " +
+                      (revError ? "border-red-400 focus:ring-red-500" : "border-slate-300 focus:ring-amber-500")
+                    }
+                    aria-invalid={!!revError}
                   />
+                  {revError && <p className="text-[0.7rem] text-red-600">{revError}</p>}
                 </div>
 
                 <div className="space-y-1">
@@ -1162,7 +1187,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Taux du nouveau crédit (annuel, %)</label>
+                  <label className={labelBase}>Taux du nouveau crédit (annuel, %)</label>
                   <input
                     type="number"
                     value={tauxNouveau}
@@ -1172,7 +1197,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700">Durée du nouveau crédit (années)</label>
+                  <label className={labelBase}>Durée du nouveau crédit (années)</label>
                   <input
                     type="number"
                     value={dureeNouveau}
@@ -1182,7 +1207,7 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                  <label className={labelBase}>
                     Prix du bien visé (optionnel)
                     <InfoBadge text="Uniquement pour comparer au budget max." />
                   </label>
@@ -1213,7 +1238,17 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
           {step < TOTAL_STEPS ? (
             <button
               type="button"
-              onClick={goNext}
+                onClick={() => {
+                  if (step === 3) {
+                    const rn = toInt(revMensuels, 0);
+                    if (!revMensuels || rn <= 0) {
+                      setRevError("Revenus obligatoires (montant > 0).");
+                      return;
+                    }
+                  }
+                  setRevError(null);
+                  goNext();
+                }}
               className="rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
             >
               Suivant →
@@ -1378,3 +1413,4 @@ export default function PretRelaisWizard({ showSaveButton = true }: PretRelaisWi
     </div>
   );
 }
+
