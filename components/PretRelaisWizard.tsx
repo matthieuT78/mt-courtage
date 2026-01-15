@@ -396,13 +396,29 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
     const nMois = (dureeNouveau || 0) * 12;
 
     if (revenus <= 0 || valeur <= 0 || nMois <= 0) {
-      return {
-        ok: false as const,
-        resume: null,
-        texte: "Merci de renseigner des valeurs cohérentes (revenus, bien actuel, durée du nouveau crédit, etc.).",
-        assessment: null as BankabilityAssessment | null,
-      };
-    }
+  const msg =
+    revenus <= 0
+      ? "Revenus nets mensuels obligatoires (montant > 0). Avec 0€, la faisabilité bancaire est quasi nulle."
+      : "Merci de renseigner des valeurs cohérentes (bien actuel, durée du nouveau crédit, etc.).";
+
+  const resumeFail: ResumeRelais = {
+    montantRelais: 0,
+    mensualiteNouveauMax: 0,
+    capitalNouveau: 0,
+    budgetMax: (apportPerso || 0),
+    revenusPrisEnCompte: revenus,
+    mensualitesExistantes: autresMensualites || 0,
+    chargesHorsCredits: 0,
+    tauxEndettementActuel: 0,
+    tauxEndettementAvecProjet: 999, // volontairement “catastrophique”
+  };
+
+  const assessmentFail: BankabilityAssessment = revenus <= 0
+    ? { score: 1, label: "Score quasi nul", comment: "Revenus = 0 : aucun financement bancaire viable." }
+    : { score: 20, label: "Données incomplètes", comment: "Complétez les champs manquants pour une estimation fiable." };
+
+  return { ok: false as const, resume: resumeFail, texte: msg, assessment: assessmentFail };
+}
 
     const relaisBrut = valeur * pct;
     const montantRelais = Math.max(relaisBrut - crd, 0);
@@ -474,7 +490,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
 
       const assessmentFail = computeBankabilityScore(resumeFail, tauxEndettement);
 
-      return { ok: false as const, resume: null, texte: msg, assessment: assessmentFail };
+      return { ok: false as const, resume: resumeFail, texte: msg, assessment: assessmentFail };
     }
 
     let capitalNouveau = 0;
@@ -771,10 +787,9 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
 
   const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
 
-  const labelBase =
-  "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
+  const labelBase = "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
 
-  const renderAnalysisBlocks = (text: string) => {
+const renderAnalysisBlocks = (text: string) => {
   if (!text) return null;
 
   const sections = text
@@ -886,7 +901,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Usage du futur bien
-                    <InfoBadge text="Utilisé pour qualifier le projet (résidence principale / secondaire / investissement)." />
+                    <InfoBadge text="Cela aide à adapter l’analyse et les conseils (résidence principale, secondaire ou investissement)." />
                   </label>
                   <select
                     value={projectUsageDb}
@@ -902,7 +917,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Horizon d’achat
-                    <InfoBadge text="Format DB contraint : 0_3_mois, 3_6_mois, 6_12_mois, 12_plus, juste_info." />
+                    <InfoBadge text="Pour savoir si votre projet est imminent ou plutôt à moyen terme (cela change parfois l’approche)." />
                   </label>
                   <select
                     value={timelineDb}
@@ -920,7 +935,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Département (zone)
-                    <InfoBadge text="Ex: 75, 78, 13… Suffisant pour qualifier sans être trop intrusif." />
+                    <InfoBadge text="Juste pour situer la zone de recherche (ex : 75, 78, 13). Pas besoin d’une adresse précise." />
                   </label>
                   <input
                     type="text"
@@ -936,7 +951,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Nature du projet (frais)
-                    <InfoBadge text="Comme dans Capacité : impacte les frais / la lecture bancaire, et remplit project_property_kind." />
+                    <InfoBadge text="Les frais et le financement peuvent varier selon ancien / neuf / terrain + construction." />
                   </label>
                   <select
                     value={projectType}
@@ -971,7 +986,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                 <div className="space-y-1">
                   <label className={labelBase}>
                     Statut principal
-                    <InfoBadge text="Les banques n’évaluent pas un revenu de la même façon selon le statut." />
+                    <InfoBadge text="Le statut aide à interpréter la stabilité des revenus (ex : CDI, fonctionnaire, indépendant…)." />
                   </label>
                   <select
                     value={proStatus}
@@ -1070,7 +1085,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Taux d’endettement cible (%)
-                    <InfoBadge text="Souvent 33–35 %, parfois plus selon profil." />
+                    <InfoBadge text="C’est la part maximale de vos revenus que la banque accepte en mensualités (souvent autour de 35%)." />
                   </label>
                   <input
                     type="number"
@@ -1094,7 +1109,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Autres mensualités de crédits (€ / mois)
-                    <InfoBadge text="Auto, conso, prêts divers… (hors nouveau projet)." />
+                    <InfoBadge text="Total de vos crédits actuels (auto, conso, etc.). Cela réduit la mensualité disponible pour le nouveau projet." />
                   </label>
                   <input
                     type="number"
@@ -1115,9 +1130,12 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
               <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-3 space-y-2">
                 <p className="text-[0.75rem] font-semibold text-slate-900">Bien actuel à vendre</p>
 
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-3 items-start">
                   <div className="space-y-1">
-                    <label className="text-xs text-slate-700">Valeur estimée (€)</label>
+                    <label className={labelBase}>
+                      Valeur estimée (€)
+                      <InfoBadge text="Estimation du prix de vente de votre bien (approximation suffisante)." />
+                    </label>
                     <input
                       type="number"
                       value={valeurBienActuel}
@@ -1127,7 +1145,10 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs text-slate-700">Capital restant dû (€)</label>
+                    <label className={labelBase}>
+                      Capital restant dû (€)
+                      <InfoBadge text="Le montant qu’il vous reste à rembourser sur le prêt actuel (visible sur votre tableau d’amortissement)." />
+                    </label>
                     <input
                       type="number"
                       value={crdActuel}
@@ -1137,9 +1158,9 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
+                    <label className={labelBase}>
                       % retenu par la banque
-                      <InfoBadge text="Souvent 60–80 %. Plus c’est prudent, plus le relais est bas." />
+                      <InfoBadge text="La banque ne finance généralement qu’une partie de la valeur du bien (souvent 60 à 80%)." />
                     </label>
                     <input
                       type="number"
@@ -1150,11 +1171,11 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2 items-start">
                   <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
+                    <label className={labelBase}>
                       Taux relais (annuel, %)
-                      <InfoBadge text="Indicatif : on le mentionne dans l’analyse mais on n’intègre pas son coût dans la capacité." />
+                      <InfoBadge text="Taux indicatif du prêt relais. Il sert surtout à donner un ordre d’idée du coût." />
                     </label>
                     <input
                       type="number"
@@ -1165,7 +1186,10 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs text-slate-700">Apport personnel prévu (€)</label>
+                    <label className={labelBase}>
+                      Apport personnel prévu (€)
+                      <InfoBadge text="L’argent que vous apportez de votre poche (épargne, donation, revente, etc.)." />
+                    </label>
                     <input
                       type="number"
                       value={apportPerso}
@@ -1209,7 +1233,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
                 <div className="space-y-1">
                   <label className={labelBase}>
                     Prix du bien visé (optionnel)
-                    <InfoBadge text="Uniquement pour comparer au budget max." />
+                    <InfoBadge text="Si vous avez un prix en tête, on le compare à votre budget max pour voir si c’est cohérent." />
                   </label>
                   <input
                     type="number"
