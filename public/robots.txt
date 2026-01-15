@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
 
+Disallow: /admin
+Disallow: /mon-compte
+Disallow: /espace-bailleur
+Disallow: /tarifs
+Disallow: /blog
+Disallow: /simulateur/
+
 Sitemap: https://lokt.fr/sitemap.xml

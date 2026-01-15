@@ -119,3 +119,18 @@ Desktop.ini
 # Generated images or temporary exports
 exports/
 screenshots/
+
+###############################################
+# BLOG LOCAL (pas en prod)
+###############################################
+content/blog/
+pages/blog/
+lib/blog.ts
+
+###############################################
+# FAVICON WORK FILES (ne pas ignorer les vrais)
+###############################################
+public/favicon-16.png
+public/favicon-32.png
+public/favicon-48.png
+public/favicon-48x48.png
