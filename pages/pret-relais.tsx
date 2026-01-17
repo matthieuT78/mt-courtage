@@ -1,6 +1,7 @@
 // pages/pret-relais.tsx
 import Head from "next/head";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import PretRelaisWizard from "../components/PretRelaisWizard";
@@ -32,6 +33,16 @@ function JsonLd({ data }: { data: any }) {
       ))}
     </>
   );
+}
+
+function firstNameFromUser(user: SimpleUser | null) {
+  const raw = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "");
+  const first =
+    String(raw || "")
+      .trim()
+      .split(/\s+/)[0] || "";
+  if (!first) return "";
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }
 
 function FaqItem({ q, a }: { q: string; a: React.ReactNode }) {
@@ -77,7 +88,7 @@ export default function PretRelaisPage() {
     };
   }, []);
 
-  const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
+  const displayName = useMemo(() => firstNameFromUser(user), [user]);
   const isLoggedIn = !!user;
 
   // --- SEO
@@ -89,7 +100,8 @@ export default function PretRelaisPage() {
   const description =
     "Estimez votre budget d’achat avec un prêt relais : montant du relais, nouveau prêt possible, apport et budget maximal. Simulation gratuite avec lecture claire (relais + nouveau prêt + apport).";
 
-  const ogImage = `${siteUrl}/lokt-logo.jpg`; // doit exister dans /public
+  // OG image (non transparent, OK WhatsApp)
+  const ogImage = `${siteUrl}/lokt-logo.jpg`;
 
   const faqData = useMemo(
     () => [
@@ -106,6 +118,10 @@ export default function PretRelaisPage() {
         a: "Le budget est généralement la somme : prêt relais + nouveau prêt + apport. La simulation aide à comparer plusieurs hypothèses (prix de vente, durée, taux, apport).",
       },
       {
+        q: "Quels sont les coûts d’un prêt relais ?",
+        a: "Selon la formule (relais sec ou relais adossé), vous pouvez avoir des intérêts intercalaires, des frais de dossier et parfois une assurance. La banque peut aussi appliquer une décote sur le prix de vente estimé.",
+      },
+      {
         q: "Les résultats sont-ils fiables ?",
         a: "Les résultats sont indicatifs : chaque banque a ses règles (durée du relais, franchise, assurance, frais, décote). Utilisez l’outil pour préparer votre scénario et vos échanges.",
       },
@@ -117,6 +133,10 @@ export default function PretRelaisPage() {
     []
   );
 
+  // ✅ mêmes “modifs SEO” que /capacite :
+  // - JSON-LD enrichi avec SoftwareApplication (plutôt que Service)
+  // - Breadcrumb
+  // - Contenu SEO visible : “comment ça marche”, “exemple rapide”
   const jsonLd = useMemo(() => {
     const webPage = {
       "@context": "https://schema.org",
@@ -132,19 +152,18 @@ export default function PretRelaisPage() {
       },
     };
 
-    const breadcrumb = {
+    const app = {
       "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Accueil", item: `${siteUrl}/` },
-        { "@type": "ListItem", position: 2, name: "Prêt relais", item: pageUrl },
-      ],
-    };
-
-    const service = {
-      "@context": "https://schema.org",
-      "@type": "Service",
+      "@type": "SoftwareApplication",
       name: "Simulateur de prêt relais",
+      applicationCategory: "FinanceApplication",
+      operatingSystem: "Web",
+      url: pageUrl,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "EUR",
+      },
       provider: {
         "@type": "Organization",
         name: "lokt.fr",
@@ -152,8 +171,15 @@ export default function PretRelaisPage() {
         logo: ogImage,
       },
       areaServed: "FR",
-      serviceType: "Simulation prêt relais",
-      url: pageUrl,
+    };
+
+    const breadcrumb = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Accueil", item: `${siteUrl}/` },
+        { "@type": "ListItem", position: 2, name: "Prêt relais", item: pageUrl },
+      ],
     };
 
     const faqPage = {
@@ -166,7 +192,7 @@ export default function PretRelaisPage() {
       })),
     };
 
-    return [webPage, breadcrumb, service, faqPage];
+    return [webPage, app, breadcrumb, faqPage];
   }, [title, description, pageUrl, siteUrl, ogImage, faqData]);
 
   return (
@@ -186,7 +212,7 @@ export default function PretRelaisPage() {
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:secure_url" content={ogImage} />
-        <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers" />
+        <meta property="og:image:alt" content="Simulateur de prêt relais — lokt.fr" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -210,39 +236,99 @@ export default function PretRelaisPage() {
               </p>
 
               <span className="hidden sm:inline-flex items-center rounded-full border border-amber-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-amber-700">
-                Lokt.fr
+                lokt.fr
               </span>
             </div>
 
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              {displayName
+              {isLoggedIn && displayName
                 ? `Bonjour ${displayName}, estimez votre budget d’achat avec un prêt relais.`
                 : "Estimez votre budget d’achat avec un prêt relais."}
             </h1>
 
             <p className="text-xs text-slate-600 max-w-2xl">
               Parcours guidé : estimation du relais (valeur du bien actuel, capital restant dû, conditions de vente),
-              apport, puis paramètres du futur prêt. Résultat structuré pour une lecture claire (relais + nouveau prêt + apport).
+              apport, puis paramètres du futur prêt. Résultat structuré pour une lecture claire (relais + nouveau prêt +
+              apport).
             </p>
+
+            {/* Maillage interne discret (comme capacité) */}
+            <div className="pt-1 flex flex-wrap gap-2">
+              <Link href="/" className="text-xs font-semibold underline decoration-amber-200 text-amber-800">
+                Accueil →
+              </Link>
+              <Link href="/capacite" className="text-xs font-semibold underline decoration-amber-200 text-amber-800">
+                Capacité d’emprunt →
+              </Link>
+              <Link href="/investissement" className="text-xs font-semibold underline decoration-amber-200 text-amber-800">
+                Rentabilité locative →
+              </Link>
+              <Link
+                href="/parc-immobilier"
+                className="text-xs font-semibold underline decoration-amber-200 text-amber-800"
+              >
+                Parc immobilier →
+              </Link>
+            </div>
           </section>
 
           {/* Calculette */}
           <PretRelaisWizard showSaveButton={isLoggedIn} />
 
-          {/* Bloc SEO discret */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-slate-900">Simulateur de prêt relais : acheter avant d’avoir vendu</h2>
+          {/* Bloc SEO discret (enrichi comme capacité) */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                Simulateur de prêt relais : acheter avant d’avoir vendu
+              </h2>
 
-            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Cette calculette de prêt relais vous permet d’estimer le montant de relais mobilisable à partir de la valeur
-              de votre bien actuel, du capital restant dû et du pourcentage retenu par la banque. Elle projette ensuite
-              votre capacité pour un nouveau prêt et votre budget d’achat total (relais + nouveau prêt + apport).
-            </p>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Cette calculette de prêt relais vous permet d’estimer le montant de relais mobilisable à partir de la
+                valeur de votre bien actuel, du capital restant dû et du pourcentage retenu par la banque. Elle projette
+                ensuite votre capacité pour un nouveau prêt et votre budget d’achat total (relais + nouveau prêt +
+                apport).
+              </p>
 
-            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Les résultats restent indicatifs : chaque banque applique ses propres règles (durée du relais, franchise,
-              intérêts intercalaires, assurance, frais). Utilisez l’outil pour comparer des scénarios et préparer un échange
-              plus efficace avec un conseiller.
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Les résultats restent indicatifs : chaque banque applique ses propres règles (durée du relais, franchise,
+                intérêts intercalaires, assurance, frais). Utilisez l’outil pour comparer des scénarios et préparer un
+                échange plus efficace avec un conseiller.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Comment fonctionne un prêt relais ?</h2>
+              <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
+                <li>
+                  La banque estime la <strong>valeur de votre bien actuel</strong> et applique souvent une{" "}
+                  <strong>décote</strong> (prudence).
+                </li>
+                <li>
+                  Elle retire le <strong>capital restant dû</strong> pour déterminer la base de calcul du relais.
+                </li>
+                <li>
+                  Le budget global combine souvent : <strong>relais</strong> + <strong>nouveau prêt</strong> +{" "}
+                  <strong>apport</strong>.
+                </li>
+                <li>
+                  Selon la formule, vous payez des <strong>intérêts intercalaires</strong> (mensuels) jusqu’à la vente.
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <h2 className="text-sm font-semibold text-slate-900">Exemple rapide</h2>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Exemple indicatif : si votre bien vaut <strong>400 000 €</strong> et qu’il reste <strong>120 000 €</strong>{" "}
+                de crédit, la banque peut avancer un relais calculé sur une base décotée (ex : 70% à 80% de la valeur),
+                puis compléter avec un nouveau prêt selon votre capacité. La simulation sert à comparer vos hypothèses
+                (prix de vente, durée, taux, apport).
+              </p>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Note : chaque banque a ses règles internes (décote, durée, franchise, assurance). L’outil donne un ordre de
+              grandeur utile pour arbitrer.
             </p>
           </section>
 
