@@ -8,11 +8,12 @@ export default function Document() {
         {/* Charset (évite latin1, règle l'audit encoding) */}
         <meta charSet="utf-8" />
 
-        {/* Favicons */}
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        {/* Favicons — compatibilité maximale (Google, Alyze, Safari, iOS) */}
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
         {/* Couleur navigateur / mobile */}
         <meta name="theme-color" content="#0f172a" />
@@ -21,6 +22,7 @@ export default function Document() {
         <meta name="application-name" content="lokt.fr" />
         <meta name="apple-mobile-web-app-title" content="lokt.fr" />
       </Head>
+
       <body className="bg-slate-100">
         <Main />
         <NextScript />
