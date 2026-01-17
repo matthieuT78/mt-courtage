@@ -14,6 +14,27 @@ type SimpleUser = {
   };
 };
 
+// ✅ JSON-LD SAFE: évite tout crash si un schema est undefined/malformé
+function JsonLd({ data }: { data: any }) {
+  const items = Array.isArray(data) ? data : [data];
+
+  const safeItems = items.filter(
+    (x) => x && typeof x === "object" && typeof x["@context"] === "string" && x["@context"].length > 0
+  );
+
+  return (
+    <>
+      {safeItems.map((schema, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+    </>
+  );
+}
+
 export default function ParcImmobilierPage() {
   const [user, setUser] = useState<SimpleUser | null>(null);
 
@@ -50,11 +71,15 @@ export default function ParcImmobilierPage() {
 
   // --- SEO
   const siteUrl = "https://lokt.fr";
-  const pageUrl = `${siteUrl}/parc-immobilier`;
+  const pagePath = "/parc-immobilier";
+  const pageUrl = `${siteUrl}${pagePath}`;
+
   const title = "Simulateur parc immobilier — analyse multi-biens, cash-flow & ratios | lokt.fr";
   const description =
     "Analysez votre parc immobilier (1 à 20 biens) : valeur, encours, cash-flow global, rendements et indicateurs (DSCR, LTV). Une vue consolidée pour piloter votre patrimoine.";
-  const ogImage = `${siteUrl}/lokt-logo.jpg`; // fichier existant dans /public
+
+  // OG image (doit exister dans /public)
+  const ogImage = `${siteUrl}/lokt-logo.jpg`;
 
   const faqData = useMemo(
     () => [
@@ -85,11 +110,35 @@ export default function ParcImmobilierPage() {
       name: title,
       url: pageUrl,
       description,
+      inLanguage: "fr-FR",
       isPartOf: {
         "@type": "WebSite",
         name: "lokt.fr",
         url: siteUrl,
       },
+    };
+
+    // ✅ Pour Google: "outil" plutôt que juste "Service"
+    const softwareApp = {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Simulateur parc immobilier",
+      applicationCategory: "FinanceApplication",
+      operatingSystem: "Web",
+      url: pageUrl,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "EUR",
+      },
+      provider: {
+        "@type": "Organization",
+        name: "lokt.fr",
+        url: siteUrl,
+        logo: ogImage,
+      },
+      areaServed: "FR",
+      inLanguage: "fr-FR",
     };
 
     const service = {
@@ -104,13 +153,15 @@ export default function ParcImmobilierPage() {
       },
       areaServed: "FR",
       serviceType: "Simulation immobilière",
+      url: pageUrl,
+      inLanguage: "fr-FR",
     };
 
     const breadcrumb = {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Accueil", item: siteUrl },
+        { "@type": "ListItem", position: 1, name: "Accueil", item: `${siteUrl}/` },
         { "@type": "ListItem", position: 2, name: "Parc immobilier", item: pageUrl },
       ],
     };
@@ -121,14 +172,11 @@ export default function ParcImmobilierPage() {
       mainEntity: faqData.map((f) => ({
         "@type": "Question",
         name: f.q,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: f.a,
-        },
+        acceptedAnswer: { "@type": "Answer", text: f.a },
       })),
     };
 
-    return [webPage, service, breadcrumb, faqPage];
+    return [webPage, softwareApp, breadcrumb, service, faqPage];
   }, [description, faqData, ogImage, pageUrl, siteUrl, title]);
 
   return (
@@ -148,7 +196,7 @@ export default function ParcImmobilierPage() {
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:secure_url" content={ogImage} />
-        <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers" />
+        <meta property="og:image:alt" content="Simulateur parc immobilier — lokt.fr" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -156,8 +204,8 @@ export default function ParcImmobilierPage() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
 
-        {/* JSON-LD */}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        {/* ✅ JSON-LD (SAFE) */}
+        <JsonLd data={jsonLd} />
       </Head>
 
       <AppHeader />
@@ -177,7 +225,9 @@ export default function ParcImmobilierPage() {
             </div>
 
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              {displayName ? `Bonjour ${displayName}, analysez votre parc immobilier.` : "Analysez votre parc immobilier (multi-biens)."}
+              {displayName
+                ? `Bonjour ${displayName}, analysez votre parc immobilier.`
+                : "Analysez votre parc immobilier (multi-biens)."}
             </h1>
 
             <p className="text-xs text-slate-600 max-w-3xl">
@@ -219,8 +269,8 @@ export default function ParcImmobilierPage() {
             </p>
 
             <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              L’objectif est de comparer des scénarios (nouvel achat, refinancement, vacance, hausse de charges) avec
-              une lecture homogène, plutôt que de multiplier les tableurs.
+              L’objectif est de comparer des scénarios (nouvel achat, refinancement, vacance, hausse de charges) avec une
+              lecture homogène, plutôt que de multiplier les tableurs.
             </p>
 
             {/* Mini FAQ visible */}
@@ -235,6 +285,12 @@ export default function ParcImmobilierPage() {
                 </details>
               ))}
             </div>
+
+            {/* (optionnel) petit rappel UX */}
+            <p className="mt-4 text-xs text-slate-500">
+              Note : les calculs sont fournis à titre indicatif. Les critères et hypothèses peuvent varier selon les banques
+              et votre situation.
+            </p>
           </section>
         </div>
       </main>
