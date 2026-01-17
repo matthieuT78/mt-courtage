@@ -5,6 +5,9 @@ export default function Document() {
   return (
     <Html lang="fr">
       <Head>
+        {/* Charset (évite latin1, règle l'audit encoding) */}
+        <meta charSet="utf-8" />
+
         {/* Favicons */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />

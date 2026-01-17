@@ -3,6 +3,7 @@ import "../styles/globals.css";
 
 import type { AppProps } from "next/app";
 import Script from "next/script";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { PermissionProvider } from "../components/PermissionProvider";
@@ -29,6 +30,11 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <>
+      <Head>
+        {/* Mobile-first SEO */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+
       {/* Google Analytics */}
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
