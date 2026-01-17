@@ -14,6 +14,16 @@ type SimpleUser = {
   };
 };
 
+function firstNameFromUser(user: SimpleUser | null) {
+  const raw = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "");
+  const first =
+    String(raw || "")
+      .trim()
+      .split(/\s+/)[0] || "";
+  if (!first) return "";
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
 export default function CapaciteEmpruntPage() {
   const [user, setUser] = useState<SimpleUser | null>(null);
 
@@ -45,7 +55,7 @@ export default function CapaciteEmpruntPage() {
     };
   }, []);
 
-  const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
+  const displayName = useMemo(() => firstNameFromUser(user), [user]);
   const isLoggedIn = !!user;
 
   // ---- SEO
@@ -56,7 +66,9 @@ export default function CapaciteEmpruntPage() {
   const description =
     "Estimez votre capacité d’emprunt immobilier : mensualité cible, capital empruntable et budget d’achat. Lecture bancaire (revenus, charges, crédits, loyers pris à 70%) et simulation gratuite.";
 
-  // OG image : fichier existant dans /public
+  // OG image (WhatsApp aime les images non transparentes, idéalement JPG/PNG plein fond)
+  // 👉 Mets ici un visuel “plein fond” (pas transparent) dans /public, ex: /og-lokt.jpg
+  // Si tu n’as pas encore ce fichier, laisse /lokt-logo.jpg si c’est bien une image NON transparente.
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
 
   const faqData = useMemo(
@@ -88,6 +100,7 @@ export default function CapaciteEmpruntPage() {
       name: title,
       url: pageUrl,
       description,
+      inLanguage: "fr-FR",
       isPartOf: {
         "@type": "WebSite",
         name: "lokt.fr",
@@ -95,10 +108,18 @@ export default function CapaciteEmpruntPage() {
       },
     };
 
-    const service = {
+    const app = {
       "@context": "https://schema.org",
-      "@type": "Service",
+      "@type": "SoftwareApplication",
       name: "Simulateur de capacité d’emprunt immobilier",
+      applicationCategory: "FinanceApplication",
+      operatingSystem: "Web",
+      url: pageUrl,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "EUR",
+      },
       provider: {
         "@type": "Organization",
         name: "lokt.fr",
@@ -106,7 +127,6 @@ export default function CapaciteEmpruntPage() {
         logo: ogImage,
       },
       areaServed: "FR",
-      serviceType: "Simulation immobilière",
     };
 
     const breadcrumb = {
@@ -131,7 +151,7 @@ export default function CapaciteEmpruntPage() {
       })),
     };
 
-    return [webPage, service, breadcrumb, faqPage];
+    return [webPage, app, breadcrumb, faqPage];
   }, [description, faqData, ogImage, pageUrl, siteUrl, title]);
 
   return (
@@ -139,7 +159,6 @@ export default function CapaciteEmpruntPage() {
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
-        <meta name="robots" content="index, follow" />
         <link rel="canonical" href={pageUrl} />
 
         {/* Open Graph */}
@@ -151,7 +170,7 @@ export default function CapaciteEmpruntPage() {
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:secure_url" content={ogImage} />
-        <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers" />
+        <meta property="og:image:alt" content="Simulateur de capacité d’emprunt — lokt.fr" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -159,8 +178,14 @@ export default function CapaciteEmpruntPage() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
 
-        {/* JSON-LD */}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        {/* JSON-LD (1 script par schema) */}
+        {jsonLd.map((schema, i) => (
+          <script
+            key={i}
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          />
+        ))}
       </Head>
 
       <AppHeader />
@@ -175,12 +200,12 @@ export default function CapaciteEmpruntPage() {
               </p>
 
               <span className="hidden sm:inline-flex items-center rounded-full border border-emerald-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-emerald-700">
-                Lokt.fr
+                lokt.fr
               </span>
             </div>
 
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              {displayName
+              {isLoggedIn && displayName
                 ? `Bonjour ${displayName}, estimez précisément votre capacité d’emprunt.`
                 : "Estimez précisément votre capacité d’emprunt immobilier."}
             </h1>
@@ -195,10 +220,16 @@ export default function CapaciteEmpruntPage() {
               <Link href="/" className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800">
                 Accueil →
               </Link>
-              <Link href="/pret-relais" className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800">
+              <Link
+                href="/pret-relais"
+                className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800"
+              >
                 Prêt relais →
               </Link>
-              <Link href="/investissement" className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800">
+              <Link
+                href="/investissement"
+                className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800"
+              >
                 Rentabilité locative →
               </Link>
               <Link
@@ -214,24 +245,57 @@ export default function CapaciteEmpruntPage() {
           <CapaciteWizard showSaveButton={isLoggedIn} />
 
           {/* Bloc SEO (discret mais indexable) */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-slate-900">Simulateur de capacité d’emprunt immobilier</h2>
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Simulateur de capacité d’emprunt immobilier</h2>
 
-            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Cette calculette vous aide à estimer un budget immobilier cohérent à partir de vos revenus, charges et
-              crédits en cours. Vous obtenez une mensualité cible, un capital empruntable et un budget d’achat réaliste.
-            </p>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Cette calculette vous aide à estimer un budget immobilier cohérent à partir de vos revenus, charges et
+                crédits en cours. Vous obtenez une mensualité cible, un capital empruntable et un budget d’achat
+                réaliste.
+              </p>
 
-            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Si vous avez des revenus locatifs, ils peuvent être intégrés de façon prudente (prise en compte partielle)
-              pour comparer des scénarios avec plus de fiabilité. Les résultats restent indicatifs : ils dépendent des
-              conditions de crédit (taux, durée, assurance) et des critères propres à chaque banque.
-            </p>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Si vous avez des revenus locatifs, ils peuvent être intégrés de façon prudente (prise en compte
+                partielle) pour comparer des scénarios avec plus de fiabilité. Les résultats restent indicatifs : ils
+                dépendent des conditions de crédit (taux, durée, assurance) et des critères propres à chaque banque.
+              </p>
+            </div>
+
+            {/* Ajout SEO : méthode de calcul */}
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Comment est calculée la capacité d’emprunt ?</h2>
+              <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
+                <li>
+                  On estime une mensualité soutenable à partir de vos <strong>revenus</strong> et <strong>charges</strong>{" "}
+                  (crédits, pensions, autres engagements).
+                </li>
+                <li>
+                  Les revenus locatifs éventuels peuvent être intégrés de façon prudente (souvent autour de{" "}
+                  <strong>70%</strong>) pour tenir compte des aléas.
+                </li>
+                <li>
+                  La mensualité est ensuite convertie en <strong>capital empruntable</strong> selon le <strong>taux</strong>,
+                  la <strong>durée</strong> et une hypothèse d’<strong>assurance</strong>.
+                </li>
+              </ul>
+            </div>
+
+            {/* Ajout SEO : exemple rapide */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <h2 className="text-sm font-semibold text-slate-900">Exemple rapide</h2>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Exemple indicatif : avec des revenus de <strong>3 500 €</strong> et des charges de <strong>800 €</strong>,
+                la mensualité soutenable dépendra de votre profil, mais l’objectif du simulateur est de vous donner une
+                lecture claire : <strong>mensualité</strong> → <strong>capital</strong> → <strong>budget</strong> (en tenant
+                compte de l’apport et des frais).
+              </p>
+            </div>
 
             {/* Mini FAQ visible */}
-            <div className="mt-4 grid gap-3">
+            <div className="grid gap-3">
               {faqData.map((f) => (
-                <details key={f.q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <details key={f.q} className="group rounded-2xl border border-slate-200 bg-white px-4 py-3">
                   <summary className="cursor-pointer list-none font-semibold text-slate-900 flex items-center justify-between">
                     <span className="pr-4">{f.q}</span>
                     <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
@@ -240,6 +304,11 @@ export default function CapaciteEmpruntPage() {
                 </details>
               ))}
             </div>
+
+            <p className="text-xs text-slate-500">
+              Note : les calculs sont fournis à titre indicatif et peuvent varier selon les banques, le type de projet et
+              les conditions de financement.
+            </p>
           </section>
         </div>
       </main>
