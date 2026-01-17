@@ -14,6 +14,36 @@ type SimpleUser = {
   };
 };
 
+// ✅ JSON-LD SAFE (comme pret-relais) : évite tout crash si schema undefined/malformé
+function JsonLd({ data }: { data: any }) {
+  const items = Array.isArray(data) ? data : [data];
+  const safeItems = items.filter(
+    (x) => x && typeof x === "object" && typeof x["@context"] === "string" && x["@context"].length > 0
+  );
+
+  return (
+    <>
+      {safeItems.map((schema, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+    </>
+  );
+}
+
+function firstNameFromUser(user: SimpleUser | null) {
+  const raw = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "");
+  const first =
+    String(raw || "")
+      .trim()
+      .split(/\s+/)[0] || "";
+  if (!first) return "";
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
 export default function InvestissementPage() {
   const [user, setUser] = useState<SimpleUser | null>(null);
 
@@ -45,18 +75,19 @@ export default function InvestissementPage() {
     };
   }, []);
 
-  const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
+  const displayName = useMemo(() => firstNameFromUser(user), [user]);
   const isLoggedIn = !!user;
 
   // --- SEO
   const siteUrl = "https://lokt.fr";
-  const pageUrl = `${siteUrl}/investissement`;
+  const pagePath = "/investissement";
+  const pageUrl = `${siteUrl}${pagePath}`;
 
   const title = "Simulateur de rentabilité locative — cash-flow, rendement & charges | lokt.fr";
   const description =
     "Simulez la rentabilité locative : cash-flow mensuel, rendement, charges, vacance, gestion et financement. Comparez longue durée vs Airbnb avec une lecture structurée.";
 
-  // OG image (doit exister dans /public)
+  // OG image (non transparent, OK WhatsApp)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
 
   // Mini FAQ (SEO) — sans toucher au wizard
@@ -78,11 +109,18 @@ export default function InvestissementPage() {
         q: "La fiscalité est-elle prise en compte ?",
         a: "La V1 vise d’abord une rentabilité économique (revenus, charges, financement). La fiscalité peut être ajoutée ou estimée séparément selon votre régime (LMNP, réel, micro, etc.).",
       },
+      {
+        q: "Quels leviers ont le plus d’impact sur la rentabilité ?",
+        a: "Le prix d’achat (et les frais), le niveau de loyer/occupation, la vacance, les charges récurrentes, et la structure du financement (taux, durée, apport). Tester 2 scénarios (prudent vs ambitieux) aide à décider.",
+      },
     ],
     []
   );
 
-  // JSON-LD — multiple objets, format safe (comme pour index)
+  // ✅ mêmes modifs SEO que /capacite et /pret-relais :
+  // - JSON-LD enrichi avec SoftwareApplication (plutôt que Service)
+  // - Breadcrumb
+  // - Contenu SEO visible : “comment ça marche”, “exemple rapide”
   const jsonLd = useMemo(() => {
     const webPage = {
       "@context": "https://schema.org",
@@ -90,6 +128,7 @@ export default function InvestissementPage() {
       name: title,
       url: pageUrl,
       description,
+      inLanguage: "fr-FR",
       isPartOf: {
         "@type": "WebSite",
         name: "lokt.fr",
@@ -97,10 +136,18 @@ export default function InvestissementPage() {
       },
     };
 
-    const service = {
+    const app = {
       "@context": "https://schema.org",
-      "@type": "Service",
+      "@type": "SoftwareApplication",
       name: "Simulateur de rentabilité locative",
+      applicationCategory: "FinanceApplication",
+      operatingSystem: "Web",
+      url: pageUrl,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "EUR",
+      },
       provider: {
         "@type": "Organization",
         name: "lokt.fr",
@@ -108,14 +155,13 @@ export default function InvestissementPage() {
         logo: ogImage,
       },
       areaServed: "FR",
-      serviceType: "Simulation immobilière",
     };
 
     const breadcrumb = {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Accueil", item: siteUrl },
+        { "@type": "ListItem", position: 1, name: "Accueil", item: `${siteUrl}/` },
         { "@type": "ListItem", position: 2, name: "Rentabilité locative", item: pageUrl },
       ],
     };
@@ -126,14 +172,11 @@ export default function InvestissementPage() {
       mainEntity: faqData.map((f) => ({
         "@type": "Question",
         name: f.q,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: f.a,
-        },
+        acceptedAnswer: { "@type": "Answer", text: f.a },
       })),
     };
 
-    return [webPage, service, breadcrumb, faqPage];
+    return [webPage, app, breadcrumb, faqPage];
   }, [description, faqData, ogImage, pageUrl, siteUrl, title]);
 
   return (
@@ -153,7 +196,7 @@ export default function InvestissementPage() {
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:secure_url" content={ogImage} />
-        <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers" />
+        <meta property="og:image:alt" content="Simulateur de rentabilité locative — lokt.fr" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -161,15 +204,15 @@ export default function InvestissementPage() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
 
-        {/* JSON-LD */}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        {/* ✅ JSON-LD (SAFE) */}
+        <JsonLd data={jsonLd} />
       </Head>
 
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-5xl mx-auto space-y-6">
-          {/* Header de la page (identité visuelle RENTABILITÉ – AMBER) */}
+          {/* Header de la page */}
           <section className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">
@@ -177,12 +220,12 @@ export default function InvestissementPage() {
               </p>
 
               <span className="hidden sm:inline-flex items-center rounded-full border border-amber-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-amber-700">
-                Lokt.fr
+                lokt.fr
               </span>
             </div>
 
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
-              {displayName
+              {isLoggedIn && displayName
                 ? `Bonjour ${displayName}, calculez votre cash-flow et votre rendement.`
                 : "Calculez votre cash-flow et votre rendement locatif."}
             </h1>
@@ -215,27 +258,61 @@ export default function InvestissementPage() {
           {/* Calculette */}
           <InvestissementWizard showSaveButton={isLoggedIn} />
 
-          {/* Bloc SEO discret */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Simulateur de rentabilité locative : cash-flow, charges et financement
-            </h2>
+          {/* Bloc SEO enrichi (comme capacité / pret-relais) */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                Simulateur de rentabilité locative : cash-flow, charges et financement
+              </h2>
 
-            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Cette calculette de rentabilité locative vous aide à projeter un investissement en tenant compte des coûts
-              d’acquisition, des revenus (location longue durée ou saisonnière), des charges (copropriété, travaux,
-              gestion…) et du financement (taux, durée, apport). L’objectif : obtenir une lecture simple et comparable
-              entre scénarios.
-            </p>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Cette calculette de rentabilité locative vous aide à projeter un investissement en tenant compte des
+                coûts d’acquisition, des revenus (location longue durée ou saisonnière), des charges (copropriété,
+                travaux, gestion…) et du financement (taux, durée, apport). L’objectif : obtenir une lecture simple et
+                comparable entre scénarios.
+              </p>
 
-            <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              Les résultats sont indicatifs et dépendent de vos hypothèses. Utilisez l’outil pour comparer plusieurs
-              biens, tester différents niveaux de loyers/occupation, et identifier les leviers qui améliorent
-              réellement le cash-flow.
-            </p>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Les résultats sont indicatifs et dépendent de vos hypothèses. Utilisez l’outil pour comparer plusieurs
+                biens, tester différents niveaux de loyers/occupation, et identifier les leviers qui améliorent
+                réellement le cash-flow.
+              </p>
+            </div>
 
-            {/* Mini FAQ visible (utile UX + SEO) */}
-            <div className="mt-4 grid gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Comment estimer une rentabilité réaliste ?</h2>
+              <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
+                <li>
+                  Commencez par le <strong>coût total</strong> (prix + notaire + travaux + ameublement éventuel).
+                </li>
+                <li>
+                  Estimez les <strong>revenus</strong> (loyer mensuel ou revenu équivalent saisonnier : prix/nuit × taux
+                  d’occupation).
+                </li>
+                <li>
+                  Ajoutez les <strong>charges récurrentes</strong> (copro, taxe foncière, assurance, entretien, gestion,
+                  vacance).
+                </li>
+                <li>
+                  Intégrez le <strong>financement</strong> (taux, durée, apport, assurance) pour obtenir le{" "}
+                  <strong>cash-flow</strong>.
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <h2 className="text-sm font-semibold text-slate-900">Exemple rapide</h2>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Exemple indicatif : un achat à <strong>200 000 €</strong> avec <strong>25 000 €</strong> de frais/travaux,
+                un loyer de <strong>950 €</strong>, des charges totales de <strong>250 €</strong> et un crédit à{" "}
+                <strong>850 €</strong> donne un cash-flow proche de{" "}
+                <strong>950 − 250 − 850 = −150 € / mois</strong>. En ajustant le prix, le loyer, la vacance ou la durée,
+                vous visualisez rapidement les leviers qui font basculer le projet.
+              </p>
+            </div>
+
+            {/* Mini FAQ visible (UX + SEO) */}
+            <div className="grid gap-3">
               {faqData.map((f) => (
                 <details key={f.q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <summary className="cursor-pointer list-none font-semibold text-slate-900 flex items-center justify-between">
@@ -246,6 +323,11 @@ export default function InvestissementPage() {
                 </details>
               ))}
             </div>
+
+            <p className="text-xs text-slate-500">
+              Note : la fiscalité dépend fortement du régime (LMNP, réel, micro…) et n’est pas l’objectif principal de la
+              V1. Ici, on vise d’abord une rentabilité “économique” comparable.
+            </p>
           </section>
         </div>
       </main>
