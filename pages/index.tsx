@@ -183,7 +183,7 @@ export default function Home() {
     "Simulateurs immobiliers gratuits : capacité d’emprunt, budget avec prêt relais, rentabilité locative (cash-flow) et analyse de parc immobilier. Une lecture claire pour comparer vos scénarios.";
 
   // OG IMAGE (doit exister dans /public)
-  const ogImage = `${siteUrl}/logo-transparent-Lokt.jpg`;
+	const ogImage = `${siteUrl}/lokt-logo.jpg`;
 
   const faqData = useMemo(
     () => [
