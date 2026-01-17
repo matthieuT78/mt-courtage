@@ -565,13 +565,11 @@ export default function Home() {
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-white/80">Fonctionnalité à venir</p>
 
                   <div className="space-y-2">
-                    <h3 className="text-2xl sm:text-3xl font-semibold leading-tight">
-                    Votre gestion locative, au même{" "}
-		    endroit
-		   <br className="hidden sm:block" />
-		   que vos simulations.
-		    </h3>
-
+		<h3 className="text-2xl sm:text-3xl font-semibold leading-tight">
+  Votre gestion locative, au même endroit
+  <br className="hidden sm:block" />
+  {" "}que vos simulations.
+</h3>
                     <p className="text-sm text-white/90 max-w-2xl">
                       L’espace bailleur lokt.fr est en préparation : un endroit clair pour{" "}
                       <span className="font-semibold">centraliser vos documents</span>,{" "}
