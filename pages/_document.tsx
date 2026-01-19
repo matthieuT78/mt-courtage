@@ -1,39 +1,27 @@
 // pages/_document.tsx
 import { Html, Head, Main, NextScript } from "next/document";
 
-const VERSION = "20260118"; // pour forcer le refresh cache si besoin
+// IMPORTANT : ne pas versionner les URLs des favicons (Google SERP ignore souvent ?v=...)
+// Garde VERSION uniquement si tu veux l’utiliser ailleurs plus tard.
+const VERSION = "20260118";
 
 export default function Document() {
   return (
     <Html lang="fr">
       <Head>
-        {/* Charset */}
         <meta charSet="utf-8" />
 
-        {/* Favicons – standard Google / navigateurs */}
-        <link rel="icon" href={`/favicon.ico?v=${VERSION}`} />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="16x16"
-          href={`/favicon-16x16.png?v=${VERSION}`}
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="32x32"
-          href={`/favicon-32x32.png?v=${VERSION}`}
-        />
+        {/* Favicons – URLs STABLES (recommandé pour Google) */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
 
         {/* Apple */}
-        <link
-          rel="apple-touch-icon"
-          sizes="180x180"
-          href={`/apple-touch-icon.png?v=${VERSION}`}
-        />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
         {/* PWA / Android */}
-        <link rel="manifest" href={`/site.webmanifest?v=${VERSION}`} />
+        <link rel="manifest" href="/site.webmanifest" />
 
         {/* UI / identité */}
         <meta name="theme-color" content="#0f172a" />
