@@ -1,5 +1,10 @@
 // lib/leads.ts
-export type ToolName = "capacite" | "pret-relais" | "investissement" | "parc-immobilier";
+export type ToolName =
+  | "capacite"
+  | "pret-relais"
+  | "investissement"
+  | "parc-immobilier"
+  | "plus-value-vente-immobiliere";
 
 export function safeEmail(v: string) {
   return (v || "").trim().toLowerCase();

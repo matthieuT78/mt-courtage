@@ -371,7 +371,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     }
 
     const fromSession = safeEmail(sessionEmail ?? "");
-    const fromStorage = loadLeadEmail("plus_value");
+    const fromStorage = loadLeadEmail("plus-value-vente-immobiliere");
     const next = fromSession || fromStorage;
 
     if (next && safeEmail(leadEmail) !== next) setLeadEmail(next);
@@ -382,7 +382,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   useEffect(() => {
     const e = safeEmail(leadEmail);
     if (!e) return;
-    persistLeadEmail("plus_value", e);
+    persistLeadEmail("plus-value-vente-immobiliere", e);
   }, [leadEmail]);
 
   // 3) Restore unlock tool-specific (et invalide si email change)
@@ -401,7 +401,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       return;
     }
 
-    const ok = isUnlockedForEmail("plus_value", e);
+    const ok = isUnlockedForEmail("plus-value-vente-immobiliere", e);
     setUnlocked(ok);
     if (ok) setConsentLokt(true);
   }, [leadEmail, isLoggedIn]);
@@ -723,8 +723,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     try {
       await captureLeadViaRpc({ email, computed: result! });
 
-      persistLeadEmail("plus_value", email);
-      persistUnlock("plus_value", email);
+      persistLeadEmail("plus-value-vente-immobiliere", email);
+      persistUnlock("plus-value-vente-immobiliere", email);
 
       setUnlocked(true);
       setUnlockMsg("✅ Analyse débloquée. (Votre simulation est bien enregistrée.)");
