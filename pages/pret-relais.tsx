@@ -96,9 +96,10 @@ export default function PretRelaisPage() {
   const pagePath = "/pret-relais";
   const pageUrl = `${siteUrl}${pagePath}`;
 
-  const title = "Simulateur de prêt relais — budget d’achat avant revente | lokt.fr";
+  // ✅ SEO: Title + Description mieux alignés requêtes ("simulateur", "pret relais")
+  const title = "Simulateur de prêt relais (pret relais) — calcul & budget avant vente | lokt.fr";
   const description =
-    "Estimez votre budget d’achat avec un prêt relais : montant du relais, nouveau prêt possible, apport et budget maximal. Simulation gratuite avec lecture claire (relais + nouveau prêt + apport).";
+    "Simulateur de prêt relais (pret relais) gratuit : estimez le montant du relais, le nouveau prêt possible, l’apport et votre budget d’achat avant de vendre. Résultat clair en 2 minutes.";
 
   // OG image (non transparent, OK WhatsApp)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
@@ -240,16 +241,19 @@ export default function PretRelaisPage() {
               </span>
             </div>
 
+            {/* ✅ H1 “mot-clé exact” */}
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
               {isLoggedIn && displayName
-                ? `Bonjour ${displayName}, estimez votre budget d’achat avec un prêt relais.`
-                : "Estimez votre budget d’achat avec un prêt relais."}
+                ? `Bonjour ${displayName} — Simulateur de prêt relais : estimez votre budget avant de vendre.`
+                : "Simulateur de prêt relais — estimez votre budget avant de vendre."}
             </h1>
 
+            {/* ✅ Intro enrichie + variante sans accent */}
             <p className="text-xs text-slate-600 max-w-2xl">
-              Parcours guidé : estimation du relais (valeur du bien actuel, capital restant dû, conditions de vente),
-              apport, puis paramètres du futur prêt. Résultat structuré pour une lecture claire (relais + nouveau prêt +
-              apport).
+              Ce <strong>simulateur de prêt relais</strong>
+              vous aide à estimer le <strong>montant du relais</strong>, votre <strong>nouveau prêt possible</strong> et le{" "}
+              <strong>budget d’achat total</strong>. Parcours guidé : valeur du bien actuel, capital restant dû, décote,
+              apport, puis paramètres du futur prêt.
             </p>
 
             {/* Maillage interne discret (comme capacité) */}
@@ -286,7 +290,7 @@ export default function PretRelaisPage() {
                 Cette calculette de prêt relais vous permet d’estimer le montant de relais mobilisable à partir de la
                 valeur de votre bien actuel, du capital restant dû et du pourcentage retenu par la banque. Elle projette
                 ensuite votre capacité pour un nouveau prêt et votre budget d’achat total (relais + nouveau prêt +
-                apport).
+                apport). Utile si vous cherchez un <strong>calcul pret relais</strong> rapide avant rendez-vous banque.
               </p>
 
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
@@ -376,3 +380,4 @@ export default function PretRelaisPage() {
     </div>
   );
 }
+

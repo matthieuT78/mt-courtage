@@ -14,6 +14,27 @@ type SimpleUser = {
   };
 };
 
+// ✅ JSON-LD SAFE: évite tout crash si un schema est undefined/malformé
+function JsonLd({ data }: { data: any }) {
+  const items = Array.isArray(data) ? data : [data];
+
+  const safeItems = items.filter(
+    (x) => x && typeof x === "object" && typeof x["@context"] === "string" && x["@context"].length > 0
+  );
+
+  return (
+    <>
+      {safeItems.map((schema, i) => (
+        <script
+          key={i}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        />
+      ))}
+    </>
+  );
+}
+
 function firstNameFromUser(user: SimpleUser | null) {
   const raw = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "");
   const first =
@@ -22,6 +43,18 @@ function firstNameFromUser(user: SimpleUser | null) {
       .split(/\s+/)[0] || "";
   if (!first) return "";
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+}
+
+function FaqItem({ q, a }: { q: string; a: React.ReactNode }) {
+  return (
+    <details className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+      <summary className="cursor-pointer list-none font-semibold text-slate-900 flex items-center justify-between">
+        <span className="pr-4">{q}</span>
+        <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
+      </summary>
+      <div className="mt-2 text-sm text-slate-700 leading-relaxed">{a}</div>
+    </details>
+  );
 }
 
 export default function CapaciteEmpruntPage() {
@@ -58,41 +91,54 @@ export default function CapaciteEmpruntPage() {
   const displayName = useMemo(() => firstNameFromUser(user), [user]);
   const isLoggedIn = !!user;
 
-  // ---- SEO
+  // --- SEO
   const siteUrl = "https://lokt.fr";
-  const pageUrl = `${siteUrl}/capacite`;
+  const pagePath = "/capacite";
+  const pageUrl = `${siteUrl}${pagePath}`;
 
-  const title = "Simulateur de capacité d’emprunt immobilier — mensualité, capital & budget | lokt.fr";
+  // ✅ CTR-first (plus direct)
+  const title = "Calcul de capacité d’emprunt gratuit – Combien puis-je emprunter ? | lokt.fr";
   const description =
-    "Estimez votre capacité d’emprunt immobilier : mensualité cible, capital empruntable et budget d’achat. Lecture bancaire (revenus, charges, crédits, loyers pris à 70%) et simulation gratuite.";
+    "Calculez gratuitement votre capacité d’emprunt : mensualité, durée, taux, apport et budget maximum. Simulation claire pour préparer votre projet immobilier.";
 
-  // OG image (WhatsApp aime les images non transparentes, idéalement JPG/PNG plein fond)
-  // 👉 Mets ici un visuel “plein fond” (pas transparent) dans /public, ex: /og-lokt.jpg
-  // Si tu n’as pas encore ce fichier, laisse /lokt-logo.jpg si c’est bien une image NON transparente.
+  // OG image (non transparent)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
 
   const faqData = useMemo(
     () => [
       {
-        q: "Comment calculez-vous la capacité d’emprunt ?",
-        a: "La capacité dépend de vos revenus, charges et crédits en cours. On estime une mensualité soutenable, puis on la convertit en capital empruntable selon le taux, la durée et une hypothèse d’assurance.",
+        q: "Comment savoir combien je peux emprunter ?",
+        a: "Le simulateur estime une mensualité soutenable à partir de vos revenus et charges, puis la convertit en capital empruntable selon le taux, la durée et une hypothèse d’assurance.",
       },
       {
-        q: "Pourquoi les loyers sont-ils pris à 70% ?",
-        a: "C’est une approche prudente souvent utilisée pour intégrer le risque de vacance, impayés, charges non récupérables et aléas. Cela permet de comparer des scénarios de façon plus réaliste.",
+        q: "Quel taux d’endettement est pris en compte ?",
+        a: "La simulation s’appuie sur une logique bancaire courante (autour de 35% selon les profils). Certaines banques peuvent aussi regarder le reste à vivre et la stabilité des revenus.",
       },
       {
-        q: "Quelle différence entre mensualité, capital et budget ?",
-        a: "La mensualité est votre charge mensuelle de crédit. Le capital empruntable est le montant que vous pouvez emprunter. Le budget d’achat combine capital + apport (et doit intégrer frais de notaire / travaux selon le cas).",
+        q: "L’apport est-il obligatoire ?",
+        a: "Non, mais un apport peut améliorer votre dossier et votre budget global (notaire, garantie, travaux). Le budget d’achat correspond généralement au capital empruntable + apport.",
       },
       {
-        q: "Le taux d’endettement est-il la seule règle ?",
-        a: "Non. Les banques peuvent aussi regarder le reste à vivre, la stabilité des revenus, l’épargne, le profil, et parfois des règles internes. Les résultats restent indicatifs.",
+        q: "Pourquoi les loyers sont-ils parfois pris partiellement en compte ?",
+        a: "C’est une approche prudente pour intégrer les aléas (vacance, impayés, charges). Elle aide à comparer des scénarios de manière plus réaliste.",
+      },
+      {
+        q: "Les résultats sont-ils fiables ?",
+        a: "Les résultats sont indicatifs : chaque banque a ses règles (assurance, reste à vivre, charges retenues, politiques internes). L’outil sert à comparer des scénarios et préparer un échange plus efficace.",
+      },
+      {
+        q: "Dois-je créer un compte ?",
+        a: "Non pour la V1 : vous pouvez utiliser la calculette librement. Certaines fonctionnalités à venir pourront nécessiter un compte.",
       },
     ],
     []
   );
 
+  // ✅ mêmes “modifs SEO” que /pret-relais :
+  // - JSON-LD SAFE
+  // - SoftwareApplication
+  // - Breadcrumb
+  // - FAQPage
   const jsonLd = useMemo(() => {
     const webPage = {
       "@context": "https://schema.org",
@@ -111,7 +157,7 @@ export default function CapaciteEmpruntPage() {
     const app = {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      name: "Simulateur de capacité d’emprunt immobilier",
+      name: "Calculateur de capacité d’emprunt",
       applicationCategory: "FinanceApplication",
       operatingSystem: "Web",
       url: pageUrl,
@@ -133,7 +179,7 @@ export default function CapaciteEmpruntPage() {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "Accueil", item: siteUrl },
+        { "@type": "ListItem", position: 1, name: "Accueil", item: `${siteUrl}/` },
         { "@type": "ListItem", position: 2, name: "Capacité d’emprunt", item: pageUrl },
       ],
     };
@@ -144,21 +190,19 @@ export default function CapaciteEmpruntPage() {
       mainEntity: faqData.map((f) => ({
         "@type": "Question",
         name: f.q,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: f.a,
-        },
+        acceptedAnswer: { "@type": "Answer", text: f.a },
       })),
     };
 
     return [webPage, app, breadcrumb, faqPage];
-  }, [description, faqData, ogImage, pageUrl, siteUrl, title]);
+  }, [title, description, pageUrl, siteUrl, ogImage, faqData]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
+        <meta name="robots" content="index, follow" />
         <link rel="canonical" href={pageUrl} />
 
         {/* Open Graph */}
@@ -170,7 +214,7 @@ export default function CapaciteEmpruntPage() {
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:secure_url" content={ogImage} />
-        <meta property="og:image:alt" content="Simulateur de capacité d’emprunt — lokt.fr" />
+        <meta property="og:image:alt" content="Calcul de capacité d’emprunt — lokt.fr" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -178,21 +222,15 @@ export default function CapaciteEmpruntPage() {
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
 
-        {/* JSON-LD (1 script par schema) */}
-        {jsonLd.map((schema, i) => (
-          <script
-            key={i}
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-          />
-        ))}
+        {/* ✅ JSON-LD (SAFE) */}
+        <JsonLd data={jsonLd} />
       </Head>
 
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header de la page (identité visuelle capacité) */}
+          {/* Header */}
           <section className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
@@ -204,15 +242,16 @@ export default function CapaciteEmpruntPage() {
               </span>
             </div>
 
+            {/* ✅ H1 plus “requête” */}
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
               {isLoggedIn && displayName
-                ? `Bonjour ${displayName}, estimez précisément votre capacité d’emprunt.`
-                : "Estimez précisément votre capacité d’emprunt immobilier."}
+                ? `Bonjour ${displayName}, calculez votre capacité d’emprunt.`
+                : "Calculer ma capacité d’emprunt immobilier"}
             </h1>
 
             <p className="text-xs text-slate-600 max-w-2xl">
-              Parcours guidé : revenus, charges, crédits en cours, loyers pris à 70 %, et paramètres du futur prêt. Le
-              résultat est structuré pour se rapprocher d’une lecture bancaire.
+              Estimez combien vous pouvez emprunter selon vos revenus, charges, durée et taux. Résultat clair :
+              mensualité → capital → budget d’achat (apport + frais).
             </p>
 
             {/* Maillage interne discret */}
@@ -220,10 +259,7 @@ export default function CapaciteEmpruntPage() {
               <Link href="/" className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800">
                 Accueil →
               </Link>
-              <Link
-                href="/pret-relais"
-                className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800"
-              >
+              <Link href="/pret-relais" className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800">
                 Prêt relais →
               </Link>
               <Link
@@ -231,6 +267,12 @@ export default function CapaciteEmpruntPage() {
                 className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800"
               >
                 Rentabilité locative →
+              </Link>
+              <Link
+                href="/plus-value-vente-immobiliere"
+                className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800"
+              >
+                Plus-value immobilière →
               </Link>
               <Link
                 href="/parc-immobilier"
@@ -244,65 +286,61 @@ export default function CapaciteEmpruntPage() {
           {/* Calculette */}
           <CapaciteWizard showSaveButton={isLoggedIn} />
 
-          {/* Bloc SEO (discret mais indexable) */}
+          {/* ✅ Micro bloc confiance (UX + SEO) */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 className="text-sm font-semibold text-slate-900">Pourquoi utiliser ce simulateur de capacité d’emprunt ?</h2>
+            <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
+              <li>Connaître votre budget réaliste avant de chercher un bien.</li>
+              <li>Comparer rapidement plusieurs scénarios (durée, taux, apport).</li>
+              <li>Préparer un dossier clair pour la banque (lecture structurée).</li>
+            </ul>
+          </section>
+
+          {/* Bloc SEO principal */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
             <div>
-              <h2 className="text-sm font-semibold text-slate-900">Simulateur de capacité d’emprunt immobilier</h2>
-
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Cette calculette vous aide à estimer un budget immobilier cohérent à partir de vos revenus, charges et
-                crédits en cours. Vous obtenez une mensualité cible, un capital empruntable et un budget d’achat
-                réaliste.
-              </p>
-
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Si vous avez des revenus locatifs, ils peuvent être intégrés de façon prudente (prise en compte
-                partielle) pour comparer des scénarios avec plus de fiabilité. Les résultats restent indicatifs : ils
-                dépendent des conditions de crédit (taux, durée, assurance) et des critères propres à chaque banque.
-              </p>
-            </div>
-
-            {/* Ajout SEO : méthode de calcul */}
-            <div>
               <h2 className="text-sm font-semibold text-slate-900">Comment est calculée la capacité d’emprunt ?</h2>
+
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                La capacité d’emprunt correspond au montant maximal que vous pouvez emprunter sans dépasser un endettement
+                cohérent. Elle dépend principalement de vos revenus nets, de vos charges, de la durée du prêt, du taux et
+                de l’assurance.
+              </p>
+
               <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
                 <li>
-                  On estime une mensualité soutenable à partir de vos <strong>revenus</strong> et <strong>charges</strong>{" "}
-                  (crédits, pensions, autres engagements).
+                  On estime d’abord une <strong>mensualité soutenable</strong> (revenus – charges).
                 </li>
                 <li>
-                  Les revenus locatifs éventuels peuvent être intégrés de façon prudente (souvent autour de{" "}
-                  <strong>70%</strong>) pour tenir compte des aléas.
+                  Cette mensualité est convertie en <strong>capital empruntable</strong> selon le <strong>taux</strong> et la{" "}
+                  <strong>durée</strong>.
                 </li>
                 <li>
-                  La mensualité est ensuite convertie en <strong>capital empruntable</strong> selon le <strong>taux</strong>,
-                  la <strong>durée</strong> et une hypothèse d’<strong>assurance</strong>.
+                  Le <strong>budget d’achat</strong> est généralement : capital + apport (en ajoutant frais de notaire /
+                  travaux selon votre situation).
                 </li>
               </ul>
             </div>
 
-            {/* Ajout SEO : exemple rapide */}
+            {/* Exemple rapide */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <h2 className="text-sm font-semibold text-slate-900">Exemple rapide</h2>
+              <h2 className="text-sm font-semibold text-slate-900">Exemple de calcul de capacité d’emprunt</h2>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Exemple indicatif : avec des revenus de <strong>3 500 €</strong> et des charges de <strong>800 €</strong>,
-                la mensualité soutenable dépendra de votre profil, mais l’objectif du simulateur est de vous donner une
-                lecture claire : <strong>mensualité</strong> → <strong>capital</strong> → <strong>budget</strong> (en tenant
-                compte de l’apport et des frais).
+                Exemple indicatif : avec <strong>3 000 €</strong> de revenus nets mensuels, <strong>500 €</strong> de charges
+                et un taux de <strong>3%</strong> sur <strong>25 ans</strong>, la capacité d’emprunt peut dépasser{" "}
+                <strong>200 000 €</strong> selon l’assurance et votre profil. La simulation permet de comparer rapidement
+                plusieurs hypothèses (durée, taux, apport).
               </p>
             </div>
 
-            {/* Mini FAQ visible */}
-            <div className="grid gap-3">
-              {faqData.map((f) => (
-                <details key={f.q} className="group rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                  <summary className="cursor-pointer list-none font-semibold text-slate-900 flex items-center justify-between">
-                    <span className="pr-4">{f.q}</span>
-                    <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
-                  </summary>
-                  <div className="mt-2 text-sm text-slate-700 leading-relaxed">{f.a}</div>
-                </details>
-              ))}
+            {/* FAQ visible */}
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-slate-900">Questions fréquentes sur la capacité d’emprunt</h2>
+              <div className="mt-3 grid gap-3">
+                {faqData.map((f) => (
+                  <FaqItem key={f.q} q={f.q} a={<>{f.a}</>} />
+                ))}
+              </div>
             </div>
 
             <p className="text-xs text-slate-500">
