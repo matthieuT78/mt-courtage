@@ -323,8 +323,14 @@ function FintechTile({
   const a = accents[accent];
 
   return (
-    <Link href={href} aria-label={`Ouvrir ${title}`} className="group block">
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <Link href={href} aria-label={`Ouvrir ${title}`} className="group block h-full">
+      <div
+        className="
+          relative h-full min-h-[168px]
+          overflow-hidden rounded-3xl border border-slate-200 bg-white p-6
+          shadow-sm transition hover:-translate-y-0.5 hover:shadow-md
+        "
+      >
         <div
           aria-hidden
           className={`pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full blur-3xl opacity-70 ${a.halo}`}
@@ -337,18 +343,18 @@ function FintechTile({
             backgroundSize: "22px 22px",
           }}
         />
-
         <div
           aria-hidden
           className="pointer-events-none absolute -left-24 top-0 h-full w-24 rotate-12 bg-white/40 blur-xl opacity-0 transition duration-500 group-hover:opacity-100 group-hover:translate-x-[520px]"
         />
 
-        <div className="relative flex items-start gap-4">
+        {/* Layout: colonne + CTA collé en bas */}
+        <div className="relative flex h-full items-start gap-4">
           <div className="shrink-0">
             <Sticker kind={icon} className="h-12 w-12" />
           </div>
 
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 flex h-full flex-col">
             <div className="flex items-center gap-2">
               <p className="text-base font-semibold text-slate-900">{title}</p>
               {badge ? (
@@ -358,9 +364,11 @@ function FintechTile({
               ) : null}
             </div>
 
-            <p className="mt-1 text-sm text-slate-600">{oneLiner}</p>
+            {/* 2 lignes max = hauteur identique */}
+            <p className="mt-1 text-sm text-slate-600 line-clamp-2">{oneLiner}</p>
 
-            <div className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+            {/* pousse le CTA en bas */}
+            <div className="mt-auto pt-5 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
               Démarrer <span className="transition group-hover:translate-x-0.5">→</span>
             </div>
           </div>
@@ -540,7 +548,7 @@ export default function Home() {
       },
       {
         q: "Est-ce que lokt.fr est gratuit ?",
-        a: "Oui. Les simulateurs actuellement disponibles sont gratuits (V1). Aucune carte bancaire n’est demandée.",
+        a: "Oui. Les simulateurs actuellement disponibles sont gratuits. Aucune carte bancaire n’est demandée.",
       },
       {
         q: "Par où commencer si je débute ?",
@@ -986,7 +994,7 @@ export default function Home() {
                   </div>
 
                   <div className="rounded-2xl border border-white/20 bg-white/10 p-5">
-                    <p className="text-sm font-semibold">Ce que vous pourrez faire (V1)</p>
+                    <p className="text-sm font-semibold">Ce que vous pourrez faire</p>
                     <ul className="mt-2 space-y-1 text-xs text-white/85">
                       <li>• Centraliser vos documents (quittances, états des lieux, pièces clés)</li>
                       <li>• Suivre dépôts de garantie et restitutions</li>
