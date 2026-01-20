@@ -254,6 +254,10 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
+  // ✅ Email (optionnel)
+  const [sendByEmail, setSendByEmail] = useState<boolean>(true);
+  const [sendingEmail, setSendingEmail] = useState<boolean>(false);
+  const [sendEmailMsg, setSendEmailMsg] = useState<string | null>(null);
 
   /**
    * ✅ NEW: restore leadEmail depuis
@@ -746,7 +750,74 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       throw new Error(error.message || "Erreur RPC");
     }
   };
+function buildEmailComputed() {
+  return {
+    meta: { tool: "pret-relais", version: "v2_email" },
+    inputs: {
+      projectUsageDb,
+      timelineDb,
+      department,
+      projectType,
+      ageEmprunteur,
+      ageCoEmprunteur,
+      proStatus,
+      nbAdultes,
+      nbEnfants,
+      revMensuels,
+      autresMensualites,
+      tauxEndettement,
+      valeurBienActuel,
+      crdActuel,
+      pctRetenu,
+      tauxRelais,
+      apportPerso,
+      tauxNouveau,
+      dureeNouveau,
+      prixCible,
+    },
+    output: {
+      resume,
+      texteDetail,
+      bankability:
+        bankabilityScore !== null
+          ? { score: bankabilityScore, label: bankabilityLabel, comment: bankabilityComment }
+          : null,
+    },
+  };
+}
 
+async function sendPretRelaisEmail(email: string) {
+  setSendEmailMsg(null);
+  setSendingEmail(true);
+
+  try {
+    if (!resume || !texteDetail) throw new Error("result_missing");
+
+    const computed = buildEmailComputed();
+
+    const r = await fetch("/api/tools/pret-relais/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        computed,
+      }),
+    });
+
+    const data = await r.json().catch(() => null);
+    if (!r.ok || !data?.ok) {
+      throw new Error(data?.error || "email_failed");
+    }
+
+    setSendEmailMsg("✅ Email envoyé (pensez à vérifier les spams).");
+    return true;
+  } catch (e: any) {
+    setSendEmailMsg("❌ Envoi email impossible : " + (e?.message || "erreur"));
+    return false;
+  } finally {
+    setSendingEmail(false);
+  }
+}
   const handleUnlock = async () => {
     setUnlockMsg(null);
 
@@ -771,6 +842,9 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       await capturePretRelaisViaRpc();
       setUnlocked(true);
       setUnlockMsg("✅ Analyse débloquée. (Votre simulation est bien enregistrée.)");
+if (sendByEmail) {
+  await sendPretRelaisEmail(email);
+}
 
       // ✅ persiste unlock + email (pour navigation/reload)
       if (typeof window !== "undefined") {
@@ -1356,62 +1430,86 @@ const renderAnalysisBlocks = (text: string) => {
             ) : null}
 
             {/* Gate */}
-            {!canShowFullAnalysis ? (
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden">
-                <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
-                <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-amber-400" />
+{!canShowFullAnalysis ? (
+  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden">
+    <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
+    <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-amber-400" />
 
-                <div className="relative space-y-3">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE</p>
-                  <h3 className="text-lg font-semibold">Conservez votre simulation et débloquez l’analyse détaillée.</h3>
+    <div className="relative space-y-3">
+      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE</p>
+      <h3 className="text-lg font-semibold">Conservez votre simulation et débloquez l’analyse détaillée.</h3>
 
-                  <div className="mt-2 rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
-                    <div className="space-y-1">
-                      <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
-                      <input
-                        type="email"
-                        value={leadEmail}
-                        onChange={(e) => setLeadEmail(e.target.value)}
-                        placeholder="ex: prenom.nom@gmail.com"
-                        className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-                      />
-                      <p className="text-[0.7rem] text-slate-300">
-                        On l’utilise pour enregistrer la simulation et mesurer la demande (stats agrégées).
-                      </p>
-                    </div>
+      <div className="mt-2 rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
+        {/* Email */}
+        <div className="space-y-1">
+          <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
+          <input
+            type="email"
+            value={leadEmail}
+            onChange={(e) => setLeadEmail(e.target.value)}
+            placeholder="ex: prenom.nom@gmail.com"
+            className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
+          />
+          <p className="text-[0.7rem] text-slate-300">
+            On l’utilise pour enregistrer la simulation et mesurer la demande (stats agrégées).
+          </p>
+        </div>
 
-                    <div className="rounded-lg bg-white/5 border border-white/10 p-3">
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={consentLokt}
-                          onChange={(e) => setConsentLokt(e.target.checked)}
-                          className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-                        />
-                        <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                          <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour m’afficher
-                          l’analyse et améliorer Lokt.fr (statistiques anonymisées).
-                        </span>
-                      </label>
-                      <p className="mt-2 text-[0.7rem] text-slate-300">
-                        Pas de démarchage partenaire ici. Aucun consentement “contact partenaire” n’est demandé.
-                      </p>
-                    </div>
+        {/* ✅ Option email */}
+        <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={sendByEmail}
+              onChange={(e) => setSendByEmail(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
+            />
+            <span className="text-[0.75rem] text-slate-200 leading-relaxed">
+              <span className="font-semibold">Recevoir l’analyse complète par email</span>
+              <span className="block text-[0.7rem] text-slate-300 mt-1">
+                Pratique pour relire les résultats plus tard.
+              </span>
+            </span>
+          </label>
 
-                    <button
-                      type="button"
-                      onClick={handleUnlock}
-                      disabled={unlocking}
-                      className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
-                    >
-                      {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
-                    </button>
+          {sendingEmail ? <p className="mt-2 text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
+          {sendEmailMsg ? <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
+        </div>
 
-                    {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
-                  </div>
-                </div>
-              </div>
-            ) : null}
+        {/* ✅ Consentement */}
+        <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={consentLokt}
+              onChange={(e) => setConsentLokt(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
+            />
+            <span className="text-[0.75rem] text-slate-200 leading-relaxed">
+              <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour enregistrer mon analyse et
+              améliorer Lokt.fr (statistiques anonymisées).
+            </span>
+          </label>
+          <p className="mt-2 text-[0.7rem] text-slate-300">
+            Pas de démarchage partenaire ici. Aucun consentement “contact partenaire” n’est demandé.
+          </p>
+        </div>
+
+        {/* Bouton */}
+        <button
+          type="button"
+          onClick={handleUnlock}
+          disabled={unlocking}
+          className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
+        >
+          {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
+        </button>
+
+        {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
+      </div>
+    </div>
+  </div>
+) : null}
 
             {/* Analyse */}
             {texteDetail ? (
