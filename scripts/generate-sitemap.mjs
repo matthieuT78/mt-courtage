@@ -11,6 +11,7 @@ const staticPagesV1 = [
   "/capacite",
   "/pret-relais",
   "/investissement",
+  "/plus-value-vente-immobiliere",
   "/parc-immobilier",
   "/commencer",
   "/cgu",
