@@ -1,5 +1,5 @@
 // components/LeadGate.tsx
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 export default function LeadGate({
   title = "Débloquer l’analyse",
@@ -12,6 +12,12 @@ export default function LeadGate({
   unlockMsg,
   onUnlock,
   theme = "cyan-emerald",
+
+  // Optional: send-by-email option
+  sendByEmail,
+  setSendByEmail,
+  sendingEmail,
+  sendEmailMsg,
 }: {
   title?: string;
   subtitle?: string;
@@ -23,6 +29,11 @@ export default function LeadGate({
   unlockMsg: string | null;
   onUnlock: () => void;
   theme?: "cyan-emerald" | "cyan-amber";
+
+  sendByEmail?: boolean;
+  setSendByEmail?: (v: boolean) => void;
+  sendingEmail?: boolean;
+  sendEmailMsg?: string | null;
 }) {
   const emailOk = useMemo(() => {
     const e = (email || "").trim().toLowerCase();
@@ -33,6 +44,9 @@ export default function LeadGate({
 
   const haloA = theme === "cyan-amber" ? "bg-amber-400" : "bg-emerald-400";
   const haloB = "bg-cyan-500";
+
+  const showEmailOption =
+    typeof sendByEmail === "boolean" && typeof setSendByEmail === "function";
 
   return (
     <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden">
@@ -47,9 +61,12 @@ export default function LeadGate({
         <h3 className="text-lg font-semibold">{title}</h3>
         <p className="text-sm text-slate-200">{subtitle}</p>
 
-        <div className="mt-2 rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
+        <div className="mt-2 rounded-xl bg-white/5 border border-white/10 p-4 space-y-4">
+          {/* Email */}
           <div className="space-y-1">
-            <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
+            <label className="text-xs text-slate-100 font-semibold">
+              Votre e-mail (obligatoire)
+            </label>
             <input
               type="email"
               value={email}
@@ -62,24 +79,88 @@ export default function LeadGate({
             </p>
           </div>
 
-          <div className="rounded-lg bg-white/5 border border-white/10 p-3">
-            <label className="flex items-start gap-3 cursor-pointer">
+          {/* Option email (mise en avant) */}
+          {showEmailOption && (
+            <div
+              className="rounded-lg bg-white/10 border border-white/15 p-3 cursor-pointer"
+              onClick={() => setSendByEmail(!sendByEmail)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  setSendByEmail(!sendByEmail);
+                }
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={!!sendByEmail}
+                  onChange={(e) => setSendByEmail(e.target.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-1 h-4 w-4 accent-cyan-400"
+                />
+                <div className="text-[0.75rem] text-slate-100 leading-relaxed">
+                  <p className="font-semibold">
+                    Recevoir l’analyse complète par email
+                  </p>
+                  <p className="text-[0.7rem] text-slate-300 mt-1">
+                    Pratique pour relire vos résultats plus tard ou les partager.
+                  </p>
+                </div>
+              </div>
+
+              {sendingEmail && (
+                <p className="mt-2 text-[0.7rem] text-slate-300">
+                  Envoi de l’email…
+                </p>
+              )}
+
+              {sendEmailMsg && (
+                <p className="mt-2 text-[0.7rem] text-slate-200">
+                  {sendEmailMsg}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Consentement (FIXÉ) */}
+          <div
+            className="rounded-lg bg-white/5 border border-white/10 p-3 cursor-pointer"
+            onClick={() => setConsent(!consent)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                setConsent(!consent);
+              }
+            }}
+          >
+            <div className="flex items-start gap-3">
               <input
+                id="lokt-consent"
                 type="checkbox"
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
+                onClick={(e) => e.stopPropagation()}
+                className="mt-1 h-4 w-4 accent-cyan-400"
               />
-              <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour enregistrer mon
-                analyse et améliorer Lokt.fr (statistiques anonymisées).
-              </span>
-            </label>
-            <p className="mt-2 text-[0.7rem] text-slate-300">
-              Pas de démarchage partenaire. Aucun consentement “recontact” n’est demandé.
-            </p>
+              <label
+                htmlFor="lokt-consent"
+                className="text-[0.75rem] text-slate-200 leading-relaxed cursor-pointer"
+              >
+                <span className="font-semibold">J’accepte</span> que mes données
+                soient utilisées pour enregistrer mon analyse et améliorer
+                Lokt.fr (statistiques anonymisées).
+                <span className="block mt-2 text-[0.7rem] text-slate-300">
+                  Pas de démarchage partenaire. Aucun consentement “recontact”
+                  n’est demandé.
+                </span>
+              </label>
+            </div>
           </div>
 
+          {/* CTA */}
           <button
             type="button"
             onClick={onUnlock}
@@ -89,12 +170,18 @@ export default function LeadGate({
             {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
           </button>
 
-          {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
+          {unlockMsg && (
+            <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>
+          )}
 
           {!emailOk ? (
-            <p className="text-[0.7rem] text-slate-300">Astuce : renseignez un email valide pour activer le bouton.</p>
+            <p className="text-[0.7rem] text-slate-300">
+              Astuce : renseignez un email valide pour activer le bouton.
+            </p>
           ) : !consent ? (
-            <p className="text-[0.7rem] text-slate-300">Astuce : cochez le consentement pour activer le bouton.</p>
+            <p className="text-[0.7rem] text-slate-300">
+              Astuce : cochez le consentement pour activer le bouton.
+            </p>
           ) : null}
         </div>
       </div>

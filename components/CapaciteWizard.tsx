@@ -1,6 +1,7 @@
 // components/CapaciteWizard.tsx
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { buildCapaciteEmailHtml, buildCapaciteEmailText } from "../lib/emails/capaciteEmail";
 import LeadGate from "./LeadGate";
 import {
   safeEmail,
@@ -767,6 +768,10 @@ export default function CapaciteWizard({
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
 
+  const [sendByEmail, setSendByEmail] = useState<boolean>(true);
+  const [sendingEmail, setSendingEmail] = useState<boolean>(false);
+  const [sendEmailMsg, setSendEmailMsg] = useState<string | null>(null);
+
   // 1) Restore email depuis session OU localStorage tool-specific
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1174,6 +1179,7 @@ export default function CapaciteWizard({
   };
 
   const handleCalculCapacite = async () => {
+    setSendEmailMsg(null);
     setUnlockMsg(null);
     const rn = toInt(revenusNetMensuels, 0);
     if (!revenusNetMensuels || rn <= 0) {
@@ -1377,6 +1383,106 @@ setRevenusError(null);
     }
   };
 
+  function buildEmailHtml(computed: ReturnType<typeof computeAll>) {
+    const r = computed.resume;
+    const b = computed.assessment;
+
+    const lines: string[] = [];
+
+    lines.push(
+      `<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;padding:16px;">`,
+      `<h1 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Votre capacite d'emprunt — lokt.fr</h1>`,
+      `<p style="margin:0 0 12px;color:#334155;">Recapitulatif de votre simulation.</p>`,
+      `<ul style="margin:0 0 12px;padding-left:18px;color:#0f172a;line-height:1.5;">`,
+      `<li><strong>Mensualite max :</strong> ${formatEuro(r.mensualiteMax)}</li>`,
+      `<li><strong>Capital empruntable (ref 25 ans) :</strong> ${formatEuro(r.montantMax)}</li>`,
+      `<li><strong>Budget max (avec apport) :</strong> ${formatEuro(r.budgetTotalMax)}</li>`,
+      `<li><strong>Endettement apres projet :</strong> ${formatPct(r.tauxEndettementAvecProjet)}</li>`,
+      `</ul>`
+    );
+
+    if (b) {
+      lines.push(
+        `<h2 style="margin:16px 0 8px;font-size:16px;color:#0f172a;">Score Lokt.fr</h2>`,
+        `<p style="margin:0 0 6px;color:#0f172a;"><strong>${b.score}/100</strong> — ${b.label}</p>`,
+        `<p style="margin:0 0 12px;color:#334155;line-height:1.5;">${b.comment}</p>`
+      );
+    }
+
+    if (computed.actionPlan) {
+      const blocks = computed.actionPlan
+        .split("\n\n")
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .slice(0, 12);
+
+      lines.push(`<h2 style="margin:16px 0 8px;font-size:16px;color:#0f172a;">Plan d'action</h2>`);
+
+      for (const block of blocks) {
+  if (block.startsWith("###")) {
+    lines.push(
+      `<h3 style="margin:12px 0 6px;font-size:14px;color:#0f172a;">${block.replace(
+        /^###\s*/,
+        ""
+      )}</h3>`
+    );
+  } else {
+    const safe = block.replace(/\n/g, "<br/>");
+    lines.push(
+      `<p style="margin:0 0 10px;color:#0f172a;line-height:1.5;">${safe}</p>`
+    );
+  }
+}
+    }
+
+    lines.push(
+      `<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;"/>`,
+      `<p style="margin:0;color:#64748b;font-size:12px;">Calculs indicatifs. Ne constitue pas une offre de pret.</p>`,
+      `<p style="margin:6px 0 0;color:#64748b;font-size:12px;">— lokt.fr</p>`,
+      `</div>`
+    );
+
+    return lines.join("");
+  }
+
+    async function sendAnalysisEmail(email: string, computed: ReturnType<typeof computeAll>) {
+    setSendEmailMsg(null);
+
+    const html = buildCapaciteEmailHtml({
+      resume: computed.resume,
+      assessment: computed.assessment,
+      actionPlan: computed.actionPlan,
+    });
+
+    const text = buildCapaciteEmailText({
+      resume: computed.resume,
+      assessment: computed.assessment,
+      actionPlan: computed.actionPlan,
+    });
+
+    const subject = "Votre capacité d’emprunt — lokt.fr";
+
+    setSendingEmail(true);
+    try {
+      const r = await fetch("/api/tools/capacite/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, subject, html, text }),
+      });
+
+      const data = await r.json().catch(() => null);
+      if (!r.ok || !data?.ok) throw new Error(data?.error || "email_failed");
+
+      setSendEmailMsg("✅ Email envoyé (pensez à vérifier les spams si besoin).");
+      return true;
+    } catch (e: any) {
+      setSendEmailMsg("❌ Envoi email impossible : " + (e?.message || "erreur"));
+      return false;
+    } finally {
+      setSendingEmail(false);
+    }
+  }
+
   const handleUnlock = async () => {
     setUnlockMsg(null);
 
@@ -1409,6 +1515,9 @@ setRevenusError(null);
 
       setUnlocked(true);
       setUnlockMsg("✅ Analyse débloquée. (Votre simulation est bien enregistrée.)");
+            if (sendByEmail) {
+        await sendAnalysisEmail(email, computed);
+      }
     } catch (e: any) {
       setUnlockMsg(
         "❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue")
@@ -2177,19 +2286,26 @@ setRevenusError(null);
 
             {/* 🔒 Gate */}
             {!canShowFullAnalysis ? (
-              <LeadGate
-                theme="cyan-emerald"
-                title="Débloquer le Score Lokt.fr™"
-                subtitle="Débloquez votre score et un plan d’action concret. Pas de démarchage : on enregistre uniquement la simulation et des stats agrégées."
-                email={leadEmail}
-                setEmail={setLeadEmail}
-                consent={consentLokt}
-                setConsent={setConsentLokt}
-                unlocking={unlocking}
-                unlockMsg={unlockMsg}
-                onUnlock={handleUnlock}
-              />
-            ) : null}
+  <div className="space-y-3">
+
+      <LeadGate
+        theme="cyan-emerald"
+        title="Débloquer le Score Lokt.fr™"
+        subtitle="Débloquez votre score et un plan d’action concret. Pas de démarchage : on enregistre uniquement la simulation et des stats agrégées."
+        email={leadEmail}
+        setEmail={setLeadEmail}
+        consent={consentLokt}
+        setConsent={setConsentLokt}
+        unlocking={unlocking || sendingEmail}
+        unlockMsg={unlockMsg}
+        onUnlock={handleUnlock}
+        sendByEmail={sendByEmail}
+        setSendByEmail={setSendByEmail}
+        sendingEmail={sendingEmail}
+        sendEmailMsg={sendEmailMsg}
+      />
+  </div>
+) : null}
 
             {/* ✅ Partie débloquée */}
             {canShowFullAnalysis && bankability && (
