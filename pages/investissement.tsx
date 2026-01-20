@@ -83,9 +83,10 @@ export default function InvestissementPage() {
   const pagePath = "/investissement";
   const pageUrl = `${siteUrl}${pagePath}`;
 
-  const title = "Simulateur de rentabilité locative — cash-flow, rendement & charges | lokt.fr";
+  // ✅ CTR-first
+  const title = "Calcul rentabilité locative gratuit – Cash-flow, rendement, charges | lokt.fr";
   const description =
-    "Simulez la rentabilité locative : cash-flow mensuel, rendement, charges, vacance, gestion et financement. Comparez longue durée vs Airbnb avec une lecture structurée.";
+    "Calculez la rentabilité locative (cash-flow, rendement brut/net, charges, vacance, financement). Comparez location longue durée vs Airbnb avec une lecture claire.";
 
   // OG image (non transparent, OK WhatsApp)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
@@ -96,6 +97,10 @@ export default function InvestissementPage() {
       {
         q: "Quelle est la différence entre cash-flow et rendement ?",
         a: "Le cash-flow correspond au flux mensuel net (loyer – charges – crédit). Le rendement mesure la performance annuelle (revenus / prix d’achat), et peut être brut ou net selon les charges prises en compte.",
+      },
+      {
+        q: "Quelle différence entre rendement brut et rendement net ?",
+        a: "Le rendement brut compare les loyers annuels au prix d’achat. Le rendement net retire les charges (taxe foncière, copropriété, assurance, vacance, gestion…). Il est plus proche de la réalité pour comparer deux projets.",
       },
       {
         q: "Quelles charges faut-il inclure pour estimer une rentabilité réaliste ?",
@@ -118,9 +123,9 @@ export default function InvestissementPage() {
   );
 
   // ✅ mêmes modifs SEO que /capacite et /pret-relais :
-  // - JSON-LD enrichi avec SoftwareApplication (plutôt que Service)
+  // - JSON-LD enrichi avec SoftwareApplication
   // - Breadcrumb
-  // - Contenu SEO visible : “comment ça marche”, “exemple rapide”
+  // - FAQPage
   const jsonLd = useMemo(() => {
     const webPage = {
       "@context": "https://schema.org",
@@ -196,7 +201,7 @@ export default function InvestissementPage() {
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:secure_url" content={ogImage} />
-        <meta property="og:image:alt" content="Simulateur de rentabilité locative — lokt.fr" />
+        <meta property="og:image:alt" content="Calcul de rentabilité locative — lokt.fr" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -213,13 +218,13 @@ export default function InvestissementPage() {
       <main className="flex-1 px-4 py-6">
         <div className="max-w-5xl mx-auto space-y-6">
           {/* Header de la page */}
-          <section className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-sm p-5 space-y-3">
+          <section className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-amber-700">
+              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
                 CALCULETTE RENTABILITÉ LOCATIVE
               </p>
 
-              <span className="hidden sm:inline-flex items-center rounded-full border border-amber-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-amber-700">
+              <span className="hidden sm:inline-flex items-center rounded-full border border-emerald-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-emerald-700">
                 lokt.fr
               </span>
             </div>
@@ -227,28 +232,34 @@ export default function InvestissementPage() {
             <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
               {isLoggedIn && displayName
                 ? `Bonjour ${displayName}, calculez votre cash-flow et votre rendement.`
-                : "Calculez votre cash-flow et votre rendement locatif."}
+                : "Calculer la rentabilité locative (cash-flow & rendement)"}
             </h1>
 
             <p className="text-xs text-slate-600 max-w-3xl">
-              Parcours guidé en plusieurs étapes : coûts d’acquisition, revenus (longue durée / Airbnb), charges et
-              gestion, puis financement. Le résultat est structuré pour analyser la rentabilité réelle de votre projet.
+              Parcours guidé : coût total (achat + frais + travaux), revenus (longue durée / Airbnb), charges et gestion,
+              puis financement. Résultat structuré pour analyser la rentabilité réelle et comparer des scénarios.
             </p>
 
             {/* Maillage interne discret */}
             <div className="pt-1 flex flex-wrap gap-2">
-              <Link href="/" className="text-xs font-semibold underline decoration-amber-200 text-amber-800">
+              <Link href="/" className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800">
                 Accueil →
               </Link>
-              <Link href="/pret-relais" className="text-xs font-semibold underline decoration-amber-200 text-amber-800">
+              <Link href="/capacite" className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800">
+                Capacité d’emprunt →
+              </Link>
+              <Link href="/pret-relais" className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800">
                 Prêt relais →
               </Link>
-              <Link href="/capacite" className="text-xs font-semibold underline decoration-amber-200 text-amber-800">
-                Capacité d’emprunt →
+              <Link
+                href="/plus-value-vente-immobiliere"
+                className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800"
+              >
+                Plus-value immobilière →
               </Link>
               <Link
                 href="/parc-immobilier"
-                className="text-xs font-semibold underline decoration-amber-200 text-amber-800"
+                className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800"
               >
                 Parc immobilier →
               </Link>
@@ -258,24 +269,35 @@ export default function InvestissementPage() {
           {/* Calculette */}
           <InvestissementWizard showSaveButton={isLoggedIn} />
 
+          {/* ✅ Micro bloc confiance (UX + SEO) */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 className="text-sm font-semibold text-slate-900">
+              Pourquoi simuler la rentabilité locative avant d’acheter ?
+            </h2>
+            <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
+              <li>Vérifier si le projet s’auto-finance (cash-flow) ou combien il “coûte” chaque mois.</li>
+              <li>Comparer plusieurs biens/scénarios à périmètre constant (prix, loyer, vacance, charges).</li>
+              <li>Identifier les leviers : prix d’achat, vacance, charges et structure de financement.</li>
+            </ul>
+          </section>
+
           {/* Bloc SEO enrichi (comme capacité / pret-relais) */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
-                Simulateur de rentabilité locative : cash-flow, charges et financement
+                Calcul de rentabilité locative : cash-flow, charges et financement
               </h2>
 
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Cette calculette de rentabilité locative vous aide à projeter un investissement en tenant compte des
-                coûts d’acquisition, des revenus (location longue durée ou saisonnière), des charges (copropriété,
-                travaux, gestion…) et du financement (taux, durée, apport). L’objectif : obtenir une lecture simple et
-                comparable entre scénarios.
+                Cette calculette de rentabilité locative vous aide à projeter un investissement en tenant compte du coût
+                total (prix + notaire + travaux/ameublement), des revenus (location longue durée ou saisonnière), des
+                charges (copropriété, taxe foncière, assurance, entretien, gestion, vacance) et du financement (taux,
+                durée, apport, assurance). L’objectif : une lecture simple et comparable entre scénarios.
               </p>
 
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
                 Les résultats sont indicatifs et dépendent de vos hypothèses. Utilisez l’outil pour comparer plusieurs
-                biens, tester différents niveaux de loyers/occupation, et identifier les leviers qui améliorent
-                réellement le cash-flow.
+                biens, tester différents niveaux de loyers/occupation, et repérer ce qui améliore réellement le cash-flow.
               </p>
             </div>
 
@@ -312,16 +334,19 @@ export default function InvestissementPage() {
             </div>
 
             {/* Mini FAQ visible (UX + SEO) */}
-            <div className="grid gap-3">
-              {faqData.map((f) => (
-                <details key={f.q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <summary className="cursor-pointer list-none font-semibold text-slate-900 flex items-center justify-between">
-                    <span className="pr-4">{f.q}</span>
-                    <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
-                  </summary>
-                  <div className="mt-2 text-sm text-slate-700 leading-relaxed">{f.a}</div>
-                </details>
-              ))}
+            <div className="space-y-2">
+              <h2 className="text-sm font-semibold text-slate-900">Questions fréquentes sur la rentabilité locative</h2>
+              <div className="mt-3 grid gap-3">
+                {faqData.map((f) => (
+                  <details key={f.q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <summary className="cursor-pointer list-none font-semibold text-slate-900 flex items-center justify-between">
+                      <span className="pr-4">{f.q}</span>
+                      <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
+                    </summary>
+                    <div className="mt-2 text-sm text-slate-700 leading-relaxed">{f.a}</div>
+                  </details>
+                ))}
+              </div>
             </div>
 
             <p className="text-xs text-slate-500">
