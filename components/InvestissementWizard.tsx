@@ -285,6 +285,9 @@ export default function InvestissementWizard({
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
+  const [sendByEmail, setSendByEmail] = useState<boolean>(true);
+  const [sendingEmail, setSendingEmail] = useState<boolean>(false);
+  const [sendEmailMsg, setSendEmailMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -572,6 +575,16 @@ export default function InvestissementWizard({
         consent_analysis: !!consentLokt,
       },
         
+    };
+  };
+
+  const buildEmailComputed = () => {
+    const lead = buildLeadPayload();
+    return {
+      inputs: lead.inputs,
+      output: lead.output,
+      meta: lead.meta,
+      tracking: lead.tracking,
     };
   };
 
@@ -992,8 +1005,9 @@ export default function InvestissementWizard({
     }
   };
 
-  const handleUnlock = async () => {
-    setUnlockMsg(null);
+    const handleUnlock = async () => {
+      setUnlockMsg(null);
+      setSendEmailMsg(null); // ✅ reset message email
 
     if (!hasSimulation) {
       setUnlockMsg("Calculez d’abord votre rentabilité pour débloquer l’analyse.");
@@ -1031,6 +1045,9 @@ export default function InvestissementWizard({
 
       setUnlocked(true);
       setUnlockMsg("✅ Analyse débloquée.");
+            if (sendByEmail) {
+        await sendInvestEmail(email);
+      }
     } catch (e: any) {
       setUnlockMsg("❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue"));
     } finally {
@@ -1038,8 +1055,38 @@ export default function InvestissementWizard({
     }
   };
 
-  const canClickUnlock = hasSimulation && leadEmailValid && consentLokt && !unlocking;
+  async function sendInvestEmail(email: string) {
+    setSendEmailMsg(null);
+    setSendingEmail(true);
+    try {
+      const computed = buildEmailComputed();
 
+      const r = await fetch("/api/tools/investissement/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          subject: "Votre simulation d’investissement locatif — lokt.fr",
+          computed,
+        }),
+      });
+
+      const data = await r.json().catch(() => null);
+      if (!r.ok || !data?.ok) throw new Error(data?.error || "email_failed");
+
+      setSendEmailMsg("✅ Email envoyé (pensez à vérifier les spams).");
+      return true;
+    } catch (e: any) {
+      setSendEmailMsg("❌ Envoi email impossible : " + (e?.message || "erreur"));
+      return false;
+    } finally {
+      setSendingEmail(false);
+    }
+  }
+
+const canClickUnlock =
+  hasSimulation && leadEmailValid && consentLokt && !unlocking && !sendingEmail;
+  
   /* ======================== UI helpers ======================== */
   const primaryNavButtonClass =
     "rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]";
@@ -1761,7 +1808,31 @@ export default function InvestissementWizard({
                                       On l’utilise pour enregistrer votre analyse et mesurer la demande.
                                     </p>
                                   </div>
+                                    {/* ✅ Recevoir par email */}
+                                  <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
+                                    <label className="flex items-start gap-3 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={sendByEmail}
+                                        onChange={(e) => setSendByEmail(e.target.checked)}
+                                        className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
+                                      />
+                                      <span className="text-[0.75rem] text-slate-200 leading-relaxed">
+                                        <span className="font-semibold">Recevoir l’analyse complète par email</span>
+                                        <span className="block text-[0.7rem] text-slate-300 mt-1">
+                                          Pratique pour relire les résultats plus tard.
+                                        </span>
+                                      </span>
+                                    </label>
 
+                                    {sendingEmail ? (
+                                      <p className="mt-2 text-[0.7rem] text-slate-300">Envoi de l’email…</p>
+                                    ) : null}
+
+                                    {sendEmailMsg ? (
+                                      <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p>
+                                    ) : null}
+                                  </div>
                                   <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
                                     <label className="flex items-start gap-3 cursor-pointer">
                                       <input
@@ -1842,7 +1913,31 @@ export default function InvestissementWizard({
                                 className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
                               />
                             </div>
+                              {/* ✅ Recevoir par email */}
+                          <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={sendByEmail}
+                                onChange={(e) => setSendByEmail(e.target.checked)}
+                                className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
+                              />
+                              <span className="text-[0.75rem] text-slate-200 leading-relaxed">
+                                <span className="font-semibold">Recevoir l’analyse complète par email</span>
+                                <span className="block text-[0.7rem] text-slate-300 mt-1">
+                                  Pratique pour relire les résultats plus tard.
+                                </span>
+                              </span>
+                            </label>
 
+                            {sendingEmail ? (
+                              <p className="mt-2 text-[0.7rem] text-slate-300">Envoi de l’email…</p>
+                            ) : null}
+
+                            {sendEmailMsg ? (
+                              <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p>
+                            ) : null}
+                          </div>
                             <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
                               <label className="flex items-start gap-3 cursor-pointer">
                                 <input
