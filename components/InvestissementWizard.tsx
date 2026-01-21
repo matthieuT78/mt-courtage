@@ -1065,8 +1065,8 @@ export default function InvestissementWizard({
       console.log("output keys:", Object.keys(computed?.output || {}));
       console.log(
         "resume keys:",
-        Object.keys(computed?.output?.resume || computed?.resume || {})
-      );
+      Object.keys(computed?.output?.resume || {})
+	);
       console.log("=== END INVEST EMAIL DEBUG ===");
       const r = await fetch("/api/tools/investissement/send", {
         method: "POST",
