@@ -1,7 +1,6 @@
 // components/PlusValueWizard.tsx
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import LeadGate from "./LeadGate";
 import {
   safeEmail,
   loadLeadEmail,
@@ -30,10 +29,10 @@ function formatPct(val: number) {
   );
 }
 function onlyDigits(s: string) {
-  return s.replace(/[^\d]/g, "");
+  return (s || "").replace(/[^\d]/g, "");
 }
 function onlyNumberLike(s: string) {
-  const cleaned = s.replace(",", ".").replace(/[^0-9.]/g, "");
+  const cleaned = (s || "").replace(",", ".").replace(/[^0-9.]/g, "");
   const parts = cleaned.split(".");
   if (parts.length <= 1) return cleaned;
   return parts[0] + "." + parts.slice(1).join("");
@@ -48,10 +47,6 @@ function toFloat(v: string, fallback = 0) {
 }
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
-}
-function formatSignedEuro(n: number) {
-  const sign = n >= 0 ? "+" : "−";
-  return `${sign} ${formatEuro(Math.abs(n))}`;
 }
 
 /* ------------------------ UI helpers ------------------------ */
@@ -173,15 +168,13 @@ function remainingBalanceFromElapsedYears(params: {
 function abatementsFrance(yearsHeld: number) {
   const y = Math.max(0, Math.floor(yearsHeld || 0));
 
-  // IR : 0% jusqu'à 5 ans, 6%/an (6e->21e), puis 4% la 22e (exonération)
+  // IR : 0% jusqu'à 5 ans, 6%/an (6e->21e), puis exonération à 22 ans
   let abIR = 0;
   if (y <= 5) abIR = 0;
   else if (y >= 22) abIR = 100;
   else {
     const y6_21 = clamp(Math.min(y, 21) - 5, 0, 16);
-    abIR = y6_21 * 6;
-    if (y === 22) abIR += 4;
-    abIR = clamp(abIR, 0, 100);
+    abIR = clamp(y6_21 * 6, 0, 100);
   }
 
   // PS : 0% jusqu'à 5 ans, 1.65%/an (6e->21e), 1.6% la 22e, 9%/an (23e->30e)
@@ -228,7 +221,7 @@ type PVResult = {
   worksCosts: number;
   totalPurchaseCost: number;
 
-  grossGain: number; // peut être négatif
+  grossGain: number;
 
   isExempt: boolean;
   yearsHeld: number;
@@ -244,13 +237,50 @@ type PVResult = {
   crd: number;
   ira: number;
   loanPayoff: number;
-  netCashSeller: number; // peut être négatif
+  netCashSeller: number;
 
   breakevenSalePrice: number;
 };
 
 export type PlusValueWizardProps = {
   showSaveButton?: boolean;
+};
+
+/* ------------------------ Analysis rendering (PretRelais style) ------------------------ */
+const renderAnalysisBlocks = (text: string) => {
+  if (!text) return null;
+
+  const sections = text
+    .split(/\n\s*\n/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  return (
+    <div className="space-y-3">
+      {sections.map((section, idx) => {
+        const lines = section
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
+
+        if (!lines.length) return null;
+
+        const title = lines[0];
+        const body = lines.slice(1);
+
+        return (
+          <div key={idx} className="rounded-xl border border-slate-200 bg-white/80 px-3 py-3">
+            <p className="text-[0.75rem] font-semibold text-slate-900 mb-1">{title}</p>
+            {body.map((line, i) => (
+              <p key={i} className="text-[0.8rem] text-slate-700 leading-relaxed">
+                {line}
+              </p>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
 };
 
 export default function PlusValueWizard({ showSaveButton = true }: PlusValueWizardProps) {
@@ -344,7 +374,6 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
   const [iraMode, setIraMode] = useState<"aucune" | "pourcent">("pourcent");
   const [iraPct, setIraPct] = useState<string>("1.0");
-  const [iraFixed, setIraFixed] = useState<string>("0");
 
   /* ======================== Step 4: Fiscalité ======================== */
   const [applySurtax, setApplySurtax] = useState<"oui" | "non">("oui");
@@ -358,6 +387,11 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
+
+  // Email (optionnel)
+  const [sendByEmail, setSendByEmail] = useState<boolean>(true);
+  const [sendingEmail, setSendingEmail] = useState<boolean>(false);
+  const [sendEmailMsg, setSendEmailMsg] = useState<string | null>(null);
 
   // 1) Restore email depuis session OU localStorage tool-specific
   useEffect(() => {
@@ -567,7 +601,6 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         loanYearsElapsed,
         iraMode,
         iraPct,
-        iraFixed,
         applySurtax,
       };
       window.localStorage.setItem(PLUSVALUE_STORAGE_KEY, JSON.stringify(payload));
@@ -613,7 +646,6 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
       setIraMode(saved.iraMode ?? "pourcent");
       setIraPct(saved.iraPct ? String(saved.iraPct) : "1.0");
-      setIraFixed(saved.iraFixed ? String(saved.iraFixed) : "0");
 
       setApplySurtax(saved.applySurtax ?? "oui");
 
@@ -621,8 +653,10 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       setMaxStepReached(1);
       setStep(1);
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error("Erreur restauration simulation plus-value :", e);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ======================== RPC lead capture ======================== */
@@ -695,28 +729,87 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     });
 
     if (error) {
+      // eslint-disable-next-line no-console
       console.warn("[rpc upsert_lead_v1] error:", error);
       throw new Error(error.message || "Erreur RPC");
     }
   };
+
+  /* ======================== Email payload ======================== */
+  function buildEmailComputed(params: { result: PVResult; displayResult: PVResult }) {
+    return {
+      meta: { tool: "plus-value-vente-immobiliere", version: "v1_email" },
+      input: {
+        residenceType,
+        yearsHeld,
+        salePrice,
+        saleAgencyFeesSeller,
+        saleOtherCosts,
+        purchasePrice,
+        acqFraisMode,
+        acqNotaryFees,
+        acqAgencyFees,
+        travauxMode,
+        travauxAmount,
+        loanHas,
+        crdMode,
+        crdKnown,
+        loanPrincipal,
+        loanRate,
+        loanYearsTotal,
+        loanYearsElapsed,
+        iraMode,
+        iraPct,
+        applySurtax,
+      },
+      output: {
+        result: params.result,
+        displayResult: params.displayResult,
+      },
+    };
+  }
+
+  async function sendPlusValueEmail(email: string, computed: any) {
+    setSendEmailMsg(null);
+    setSendingEmail(true);
+
+    try {
+      const r = await fetch("/api/tools/plus-value-vente-immobiliere/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, computed }),
+      });
+
+      const data = await r.json().catch(() => null);
+      if (!r.ok || !data?.ok) throw new Error(data?.error || "email_failed");
+
+      setSendEmailMsg("✅ Email envoyé (vérifiez les spams si besoin).");
+      return true;
+    } catch (e: any) {
+      setSendEmailMsg("❌ Envoi email impossible : " + (e?.message || "erreur"));
+      return false;
+    } finally {
+      setSendingEmail(false);
+    }
+  }
 
   const handleUnlock = async () => {
     setUnlockMsg(null);
 
     if (!hasResult) {
       setUnlockMsg("Calculez d’abord votre plus-value pour débloquer l’analyse.");
-      return;
+      return false;
     }
 
     const email = safeEmail(leadEmail);
     if (!email || !email.includes("@")) {
       setUnlockMsg("Merci de renseigner une adresse e-mail valide.");
-      return;
+      return false;
     }
 
     if (!consentLokt) {
       setUnlockMsg("Pour débloquer l’analyse, merci d’accepter l’utilisation de vos données (Lokt.fr).");
-      return;
+      return false;
     }
 
     setUnlocking(true);
@@ -728,8 +821,10 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
       setUnlocked(true);
       setUnlockMsg("✅ Analyse débloquée. (Votre simulation est bien enregistrée.)");
+      return true;
     } catch (e: any) {
       setUnlockMsg("❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue"));
+      return false;
     } finally {
       setUnlocking(false);
     }
@@ -789,20 +884,68 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     return scenarioResult ?? result;
   }, [result, scenarioEnabled, scenarioResult]);
 
-  const scenarioDelta = useMemo(() => {
-    if (!result || !scenarioResult) return null;
-    return {
-      salePrice: salePriceScenario - result.salePrice,
-      grossGain: scenarioResult.grossGain - result.grossGain,
-      totalTax: scenarioResult.totalTax - result.totalTax,
-      netCashSeller: scenarioResult.netCashSeller - result.netCashSeller,
-    };
-  }, [result, scenarioResult, salePriceScenario]);
+  /* ======================== Analyse texte ======================== */
+  const buildPlusValueTextDetail = (r: PVResult) => {
+    const lines: string[] = [];
 
-  const showCashNegativeWarning = !!displayResult && displayResult.netCashSeller < 0;
-  const showLossInfo = !!displayResult && displayResult.grossGain < 0;
+    lines.push(
+      [
+        "1) Résumé (ce que vous récupérez)",
+        `Cash net vendeur : ${formatEuro(r.netCashSeller)}.`,
+        `Prix net vendeur (après frais vendeur) : ${formatEuro(r.netSalePriceForPV)}.`,
+        `Prêt à solder (CRD + IRA) : ${formatEuro(r.loanPayoff)}.`,
+        `Impôts estimés sur plus-value : ${formatEuro(r.totalTax)}.`,
+      ].join("\n")
+    );
 
-  /* ======================== UI - Stepper ======================== */
+    lines.push(
+      [
+        "2) Plus-value (base de calcul)",
+        `Plus-value brute : ${formatEuro(r.grossGain)}.`,
+        `Coût total d’acquisition : ${formatEuro(r.totalPurchaseCost)} (achat + frais + travaux).`,
+        `Prix net vendeur retenu : ${formatEuro(r.netSalePriceForPV)}.`,
+        r.isExempt
+          ? "Résidence principale : présumé exonéré dans ce simulateur."
+          : `Durée de détention : ${r.yearsHeld} an(s) → abattements : IR ${formatPct(r.abIR)} / PS ${formatPct(r.abPS)}.`,
+      ].join("\n")
+    );
+
+    lines.push(
+      [
+        "3) Fiscalité (estimation France)",
+        r.isExempt
+          ? "Impôt = 0 € (exonération présumée)."
+          : [
+              `Base taxable IR : ${formatEuro(r.taxableIR)} → IR (19%) ≈ ${formatEuro(r.taxIR)}.`,
+              `Base taxable PS : ${formatEuro(r.taxablePS)} → PS (17,2%) ≈ ${formatEuro(r.taxPS)}.`,
+              `Surtaxe (modèle simplifié) ≈ ${formatEuro(r.surtax)}.`,
+              `Total impôts ≈ ${formatEuro(r.totalTax)}.`,
+            ].join("\n"),
+      ].join("\n")
+    );
+
+    lines.push(
+      [
+        "4) Crédit / remboursement anticipé",
+        `CRD : ${formatEuro(r.crd)}.`,
+        `IRA : ${formatEuro(r.ira)}.`,
+        `Total à solder : ${formatEuro(r.loanPayoff)}.`,
+        "À vérifier : attestation banque (le CRD exact peut changer la conclusion).",
+      ].join("\n")
+    );
+
+    lines.push(
+      [
+        "5) Point de repère",
+        `Prix de vente “à l’équilibre” (coût + frais + prêt) ≈ ${formatEuro(r.breakevenSalePrice)}.`,
+        "Repère : c’est le prix auquel le cash net vendeur serait proche de 0 € (dans ce modèle).",
+      ].join("\n")
+    );
+
+    return lines.join("\n\n");
+  };
+
+  /* ======================== UI ======================== */
   return (
     <div className="space-y-6">
       {/* Wizard */}
@@ -883,7 +1026,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Type d’occupation
-                    <InfoBadge text="Comment ça marche : si vous sélectionnez “résidence principale”, le simulateur considère la plus-value exonérée (0 €). En vrai, il existe des conditions (occupation effective, délais, dépendances…). Si vous n’êtes pas sûr, choisissez “secondaire” pour une estimation prudente." />
+                    <InfoBadge text="Si vous sélectionnez “résidence principale”, le simulateur considère la plus-value exonérée (0 €). En vrai, il existe des conditions (occupation effective, délais…). Si doute, choisissez “secondaire” pour une estimation prudente." />
                   </label>
                   <select
                     value={residenceType}
@@ -899,7 +1042,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Durée de détention (années)
-                    <InfoBadge text="Comment ça marche : cette durée sert à appliquer les abattements (réduction progressive de l’impôt). Barème standard : IR exonéré à 22 ans, prélèvements sociaux exonérés à 30 ans. Plus vous détenez longtemps, moins vous payez." />
+                    <InfoBadge text="Cette durée sert à appliquer les abattements (réduction progressive de l’impôt). Barème standard : IR exonéré à 22 ans, PS exonérés à 30 ans." />
                   </label>
                   <input
                     inputMode="numeric"
@@ -912,19 +1055,20 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1 lg:col-span-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Prix de vente (net acheteur)
-                    <InfoBadge text="Comment ça marche : c’est le prix indiqué sur le compromis. Les frais acheteur (notaire) ne sont pas inclus. Ensuite, on retire vos frais vendeur pour obtenir le “prix net vendeur”." />
+                    <InfoBadge text="Prix indiqué au compromis. On retire ensuite vos frais vendeur pour obtenir le “prix net vendeur”." />
                   </label>
                   <input
                     inputMode="numeric"
                     value={salePrice}
-                    onChange={(e) => setSalePrice(onlyDigits(e.target.value
-))} className={inputBase} />
+                    onChange={(e) => setSalePrice(onlyDigits(e.target.value))}
+                    className={inputBase}
+                  />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Frais d’agence à votre charge
-                    <InfoBadge text="Comment ça marche : si le mandat prévoit que l’agence est payée par le vendeur, mettez le montant ici. Sinon laissez 0. Ces frais diminuent le prix net vendeur et donc la plus-value brute." />
+                    <InfoBadge text="Si le vendeur paie l’agence, mettez le montant ici. Sinon laissez 0. Ces frais diminuent le prix net vendeur." />
                   </label>
                   <input
                     inputMode="numeric"
@@ -937,7 +1081,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Autres frais vendeur
-                    <InfoBadge text="Comment ça marche : diagnostics, mainlevée, frais divers. Si vous ne savez pas, laissez 0 : l’impact est direct sur le prix net vendeur." />
+                    <InfoBadge text="Diagnostics, mainlevée, frais divers. Si vous ne savez pas, laissez 0." />
                   </label>
                   <input
                     inputMode="numeric"
@@ -991,7 +1135,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Prix d’achat
-                    <InfoBadge text="Comment ça marche : c’est le prix du bien dans l’acte d’achat (hors frais). On ajoute ensuite frais + travaux pour reconstituer votre coût total d’acquisition." />
+                    <InfoBadge text="Prix du bien dans l’acte d’achat (hors frais). On ajoute frais + travaux pour reconstituer le coût d’acquisition." />
                   </label>
                   <input
                     inputMode="numeric"
@@ -1004,7 +1148,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Frais d’acquisition
-                    <InfoBadge text="Comment ça marche : forfait 7,5% = estimation simple (souvent proche pour l’ancien). Si vous avez les montants exacts (décompte notaire, factures), choisissez “réels” pour plus de précision." />
+                    <InfoBadge text="Forfait 7,5% = estimation simple (souvent proche pour l’ancien). Choisissez “réels” si vous avez les montants exacts." />
                   </label>
                   <select
                     value={acqFraisMode}
@@ -1021,7 +1165,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     <div className="space-y-1">
                       <label className="text-xs text-slate-700 flex items-center gap-1">
                         Frais de notaire (réels)
-                        <InfoBadge text="Où le trouver : décompte notaire / acte d’achat. Ces frais augmentent le coût d’acquisition, donc réduisent la plus-value." />
+                        <InfoBadge text="Décompte notaire / acte d’achat. Ces frais réduisent la plus-value en augmentant le coût d’acquisition." />
                       </label>
                       <input
                         inputMode="numeric"
@@ -1033,7 +1177,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     <div className="space-y-1">
                       <label className="text-xs text-slate-700 flex items-center gap-1">
                         Frais d’agence (réels)
-                        <InfoBadge text="Comment ça marche : indiquez les frais d’agence payés à l’achat (si séparés). Ils s’ajoutent au coût d’acquisition." />
+                        <InfoBadge text="Frais d’agence payés à l’achat (s’ils existent séparément). S’ajoutent au coût d’acquisition." />
                       </label>
                       <input
                         inputMode="numeric"
@@ -1056,7 +1200,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Travaux
-                    <InfoBadge text="Comment ça marche : les travaux augmentent le coût d’acquisition et peuvent réduire la plus-value taxable. En pratique, seuls certains travaux sont éligibles (factures, nature des travaux). Le forfait 15% est un repère simplifié." />
+                    <InfoBadge text="Les travaux augmentent le coût d’acquisition. En pratique, seuls certains travaux sont éligibles (factures, nature). Le forfait 15% est un repère simplifié." />
                   </label>
                   <select
                     value={travauxMode}
@@ -1064,7 +1208,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     className={selectBase}
                   >
                     <option value="reel">Montant réel</option>
-                    <option value="forfait_15">Forfait 15% (si &gt; 5 ans)</option>
+                    <option value="forfait_15">Forfait 15% (si > 5 ans)</option>
                     <option value="aucun">Aucun</option>
                   </select>
                 </div>
@@ -1073,7 +1217,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                   <div className="space-y-1">
                     <label className="text-xs text-slate-700 flex items-center gap-1">
                       Montant travaux
-                      <InfoBadge text="Astuce : si vous n’avez pas le détail, mettez 0 puis comparez ensuite avec le forfait 15% pour voir l’ordre de grandeur." />
+                      <InfoBadge text="Astuce : mettez 0 puis comparez ensuite avec le forfait 15% pour l’ordre de grandeur." />
                     </label>
                     <input
                       inputMode="numeric"
@@ -1123,7 +1267,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1">
                   <label className={labelBase}>
                     Avez-vous un crédit en cours ?
-                    <InfoBadge text="Comment ça marche : si vous avez un crédit, on soustrait CRD + IRA de votre prix net vendeur pour obtenir le cash net. Sinon, on met 0." />
+                    <InfoBadge text="Si vous avez un crédit, on soustrait CRD + IRA de votre prix net vendeur pour obtenir le cash net. Sinon, on met 0." />
                   </label>
                   <select
                     value={loanHas}
@@ -1140,7 +1284,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     <div className="space-y-1">
                       <label className={labelBase}>
                         CRD (capital restant dû)
-                        <InfoBadge text="Comment ça marche : soit vous saisissez le CRD exact (attestation banque), soit on l’estime. Le CRD est la variable #1 du cash net vendeur." />
+                        <InfoBadge text="Saisissez le CRD exact (attestation banque) ou estimez-le. C’est la variable #1 du cash net." />
                       </label>
                       <select
                         value={crdMode}
@@ -1156,7 +1300,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                       <div className="space-y-1">
                         <label className={labelBase}>
                           CRD exact (€)
-                          <InfoBadge text="Où le trouver : attestation de remboursement anticipé / tableau d’amortissement à date." />
+                          <InfoBadge text="Attestation de remboursement anticipé / tableau d’amortissement à date." />
                         </label>
                         <input
                           inputMode="numeric"
@@ -1170,7 +1314,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Capital initial emprunté
-                            <InfoBadge text="Comment ça marche : on reconstruit un amortissement standard. Si votre prêt est atypique (différé/modulation/variable), l’estimation peut être moins précise." />
+                            <InfoBadge text="On reconstruit un amortissement standard. Si votre prêt est atypique (différé/modulation/variable), l’estimation peut être moins précise." />
                           </label>
                           <input
                             inputMode="numeric"
@@ -1183,7 +1327,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Taux du prêt (%)
-                            <InfoBadge text="Comment ça marche : taux nominal annuel. L’assurance n’est pas intégrée dans le CRD." />
+                            <InfoBadge text="Taux nominal annuel. L’assurance n’est pas intégrée dans le CRD." />
                           </label>
                           <input
                             inputMode="decimal"
@@ -1196,7 +1340,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Durée totale (années)
-                            <InfoBadge text="Comment ça marche : durée initiale du prêt (convertie en mois pour le calcul)." />
+                            <InfoBadge text="Durée initiale du prêt (convertie en mois pour le calcul)." />
                           </label>
                           <input
                             inputMode="numeric"
@@ -1209,7 +1353,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Années déjà écoulées
-                            <InfoBadge text="Comment ça marche : approx OK. Plus c’est précis, plus le CRD estimé est proche." />
+                            <InfoBadge text="Approximation OK. Plus c’est précis, plus le CRD estimé est proche." />
                           </label>
                           <input
                             inputMode="numeric"
@@ -1223,8 +1367,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
                     <div className="space-y-1">
                       <label className={labelBase}>
-                        IRA (remb. anticipé)
-                        <InfoBadge text="Comment ça marche : certaines banques facturent des indemnités. Ici, on applique un % du CRD (repère)." />
+                        IRA (remboursement anticipé)
+                        <InfoBadge text="Certaines banques facturent des indemnités. Ici, on applique un % du CRD (repère)." />
                       </label>
                       <select
                         value={iraMode}
@@ -1290,7 +1434,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1">
                   <label className={labelBase}>
                     Appliquer la surtaxe ?
-                    <InfoBadge text="Comment ça marche : si la plus-value taxable IR dépasse certains seuils, une surtaxe peut s’appliquer. Ici c’est un modèle simplifié, utile comme repère." />
+                    <InfoBadge text="Si la plus-value taxable IR dépasse certains seuils, une surtaxe peut s’appliquer. Ici c’est un modèle simplifié, utile comme repère." />
                   </label>
                   <select
                     value={applySurtax}
@@ -1361,77 +1505,75 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         id="resultats-plusvalue"
         className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4"
       >
-        <div>
-          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600 mb-1">Résultats de votre simulation</p>
-          <h2 className="text-sm font-semibold text-slate-900">Plus-value & cash net vendeur</h2>
-          <p className="text-[0.75rem] text-slate-600">
-            Chiffres indicatifs. Le détail fiscal dépend de votre situation (notaire).
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700 mb-1">Résultats</p>
+            <h2 className="text-sm font-semibold text-slate-900">Plus-value & cash net vendeur</h2>
+            <p className="text-[0.75rem] text-slate-600">Synthèse claire + analyse détaillée (débloquée après).</p>
+          </div>
         </div>
 
         {!result || !displayResult ? (
           <p className="text-[0.8rem] text-slate-600">Complétez les étapes puis cliquez sur « Calculer ma plus-value ».</p>
         ) : (
           <>
-            {(displayResult.netCashSeller < 0 || displayResult.grossGain < 0) && (
-              <div
-                className={
-                  "rounded-xl border px-4 py-3 " +
-                  (displayResult.netCashSeller < 0
-                    ? "border-rose-200 bg-rose-50 text-rose-900"
-                    : "border-amber-200 bg-amber-50 text-amber-900")
-                }
-              >
-                {displayResult.netCashSeller < 0 ? (
-                  <>
-                    <p className="text-[0.8rem] font-semibold">⚠️ Cash net vendeur négatif</p>
-                    <p className="mt-1 text-[0.75rem]">
-                      Avec ces hypothèses, la vente ne couvre pas (impôts + remboursement banque). Vérifiez en priorité :{" "}
-                      <span className="font-semibold">CRD exact</span>, IRA et frais.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-[0.8rem] font-semibold">Info : moins-value</p>
-                    <p className="mt-1 text-[0.75rem]">
-                      Vous êtes en moins-value. Dans ce modèle, l’impôt sur la plus-value est donc à 0 €.
-                    </p>
-                  </>
-                )}
+            {/* Synthèse visible */}
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Prix net vendeur</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.netSalePriceForPV)}</p>
+                <p className="mt-1 text-[0.7rem] text-slate-500">Prix − frais vendeur.</p>
               </div>
-            )}
 
-            {/* Scénario */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Scénario : prix de vente</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">
-                    {formatEuro(salePriceScenario)}{" "}
-                    <span className="text-xs font-normal text-slate-500">(base : {formatEuro(result.salePrice)})</span>
-                  </p>
-                </div>
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                  {displayResult.grossGain >= 0 ? "Plus-value brute" : "Moins-value brute"}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.grossGain)}</p>
+                <p className="mt-1 text-[0.7rem] text-slate-500">Net vendeur − coût d’acquisition.</p>
+              </div>
 
-                <div className="text-right">
-                  <p className="text-[0.7rem] text-slate-500">Mode</p>
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Impôts estimés</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.totalTax)}</p>
+                <p className="mt-1 text-[0.7rem] text-slate-500">IR + PS{applySurtax === "oui" ? " + surtaxe" : ""}.</p>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Cash net vendeur</p>
+                <p
+                  className={
+                    "mt-1 text-sm font-semibold " +
+                    (displayResult.netCashSeller >= 0 ? "text-emerald-700" : "text-rose-700")
+                  }
+                >
+                  {formatEuro(displayResult.netCashSeller)}
+                </p>
+                <p className="mt-1 text-[0.7rem] text-slate-500">Après impôts + banque.</p>
+              </div>
+            </div>
+
+            {/* Scénario (bonus) : seulement si débloqué */}
+            {canShowFullAnalysis ? (
+              <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600">Scénario (prix de vente)</p>
+
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-900">{formatEuro(salePriceScenario)}</p>
                   <button
                     type="button"
                     onClick={() => setScenarioEnabled((v) => !v)}
                     className={
-                      "mt-1 inline-flex items-center rounded-full border px-3 py-1 text-[0.75rem] font-semibold " +
+                      "rounded-full border px-3 py-1 text-[0.75rem] font-semibold " +
                       (scenarioEnabled
                         ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                         : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")
                     }
-                    aria-label="Activer/désactiver le scénario"
-                    title="Quand activé, toute l’analyse ci-dessous utilise le prix de vente du scénario."
                   >
-                    {scenarioEnabled ? "Scénario activé" : "Scénario désactivé"}
+                    {scenarioEnabled ? "Scénario activé" : "Activer le scénario"}
                   </button>
                 </div>
-              </div>
 
-              <div>
                 <input
                   type="range"
                   min={sliderBounds.min}
@@ -1443,164 +1585,129 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     setScenarioEnabled(true);
                   }}
                   className="w-full"
-                  aria-label="Ajuster le prix de vente scénario"
                 />
-                <div className="mt-1 flex items-center justify-between text-[0.7rem] text-slate-500">
+
+                <div className="text-[0.7rem] text-slate-500 flex justify-between">
                   <span>{formatEuro(sliderBounds.min)}</span>
                   <span>{formatEuro(sliderBounds.max)}</span>
                 </div>
               </div>
+            ) : null}
 
-              {scenarioDelta ? (
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.65rem] uppercase tracking-[0.14em] text-slate-500">Δ Plus-value brute</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatSignedEuro(scenarioDelta.grossGain)}</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-[0.65rem] uppercase tracking-[0.14em] text-slate-500">Δ Impôts estimés</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatSignedEuro(scenarioDelta.totalTax)}</p>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-900 px-3 py-2.5 text-white">
-                    <p className="text-[0.65rem] uppercase tracking-[0.14em] text-emerald-200">Δ Cash net vendeur</p>
-                    <p className="mt-1 text-sm font-semibold text-white">{formatSignedEuro(scenarioDelta.netCashSeller)}</p>
-                  </div>
+            {/* Analyse détaillée (blur si non débloqué) */}
+            {(() => {
+              const text = buildPlusValueTextDetail(displayResult);
+              return (
+                <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-4">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">Analyse détaillée</p>
+
+                  <div className={canShowFullAnalysis ? "" : "blur-sm select-none"}>{renderAnalysisBlocks(text)}</div>
+
+                  {!canShowFullAnalysis ? (
+                    <p className="mt-3 text-[0.75rem] text-slate-500">
+                      Débloquez l’analyse pour afficher le détail (bases taxables, IR/PS, CRD/IRA, repère d’équilibre, scénario).
+                    </p>
+                  ) : (
+                    <p className="mt-3 text-[0.65rem] text-slate-500">
+                      Résultats indicatifs. Validation notaire recommandée.
+                    </p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-[0.7rem] text-slate-500">
-                  Déplace le curseur pour voir l’impact (le scénario s’applique à toute l’analyse).
-                </p>
-              )}
-            </div>
+              );
+            })()}
 
-            {/* Résumé principal */}
-            <div className="grid gap-3 sm:grid-cols-4 items-stretch">
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-                  {displayResult.grossGain >= 0 ? "Plus-value brute" : "Moins-value brute"}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.grossGain)}</p>
-                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                  (Prix net vendeur) − (coût acquisition + travaux).
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Impôts estimés</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.totalTax)}</p>
-                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                  IR {formatEuro(displayResult.taxIR)} · PS {formatEuro(displayResult.taxPS)} · surtaxe{" "}
-                  {formatEuro(displayResult.surtax)}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Remboursement prêt</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.loanPayoff)}</p>
-                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                  CRD {formatEuro(displayResult.crd)} · IRA {formatEuro(displayResult.ira)}
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-900 text-white px-3 py-2.5 h-full flex flex-col">
-                <p className="text-[0.65rem] text-emerald-200 uppercase tracking-[0.14em]">Cash net vendeur</p>
-                <p className="mt-1 text-2xl font-semibold text-white">{formatEuro(displayResult.netCashSeller)}</p>
-                <p className="mt-auto pt-1 text-[0.7rem] text-slate-200">Après frais vente, impôts et prêt.</p>
-              </div>
-            </div>
-
-            {/* Hypothèses / limites */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600">Hypothèses & limites</p>
-                  <p className="mt-1 text-[0.8rem] font-semibold text-slate-900">
-                    Simulation indicative, validation notaire recommandée.
-                  </p>
-                </div>
-                <span className="shrink-0 inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-700">
-                  Estimation
-                </span>
-              </div>
-
-              <ul className="text-[0.75rem] text-slate-700 list-disc pl-5 space-y-1">
-                <li>
-                  <span className="font-semibold">Résidence principale</span> : “présumé exonéré” ici — conditions réelles non vérifiées.
-                </li>
-                <li>
-                  <span className="font-semibold">Travaux</span> : éligibilité / forfait 15% dépendent de conditions et justificatifs.
-                </li>
-                <li>
-                  <span className="font-semibold">CRD estimé</span> : prêt atypique (différé/modulation/variable) = estimation moins fiable.
-                </li>
-                <li>
-                  <span className="font-semibold">Surtaxe</span> : modèle simplifié, indicatif.
-                </li>
-              </ul>
-
-              <details className="rounded-lg bg-white border border-slate-200 px-3 py-2">
-                <summary className="cursor-pointer text-[0.75rem] font-semibold text-slate-800">
-                  Voir le détail des abattements utilisés
-                </summary>
-                <div className="mt-2 text-[0.75rem] text-slate-700 space-y-1">
-                  <p>
-                    <span className="font-semibold">IR</span> : 0% jusqu’à 5 ans, puis 6%/an (6e→21e), puis 4% la 22e (exonération).
-                  </p>
-                  <p>
-                    <span className="font-semibold">PS</span> : 0% jusqu’à 5 ans, puis 1,65%/an (6e→21e), puis 1,6% la 22e, puis 9%/an (23e→30e).
-                  </p>
-                </div>
-              </details>
-            </div>
-
-            {/* 🔒 Gate */}
+            {/* Gate (PretRelais style) */}
             {!canShowFullAnalysis ? (
-              <LeadGate
-                theme="cyan-emerald"
-                title="Sauvegarder & recevoir le récap Lokt.fr™"
-                subtitle="Recevez un récap clair + checklist notaire, et sauvegardez votre simulation. Pas de démarchage."
-                email={leadEmail}
-                setEmail={setLeadEmail}
-                consent={consentLokt}
-                setConsent={setConsentLokt}
-                unlocking={unlocking}
-                unlockMsg={unlockMsg}
-                onUnlock={handleUnlock}
-              />
-            ) : null}
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden">
+                <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
+                <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
 
-            {/* ✅ Partie débloquée */}
-            {canShowFullAnalysis ? (
-              <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3 space-y-3">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600">Plan d&apos;action Lokt.fr™</p>
+                <div className="relative space-y-3">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE</p>
+                  <h3 className="text-lg font-semibold">Conservez votre simulation et débloquez l’analyse détaillée.</h3>
 
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="text-[0.75rem] text-slate-700">
-                      <span className="font-semibold">1) CRD exact</span> (attestation banque).
-                    </p>
-                    <p className="mt-1 text-[0.7rem] text-slate-500">C’est la variable #1 du cash net vendeur.</p>
-                  </div>
+                  <div className="mt-2 rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
+                    {/* Email */}
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
+                      <input
+                        type="email"
+                        value={leadEmail}
+                        onChange={(e) => setLeadEmail(e.target.value)}
+                        placeholder="ex: prenom.nom@gmail.com"
+                        className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
+                      />
+                      <p className="text-[0.7rem] text-slate-300">
+                        On l’utilise pour enregistrer la simulation et mesurer la demande (stats agrégées).
+                      </p>
+                    </div>
 
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="text-[0.75rem] text-slate-700">
-                      <span className="font-semibold">2) Travaux</span> (factures + liste).
-                    </p>
-                    <p className="mt-1 text-[0.7rem] text-slate-500">Peut réduire la base taxable si non exonéré.</p>
-                  </div>
+                    {/* Option email */}
+                    <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={sendByEmail}
+                          onChange={(e) => setSendByEmail(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
+                        />
+                        <span className="text-[0.75rem] text-slate-200 leading-relaxed">
+                          <span className="font-semibold">Recevoir l’analyse complète par email</span>
+                          <span className="block text-[0.7rem] text-slate-300 mt-1">
+                            Pratique pour relire les résultats plus tard.
+                          </span>
+                        </span>
+                      </label>
 
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="text-[0.75rem] text-slate-700">
-                      <span className="font-semibold">3) Notaire</span> (exonérations / cas particuliers).
-                    </p>
-                    <p className="mt-1 text-[0.7rem] text-slate-500">Le simulateur est un repère, pas un calcul notarial.</p>
+                      {sendingEmail ? <p className="mt-2 text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
+                      {sendEmailMsg ? <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
+                    </div>
+
+                    {/* Consentement */}
+                    <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={consentLokt}
+                          onChange={(e) => setConsentLokt(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
+                        />
+                        <span className="text-[0.75rem] text-slate-200 leading-relaxed">
+                          <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour enregistrer mon analyse
+                          et améliorer Lokt.fr (statistiques anonymisées).
+                        </span>
+                      </label>
+                      <p className="mt-2 text-[0.7rem] text-slate-300">
+                        Pas de démarchage partenaire. Aucun consentement “contact partenaire”.
+                      </p>
+                    </div>
+
+                    {/* Bouton */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const ok = await handleUnlock();
+                        const email = safeEmail(leadEmail);
+
+                        if (ok && email && sendByEmail && result && displayResult) {
+                          const computed = buildEmailComputed({ result, displayResult });
+                          await sendPlusValueEmail(email, computed);
+                        }
+                      }}
+                      disabled={unlocking}
+                      className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
+                    >
+                      {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
+                    </button>
+
+                    {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
                   </div>
                 </div>
               </div>
             ) : null}
 
-            <p className="mt-2 text-[0.65rem] text-slate-500">
-              Résultats indicatifs. Ne constitue pas un avis fiscal / une offre. Validation notaire recommandée.
+            <p className="mt-3 text-[0.7rem] text-slate-500">
+              Simulation indicative. Le détail fiscal dépend de votre situation. Validation notaire recommandée.
             </p>
           </>
         )}
