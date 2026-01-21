@@ -1208,8 +1208,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     className={selectBase}
                   >
                     <option value="reel">Montant réel</option>
-                    <option value="forfait_15">Forfait 15% (si > 5 ans)</option>
-                    <option value="aucun">Aucun</option>
+                    <option value="forfait_15">Forfait 15% (si &gt; 5 ans)</option>
+		    <option value="aucun">Aucun</option>
                   </select>
                 </div>
 
