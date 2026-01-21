@@ -1,14 +1,14 @@
 // lib/emails/investissement.ts
+// Email investissement — même template que capaciteEmail.ts (même wrapper / mêmes styles)
+// Objectif :
+// 1) Design identique à capacité (mêmes blocs) + GROS LOGO en header
+// 2) Mapping robuste car `computed` varie selon versions du wizard
+// 3) Signature attendue par /pages/api/tools/investissement/send.ts :
+//    buildInvestissementEmailHtml(computed) et buildInvestissementEmailText(computed)
 
-function esc(s: any) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
+type AnyObj = Record<string, any>;
 
+/* ======================== Format helpers ======================== */
 function formatEuro(val: any) {
   const n = Number(val);
   if (!Number.isFinite(n)) return "-";
@@ -22,254 +22,604 @@ function formatEuro(val: any) {
 function formatPct(val: any) {
   const n = Number(val);
   if (!Number.isFinite(n)) return "-";
-  return n.toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + " %";
+  return (
+    n.toLocaleString("fr-FR", {
+      maximumFractionDigits: 2,
+    }) + " %"
+  );
 }
 
-function safeLines(text: any) {
-  const raw = String(text ?? "").trim();
-  if (!raw) return [];
-  return raw
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .slice(0, 30);
+function escapeHtml(s: any) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
+/* ======================== Safe getters ======================== */
+function getPath(obj: any, path: string) {
+  if (!obj || !path) return undefined;
+  const parts = path.split(".");
+  let cur = obj;
+  for (const p of parts) {
+    if (cur == null) return undefined;
+    cur = cur[p];
+  }
+  return cur;
+}
+
+function firstDefined(obj: any, paths: string[]) {
+  for (const p of paths) {
+    const v = getPath(obj, p);
+    if (v !== undefined && v !== null && v !== "") return v;
+  }
+  return undefined;
+}
+
+function asNumber(v: any) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function asString(v: any) {
+  const s = String(v ?? "").trim();
+  return s ? s : undefined;
+}
+
+function toBullets(v: any): string[] {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map((x) => String(x || "").trim()).filter(Boolean);
+  const s = String(v || "").trim();
+  if (!s) return [];
+  const lines = s
+    .split(/\n+/)
+    .map((x) => x.replace(/^[•\-\*\s]+/, "").trim())
+    .filter(Boolean);
+  return lines.length ? lines : [s];
+}
+
+/* ======================== Normalisation computed ======================== */
 /**
- * computed attendu (depuis ton Wizard):
- * {
- *   inputs: {...},
- *   output: { resume, graphData, analyse, market, opportunity },
- *   meta: {...},
- *   tracking: {...}
- * }
+ * Le wizard V2 envoie souvent:
+ * computed = { inputs: {...}, output: { resume, graphData, analyse, opportunity, market }, meta, tracking }
+ *
+ * Mais on garde des fallbacks si ça évolue.
  */
-export function buildInvestissementEmail(computed: any): string {
-  const baseUrl =
-    (process.env.NEXT_PUBLIC_SITE_URL && String(process.env.NEXT_PUBLIC_SITE_URL)) ||
-    "https://lokt.fr";
+function normalizeComputed(computed: AnyObj) {
+  const c = (computed || {}) as AnyObj;
 
-  const logoUrl = `${baseUrl.replace(/\/$/, "")}/minilogo.png`;
+  const inputs =
+    (c.inputs ||
+      c.input ||
+      c.params ||
+      c.payload?.inputs ||
+      c.data?.inputs ||
+      c.output?.inputs ||
+      {}) as AnyObj;
 
-  const inputs = computed?.inputs || {};
-  const output = computed?.output || {};
-  const resume = output?.resume || null;
-  const graph = output?.graphData || null;
-  const analyse = output?.analyse || "";
-  const opportunity = output?.opportunity || null;
-  const market = output?.market || null;
+  const output =
+    (c.output ||
+      c.result ||
+      c.kpis ||
+      c.payload?.output ||
+      c.data?.output ||
+      {}) as AnyObj;
 
-  const localite = inputs?.localite ? esc(inputs.localite) : "-";
-  const surface = inputs?.surfaceM2 ? esc(inputs.surfaceM2) : "-";
-  const listingUrl = inputs?.listingUrl ? String(inputs.listingUrl) : "";
+  const resume =
+    (output.resume ||
+      c.resume ||
+      output.displayResult?.resume ||
+      output.result?.resume ||
+      output.displayResult ||
+      output.result ||
+      {}) as AnyObj;
 
-  const coutTotal = graph?.coutTotal;
-  const rendementBrut = graph?.rendementBrut;
-  const rendementNetAvantCredit = graph?.rendementNetAvantCredit;
-  const mensualiteCredit = graph?.mensualiteCredit;
+  const graphData = (output.graphData || output.graph || output.kpis || c.graphData || {}) as AnyObj;
 
-  const cashflowMensuel = resume?.cashflowMensuel;
-  const resultatNetAnnuel = resume?.resultatNetAnnuel;
+  const opportunity =
+    (output.opportunity || c.opportunity || output.assessment || c.assessment || null) as AnyObj | null;
 
-  const score = opportunity?.score;
-  const scoreText = Number.isFinite(Number(score)) ? `${Number(score)}/10` : "-";
-  const oppComment = opportunity?.comment ? esc(opportunity.comment) : "";
+  const market = (output.market || c.market || null) as AnyObj | null;
 
-  const improvements: string[] = Array.isArray(opportunity?.improvements)
-    ? opportunity.improvements.map((x: any) => String(x)).filter(Boolean).slice(0, 6)
-    : [];
+  const analyse =
+    (output.analyse ||
+      output.analysis ||
+      c.analyse ||
+      c.analysis ||
+      output.analysisText ||
+      c.analysisText ||
+      "") as string;
 
-  const analyseLines = safeLines(analyse);
+  return { c, inputs, output, resume, graphData, opportunity, market, analyse };
+}
 
-  const marketPriceM2Sale = market?.referencePriceM2Sale;
-  const marketRentM2 = market?.referenceRentM2;
-  const marketSource = market?.source ? esc(market.source) : "";
+function detectStatusFromCashflow(cf: number | undefined) {
+  if (cf === undefined) return "Votre analyse est prête ✅";
+  if (cf > 0) return "Cash-flow positif ✅";
+  if (cf === 0) return "Cash-flow neutre ✅";
+  return "Cash-flow négatif";
+}
 
-  const pill =
-    Number(cashflowMensuel) >= 0
-      ? { bg: "#E8F7EE", fg: "#0B6B2F", label: "Cash-flow positif" }
-      : { bg: "#FDECEC", fg: "#9B1C1C", label: "Cash-flow négatif" };
+/* ======================== Extraction KPI (robuste) ======================== */
+function extractKpis(computed: AnyObj) {
+  const { c, inputs, output, resume, graphData, opportunity, market, analyse } =
+    normalizeComputed(computed);
 
-  const cardStyle =
-    "background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:16px;";
+  // Wizard V2 (vu dans ton code):
+  // resume: { cashflowMensuel, resultatNetAnnuel, rendementNetAvantCredit }
+  // graphData: { coutTotal, mensualiteCredit, loyersAnnuels, chargesTotales, rendementBrut, ... }
 
-  const h1Style = "margin:0;font-size:18px;line-height:1.3;color:#0f172a;";
-  const smallStyle = "margin:0;color:#475569;font-size:12px;line-height:1.4;";
-  const labelStyle = "color:#64748b;font-size:11px;letter-spacing:.08em;text-transform:uppercase;margin:0;";
-  const valueStyle = "color:#0f172a;font-size:14px;margin:4px 0 0 0;font-weight:700;";
+  const cashflowMensuel =
+    asNumber(
+      firstDefined(c, [
+        "cashflowMensuel",
+        "cashflow_mensuel",
+        "resume.cashflowMensuel",
+        "output.resume.cashflowMensuel",
+        "output.resume.cashflow_mensuel",
+        "output.graphData.cashflowMensuel",
+        "output.displayResult.cashflowMensuel",
+      ])
+    ) ??
+    asNumber(firstDefined(output, ["resume.cashflowMensuel"])) ??
+    asNumber(firstDefined(resume, ["cashflowMensuel", "cashflow_mensuel"]));
 
-  const rowCell = "vertical-align:top;padding:10px 8px;";
-  const statBox =
-    "border:1px solid #e5e7eb;border-radius:14px;padding:12px;background:#f8fafc;";
+  const resultatNetAnnuel =
+    asNumber(
+      firstDefined(c, [
+        "resultatNetAnnuel",
+        "resultat_net_annuel",
+        "resume.resultatNetAnnuel",
+        "output.resume.resultatNetAnnuel",
+        "output.displayResult.resultatNetAnnuel",
+      ])
+    ) ?? asNumber(firstDefined(resume, ["resultatNetAnnuel", "resultat_net_annuel"]));
 
-  const btnStyle =
-    "display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 14px;border-radius:999px;font-weight:700;font-size:13px;";
+  const coutTotal =
+    asNumber(
+      firstDefined(c, [
+        "coutTotal",
+        "cout_total",
+        "totalCost",
+        "output.graphData.coutTotal",
+        "output.graphData.totalCost",
+        "graphData.coutTotal",
+        "graphData.totalCost",
+        "resume.coutTotal",
+        "output.resume.coutTotal",
+      ])
+    ) ??
+    asNumber(firstDefined(graphData, ["coutTotal", "totalCost", "cout_total", "total_cost"])) ??
+    asNumber(firstDefined(resume, ["coutTotal", "totalCost"]));
 
-  const listingCta = listingUrl
-    ? `<a href="${esc(listingUrl)}" style="${btnStyle}" target="_blank" rel="noreferrer">Ouvrir l’annonce</a>`
+  // Mensualité crédit + assurance (wizard V2: graphData.mensualiteCredit)
+  const mensualiteCreditAssurance =
+    asNumber(
+      firstDefined(c, [
+        "mensualiteCredit",
+        "mensualite_credit",
+        "mensualiteCreditAssurance",
+        "mensualite_credit_assurance",
+        "output.graphData.mensualiteCredit",
+        "graphData.mensualiteCredit",
+        "output.resume.mensualiteCredit",
+      ])
+    ) ??
+    asNumber(firstDefined(graphData, ["mensualiteCredit", "mensualiteCreditAssurance"])) ??
+    asNumber(firstDefined(resume, ["mensualiteCredit", "mensualiteCreditAssurance"]));
+
+  const loyersAnnuelsBruts =
+    asNumber(
+      firstDefined(c, [
+        "loyersAnnuels",
+        "loyers_annuels",
+        "loyersAnnuelsBruts",
+        "loyers_annuels_bruts",
+        "output.graphData.loyersAnnuels",
+        "graphData.loyersAnnuels",
+      ])
+    ) ?? asNumber(firstDefined(graphData, ["loyersAnnuels", "loyersAnnuelsBruts"]));
+
+  const chargesTotales =
+    asNumber(
+      firstDefined(c, [
+        "chargesTotales",
+        "charges_totales",
+        "output.graphData.chargesTotales",
+        "graphData.chargesTotales",
+      ])
+    ) ?? asNumber(firstDefined(graphData, ["chargesTotales", "charges_totales"]));
+
+  const rendementBrut =
+    asNumber(
+      firstDefined(c, [
+        "rendementBrut",
+        "rendement_brut",
+        "output.graphData.rendementBrut",
+        "graphData.rendementBrut",
+      ])
+    ) ?? asNumber(firstDefined(graphData, ["rendementBrut", "rendement_brut"]));
+
+  const rendementNetAvantCredit =
+    asNumber(
+      firstDefined(c, [
+        "rendementNetAvantCredit",
+        "rendement_net_avant_credit",
+        "resume.rendementNetAvantCredit",
+        "output.resume.rendementNetAvantCredit",
+        "output.graphData.rendementNetAvantCredit",
+        "graphData.rendementNetAvantCredit",
+      ])
+    ) ??
+    asNumber(firstDefined(resume, ["rendementNetAvantCredit", "rendement_net_avant_credit"])) ??
+    asNumber(firstDefined(graphData, ["rendementNetAvantCredit", "rendement_net_avant_credit"]));
+
+  // Fallback : rendement brut si manquant
+  const computedGrossYield =
+    rendementBrut !== undefined
+      ? rendementBrut
+      : coutTotal && coutTotal > 0 && loyersAnnuelsBruts !== undefined
+      ? (loyersAnnuelsBruts / coutTotal) * 100
+      : undefined;
+
+  // Localité / surface (wizard V2: inputs.localite, inputs.surfaceM2)
+  const localite =
+    asString(
+      firstDefined(c, [
+        "localite",
+        "inputs.localite",
+        "input.localite",
+        "params.localite",
+        "output.inputs.localite",
+        "output.input.localite",
+      ])
+    ) ??
+    asString(firstDefined(inputs, ["localite"])) ??
+    "-";
+
+  const surfaceM2 =
+    asNumber(
+      firstDefined(c, [
+        "surfaceM2",
+        "surface_m2",
+        "inputs.surfaceM2",
+        "inputs.surface",
+        "input.surfaceM2",
+        "params.surfaceM2",
+      ])
+    ) ?? asNumber(firstDefined(inputs, ["surfaceM2", "surface", "surface_m2"]));
+
+  // Opportunity (wizard V2: output.opportunity.score/comment/improvements)
+  const scoreOpp =
+    asNumber(
+      firstDefined(c, [
+        "opportunityScore",
+        "scoreOpportunite",
+        "score_opportunite",
+        "output.opportunity.score",
+        "opportunity.score",
+      ])
+    ) ??
+    asNumber(firstDefined(opportunity, ["score", "scoreOpportunite", "opportunityScore", "score_opportunite"]));
+
+  const scoreLabel =
+    asString(
+      firstDefined(c, [
+        "opportunityLabel",
+        "scoreLabel",
+        "output.opportunity.label",
+        "opportunity.label",
+      ])
+    ) ?? asString(firstDefined(opportunity, ["label", "scoreLabel", "opportunityLabel"]));
+
+  const scoreComment =
+    asString(
+      firstDefined(c, [
+        "opportunityComment",
+        "scoreComment",
+        "comment",
+        "output.opportunity.comment",
+        "opportunity.comment",
+        "output.opportunity.commentaire",
+      ])
+    ) ?? asString(firstDefined(opportunity, ["comment", "commentaire", "scoreComment", "opportunityComment"]));
+
+  const improvements = toBullets(
+    firstDefined(c, [
+      "opportunityImprovements",
+      "improvements",
+      "recommendations",
+      "recommandations",
+      "output.opportunity.improvements",
+      "opportunity.improvements",
+      "output.opportunity.recommendations",
+    ]) ?? firstDefined(opportunity, ["improvements", "recommendations"])
+  );
+
+  // Analyse narrative (wizard V2: output.analyse string)
+  const analysisText =
+    asString(
+      firstDefined(c, [
+        "analyse",
+        "analysis",
+        "output.analyse",
+        "output.analysis",
+        "output.analyseText",
+        "output.analysisText",
+      ])
+    ) ?? asString(analyse);
+
+  // Marché (facultatif)
+  const marketPriceM2 = asNumber(firstDefined(market, ["referencePriceM2Sale", "priceM2", "salePriceM2"]));
+  const marketRentM2 = asNumber(firstDefined(market, ["referenceRentM2", "rentM2"]));
+  const marketSource = asString(firstDefined(market, ["source"]));
+
+  return {
+    cashflowMensuel,
+    resultatNetAnnuel,
+    coutTotal,
+    mensualiteCreditAssurance,
+    loyersAnnuelsBruts,
+    chargesTotales,
+    rendementBrut: computedGrossYield,
+    rendementNetAvantCredit,
+    localite,
+    surfaceM2,
+    scoreOpp,
+    scoreLabel,
+    scoreComment,
+    improvements,
+    analysisText,
+    marketPriceM2,
+    marketRentM2,
+    marketSource,
+  };
+}
+
+/* ======================== TEXT ======================== */
+export function buildInvestissementEmailText(computed: any) {
+  const k = extractKpis(computed || {});
+  const parts: string[] = [];
+
+  parts.push("VOTRE SIMULATION D’INVESTISSEMENT — lokt.fr");
+  parts.push("");
+  parts.push(detectStatusFromCashflow(k.cashflowMensuel));
+  parts.push("");
+
+  parts.push("Récapitulatif :");
+  parts.push(`- Coût total : ${formatEuro(k.coutTotal)}`);
+  parts.push(`- Rendement brut : ${k.rendementBrut !== undefined ? formatPct(k.rendementBrut) : "-"}`);
+  parts.push(
+    `- Rendement net (avant crédit) : ${
+      k.rendementNetAvantCredit !== undefined ? formatPct(k.rendementNetAvantCredit) : "-"
+    }`
+  );
+  parts.push(`- Cash-flow mensuel : ${formatEuro(k.cashflowMensuel)}`);
+  parts.push(`- Résultat net annuel : ${formatEuro(k.resultatNetAnnuel)}`);
+  parts.push(`- Mensualité crédit + assurance : ${formatEuro(k.mensualiteCreditAssurance)}`);
+  parts.push("");
+
+  parts.push("Paramètres clés :");
+  parts.push(`- Localité : ${k.localite || "-"}`);
+  parts.push(`- Surface : ${k.surfaceM2 !== undefined ? `${k.surfaceM2} m²` : "-"}`);
+  parts.push("");
+
+  if (k.scoreOpp !== undefined) {
+    parts.push(`Score d’opportunité : ${k.scoreOpp}/10`);
+    if (k.scoreLabel) parts.push(k.scoreLabel);
+    if (k.scoreComment) parts.push(k.scoreComment);
+    parts.push("");
+  }
+
+  if (k.improvements.length) {
+    parts.push("Recommandations :");
+    for (const r of k.improvements.slice(0, 10)) parts.push(`- ${r}`);
+    parts.push("");
+  }
+
+  if (k.analysisText) {
+    parts.push("Analyse :");
+    const lines = k.analysisText
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .slice(0, 30);
+    for (const l of lines) parts.push(`- ${l.replace(/^[-•\s]+/, "")}`);
+    parts.push("");
+  }
+
+  parts.push("Relire / refaire la simulation : https://lokt.fr/investissement");
+  parts.push("");
+  parts.push("Calculs indicatifs. Ne constitue pas une offre de prêt.");
+  parts.push("— lokt.fr");
+
+  return parts.join("\n");
+}
+
+/* ======================== HTML (template identique capacité) ======================== */
+export function buildInvestissementEmailHtml(computed: any) {
+  const k = extractKpis(computed || {});
+
+  const siteUrl = "https://lokt.fr";
+  const logoUrl = `${siteUrl}/LOKT_LOGO.jpg`;
+  const ctaUrl = `${siteUrl}/investissement`;
+
+  // EXACTEMENT le même "bloc KPI" que capacité
+  const fmtSmall = (label: string, value: string) => `
+    <td style="padding:10px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;">
+      <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#64748b;">${escapeHtml(
+        label
+      )}</div>
+      <div style="margin-top:4px;font-size:16px;font-weight:700;color:#0f172a;">${escapeHtml(
+        value
+      )}</div>
+    </td>
+  `;
+
+  const status = detectStatusFromCashflow(k.cashflowMensuel);
+
+  const recoBlocks = k.improvements.length
+    ? k.improvements
+        .slice(0, 10)
+        .map(
+          (r) =>
+            `<p style="margin:0 0 10px;color:#0f172a;line-height:1.55;font-size:13px;">• ${escapeHtml(
+              r
+            )}</p>`
+        )
+        .join("")
     : "";
 
-  const improvementsHtml =
-    improvements.length > 0
-      ? improvements
-          .map(
-            (t) =>
-              `<li style="margin:0 0 8px 0;color:#0f172a;font-size:13px;line-height:1.45;">${esc(
-                t
-              )}</li>`
-          )
-          .join("")
-      : `<li style="margin:0;color:#0f172a;font-size:13px;line-height:1.45;">Aucune recommandation spécifique détectée.</li>`;
+  const analysisBlocks = k.analysisText
+    ? k.analysisText
+        .split("\n")
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .slice(0, 30)
+        .map(
+          (line) =>
+            `<p style="margin:0 0 10px;color:#0f172a;line-height:1.55;font-size:13px;">• ${escapeHtml(
+              line
+            )}</p>`
+        )
+        .join("")
+    : "";
 
-  const analyseHtml =
-    analyseLines.length > 0
-      ? analyseLines
-          .map(
-            (l) =>
-              `<div style="margin:0 0 10px 0;padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#ffffff;color:#0f172a;font-size:13px;line-height:1.45;">
-                 • ${esc(l)}
-               </div>`
-          )
-          .join("")
-      : `<p style="margin:0;color:#0f172a;font-size:13px;line-height:1.45;">Analyse indisponible.</p>`;
+  const marketLine =
+    k.marketPriceM2 !== undefined || k.marketRentM2 !== undefined
+      ? `<p style="margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.5;">
+          ${
+            k.marketPriceM2 !== undefined
+              ? `Référence prix/m² : <strong style="color:#0f172a;">${escapeHtml(
+                  formatEuro(k.marketPriceM2)
+                )}</strong>`
+              : ""
+          }
+          ${
+            k.marketRentM2 !== undefined
+              ? `${k.marketPriceM2 !== undefined ? " — " : ""}Référence loyer/m² : <strong style="color:#0f172a;">${escapeHtml(
+                  formatEuro(k.marketRentM2)
+                )}</strong>`
+              : ""
+          }
+          ${k.marketSource ? ` — Source : ${escapeHtml(k.marketSource)}` : ""}
+        </p>`
+      : "";
 
-  const marketHtml =
-    marketPriceM2Sale || marketRentM2
-      ? `
-      <div style="${statBox}">
-        <p style="${labelStyle}">Benchmarks marché</p>
-        <p style="${smallStyle};margin-top:8px;">
-          Prix médian vente (€/m²) : <strong>${formatEuro(marketPriceM2Sale).replace("€", "€")}</strong><br/>
-          Loyer médian (€/m²) : <strong>${formatEuro(marketRentM2).replace("€", "€")}</strong>
-          ${marketSource ? `<br/><span style="color:#64748b;font-size:11px;">Source : ${marketSource}</span>` : ""}
+  // ✅ GROS LOGO : c’est ici que tu standardises partout.
+  // (Même wrapper que capacité, juste le logo plus grand + un peu plus d’air)
+  return `
+<div style="background:#f1f5f9;padding:18px 0;">
+  <div style="max-width:640px;margin:0 auto;padding:0 14px;">
+    <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+      <div style="padding:22px 18px 12px 18px;border-bottom:1px solid #e2e8f0;background:#ffffff;">
+        <img src="${logoUrl}" alt="lokt.fr" width="190" style="display:block;max-width:190px;height:auto;margin:0 auto 10px;" />
+        <h1 style="margin:0;text-align:center;font-size:18px;color:#0f172a;">Votre simulation d’investissement</h1>
+        <p style="margin:6px 0 0;text-align:center;color:#64748b;font-size:13px;line-height:1.5;">
+          Récapitulatif de votre simulation (calculs indicatifs).
         </p>
-      </div>`
-      : `<div style="${statBox}"><p style="${labelStyle}">Benchmarks marché</p><p style="${smallStyle};margin-top:8px;">Non disponible (localité/surface manquantes).</p></div>`;
-
-  return `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width"/>
-    <title>Votre simulation d’investissement — lokt.fr</title>
-  </head>
-  <body style="margin:0;background:#f1f5f9;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;">
-    <div style="max-width:720px;margin:0 auto;padding:18px;">
-      <!-- Header -->
-      <div style="display:flex;align-items:center;gap:10px;margin:10px 0 14px 0;">
-        <img src="${logoUrl}" alt="Lokt" width="34" height="34" style="display:block;border-radius:8px;" />
-        <div>
-          <p style="margin:0;color:#0f172a;font-weight:800;font-size:14px;">Lokt.fr</p>
-          <p style="margin:0;color:#64748b;font-size:12px;">Votre simulation d’investissement locatif</p>
-        </div>
       </div>
 
-      <!-- Main card -->
-      <div style="${cardStyle}">
-        <h1 style="${h1Style}">Votre analyse est prête ✅</h1>
-        <p style="margin:8px 0 0 0;color:#334155;font-size:13px;line-height:1.55;">
-          Voici un récapitulatif lisible de votre simulation. Gardez cet email pour relire vos chiffres plus tard.
+      <div style="padding:16px 18px;">
+        <p style="margin:0 0 12px;text-align:center;color:#0f172a;font-size:13px;font-weight:700;">
+          ${escapeHtml(status)}
         </p>
 
-        <div style="margin-top:12px;">
-          <span style="display:inline-block;background:${pill.bg};color:${pill.fg};padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;">
-            ${pill.label}
-          </span>
-        </div>
-
-        <!-- Key stats -->
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:14px;border-collapse:separate;border-spacing:0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:10px;">
           <tr>
-            <td style="${rowCell}">
-              <div style="${statBox}">
-                <p style="${labelStyle}">Coût total</p>
-                <p style="${valueStyle}">${formatEuro(coutTotal)}</p>
-              </div>
-            </td>
-            <td style="${rowCell}">
-              <div style="${statBox}">
-                <p style="${labelStyle}">Rendement brut</p>
-                <p style="${valueStyle}">${formatPct(rendementBrut)}</p>
-              </div>
-            </td>
-            <td style="${rowCell}">
-              <div style="${statBox}">
-                <p style="${labelStyle}">Rendement net (avant crédit)</p>
-                <p style="${valueStyle}">${formatPct(rendementNetAvantCredit)}</p>
-              </div>
-            </td>
+            ${fmtSmall("Coût total", formatEuro(k.coutTotal))}
+            ${fmtSmall("Rendement brut", k.rendementBrut !== undefined ? formatPct(k.rendementBrut) : "-")}
           </tr>
           <tr>
-            <td style="${rowCell}">
-              <div style="${statBox}">
-                <p style="${labelStyle}">Cash-flow mensuel</p>
-                <p style="${valueStyle}">${formatEuro(cashflowMensuel)}</p>
-              </div>
-            </td>
-            <td style="${rowCell}">
-              <div style="${statBox}">
-                <p style="${labelStyle}">Résultat net annuel</p>
-                <p style="${valueStyle}">${formatEuro(resultatNetAnnuel)}</p>
-              </div>
-            </td>
-            <td style="${rowCell}">
-              <div style="${statBox}">
-                <p style="${labelStyle}">Mensualité crédit + assurance</p>
-                <p style="${valueStyle}">${formatEuro(mensualiteCredit)}</p>
-              </div>
-            </td>
+            ${fmtSmall(
+              "Rendement net (avant crédit)",
+              k.rendementNetAvantCredit !== undefined ? formatPct(k.rendementNetAvantCredit) : "-"
+            )}
+            ${fmtSmall("Cash-flow mensuel", formatEuro(k.cashflowMensuel))}
+          </tr>
+          <tr>
+            ${fmtSmall("Résultat net annuel", formatEuro(k.resultatNetAnnuel))}
+            ${fmtSmall("Mensualité crédit + assurance", formatEuro(k.mensualiteCreditAssurance))}
+          </tr>
+          <tr>
+            ${fmtSmall("Localité", k.localite || "-")}
+            ${fmtSmall("Surface", k.surfaceM2 !== undefined ? `${k.surfaceM2} m²` : "-")}
           </tr>
         </table>
 
-        <!-- Project info -->
-        <div style="margin-top:10px;${statBox}">
-          <p style="${labelStyle}">Paramètres clés</p>
-          <p style="${smallStyle};margin-top:8px;">
-            Localité : <strong style="color:#0f172a;">${localite}</strong><br/>
-            Surface : <strong style="color:#0f172a;">${surface}</strong> m²
-          </p>
-          ${listingCta ? `<div style="margin-top:10px;">${listingCta}</div>` : ""}
-        </div>
+        ${marketLine}
 
-        <!-- Market -->
-        <div style="margin-top:10px;">
-          ${marketHtml}
-        </div>
-
-        <!-- Opportunity -->
-        <div style="margin-top:14px;${statBox}">
-          <p style="${labelStyle}">Score d’opportunité</p>
-          <p style="margin:6px 0 0 0;color:#0f172a;font-weight:800;font-size:16px;">${esc(scoreText)}</p>
-          ${oppComment ? `<p style="margin:8px 0 0 0;color:#334155;font-size:13px;line-height:1.55;">${oppComment}</p>` : ""}
-        </div>
-
-        <!-- Improvements -->
-        <div style="margin-top:10px;${statBox}">
-          <p style="${labelStyle}">Recommandations</p>
-          <ul style="margin:10px 0 0 18px;padding:0;">
-            ${improvementsHtml}
-          </ul>
-        </div>
-
-        <!-- Analysis -->
-        <div style="margin-top:14px;">
-          <p style="${labelStyle}">Analyse</p>
-          <div style="margin-top:10px;">
-            ${analyseHtml}
+        ${
+          k.scoreOpp !== undefined
+            ? `
+          <div style="margin-top:10px;padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#0f172a;color:#ffffff;">
+            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a5f3fc;">Score Lokt.fr™</div>
+            <div style="margin-top:6px;font-size:22px;font-weight:800;color:#ffffff;">${escapeHtml(
+              k.scoreOpp
+            )}/10 ${
+                k.scoreLabel
+                  ? `<span style="font-size:14px;font-weight:700;color:#e2e8f0;">— ${escapeHtml(
+                      k.scoreLabel
+                    )}</span>`
+                  : ""
+              }</div>
+            ${
+              k.scoreComment
+                ? `<p style="margin:8px 0 0;color:#e2e8f0;font-size:13px;line-height:1.55;">${escapeHtml(
+                    k.scoreComment
+                  )}</p>`
+                : ""
+            }
           </div>
+        `
+            : ``
+        }
+
+        <div style="margin-top:14px;text-align:center;">
+          <a href="${ctaUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:999px;font-weight:700;font-size:13px;">
+            Relire / refaire la simulation
+          </a>
         </div>
 
-        <!-- Footer -->
-        <p style="margin:14px 0 0 0;color:#64748b;font-size:11px;line-height:1.5;">
-          Simulation indicative (hors fiscalité). Les résultats peuvent varier selon les hypothèses, le marché et le financement.
-        </p>
-      </div>
+        ${
+          recoBlocks
+            ? `
+          <div style="margin-top:18px;padding-top:4px;">
+            <h2 style="margin:0 0 8px;font-size:15px;color:#0f172a;">Recommandations</h2>
+            ${recoBlocks}
+          </div>
+        `
+            : ``
+        }
 
-      <p style="margin:12px 0 0 0;color:#94a3b8;font-size:11px;line-height:1.4;text-align:center;">
-        Lokt.fr — analyses immobilières simples et rapides •
-        <a href="${baseUrl}" style="color:#64748b;text-decoration:underline;">${baseUrl.replace(/^https?:\/\//, "")}</a>
-      </p>
+        ${
+          analysisBlocks
+            ? `
+          <div style="margin-top:14px;">
+            <h2 style="margin:0 0 8px;font-size:15px;color:#0f172a;">Analyse</h2>
+            ${analysisBlocks}
+          </div>
+        `
+            : ``
+        }
+
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;" />
+        <p style="margin:0;color:#64748b;font-size:12px;line-height:1.5;">
+          Calculs indicatifs. Ne constitue pas une offre de prêt.
+        </p>
+        <p style="margin:6px 0 0;color:#64748b;font-size:12px;">— lokt.fr</p>
+      </div>
     </div>
-  </body>
-</html>`;
+  </div>
+</div>
+`.trim();
+}
+
+/* (Optionnel) Builder standard si tu veux l'utiliser ailleurs */
+export function buildInvestissementEmail(params: { email: string; computed: any }) {
+  const subject = "Votre simulation d’investissement — lokt.fr";
+  const html = buildInvestissementEmailHtml(params.computed);
+  const text = buildInvestissementEmailText(params.computed);
+  return { subject, html, text };
 }
