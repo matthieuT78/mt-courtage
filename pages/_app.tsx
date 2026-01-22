@@ -7,6 +7,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { PermissionProvider } from "../components/PermissionProvider";
+import ChatContact from "../components/ChatContact"; // ✅ bon import
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || "G-0J8NXZ3SBD";
 
@@ -52,6 +53,9 @@ export default function App({ Component, pageProps }: AppProps) {
       {/* Permissions globales */}
       <PermissionProvider>
         <Component {...pageProps} />
+
+        {/* ✅ Widget contact en bas à droite */}
+        <ChatContact />
       </PermissionProvider>
     </>
   );
