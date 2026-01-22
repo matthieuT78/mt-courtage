@@ -769,17 +769,17 @@ export default function Home() {
       </div>
 
       {/* Logo à droite du hero */}
-      <div className="anim-fadeUp d-2 justify-self-center lg:justify-self-end">
-        <div className="rounded-3xl border border-slate-200 bg-white/70 p-4 shadow-sm backdrop-blur">
-          <img
-            src="/apple-touch-icon.png"
-            alt="lokt.fr"
-            className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl"
-            loading="eager"
-          />
-        </div>
-      </div>
-    </div>
+    	<div className="anim-fadeUp d-2 justify-self-center lg:justify-self-end">
+  <div className="rounded-3xl border border-slate-200 bg-white/70 p-5 shadow-sm backdrop-blur flex items-center justify-center">
+    <img
+      src="/slogan.png"
+      alt="lokt.fr — Tout devient plus clair"
+      className="w-56 h-auto object-contain"
+      loading="eager"
+    />
+  </div>
+</div>
+     </div>
 
     {/* TUILES DIRECTEMENT SOUS LE TITRE (dans le hero) */}
     <div className="mt-8">
