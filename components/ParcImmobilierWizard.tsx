@@ -917,4 +917,3 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
     </div>
   );
 }
-
