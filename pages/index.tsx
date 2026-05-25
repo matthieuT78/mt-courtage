@@ -143,11 +143,12 @@ function Sticker({
   kind,
   className = "h-12 w-12",
 }: {
-  kind: "loan" | "bridge" | "yield" | "portfolio" | "sale" | "bailleur";
+  kind: "calc" | "loan" | "bridge" | "yield" | "portfolio" | "sale" | "bailleur";
   className?: string;
 }) {
   const map: Record<string, { g1: string; g2: string }> = {
-    loan: { g1: "#4f46e5", g2: "#22c55e" },
+    calc: { g1: "#0f172a", g2: "#4f46e5" },
+    loan: { g1: "#2563eb", g2: "#06b6d4" },
     bridge: { g1: "#06b6d4", g2: "#4f46e5" },
     yield: { g1: "#10b981", g2: "#06b6d4" },
     portfolio: { g1: "#8b5cf6", g2: "#22c55e" },
@@ -186,11 +187,25 @@ function Sticker({
           strokeLinecap="round"
         />
 
-        {kind === "loan" ? (
+        {kind === "calc" ? (
           <>
-            <rect x="18" y="22" width="28" height="22" rx="6" fill="rgba(255,255,255,0.92)" />
-            <path d="M22 30h20M22 35h14" stroke="rgba(15,23,42,0.7)" strokeWidth="2.6" strokeLinecap="round" />
-            <circle cx="44" cy="36" r="3" fill="rgba(15,23,42,0.22)" />
+            <rect x="18" y="14" width="28" height="36" rx="7" fill="rgba(255,255,255,0.92)" />
+            <rect x="23" y="20" width="18" height="7" rx="2" fill="rgba(15,23,42,0.22)" />
+            <circle cx="25" cy="34" r="2.2" fill="rgba(15,23,42,0.55)" />
+            <circle cx="32" cy="34" r="2.2" fill="rgba(15,23,42,0.55)" />
+            <circle cx="39" cy="34" r="2.2" fill="rgba(15,23,42,0.55)" />
+            <circle cx="25" cy="42" r="2.2" fill="rgba(15,23,42,0.55)" />
+            <circle cx="32" cy="42" r="2.2" fill="rgba(15,23,42,0.55)" />
+            <path d="M39 40v4M37 42h4" stroke="rgba(15,23,42,0.58)" strokeWidth="2.6" strokeLinecap="round" />
+          </>
+        ) : kind === "loan" ? (
+          <>
+            <path d="M18 27h28" stroke="rgba(255,255,255,0.92)" strokeWidth="4" strokeLinecap="round" />
+            <path d="M21 27v17M28 27v17M36 27v17M43 27v17" stroke="rgba(255,255,255,0.9)" strokeWidth="3.5" strokeLinecap="round" />
+            <path d="M17 47h30" stroke="rgba(255,255,255,0.92)" strokeWidth="4" strokeLinecap="round" />
+            <path d="M32 14 18 23h28L32 14Z" fill="rgba(255,255,255,0.9)" />
+            <path d="M32 19v5" stroke="rgba(15,23,42,0.42)" strokeWidth="2.6" strokeLinecap="round" />
+            <path d="M26 35h12" stroke="rgba(15,23,42,0.25)" strokeWidth="2.5" strokeLinecap="round" />
           </>
         ) : kind === "bridge" ? (
           <>
@@ -285,87 +300,6 @@ function StatPill({
         </div>
       </div>
     </div>
-  );
-}
-
-function FintechTile({
-  title,
-  oneLiner,
-  href,
-  icon,
-  accent,
-  badge,
-}: {
-  title: string;
-  oneLiner: string;
-  href: string;
-  icon: "loan" | "bridge" | "yield" | "portfolio" | "sale" | "bailleur";
-  accent: "indigo" | "cyan" | "emerald" | "violet" | "amber" | "slate";
-  badge?: string;
-}) {
-  const accents: Record<string, { halo: string }> = {
-    indigo: { halo: "bg-indigo-600/12" },
-    cyan: { halo: "bg-cyan-500/12" },
-    emerald: { halo: "bg-emerald-500/12" },
-    violet: { halo: "bg-violet-500/12" },
-    amber: { halo: "bg-amber-500/12" },
-    slate: { halo: "bg-slate-900/6" },
-  };
-  const a = accents[accent];
-
-  return (
-    <Link href={href} aria-label={`Ouvrir ${title}`} className="group block h-full">
-      <div
-        className="
-          relative h-full min-h-[168px]
-          overflow-hidden rounded-3xl border border-slate-200 bg-white p-6
-          shadow-sm transition hover:-translate-y-0.5 hover:shadow-md
-        "
-      >
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute -top-24 -right-24 h-56 w-56 rounded-full blur-3xl opacity-70 ${a.halo}`}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: "radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 1) 1px, transparent 0)",
-            backgroundSize: "22px 22px",
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -left-24 top-0 h-full w-24 rotate-12 bg-white/40 blur-xl opacity-0 transition duration-500 group-hover:opacity-100 group-hover:translate-x-[520px]"
-        />
-
-        {/* Layout: colonne + CTA collé en bas */}
-        <div className="relative flex h-full items-start gap-4">
-          <div className="shrink-0">
-            <Sticker kind={icon} className="h-12 w-12" />
-          </div>
-
-          <div className="min-w-0 flex-1 flex h-full flex-col">
-            <div className="flex items-center gap-2">
-              <p className="text-base font-semibold text-slate-900">{title}</p>
-              {badge ? (
-                <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[0.65rem] font-semibold text-slate-700">
-                  {badge}
-                </span>
-              ) : null}
-            </div>
-
-            {/* 2 lignes max = hauteur identique */}
-            <p className="mt-1 text-sm text-slate-600 line-clamp-2">{oneLiner}</p>
-
-            {/* pousse le CTA en bas */}
-            <div className="mt-auto pt-5 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
-              Démarrer <span className="transition group-hover:translate-x-0.5">→</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
   );
 }
 
@@ -746,14 +680,14 @@ export default function Home() {
       <div className="flex h-full flex-col rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-sm backdrop-blur">
         <div className="flex-1">
           <div className="flex items-start gap-4">
-            <Sticker kind="loan" className="h-14 w-14" />
+            <Sticker kind="calc" className="h-14 w-14" />
             <div>
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Projet immobilier</p>
               <h2 className="mt-1 text-2xl font-semibold text-slate-900">Simuler avant d’acheter, vendre ou investir</h2>
             </div>
           </div>
           <p className="mt-4 text-sm leading-6 text-slate-600">
-            Capacité d’emprunt, prêt relais, rentabilité locative, parc immobilier et plus-value : comparez vos scénarios avec des résultats lisibles.
+            Choisissez le bon simulateur en un clic : capacité d’emprunt, prêt relais, rentabilité locative, parc immobilier ou plus-value. Chaque calcul reste guidé, lisible et orienté décision.
           </p>
         </div>
         <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -805,49 +739,6 @@ export default function Home() {
       </div>
     </div>
 
-    <div className="mt-8">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <FintechTile
-          title="Capacité d’emprunt"
-          oneLiner="Pour connaître votre budget réaliste (mensualité, durée, apport)."
-          href="/capacite"
-          icon="loan"
-          accent="indigo"
-        />
-
-        <FintechTile
-          title="Prêt relais"
-          oneLiner="Si vous achetez avant de vendre : estimer le relais et le risque."
-          href="/pret-relais"
-          icon="bridge"
-          accent="cyan"
-        />
-
-        <FintechTile
-          title="Rentabilité locative"
-          oneLiner="Pour vérifier un investissement (cash-flow, rendement, charges)."
-          href="/investissement"
-          icon="yield"
-          accent="emerald"
-        />
-
-        <FintechTile
-          title="Parc immobilier"
-          oneLiner="Vision consolidée si vous avez plusieurs biens (loyers, crédits, synthèse)."
-          href="/parc-immobilier"
-          icon="portfolio"
-          accent="violet"
-        />
-
-        <FintechTile
-          title="Plus-value immobilière"
-          oneLiner="Si vous vendez : estimer le cash net après frais et impôts."
-          href="/plus-value-vente-immobiliere"
-          icon="sale"
-          accent="amber"
-        />
-      </div>
-    </div>
   </div>
 </section>
 
