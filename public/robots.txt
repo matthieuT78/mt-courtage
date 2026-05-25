@@ -1,14 +1,15 @@
 User-agent: *
 Allow: /
 
-# Bloquer uniquement le back-office / V2
+# Espaces prives ou techniques
 Disallow: /admin
 Disallow: /mon-compte
 Disallow: /espace-bailleur
-Disallow: /tarifs
-Disallow: /blog
+Disallow: /auth
+Disallow: /api
+Disallow: /test-quittance
 
-# IMPORTANT : on ne bloque PAS /simulateur
-# Disallow: /simulateur   ❌ INTERDIT
+# Pages publiques a indexer : /, /calculettes, /outil-gestion-locative,
+# /tarifs, /blog et /simulateur restent autorisees.
 
 Sitemap: https://lokt.fr/sitemap.xml
