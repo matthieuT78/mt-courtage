@@ -70,6 +70,8 @@ export type RentPayment = {
   lease_id: string;
   period_start: string;
   period_end: string;
+  rent_amount?: number | null;
+  charges_amount?: number | null;
   total_amount: number | null;
   due_date: string | null;
   paid_at: string | null;

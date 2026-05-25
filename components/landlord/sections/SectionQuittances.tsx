@@ -200,16 +200,55 @@ function paymentTypeLabel(v?: string | null) {
   return t === "terme_echu" ? "Fin de période (terme échu)" : "Début de période (terme à échoir)";
 }
 
-function pillTonePay(status: "paid" | "pending" | "unknown") {
+type PaymentStatus = "paid" | "partial" | "charges_missing" | "pending" | "unknown";
+
+function pillTonePay(status: PaymentStatus) {
   if (status === "paid") return "bg-emerald-100 text-emerald-900 border-emerald-200";
+  if (status === "partial" || status === "charges_missing") return "bg-orange-100 text-orange-900 border-orange-200";
   if (status === "pending") return "bg-amber-100 text-amber-900 border-amber-200";
   return "bg-slate-100 text-slate-800 border-slate-200";
 }
 
-function payLabel(status: "paid" | "pending" | "unknown") {
+function payLabel(status: PaymentStatus) {
   if (status === "paid") return "Payé";
+  if (status === "partial") return "Paiement incomplet";
+  if (status === "charges_missing") return "Charges manquantes";
   if (status === "pending") return "À payer";
   return "Inconnu";
+}
+
+function paymentAnalysis(lease: Lease, payment: AnyPayment | null): {
+  status: PaymentStatus;
+  expectedRent: number;
+  expectedCharges: number;
+  expectedTotal: number;
+  receivedRent: number;
+  receivedCharges: number;
+  receivedTotal: number;
+  missingAmount: number;
+  reminderReason: "unpaid" | "partial" | "charges_missing" | null;
+} {
+  const expectedRent = Number((lease as any)?.rent_amount || 0);
+  const expectedCharges = Number((lease as any)?.charges_amount || 0);
+  const expectedTotal = expectedRent + expectedCharges;
+  const receivedRent = Number(payment?.rent_amount || 0);
+  const receivedCharges = Number(payment?.charges_amount || 0);
+  const receivedTotal = Number(payment?.total_amount || 0);
+  const paid = payment ? isPaymentPaid(payment) : false;
+
+  if (!payment || !paid) {
+    return { status: "pending", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount: expectedTotal, reminderReason: "unpaid" };
+  }
+
+  const missingAmount = Math.max(0, expectedTotal - receivedTotal);
+  if (expectedCharges > 0 && receivedTotal >= expectedRent && receivedCharges < expectedCharges) {
+    return { status: "charges_missing", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount: Math.max(0, expectedCharges - receivedCharges), reminderReason: "charges_missing" };
+  }
+  if (receivedTotal + 0.01 < expectedTotal) {
+    return { status: "partial", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount, reminderReason: "partial" };
+  }
+
+  return { status: "paid", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount: 0, reminderReason: null };
 }
 
 function Card({
@@ -356,7 +395,8 @@ export function SectionQuittances({
         const key = periodKey(lease.id, yyyymm);
         const receipt = receiptByPeriod.get(key) || null;
         const payment = paymentByPeriod.get(key) || null;
-        const payStatus = payment && isPaymentPaid(payment) ? "paid" : payment ? "pending" : "pending";
+        const pay = paymentAnalysis(lease, payment);
+        const payStatus = pay.status;
         const receiptStatus = String(receipt?.status || "").toLowerCase();
         const pdfReady = !!receipt?.pdf_url && (receiptStatus === "generated" || receiptStatus === "sent");
         const sent = receiptStatus === "sent" || !!receipt?.sent_at;
@@ -369,7 +409,8 @@ export function SectionQuittances({
           lease,
           receipt,
           payment,
-          payStatus: payStatus as "paid" | "pending",
+          payStatus: payStatus as PaymentStatus,
+          pay,
           receiptStatus,
           pdfReady,
           sent,
@@ -601,6 +642,59 @@ export function SectionQuittances({
       if (json?.signedUrl) window.open(json.signedUrl, "_blank", "noopener,noreferrer");
     } catch (e: any) {
       setErr(e?.message || "Erreur envoi quittance.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendPaymentReminderForRow = async (row: any) => {
+    const reason = row?.pay?.reminderReason;
+    if (!reason) {
+      setErr("Aucune relance à envoyer : le paiement semble complet.");
+      setOk(null);
+      return;
+    }
+    if (!canUseReceiptAutomation) {
+      setErr("L’envoi de relance par email est réservé aux abonnements payants. Tu peux tout de même suivre les retards dans cette vue.");
+      setOk(null);
+      return;
+    }
+
+    const missing = Number(row?.pay?.missingAmount || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+    const label =
+      reason === "charges_missing"
+        ? `charges manquantes (${missing})`
+        : reason === "partial"
+        ? `paiement incomplet (${missing} restant)`
+        : `loyer non reçu (${missing})`;
+
+    if (!confirm(`Envoyer une relance au locataire pour ${label} ?`)) return;
+
+    setErr(null);
+    setOk(null);
+
+    try {
+      setLoading(true);
+      const headers = await authJsonHeaders();
+      const resp = await fetch("/api/payments/reminder", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          userId,
+          leaseId: row.lease.id,
+          periodStart: row.periodStart,
+          periodEnd: row.periodEnd,
+          reason,
+        }),
+      });
+
+      const { raw, json } = await safeJson(resp);
+      throwApiError(resp, raw, json, "Erreur envoi relance.");
+
+      setOk("Relance envoyée au locataire ✅");
+      await onRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Erreur envoi relance.");
     } finally {
       setLoading(false);
     }
@@ -913,20 +1007,43 @@ export function SectionQuittances({
                               Email locataire manquant
                             </span>
                           )}
+
+                          {row.payStatus === "partial" || row.payStatus === "charges_missing" ? (
+                            <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[0.7rem] font-semibold text-orange-900">
+                              Reste {Number(row.pay.missingAmount || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
+                            </span>
+                          ) : null}
                         </div>
                       </div>
 
                       <div className="flex min-w-[142px] flex-col gap-2">
                         {row.payStatus !== "paid" ? (
-                          <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => confirmPaymentForRow(row)}
-                            className={cx("rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800", loading && "opacity-60")}
-                            title="Confirme le paiement reçu pour cette période."
-                          >
-                            Confirmer payé
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              disabled={loading}
+                              onClick={() => confirmPaymentForRow(row)}
+                              className={cx("rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800", loading && "opacity-60")}
+                              title="Confirme le paiement complet reçu pour cette période."
+                            >
+                              {row.payStatus === "partial" || row.payStatus === "charges_missing" ? "Solde reçu" : "Confirmer payé"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={loading || !canUseReceiptAutomation}
+                              onClick={() => sendPaymentReminderForRow(row)}
+                              className={cx(
+                                "rounded-full border px-4 py-2 text-xs font-semibold",
+                                canUseReceiptAutomation
+                                  ? "border-orange-200 bg-orange-50 text-orange-900 hover:bg-orange-100"
+                                  : "border-slate-200 bg-slate-100 text-slate-500",
+                                (loading || !canUseReceiptAutomation) && "opacity-60"
+                              )}
+                              title={canUseReceiptAutomation ? "Envoie une relance au locataire après validation." : "Relance email réservée aux abonnements payants."}
+                            >
+                              {canUseReceiptAutomation ? "Relancer" : "Relance premium"}
+                            </button>
+                          </>
                         ) : !pdfReady ? (
                           <button
                             type="button"
@@ -975,13 +1092,17 @@ export function SectionQuittances({
 
                     {row.isLate ? (
                       <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                        Retard : après <span className="font-semibold">{toISODateLocal(row.sched.generateAt)}</span>, le mois n’est toujours pas payé.
+                        Retard : après <span className="font-semibold">{toISODateLocal(row.sched.generateAt)}</span>, le mois n’est toujours pas réglé complètement.
                       </div>
                     ) : null}
 
                     {row.payStatus !== "paid" ? (
                       <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                        Quittance non générable avant paiement confirmé.
+                        {row.payStatus === "charges_missing"
+                          ? "Charges manquantes : la quittance attend le règlement complet loyer + charges."
+                          : row.payStatus === "partial"
+                          ? "Paiement incomplet : la quittance attend le solde avant génération."
+                          : "Quittance non générable avant paiement confirmé."}
                       </div>
                     ) : row.payStatus === "paid" && !pdfReady ? (
                       <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">

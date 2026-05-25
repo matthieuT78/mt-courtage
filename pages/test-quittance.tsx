@@ -300,6 +300,16 @@ export default function TestQuittancePage() {
     return parseResponse(resp);
   };
 
+  const sendOwnerReminderTestEmail = async () => {
+    if (!user?.id || !leaseId) throw new Error("Choisis un bail.");
+    const resp = await fetch("/api/test/rent-reminder-email", {
+      method: "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify({ userId: user.id, leaseId, periodStart, periodEnd, toEmail: user.email }),
+    });
+    return parseResponse(resp);
+  };
+
   const openConfirmPaidLink = async () => {
     if (!confirmUrl) throw new Error("Cree d'abord un lien unique Loyer recu.");
     const opened = window.open(confirmUrl, "_blank", "noopener,noreferrer");
@@ -405,6 +415,9 @@ export default function TestQuittancePage() {
             </button>
             <button disabled={!!loading} onClick={() => runAction("confirm-link", createConfirmPaidLink)} className={`${buttonBase} border-teal-300 bg-teal-50 text-teal-950 hover:bg-teal-100`}>
               Creer lien Loyer recu
+            </button>
+            <button disabled={!!loading} onClick={() => runAction("owner-mail-test", sendOwnerReminderTestEmail)} className={`${buttonBase} border-orange-300 bg-orange-50 text-orange-950 hover:bg-orange-100`}>
+              Envoyer mail bailleur test
             </button>
             <button disabled={!!loading || !confirmUrl} onClick={() => runAction("confirm-click", openConfirmPaidLink)} className={`${buttonBase} border-emerald-400 bg-emerald-600 text-white hover:bg-emerald-500`}>
               Cliquer Loyer recu

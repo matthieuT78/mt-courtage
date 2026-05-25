@@ -34,6 +34,23 @@ const monthLabel = (key: string) => {
 };
 const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 
+function paymentStatusForLease(lease: Lease, payment?: RentPayment | null) {
+  const expectedRent = Number(lease.rent_amount || 0);
+  const expectedCharges = Number(lease.charges_amount || 0);
+  const expectedTotal = expectedRent + expectedCharges;
+  const paidTotal = Number(payment?.total_amount || 0);
+  const paidCharges = Number(payment?.charges_amount || 0);
+
+  if (!payment?.paid_at) return { label: "À suivre", missing: expectedTotal, incomplete: false };
+  if (expectedCharges > 0 && paidTotal >= expectedRent && paidCharges < expectedCharges) {
+    return { label: "Charges manquantes", missing: Math.max(0, expectedCharges - paidCharges), incomplete: true };
+  }
+  if (paidTotal + 0.01 < expectedTotal) {
+    return { label: "Paiement incomplet", missing: Math.max(0, expectedTotal - paidTotal), incomplete: true };
+  }
+  return { label: "Encaissé", missing: 0, incomplete: false };
+}
+
 function actionTarget(action?: string): LandlordSectionKey | null {
   const a = (action || "").toLowerCase();
   if (a.includes("bien")) return "biens";
@@ -88,7 +105,13 @@ export function SectionDashboard({
 }) {
   const ratio = monthlyExpected > 0 ? clampPct((monthlyPaid / monthlyExpected) * 100) : 0;
   const remainingToCollect = Math.max(0, monthlyExpected - monthlyPaid);
-  const currentMonthPayments = Array.isArray(payments) ? payments : [];
+  const currentMonthPayments = useMemo(
+    () =>
+      (Array.isArray(payments) ? payments : []).filter(
+        (p) => String(p.period_start || "") >= monthRange.startISO && String(p.period_start || "") <= monthRange.endISO
+      ),
+    [payments, monthRange]
+  );
   const currentMonthReceipts = Array.isArray(receipts) ? receipts : [];
   const receiptCoverage = activeLeases.length > 0 ? clampPct((currentMonthReceipts.length / activeLeases.length) * 100) : 0;
 
@@ -291,7 +314,13 @@ export function SectionDashboard({
       const total = Number(lease.rent_amount || 0) + Number(lease.charges_amount || 0);
       const endDate = normalizeDate(lease.end_date);
       const leaseEndingSoon = !!endDate && endDate <= in90Days;
-      const paymentStatus = payment?.paid_at ? "Encaissé" : payment?.due_date && normalizeDate(payment.due_date)! < now ? "En retard" : "À suivre";
+      const paymentState = paymentStatusForLease(lease, payment);
+      const paymentStatus =
+        paymentState.label !== "À suivre"
+          ? paymentState.label
+          : payment?.due_date && normalizeDate(payment.due_date)! < now
+          ? "En retard"
+          : "À suivre";
 
       return {
         lease,
@@ -299,6 +328,8 @@ export function SectionDashboard({
         tenantName: tenant?.full_name || "Locataire",
         total,
         paymentStatus,
+        missingAmount: paymentState.missing,
+        incompletePayment: paymentState.incomplete,
         hasReceipt: !!receipt,
         leaseEndingSoon,
         endDate,
@@ -315,6 +346,11 @@ export function SectionDashboard({
           if (a.paymentStatus !== "En retard" && b.paymentStatus === "En retard") return 1;
           return a.propertyLabel.localeCompare(b.propertyLabel);
         }),
+    [leaseCards]
+  );
+
+  const incompletePayments = useMemo(
+    () => leaseCards.filter((card) => card.paymentStatus === "Paiement incomplet" || card.paymentStatus === "Charges manquantes"),
     [leaseCards]
   );
 
@@ -341,6 +377,19 @@ export function SectionDashboard({
         details: lateDetails,
         target: "quittances",
         cta: "Voir les retards",
+      });
+    }
+
+    if (incompletePayments.length > 0) {
+      actions.push({
+        tone: "amber",
+        title: `${incompletePayments.length} paiement${incompletePayments.length > 1 ? "s" : ""} incomplet${incompletePayments.length > 1 ? "s" : ""}`,
+        desc: "La quittance reste bloquée tant que le loyer et les charges ne sont pas réglés en totalité. Vous pouvez relancer le locataire.",
+        details: incompletePayments
+          .slice(0, 3)
+          .map((card) => `${card.propertyLabel} · ${card.tenantName} · reste ${formatEuro(card.missingAmount || 0)}`),
+        target: "quittances",
+        cta: "Traiter le solde",
       });
     }
 
@@ -417,6 +466,7 @@ export function SectionDashboard({
     activeLeases.length,
     alerts,
     currentMonthReceipts.length,
+    incompletePayments,
     lateCount,
     leaseCards,
     monthlyExpected,

@@ -53,6 +53,61 @@ export function DashboardShell(props: any) {
   const isFreePlan = plan === "calc_full";
   const canUsePaidLandlordTools = planAllowsLandlord(plan);
 
+  const rentFeedback = useMemo(() => {
+    const result = typeof router.query.rentResult === "string" ? router.query.rentResult : "";
+    if (!result) return null;
+    const month = typeof router.query.month === "string" ? router.query.month : "";
+    const amount = typeof router.query.amount === "string" ? Number(router.query.amount || 0) : null;
+    const suffix = month ? ` (${month})` : "";
+
+    if (result === "paid_full") {
+      return {
+        tone: "emerald" as const,
+        title: `Loyer encaissé${suffix}`,
+        desc:
+          router.query.email === "sent"
+            ? "Le paiement complet a été enregistré. La quittance a été générée et envoyée au locataire."
+            : "Le paiement complet a été enregistré. La quittance est prête, mais l’email n’a pas été envoyé automatiquement.",
+      };
+    }
+    if (result === "partial") {
+      return {
+        tone: "amber" as const,
+        title: `Paiement incomplet enregistré${suffix}`,
+        desc: `Le montant reçu${amount != null && Number.isFinite(amount) ? ` (${amount.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })})` : ""} a été ajouté au suivi. La quittance reste bloquée jusqu’au règlement complet, avec relance possible depuis Quittances.`,
+      };
+    }
+    if (result === "unpaid") {
+      return {
+        tone: "red" as const,
+        title: `Loyer non payé${suffix}`,
+        desc: "Aucun encaissement n’a été ajouté. Le paiement reste à traiter et vous pouvez relancer le locataire depuis Quittances.",
+      };
+    }
+    return {
+      tone: "red" as const,
+      title: "Action non prise en compte",
+      desc: typeof router.query.reason === "string" ? router.query.reason : "Le lien est peut-être expiré ou déjà utilisé.",
+    };
+  }, [router.query]);
+
+  useEffect(() => {
+    const tab = typeof router.query.tab === "string" ? router.query.tab : "";
+    const validTabs: LandlordSectionKey[] = [
+      "dashboard",
+      "biens",
+      "locataires",
+      "baux",
+      "quittances",
+      "finance",
+      "simulateurs",
+      "etat_des_lieux",
+      "inventaire",
+      "declaration",
+    ];
+    if (validTabs.includes(tab as LandlordSectionKey)) setActive(tab as LandlordSectionKey);
+  }, [router.query.tab]);
+
   const onChangeTab = (k: LandlordSectionKey) => {
     if (k === "simulateurs" && !permissionsLoading && !canUsePaidLandlordTools) {
       router.push("/mon-compte/abonnement?source=simulateurs-bailleur");
@@ -218,6 +273,32 @@ export function DashboardShell(props: any) {
                 Débloquer plusieurs logements
               </a>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+      {rentFeedback ? (
+        <div
+          className={
+            "mb-4 rounded-3xl border p-4 shadow-sm " +
+            (rentFeedback.tone === "emerald"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+              : rentFeedback.tone === "amber"
+              ? "border-amber-200 bg-amber-50 text-amber-950"
+              : "border-red-200 bg-red-50 text-red-900")
+          }
+        >
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm font-semibold">{rentFeedback.title}</p>
+              <p className="mt-1 text-sm opacity-90">{rentFeedback.desc}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.replace("/espace-bailleur?tab=quittances", undefined, { shallow: true })}
+              className="self-start rounded-full border border-current/20 bg-white/70 px-3 py-1.5 text-xs font-semibold hover:bg-white md:self-auto"
+            >
+              Masquer
+            </button>
           </div>
         </div>
       ) : null}

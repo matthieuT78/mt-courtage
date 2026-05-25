@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
+import { buildRentReminderOwnerEmail } from "../../../lib/rentReminderEmail";
 
 type Json = Record<string, any>;
 
@@ -62,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 1) baux éligibles
     const { data: leases, error } = await supabaseAdmin
       .from("leases")
-      .select("id,user_id,payment_day,timezone,auto_reminder_enabled,reminder_email,last_auto_sent_period,status")
+      .select("id,user_id,property_id,tenant_id,rent_amount,charges_amount,payment_day,timezone,auto_reminder_enabled,reminder_email,last_auto_sent_period,status")
       .eq("auto_reminder_enabled", true)
       .neq("status", "draft");
 
@@ -120,26 +121,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       if (ins.error) { skipped++; continue; }
 
-      const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "";
-      const confirmUrl = `${baseUrl}/api/receipts/confirm-paid?token=${token}`;
+      const baseUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+      const fullUrl = `${baseUrl}/api/receipts/confirm-paid?token=${token}&action=full`;
+      const partialUrl = `${baseUrl}/api/receipts/confirm-paid?token=${token}&action=partial`;
+      const unpaidUrl = `${baseUrl}/api/receipts/confirm-paid?token=${token}&action=unpaid`;
 
-      const html = `
-        <div style="font-family: ui-sans-serif, system-ui; line-height: 1.5">
-          <p>Bonjour,</p>
-          <p>Nous sommes à J+2 après la date prévue de paiement. Le loyer du mois <b>${period}</b> a-t-il été payé ?</p>
-          <p>
-            <a href="${confirmUrl}" style="display:inline-block;padding:10px 14px;border-radius:999px;background:#111;color:#fff;text-decoration:none;font-weight:600">
-              Oui, le loyer est payé → Générer & envoyer la quittance
-            </a>
-          </p>
-          <p style="color:#666;font-size:12px">Lien valable 7 jours. Si déjà fait, ignore ce message.</p>
-        </div>
-      `;
+      const [{ data: property }, { data: tenant }] = await Promise.all([
+        l.property_id ? supabaseAdmin.from("properties").select("label,address_line1,city").eq("id", l.property_id).maybeSingle() : Promise.resolve({ data: null }),
+        l.tenant_id ? supabaseAdmin.from("tenants").select("full_name").eq("id", l.tenant_id).maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+
+      const email = buildRentReminderOwnerEmail({
+        baseUrl,
+        period,
+        propertyLabel: (property as any)?.label || (property as any)?.address_line1 || (property as any)?.city || null,
+        tenantName: (tenant as any)?.full_name || null,
+        expectedRent: (l as any).rent_amount,
+        expectedCharges: (l as any).charges_amount,
+        fullUrl,
+        partialUrl,
+        unpaidUrl,
+      });
 
       const mail = await sendEmailViaResend({
         to,
-        subject: `Loyer payé ? (${period})`,
-        html,
+        subject: email.subject,
+        html: email.html,
       });
 
       if (!mail.ok) { skipped++; continue; }
