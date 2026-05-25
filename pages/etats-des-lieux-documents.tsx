@@ -4,6 +4,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
+import AppFooter from "../components/AppFooter";
 import { supabase } from "../lib/supabaseClient";
 
 type SimpleUser = { id: string; email?: string };
@@ -210,6 +211,199 @@ function storageKey(userId: string) {
   return `mt_docs_${userId}`;
 }
 
+function EtatDesLieuxSeoHead() {
+  const title = "État des lieux gratuit : checklist mobile et PDF | lokt.fr";
+  const description =
+    "Préparez un état des lieux d’entrée ou de sortie avec checklist terrain, photos, documents et génération PDF dans l’espace bailleur lokt.fr.";
+  const pageUrl = "https://lokt.fr/etats-des-lieux-documents";
+  const ogImage = "https://lokt.fr/lokt-logo.jpg";
+  const jsonLdItems = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: title,
+      url: pageUrl,
+      description,
+      inLanguage: "fr-FR",
+      isPartOf: { "@type": "WebSite", name: "lokt.fr", url: "https://lokt.fr" },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Outil d’état des lieux lokt.fr",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: pageUrl,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "Quand faire un état des lieux ?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "L’état des lieux se fait à l’entrée du locataire puis à sa sortie, idéalement sur place, avec un relevé des compteurs, des clés et de l’état de chaque pièce.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Peut-on faire un état des lieux sur téléphone ?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Oui. lokt.fr privilégie un workflow mobile pour remplir la checklist directement dans le logement, ajouter les informations utiles puis générer un document exploitable.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Que doit contenir un état des lieux ?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Il doit identifier le logement, le bailleur, le locataire, la date, les compteurs, les clés, les observations par pièce et les éventuelles réserves ou dégradations.",
+          },
+        },
+      ],
+    },
+  ];
+
+  return (
+    <Head>
+      <title>{title}</title>
+      <meta name="description" content={description} />
+      <meta name="robots" content="index, follow" />
+      <link rel="canonical" href={pageUrl} />
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="lokt.fr" />
+      <meta property="og:locale" content="fr_FR" />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={description} />
+      <meta property="og:url" content={pageUrl} />
+      <meta property="og:image" content={ogImage} />
+      <meta property="og:image:alt" content="État des lieux mobile avec lokt.fr" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={ogImage} />
+      {jsonLdItems.map((schema, index) => (
+        <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      ))}
+    </Head>
+  );
+}
+
+function EtatDesLieuxPublicPage() {
+  const cta = "/mon-compte?mode=register&redirect=/espace-bailleur%3Ftab%3Detat-des-lieux";
+  const login = "/mon-compte?mode=login&redirect=/espace-bailleur%3Ftab%3Detat-des-lieux";
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-100">
+      <EtatDesLieuxSeoHead />
+      <AppHeader />
+
+      <main className="flex-1 px-4 py-8">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+            <div className="grid gap-0 lg:grid-cols-[1fr,0.9fr]">
+              <div className="p-7 sm:p-10">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-emerald-700">État des lieux</p>
+                <h1 className="mt-3 max-w-3xl text-3xl font-semibold leading-tight text-slate-950 sm:text-5xl">
+                  Faire un état des lieux simplement, sur place, depuis son téléphone.
+                </h1>
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+                  Un état des lieux se fait dans l’appartement, rarement derrière un ordinateur. lokt.fr guide le propriétaire
+                  pièce par pièce, centralise les observations et prépare un document propre pour l’entrée ou la sortie.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link href={cta} className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                    Créer mon compte gratuit
+                  </Link>
+                  <Link href={login} className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+                    J’ai déjà un compte
+                  </Link>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 bg-emerald-50 p-6 lg:border-l lg:border-t-0">
+                <div className="rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm font-semibold text-slate-950">Pensé pour le terrain</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    Checklist mobile, relevés de compteurs, clés, état par pièce, notes, documents et historique : le but est de
+                    limiter les oublis au moment où le propriétaire est dans le logement.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-3">
+            {[
+              ["1. Sélectionner le bail", "L’état des lieux est rattaché au logement, au locataire et au bail concerné."],
+              ["2. Remplir sur mobile", "Le propriétaire avance pièce par pièce : compteurs, clés, équipements, observations et réserves."],
+              ["3. Garder la preuve", "Le document généré reste attaché au dossier locatif pour l’entrée, la sortie et les échanges futurs."],
+            ].map(([title, text]) => (
+              <article key={title} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+              </article>
+            ))}
+          </section>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="grid gap-6 lg:grid-cols-[0.9fr,1.1fr]">
+              <div>
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Checklist propriétaire</p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-950">Les points à ne pas oublier</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  Une bonne expérience évite les gros formulaires vides. Le propriétaire doit être guidé sur les éléments vraiment utiles.
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  "Identité du bailleur et du locataire",
+                  "Adresse du logement",
+                  "Date d’entrée ou de sortie",
+                  "Relevés eau, gaz, électricité",
+                  "Nombre de clés et badges",
+                  "État par pièce",
+                  "Équipements et mobilier",
+                  "Observations et réserves",
+                ].map((item) => (
+                  <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-semibold text-slate-950">Questions fréquentes</h2>
+            <div className="mt-4 grid gap-3">
+              {[
+                ["Entrée ou sortie : est-ce le même document ?", "La structure est proche, mais la sortie sert surtout à comparer l’état avec l’entrée et à documenter les éventuelles retenues."],
+                ["Pourquoi le faire sur téléphone ?", "Parce que l’état des lieux se fait sur place. Le mobile évite les notes séparées et réduit les oublis pendant la visite."],
+                ["Faut-il garder les documents locataire au même endroit ?", "Oui, le dossier locatif est plus simple à piloter si bail, état des lieux, inventaire et pièces utiles sont centralisés."],
+              ].map(([q, a]) => (
+                <details key={q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-950">
+                    {q}
+                    <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
+                  </summary>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{a}</p>
+                </details>
+              ))}
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <AppFooter />
+    </div>
+  );
+}
+
 export default function EtatsDesLieuxDocumentsPage() {
   const router = useRouter();
 
@@ -251,8 +445,6 @@ export default function EtatsDesLieuxDocumentsPage() {
     () => tenants.find((t) => t.id === selectedTenantId) || null,
     [tenants, selectedTenantId]
   );
-
-  const requireAuthRedirect = "/mon-compte?mode=login&redirect=/etats-des-lieux-documents";
 
   const setTabInUrl = (next: Tab) => {
     setTab(next);
@@ -391,37 +583,7 @@ export default function EtatsDesLieuxDocumentsPage() {
   // UI: not logged in
   // -------------------------
   if (!checking && !user) {
-    return (
-      <div className="min-h-screen flex flex-col bg-slate-100">
-        <AppHeader />
-        <main className="flex-1 px-4 py-6">
-          <div className="max-w-xl mx-auto rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600">États des lieux & documents</p>
-            <h1 className="text-lg font-semibold text-slate-900">Connectez-vous pour accéder à l’outil</h1>
-            <p className="text-sm text-slate-600">
-              Vous pourrez générer vos checklists, télécharger des modèles et centraliser les pièces locataires.
-            </p>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => router.push(requireAuthRedirect)}
-                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-              >
-                Me connecter
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/mon-compte?mode=register&redirect=/etats-des-lieux-documents")}
-                className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-              >
-                Créer un compte
-              </button>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
+    return <EtatDesLieuxPublicPage />;
   }
 
   // -------------------------
@@ -429,15 +591,7 @@ export default function EtatsDesLieuxDocumentsPage() {
   // -------------------------
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      <Head>
-        <title>État des lieux location : checklist et documents | lokt.fr</title>
-        <meta
-          name="description"
-          content="Préparez un état des lieux d’entrée ou de sortie avec checklist, pièces locataire et documents utiles pour propriétaire bailleur."
-        />
-        <meta name="robots" content="index, follow" />
-        <link rel="canonical" href="https://lokt.fr/etats-des-lieux-documents" />
-      </Head>
+      <EtatDesLieuxSeoHead />
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">

@@ -1,8 +1,9 @@
 // pages/quittances-loyer.tsx
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Head from "next/head";
-import { useRouter } from "next/router";
+import Link from "next/link";
 import AppHeader from "../components/AppHeader";
+import AppFooter from "../components/AppFooter";
 import { supabase } from "../lib/supabaseClient";
 
 type SimpleUser = { id: string; email?: string };
@@ -260,6 +261,199 @@ function generateQuittanceText(params: {
   return lignes.join("\n");
 }
 
+function QuittanceSeoHead() {
+  const title = "Quittance de loyer gratuite en PDF pour propriétaire | lokt.fr";
+  const description =
+    "Générez une quittance de loyer PDF après paiement, archivez-la et automatisez l’envoi au locataire avec l’espace bailleur lokt.fr.";
+  const pageUrl = "https://lokt.fr/quittances-loyer";
+  const ogImage = "https://lokt.fr/lokt-logo.jpg";
+  const jsonLdItems = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: title,
+      url: pageUrl,
+      description,
+      inLanguage: "fr-FR",
+      isPartOf: { "@type": "WebSite", name: "lokt.fr", url: "https://lokt.fr" },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Générateur de quittance de loyer lokt.fr",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: pageUrl,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "Une quittance de loyer est-elle obligatoire ?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Le bailleur doit remettre gratuitement une quittance au locataire qui en fait la demande, uniquement pour les sommes effectivement payées.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Peut-on envoyer une quittance de loyer par email ?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Oui, l’envoi par email est possible si le locataire l’accepte. lokt.fr permet de générer le PDF et d’automatiser l’envoi selon l’offre utilisée.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Peut-on générer une quittance si le loyer n’est pas payé ?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Non. Une quittance est un reçu : elle atteste que le loyer et les charges concernés ont été payés. En cas de paiement incomplet, il faut suivre le solde restant dû.",
+          },
+        },
+      ],
+    },
+  ];
+
+  return (
+    <Head>
+      <title>{title}</title>
+      <meta name="description" content={description} />
+      <meta name="robots" content="index, follow" />
+      <link rel="canonical" href={pageUrl} />
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="lokt.fr" />
+      <meta property="og:locale" content="fr_FR" />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={description} />
+      <meta property="og:url" content={pageUrl} />
+      <meta property="og:image" content={ogImage} />
+      <meta property="og:image:alt" content="Quittance de loyer PDF avec lokt.fr" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={ogImage} />
+      {jsonLdItems.map((schema, index) => (
+        <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+      ))}
+    </Head>
+  );
+}
+
+function QuittancePublicPage() {
+  const cta = "/mon-compte?mode=register&redirect=/espace-bailleur%3Ftab%3Dquittances";
+  const login = "/mon-compte?mode=login&redirect=/espace-bailleur%3Ftab%3Dquittances";
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-100">
+      <QuittanceSeoHead />
+      <AppHeader />
+
+      <main className="flex-1 px-4 py-8">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+            <div className="grid gap-0 lg:grid-cols-[1fr,0.9fr]">
+              <div className="p-7 sm:p-10">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-amber-700">Quittance de loyer</p>
+                <h1 className="mt-3 max-w-3xl text-3xl font-semibold leading-tight text-slate-950 sm:text-5xl">
+                  Générer une quittance de loyer gratuite, propre et archivée.
+                </h1>
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+                  lokt.fr aide le propriétaire bailleur à créer une quittance PDF après confirmation du paiement, à garder l’historique
+                  par bail et à automatiser l’envoi au locataire lorsque l’abonnement le permet.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link href={cta} className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                    Créer mon compte gratuit
+                  </Link>
+                  <Link href={login} className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+                    J’ai déjà un compte
+                  </Link>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200 bg-amber-50 p-6 lg:border-l lg:border-t-0">
+                <div className="rounded-3xl border border-amber-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm font-semibold text-slate-950">Règle importante</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    Une quittance est un reçu. Elle doit être générée uniquement lorsque le loyer et les charges de la période
+                    concernée ont été payés. Si le paiement est incomplet ou absent, lokt.fr conserve le suivi et permet la relance.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-3">
+            {[
+              ["1. Confirmer le paiement", "Le bailleur valide que le loyer du mois est reçu avant toute génération de quittance."],
+              ["2. Générer le PDF", "La quittance reprend bailleur, locataire, logement, période, loyer, charges, total et date d’émission."],
+              ["3. Archiver et envoyer", "Le PDF reste lié au bail. L’envoi email automatique est disponible dans les offres payantes."],
+            ].map(([title, text]) => (
+              <article key={title} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+              </article>
+            ))}
+          </section>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="grid gap-6 lg:grid-cols-[0.9fr,1.1fr]">
+              <div>
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Contenu du document</p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-950">Ce qu’une bonne quittance doit contenir</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  L’objectif n’est pas seulement de sortir un PDF. Le document doit être lisible, complet et cohérent avec le bail.
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  "Identité et adresse du bailleur",
+                  "Nom du locataire",
+                  "Adresse du logement loué",
+                  "Période concernée",
+                  "Loyer hors charges",
+                  "Charges ou provisions",
+                  "Total payé",
+                  "Date et lieu d’émission",
+                ].map((item) => (
+                  <div key={item} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-2xl font-semibold text-slate-950">Questions fréquentes</h2>
+            <div className="mt-4 grid gap-3">
+              {[
+                ["Quelle différence entre avis d’échéance et quittance ?", "L’avis d’échéance demande un paiement à venir. La quittance confirme un paiement déjà reçu."],
+                ["La quittance est-elle gratuite ?", "Oui. Un bailleur ne peut pas facturer la remise d’une quittance au locataire qui la demande."],
+                ["Que faire en cas de paiement incomplet ?", "Il ne faut pas envoyer une quittance complète. Dans lokt.fr, le paiement peut être marqué incomplet et rester visible dans le suivi."],
+              ].map(([q, a]) => (
+                <details key={q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-950">
+                    {q}
+                    <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
+                  </summary>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{a}</p>
+                </details>
+              ))}
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <AppFooter />
+    </div>
+  );
+}
+
 // -------------------------
 // Auth hook (robuste)
 // -------------------------
@@ -304,7 +498,6 @@ function useAuthedUser() {
 // Page
 // -------------------------
 export default function QuittancesLoyerPage() {
-  const router = useRouter();
   const { user, loading: loadingUser } = useAuthedUser();
 
   // Data
@@ -858,36 +1051,7 @@ export default function QuittancesLoyerPage() {
   // UI: not logged in
   // -------------------------
   if (!loadingUser && !user) {
-    return (
-      <div className="min-h-screen flex flex-col bg-slate-100">
-        <AppHeader />
-        <main className="flex-1 px-4 py-6">
-          <div className="max-w-xl mx-auto rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-600">Quittances de loyer</p>
-            <h1 className="text-lg font-semibold text-slate-900">Connectez-vous pour gérer vos quittances</h1>
-            <p className="text-sm text-slate-600">
-              Cet outil nécessite un compte pour stocker vos baux, vos quittances et l’historique.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => router.push("/mon-compte?mode=login&redirect=/quittances-loyer")}
-                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-              >
-                Me connecter
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/mon-compte?mode=register&redirect=/quittances-loyer")}
-                className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-              >
-                Créer un compte
-              </button>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
+    return <QuittancePublicPage />;
   }
 
   // -------------------------
@@ -895,15 +1059,7 @@ export default function QuittancesLoyerPage() {
   // -------------------------
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      <Head>
-        <title>Quittance de loyer PDF gratuite et automatisation | lokt.fr</title>
-        <meta
-          name="description"
-          content="Générez une quittance de loyer PDF, suivez les paiements et automatisez l’envoi au locataire avec l’outil de gestion locative lokt.fr."
-        />
-        <meta name="robots" content="index, follow" />
-        <link rel="canonical" href="https://lokt.fr/quittances-loyer" />
-      </Head>
+      <QuittanceSeoHead />
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">

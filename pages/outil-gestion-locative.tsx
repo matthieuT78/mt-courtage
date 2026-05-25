@@ -134,42 +134,69 @@ export default function OutilGestionLocativePage() {
     };
   }, []);
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "SoftwareApplication",
-        name: "lokt.fr - Outil de gestion locative",
-        applicationCategory: "BusinessApplication",
-        operatingSystem: "Web",
-        url: pageUrl,
-        image: ogImage,
-        description,
-        offers: {
-          "@type": "Offer",
-          price: "0",
-          priceCurrency: "EUR",
-          description: "Offre gratuite pour un logement actif.",
-        },
-        featureList: [
-          "Gestion des baux et locataires",
-          "Quittances PDF",
-          "Envoi automatique des quittances",
-          "États des lieux mobile",
-          "Inventaire LMNP",
-          "Suivi financier propriétaire",
-          "Alertes métier",
-        ],
+  const faq = [
+    {
+      q: "L’outil de gestion locative est-il vraiment gratuit ?",
+      a: "Oui, lokt.fr permet de gérer gratuitement un logement actif. Les offres payantes ajoutent surtout l’automatisation, les alertes avancées, l’aide à la déclaration et plus de volume.",
+    },
+    {
+      q: "Quelle différence avec un simple modèle de quittance ?",
+      a: "Un modèle génère un document isolé. lokt.fr rattache la quittance au bail, au locataire, au mois concerné et au suivi du paiement pour garder un historique exploitable.",
+    },
+    {
+      q: "Puis-je utiliser lokt.fr si je n’ai qu’un seul bien ?",
+      a: "Oui, c’est précisément le cas d’usage gratuit : un propriétaire bailleur qui veut gérer proprement son premier logement sans tableur.",
+    },
+    {
+      q: "Les actions se font-elles depuis cette page publique ?",
+      a: "Non. Cette page explique le produit. Les actions métier se font dans l’espace bailleur privé après connexion.",
+    },
+  ];
+
+  const jsonLdItems = [
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "lokt.fr - Outil de gestion locative",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: pageUrl,
+      image: ogImage,
+      description,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "EUR",
+        description: "Offre gratuite pour un logement actif.",
       },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Accueil", item: siteUrl },
-          { "@type": "ListItem", position: 2, name: "Outil de gestion locative", item: pageUrl },
-        ],
-      },
-    ],
-  };
+      featureList: [
+        "Gestion des baux et locataires",
+        "Quittances PDF",
+        "Envoi automatique des quittances",
+        "États des lieux mobile",
+        "Inventaire LMNP",
+        "Suivi financier propriétaire",
+        "Alertes métier",
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Accueil", item: siteUrl },
+        { "@type": "ListItem", position: 2, name: "Outil de gestion locative", item: pageUrl },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faq.map((item) => ({
+        "@type": "Question",
+        name: item.q,
+        acceptedAnswer: { "@type": "Answer", text: item.a },
+      })),
+    },
+  ];
 
   const features: Feature[] = [
     {
@@ -224,7 +251,9 @@ export default function OutilGestionLocativePage() {
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        {jsonLdItems.map((schema, index) => (
+          <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+        ))}
       </Head>
 
       <AppHeader />
@@ -353,6 +382,29 @@ export default function OutilGestionLocativePage() {
                 >
                   {authReady && isLoggedIn ? "Aller à l’outil bailleur" : "Créer un compte gratuit"}
                 </Link>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="grid gap-6 lg:grid-cols-[0.8fr,1.2fr]">
+              <div>
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Questions fréquentes</p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-950">Comprendre l’outil avant de créer son compte</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  La page publique sert à expliquer. Le cockpit, les baux, les quittances et la finance restent dans l’espace bailleur privé.
+                </p>
+              </div>
+              <div className="grid gap-3">
+                {faq.map((item) => (
+                  <details key={item.q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-950">
+                      {item.q}
+                      <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
+                    </summary>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.a}</p>
+                  </details>
+                ))}
               </div>
             </div>
           </section>
