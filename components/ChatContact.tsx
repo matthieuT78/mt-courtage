@@ -1,12 +1,15 @@
 // components/ContactChat.tsx
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
+import { supabase } from "../lib/supabaseClient";
+import { usePermissions } from "./PermissionProvider";
 
-type Cat = "bug" | "suggestion" | "partenariat" | "autre";
+type Cat = "problem" | "unclear" | "idea" | "pro";
 const CAT_LABEL: Record<Cat, string> = {
-  bug: "Bug",
-  suggestion: "Suggestion",
-  partenariat: "Partenariat",
-  autre: "Autre",
+  problem: "J’ai un problème",
+  unclear: "Je ne comprends pas",
+  idea: "Idée d’amélioration",
+  pro: "Contact pro",
 };
 
 function safeEmail(s: string) {
@@ -19,9 +22,12 @@ function isValidEmail(s: string) {
 }
 
 export default function ContactChat() {
+  const router = useRouter();
+  const permissions = usePermissions();
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState<Cat>("suggestion");
+  const [category, setCategory] = useState<Cat>("problem");
   const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState("");
   const [message, setMessage] = useState("");
   const [hp, setHp] = useState(""); // honeypot
   const [sending, setSending] = useState(false);
@@ -30,25 +36,58 @@ export default function ContactChat() {
 
   const page = useMemo(() => {
     if (typeof window === "undefined") return "";
-    return window.location.pathname;
+    return router.asPath || window.location.pathname;
+  }, [router.asPath]);
+
+  const supportTopic = useMemo(() => {
+    const p = page.toLowerCase();
+    if (p.includes("quittance")) return "quittances ou envoi de PDF";
+    if (p.includes("baux")) return "bail, renouvellement ou alerte";
+    if (p.includes("finance")) return "finance, loyers ou charges";
+    if (p.includes("declaration")) return "aide à la déclaration";
+    if (p.includes("etat")) return "état des lieux";
+    if (p.includes("mon-compte") || p.includes("abonnement")) return "compte, abonnement ou facture";
+    if (p.includes("capacite") || p.includes("investissement") || p.includes("pret-relais") || p.includes("plus-value") || p.includes("parc-immobilier")) return "simulation immobilière";
+    return "utilisation de lokt.fr";
+  }, [page]);
+
+  const buildTemplate = (cat: Cat) => {
+    if (cat === "problem") {
+      return `Bonjour,\n\nJ’ai un problème sur ${page || "lokt.fr"} (${supportTopic}) :\n\nCe que je fais :\n\nCe qui se passe :\n\nCe que j’attendais :\n\nMerci.`;
+    }
+    if (cat === "unclear") {
+      return `Bonjour,\n\nJe ne comprends pas cette partie sur ${page || "lokt.fr"} (${supportTopic}) :\n\nMa question :\n\nMerci.`;
+    }
+    if (cat === "idea") {
+      return `Bonjour,\n\nJ’ai une idée d’amélioration pour ${page || "lokt.fr"} :\n\nMon idée :\n\nPourquoi ce serait utile :\n\nMerci.`;
+    }
+    return `Bonjour,\n\nJe vous contacte pour un sujet professionnel :\n\nSociété / profil :\n\nBesoin :\n\nTéléphone si utile :\n\nMerci.`;
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!supabase) return;
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+      if (!mounted || !user) return;
+      setUserId(user.id || "");
+      if (!email && user.email) setEmail(user.email);
+    })().catch(() => {});
+    return () => {
+      mounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // pré-remplissage “utile”
   useEffect(() => {
     if (!open) return;
     if (!message) {
-      setMessage(
-        category === "bug"
-          ? `Bonjour,\n\nJ'ai rencontré un bug sur la page ${page} :\n- Étapes pour reproduire :\n- Résultat observé :\n- Résultat attendu :\n\nMerci !`
-          : category === "suggestion"
-          ? `Bonjour,\n\nSuggestion d'amélioration sur ${page} :\n\n`
-          : category === "partenariat"
-          ? `Bonjour,\n\nJe vous contacte pour un partenariat :\n- Société / profil :\n- Proposition :\n- Contact :\n\n`
-          : `Bonjour,\n\nJe vous contacte au sujet de :\n\n`
-      );
+      setMessage(buildTemplate(category));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, category]);
+  }, [open, category, page]);
 
   const emailOk = isValidEmail(email);
   const canSend =
@@ -87,25 +126,33 @@ export default function ContactChat() {
           message,
           page,
           hp,
+          context: {
+            url: typeof window !== "undefined" ? window.location.href : "",
+            userAgent: typeof window !== "undefined" ? window.navigator.userAgent : "",
+            viewport: typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "",
+            plan: permissions.plan,
+            isLoggedIn: permissions.isLoggedIn,
+            userId,
+          },
         }),
       });
 
       const data = await r.json().catch(() => null);
       if (!r.ok || !data?.ok) throw new Error(data?.error || "send_failed");
 
-      setStatus("✅ Message envoyé. Merci !");
+      setStatus("Message reçu. La page et le contexte utile ont été ajoutés pour comprendre plus vite.");
       setCooldownUntil(Date.now() + 12_000); // 12s anti-spam simple
       // option : fermer après envoi
       // setOpen(false);
     } catch (e: any) {
-      setStatus("❌ Impossible d’envoyer : " + (e?.message || "erreur"));
+      setStatus("Impossible d’envoyer : " + (e?.message || "erreur"));
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[90]">
+    <div className="fixed bottom-3 right-3 z-[90] sm:bottom-4 sm:right-4">
       {/* bouton flottant (premium) */}
       {!open ? (
         <button
@@ -114,7 +161,7 @@ export default function ContactChat() {
           aria-label="Ouvrir le chat de contact lokt.fr"
           className="
             relative group
-            h-14 w-14 sm:h-16 sm:w-16
+            h-12 w-12 sm:h-16 sm:w-16
             rounded-full
             bg-gradient-to-br from-cyan-500 to-emerald-500
             shadow-lg shadow-emerald-500/20
@@ -159,16 +206,12 @@ export default function ContactChat() {
           <span
             className="
               absolute -top-1 -right-1
-              h-7 w-7 rounded-2xl
-              bg-white/85 backdrop-blur
-              border border-white/60
-              shadow-sm
-              flex items-center justify-center
-              overflow-hidden
+              flex h-6 w-6 items-center justify-center overflow-hidden rounded-2xl
+              border border-white/70 bg-white/90 shadow-sm backdrop-blur sm:h-7 sm:w-7
             "
             aria-hidden
           >
-            <img src="/apple-touch-icon.png" alt="" className="h-5 w-5 object-contain" />
+            <img src="/apple-touch-icon.png" alt="" className="h-4 w-4 object-contain sm:h-5 sm:w-5" />
           </span>
 
           {/* label desktop */}
@@ -192,11 +235,11 @@ export default function ContactChat() {
 
       {/* fenêtre */}
       {open ? (
-        <div className="w-[92vw] max-w-sm overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
+        <div className="max-h-[calc(100vh-2rem)] w-[calc(100vw-1.5rem)] max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900">Contact lokt.fr</p>
-              <p className="text-[0.75rem] text-slate-500">Une réponse manuelle — pas de spam.</p>
+              <p className="text-sm font-semibold text-slate-900">Aide lokt.fr</p>
+              <p className="text-[0.75rem] text-slate-500">Une réponse manuelle, avec la page concernée.</p>
             </div>
             <button
               onClick={() => setOpen(false)}
@@ -207,10 +250,10 @@ export default function ContactChat() {
             </button>
           </div>
 
-          <div className="p-4 space-y-3">
+          <div className="max-h-[calc(100vh-7rem)] space-y-3 overflow-y-auto p-4">
             {/* quick buttons */}
-            <div className="flex flex-wrap gap-2">
-              {(["bug", "suggestion", "partenariat", "autre"] as Cat[]).map((c) => (
+            <div className="grid grid-cols-2 gap-2">
+              {(["problem", "unclear", "idea", "pro"] as Cat[]).map((c) => (
                 <button
                   key={c}
                   type="button"
@@ -220,7 +263,7 @@ export default function ContactChat() {
                     setMessage(""); // force le pré-remplissage
                   }}
                   className={
-                    "rounded-full px-3 py-1 text-[0.75rem] font-semibold border transition " +
+                    "rounded-2xl border px-3 py-2 text-left text-[0.75rem] font-semibold transition " +
                     (category === c
                       ? "bg-slate-900 text-white border-slate-900"
                       : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50")
@@ -254,7 +297,7 @@ export default function ContactChat() {
                 aria-invalid={email.length > 0 && !emailOk}
               />
               <p className="text-[0.7rem] text-slate-500">
-                Obligatoire — utilisé uniquement pour vous répondre.
+                {permissions.isLoggedIn ? "Prérempli depuis votre compte — utilisé uniquement pour vous répondre." : "Obligatoire — utilisé uniquement pour vous répondre."}
               </p>
             </div>
 
@@ -271,8 +314,7 @@ export default function ContactChat() {
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
               <p className="text-[0.7rem] text-slate-500">
-                Catégorie : <span className="font-semibold">{CAT_LABEL[category]}</span> · Page :{" "}
-                <span className="font-semibold">{page || "-"}</span>
+                Sujet : <span className="font-semibold">{supportTopic}</span> · Page ajoutée automatiquement.
               </p>
             </div>
 

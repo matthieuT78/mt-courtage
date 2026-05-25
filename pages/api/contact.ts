@@ -2,7 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { sendEmailViaResend } from "../../lib/mailer/resend";
 
-type Cat = "bug" | "suggestion" | "partenariat" | "autre";
+type Cat = "problem" | "unclear" | "idea" | "pro" | "bug" | "suggestion" | "partenariat" | "autre";
 
 type Body = {
   category?: Cat;
@@ -10,6 +10,14 @@ type Body = {
   message?: string;
   page?: string;
   hp?: string; // honeypot anti-bot
+  context?: {
+    url?: string;
+    userAgent?: string;
+    viewport?: string;
+    plan?: string;
+    isLoggedIn?: boolean;
+    userId?: string;
+  };
 };
 
 function safeStr(x: any, max = 4000) {
@@ -64,6 +72,14 @@ function checkRateLimit(ip: string) {
 
 function labelFromCategory(category: Cat) {
   switch (category) {
+    case "problem":
+      return "Problème utilisateur";
+    case "unclear":
+      return "Incompréhension";
+    case "idea":
+      return "Idée d’amélioration";
+    case "pro":
+      return "Contact pro";
     case "bug":
       return "Bug";
     case "suggestion":
@@ -189,16 +205,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const category: Cat =
+      body.category === "problem" ||
+      body.category === "unclear" ||
+      body.category === "idea" ||
+      body.category === "pro" ||
       body.category === "bug" ||
       body.category === "suggestion" ||
       body.category === "partenariat" ||
       body.category === "autre"
         ? body.category
-        : "autre";
+        : "problem";
 
     const email = safeEmail(body.email);
     const message = safeStr(body.message, 4000);
     const page = safeStr(body.page, 300);
+    const context = {
+      url: safeStr(body.context?.url, 500),
+      userAgent: safeStr(body.context?.userAgent, 500),
+      viewport: safeStr(body.context?.viewport, 80),
+      plan: safeStr(body.context?.plan, 80),
+      isLoggedIn: body.context?.isLoggedIn === true ? "oui" : "non",
+      userId: safeStr(body.context?.userId, 120),
+    };
 
     // ✅ email obligatoire
     if (!email) {
@@ -213,13 +241,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const subject = `[lokt.fr] ${label}${page ? ` — ${page}` : ""}`;
 
     const safeMessageHtml = escapeHtml(message);
+    const contextRows = [
+      ["URL", context.url],
+      ["Page", page || "(inconnue)"],
+      ["Compte connecté", context.isLoggedIn],
+      ["Plan", context.plan || "(inconnu)"],
+      ["User ID", context.userId || "(non connecté)"],
+      ["Viewport", context.viewport || "(inconnu)"],
+      ["Navigateur", context.userAgent || "(inconnu)"],
+    ];
 
     const html = `
 <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;padding:16px;">
-  <h2 style="margin:0 0 10px;color:#0f172a;">Nouveau message (chat)</h2>
+  <h2 style="margin:0 0 10px;color:#0f172a;">Nouveau message support</h2>
   <p style="margin:0 0 6px;color:#334155;"><strong>Catégorie :</strong> ${label}</p>
   <p style="margin:0 0 6px;color:#334155;"><strong>Email :</strong> ${escapeHtml(email)}</p>
-  <p style="margin:0 0 12px;color:#334155;"><strong>Page :</strong> ${escapeHtml(page || "(inconnue)")}</p>
+  <div style="margin:12px 0;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+    ${contextRows
+      .map(
+        ([k, v]) => `
+          <div style="display:flex;gap:10px;border-bottom:1px solid #e2e8f0;padding:8px 10px;background:#f8fafc;">
+            <strong style="min-width:120px;color:#334155;">${escapeHtml(k)}</strong>
+            <span style="color:#0f172a;word-break:break-word;">${escapeHtml(v)}</span>
+          </div>
+        `
+      )
+      .join("")}
+  </div>
   <div style="white-space:pre-wrap;color:#0f172a;line-height:1.5;border:1px solid #e2e8f0;border-radius:10px;padding:12px;background:#f8fafc;">
 ${safeMessageHtml}
   </div>
@@ -231,7 +279,13 @@ ${safeMessageHtml}
       `Nouveau message (chat)\n` +
       `Catégorie: ${label}\n` +
       `Email: ${email}\n` +
-      `Page: ${page || "(inconnue)"}\n\n` +
+      `Page: ${page || "(inconnue)"}\n` +
+      `URL: ${context.url || "(inconnue)"}\n` +
+      `Compte connecté: ${context.isLoggedIn}\n` +
+      `Plan: ${context.plan || "(inconnu)"}\n` +
+      `User ID: ${context.userId || "(non connecté)"}\n` +
+      `Viewport: ${context.viewport || "(inconnu)"}\n` +
+      `Navigateur: ${context.userAgent || "(inconnu)"}\n\n` +
       `${message}\n`;
 
     // 1) Mail interne (toi)
