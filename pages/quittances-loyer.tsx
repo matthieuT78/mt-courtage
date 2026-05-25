@@ -1,5 +1,6 @@
 // pages/quittances-loyer.tsx
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
@@ -894,6 +895,15 @@ export default function QuittancesLoyerPage() {
   // -------------------------
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
+      <Head>
+        <title>Quittance de loyer PDF gratuite et automatisation | lokt.fr</title>
+        <meta
+          name="description"
+          content="Générez une quittance de loyer PDF, suivez les paiements et automatisez l’envoi au locataire avec l’outil de gestion locative lokt.fr."
+        />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://lokt.fr/quittances-loyer" />
+      </Head>
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
@@ -1412,7 +1422,7 @@ export default function QuittancesLoyerPage() {
 
               <div className="text-right">
                 <a
-                  href="/outils-proprietaire"
+                  href="/outil-gestion-locative"
                   className="text-[0.75rem] text-slate-500 underline underline-offset-2"
                 >
                   ← Retour à la boîte à outils propriétaire

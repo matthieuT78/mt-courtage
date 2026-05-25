@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 
 function yyyymmToPeriod(yyyymm: string) {
   const [y, m] = yyyymm.split("-").map(Number);
@@ -66,6 +67,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     for (const lease of leases) {
       const userId = lease.user_id;
+      const canUseAutomation = await userCanUseReceiptAutomation(String(userId || ""));
+      if (!canUseAutomation) {
+        skipped++;
+        continue;
+      }
+
       const paymentDay = Number(lease.payment_day || lease.paymentDay || 1); // adapte si besoin
       const dd = clampPaymentDay(y, m, paymentDay);
 

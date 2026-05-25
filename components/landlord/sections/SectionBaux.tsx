@@ -1,10 +1,24 @@
 // components/landlord/sections/SectionBaux.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import {
+  ArrowPathIcon,
+  ArrowRightIcon,
+  BoltIcon,
+  CheckCircleIcon,
+  HandRaisedIcon,
+  PencilSquareIcon,
+  PlusIcon,
+  PowerIcon,
+  ShieldCheckIcon,
+  TrashIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
+import { usePermissions } from "../../PermissionProvider";
 
 /* ======================================================
    TYPES
@@ -22,6 +36,8 @@ export type Lease = {
   deposit_amount: number | null;
   payment_day: number | null;
   payment_method: string | null;
+  lease_kind?: LeaseKind | string | null;
+  auto_renewal_enabled?: boolean | null;
 
   payment_type?: string | null; // "terme_a_echoir" | "terme_echu"
 
@@ -48,27 +64,14 @@ export type TenantLite = {
   email: string | null;
 };
 
-type Contact = {
-  id: string;
-  user_id: string;
-  full_name: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  notes?: string | null;
-  contact_type?: string | null; // "guarantor"
-  archived_at?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
-
 type Props = {
   userId: string;
+  userEmail?: string | null;
   leases?: Lease[];
   properties?: PropertyLite[];
   tenants?: TenantLite[];
   onRefresh: () => Promise<void>;
+  onGoToQuittances?: () => void; // ✅ NEW (Option A UX)
 };
 
 /* ======================================================
@@ -76,6 +79,7 @@ type Props = {
 ====================================================== */
 
 const CREATE_ID = "__create__";
+type LeaseKind = "furnished_primary" | "furnished_student" | "mobility" | "empty_primary" | "other";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -114,16 +118,190 @@ const stop = (e: React.SyntheticEvent) => {
   e.stopPropagation();
 };
 
-const buildFullName = (first?: string, last?: string) =>
-  [String(first || "").trim(), String(last || "").trim()].filter(Boolean).join(" ").trim();
-
-const isArchivedContact = (c: Contact) => !!c.archived_at;
-
 function paymentTypeLabel(v?: string | null) {
   return (v || "").toLowerCase() === "terme_echu" ? "Fin de période (terme échu)" : "Début de période (terme à échoir)";
 }
 function paymentTypeShort(v?: string | null) {
   return (v || "").toLowerCase() === "terme_echu" ? "échu" : "à échoir";
+}
+
+function isEmailLike(v?: string | null) {
+  const s = String(v || "").trim();
+  return !s || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+
+function daysUntil(d: Date, now = parisNow()) {
+  const ms = d.getTime() - now.getTime();
+  return Math.ceil(ms / (24 * 3600 * 1000));
+}
+
+function relativeDateLabel(d: Date) {
+  const n = daysUntil(d);
+  if (n === 0) return "aujourd’hui";
+  if (n === 1) return "demain";
+  if (n > 1) return `dans ${n} jours`;
+  if (n === -1) return "hier";
+  return `il y a ${Math.abs(n)} jours`;
+}
+
+function emailOrDash(v?: string | null) {
+  return String(v || "").trim() || "—";
+}
+
+function getTenantEmail(tenant?: TenantLite | null) {
+  return String(tenant?.email || "").trim();
+}
+
+const leaseKindOptions: Array<{
+  value: LeaseKind;
+  label: string;
+  short: string;
+  durationMonths: number | null;
+  tacitRenewal: boolean;
+  renewalLabel: string;
+  note: string;
+}> = [
+  {
+    value: "furnished_primary",
+    label: "Meublé résidence principale",
+    short: "Meublé 1 an",
+    durationMonths: 12,
+    tacitRenewal: true,
+    renewalLabel: "Reconduction tacite annuelle",
+    note: "Cas LMNP classique : bail d’un an, reconduit si aucun congé n’est donné.",
+  },
+  {
+    value: "furnished_student",
+    label: "Meublé étudiant 9 mois",
+    short: "Étudiant 9 mois",
+    durationMonths: 9,
+    tacitRenewal: false,
+    renewalLabel: "Fin au terme",
+    note: "Pas de tacite reconduction : si l’étudiant reste, il faut signer un nouveau bail.",
+  },
+  {
+    value: "mobility",
+    label: "Bail mobilité",
+    short: "Mobilité",
+    durationMonths: null,
+    tacitRenewal: false,
+    renewalLabel: "Non renouvelable",
+    note: "Durée de 1 à 10 mois : pas de renouvellement ni reconduction.",
+  },
+  {
+    value: "empty_primary",
+    label: "Nu résidence principale",
+    short: "Nu 3 ans",
+    durationMonths: 36,
+    tacitRenewal: true,
+    renewalLabel: "Reconduction tacite",
+    note: "Bail nu classique : durée minimale de 3 ans pour un bailleur particulier.",
+  },
+  {
+    value: "other",
+    label: "Autre / suivi libre",
+    short: "Libre",
+    durationMonths: null,
+    tacitRenewal: false,
+    renewalLabel: "À définir",
+    note: "Lokt.fr ne déduit pas automatiquement la règle juridique.",
+  },
+];
+
+function getLeaseKindRule(kind?: string | null) {
+  return leaseKindOptions.find((x) => x.value === kind) || leaseKindOptions[0];
+}
+
+function addMonthsLocal(d: Date, months: number) {
+  const next = new Date(d.getFullYear(), d.getMonth() + months, d.getDate());
+  if (next.getDate() !== d.getDate()) return new Date(next.getFullYear(), next.getMonth(), 0);
+  return next;
+}
+
+function dateMinusOneDay(d: Date) {
+  const next = new Date(d);
+  next.setDate(next.getDate() - 1);
+  return next;
+}
+
+function parseISODateLocal(v?: string | null) {
+  if (!v) return null;
+  const [y, m, d] = String(v).slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+function dateToISO(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+function expectedEndDate(startDate?: string | null, kind?: string | null) {
+  const start = parseISODateLocal(startDate);
+  const rule = getLeaseKindRule(kind);
+  if (!start || !rule.durationMonths) return "";
+  return dateToISO(dateMinusOneDay(addMonthsLocal(start, rule.durationMonths)));
+}
+
+function leaseRenewalInfo(lease: Partial<Lease>, now = parisNow()) {
+  const rule = getLeaseKindRule(lease.lease_kind);
+  const start = parseISODateLocal(lease.start_date);
+  const contractualEnd = parseISODateLocal(lease.end_date) || parseISODateLocal(expectedEndDate(lease.start_date, rule.value));
+  const renewalEnabled = rule.tacitRenewal && lease.auto_renewal_enabled !== false;
+
+  if (!start || !contractualEnd) {
+    return {
+      rule,
+      renewalEnabled,
+      title: rule.short,
+      status: "Date de fin à compléter",
+      detail: rule.note,
+      tone: "amber" as const,
+      currentEnd: null as Date | null,
+      nextAction: "Complète la date de début et la date de fin contractuelle.",
+    };
+  }
+
+  if (!renewalEnabled) {
+    const days = daysUntil(contractualEnd, now);
+    const isPast = days < 0;
+    return {
+      rule,
+      renewalEnabled,
+      title: rule.short,
+      status: isPast ? "Bail arrivé à terme" : `Fin prévue ${fmtFR(contractualEnd)}`,
+      detail: rule.renewalLabel,
+      tone: isPast ? ("red" as const) : days <= 60 ? ("amber" as const) : ("slate" as const),
+      currentEnd: contractualEnd,
+      nextAction: isPast ? "Clôture le bail ou signe un nouveau bail si le locataire reste." : "Prépare la sortie ou le nouveau bail avant l’échéance.",
+    };
+  }
+
+  const durationMonths = rule.durationMonths || 12;
+  let cycleStart = new Date(start);
+  let cycleEnd = new Date(contractualEnd);
+  let renewalCount = 0;
+
+  while (cycleEnd.getTime() < now.getTime() && renewalCount < 30) {
+    cycleStart = new Date(cycleEnd);
+    cycleStart.setDate(cycleStart.getDate() + 1);
+    cycleEnd = dateMinusOneDay(addMonthsLocal(cycleStart, durationMonths));
+    renewalCount += 1;
+  }
+
+  const days = daysUntil(cycleEnd, now);
+  return {
+    rule,
+    renewalEnabled,
+    title: rule.short,
+    status: renewalCount > 0 ? `Reconduit jusqu’au ${fmtFR(cycleEnd)}` : `Fin de période ${fmtFR(cycleEnd)}`,
+    detail: renewalCount > 0 ? `${renewalCount} reconduction${renewalCount > 1 ? "s" : ""} suivie${renewalCount > 1 ? "s" : ""}` : rule.renewalLabel,
+    tone: days <= 60 ? ("amber" as const) : ("emerald" as const),
+    currentEnd: cycleEnd,
+    nextAction:
+      days <= 60
+        ? "Décide si tu laisses reconduire, si tu proposes un avenant ou si tu prépares un congé conforme."
+        : "Aucune action immédiate : le bail reste suivi comme reconduit tacitement.",
+  };
 }
 
 const isActiveLease = (l: Lease) => (l.status || "").toLowerCase() === "active";
@@ -138,10 +316,131 @@ const statusTone = (s?: string | null) => {
   return "slate" as const;
 };
 
+type IconComponent = React.ComponentType<React.SVGProps<SVGSVGElement>>;
+
+function ActionButton({
+  children,
+  icon: Icon,
+  tone = "secondary",
+  disabled,
+  onClick,
+}: {
+  children: React.ReactNode;
+  icon: IconComponent;
+  tone?: "primary" | "secondary" | "success" | "warning" | "danger";
+  disabled?: boolean;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const cls =
+    tone === "primary"
+      ? "border-slate-900 bg-slate-900 text-white shadow-sm hover:bg-slate-800"
+      : tone === "success"
+      ? "border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-500"
+      : tone === "warning"
+      ? "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
+      : tone === "danger"
+      ? "border-red-300 bg-red-50 text-red-800 hover:bg-red-100"
+      : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50";
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cx(
+        "inline-flex h-9 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-1",
+        cls,
+        disabled && "cursor-not-allowed opacity-60"
+      )}
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+      <span>{children}</span>
+    </button>
+  );
+}
+
+function InfoPill({ tone, children }: { tone: "slate" | "sky" | "emerald" | "amber" | "red"; children: React.ReactNode }) {
+  const cls =
+    tone === "sky"
+      ? "border-sky-200 bg-sky-50 text-sky-900"
+      : tone === "emerald"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      : tone === "amber"
+      ? "border-amber-200 bg-amber-50 text-amber-900"
+      : tone === "red"
+      ? "border-red-200 bg-red-50 text-red-900"
+      : "border-slate-200 bg-slate-50 text-slate-700";
+
+  return <span className={cx("inline-flex items-center rounded-md border px-2 py-1 text-[0.68rem] font-medium", cls)}>{children}</span>;
+}
+
+function WorkflowChoice({
+  title,
+  description,
+  icon: Icon,
+  selected,
+  tone,
+  disabled,
+  onClick,
+}: {
+  title: string;
+  description: string;
+  icon: IconComponent;
+  selected: boolean;
+  tone: "emerald" | "amber" | "slate";
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const selectedCls =
+    tone === "emerald"
+      ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-100"
+      : tone === "amber"
+      ? "border-amber-400 bg-amber-50 ring-2 ring-amber-100"
+      : "border-slate-400 bg-slate-100 ring-2 ring-slate-200";
+
+  const iconCls = tone === "emerald" ? "text-emerald-700" : tone === "amber" ? "text-amber-700" : "text-slate-700";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={selected}
+      className={cx(
+        "group relative min-h-[118px] rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-1",
+        selected ? selectedCls : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+        disabled && "cursor-not-allowed opacity-55 hover:border-slate-200 hover:bg-white"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <span className={cx("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-white", selected ? iconCls : "text-slate-500")}>
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-slate-950">{title}</span>
+          <span className="mt-1 block text-xs leading-5 text-slate-600">{description}</span>
+        </span>
+      </div>
+      {selected ? (
+        <span className="absolute right-3 top-3 inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white">
+          <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function workflowNoticeClass(tone: string) {
+  if (tone === "red") return "border-red-200 bg-red-50 text-red-900";
+  if (tone === "amber") return "border-amber-200 bg-amber-50 text-amber-950";
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
 /* ======================================================
    QUITTANCES: TIMELINE HELPERS
 ====================================================== */
 
+// ⚠️ Note: parsing via locale string peut être fragile, mais suffisant pour V1
 const parisNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Paris" }));
 
 const fmtFR = (d: Date) =>
@@ -216,7 +515,9 @@ function nextReceiptScheduleForLease(
 
 type Mode = "idle" | "create" | "edit";
 
-export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: Props) {
+export function SectionBaux({ userId, userEmail, leases, properties, tenants, onRefresh, onGoToQuittances }: Props) {
+  const { canUseLandlord } = usePermissions();
+  const canUseReceiptAutomation = canUseLandlord;
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safeProps = Array.isArray(properties) ? properties : [];
   const safeTenants = Array.isArray(tenants) ? tenants : [];
@@ -242,7 +543,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  // Search (UX identique aux autres pages)
+  // Search
   const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
@@ -252,6 +553,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       if (!query) return true;
       const p = propertyById.get(l.property_id);
       const t = tenantById.get(l.tenant_id);
+
       const hay = [
         p?.label,
         p?.city,
@@ -263,11 +565,13 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         String(l.charges_amount ?? ""),
         String(l.payment_day ?? ""),
         String(l.payment_method ?? ""),
+        String(l.payment_type ?? ""), // ✅ NEW
         String(l.status ?? ""),
       ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
+
       return hay.includes(query);
     });
 
@@ -291,6 +595,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     const p = propertyById.get(l.property_id);
     const t = tenantById.get(l.tenant_id);
     const total = Number(l.rent_amount || 0) + Number(l.charges_amount || 0);
+    const renewal = leaseRenewalInfo(l);
 
     return {
       propertyLabel: p?.label || "Bien",
@@ -299,8 +604,70 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       city: p?.city || null,
       total,
       status: (l.status || "—").toUpperCase(),
-      quittance: l.auto_quittance_enabled ? "Auto" : "Manuel",
+      quittance: canUseReceiptAutomation && l.auto_quittance_enabled ? "Auto" : "Manuel",
       pay: `J${l.payment_day ?? "—"} • ${l.payment_method || "—"} • ${paymentTypeShort(l.payment_type)}`,
+      renewal,
+    };
+  };
+
+  const workflowInfo = (lease: Partial<Lease>, tenant?: TenantLite | null) => {
+    const sched = nextReceiptScheduleForLease(lease);
+    const receiptEmail = String(lease.tenant_receipt_email || "").trim() || getTenantEmail(tenant);
+    const ownerEmail = String(lease.reminder_email || "").trim() || String(userEmail || "").trim();
+    const auto = canUseReceiptAutomation && !!lease.auto_quittance_enabled;
+    const confirm = canUseReceiptAutomation && auto && !!lease.auto_reminder_enabled;
+    const manualMode = !auto;
+    const autoWithoutValidation = auto && !confirm;
+
+    const blockers: string[] = [];
+    const warnings: string[] = [];
+
+    if (manualMode) warnings.push("Mode manuel : le paiement, le PDF et l’envoi se traitent depuis l’onglet Quittances.");
+    if (autoWithoutValidation) {
+      warnings.push("Le PDF peut être préparé automatiquement sans confirmation explicite du paiement.");
+      warnings.push("À utiliser uniquement si l’encaissement est certain, par exemple prélèvement ou virement déjà contrôlé.");
+    }
+    if (auto && !receiptEmail) blockers.push("Email locataire manquant pour envoyer la quittance.");
+    if (auto && confirm && !ownerEmail) blockers.push("Email bailleur manquant pour confirmer le paiement.");
+    if (receiptEmail && !isEmailLike(receiptEmail)) blockers.push("Email locataire invalide.");
+    if (ownerEmail && !isEmailLike(ownerEmail)) blockers.push("Email bailleur invalide.");
+
+    const tone = blockers.length ? "red" : autoWithoutValidation ? "amber" : manualMode ? "slate" : "emerald";
+    const label = blockers.length
+      ? "À compléter"
+      : autoWithoutValidation
+      ? "Sans validation paiement"
+      : manualMode
+      ? "Mode manuel"
+      : "Workflow prêt";
+    const noticeTitle = blockers.length
+      ? "Configuration incomplète"
+      : autoWithoutValidation
+      ? "Pourquoi cette alerte ?"
+      : manualMode
+      ? "Mode manuel sélectionné"
+      : "";
+    const noticeAdvice = blockers.length
+      ? "Complète ces informations avant d’automatiser les quittances."
+      : autoWithoutValidation
+      ? "Recommandation : choisis “Auto validé” pour recevoir un email bailleur et générer la quittance uniquement après confirmation du paiement."
+      : manualMode
+      ? "C’est correct en gratuit ou si tu veux garder la main : tu confirmeras le paiement et généreras le PDF dans Quittances."
+      : "";
+
+    return {
+      sched,
+      receiptEmail,
+      ownerEmail,
+      auto,
+      confirm,
+      blockers,
+      warnings,
+      tone,
+      label,
+      noticeTitle,
+      noticeAdvice,
+      modeLabel: !auto ? "Manuel" : confirm ? "Automatique avec validation" : "Auto sans validation paiement",
     };
   };
 
@@ -312,234 +679,14 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     }
   };
 
-  /* ======================================================
-     CONTACTS / GARANTS
-  ====================================================== */
-
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [contactsLoading, setContactsLoading] = useState(false);
-  const [guarantorIds, setGuarantorIds] = useState<string[]>([]);
-
-  const activeGuarantors = useMemo(
-    () => contacts.filter((c) => (c.contact_type || "") === "guarantor").filter((c) => !isArchivedContact(c)),
-    [contacts]
-  );
-
-  const loadContacts = async () => {
-    if (!userId) return;
-    setContactsLoading(true);
-    try {
-      if (!supabase) throw new Error("Supabase non initialisé.");
-
-      const { data, error } = await supabase
-        .from("contacts")
-        .select("id,user_id,full_name,first_name,last_name,email,phone,notes,contact_type,archived_at,created_at,updated_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setContacts(Array.isArray(data) ? (data as any) : []);
-    } catch (e: any) {
-      console.error("[SectionBaux] loadContacts error:", e);
-      setErr(e?.message || "Impossible de charger les contacts (garants).");
-    } finally {
-      setContactsLoading(false);
-    }
+  const isMissingRenewalSchema = (error: any) => {
+    const message = String(error?.message || error?.details || error || "").toLowerCase();
+    return message.includes("auto_renewal_enabled") || message.includes("lease_kind");
   };
 
-  const loadGuarantorsForLease = async (leaseId: string) => {
-    if (!userId) return;
-    try {
-      if (!supabase) throw new Error("Supabase non initialisé.");
-
-      const { data, error } = await supabase
-        .from("lease_guarantors")
-        .select("contact_id")
-        .eq("user_id", userId)
-        .eq("lease_id", leaseId);
-
-      if (error) throw error;
-
-      const ids = (Array.isArray(data) ? data : []).map((r: any) => r.contact_id).filter(Boolean);
-      setGuarantorIds(ids);
-    } catch (e: any) {
-      console.error("[SectionBaux] loadGuarantorsForLease error:", e);
-      setGuarantorIds([]);
-    }
-  };
-
-  const toggleGuarantor = (id: string) => {
-    setGuarantorIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
-
-  const removeGuarantorFromSelection = (id: string) => {
-    setGuarantorIds((prev) => prev.filter((x) => x !== id));
-  };
-
-  const syncGuarantors = async (leaseId: string) => {
-    if (!userId) return;
-    if (!supabase) throw new Error("Supabase non initialisé.");
-
-    const { error: delErr } = await supabase.from("lease_guarantors").delete().eq("user_id", userId).eq("lease_id", leaseId);
-    if (delErr) throw delErr;
-
-    if (!guarantorIds.length) return;
-
-    const rows = guarantorIds.map((contact_id) => ({
-      user_id: userId,
-      lease_id: leaseId,
-      contact_id,
-    }));
-
-    const { error: insErr } = await supabase.from("lease_guarantors").insert(rows);
-    if (insErr) throw insErr;
-  };
-
-  useEffect(() => {
-    loadContacts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
-
-  /* ======================================================
-     GUARANTOR CREATE + EDIT MODAL
-  ====================================================== */
-
-  const [guarantorForm, setGuarantorForm] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    notes: "",
-  });
-
-  const createGuarantor = async () => {
-    if (!userId) return;
-    setErr(null);
-    setOk(null);
-
-    try {
-      if (!supabase) throw new Error("Supabase non initialisé.");
-
-      const full_name = buildFullName(guarantorForm.first_name, guarantorForm.last_name);
-      if (!full_name) throw new Error("Renseigne au moins le prénom ou le nom du garant.");
-
-      const payload = {
-        user_id: userId,
-        first_name: guarantorForm.first_name.trim() || null,
-        last_name: guarantorForm.last_name.trim() || null,
-        full_name: full_name || null,
-        email: guarantorForm.email.trim() || null,
-        phone: guarantorForm.phone.trim() || null,
-        notes: guarantorForm.notes.trim() || null,
-        contact_type: "guarantor",
-      };
-
-      const { data, error } = await supabase.from("contacts").insert(payload).select("id").single();
-      if (error) throw error;
-
-      await loadContacts();
-
-      const newId = (data as any)?.id;
-      if (newId) setGuarantorIds((prev) => (prev.includes(newId) ? prev : [...prev, newId]));
-
-      setGuarantorForm({ first_name: "", last_name: "", email: "", phone: "", notes: "" });
-      setOk("Garant ajouté ✅");
-    } catch (e: any) {
-      setErr(e?.message || "Impossible d’ajouter le garant.");
-    }
-  };
-
-  const [editGuarantorOpen, setEditGuarantorOpen] = useState(false);
-  const [editGuarantorId, setEditGuarantorId] = useState<string | null>(null);
-  const [editGuarantorDraft, setEditGuarantorDraft] = useState({
-    first_name: "",
-    last_name: "",
-    email: "",
-    phone: "",
-    notes: "",
-  });
-
-  const openEditGuarantor = (c: Contact) => {
-    setEditGuarantorId(c.id);
-    setEditGuarantorDraft({
-      first_name: String(c.first_name || ""),
-      last_name: String(c.last_name || ""),
-      email: String(c.email || ""),
-      phone: String(c.phone || ""),
-      notes: String(c.notes || ""),
-    });
-    setEditGuarantorOpen(true);
-  };
-
-  const updateGuarantor = async () => {
-    if (!userId || !editGuarantorId) return;
-    setErr(null);
-    setOk(null);
-
-    try {
-      if (!supabase) throw new Error("Supabase non initialisé.");
-
-      const full_name = buildFullName(editGuarantorDraft.first_name, editGuarantorDraft.last_name);
-      if (!full_name) throw new Error("Le garant doit avoir au moins un prénom ou un nom.");
-
-      const patch = {
-        first_name: editGuarantorDraft.first_name.trim() || null,
-        last_name: editGuarantorDraft.last_name.trim() || null,
-        full_name: full_name || null,
-        email: editGuarantorDraft.email.trim() || null,
-        phone: editGuarantorDraft.phone.trim() || null,
-        notes: editGuarantorDraft.notes.trim() || null,
-        contact_type: "guarantor",
-        archived_at: null,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await supabase.from("contacts").update(patch).eq("id", editGuarantorId).eq("user_id", userId);
-      if (error) throw error;
-
-      await loadContacts();
-      setOk("Garant mis à jour ✅");
-      setEditGuarantorOpen(false);
-      setEditGuarantorId(null);
-    } catch (e: any) {
-      setErr(e?.message || "Impossible de mettre à jour le garant.");
-    }
-  };
-
-  const archiveGuarantor = async (contactId: string) => {
-    if (!userId) return;
-    if (!confirm("Archiver ce garant ? (il ne sera plus sélectionnable)")) return;
-
-    setErr(null);
-    setOk(null);
-
-    try {
-      if (!supabase) throw new Error("Supabase non initialisé.");
-
-      const { error } = await supabase
-        .from("contacts")
-        .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq("id", contactId)
-        .eq("user_id", userId);
-
-      if (error) throw error;
-
-      removeGuarantorFromSelection(contactId);
-
-      if (expandedId && expandedId !== CREATE_ID) {
-        await supabase
-          .from("lease_guarantors")
-          .delete()
-          .eq("user_id", userId)
-          .eq("lease_id", expandedId)
-          .eq("contact_id", contactId);
-      }
-
-      await loadContacts();
-      setOk("Garant archivé 🗑️");
-    } catch (e: any) {
-      setErr(e?.message || "Impossible d’archiver le garant.");
-    }
+  const withoutRenewalColumns = (payload: Record<string, any>) => {
+    const { lease_kind, auto_renewal_enabled, ...rest } = payload;
+    return rest;
   };
 
   /* ======================================================
@@ -554,14 +701,16 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     rent_amount: "",
     charges_amount: "",
     deposit_amount: "",
+    lease_kind: "furnished_primary" as LeaseKind,
+    auto_renewal_enabled: true,
     payment_day: "1",
     payment_method: "virement",
     payment_type: "terme_a_echoir",
     status: "active",
-    auto_quittance_enabled: true,
-    auto_reminder_enabled: false,
+    auto_quittance_enabled: canUseReceiptAutomation,
+    auto_reminder_enabled: canUseReceiptAutomation,
     reminder_day_of_month: "1",
-    reminder_email: "",
+    reminder_email: userEmail || "",
     tenant_receipt_email: "",
     timezone: "Europe/Paris",
   });
@@ -575,14 +724,16 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       rent_amount: "",
       charges_amount: "",
       deposit_amount: "",
+      lease_kind: "furnished_primary" as LeaseKind,
+      auto_renewal_enabled: true,
       payment_day: "1",
       payment_method: "virement",
       payment_type: "terme_a_echoir",
       status: "active",
-      auto_quittance_enabled: true,
-      auto_reminder_enabled: false,
+      auto_quittance_enabled: canUseReceiptAutomation,
+      auto_reminder_enabled: canUseReceiptAutomation,
       reminder_day_of_month: "1",
-      reminder_email: "",
+      reminder_email: userEmail || "",
       tenant_receipt_email: "",
       timezone: "Europe/Paris",
     });
@@ -594,7 +745,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     setMode("create");
     setEditingId(null);
     resetForm();
-    setGuarantorIds([]);
   };
 
   const openEdit = async (lease: Lease) => {
@@ -611,26 +761,25 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       rent_amount: lease.rent_amount != null ? String(lease.rent_amount) : "",
       charges_amount: lease.charges_amount != null ? String(lease.charges_amount) : "",
       deposit_amount: lease.deposit_amount != null ? String(lease.deposit_amount) : "",
+      lease_kind: (lease.lease_kind as LeaseKind) || "furnished_primary",
+      auto_renewal_enabled: lease.auto_renewal_enabled !== false,
       payment_day: lease.payment_day != null ? String(lease.payment_day) : "1",
       payment_method: lease.payment_method || "virement",
       payment_type: (lease.payment_type as any) || "terme_a_echoir",
       status: lease.status || "active",
-      auto_quittance_enabled: !!lease.auto_quittance_enabled,
-      auto_reminder_enabled: !!lease.auto_reminder_enabled,
+      auto_quittance_enabled: canUseReceiptAutomation && !!lease.auto_quittance_enabled,
+      auto_reminder_enabled: canUseReceiptAutomation && !!lease.auto_reminder_enabled,
       reminder_day_of_month: lease.reminder_day_of_month != null ? String(lease.reminder_day_of_month) : "1",
       reminder_email: lease.reminder_email || "",
       tenant_receipt_email: lease.tenant_receipt_email || "",
       timezone: lease.timezone || "Europe/Paris",
     });
-
-    await loadGuarantorsForLease(lease.id);
   };
 
   const cancelEdit = () => {
     setMode("idle");
     setEditingId(null);
     resetForm();
-    setGuarantorIds([]);
   };
 
   /* ======================================================
@@ -643,7 +792,11 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
     const payload: any = { ...patch, updated_at: new Date().toISOString() };
     const { error } = await supabase.from("leases").update(payload).eq("id", leaseId).eq("user_id", userId);
-    if (error) throw error;
+    if (!error) return;
+    if (!isMissingRenewalSchema(error)) throw error;
+
+    const { error: fallbackError } = await supabase.from("leases").update(withoutRenewalColumns(payload)).eq("id", leaseId).eq("user_id", userId);
+    if (fallbackError) throw fallbackError;
   };
 
   const quickEndLease = async (lease: Lease) => {
@@ -651,7 +804,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     const meta = leaseLine(lease);
     if (
       !confirm(
-        `Mettre fin au bail :\n${meta.propertyLabel} • ${meta.tenantName}\n\n→ Statut: ended\n→ Date de fin: ${
+        `Mettre fin au bail (suivi quittances) :\n${meta.propertyLabel} • ${meta.tenantName}\n\n→ Statut: ended\n→ Date de fin: ${
           lease.end_date || todayISO()
         }\n\nConfirmer ?`
       )
@@ -678,13 +831,19 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
   const quickToggleQuittance = async (lease: Lease) => {
     if (!userId) return;
+    const nextEnabled = !lease.auto_quittance_enabled;
+    if (nextEnabled && !canUseReceiptAutomation) {
+      setErr("Le workflow automatique des quittances est réservé aux abonnements payants. La gestion manuelle reste disponible dans Quittances.");
+      setOk(null);
+      return;
+    }
     setLoading(true);
     setErr(null);
     setOk(null);
 
     try {
-      await patchLease(lease.id, { auto_quittance_enabled: !lease.auto_quittance_enabled });
-      setOk(`Quittance auto ${!lease.auto_quittance_enabled ? "activée" : "désactivée"} ✅`);
+      await patchLease(lease.id, { auto_quittance_enabled: nextEnabled, auto_reminder_enabled: nextEnabled ? lease.auto_reminder_enabled : false });
+      setOk(`Quittance auto ${nextEnabled ? "activée" : "désactivée"} ✅`);
       await safeRefresh();
     } catch (e: any) {
       setErr(e?.message || "Impossible de modifier l’option quittance.");
@@ -707,14 +866,46 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       if (!supabase) throw new Error("Supabase non initialisé.");
       if (!form.property_id) throw new Error("Veuillez sélectionner un bien.");
       if (!form.tenant_id) throw new Error("Veuillez sélectionner un locataire.");
-      if (!form.start_date) throw new Error("La date de début de bail est obligatoire.");
+      if (!form.start_date) throw new Error("La date de début est obligatoire.");
+      if (form.end_date && form.end_date < form.start_date) throw new Error("La date de fin doit être postérieure au début du bail.");
+      const leaseRule = getLeaseKindRule(form.lease_kind);
+      const startDateObj = parseISODateLocal(form.start_date);
+      const endDateObj = parseISODateLocal(form.end_date);
+      if (form.lease_kind === "mobility") {
+        if (!endDateObj || !startDateObj) throw new Error("Le bail mobilité doit avoir une date de fin.");
+        const maxEnd = dateMinusOneDay(addMonthsLocal(startDateObj, 10));
+        if (endDateObj.getTime() > maxEnd.getTime()) throw new Error("Un bail mobilité ne doit pas dépasser 10 mois.");
+      }
 
       const paymentDayNum = clampInt(form.payment_day, 1, 31, 1);
       const reminderDayNum = clampInt(form.reminder_day_of_month, 1, 31, 1);
+      const selectedTenant = tenantById.get(form.tenant_id) || null;
+      const receiptEmail = (form.tenant_receipt_email || "").trim() || getTenantEmail(selectedTenant);
+      const ownerEmail = (form.reminder_email || "").trim() || String(userEmail || "").trim();
+      const wantsAutomation = !!form.auto_quittance_enabled || !!form.auto_reminder_enabled;
+
+      if (wantsAutomation && !canUseReceiptAutomation) {
+        throw new Error("Le gratuit inclut les quittances manuelles. Les rappels, emails et générations automatiques nécessitent un abonnement payant.");
+      }
+
+      if (form.auto_quittance_enabled && !receiptEmail) {
+        throw new Error("Pour activer le workflow automatique, renseigne l’email du locataire destinataire.");
+      }
+      if (form.auto_quittance_enabled && !isEmailLike(receiptEmail)) {
+        throw new Error("Email quittance locataire invalide.");
+      }
+      if (form.auto_quittance_enabled && form.auto_reminder_enabled && !ownerEmail) {
+        throw new Error("Pour la validation paiement, renseigne l’email bailleur de notification.");
+      }
+      if (ownerEmail && !isEmailLike(ownerEmail)) {
+        throw new Error("Email bailleur de notification invalide.");
+      }
 
       const rent = toNumberOrNull(form.rent_amount) ?? 0;
       const charges = toNumberOrNull(form.charges_amount) ?? 0;
       const deposit = toNumberOrNull(form.deposit_amount);
+      if (rent <= 0) throw new Error("Le loyer doit être supérieur à 0 €.");
+      if (charges < 0) throw new Error("Les charges ne peuvent pas être négatives.");
 
       const payload: any = {
         user_id: userId,
@@ -725,44 +916,59 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         rent_amount: rent,
         charges_amount: charges,
         deposit_amount: deposit,
+        lease_kind: leaseRule.value,
+        auto_renewal_enabled: leaseRule.tacitRenewal ? !!form.auto_renewal_enabled : false,
         payment_day: paymentDayNum,
         payment_method: form.payment_method || null,
         payment_type: form.payment_type || null,
         status: form.status || "active",
-        auto_quittance_enabled: !!form.auto_quittance_enabled,
-        auto_reminder_enabled: !!form.auto_reminder_enabled,
+        auto_quittance_enabled: canUseReceiptAutomation ? !!form.auto_quittance_enabled : false,
+        auto_reminder_enabled: canUseReceiptAutomation ? !!form.auto_reminder_enabled : false,
         reminder_day_of_month: reminderDayNum,
-        reminder_email: form.reminder_email ? form.reminder_email : null,
-        tenant_receipt_email: form.tenant_receipt_email ? form.tenant_receipt_email : null,
+        reminder_email: ownerEmail || null,
+        tenant_receipt_email: receiptEmail || null,
         timezone: form.timezone || "Europe/Paris",
         updated_at: new Date().toISOString(),
       };
 
-      let leaseId: string | null = null;
+      let renewalSchemaSkipped = false;
 
       if (mode === "edit") {
         if (!editingId) throw new Error("Aucun bail en cours d’édition.");
         const { error } = await supabase.from("leases").update(payload).eq("id", editingId).eq("user_id", userId);
-        if (error) throw error;
-        leaseId = editingId;
-        setOk("Bail mis à jour ✅");
+        if (error) {
+          if (!isMissingRenewalSchema(error)) throw error;
+          const { error: fallbackError } = await supabase.from("leases").update(withoutRenewalColumns(payload)).eq("id", editingId).eq("user_id", userId);
+          if (fallbackError) throw fallbackError;
+          renewalSchemaSkipped = true;
+        }
+        setOk(
+          renewalSchemaSkipped
+            ? "Bail mis à jour ✅ Applique la migration Supabase pour enregistrer le type de bail et la reconduction tacite."
+            : "Bail mis à jour ✅"
+        );
+        setExpandedId(editingId);
       } else {
         const { data, error } = await supabase.from("leases").insert(payload).select("id").single();
-        if (error) throw error;
-        leaseId = (data as any)?.id ?? null;
-        setOk("Bail créé ✅");
-      }
-
-      if (leaseId) {
-        await syncGuarantors(leaseId);
-        setExpandedId(leaseId);
-        await loadGuarantorsForLease(leaseId);
+        let leaseId = (data as any)?.id;
+        if (error) {
+          if (!isMissingRenewalSchema(error)) throw error;
+          const fallback = await supabase.from("leases").insert(withoutRenewalColumns(payload)).select("id").single();
+          if (fallback.error) throw fallback.error;
+          leaseId = (fallback.data as any)?.id;
+          renewalSchemaSkipped = true;
+        }
+        setOk(
+          renewalSchemaSkipped
+            ? "Bail créé ✅ Applique la migration Supabase pour enregistrer le type de bail et la reconduction tacite."
+            : "Bail créé ✅"
+        );
+        if (leaseId) setExpandedId(leaseId);
       }
 
       setMode("idle");
       setEditingId(null);
       resetForm();
-      setGuarantorIds([]);
 
       await safeRefresh();
     } catch (e: any) {
@@ -783,8 +989,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
     try {
       if (!supabase) throw new Error("Supabase non initialisé.");
-
-      await supabase.from("lease_guarantors").delete().eq("user_id", userId).eq("lease_id", leaseId);
 
       const { error } = await supabase.from("leases").delete().eq("id", leaseId).eq("user_id", userId);
       if (error) throw error;
@@ -810,67 +1014,82 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
   const renderLeaseDetails = (l: Lease) => {
     const p = propertyById.get(l.property_id);
     const t = tenantById.get(l.tenant_id);
-    const sched = nextReceiptScheduleForLease(l);
+    const flow = workflowInfo(l, t);
+    const sched = flow.sched;
+    const renewal = leaseRenewalInfo(l);
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            {badge(statusTone(l.status), (l.status || "—").toUpperCase())}
-            {badge(l.auto_quittance_enabled ? "emerald" : "amber", l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel")}
-            {badge(l.auto_reminder_enabled ? "emerald" : "slate", l.auto_reminder_enabled ? "Rappel ON" : "Rappel OFF")}
-          </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Informations</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <InfoPill tone={statusTone(l.status)}>{(l.status || "—").toUpperCase()}</InfoPill>
+                <InfoPill tone={canUseReceiptAutomation && l.auto_quittance_enabled ? "emerald" : "amber"}>
+                  {canUseReceiptAutomation && l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"}
+                </InfoPill>
+                <InfoPill tone={canUseReceiptAutomation && l.auto_reminder_enabled ? "emerald" : "slate"}>
+                  {canUseReceiptAutomation && l.auto_reminder_enabled ? "Rappel ON" : "Rappel OFF"}
+                </InfoPill>
+                <InfoPill tone={flow.tone as any}>{flow.label}</InfoPill>
+                <InfoPill tone={renewal.tone as any}>{renewal.status}</InfoPill>
+              </div>
+            </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={loading}
-              onClick={(e) => {
-                stop(e);
-                openEdit(l);
-              }}
-              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-            >
-              Modifier
-            </button>
+            <div className="min-w-0">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:text-right">Actions</p>
+              <div className="mt-2 flex flex-wrap gap-2 lg:justify-end">
+                <ActionButton
+                  icon={PencilSquareIcon}
+                  tone="primary"
+                  disabled={loading}
+                  onClick={(e) => {
+                    stop(e);
+                    openEdit(l);
+                  }}
+                >
+                  Modifier
+                </ActionButton>
 
-            <button
-              type="button"
-              disabled={loading}
-              onClick={(e) => {
-                stop(e);
-                quickToggleQuittance(l);
-              }}
-              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-            >
-              Quittance {l.auto_quittance_enabled ? "ON" : "OFF"}
-            </button>
+                <ActionButton
+                  icon={PowerIcon}
+                  disabled={loading || (!l.auto_quittance_enabled && !canUseReceiptAutomation)}
+                  onClick={(e) => {
+                    stop(e);
+                    quickToggleQuittance(l);
+                  }}
+                >
+                  {l.auto_quittance_enabled ? "Désactiver auto" : canUseReceiptAutomation ? "Activer auto" : "Auto premium"}
+                </ActionButton>
 
-            {isActiveLease(l) ? (
-              <button
-                type="button"
-                disabled={loading}
-                onClick={(e) => {
-                  stop(e);
-                  quickEndLease(l);
-                }}
-                className="rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-60"
-              >
-                Mettre fin
-              </button>
-            ) : null}
+                {isActiveLease(l) ? (
+                  <ActionButton
+                    icon={CheckCircleIcon}
+                    tone="warning"
+                    disabled={loading}
+                    onClick={(e) => {
+                      stop(e);
+                      quickEndLease(l);
+                    }}
+                  >
+                    Mettre fin
+                  </ActionButton>
+                ) : null}
 
-            <button
-              type="button"
-              disabled={loading}
-              onClick={(e) => {
-                stop(e);
-                onDelete(l.id);
-              }}
-              className="rounded-full border border-red-300 bg-white px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-            >
-              Supprimer
-            </button>
+                <ActionButton
+                  icon={TrashIcon}
+                  tone="danger"
+                  disabled={loading}
+                  onClick={(e) => {
+                    stop(e);
+                    onDelete(l.id);
+                  }}
+                >
+                  Supprimer
+                </ActionButton>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -895,6 +1114,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
             <p className="text-slate-700">
               <span className="font-semibold">Fin</span> : {l.end_date || "—"}
             </p>
+            <p className="mt-1 text-xs text-slate-600">{renewal.rule.label}</p>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">
@@ -931,46 +1151,141 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
             <p className="mt-1 text-xs text-slate-500">Règle : génération automatique à J+2 après l’échéance.</p>
           </div>
         </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Renouvellement du bail</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{renewal.status}</p>
+              <p className="mt-1 text-xs text-slate-600">{renewal.rule.note}</p>
+            </div>
+            {badge(renewal.tone, renewal.detail)}
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[0.7rem] font-semibold text-slate-500">Nature</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{renewal.rule.short}</p>
+              <p className="text-xs text-slate-600">{renewal.rule.renewalLabel}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[0.7rem] font-semibold text-slate-500">Suivi lokt.fr</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                {renewal.renewalEnabled ? "Reconduction suivie" : "Fin contractuelle suivie"}
+              </p>
+              <p className="text-xs text-slate-600">
+                {renewal.currentEnd ? `Échéance courante : ${fmtFR(renewal.currentEnd)}` : "Date à compléter"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[0.7rem] font-semibold text-slate-500">Action recommandée</p>
+              <p className="mt-1 text-sm leading-5 text-slate-800">{renewal.nextAction}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Workflow quittance</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{flow.modeLabel}</p>
+              <p className="mt-1 text-xs text-slate-600">
+                Destinataire quittance : <span className="font-semibold">{emailOrDash(flow.receiptEmail)}</span>
+                {" • "}Validation bailleur : <span className="font-semibold">{emailOrDash(flow.ownerEmail)}</span>
+              </p>
+            </div>
+            {badge(flow.tone as any, flow.label)}
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[0.7rem] font-semibold text-slate-500">1. Échéance</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{fmtFR(sched.dueDate)}</p>
+              <p className="text-xs text-slate-600">{paymentTypeLabel(l.payment_type)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[0.7rem] font-semibold text-slate-500">2. Contrôle J+2</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{fmtFR(sched.generateAt)}</p>
+              <p className="text-xs text-slate-600">{relativeDateLabel(sched.generateAt)}</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[0.7rem] font-semibold text-slate-500">3. Paiement</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{flow.confirm ? "Validation bailleur" : "Sans validation"}</p>
+              <p className="text-xs text-slate-600">La quittance vaut reçu après paiement.</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-[0.7rem] font-semibold text-slate-500">4. PDF & envoi</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{flow.auto ? "Préparé automatiquement" : "Manuel"}</p>
+              <p className="text-xs text-slate-600">Archivage dans Quittances.</p>
+            </div>
+          </div>
+
+          {flow.blockers.length || flow.warnings.length ? (
+            <div className={cx("mt-3 rounded-xl border px-3 py-2 text-xs", workflowNoticeClass(flow.tone))}>
+              {flow.noticeTitle ? <p className="mb-1 font-semibold">{flow.noticeTitle}</p> : null}
+              {[...flow.blockers, ...flow.warnings].map((m) => (
+                <p key={m}>• {m}</p>
+              ))}
+              {flow.noticeAdvice ? <p className="mt-2 font-medium">{flow.noticeAdvice}</p> : null}
+            </div>
+          ) : null}
+        </div>
       </div>
     );
   };
 
   const renderLeaseForm = () => {
-    const fakeLease = { payment_day: Number(form.payment_day || 1), payment_type: form.payment_type };
-    const sched = nextReceiptScheduleForLease(fakeLease as any, parisNow());
+    const selectedTenant = tenantById.get(form.tenant_id) || null;
+    const receiptEmail = form.tenant_receipt_email || getTenantEmail(selectedTenant);
+    const ownerEmail = form.reminder_email || String(userEmail || "");
+    const fakeLease = {
+      start_date: form.start_date,
+      end_date: form.end_date,
+      lease_kind: form.lease_kind,
+      auto_renewal_enabled: form.auto_renewal_enabled,
+      payment_day: Number(form.payment_day || 1),
+      payment_type: form.payment_type,
+      auto_quittance_enabled: form.auto_quittance_enabled,
+      auto_reminder_enabled: form.auto_reminder_enabled,
+      tenant_receipt_email: receiptEmail,
+      reminder_email: ownerEmail,
+    };
+    const flow = workflowInfo(fakeLease as any, selectedTenant);
+    const sched = flow.sched;
+    const renewal = leaseRenewalInfo(fakeLease as any);
+    const leaseRule = getLeaseKindRule(form.lease_kind);
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-900">{mode === "edit" ? "Modifier le bail" : "Nouveau bail"}</p>
-            <p className="text-xs text-slate-500">Sauvegarde en bas.</p>
+            <p className="text-xs text-slate-500">Paramètres utilisés pour loyers/quittances. Sauvegarde en bas.</p>
           </div>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
+          <div className="flex flex-wrap gap-2">
+            <ActionButton
+              icon={CheckCircleIcon}
+              tone="success"
               disabled={loading}
               onClick={(e) => {
                 stop(e);
                 saveLease();
               }}
-              className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
             >
               {loading ? "Enregistrement…" : mode === "edit" ? "Mettre à jour" : "Créer"}
-            </button>
+            </ActionButton>
 
-            <button
-              type="button"
+            <ActionButton
+              icon={XMarkIcon}
               onClick={(e) => {
                 stop(e);
                 cancelEdit();
                 setExpandedId(null);
               }}
-              className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
             >
               Annuler
-            </button>
+            </ActionButton>
           </div>
         </div>
 
@@ -989,13 +1304,22 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                 </option>
               ))}
             </select>
+            {safeProps.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un bien.</p> : null}
           </div>
 
           <div className="space-y-1">
             <label className="text-[0.7rem] text-slate-700">Locataire *</label>
             <select
               value={form.tenant_id}
-              onChange={(e) => setForm((s) => ({ ...s, tenant_id: e.target.value }))}
+              onChange={(e) => {
+                const tenantId = e.target.value;
+                const nextTenant = tenantById.get(tenantId);
+                setForm((s) => ({
+                  ...s,
+                  tenant_id: tenantId,
+                  tenant_receipt_email: s.tenant_receipt_email || getTenantEmail(nextTenant),
+                }));
+              }}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             >
               <option value="">— Sélectionner —</option>
@@ -1005,6 +1329,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                 </option>
               ))}
             </select>
+            {safeTenants.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un locataire.</p> : null}
           </div>
         </div>
 
@@ -1014,7 +1339,18 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
             <input
               type="date"
               value={form.start_date}
-              onChange={(e) => setForm((s) => ({ ...s, start_date: e.target.value }))}
+              onChange={(e) => {
+                const nextStart = e.target.value;
+                setForm((s) => {
+                  const previousExpected = expectedEndDate(s.start_date, s.lease_kind);
+                  const nextExpected = expectedEndDate(nextStart, s.lease_kind);
+                  return {
+                    ...s,
+                    start_date: nextStart,
+                    end_date: nextExpected && (!s.end_date || s.end_date === previousExpected) ? nextExpected : s.end_date,
+                  };
+                });
+              }}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             />
           </div>
@@ -1026,6 +1362,57 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
               onChange={(e) => setForm((s) => ({ ...s, end_date: e.target.value }))}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
+            <div className="space-y-1">
+              <label className="text-[0.7rem] text-slate-700">Type de bail</label>
+              <select
+                value={form.lease_kind}
+                onChange={(e) => {
+                  const nextKind = e.target.value as LeaseKind;
+                  const nextRule = getLeaseKindRule(nextKind);
+                  setForm((s) => {
+                    const expected = expectedEndDate(s.start_date, nextKind);
+                    return {
+                      ...s,
+                      lease_kind: nextKind,
+                      auto_renewal_enabled: nextRule.tacitRenewal,
+                      end_date: expected && (!s.end_date || s.end_date === expectedEndDate(s.start_date, s.lease_kind)) ? expected : s.end_date,
+                    };
+                  });
+                }}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              >
+                {leaseKindOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[0.7rem] text-slate-500">{leaseRule.note}</p>
+            </div>
+
+            <div className="rounded-xl border border-white bg-white p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {badge(renewal.tone, renewal.status)}
+                {badge(leaseRule.tacitRenewal ? "emerald" : "slate", leaseRule.renewalLabel)}
+              </div>
+              <p className="mt-2 text-xs text-slate-600">{renewal.nextAction}</p>
+              {leaseRule.tacitRenewal ? (
+                <label className="mt-3 flex items-start gap-2 text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={form.auto_renewal_enabled}
+                    onChange={(e) => setForm((s) => ({ ...s, auto_renewal_enabled: e.target.checked }))}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                  />
+                  <span>Suivre ce bail comme reconduit tacitement tant qu’il n’est pas clôturé.</span>
+                </label>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -1104,16 +1491,56 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Aperçu planning quittance</p>
-          <p className="mt-1 text-sm text-slate-800">
-            Échéance : <span className="font-semibold">Jour {form.payment_day}</span> •{" "}
-            <span className="text-slate-600">{paymentTypeLabel(form.payment_type)}</span>
-          </p>
-          <p className="mt-1 text-sm text-slate-800">
-            Génération PDF (J+2) : <span className="font-semibold">{fmtFR(sched.generateAt)}</span>{" "}
-            <span className="text-slate-500">(période {sched.label})</span>
-          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Aperçu métier</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{flow.modeLabel}</p>
+              <p className="mt-1 text-xs text-slate-600">
+                Période {sched.label} • échéance {fmtFR(sched.dueDate)} • contrôle {fmtFR(sched.generateAt)} ({relativeDateLabel(sched.generateAt)})
+              </p>
+            </div>
+            {badge(flow.tone as any, flow.label)}
+          </div>
+
+          <div className="mt-3 grid gap-2 md:grid-cols-4">
+            {[
+              ["Échéance", `Jour ${form.payment_day}`, paymentTypeShort(form.payment_type)],
+              [
+                "Paiement",
+                form.auto_reminder_enabled ? "Validation bailleur" : form.auto_quittance_enabled ? "Sans validation" : "Manuel",
+                form.auto_reminder_enabled ? "avant PDF/envoi" : form.auto_quittance_enabled ? "à contrôler" : "dans Quittances",
+              ],
+              ["PDF", form.auto_quittance_enabled ? "Automatique" : "Manuel", "après paiement"],
+              ["Envoi", form.auto_quittance_enabled ? receiptEmail || "Email manquant" : "Manuel", form.auto_quittance_enabled ? "locataire" : "depuis Quittances"],
+            ].map(([title, value, sub]) => (
+              <div key={title} className="rounded-xl border border-slate-200 bg-white p-3">
+                <p className="text-[0.7rem] font-semibold text-slate-500">{title}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900 truncate">{value}</p>
+                <p className="text-xs text-slate-600">{sub}</p>
+              </div>
+            ))}
+          </div>
+
+          {flow.blockers.length || flow.warnings.length ? (
+            <div className={cx("mt-3 rounded-xl border px-3 py-2 text-xs", workflowNoticeClass(flow.tone))}>
+              {flow.noticeTitle ? <p className="mb-1 font-semibold">{flow.noticeTitle}</p> : null}
+              {[...flow.blockers, ...flow.warnings].map((m) => (
+                <p key={m}>• {m}</p>
+              ))}
+              {flow.noticeAdvice ? <p className="mt-2 font-medium">{flow.noticeAdvice}</p> : null}
+            </div>
+          ) : null}
         </div>
+
+        {!canUseReceiptAutomation ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            <p className="font-semibold">Quittances en gratuit : mode manuel</p>
+            <p className="mt-1 text-amber-950/85">
+              Tu peux marquer un loyer payé, générer le PDF et consulter l’archive. Les emails bailleur, relances, génération automatique et envoi
+              au locataire font partie de l’abonnement payant.
+            </p>
+          </div>
+        ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
@@ -1143,156 +1570,92 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
           </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={!!form.auto_quittance_enabled}
-              onChange={(e) => setForm((s) => ({ ...s, auto_quittance_enabled: e.target.checked }))}
-              className="h-4 w-4"
-            />
-            Quittance auto
-          </label>
-
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={!!form.auto_reminder_enabled}
-              onChange={(e) => setForm((s) => ({ ...s, auto_reminder_enabled: e.target.checked }))}
-              className="h-4 w-4"
-            />
-            Rappel auto
-          </label>
-        </div>
-
-        {/* GARANTS */}
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-slate-900">Garants</p>
-            <button
-              type="button"
-              onClick={(e) => {
-                stop(e);
-                loadContacts();
-              }}
-              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              Rafraîchir
-            </button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-900">Workflow quittance</p>
+              <p className="mt-0.5 text-[0.75rem] text-slate-600">
+                Configuration recommandée : le bailleur confirme le paiement avant génération du PDF et envoi au locataire.
+              </p>
+            </div>
+            {badge(flow.tone as any, flow.label)}
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Ajouter un garant</p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <WorkflowChoice
+              title="Auto validé"
+              description="Email bailleur, puis PDF et envoi après confirmation du paiement."
+              icon={ShieldCheckIcon}
+              tone="emerald"
+              selected={form.auto_quittance_enabled && form.auto_reminder_enabled}
+              disabled={!canUseReceiptAutomation}
+              onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: true, auto_reminder_enabled: true }))}
+            />
 
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <WorkflowChoice
+              title="Auto sans validation"
+              description="PDF préparé sans confirmation. À réserver aux encaissements certains."
+              icon={BoltIcon}
+              tone="amber"
+              selected={form.auto_quittance_enabled && !form.auto_reminder_enabled}
+              disabled={!canUseReceiptAutomation}
+              onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: true, auto_reminder_enabled: false }))}
+            />
+
+            <WorkflowChoice
+              title="Manuel"
+              description="Génération et envoi depuis Quittances."
+              icon={HandRaisedIcon}
+              tone="slate"
+              selected={!form.auto_quittance_enabled}
+              onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false }))}
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-[0.7rem] text-slate-700">Jour de contrôle paiement (1–31)</label>
               <input
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="Prénom"
-                value={guarantorForm.first_name}
-                onChange={(e) => setGuarantorForm((s) => ({ ...s, first_name: e.target.value }))}
-              />
-              <input
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="Nom"
-                value={guarantorForm.last_name}
-                onChange={(e) => setGuarantorForm((s) => ({ ...s, last_name: e.target.value }))}
+                type="number"
+                min={1}
+                max={31}
+                value={form.reminder_day_of_month}
+                onChange={(e) => setForm((s) => ({ ...s, reminder_day_of_month: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
               />
             </div>
 
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-[0.7rem] text-slate-700">Email bailleur notification</label>
               <input
                 type="email"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="Email (optionnel)"
-                value={guarantorForm.email}
-                onChange={(e) => setGuarantorForm((s) => ({ ...s, email: e.target.value }))}
-              />
-              <input
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="Téléphone (optionnel)"
-                value={guarantorForm.phone}
-                onChange={(e) => setGuarantorForm((s) => ({ ...s, phone: e.target.value }))}
+                value={form.reminder_email}
+                onChange={(e) => setForm((s) => ({ ...s, reminder_email: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
               />
             </div>
 
-            <textarea
-              rows={2}
-              className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-              placeholder="Notes (optionnel)"
-              value={guarantorForm.notes}
-              onChange={(e) => setGuarantorForm((s) => ({ ...s, notes: e.target.value }))}
-            />
-
-            <div className="mt-2 flex gap-2">
-              <button
-                type="button"
-                onClick={(e) => {
-                  stop(e);
-                  createGuarantor();
-                }}
-                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-              >
-                + Ajouter
-              </button>
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-[0.7rem] text-slate-700">Email destinataire quittance</label>
+              <input
+                type="email"
+                value={form.tenant_receipt_email}
+                onChange={(e) => setForm((s) => ({ ...s, tenant_receipt_email: e.target.value }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              />
             </div>
           </div>
 
-          {contactsLoading ? (
-            <p className="text-xs text-slate-600">Chargement…</p>
-          ) : activeGuarantors.length === 0 ? (
-            <p className="text-sm text-slate-700">Aucun garant disponible.</p>
-          ) : (
-            <div className="space-y-2 max-h-56 overflow-auto pr-1">
-              {activeGuarantors.map((c) => {
-                const checked = guarantorIds.includes(c.id);
-
-                return (
-                  <div key={c.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                    <div className="flex items-start gap-2">
-                      <input type="checkbox" checked={checked} onChange={() => toggleGuarantor(c.id)} className="mt-1" />
-
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{c.full_name || "Garant"}</p>
-                        {c.email || c.phone ? (
-                          <p className="mt-0.5 text-xs text-slate-600 truncate">
-                            {c.email ? c.email : ""}
-                            {c.email && c.phone ? " • " : ""}
-                            {c.phone ? c.phone : ""}
-                          </p>
-                        ) : null}
-                      </div>
-
-                      <div className="shrink-0 flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditGuarantor(c)}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-800 hover:bg-slate-50"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => archiveGuarantor(c.id)}
-                          className="rounded-full border border-red-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-red-700 hover:bg-red-50"
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <p className="text-[0.7rem] text-slate-500">Décocher = retire du bail. “Supprimer” = archive le garant.</p>
+          <p className="text-[0.7rem] text-slate-500">
+            La quittance est un reçu : le workflow recommandé garde une validation de paiement avant l’envoi au locataire.
+          </p>
         </div>
       </div>
     );
   };
 
   /* ======================================================
-     EXPAND LOGIC (aligné ExpandableRow)
+     EXPAND LOGIC
   ====================================================== */
 
   const openRow = async (id: string | null) => {
@@ -1312,9 +1675,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
       openCreate();
       return;
     }
-
-    // ouvre un bail : charge garants
-    await loadGuarantorsForLease(id);
   };
 
   /* ======================================================
@@ -1325,21 +1685,48 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
       <SectionTitle
         kicker="Baux"
-        title="Contrats"
-        desc="Même UX partout : une ligne Créer + sections Actifs / Archivés. Chaque ligne est cliquable."
+        title="Baux (suivi loyers & quittances)"
+        desc="Cette section configure les paramètres utilisés pour le suivi des loyers et la génération des quittances."
       />
+
+      <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 text-sm text-sky-950">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="font-semibold">À quoi sert cette fiche bail ?</p>
+            <p className="mt-1 text-sky-950/85">
+              Elle centralise les informations utiles au suivi de la location : bien, locataire, montant du loyer, charges, date d’échéance et
+              rythme de paiement. Ces données servent ensuite à préparer le suivi des loyers, les rappels de paiement et les quittances.
+            </p>
+            <p className="mt-2 text-sky-950/85">
+              Cette fiche ne remplace pas le contrat de location signé avec le locataire. Elle sert de tableau de bord pour gérer le bail au
+              quotidien et garder un historique fiable.
+            </p>
+          </div>
+
+          {onGoToQuittances ? (
+            <button
+              type="button"
+              onClick={onGoToQuittances}
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white shadow-sm hover:bg-slate-800"
+            >
+              <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+              Aller aux quittances
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
-      {/* Toolbar (simple + cohérente) */}
+      {/* Toolbar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xl">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Rechercher (bien, locataire, email, date, montant…)…"
+            placeholder="Rechercher (bien, locataire, email, date, montant, échu/échoir…)…"
             className="w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm text-slate-900"
           />
         </div>
@@ -1361,22 +1748,22 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
             }
           }}
           className={cx(
-            "rounded-full px-4 py-2 text-xs font-semibold",
+            "inline-flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold",
             "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
             loading && "opacity-60"
           )}
         >
-          {loading ? "…" : "Rafraîchir"}
+          <ArrowPathIcon className={cx("h-4 w-4", loading && "animate-spin")} aria-hidden="true" />
+          {loading ? "Rafraîchissement" : "Rafraîchir"}
         </button>
       </div>
 
       <div className="grid gap-4">
-        {/* ✅ LIGNE CRÉER (pas de section) */}
+        {/* ✅ LIGNE CRÉER */}
         <ExpandableRow
           id={CREATE_ID}
           expandedId={expandedId}
           setExpandedId={(id) => {
-            // ExpandableRow donne id ou null
             openRow(id);
           }}
           tone="sky"
@@ -1384,8 +1771,10 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
           left={
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                {badge("sky", "Créer")}
-                <p className="text-sm font-semibold text-slate-900">+ Nouveau bail</p>
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-sky-800">
+                  <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <p className="text-sm font-semibold text-slate-900">Nouveau bail</p>
               </div>
               <p className="mt-0.5 text-xs text-slate-600">Choisis un bien + un locataire, puis configure les options.</p>
             </div>
@@ -1431,10 +1820,14 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
 
                         <div className="mt-2 flex flex-wrap gap-2">
                           {badge(statusTone(l.status), meta.status)}
-                          {badge(l.auto_quittance_enabled ? "emerald" : "amber", l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel")}
+                          {badge(
+                            canUseReceiptAutomation && l.auto_quittance_enabled ? "emerald" : "amber",
+                            canUseReceiptAutomation && l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"
+                          )}
                           {badge("slate", `${formatEuro(meta.total)}`)}
                           {badge("slate", meta.pay)}
-                          {l.auto_quittance_enabled ? badge("slate", `Prochaine: ${fmtFR(sched.generateAt)}`) : null}
+                          {badge(meta.renewal.tone, meta.renewal.status)}
+                          {canUseReceiptAutomation && l.auto_quittance_enabled ? badge("slate", `Prochaine: ${fmtFR(sched.generateAt)}`) : null}
                         </div>
                       </div>
                     }
@@ -1452,7 +1845,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
           )}
         </ExpandableSection>
 
-        {/* ✅ ARCHIVÉS (= ended + draft) */}
+        {/* ✅ ARCHIVÉS */}
         <ExpandableSection
           title="Archivés"
           subtitle="Terminés et brouillons."
@@ -1491,6 +1884,7 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
                           {badge(statusTone(l.status), meta.status)}
                           {badge("slate", `${formatEuro(meta.total)}`)}
                           {badge("slate", meta.pay)}
+                          {badge(meta.renewal.tone, meta.renewal.status)}
                         </div>
                       </div>
                     }
@@ -1508,91 +1902,6 @@ export function SectionBaux({ userId, leases, properties, tenants, onRefresh }: 
           )}
         </ExpandableSection>
       </div>
-
-      {/* MODAL EDIT GARANT */}
-      {editGuarantorOpen ? (
-        <div className="fixed inset-0 z-[60]">
-          <button type="button" className="absolute inset-0 bg-black/40" onClick={() => setEditGuarantorOpen(false)} />
-          <div className="absolute inset-0 p-3 sm:p-6 flex items-center justify-center">
-            <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl border border-slate-200 overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-200 bg-slate-50 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Garant</p>
-                  <p className="text-base font-semibold text-slate-900 truncate">Modifier le garant</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEditGuarantorOpen(false)}
-                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                >
-                  Fermer
-                </button>
-              </div>
-
-              <div className="p-5 space-y-3">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <input
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                    placeholder="Prénom"
-                    value={editGuarantorDraft.first_name}
-                    onChange={(e) => setEditGuarantorDraft((s) => ({ ...s, first_name: e.target.value }))}
-                  />
-                  <input
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                    placeholder="Nom"
-                    value={editGuarantorDraft.last_name}
-                    onChange={(e) => setEditGuarantorDraft((s) => ({ ...s, last_name: e.target.value }))}
-                  />
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <input
-                    type="email"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                    placeholder="Email (optionnel)"
-                    value={editGuarantorDraft.email}
-                    onChange={(e) => setEditGuarantorDraft((s) => ({ ...s, email: e.target.value }))}
-                  />
-                  <input
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                    placeholder="Téléphone (optionnel)"
-                    value={editGuarantorDraft.phone}
-                    onChange={(e) => setEditGuarantorDraft((s) => ({ ...s, phone: e.target.value }))}
-                  />
-                </div>
-
-                <textarea
-                  rows={3}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                  placeholder="Notes (optionnel)"
-                  value={editGuarantorDraft.notes}
-                  onChange={(e) => setEditGuarantorDraft((s) => ({ ...s, notes: e.target.value }))}
-                />
-              </div>
-
-              <div className="px-5 py-4 border-t border-slate-200 bg-white flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditGuarantorOpen(false)}
-                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    stop(e);
-                    updateGuarantor();
-                  }}
-                  className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                >
-                  Enregistrer
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

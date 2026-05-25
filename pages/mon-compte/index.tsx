@@ -1,10 +1,14 @@
 // pages/mon-compte/index.tsx
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
+import AccountLayout from "../../components/account/AccountLayout";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuthUser } from "../../hooks/useAuthUser";
+import { useProfile } from "../../hooks/useProfile";
+import { usePermissions } from "../../components/PermissionProvider";
 
 type Mode = "login" | "register";
 
@@ -27,7 +31,10 @@ function cx(...c: Array<string | false | null | undefined>) {
 
 export default function MonCompteIndexPage() {
   const router = useRouter();
-  const { checking, isLoggedIn } = useAuthUser();
+  const { checking, user, isLoggedIn } = useAuthUser();
+  const { loading: profileLoading, profile } = useProfile(user?.id ?? null);
+  const { loading: permissionsLoading, plan, maxActiveProperties } = usePermissions();
+  const [propertyCount, setPropertyCount] = useState<number | null>(null);
 
   const [mode, setMode] = useState<Mode>("login");
   const [redirectPath, setRedirectPath] = useState<string>("/");
@@ -75,13 +82,24 @@ export default function MonCompteIndexPage() {
     setRedirectPath(safeRedirect(router.query.redirect));
   }, [router.isReady, router.query.mode, router.query.redirect]);
 
-  // ✅ si déjà connecté et tu viens sur /mon-compte => HOME
+  // Si une page a explicitement demandé un redirect, on l'honore. Sinon /mon-compte devient la vue d'ensemble.
   useEffect(() => {
+    if (!router.isReady) return;
     if (checking) return;
-    if (isLoggedIn) {
-      router.replace("/"); // ✅ HOME
+    if (isLoggedIn && redirectPath !== "/") {
+      router.replace(redirectPath);
     }
-  }, [checking, isLoggedIn, router]);
+  }, [checking, isLoggedIn, redirectPath, router, router.isReady]);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!supabase || !user?.id) return;
+      const { data } = await supabase.from("properties").select("id,status").eq("user_id", user.id);
+      const activeCount = (data ?? []).filter((property: any) => (property?.status || "").toLowerCase() !== "archived").length;
+      setPropertyCount(activeCount);
+    };
+    load();
+  }, [user?.id]);
 
   const forgotPwdHref = useMemo(() => `/mon-compte/securite?mode=forgot`, []);
 
@@ -157,7 +175,7 @@ export default function MonCompteIndexPage() {
     if (regPassword !== regPassword2) return setAuthError("Les mots de passe ne correspondent pas.");
     if (!firstName.trim() || !lastName.trim()) return setAuthError("Merci de renseigner votre prénom et votre nom.");
     if (!address1.trim() || !postalCode.trim() || !city.trim()) {
-      return setAuthError("Merci de renseigner votre adresse principale (ligne 1, code postal, ville).");
+      return setAuthError("Merci de renseigner l’adresse du propriétaire : elle sert à préremplir les quittances et documents.");
     }
     if (!billingSame) {
       if (!billAddress1.trim() || !billPostalCode.trim() || !billCity.trim()) {
@@ -200,7 +218,12 @@ export default function MonCompteIndexPage() {
         }
       }
 
-      setAuthInfo("Compte créé ✅ Vérifiez vos e-mails si la confirmation est activée, puis connectez-vous.");
+      if (data.session?.user?.id) {
+        router.replace(redirectPath || "/espace-bailleur");
+        return;
+      }
+
+      setAuthInfo("Compte créé ✅ Vérifiez vos e-mails si la confirmation est activée, puis connectez-vous pour créer votre premier logement gratuit.");
       setMode("login");
       setLoginEmail(email);
       setLoginPassword("");
@@ -209,7 +232,139 @@ export default function MonCompteIndexPage() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase?.auth.signOut();
+    window.location.href = "/";
+  };
+
+  const planLabel =
+    plan === "landlord_5"
+      ? "Starter"
+      : plan === "landlord_15"
+      ? "Essentiel"
+      : plan === "landlord_unlimited"
+      ? "Pro / agence"
+      : plan === "calc_full"
+      ? "Gratuit"
+      : "Non connecté";
+
+  const profileCompletion = useMemo(() => {
+    const checks = [
+      !!profile?.first_name,
+      !!profile?.last_name,
+      !!profile?.address_line1,
+      !!profile?.postal_code,
+      !!profile?.city,
+      !!profile?.country,
+    ];
+    return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+  }, [profile]);
+
+  const renderConnectedOverview = () => {
+    const activeCountLabel = propertyCount === null ? "…" : `${propertyCount}`;
+    const includedLabel =
+      permissionsLoading ? "…" : maxActiveProperties >= 999999 ? "Illimité" : `${maxActiveProperties}`;
+    const profileReady = profileCompletion >= 80;
+
+    return (
+      <AccountLayout userEmail={user?.email ?? null} active="overview" onLogout={handleLogout}>
+        <div className="space-y-4">
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-sky-700">Mon compte</p>
+            <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h1 className="text-2xl font-semibold text-slate-950">Vue d’ensemble</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Retrouvez l’état de votre compte, votre offre et les raccourcis utiles pour gérer vos logements.
+                </p>
+              </div>
+              <Link href="/espace-bailleur" className="inline-flex rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                Accéder à l’espace bailleur
+              </Link>
+            </div>
+          </section>
+
+          <section className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-[0.7rem] uppercase tracking-[0.16em] text-slate-500">Offre actuelle</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">{permissionsLoading ? "…" : planLabel}</p>
+              <p className="mt-1 text-xs text-slate-500">{includedLabel} logement(s) actif(s) inclus.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-[0.7rem] uppercase tracking-[0.16em] text-slate-500">Logements actifs</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">{activeCountLabel}</p>
+              <p className="mt-1 text-xs text-slate-500">Les logements archivés ne comptent pas.</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-[0.7rem] uppercase tracking-[0.16em] text-slate-500">Profil document</p>
+              <p className="mt-1 text-lg font-semibold text-slate-900">{profileLoading ? "…" : `${profileCompletion}%`}</p>
+              <p className="mt-1 text-xs text-slate-500">Adresse utilisée pour quittances et documents.</p>
+            </div>
+          </section>
+
+          <section className="grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-semibold text-slate-900">À faire pour un compte prêt à l’usage</p>
+              <div className="mt-4 space-y-3">
+                {[
+                  {
+                    ok: profileReady,
+                    title: "Compléter les informations bailleur",
+                    desc: "Nom et adresse alimentent les quittances, états des lieux et documents.",
+                    href: "/mon-compte/profil",
+                  },
+                  {
+                    ok: (propertyCount ?? 0) > 0,
+                    title: "Créer au moins un logement",
+                    desc: "Le premier logement actif est inclus gratuitement.",
+                    href: "/espace-bailleur?section=biens",
+                  },
+                  {
+                    ok: plan !== "calc_full",
+                    title: "Choisir une automatisation si besoin",
+                    desc: "Emails, rappels et aide déclaration sont dans les offres payantes.",
+                    href: "/mon-compte/abonnement",
+                  },
+                ].map((item) => (
+                  <Link key={item.title} href={item.href} className="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-white">
+                    <div className="flex gap-3">
+                      <span className={(item.ok ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800") + " flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"}>
+                        {item.ok ? "✓" : "!"}
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-600">{item.desc}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-semibold text-slate-900">Raccourcis</p>
+              <div className="mt-4 grid gap-2">
+                <Link href="/mon-compte/profil" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+                  Modifier mes informations
+                </Link>
+                <Link href="/mon-compte/abonnement" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+                  Gérer mon abonnement
+                </Link>
+                <Link href="/mon-compte/securite" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+                  Sécurité et préférences
+                </Link>
+              </div>
+            </div>
+          </section>
+        </div>
+      </AccountLayout>
+    );
+  };
+
   return (
+    isLoggedIn && redirectPath === "/" ? (
+      renderConnectedOverview()
+    ) : (
     <div className="min-h-screen bg-slate-100">
       <AppHeader />
       <div className="h-1 w-full bg-gradient-to-r from-sky-600 via-sky-500 to-cyan-400" />
@@ -229,7 +384,9 @@ export default function MonCompteIndexPage() {
                     {mode === "login" ? "Connexion" : "Créer un compte"}
                   </h1>
                   <p className="text-xs text-slate-500 mt-1">
-                    {mode === "login" ? "Connectez-vous pour accéder à lokt.fr." : "Créez votre compte lokt.fr."}
+                    {mode === "login"
+                      ? "Connectez-vous pour accéder à lokt.fr."
+                      : "Créez votre accès gratuit. L’adresse du propriétaire préremplit vos quittances et documents."}
                   </p>
                 </div>
 
@@ -413,7 +570,10 @@ export default function MonCompteIndexPage() {
 
                   {/* Adresse */}
                   <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold text-slate-900">Adresse</p>
+                    <p className="text-xs font-semibold text-slate-900">Adresse du propriétaire</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Utilisée pour préremplir vos quittances, états des lieux et documents bailleur. Vous pourrez la modifier à tout moment.
+                    </p>
 
                     <div className="mt-3 space-y-1">
                       <label htmlFor="reg_address1" className="text-xs text-slate-700">
@@ -425,7 +585,6 @@ export default function MonCompteIndexPage() {
                         autoComplete="address-line1"
                         value={address1}
                         onChange={(e) => setAddress1(e.target.value)}
-                        required
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                       />
                     </div>
@@ -447,7 +606,7 @@ export default function MonCompteIndexPage() {
                     <div className="mt-3 grid gap-3 sm:grid-cols-3">
                       <div className="space-y-1">
                         <label htmlFor="reg_postal" className="text-xs text-slate-700">
-                          Code postal *
+                        Code postal *
                         </label>
                         <input
                           id="reg_postal"
@@ -455,7 +614,6 @@ export default function MonCompteIndexPage() {
                           autoComplete="postal-code"
                           value={postalCode}
                           onChange={(e) => setPostalCode(e.target.value)}
-                          required
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                         />
                       </div>
@@ -470,7 +628,6 @@ export default function MonCompteIndexPage() {
                           autoComplete="address-level2"
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
-                          required
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                         />
                       </div>
@@ -641,7 +798,7 @@ export default function MonCompteIndexPage() {
                           onChange={(e) => setMarketingOptIn(e.target.checked)}
                           className="mt-0.5 h-4 w-4 rounded border-slate-300"
                         />
-                        <span>Je souhaite recevoir des e-mails d’lokt.fr.</span>
+                        <span>Je souhaite recevoir des e-mails de lokt.fr.</span>
                       </label>
                     </div>
 
@@ -672,5 +829,6 @@ export default function MonCompteIndexPage() {
 
       <AppFooter />
     </div>
+    )
   );
 }

@@ -1,6 +1,7 @@
 // pages/api/receipts/confirm.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { confirmLeasePaymentAndSendReceipt } from "../../../lib/receiptWorkflow";
 
 function isExpired(createdAt: string, days = 7) {
   const created = new Date(createdAt).getTime();
@@ -26,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const token = String(req.query.token || "").trim();
     const action = String(req.query.action || "yes").toLowerCase(); // yes | no
-    const redirectBase = `${baseUrl(req)}/landlord?tab=quittances`;
+    const redirectBase = `${baseUrl(req)}/espace-bailleur?tab=quittances`;
 
     if (!token) return res.redirect(302, `${redirectBase}&result=error&reason=missing_token`);
     if (action !== "yes" && action !== "no") {
@@ -86,82 +87,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
     }
 
-    // 5) Action = YES : appeler send (interne)
-    const sendUrl = `${baseUrl(req)}/api/receipts/send`;
-    const internalSecret = process.env.INTERNAL_API_SECRET || "";
-
-    const r = await fetch(sendUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-secret": internalSecret,
-      },
-      body: JSON.stringify({
-        userId: row.user_id,
-        leaseId: row.lease_id,
-        periodStart: row.period_start,
-        periodEnd: row.period_end,
-        // IMPORTANT: V1 = confirmation -> MAJ finance + envoi locataire (si possible)
-        affectFinance: true,
-      }),
+    // 5) Action = YES : confirmer paiement -> générer PDF -> envoyer si possible
+    const result = await confirmLeasePaymentAndSendReceipt({
+      userId: row.user_id,
+      leaseId: row.lease_id,
+      periodStart: row.period_start,
+      periodEnd: row.period_end,
     });
 
-    const raw = await r.text();
-    let json: any = null;
-    try {
-      json = raw ? JSON.parse(raw) : null;
-    } catch {
-      // ignore
-    }
-
-    // ✅ Cas particulier: ton send.ts actuel renvoie 400 si Resend non configuré.
-    // Pour une V1 propre, l’idéal est que send.ts renvoie ok:true avec email_disabled:true
-    // MAIS tant que ce n’est pas fait, on reconnaît le message et on traite comme "ok partiel".
-    const msg = String(json?.error || raw || "").toLowerCase();
-    const isEmailNotConfigured =
-      msg.includes("email non configuré") ||
-      msg.includes("resend_api_key") ||
-      msg.includes("resend_from");
-
-    if (!r.ok && !isEmailNotConfigured) {
-      // => on met l’action en error (pour visibilité + debug)
-      await supabaseAdmin
-        .from("receipt_actions")
-        .update({ status: "error", error_message: json?.error || raw || `HTTP ${r.status}` })
-        .eq("id", row.id);
-
-      return res.redirect(
-        302,
-        `${redirectBase}&result=error&reason=send_failed&msg=${enc(json?.error || raw || `HTTP ${r.status}`)}`
-      );
-    }
-
-    // Si email non configuré => "ok partiel" (mais attention: il faut que send.ts ait bien MAJ finance)
-    const receiptId = json?.receipt_id || "";
+    const receiptId = result.receiptId || "";
     const month = String(row.period_start).slice(0, 7);
 
-    await supabaseAdmin
-      .from("receipt_actions")
-      .update({
-        status: "consumed",
-        result_receipt_id: receiptId || null,
-        result_payment: "yes",
-        error_message: isEmailNotConfigured ? (json?.error || raw || "email_not_configured") : null,
-      })
-      .eq("id", row.id);
+    const actionUpdate: any = {
+      status: "consumed",
+    };
+
+    await supabaseAdmin.from("receipt_actions").update(actionUpdate).eq("id", row.id);
 
     return res.redirect(
       302,
-      `${redirectBase}&result=ok&paid=yes&receipt=${enc(receiptId)}&month=${enc(month)}${
-        isEmailNotConfigured ? `&email=disabled` : ""
-      }`
+      `${redirectBase}&result=ok&paid=yes&receipt=${enc(receiptId)}&month=${enc(month)}${result.email.ok ? "" : `&email=not_sent`}`
     );
   } catch (e: any) {
     console.error("[api/receipts/confirm] error:", e);
     const fallback = `${(process.env.APP_BASE_URL || "").replace(
       /\/$/,
       ""
-    )}/landlord?tab=quittances&result=error&reason=internal`;
+    )}/espace-bailleur?tab=quittances&result=error&reason=internal`;
     return res.redirect(302, fallback);
   }
 }

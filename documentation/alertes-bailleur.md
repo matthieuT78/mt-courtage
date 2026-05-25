@@ -1,0 +1,202 @@
+# Documentation - Alertes bailleur
+
+Cette documentation résume le système d'alertes email de l'espace bailleur lokt.fr.
+
+## Objectif
+
+Envoyer au propriétaire un email quotidien lorsqu'une action importante est à traiter dans son espace bailleur.
+
+Le système évite les oublis métier :
+
+- loyer en retard ;
+- loyer bientôt exigible ;
+- quittance à générer ou envoyer ;
+- bail bientôt à échéance ;
+- bail expiré mais encore actif ;
+- état des lieux d'entrée manquant ;
+- état des lieux de sortie à préparer ;
+- email locataire manquant ;
+- email bailleur de notification manquant.
+
+## Fichiers concernés
+
+- Cron principal : `pages/api/cron/landlord-alerts.ts`
+- Configuration Vercel Cron : `vercel.json`
+- Table anti-spam : `supabase/migrations/20260520_landlord_alert_sends.sql`
+- Envoi email Resend : `lib/mailer/resend.ts`
+
+## Fonctionnement
+
+Le cron `/api/cron/landlord-alerts` analyse les données bailleur :
+
+- `leases`
+- `properties`
+- `tenants`
+- `rent_payments`
+- `rent_receipts`
+- `inventory_reports`
+
+Il regroupe les alertes par utilisateur, puis envoie un seul email digest par propriétaire.
+
+Un propriétaire ne reçoit qu'un email d'alerte par jour grâce à la table :
+
+```sql
+landlord_alert_sends
+```
+
+## Alertes envoyées
+
+### Retard de paiement
+
+Déclenchée si le loyer de la période courante n'est pas marqué payé et que la date d'échéance est dépassée.
+
+### Loyer bientôt exigible
+
+Déclenchée si le loyer arrive à échéance dans les 3 prochains jours.
+
+### Quittance à finaliser
+
+Déclenchée si le paiement est confirmé mais que la quittance n'a pas encore de PDF ou n'a pas été envoyée.
+
+### Bail bientôt à échéance
+
+Déclenchée si la date de fin du bail approche.
+
+Seuils actuels :
+
+- environ 60 jours avant ;
+- environ 30 jours avant ;
+- environ 7 jours avant.
+
+### Bail expiré encore actif
+
+Déclenchée si la date de fin est dépassée mais que le bail n'est pas clôturé.
+
+### État des lieux d'entrée manquant
+
+Déclenchée si aucun état des lieux d'entrée n'est rattaché au bail.
+
+### État des lieux de sortie à préparer
+
+Déclenchée si le bail arrive à échéance ou est terminé, mais que l'état des lieux de sortie n'est pas finalisé.
+
+Un état des lieux de sortie est considéré finalisé si son statut est :
+
+- `ready`
+- `signed`
+- `archived`
+
+### Email locataire manquant
+
+Déclenchée si aucun email locataire n'est disponible pour envoyer les quittances.
+
+### Email bailleur manquant
+
+Déclenchée si aucun email de notification bailleur n'est configuré sur le bail.
+
+## Pré-requis environnement
+
+Variables à configurer dans Vercel :
+
+```bash
+CRON_SECRET
+RESEND_API_KEY
+RESEND_FROM
+RESEND_REPLY_TO
+NEXT_PUBLIC_SITE_URL
+SUPABASE_SERVICE_ROLE_KEY
+SUPABASE_URL
+```
+
+`NEXT_PUBLIC_SITE_URL` doit contenir l'URL publique du site, par exemple :
+
+```bash
+https://lokt.fr
+```
+
+## Configuration Vercel
+
+Le cron est déclaré dans `vercel.json` :
+
+```json
+{
+  "path": "/api/cron/landlord-alerts",
+  "schedule": "30 9 * * *"
+}
+```
+
+Il s'exécute tous les jours à 09:30 UTC côté Vercel.
+
+## Migration Supabase
+
+Avant activation en production, appliquer la migration :
+
+```sql
+supabase/migrations/20260520_landlord_alert_sends.sql
+```
+
+Cette table sert à éviter qu'un utilisateur reçoive plusieurs emails d'alerte le même jour.
+
+## Tester en local
+
+Démarrer le serveur :
+
+```bash
+npm run dev
+```
+
+Tester sans envoyer d'email :
+
+```bash
+curl -H "x-cron-secret: TON_SECRET" "http://localhost:3000/api/cron/landlord-alerts?dryRun=1&force=1"
+```
+
+Tester avec envoi réel :
+
+```bash
+curl -H "x-cron-secret: TON_SECRET" "http://localhost:3000/api/cron/landlord-alerts?force=1"
+```
+
+## Réponse attendue
+
+Le cron renvoie un JSON avec les utilisateurs traités :
+
+```json
+{
+  "ok": true,
+  "digestDate": "2026-05-20",
+  "dryRun": true,
+  "results": []
+}
+```
+
+Chaque résultat peut indiquer :
+
+- `sent: true` : email envoyé ;
+- `skipped: "already_sent_today"` : déjà envoyé aujourd'hui ;
+- `skipped: "no_alerts"` : aucune alerte ;
+- `skipped: "no_owner_email"` : impossible de trouver l'email propriétaire.
+
+## Points métier à retenir
+
+Le cron ne remplace pas les actions dans l'application. Il sert à rappeler au propriétaire qu'il doit traiter quelque chose.
+
+Les alertes critiques sont :
+
+- paiement en retard ;
+- bail expiré encore actif ;
+- EDL de sortie non finalisé.
+
+Les alertes de confort sont :
+
+- loyer bientôt exigible ;
+- email manquant ;
+- quittance à finaliser.
+
+## Évolutions possibles
+
+- Ajouter une page `Notifications` dans `Mon compte`.
+- Permettre au propriétaire de choisir les alertes activées.
+- Ajouter une fréquence hebdomadaire au lieu de quotidienne.
+- Envoyer certaines alertes par SMS.
+- Ajouter une table `notification_preferences`.

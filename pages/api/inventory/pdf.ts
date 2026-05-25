@@ -1,30 +1,28 @@
+// pages/api/inventory/pdf.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 
 type Json = Record<string, any>;
 
-const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const toISODateLocal = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
-const fmtDateTimeFR = (iso?: string | null) => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleString("fr-FR", {
-    year: "numeric",
-    month: "long",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
+function safeStr(v: any) {
+  return String(v ?? "").trim();
+}
 
-const safeText = (s: any) => (s == null ? "" : String(s));
+function escapeHtml(s: string) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
 
 function conditionLabel(c: string) {
-  switch (c) {
+  switch (String(c || "").toLowerCase()) {
     case "neuf":
       return "Neuf";
     case "tres_bon":
@@ -40,10 +38,69 @@ function conditionLabel(c: string) {
   }
 }
 
-function ynIcon(v: any) {
-  if (v === true) return "✅";
-  if (v === false) return "❌";
+function conditionClass(c: string) {
+  switch (String(c || "").toLowerCase()) {
+    case "neuf":
+    case "tres_bon":
+    case "bon":
+      return "ok";
+    case "moyen":
+      return "warn";
+    case "mauvais":
+      return "bad";
+    default:
+      return "neutral";
+  }
+}
+
+function yn(v: any) {
+  if (v === true) return "Oui";
+  if (v === false) return "Non";
   return "—";
+}
+
+function fmtDateTimeFR(iso?: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return d.toLocaleString("fr-FR", {
+    year: "numeric",
+    month: "long",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function readLogoDataUrlIfExists() {
+  const candidates = [
+    path.join(process.cwd(), "public", "minilogo.png"),
+    path.join(process.cwd(), "public", "LOKT_LOGO.jpg"),
+    path.join(process.cwd(), "public", "logo-transparent-Lokt.jpg"),
+    path.join(process.cwd(), "public", "lokt-logo.jpg"),
+    path.join(process.cwd(), "public", "brand", "LOKT_LOGO.jpg"),
+    path.join(process.cwd(), "public", "lokt-logo.png"),
+  ];
+  const p = candidates.find((x) => fs.existsSync(x));
+  if (!p) return null;
+
+  try {
+    const buf = fs.readFileSync(p);
+    const ext = p.toLowerCase().endsWith(".png") ? "png" : "jpeg";
+    return `data:image/${ext};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+function safeFilePart(input: string) {
+  const s = safeStr(input)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+  return s || "edl";
 }
 
 function collectDefects(item: any) {
@@ -51,617 +108,978 @@ function collectDefects(item: any) {
   return tags.length ? tags.join(", ") : "";
 }
 
-// ✅ typer avec PDFDocument
-function buildPdfBuffer(build: (doc: PDFDocument) => Promise<void>) {
-  return new Promise<Buffer>(async (resolve, reject) => {
-    try {
-      const doc = new PDFDocument({
-        size: "A4",
-        margin: 46,
-        bufferPages: true,
-      });
-
-      const chunks: Buffer[] = [];
-      doc.on("data", (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", (e) => reject(e));
-
-      await build(doc);
-
-      // Pagination footer
-      const range = doc.bufferedPageRange(); // { start, count }
-      for (let i = range.start; i < range.start + range.count; i++) {
-        doc.switchToPage(i);
-
-        const pageNumber = i - range.start + 1;
-        const total = range.count;
-
-        // petite signature lokt.fr à gauche
-        doc.font("Helvetica").fontSize(9).fillColor("#6b7280");
-        doc.text(
-          "lokt.fr • État des lieux",
-          doc.page.margins.left,
-          doc.page.height - doc.page.margins.bottom + 16,
-          {
-            align: "left",
-            width: 220,
-          }
-        );
-
-        // numéro de page centré
-        doc.font("Helvetica").fontSize(9).fillColor("#6b7280");
-        doc.text(
-          `Page ${pageNumber} / ${total}`,
-          doc.page.margins.left,
-          doc.page.height - doc.page.margins.bottom + 16,
-          {
-            align: "center",
-            width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
-          }
-        );
-      }
-
-      doc.end();
-    } catch (e) {
-      reject(e);
-    }
-  });
-}
-
-function ensureSpace(doc: PDFDocument, needed = 120) {
-  if (doc.y + needed > doc.page.height - doc.page.margins.bottom - 20) doc.addPage();
+function requireServerModule(moduleName: string): any {
+  return (eval("require") as NodeRequire)(moduleName);
 }
 
 /**
- * Header brandé lokt.fr + logo (optionnel)
- * logoBuf : Buffer PNG/JPG (idéalement PNG transparent)
+ * ✅ Render HTML -> PDF
+ * même logique que quittance (full puppeteer en local, sparticuz en linux)
  */
-function drawHeaderBand(doc: PDFDocument, title: string, subtitle: string, logoBuf?: Buffer | null) {
-  const x = doc.page.margins.left;
-  const y = doc.page.margins.top - 20;
-  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+async function renderPdfFromHtml(html: string) {
+  if (String(process.env.NEXT_RUNTIME || "").toLowerCase() === "edge") {
+    throw new Error("Runtime Edge incompatible avec Chromium. Utilise runtime Node.js pour /api/inventory/pdf.");
+  }
 
-  // Bandeau
-  doc.save();
-  doc.rect(x, y, w, 60).fill("#0f172a"); // slate-900
-  doc.restore();
+  const forceFull = process.env.FORCE_PUPPETEER_FULL === "1";
+  const isLinux = process.platform === "linux";
 
-  // Logo (optionnel)
-  const logoSize = 28; // hauteur
-  const logoX = x + 16;
-  const logoY = y + 16;
+  // Local mac/windows (ou force) => puppeteer full
+  if (!isLinux || forceFull) {
+    const puppeteerFullRaw: any = requireServerModule("puppeteer");
+    const puppeteerFull = puppeteerFullRaw.default || puppeteerFullRaw;
+    const browser = await puppeteerFull.launch({ headless: "new" });
 
-  let textX = x + 16;
-  if (logoBuf) {
     try {
-      doc.image(logoBuf, logoX, logoY, { height: logoSize });
-      textX = x + 16 + 90; // marge à droite du logo
-    } catch {
-      textX = x + 16;
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: "networkidle0" });
+
+      const pdf = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: { top: "14mm", right: "14mm", bottom: "18mm", left: "14mm" },
+      });
+
+      return Buffer.from(pdf);
+    } finally {
+      await browser.close();
     }
   }
 
-  // Texte
-  doc.fillColor("#ffffff");
-  doc.font("Helvetica-Bold").fontSize(18).text(title, textX, y + 12, { width: w - (textX - x) - 16 });
-  doc.font("Helvetica").fontSize(10).text(subtitle, textX, y + 38, { width: w - (textX - x) - 16 });
+  // Linux serverless => puppeteer-core + @sparticuz/chromium
+  const chromiumModRaw: any = requireServerModule("@sparticuz/chromium");
+  const puppeteerCoreRaw: any = requireServerModule("puppeteer-core");
+  const chromiumMod = chromiumModRaw.default || chromiumModRaw;
+  const puppeteerCore = puppeteerCoreRaw.default || puppeteerCoreRaw;
 
-  doc.moveDown(2);
-  doc.fillColor("#111111");
-}
+  const executablePath = await chromiumMod.executablePath();
 
-function drawSectionTitle(doc: PDFDocument, title: string) {
-  ensureSpace(doc, 60);
-  doc.moveDown(0.4);
-  doc.font("Helvetica-Bold").fontSize(12).fillColor("#111111").text(title);
-  doc.moveDown(0.2);
-  doc
-    .moveTo(doc.page.margins.left, doc.y)
-    .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-    .strokeColor("#e5e7eb")
-    .stroke();
-  doc.moveDown(0.7);
-}
+  const browser = await puppeteerCore.launch({
+    args: chromiumMod.args,
+    defaultViewport: chromiumMod.defaultViewport,
+    executablePath,
+    headless: chromiumMod.headless,
+  });
 
-function drawKeyValueRow(doc: PDFDocument, label: string, value: string) {
-  const x = doc.page.margins.left;
-  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
 
-  doc.font("Helvetica-Bold").fontSize(10).fillColor("#111").text(label, x, doc.y, { width: 120 });
-  doc.font("Helvetica").fontSize(10).fillColor("#111").text(value || "—", x + 125, doc.y, { width: w - 125 });
-  doc.moveDown(0.25);
-}
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: "14mm", right: "14mm", bottom: "18mm", left: "14mm" },
+    });
 
-function drawCategoryBand(doc: PDFDocument, category: string) {
-  ensureSpace(doc, 40);
-  const x = doc.page.margins.left;
-  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-
-  doc.save();
-  doc.rect(x, doc.y, w, 18).fill("#f1f5f9"); // slate-100
-  doc.restore();
-
-  doc.font("Helvetica-Bold").fontSize(10).fillColor("#111");
-  doc.text(category || "—", x + 8, doc.y + 4, { width: w - 16 });
-
-  doc.moveDown(1.2);
-}
-
-function drawTableHeader(doc: PDFDocument) {
-  const x = doc.page.margins.left;
-  const y = doc.y;
-  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-
-  doc.save();
-  doc.rect(x, y, w, 18).fill("#ffffff");
-  doc.restore();
-
-  doc.font("Helvetica-Bold").fontSize(9).fillColor("#111");
-  doc.text("Élément", x + 6, y + 5, { width: 170 });
-  doc.text("État", x + 182, y + 5, { width: 70 });
-  doc.text("Propre", x + 258, y + 5, { width: 50 });
-  doc.text("Fonct.", x + 312, y + 5, { width: 50 });
-  doc.text("Observations", x + 366, y + 5, { width: w - 366 });
-
-  doc.moveDown(1.0);
-  doc.moveTo(x, doc.y).lineTo(x + w, doc.y).strokeColor("#e5e7eb").stroke();
-  doc.moveDown(0.2);
-}
-
-function drawRow(
-  doc: PDFDocument,
-  row: { label: string; cond: string; clean: string; func: string; desc: string; defects: string },
-  stripe: boolean
-) {
-  const x = doc.page.margins.left;
-  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-
-  const startY = doc.y;
-
-  const obsText =
-    row.defects && row.desc
-      ? `${row.desc}\nDéfauts : ${row.defects}`
-      : row.defects
-      ? `Défauts : ${row.defects}`
-      : row.desc || "—";
-
-  const obsHeight = doc.heightOfString(obsText, { width: w - 366 });
-  const rowH = Math.max(18, Math.min(140, obsHeight + 10));
-
-  ensureSpace(doc, rowH + 18);
-
-  if (stripe) {
-    doc.save();
-    doc.rect(x, startY, w, rowH).fill("#fcfcfd");
-    doc.restore();
+    return Buffer.from(pdf);
+  } finally {
+    await browser.close();
   }
+}
 
-  doc.font("Helvetica").fontSize(9).fillColor("#111");
-  doc.text(row.label || "—", x + 6, startY + 4, { width: 170 });
-  doc.text(row.cond || "—", x + 182, startY + 4, { width: 70 });
-  doc.text(row.clean || "—", x + 258, startY + 4, { width: 50 });
-  doc.text(row.func || "—", x + 312, startY + 4, { width: 50 });
+function buildHtmlPremiumEDL(params: {
+  logoDataUrl: string | null;
+  title: string;
+  subtitleRightTop: string;
+  subtitleRightBottom: string;
 
-  if (row.defects) {
-    const main = row.desc ? `${row.desc}\n` : "";
-    doc.fillColor("#111").text(main, x + 366, startY + 4, { width: w - 366 });
+  landlordName: string;
+  tenantName: string;
+  propertyLabel: string;
+  propertyAddress: string;
 
-    doc.fillColor("#b91c1c");
-    doc.text(
-      `Défauts : ${row.defects}`,
-      x + 366,
-      startY + 4 + doc.heightOfString(main || "", { width: w - 366 }),
-      { width: w - 366 }
+  performedAt: string;
+  performedPlace: string;
+  generalNotes: string;
+  counters: Array<{ label: string; value: string }>;
+
+  rooms: Array<{
+    id: string;
+    name: string;
+    floor_level: string | null;
+    notes: string | null;
+    categories: Array<{
+      name: string;
+      items: Array<{
+        label: string;
+        condition: string;
+        is_clean: any;
+        is_functional: any;
+        wear_level: any;
+        severity: any;
+        description: string;
+        defects: string;
+        photos: Array<{ signedUrl: string; important: boolean }>;
+      }>;
+    }>;
+  }>;
+
+  noRoom: Array<{
+    categories: Array<{
+      name: string;
+      items: Array<{
+        label: string;
+        condition: string;
+        is_clean: any;
+        is_functional: any;
+        wear_level: any;
+        severity: any;
+        description: string;
+        defects: string;
+        photos: Array<{ signedUrl: string; important: boolean }>;
+      }>;
+    }>;
+  }>;
+}) {
+  const {
+    logoDataUrl,
+    title,
+    subtitleRightTop,
+    subtitleRightBottom,
+    landlordName,
+    tenantName,
+    propertyLabel,
+    propertyAddress,
+    performedAt,
+    performedPlace,
+    generalNotes,
+    counters,
+    rooms,
+  noRoom,
+  } = params;
+
+  const totalRooms = rooms.length;
+  const totalItems =
+    rooms.reduce((acc, r) => acc + r.categories.reduce((sum, c) => sum + c.items.length, 0), 0) +
+    (noRoom || []).reduce((acc, r) => acc + r.categories.reduce((sum, c) => sum + c.items.length, 0), 0);
+  const totalDefects =
+    rooms.reduce(
+      (acc, r) =>
+        acc +
+        r.categories.reduce(
+          (sum, c) =>
+            sum +
+            c.items.filter(
+              (it) => !!it.defects || String(it.condition).toLowerCase() === "mauvais" || (typeof it.severity === "number" && it.severity >= 3)
+            ).length,
+          0
+        ),
+      0
+    ) +
+    (noRoom || []).reduce(
+      (acc, r) =>
+        acc +
+        r.categories.reduce(
+          (sum, c) =>
+            sum +
+            c.items.filter(
+              (it) => !!it.defects || String(it.condition).toLowerCase() === "mauvais" || (typeof it.severity === "number" && it.severity >= 3)
+            ).length,
+          0
+        ),
+      0
     );
-    doc.fillColor("#111");
-  } else {
-    doc.fillColor("#111").text(obsText, x + 366, startY + 4, { width: w - 366 });
+  const completedRooms = rooms.filter((r) => r.categories.reduce((sum, c) => sum + c.items.length, 0) > 0).length;
+
+  const headerLogo = logoDataUrl ? `<img class="logo" src="${logoDataUrl}" alt="lokt.fr" />` : `<div class="brandText">lokt<span>.fr</span></div>`;
+  const footerLogo = logoDataUrl ? `<img class="footerLogo" src="${logoDataUrl}" alt="lokt.fr" />` : ``;
+
+  const notesHtml = generalNotes ? escapeHtml(generalNotes).replace(/\n/g, "<br/>") : "";
+  const countersHtml = counters.length
+    ? `<div class="infoBlock">
+        <div class="infoTitle">Compteurs et clés</div>
+        <div class="infoGrid">
+          ${counters
+            .map(
+              (row) => `<div class="infoCell">
+                <div class="infoLabel">${escapeHtml(row.label)}</div>
+                <div class="infoValue">${escapeHtml(row.value || "—")}</div>
+              </div>`
+            )
+            .join("")}
+        </div>
+      </div>`
+    : "";
+
+  // Sommaire (CSS counters + anchors)
+  const tocItems = rooms
+    .map((r, idx) => {
+      const label = `${r.name}${r.floor_level ? ` — ${r.floor_level}` : ""}`;
+      const count = r.categories.reduce((acc, c) => acc + c.items.length, 0);
+      return `<div class="tocRow">
+        <div class="tocLeft"><span class="tocNum">${idx + 1}.</span> <a href="#room-${escapeHtml(r.id)}">${escapeHtml(label)}</a></div>
+        <div class="tocRight">${count}</div>
+      </div>`;
+    })
+    .join("");
+
+  const roomBlocks = rooms
+    .map((r, idx) => {
+      const roomTitle = `${r.name}${r.floor_level ? ` — ${r.floor_level}` : ""}`;
+      const roomNotes = r.notes ? `<div class="muted small" style="margin-top:6px;">Notes : ${escapeHtml(r.notes)}</div>` : "";
+
+      const catBlocks = r.categories
+        .map((cat) => {
+          const rows = cat.items
+            .map((it) => {
+              const obs =
+                it.defects && it.description
+                  ? `${it.description}\nDéfauts : ${it.defects}`
+                  : it.defects
+                  ? `Défauts : ${it.defects}`
+                  : it.description || "—";
+
+              const obsHtml = escapeHtml(obs).replace(/\n/g, "<br/>");
+
+              const hasDefects = !!it.defects;
+              const important = (typeof it.severity === "number" && it.severity >= 3) || String(it.condition) === "mauvais" || hasDefects;
+
+              const photosHtml = (it.photos || [])
+                .slice(0, important ? 1 : 3)
+                .map(
+                  (p) =>
+                    `<div class="${p.important ? "photoHero" : "photoThumb"}">
+                      <img src="${p.signedUrl}" alt="photo" />
+                    </div>`
+                )
+                .join("");
+
+              const photoWrap = photosHtml ? `<div class="photos">${photosHtml}</div>` : "";
+
+              return `<tr>
+                <td class="colEl">
+                  <div class="elTitle">${escapeHtml(it.label || "—")}</div>
+                  <div class="muted small">Usure : ${escapeHtml(String(it.wear_level ?? "—"))}/5 • Gravité : ${escapeHtml(
+                String(it.severity ?? 0)
+              )}/5</div>
+                </td>
+                <td class="colEtat"><span class="statePill ${conditionClass(it.condition)}">${escapeHtml(conditionLabel(it.condition))}</span></td>
+                <td class="colYN">${escapeHtml(yn(it.is_clean))}</td>
+                <td class="colYN">${escapeHtml(yn(it.is_functional))}</td>
+                <td class="colObs ${hasDefects ? "hasDefects" : ""}">
+                  ${obsHtml}
+                  ${photoWrap}
+                </td>
+              </tr>`;
+            })
+            .join("");
+
+          if (!rows) {
+            return `<div class="cat">
+              <div class="catTitle">${escapeHtml(cat.name || "Autre")}</div>
+              <div class="muted">Aucun élément.</div>
+            </div>`;
+          }
+
+          return `<div class="cat">
+            <div class="catTitle">${escapeHtml(cat.name || "Autre")}</div>
+            <div class="tableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="colEl">Élément</th>
+                    <th class="colEtat">État</th>
+                    <th class="colYN">Propre</th>
+                    <th class="colYN">Fonct.</th>
+                    <th class="colObs">Observations</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          </div>`;
+        })
+        .join("");
+
+      const itemCount = r.categories.reduce((acc, c) => acc + c.items.length, 0);
+      return `<section class="room" id="room-${escapeHtml(r.id)}">
+        <div class="roomHeader">
+          <div>
+            <div class="roomKicker">Pièce ${idx + 1}/${rooms.length}</div>
+            <div class="roomTitle">${escapeHtml(roomTitle)}</div>
+            ${roomNotes}
+          </div>
+          <div class="roomCount">${itemCount} relevé${itemCount > 1 ? "s" : ""}</div>
+        </div>
+        ${catBlocks || `<div class="emptyBox">Aucun élément relevé pour cette pièce.</div>`}
+      </section>`;
+    })
+    .join("");
+
+  const emptyDocumentBlock =
+    !rooms.length && !noRoom?.length
+      ? `<section class="emptyDocument">
+          <div class="emptyTitle">Aucun relevé pièce par pièce</div>
+          <p>Le document a été généré, mais aucune pièce ni aucun élément n’a été enregistré dans l’état des lieux.</p>
+          <p>Pour un document exploitable, ajoute au minimum les pièces principales, les compteurs, les clés et les observations importantes avant signature.</p>
+        </section>`
+      : "";
+
+  const noRoomBlock = noRoom?.length
+    ? `<section class="room" id="room-no-room">
+        <div class="roomHeader">
+          <div>
+            <div class="roomKicker">Annexe</div>
+            <div class="roomTitle">Éléments hors pièce</div>
+          </div>
+        </div>
+        ${
+          noRoom[0].categories
+            .map((cat) => {
+              const rows = cat.items
+                .map((it) => {
+                  const obs =
+                    it.defects && it.description
+                      ? `${it.description}\nDéfauts : ${it.defects}`
+                      : it.defects
+                      ? `Défauts : ${it.defects}`
+                      : it.description || "—";
+                  const obsHtml = escapeHtml(obs).replace(/\n/g, "<br/>");
+                  const hasDefects = !!it.defects;
+                  const important = (typeof it.severity === "number" && it.severity >= 3) || String(it.condition) === "mauvais" || hasDefects;
+
+                  const photosHtml = (it.photos || [])
+                    .slice(0, important ? 1 : 3)
+                    .map(
+                      (p) =>
+                        `<div class="${p.important ? "photoHero" : "photoThumb"}">
+                          <img src="${p.signedUrl}" alt="photo" />
+                        </div>`
+                    )
+                    .join("");
+
+                  const photoWrap = photosHtml ? `<div class="photos">${photosHtml}</div>` : "";
+
+                  return `<tr>
+                    <td class="colEl">
+                      <div class="elTitle">${escapeHtml(it.label || "—")}</div>
+                      <div class="muted small">Usure : ${escapeHtml(String(it.wear_level ?? "—"))}/5 • Gravité : ${escapeHtml(
+                    String(it.severity ?? 0)
+                  )}/5</div>
+                    </td>
+                    <td class="colEtat"><span class="statePill ${conditionClass(it.condition)}">${escapeHtml(conditionLabel(it.condition))}</span></td>
+                    <td class="colYN">${escapeHtml(yn(it.is_clean))}</td>
+                    <td class="colYN">${escapeHtml(yn(it.is_functional))}</td>
+                    <td class="colObs ${hasDefects ? "hasDefects" : ""}">
+                      ${obsHtml}
+                      ${photoWrap}
+                    </td>
+                  </tr>`;
+                })
+                .join("");
+
+              return `<div class="cat">
+                <div class="catTitle">${escapeHtml(cat.name || "Autre")}</div>
+                <div class="tableWrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th class="colEl">Élément</th>
+                        <th class="colEtat">État</th>
+                        <th class="colYN">Propre</th>
+                        <th class="colYN">Fonct.</th>
+                        <th class="colObs">Observations</th>
+                      </tr>
+                    </thead>
+                    <tbody>${rows || ""}</tbody>
+                  </table>
+                </div>
+              </div>`;
+            })
+            .join("") || ""
+        }
+      </section>`
+    : "";
+
+  return `<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  @page { size: A4; margin: 14mm; }
+  :root{
+    --ink:#111827; --muted:#64748b; --line:#dbe4ee; --soft:#f8fafc;
+    --brand:#047857; --brandSoft:#ecfdf5; --danger:#b91c1c; --warn:#b45309;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,"Noto Sans","Helvetica Neue",sans-serif;
+    color:var(--ink);
+    background:white;
   }
 
-  doc.y = startY + rowH;
-  doc.moveTo(x, doc.y).lineTo(x + w, doc.y).strokeColor("#f1f5f9").stroke();
-  doc.moveDown(0.2);
-}
+  .header{
+    display:flex; justify-content:space-between; gap:16px;
+    padding-bottom:12px; border-bottom:2px solid #0f172a;
+    align-items:flex-start;
+  }
+  .logo{ height:34px; width:auto; object-fit:contain; }
+  .brandText{ font-weight:950; font-size:22px; letter-spacing:-0.03em; }
+  .brandText span{ color:var(--brand); }
 
-async function drawPhotos(
-  doc: PDFDocument,
-  supabase: NonNullable<typeof supabaseAdmin>,
-  photos: any[],
-  mode: "hero" | "thumbs"
-) {
-  if (!photos.length) return;
+  .meta{
+    text-align:right; font-size:10.5px; color:var(--muted); line-height:1.35; max-width:55%;
+  }
+  .meta strong{ color:var(--ink); }
 
-  const x = doc.page.margins.left;
-  const w = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  .hero{
+    margin-top:14px;
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:16px;
+    background:linear-gradient(135deg,#f8fafc 0%,#ffffff 48%,#ecfdf5 100%);
+  }
+  .docKicker{ font-size:10px; font-weight:900; letter-spacing:0.16em; text-transform:uppercase; color:var(--brand); }
+  .title{ margin-top:5px; font-size:25px; line-height:1.05; font-weight:950; letter-spacing:-0.035em; }
+  .legalNote{ margin-top:9px; max-width:92%; font-size:10.5px; line-height:1.45; color:#334155; }
+  .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:13px; }
+  .stat{ border:1px solid var(--line); border-radius:13px; padding:9px; background:rgba(255,255,255,0.82); }
+  .statLabel{ font-size:8.5px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  .statValue{ margin-top:3px; font-size:15px; font-weight:950; color:var(--ink); }
 
-  if (mode === "hero") {
-    const p = photos[0];
-    const bucket = p.storage_bucket || "inventory-photos";
-    const path = p.storage_path;
-    if (!path) return;
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .card{ border:1px solid var(--line); border-radius:14px; padding:10px; background:#fff; }
+  .cardTitle{ font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:6px; }
+  .kv{ font-size:11px; line-height:1.35; word-break:break-word; }
+  .muted{ color:var(--muted); }
+  .small{ font-size:10px; }
+  .property{ margin-top:10px; }
 
-    ensureSpace(doc, 260);
+  .notes{
+    margin-top:10px; border:1px solid var(--line); border-radius:14px;
+    padding:10px; background:var(--soft);
+  }
+  .notesTitle{ font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px; }
+  .notesBody{ font-size:11px; line-height:1.5; }
 
-    try {
-      const { data: imgData } = await supabase.storage.from(bucket).download(path);
-      if (!imgData) return;
+  .infoBlock{
+    margin-top:10px; border:1px solid var(--line); border-radius:14px;
+    padding:10px; background:#fff;
+  }
+  .infoTitle{ font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px; }
+  .infoGrid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .infoCell{ border:1px solid var(--line); border-radius:10px; padding:8px; background:var(--soft); }
+  .infoLabel{ font-size:9px; color:var(--muted); font-weight:800; text-transform:uppercase; letter-spacing:0.08em; }
+  .infoValue{ margin-top:3px; font-size:11px; font-weight:800; color:var(--ink); word-break:break-word; }
 
-      const buf = Buffer.from(await imgData.arrayBuffer());
+  .toc{
+    margin-top:10px; border:1px solid var(--line); border-radius:14px; padding:10px; background:#fff;
+  }
+  .tocTitle{ font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px; }
+  .tocRow{ display:flex; justify-content:space-between; gap:10px; border-top:1px solid var(--line); padding-top:6px; margin-top:6px; }
+  .tocRow:first-of-type{ border-top:none; padding-top:0; margin-top:0; }
+  .tocLeft{ font-size:11px; }
+  .tocLeft a{ color:var(--ink); text-decoration:none; }
+  .tocNum{ color:var(--muted); margin-right:6px; }
+  .tocRight{ font-size:11px; color:var(--muted); }
 
-      const top = doc.y + 6;
-      const h = 220;
-
-      doc.save();
-      doc.rect(x, top, w, h).strokeColor("#e5e7eb").stroke();
-      doc.image(buf, x + 6, top + 6, { fit: [w - 12, h - 12] });
-      doc.restore();
-
-      doc.y = top + h + 10;
-    } catch {
-      // ignore
-    }
-    return;
+  .room{
+    break-before:page;
+    padding-top:2mm;
+  }
+  .roomHeader{
+    display:flex; justify-content:space-between; gap:14px; align-items:flex-start;
+    border:1px solid var(--line); border-radius:14px; padding:10px; background:linear-gradient(135deg, #f8fafc, #ffffff, #ecfdf5);
+    margin-top:10px;
+  }
+  .roomKicker{ font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  .roomTitle{ font-size:16px; font-weight:900; margin-top:4px; }
+  .roomCount{
+    white-space:nowrap;
+    border:1px solid #bbf7d0;
+    border-radius:999px;
+    background:#ecfdf5;
+    color:#047857;
+    padding:5px 9px;
+    font-size:10px;
+    font-weight:900;
   }
 
-  const list = photos.slice(0, 3);
-  ensureSpace(doc, 120);
-
-  const startY = doc.y + 6;
-  let cx = x;
-
-  for (const p of list) {
-    const bucket = p.storage_bucket || "inventory-photos";
-    const path = p.storage_path;
-    if (!path) continue;
-
-    try {
-      const { data: imgData } = await supabase.storage.from(bucket).download(path);
-      if (!imgData) continue;
-      const buf = Buffer.from(await imgData.arrayBuffer());
-
-      doc.save();
-      doc.rect(cx, startY, 120, 86).strokeColor("#e5e7eb").stroke();
-      doc.image(buf, cx + 4, startY + 4, { fit: [112, 78] });
-      doc.restore();
-
-      cx += 130;
-    } catch {
-      // ignore
-    }
+  .cat{ margin-top:10px; }
+  .catTitle{
+    font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase;
+    background:var(--soft); border:1px solid var(--line); border-radius:12px;
+    padding:8px 10px;
   }
 
-  doc.y = startY + 96;
+  .tableWrap{
+    margin-top:8px;
+    border:1px solid var(--line); border-radius:14px; overflow:hidden;
+  }
+  table{ width:100%; border-collapse:collapse; font-size:11px; }
+  thead th{
+    background:#fff;
+    text-align:left;
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+    color:var(--muted);
+    font-size:10px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+  }
+  tbody td{
+    padding:8px 10px;
+    border-top:1px solid #f1f5f9;
+    vertical-align:top;
+  }
+  tbody tr:nth-child(even) td{ background:#fcfcfd; }
+
+  .colEl{ width:32%; }
+  .colEtat{ width:14%; }
+  .colYN{ width:8%; }
+  .colObs{ width:38%; }
+
+  .elTitle{ font-weight:800; }
+  .statePill{
+    display:inline-flex;
+    border-radius:999px;
+    padding:4px 7px;
+    font-size:9.5px;
+    font-weight:900;
+    border:1px solid var(--line);
+    background:#f8fafc;
+    color:#334155;
+  }
+  .statePill.ok{ border-color:#bbf7d0; background:#ecfdf5; color:#047857; }
+  .statePill.warn{ border-color:#fed7aa; background:#fff7ed; color:var(--warn); }
+  .statePill.bad{ border-color:#fecaca; background:#fef2f2; color:var(--danger); }
+  .hasDefects{ color:var(--ink); }
+  .hasDefects b, .hasDefects strong{ color:var(--danger); }
+
+  .photos{
+    margin-top:8px;
+    display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .photoThumb{
+    width:140px; height:100px;
+    border:1px solid var(--line); border-radius:12px; overflow:hidden;
+    background:#fff;
+  }
+  .photoHero{
+    width:100%; max-width:100%;
+    border:1px solid var(--line); border-radius:12px; overflow:hidden;
+    background:#fff;
+  }
+  .photoThumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .photoHero img{ width:100%; height:220px; object-fit:contain; display:block; background:#fff; }
+
+  .signatures{
+    break-before:page;
+    margin-top:10px;
+  }
+  .emptyBox,.emptyDocument{
+    margin-top:10px;
+    border:1px dashed var(--line);
+    border-radius:14px;
+    background:#f8fafc;
+    padding:12px;
+    color:#475569;
+    font-size:11px;
+    line-height:1.5;
+  }
+  .emptyDocument{ break-before:page; padding:18px; }
+  .emptyTitle{ font-size:16px; font-weight:950; color:var(--ink); margin-bottom:6px; }
+  .sigGrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  .sigBox{ border:1px solid var(--line); border-radius:14px; padding:10px; min-height:140px; background:#fff; }
+  .sigLabel{ font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  .sigName{ margin-top:6px; font-size:12px; font-weight:800; }
+
+  .footer{
+    position:fixed; left:14mm; right:14mm; bottom:9mm;
+    display:flex; justify-content:space-between; align-items:center;
+    height:12px; pointer-events:none;
+    color:var(--muted);
+    font-size:9.5px;
+  }
+  .footerLogo{
+    height:10px; width:auto;
+    opacity:0.28; filter:grayscale(100%);
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>${headerLogo}</div>
+    <div class="meta">
+      <div><strong>${escapeHtml(subtitleRightTop)}</strong></div>
+      <div>${escapeHtml(subtitleRightBottom)}</div>
+    </div>
+  </div>
+
+  <section class="hero">
+    <div class="docKicker">Document d'état des lieux</div>
+    <div class="title">${escapeHtml(title)}</div>
+    <div class="legalNote">
+      Document destiné à constater contradictoirement l'état du logement, de ses équipements, des compteurs et des clés au moment de la remise ou de la restitution des lieux.
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="statLabel">Pièces</div><div class="statValue">${totalRooms}</div></div>
+      <div class="stat"><div class="statLabel">Relevés</div><div class="statValue">${totalItems}</div></div>
+      <div class="stat"><div class="statLabel">Pièces complétées</div><div class="statValue">${completedRooms}/${totalRooms || 0}</div></div>
+      <div class="stat"><div class="statLabel">Points à suivre</div><div class="statValue">${totalDefects}</div></div>
+    </div>
+  </section>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="cardTitle">Bailleur</div>
+      <div class="kv"><strong>${escapeHtml(landlordName || "—")}</strong></div>
+    </div>
+
+    <div class="card">
+      <div class="cardTitle">Locataire</div>
+      <div class="kv"><strong>${escapeHtml(tenantName || "—")}</strong></div>
+    </div>
+  </div>
+
+  <div class="card property">
+    <div class="cardTitle">Bien loué</div>
+    <div class="kv"><strong>${escapeHtml(propertyLabel || "—")}</strong></div>
+    <div class="kv muted">${escapeHtml(propertyAddress || "—")}</div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="cardTitle">Date & heure</div>
+      <div class="kv">${escapeHtml(performedAt || "—")}</div>
+    </div>
+    <div class="card">
+      <div class="cardTitle">Lieu</div>
+      <div class="kv">${escapeHtml(performedPlace || "—")}</div>
+    </div>
+  </div>
+
+  ${
+    notesHtml
+      ? `<div class="notes">
+          <div class="notesTitle">Notes générales</div>
+          <div class="notesBody">${notesHtml}</div>
+        </div>`
+      : ``
+  }
+  ${countersHtml}
+
+  <div class="toc">
+    <div class="tocTitle">Sommaire</div>
+    <div class="muted small">Clique sur une pièce pour accéder directement à sa section (PDF interactif).</div>
+    <div style="margin-top:8px;">
+      ${tocItems || `<div class="muted">Aucune pièce.</div>`}
+    </div>
+  </div>
+
+  ${roomBlocks}
+
+  ${noRoomBlock}
+
+  ${emptyDocumentBlock}
+
+  <section class="signatures">
+    <div class="roomHeader">
+      <div class="roomKicker">Clôture</div>
+      <div class="roomTitle">Signatures</div>
+      <div class="muted small" style="margin-top:6px;">Document établi pour signature des parties.</div>
+    </div>
+
+    <div class="sigGrid">
+      <div class="sigBox">
+        <div class="sigLabel">Bailleur</div>
+        <div class="sigName">${escapeHtml(landlordName || "—")}</div>
+        <div class="muted small" style="margin-top:10px;">Signature :</div>
+      </div>
+
+      <div class="sigBox">
+        <div class="sigLabel">Locataire</div>
+        <div class="sigName">${escapeHtml(tenantName || "—")}</div>
+        <div class="muted small" style="margin-top:10px;">Signature :</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    <div>lokt.fr • État des lieux</div>
+    <div>${footerLogo}</div>
+  </div>
+</body>
+</html>`;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Json>) {
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
     if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin non configuré (env manquantes)." });
+    const auth = await requireApiUser(req);
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
     const { reportId, userId } = (req.body || {}) as { reportId?: string; userId?: string };
     if (!reportId || !userId) return res.status(400).json({ error: "reportId et userId requis." });
+    const userCheck = requireMatchingUser(auth, String(userId));
+    if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
 
-    // ✅ charge logo lokt.fr depuis /public
-    let logoBuf: Buffer | null = null;
-    try {
-      const logoPath = path.join(process.cwd(), "public", "brand", "LOKT_LOGO.jpg");
-      if (fs.existsSync(logoPath)) {
-        logoBuf = fs.readFileSync(logoPath);
-      }
-    } catch {
-      logoBuf = null;
+    // --- report
+    const { data: report, error: repErr } = await supabaseAdmin.from("inventory_reports").select("*").eq("id", reportId).single();
+    if (repErr || !report) return res.status(404).json({ error: "Report introuvable." });
+    if (String(report.user_id) !== String(userId)) return res.status(403).json({ error: "Accès refusé." });
+
+    // ✅ génération uniquement sur ready
+    const status = String(report.status || "").toLowerCase();
+    if (status !== "ready") {
+      return res.status(409).json({ error: "Génération PDF autorisée uniquement lorsque le statut est “Prêt”." });
     }
 
-    const { data: report, error: repErr } = await supabaseAdmin
-      .from("inventory_reports")
-      .select("*")
-      .eq("id", reportId)
-      .single();
-
-    if (repErr || !report) return res.status(404).json({ error: "Report introuvable." });
-    if (report.user_id !== userId) return res.status(403).json({ error: "Accès refusé." });
-
-    const [{ data: rooms, error: roomsErr }, { data: items, error: itemsErr }, { data: photos, error: photosErr }] =
-      await Promise.all([
-        supabaseAdmin.from("inventory_rooms").select("*").eq("report_id", reportId).order("sort_order", { ascending: true }),
-        supabaseAdmin.from("inventory_items").select("*").eq("report_id", reportId).order("created_at", { ascending: true }),
-        supabaseAdmin.from("inventory_photos").select("*").eq("report_id", reportId).order("created_at", { ascending: true }),
-      ]);
+    // --- rooms/items/photos
+    const [{ data: rooms, error: roomsErr }, { data: items, error: itemsErr }, { data: photos, error: photosErr }] = await Promise.all([
+      supabaseAdmin.from("inventory_rooms").select("*").eq("report_id", reportId).order("sort_order", { ascending: true }),
+      supabaseAdmin.from("inventory_items").select("*").eq("report_id", reportId).order("created_at", { ascending: true }),
+      supabaseAdmin.from("inventory_photos").select("*").eq("report_id", reportId).order("created_at", { ascending: true }),
+    ]);
 
     if (roomsErr) return res.status(500).json({ error: `rooms: ${roomsErr.message}` });
     if (itemsErr) return res.status(500).json({ error: `items: ${itemsErr.message}` });
 
-    const safePhotos = photosErr ? [] : photos || [];
+    const safeRooms = (rooms || []) as any[];
+    const safeItems = (items || []) as any[];
+    const safePhotos = photosErr ? [] : ((photos || []) as any[]);
 
-    const { data: lease } = await supabaseAdmin.from("leases").select("*").eq("id", report.lease_id).single();
+    // --- lease + property + tenant + landlord
+    const { data: lease, error: leaseErr } = await supabaseAdmin.from("leases").select("*").eq("id", report.lease_id).single();
+    if (leaseErr) return res.status(500).json({ error: `lease: ${leaseErr.message}` });
 
     let property: any = null;
     let tenant: any = null;
     let landlord: any = null;
 
-    if (lease?.property_id) {
-      const r = await supabaseAdmin.from("properties").select("*").eq("id", lease.property_id).single();
+    if ((lease as any)?.property_id) {
+      const r = await supabaseAdmin.from("properties").select("*").eq("id", (lease as any).property_id).maybeSingle();
       property = r.data || null;
     }
-    if (lease?.tenant_id) {
-      const r = await supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single();
+    if ((lease as any)?.tenant_id) {
+      const r = await supabaseAdmin.from("tenants").select("*").eq("id", (lease as any).tenant_id).maybeSingle();
       tenant = r.data || null;
     }
-    const rLand = await supabaseAdmin.from("landlords").select("*").eq("user_id", userId).single();
+    const rLand = await supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle();
     landlord = rLand.data || null;
 
+    const landlordName = safeStr(landlord?.display_name) || "Bailleur";
+    const tenantName = safeStr(tenant?.full_name) || "Locataire";
+    const propertyLabel = safeStr(property?.label) || "Bien";
+    const propertyAddress =
+      [
+        safeStr(property?.address_line1),
+        safeStr(property?.address_line2),
+        [safeStr(property?.postal_code), safeStr(property?.city)].filter(Boolean).join(" "),
+        safeStr(property?.country || "FR"),
+      ]
+        .filter(Boolean)
+        .join(", ") || "—";
+
+    const title = String(report.report_type) === "entry" ? "État des lieux d’entrée" : "État des lieux de sortie";
+    const subtitleRightTop = `${propertyLabel}`;
+    const subtitleRightBottom = `Établi le ${fmtDateTimeFR(report.performed_at)}${safeStr(report.performed_place) ? ` • Lieu : ${safeStr(report.performed_place)}` : ""}`;
+    const countersJson = report.counters_json && typeof report.counters_json === "object" ? (report.counters_json as Record<string, any>) : {};
+    const counters = [
+      ["Compteur électricité", countersJson.electricity],
+      ["Compteur eau", countersJson.water],
+      ["Compteur gaz", countersJson.gas],
+      ["Clés", countersJson.keys],
+      ["Badges", countersJson.badges],
+      ["Télécommandes", countersJson.remotes],
+    ]
+      .map(([label, value]) => ({ label: String(label), value: safeStr(value) }))
+      .filter((row) => row.value);
+
+    // --- photos map by item_id
     const photosByItem = new Map<string, any[]>();
-    for (const p of safePhotos as any[]) {
+    for (const p of safePhotos) {
       if (!p?.item_id) continue;
-      const arr = photosByItem.get(p.item_id) || [];
+      const arr = photosByItem.get(String(p.item_id)) || [];
       arr.push(p);
-      photosByItem.set(p.item_id, arr);
+      photosByItem.set(String(p.item_id), arr);
     }
 
-    const title = report.report_type === "entry" ? "ÉTAT DES LIEUX D’ENTRÉE" : "ÉTAT DES LIEUX DE SORTIE";
+    // helper: signed urls for photos
+    // (Puppeteer charge mieux via URL que via buffer)
+    async function signedPhotoUrl(bucket: string, storagePath: string) {
+      try {
+        const signed = await supabaseAdmin.storage.from(bucket).createSignedUrl(storagePath, 60 * 10);
+        if (signed.error) return null;
+        return signed.data?.signedUrl || null;
+      } catch {
+        return null;
+      }
+    }
 
-    const landlordName = landlord?.display_name || "Bailleur";
-    const tenantName = tenant?.full_name || "Locataire";
-    const propLabel = property?.label || "Bien";
-    const propAddr = [
-      property?.address_line1,
-      property?.address_line2,
-      [property?.postal_code, property?.city].filter(Boolean).join(" "),
-      property?.country,
-    ]
-      .filter(Boolean)
-      .join(", ");
-
-    const roomList = (rooms || []) as any[];
-    const itemList = (items || []) as any[];
-
+    // --- items by room + categories
     const itemsByRoom = new Map<string, any[]>();
-    for (const it of itemList) {
-      const rid = it.room_id || "__no_room__";
+    for (const it of safeItems) {
+      const rid = it.room_id ? String(it.room_id) : "__no_room__";
       const arr = itemsByRoom.get(rid) || [];
       arr.push(it);
       itemsByRoom.set(rid, arr);
     }
 
-    const roomsOk = roomList.filter((r) => (itemsByRoom.get(r.id) || []).length > 0).length;
-    const completeness = roomList.length ? Math.round((roomsOk / roomList.length) * 100) : 0;
-
-    type TocEntry = { name: string; count: number; page: number };
-    const toc: TocEntry[] = [];
-
-    const pdf = await buildPdfBuffer(async (doc) => {
-      let pageNum = 1;
-
-      const addPage = () => {
-        doc.addPage();
-        pageNum += 1;
-      };
-
-      drawHeaderBand(doc, title, `lokt.fr — Document généré le ${new Date().toLocaleDateString("fr-FR")}`, logoBuf);
-
-      drawSectionTitle(doc, "Résumé");
-      drawKeyValueRow(doc, "Bailleur", landlordName);
-      drawKeyValueRow(doc, "Locataire", tenantName);
-      drawKeyValueRow(doc, "Bien", `${propLabel}${propAddr ? " — " + propAddr : ""}`);
-      drawKeyValueRow(doc, "Date & heure", fmtDateTimeFR(report.performed_at));
-      drawKeyValueRow(doc, "Lieu", safeText(report.performed_place) || "—");
-
-      doc.moveDown(0.5);
-      doc.font("Helvetica-Bold").fontSize(11).fillColor("#111").text("Indicateurs");
-      doc.font("Helvetica").fontSize(10).fillColor("#111");
-      doc.text(`• Nombre de pièces : ${roomList.length}`);
-      doc.text(`• Nombre d’éléments : ${itemList.length}`);
-      doc.text(`• Complétude : ${completeness}%`);
-
-      if (report.general_notes) {
-        doc.moveDown(0.5);
-        doc.font("Helvetica-Bold").fontSize(11).text("Notes générales");
-        doc.font("Helvetica").fontSize(10).fillColor("#111").text(safeText(report.general_notes));
+    function groupByCategory(list: any[]) {
+      const byCat = new Map<string, any[]>();
+      for (const it of list) {
+        const cat = safeStr(it.category || "Autre");
+        const arr = byCat.get(cat) || [];
+        arr.push(it);
+        byCat.set(cat, arr);
       }
+      const cats = Array.from(byCat.keys()).sort((a, b) => a.localeCompare(b, "fr"));
+      return cats.map((name) => {
+        const its = (byCat.get(name) || []).slice().sort((a, b) => safeStr(a.label).localeCompare(safeStr(b.label), "fr"));
+        return { name, items: its };
+      });
+    }
 
-      addPage();
+    const enrichedRooms = await Promise.all(
+      safeRooms.map(async (r: any) => {
+        const rItems = itemsByRoom.get(String(r.id)) || [];
+        const categoriesRaw = groupByCategory(rItems);
 
-      drawHeaderBand(doc, "SOMMAIRE", "Pièces & pagination", logoBuf);
+        const categories = await Promise.all(
+          categoriesRaw.map(async (cat) => {
+            const items = await Promise.all(
+              cat.items.map(async (it: any) => {
+                const defects = collectDefects(it);
+                const description = safeStr(it.description || "");
+                const important =
+                  (typeof it.severity === "number" && it.severity >= 3) || String(it.condition) === "mauvais" || Boolean(defects);
 
-      const tocPageIndex = pageNum;
-      drawSectionTitle(doc, "Pièces");
+                const photos = (photosByItem.get(String(it.id)) || []).slice(0, important ? 1 : 3);
 
-      doc.font("Helvetica").fontSize(10).fillColor("#111");
-      doc.text("Le détail commence à la page suivante.", { align: "left" });
-      doc.moveDown(0.8);
+                const signedPhotos: Array<{ signedUrl: string; important: boolean }> = [];
+                for (const p of photos) {
+                  const bucket = safeStr(p.storage_bucket) || "inventory-photos";
+                  const storagePath = safeStr(p.storage_path);
+                  if (!storagePath) continue;
+                  const url = await signedPhotoUrl(bucket, storagePath);
+                  if (url) signedPhotos.push({ signedUrl: url, important });
+                }
 
-      const tocStartY = doc.y;
-
-      addPage();
-
-      for (let i = 0; i < roomList.length; i++) {
-        const room = roomList[i];
-        if (i > 0) addPage();
-
-        const rItems = itemsByRoom.get(room.id) || [];
-        toc.push({
-          name: `${room.name}${room.floor_level ? " — " + room.floor_level : ""}`,
-          count: rItems.length,
-          page: pageNum,
-        });
-
-        drawHeaderBand(doc, "DÉTAIL", `${room.name}${room.floor_level ? " — " + room.floor_level : ""}`, logoBuf);
-
-        if (room.notes) {
-          doc.font("Helvetica").fontSize(10).fillColor("#374151").text(`Notes : ${room.notes}`);
-          doc.moveDown(0.4);
-        }
-
-        if (!rItems.length) {
-          doc.font("Helvetica").fontSize(11).fillColor("#6b7280").text("Aucun élément renseigné pour cette pièce.");
-          continue;
-        }
-
-        const byCat = new Map<string, any[]>();
-        for (const it of rItems) {
-          const cat = safeText(it.category || "Autre");
-          const arr = byCat.get(cat) || [];
-          arr.push(it);
-          byCat.set(cat, arr);
-        }
-
-        const cats = Array.from(byCat.keys()).sort((a, b) => a.localeCompare(b, "fr"));
-
-        for (const cat of cats) {
-          ensureSpace(doc, 120);
-          drawCategoryBand(doc, cat);
-          drawTableHeader(doc);
-
-          const list = byCat.get(cat) || [];
-          list.sort((a, b) => safeText(a.label).localeCompare(safeText(b.label), "fr"));
-
-          let stripe = false;
-          for (const it of list) {
-            const defects = collectDefects(it);
-            const desc = safeText(it.description);
-            const important =
-              (typeof it.severity === "number" && it.severity >= 3) || it.condition === "mauvais" || Boolean(defects);
-
-            drawRow(
-              doc,
-              {
-                label: safeText(it.label),
-                cond: conditionLabel(it.condition),
-                clean: ynIcon(it.is_clean),
-                func: ynIcon(it.is_functional),
-                desc,
-                defects,
-              },
-              stripe
+                return {
+                  label: safeStr(it.label),
+                  condition: safeStr(it.condition),
+                  is_clean: it.is_clean,
+                  is_functional: it.is_functional,
+                  wear_level: it.wear_level,
+                  severity: it.severity ?? 0,
+                  description,
+                  defects,
+                  photos: signedPhotos,
+                };
+              })
             );
-            stripe = !stripe;
 
-            const pList = (photosByItem.get(it.id) || []).slice(0, important ? 1 : 3);
-            if (pList.length) {
-              await drawPhotos(doc, supabaseAdmin, pList, important ? "hero" : "thumbs");
-              doc.moveDown(0.2);
-            }
-          }
+            return { name: cat.name, items };
+          })
+        );
 
-          doc.moveDown(0.6);
-        }
-      }
+        return {
+          id: String(r.id),
+          name: safeStr(r.name),
+          floor_level: r.floor_level ? safeStr(r.floor_level) : null,
+          notes: r.notes ? safeStr(r.notes) : null,
+          categories,
+        };
+      })
+    );
 
-      const noRoomItems = itemsByRoom.get("__no_room__") || [];
-      if (noRoomItems.length) {
-        addPage();
-        drawHeaderBand(doc, "DÉTAIL", "Éléments hors pièce", logoBuf);
-        toc.push({ name: "Éléments hors pièce", count: noRoomItems.length, page: pageNum });
-
-        const byCat = new Map<string, any[]>();
-        for (const it of noRoomItems) {
-          const cat = safeText(it.category || "Autre");
-          const arr = byCat.get(cat) || [];
-          arr.push(it);
-          byCat.set(cat, arr);
-        }
-        const cats = Array.from(byCat.keys()).sort((a, b) => a.localeCompare(b, "fr"));
-
-        for (const cat of cats) {
-          drawCategoryBand(doc, cat);
-          drawTableHeader(doc);
-
-          const list = byCat.get(cat) || [];
-          list.sort((a, b) => safeText(a.label).localeCompare(safeText(b.label), "fr"));
-
-          let stripe = false;
-          for (const it of list) {
+    // hors pièce
+    const noRoomItems = itemsByRoom.get("__no_room__") || [];
+    const noRoomCategoriesRaw = groupByCategory(noRoomItems);
+    const noRoomCategories = await Promise.all(
+      noRoomCategoriesRaw.map(async (cat) => {
+        const items = await Promise.all(
+          cat.items.map(async (it: any) => {
             const defects = collectDefects(it);
-            const desc = safeText(it.description);
+            const description = safeStr(it.description || "");
             const important =
-              (typeof it.severity === "number" && it.severity >= 3) || it.condition === "mauvais" || Boolean(defects);
+              (typeof it.severity === "number" && it.severity >= 3) || String(it.condition) === "mauvais" || Boolean(defects);
 
-            drawRow(
-              doc,
-              {
-                label: safeText(it.label),
-                cond: conditionLabel(it.condition),
-                clean: ynIcon(it.is_clean),
-                func: ynIcon(it.is_functional),
-                desc,
-                defects,
-              },
-              stripe
-            );
-            stripe = !stripe;
+            const photos = (photosByItem.get(String(it.id)) || []).slice(0, important ? 1 : 3);
 
-            const pList = (photosByItem.get(it.id) || []).slice(0, important ? 1 : 3);
-            if (pList.length) {
-              await drawPhotos(doc, supabaseAdmin, pList, important ? "hero" : "thumbs");
-              doc.moveDown(0.2);
+            const signedPhotos: Array<{ signedUrl: string; important: boolean }> = [];
+            for (const p of photos) {
+              const bucket = safeStr(p.storage_bucket) || "inventory-photos";
+              const storagePath = safeStr(p.storage_path);
+              if (!storagePath) continue;
+              const url = await signedPhotoUrl(bucket, storagePath);
+              if (url) signedPhotos.push({ signedUrl: url, important });
             }
-          }
 
-          doc.moveDown(0.6);
-        }
-      }
+            return {
+              label: safeStr(it.label),
+              condition: safeStr(it.condition),
+              is_clean: it.is_clean,
+              is_functional: it.is_functional,
+              wear_level: it.wear_level,
+              severity: it.severity ?? 0,
+              description,
+              defects,
+              photos: signedPhotos,
+            };
+          })
+        );
 
-      addPage();
-      drawHeaderBand(doc, "SIGNATURES", "À signer par les parties", logoBuf);
+        return { name: cat.name, items };
+      })
+    );
 
-      drawSectionTitle(doc, "Bailleur");
-      doc.font("Helvetica").fontSize(10).fillColor("#111").text("Nom : " + landlordName);
-      doc.moveDown(0.4);
-      doc.rect(doc.page.margins.left, doc.y, 240, 90).strokeColor("#e5e7eb").stroke();
-      doc.moveDown(6);
+    const logoDataUrl = readLogoDataUrlIfExists();
 
-      drawSectionTitle(doc, "Locataire");
-      doc.font("Helvetica").fontSize(10).fillColor("#111").text("Nom : " + tenantName);
-      doc.moveDown(0.4);
-      doc.rect(doc.page.margins.left, doc.y, 240, 90).strokeColor("#e5e7eb").stroke();
+    const html = buildHtmlPremiumEDL({
+      logoDataUrl,
+      title,
+      subtitleRightTop,
+      subtitleRightBottom,
 
-      // Sommaire : ré-écriture dans la bonne page
-      const range = doc.bufferedPageRange();
-      const tocBufferIndex = range.start + (tocPageIndex - 1);
+      landlordName,
+      tenantName,
+      propertyLabel,
+      propertyAddress,
 
-      doc.switchToPage(tocBufferIndex);
-      doc.y = tocStartY;
+      performedAt: fmtDateTimeFR(report.performed_at),
+      performedPlace: safeStr(report.performed_place) || "—",
+      generalNotes: safeStr(report.general_notes || ""),
+      counters,
 
-      doc.font("Helvetica-Bold").fontSize(10).fillColor("#111").text("Pièce", doc.page.margins.left, doc.y, { width: 360 });
-      doc.text("Éléments", doc.page.margins.left + 370, doc.y, { width: 70, align: "right" });
-      doc.text("Page", doc.page.margins.left + 450, doc.y, { width: 80, align: "right" });
-      doc.moveDown(0.3);
-      doc
-        .moveTo(doc.page.margins.left, doc.y)
-        .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-        .strokeColor("#e5e7eb")
-        .stroke();
-      doc.moveDown(0.4);
-
-      doc.font("Helvetica").fontSize(10).fillColor("#111");
-      for (const entry of toc) {
-        ensureSpace(doc, 22);
-        doc.text(entry.name, doc.page.margins.left, doc.y, { width: 360 });
-        doc.text(String(entry.count), doc.page.margins.left + 370, doc.y, { width: 70, align: "right" });
-        doc.text(String(entry.page), doc.page.margins.left + 450, doc.y, { width: 80, align: "right" });
-        doc.moveDown(0.25);
-      }
+      rooms: enrichedRooms,
+      noRoom: noRoomCategories.length ? [{ categories: noRoomCategories }] : [],
     });
 
-    const filename = `etat-des-lieux-${report.report_type}-${toISODate(new Date())}.pdf`;
+    const pdfBuf = await renderPdfFromHtml(html);
+
+    const datePart = toISODateLocal(new Date());
+    const tenantSlug = safeFilePart(tenantName);
+    const filename = `etat-des-lieux-${String(report.report_type || "entry")}-${tenantSlug}-${datePart}.pdf`;
     const storagePath = `${userId}/${report.lease_id}/${reportId}/${filename}`;
 
-    const { error: upErr } = await supabaseAdmin.storage.from("inventory-pdfs").upload(storagePath, pdf, {
+    const up = await supabaseAdmin.storage.from("inventory-pdfs").upload(storagePath, pdfBuf, {
       contentType: "application/pdf",
       upsert: true,
     });
-
-    if (upErr) return res.status(500).json({ error: `Upload PDF échoué: ${upErr.message}` });
+    if (up.error) return res.status(500).json({ error: `Upload PDF échoué: ${up.error.message}` });
 
     const pdfUrl = `inventory-pdfs:${storagePath}`;
-    const { error: updErr } = await supabaseAdmin
+
+    const upd = await supabaseAdmin
       .from("inventory_reports")
       .update({ pdf_url: pdfUrl, updated_at: new Date().toISOString() })
       .eq("id", reportId);
 
-    if (updErr) return res.status(500).json({ error: `Update report échoué: ${updErr.message}` });
+    if (upd.error) return res.status(500).json({ error: `Update report échoué: ${upd.error.message}` });
 
-    return res.status(200).json({ ok: true, pdf_url: pdfUrl, storage_path: storagePath });
+    return res.status(200).json({
+      ok: true,
+      pdf_url: pdfUrl,
+      storage_path: storagePath,
+      filename,
+    });
   } catch (e: any) {
     console.error("[api/inventory/pdf] error:", e);
     return res.status(500).json({ error: e?.message || "Erreur interne" });

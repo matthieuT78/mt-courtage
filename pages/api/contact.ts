@@ -210,7 +210,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const label = labelFromCategory(category);
-    const subject = `[Lokt] ${label}${page ? ` — ${page}` : ""}`;
+    const subject = `[lokt.fr] ${label}${page ? ` — ${page}` : ""}`;
 
     const safeMessageHtml = escapeHtml(message);
 

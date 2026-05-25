@@ -1,6 +1,7 @@
 // pages/api/payments/confirm.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 
 type Json = Record<string, any>;
 
@@ -8,6 +9,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
     if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin non configuré." });
+    const auth = await requireApiUser(req);
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
     const { userId, leaseId, periodStart, periodEnd, paidAt } = (req.body || {}) as {
       userId?: string;
@@ -18,6 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     };
 
     if (!userId) return res.status(400).json({ error: "userId requis." });
+    const userCheck = requireMatchingUser(auth, String(userId));
+    if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
     if (!leaseId || !periodStart || !periodEnd) return res.status(400).json({ error: "leaseId + periodStart + periodEnd requis." });
 
     // lease

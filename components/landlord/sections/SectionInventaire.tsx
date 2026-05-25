@@ -1,22 +1,806 @@
 // components/landlord/sections/SectionInventaire.tsx
-import React from "react";
-import { SectionTitle } from "../UiBits";
+import React, { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  HomeModernIcon,
+  PlusIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
+import { supabase } from "../../../lib/supabaseClient";
+import { SectionTitle, formatEuro } from "../UiBits";
+import type { Property } from "../../../lib/landlord/types";
 
-export function SectionInventaire() {
+type InventoryCondition = "neuf" | "tres_bon" | "bon" | "moyen" | "a_remplacer";
+type InventoryStatus = "ok" | "missing" | "partial" | "replace";
+
+type PropertyInventoryItem = {
+  id: string;
+  user_id: string;
+  property_id: string;
+  room: string | null;
+  category: string;
+  label: string;
+  required_quantity: number;
+  actual_quantity: number;
+  condition: InventoryCondition;
+  is_required_lmnp: boolean;
+  replacement_cost: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type Props = {
+  userId: string;
+  properties?: Property[];
+};
+
+const LMNP_REQUIRED_ITEMS = [
+  { room: "Chambre", category: "Literie", label: "Literie avec couette ou couverture", required_quantity: 1 },
+  { room: "Chambre", category: "Occultation", label: "Volets, stores ou rideaux dans les chambres", required_quantity: 1 },
+  { room: "Cuisine", category: "Cuisson", label: "Plaques de cuisson", required_quantity: 1 },
+  { room: "Cuisine", category: "Cuisson", label: "Four ou four micro-ondes", required_quantity: 1 },
+  { room: "Cuisine", category: "Froid", label: "Réfrigérateur avec congélateur ou freezer", required_quantity: 1 },
+  { room: "Cuisine", category: "Vaisselle", label: "Assiettes", required_quantity: 12 },
+  { room: "Cuisine", category: "Vaisselle", label: "Verres", required_quantity: 12 },
+  { room: "Cuisine", category: "Vaisselle", label: "Bols", required_quantity: 6 },
+  { room: "Cuisine", category: "Ustensiles", label: "Fourchettes", required_quantity: 12 },
+  { room: "Cuisine", category: "Ustensiles", label: "Couteaux", required_quantity: 12 },
+  { room: "Cuisine", category: "Ustensiles", label: "Cuillères", required_quantity: 12 },
+  { room: "Cuisine", category: "Ustensiles", label: "Ustensiles de cuisine", required_quantity: 1 },
+  { room: "Cuisine", category: "Cuisson", label: "Casseroles et poêles", required_quantity: 1 },
+  { room: "Séjour", category: "Mobilier", label: "Table", required_quantity: 1 },
+  { room: "Séjour", category: "Mobilier", label: "Sièges", required_quantity: 2 },
+  { room: "Rangement", category: "Mobilier", label: "Étagères ou rangements", required_quantity: 1 },
+  { room: "Toutes pièces", category: "Éclairage", label: "Luminaires", required_quantity: 1 },
+  { room: "Entretien", category: "Ménage", label: "Matériel d’entretien adapté au logement", required_quantity: 1 },
+];
+
+const EXTRA_PRESETS = [
+  { room: "Entretien", category: "Ménage", label: "Aspirateur", required_quantity: 1 },
+  { room: "Chambre", category: "Literie", label: "Oreillers", required_quantity: 2 },
+  { room: "Chambre", category: "Literie", label: "Protège-matelas", required_quantity: 1 },
+  { room: "Cuisine", category: "Électroménager", label: "Cafetière", required_quantity: 1 },
+  { room: "Cuisine", category: "Électroménager", label: "Bouilloire", required_quantity: 1 },
+  { room: "Cuisine", category: "Électroménager", label: "Grille-pain", required_quantity: 1 },
+  { room: "Salle de bain", category: "Linge", label: "Serviettes", required_quantity: 4 },
+];
+
+const conditionOptions: Array<{ value: InventoryCondition; label: string }> = [
+  { value: "neuf", label: "Neuf" },
+  { value: "tres_bon", label: "Très bon" },
+  { value: "bon", label: "Bon" },
+  { value: "moyen", label: "Moyen" },
+  { value: "a_remplacer", label: "À remplacer" },
+];
+
+const conditionLabel = (value: InventoryCondition) => conditionOptions.find((c) => c.value === value)?.label || value;
+
+const statusOf = (item: PropertyInventoryItem): InventoryStatus => {
+  if (item.condition === "a_remplacer") return "replace";
+  if (Number(item.actual_quantity || 0) <= 0) return "missing";
+  if (Number(item.actual_quantity || 0) < Number(item.required_quantity || 0)) return "partial";
+  return "ok";
+};
+
+const statusLabel = (status: InventoryStatus) => {
+  if (status === "missing") return "Manquant";
+  if (status === "partial") return "Incomplet";
+  if (status === "replace") return "À remplacer";
+  return "OK";
+};
+
+const statusTone = (status: InventoryStatus) => {
+  if (status === "missing" || status === "replace") return "border-red-200 bg-red-50 text-red-800";
+  if (status === "partial") return "border-amber-200 bg-amber-50 text-amber-900";
+  return "border-emerald-200 bg-emerald-50 text-emerald-900";
+};
+
+const csvCell = (value: string | number | null | undefined) => {
+  const raw = value == null ? "" : String(value);
+  return `"${raw.replace(/"/g, '""')}"`;
+};
+
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+function num(value: unknown) {
+  const n = typeof value === "number" ? value : Number(String(value || "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-slate-900">{value}</p>
+      {sub ? <p className="mt-1 text-xs text-slate-600">{sub}</p> : null}
+    </div>
+  );
+}
+
+export function SectionInventaire({ userId, properties }: Props) {
+  const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
+  const brandText = "text-white";
+  const brandHover = "hover:opacity-95";
+
+  const safeProperties = Array.isArray(properties) ? properties : [];
+  const propertyById = useMemo(() => new Map(safeProperties.map((p) => [p.id, p])), [safeProperties]);
+
+  const [items, setItems] = useState<PropertyInventoryItem[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState("");
+  const [filterText, setFilterText] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterStatus, setFilterStatus] = useState<InventoryStatus | "">("");
+  const [loading, setLoading] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<Record<string, boolean>>({});
+  const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    room: "Cuisine",
+    category: "Vaisselle",
+    label: "",
+    required_quantity: "1",
+    actual_quantity: "1",
+    condition: "bon" as InventoryCondition,
+    is_required_lmnp: false,
+    replacement_cost: "",
+    notes: "",
+  });
+
+  const selectedProperty = selectedPropertyId ? propertyById.get(selectedPropertyId) || null : null;
+  const propertyItems = useMemo(() => items.filter((item) => item.property_id === selectedPropertyId), [items, selectedPropertyId]);
+
+  const categories = useMemo(() => Array.from(new Set(propertyItems.map((item) => item.category).filter(Boolean))).sort(), [propertyItems]);
+
+  const summary = useMemo(() => {
+    const required = propertyItems.filter((item) => item.is_required_lmnp);
+    const missing = propertyItems.filter((item) => ["missing", "partial"].includes(statusOf(item)));
+    const replace = propertyItems.filter((item) => statusOf(item) === "replace");
+    const replacementBudget = propertyItems.reduce((acc, item) => {
+      const shortage = Math.max(0, Number(item.required_quantity || 0) - Number(item.actual_quantity || 0));
+      const needsReplace = item.condition === "a_remplacer" ? Math.max(1, Number(item.required_quantity || 1)) : 0;
+      return acc + Math.max(shortage, needsReplace) * Number(item.replacement_cost || 0);
+    }, 0);
+    const requiredOk = required.filter((item) => statusOf(item) === "ok").length;
+    const compliance = required.length ? Math.round((requiredOk / required.length) * 100) : 0;
+    return {
+      total: propertyItems.length,
+      required: required.length,
+      compliance,
+      missing: missing.length,
+      replace: replace.length,
+      replacementBudget,
+    };
+  }, [propertyItems]);
+
+  const filteredItems = useMemo(() => {
+    const text = filterText.trim().toLowerCase();
+    return propertyItems.filter((item) => {
+      const status = statusOf(item);
+      if (filterCategory && item.category !== filterCategory) return false;
+      if (filterStatus && status !== filterStatus) return false;
+      if (!text) return true;
+      const hay = [item.room || "", item.category, item.label, conditionLabel(item.condition), statusLabel(status), item.notes || ""]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(text);
+    });
+  }, [propertyItems, filterCategory, filterStatus, filterText]);
+
+  const groupedByRoom = useMemo(() => {
+    const map = new Map<string, PropertyInventoryItem[]>();
+    for (const item of filteredItems) {
+      const room = item.room || "Non classé";
+      map.set(room, [...(map.get(room) || []), item]);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [filteredItems]);
+
+  const selectedIds = useMemo(() => Object.keys(selectedItemIds).filter((id) => selectedItemIds[id]), [selectedItemIds]);
+  const allFilteredSelected = useMemo(() => {
+    if (filteredItems.length === 0) return false;
+    return filteredItems.every((item) => !!selectedItemIds[item.id]);
+  }, [filteredItems, selectedItemIds]);
+
+  useEffect(() => {
+    setSelectedItemIds({});
+  }, [selectedPropertyId, filterText, filterCategory, filterStatus]);
+
+  const toggleSelectItem = (itemId: string) => {
+    setSelectedItemIds((prev) => ({ ...prev, [itemId]: !prev[itemId] }));
+  };
+
+  const toggleSelectAllFiltered = () => {
+    if (filteredItems.length === 0) return;
+    setSelectedItemIds((prev) => {
+      const next = { ...prev };
+      const target = !allFilteredSelected;
+      for (const item of filteredItems) next[item.id] = target;
+      return next;
+    });
+  };
+
+  const actionPlan = useMemo(() => {
+    const actions: string[] = [];
+    if (propertyItems.length === 0) {
+      actions.push("Créer l’inventaire meublé de base pour vérifier rapidement les obligations minimales.");
+      return actions;
+    }
+    if (summary.compliance < 100) {
+      actions.push(`Compléter les éléments LMNP manquants : conformité actuelle ${summary.compliance}%.`);
+    }
+    if (summary.replace > 0) {
+      actions.push(`Remplacer ${summary.replace} élément(s) usé(s) avant relocation ou état des lieux de sortie.`);
+    }
+    if (summary.replacementBudget > 0) {
+      actions.push(`Prévoir environ ${formatEuro(summary.replacementBudget)} pour revenir au niveau attendu.`);
+    }
+    if (propertyItems.some((item) => !item.replacement_cost && statusOf(item) !== "ok")) {
+      actions.push("Renseigner un coût de remplacement sur les manquants pour obtenir un budget fiable.");
+    }
+    if (actions.length === 0) actions.push("Inventaire cohérent : contrôler les quantités avant chaque entrée/sortie de locataire.");
+    return actions.slice(0, 4);
+  }, [propertyItems, summary]);
+
+  const loadInventory = async () => {
+    if (!supabase || !userId) return;
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const { data, error } = await supabase
+        .from("property_inventory_items")
+        .select("*")
+        .eq("user_id", userId)
+        .order("room", { ascending: true })
+        .order("category", { ascending: true })
+        .order("label", { ascending: true });
+      if (error) throw error;
+      setItems(((data || []) as PropertyInventoryItem[]) || []);
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de charger l’inventaire. Vérifiez que la migration property_inventory_items est appliquée.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInventory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  useEffect(() => {
+    if (!selectedPropertyId && safeProperties.length > 0) setSelectedPropertyId(safeProperties[0].id);
+  }, [safeProperties, selectedPropertyId]);
+
+  const createBaseInventory = async () => {
+    if (!supabase || !userId || !selectedPropertyId) return;
+    if (propertyItems.length > 0 && !confirm("Ajouter les éléments LMNP de base à l’inventaire existant ?")) return;
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const existingLabels = new Set(propertyItems.map((item) => item.label.toLowerCase()));
+      const payload = LMNP_REQUIRED_ITEMS.filter((item) => !existingLabels.has(item.label.toLowerCase())).map((item) => ({
+        user_id: userId,
+        property_id: selectedPropertyId,
+        room: item.room,
+        category: item.category,
+        label: item.label,
+        required_quantity: item.required_quantity,
+        actual_quantity: item.required_quantity,
+        condition: "bon" as InventoryCondition,
+        is_required_lmnp: true,
+        replacement_cost: null,
+        notes: null,
+      }));
+
+      if (payload.length === 0) {
+        setOk("L’inventaire LMNP de base est déjà présent.");
+        return;
+      }
+
+      const { error } = await supabase.from("property_inventory_items").insert(payload);
+      if (error) throw error;
+      setOk(`Inventaire LMNP ajouté ✅ (${payload.length} élément${payload.length > 1 ? "s" : ""})`);
+      await loadInventory();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de créer l’inventaire de base.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addPreset = (preset: (typeof EXTRA_PRESETS)[number]) => {
+    setForm((prev) => ({
+      ...prev,
+      room: preset.room,
+      category: preset.category,
+      label: preset.label,
+      required_quantity: String(preset.required_quantity),
+      actual_quantity: String(preset.required_quantity),
+      is_required_lmnp: false,
+    }));
+    setAddOpen(true);
+  };
+
+  const addItem = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !userId || !selectedPropertyId) return;
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      if (!form.label.trim()) throw new Error("Ajoutez un libellé.");
+      const payload = {
+        user_id: userId,
+        property_id: selectedPropertyId,
+        room: form.room.trim() || null,
+        category: form.category.trim() || "Autre",
+        label: form.label.trim(),
+        required_quantity: Math.max(0, Math.round(num(form.required_quantity))),
+        actual_quantity: Math.max(0, Math.round(num(form.actual_quantity))),
+        condition: form.condition,
+        is_required_lmnp: form.is_required_lmnp,
+        replacement_cost: form.replacement_cost ? num(form.replacement_cost) : null,
+        notes: form.notes.trim() || null,
+      };
+      const { error } = await supabase.from("property_inventory_items").insert(payload);
+      if (error) throw error;
+      setOk("Élément ajouté ✅");
+      setAddOpen(false);
+      setForm((prev) => ({ ...prev, label: "", notes: "", replacement_cost: "" }));
+      await loadInventory();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible d’ajouter l’élément.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateItem = async (itemId: string, patch: Partial<PropertyInventoryItem>) => {
+    if (!supabase || !userId) return;
+    setSavingId(itemId);
+    setErr(null);
+    setOk(null);
+    try {
+      const { error } = await supabase
+        .from("property_inventory_items")
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq("id", itemId)
+        .eq("user_id", userId);
+      if (error) throw error;
+      setItems((prev) => prev.map((item) => (item.id === itemId ? ({ ...item, ...patch } as PropertyInventoryItem) : item)));
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de mettre à jour l’élément.");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const deleteItem = async (itemId: string) => {
+    if (!supabase || !userId) return;
+    if (!confirm("Supprimer cet élément de l’inventaire ?")) return;
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const { error } = await supabase.from("property_inventory_items").delete().eq("id", itemId).eq("user_id", userId);
+      if (error) throw error;
+      setItems((prev) => prev.filter((item) => item.id !== itemId));
+      setOk("Élément supprimé ✅");
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de supprimer l’élément.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteSelectedItems = async () => {
+    if (!supabase || !userId) return;
+    const ids = selectedIds;
+    if (ids.length === 0) return;
+
+    const label = `${ids.length} élément${ids.length > 1 ? "s" : ""}`;
+    if (!confirm(`Supprimer ${label} de l’inventaire ? Cette action est définitive.`)) return;
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const { error } = await supabase
+        .from("property_inventory_items")
+        .delete()
+        .eq("user_id", userId)
+        .in("id", ids);
+
+      if (error) throw error;
+
+      setItems((prev) => prev.filter((item) => !ids.includes(item.id)));
+      setSelectedItemIds({});
+      setOk(`${label} supprimé${ids.length > 1 ? "s" : ""} ✅`);
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de supprimer la sélection.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportInventory = () => {
+    if (filteredItems.length === 0) {
+      setErr("Aucun élément à exporter avec les filtres actuels.");
+      return;
+    }
+
+    const headers = ["Bien", "Pièce", "Catégorie", "Élément", "Qté attendue", "Qté réelle", "Statut", "État", "Obligatoire LMNP", "Coût remplacement", "Notes"];
+    const rows = filteredItems.map((item) => [
+      selectedProperty?.label || "Bien",
+      item.room || "",
+      item.category,
+      item.label,
+      item.required_quantity,
+      item.actual_quantity,
+      statusLabel(statusOf(item)),
+      conditionLabel(item.condition),
+      item.is_required_lmnp ? "Oui" : "Non",
+      Number(item.replacement_cost || 0).toFixed(2).replace(".", ","),
+      item.notes || "",
+    ]);
+    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n");
+    const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const propertySlug = (selectedProperty?.label || "inventaire").toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
+    link.href = url;
+    link.download = `inventaire-meuble-${propertySlug || "bien"}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setOk(`Export inventaire prêt ✅ (${filteredItems.length} ligne${filteredItems.length > 1 ? "s" : ""})`);
+  };
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
       <SectionTitle
         kicker="Inventaire"
-        title="Équipements & pièces"
-        desc="Suivi par bien : cuisine, électroménager, meubles, numéros de série, état, photos."
+        title="Inventaire du logement meublé"
+        desc="Suivez les meubles, équipements, vaisselle, linge et consommables mis à disposition. L’objectif : conformité LMNP, contrôle des manquants et budget de remplacement."
       />
 
-      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-[0.85rem] text-slate-700">
-        À venir : on crée une table <span className="font-semibold">inventory_items</span> liée à <span className="font-semibold">properties</span>.
-        <div className="mt-2 text-[0.75rem] text-slate-500">
-          Bonus : export PDF pour l’état des lieux.
+      {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
+      {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
+
+      <section className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
+        <div className="flex items-start gap-3">
+          <CheckCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-800" />
+          <div>
+            <p className="text-sm font-semibold text-emerald-950">Workflow métier</p>
+            <p className="mt-1 text-sm text-emerald-900">
+              Pour un meublé, l’inventaire doit vivre indépendamment de l’état des lieux : on prépare la dotation minimale, on contrôle les quantités
+              entre deux locataires, puis on remplace ce qui manque ou ce qui est usé.
+            </p>
+          </div>
         </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+        <div className="grid gap-3 lg:grid-cols-[1fr,auto] lg:items-end">
+          <div>
+            <label className="text-xs font-semibold text-slate-600">Bien à inventorier</label>
+            <select
+              value={selectedPropertyId}
+              onChange={(e) => setSelectedPropertyId(e.target.value)}
+              className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+            >
+              {safeProperties.length === 0 ? <option value="">Aucun bien</option> : null}
+              {safeProperties.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.label || `${property.address_line1 || "Bien"} ${property.city || ""}`.trim()}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={loadInventory}
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+            >
+              <ArrowPathIcon className="h-4 w-4" />
+              {loading ? "Chargement..." : "Actualiser"}
+            </button>
+            <button
+              type="button"
+              onClick={createBaseInventory}
+              disabled={!selectedPropertyId || loading}
+              className={cx("inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover, (!selectedPropertyId || loading) && "opacity-60")}
+            >
+              <HomeModernIcon className="h-4 w-4" />
+              Créer base LMNP
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <Stat label="Éléments" value={String(summary.total)} sub="Dans le bien sélectionné" />
+        <Stat label="Conformité LMNP" value={`${summary.compliance}%`} sub={`${summary.required} élément(s) obligatoires`} />
+        <Stat label="Manquants" value={String(summary.missing)} sub="Quantité insuffisante" />
+        <Stat label="Budget" value={formatEuro(summary.replacementBudget)} sub="Remplacement estimé" />
       </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5">
+          <p className="text-sm font-semibold text-slate-900">Plan d’action</p>
+          <p className="mt-1 text-xs text-slate-600">Ce qu’un propriétaire doit traiter avant une entrée, une relocation ou un contrôle.</p>
+          <div className="mt-4 space-y-2">
+            {actionPlan.map((action, index) => (
+              <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Action {index + 1}</p>
+                <p className="mt-1 text-sm text-slate-800">{action}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Ajout rapide</p>
+              <p className="mt-1 text-xs text-slate-600">Complétez la base avec les équipements réellement fournis dans le logement.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAddOpen((v) => !v)}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              <PlusIcon className="h-4 w-4" />
+              Nouvel élément
+            </button>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {EXTRA_PRESETS.map((preset) => (
+              <button
+                key={`${preset.category}-${preset.label}`}
+                type="button"
+                onClick={() => addPreset(preset)}
+                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                + {preset.label}
+              </button>
+            ))}
+          </div>
+
+          {addOpen ? (
+            <form onSubmit={addItem} className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <input value={form.room} onChange={(e) => setForm((s) => ({ ...s, room: e.target.value }))} className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Pièce" />
+                <input value={form.category} onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))} className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Catégorie" />
+                <input value={form.label} onChange={(e) => setForm((s) => ({ ...s, label: e.target.value }))} className="md:col-span-2 rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Ex : assiettes plates, aspirateur, couette..." />
+                <input inputMode="numeric" value={form.required_quantity} onChange={(e) => setForm((s) => ({ ...s, required_quantity: e.target.value }))} className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Quantité attendue" />
+                <input inputMode="numeric" value={form.actual_quantity} onChange={(e) => setForm((s) => ({ ...s, actual_quantity: e.target.value }))} className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Quantité réelle" />
+                <select value={form.condition} onChange={(e) => setForm((s) => ({ ...s, condition: e.target.value as InventoryCondition }))} className="rounded-xl border border-slate-300 px-3 py-2 text-sm">
+                  {conditionOptions.map((condition) => (
+                    <option key={condition.value} value={condition.value}>
+                      {condition.label}
+                    </option>
+                  ))}
+                </select>
+                <input inputMode="decimal" value={form.replacement_cost} onChange={(e) => setForm((s) => ({ ...s, replacement_cost: e.target.value }))} className="rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Coût remplacement unitaire" />
+                <label className="md:col-span-2 inline-flex items-center gap-2 text-sm text-slate-700">
+                  <input type="checkbox" checked={form.is_required_lmnp} onChange={(e) => setForm((s) => ({ ...s, is_required_lmnp: e.target.checked }))} className="h-4 w-4" />
+                  Élément obligatoire pour un logement meublé
+                </label>
+                <input value={form.notes} onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))} className="md:col-span-2 rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Note : marque, emplacement, précision..." />
+              </div>
+              <div className="mt-3 flex justify-end">
+                <button type="submit" disabled={loading || !selectedPropertyId} className={cx("rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover, (loading || !selectedPropertyId) && "opacity-60")}>
+                  Ajouter
+                </button>
+              </div>
+            </form>
+          ) : null}
+        </section>
+      </div>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Inventaire détaillé</p>
+            <p className="mt-1 text-xs text-slate-600">Contrôlez les quantités : attendu vs réel, état, coût de remplacement et conformité meublée.</p>
+          </div>
+          <button
+            type="button"
+            onClick={exportInventory}
+            disabled={filteredItems.length === 0}
+            className={cx("inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold", filteredItems.length === 0 ? "bg-slate-200 text-slate-600" : `${brandBg} ${brandText} ${brandHover}`)}
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+            Export Excel
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr,220px,220px]">
+          <input value={filterText} onChange={(e) => setFilterText(e.target.value)} className="rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm" placeholder="Rechercher : assiette, aspirateur, chambre..." />
+          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
+            <option value="">Toutes catégories</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as InventoryStatus | "")} className="rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
+            <option value="">Tous statuts</option>
+            <option value="missing">Manquant</option>
+            <option value="partial">Incomplet</option>
+            <option value="replace">À remplacer</option>
+            <option value="ok">OK</option>
+          </select>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <input
+              type="checkbox"
+              checked={allFilteredSelected}
+              onChange={toggleSelectAllFiltered}
+              disabled={filteredItems.length === 0 || loading}
+              className="h-4 w-4"
+            />
+            Sélectionner les éléments affichés
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+              {selectedIds.length} sélectionné{selectedIds.length > 1 ? "s" : ""}
+            </span>
+            {selectedIds.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setSelectedItemIds({})}
+                disabled={loading}
+                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Annuler la sélection
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={deleteSelectedItems}
+              disabled={loading || selectedIds.length === 0}
+              className={cx(
+                "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
+                selectedIds.length === 0 ? "bg-slate-200 text-slate-600" : "bg-red-600 text-white hover:bg-red-500",
+                loading && "opacity-60"
+              )}
+            >
+              <TrashIcon className="h-4 w-4" />
+              Supprimer la sélection
+            </button>
+          </div>
+        </div>
+
+        {filteredItems.length === 0 ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+            <ExclamationTriangleIcon className="mx-auto h-8 w-8 text-slate-500" />
+            <p className="mt-2 text-sm font-semibold text-slate-900">Aucun élément dans l’inventaire</p>
+            <p className="mt-1 text-sm text-slate-600">Créez la base LMNP ou ajoutez vos premiers équipements.</p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-4">
+            {groupedByRoom.map(([room, roomItems]) => (
+              <div key={room} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-sm font-semibold text-slate-900">{room}</p>
+                <div className="mt-3 space-y-2">
+                  {roomItems.map((item) => {
+                    const status = statusOf(item);
+                    const isSelected = !!selectedItemIds[item.id];
+                    return (
+                      <div
+                        key={item.id}
+                        className={cx(
+                          "rounded-2xl border bg-white p-3 transition",
+                          isSelected ? "border-cyan-300 ring-2 ring-cyan-100" : "border-slate-200"
+                        )}
+                      >
+                        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                          <div className="flex min-w-0 items-start gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectItem(item.id)}
+                              disabled={loading}
+                              className="mt-1 h-4 w-4 shrink-0"
+                              aria-label={`Sélectionner ${item.label}`}
+                            />
+                            <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-semibold text-slate-900">{item.label}</p>
+                              <span className={cx("rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold", statusTone(status))}>{statusLabel(status)}</span>
+                              {item.is_required_lmnp ? <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[0.7rem] font-semibold text-cyan-800">LMNP</span> : null}
+                            </div>
+                            <p className="mt-1 text-xs text-slate-600">
+                              {item.category} · attendu {item.required_quantity} · réel {item.actual_quantity}
+                              {item.notes ? ` · ${item.notes}` : ""}
+                            </p>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-2 sm:grid-cols-5 xl:w-[700px]">
+                            <input
+                              inputMode="numeric"
+                              value={item.required_quantity}
+                              disabled={savingId === item.id}
+                              onChange={(e) => updateItem(item.id, { required_quantity: Math.max(0, Math.round(num(e.target.value))) })}
+                              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                              title="Quantité attendue"
+                            />
+                            <input
+                              inputMode="numeric"
+                              value={item.actual_quantity}
+                              disabled={savingId === item.id}
+                              onChange={(e) => updateItem(item.id, { actual_quantity: Math.max(0, Math.round(num(e.target.value))) })}
+                              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                              title="Quantité réelle"
+                            />
+                            <select
+                              value={item.condition}
+                              disabled={savingId === item.id}
+                              onChange={(e) => updateItem(item.id, { condition: e.target.value as InventoryCondition })}
+                              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                            >
+                              {conditionOptions.map((condition) => (
+                                <option key={condition.value} value={condition.value}>
+                                  {condition.label}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              inputMode="decimal"
+                              value={item.replacement_cost ?? ""}
+                              disabled={savingId === item.id}
+                              onChange={(e) => updateItem(item.id, { replacement_cost: e.target.value ? num(e.target.value) : null })}
+                              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                              placeholder="Coût"
+                              title="Coût de remplacement unitaire"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => deleteItem(item.id)}
+                              className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                              title="Supprimer"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

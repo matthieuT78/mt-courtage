@@ -1,5 +1,6 @@
 // pages/cautions-loyers.tsx
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Head from "next/head";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
@@ -433,6 +434,15 @@ export default function CautionsLoyersPage() {
   // --------- UI (main)
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
+      <Head>
+        <title>Caution, dépôt de garantie et suivi des loyers | lokt.fr</title>
+        <meta
+          name="description"
+          content="Suivez les loyers, retards, dépôts de garantie, restitutions et alertes de bail dans un outil de gestion locative pour propriétaire."
+        />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://lokt.fr/cautions-loyers" />
+      </Head>
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
@@ -857,7 +867,7 @@ using (exists (select 1 from public.leases l where l.id = lease_id and l.user_id
                   </div>
 
                   <div className="text-right">
-                    <Link href="/outils-proprietaire" className="text-xs text-slate-500 underline">
+                    <Link href="/outil-gestion-locative" className="text-xs text-slate-500 underline">
                       ← Retour aux outils propriétaire
                     </Link>
                   </div>

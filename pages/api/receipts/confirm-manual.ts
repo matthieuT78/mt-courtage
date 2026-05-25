@@ -1,6 +1,7 @@
 // pages/api/receipts/confirm-manual.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 
 type Json = Record<string, any>;
 
@@ -27,10 +28,25 @@ async function getAuthUserId(req: NextApiRequest): Promise<string | null> {
   const token = m?.[1]?.trim();
   if (!token) return null;
 
-  // Supabase: service role can validate access_token via Admin API
   const u = await supabaseAdmin.auth.getUser(token);
   if (u.error || !u.data?.user?.id) return null;
   return u.data.user.id;
+}
+
+type ResendResult =
+  | { ok: true; id: string | null }
+  | { ok: false; error: string; disabled?: boolean };
+
+function isResendDisabled(r: ResendResult): r is { ok: false; error: string; disabled: true } {
+  if ((r as any)?.ok === true) return false;
+  const obj = r as unknown as Record<string, unknown>;
+  return obj["disabled"] === true;
+}
+
+function getResendError(r: ResendResult): string | null {
+  if ((r as any)?.ok === true) return null;
+  const obj = r as unknown as Record<string, unknown>;
+  return typeof obj["error"] === "string" ? (obj["error"] as string) : "Erreur email inconnue";
 }
 
 async function sendEmailViaResend(params: {
@@ -38,13 +54,18 @@ async function sendEmailViaResend(params: {
   cc?: string | null;
   subject: string;
   html: string;
-  attachments?: { filename: string; contentBase64: string }[];
-}) {
+  // ✅ Resend expects `content` (base64) not contentBase64
+  attachments?: { filename: string; content: string }[];
+}): Promise<ResendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;
 
   if (!apiKey || !from) {
-    return { ok: false, error: "Email non configuré (RESEND_API_KEY / RESEND_FROM manquants)." };
+    return {
+      ok: false,
+      disabled: true,
+      error: "Email non configuré (RESEND_API_KEY / RESEND_FROM manquants).",
+    };
   }
 
   const payload: any = {
@@ -72,8 +93,67 @@ async function sendEmailViaResend(params: {
     json = raw ? JSON.parse(raw) : null;
   } catch {}
 
-  if (!r.ok) return { ok: false, error: json?.message || raw || `Erreur Resend ${r.status}` };
+  if (!r.ok) {
+    return { ok: false, error: json?.message || raw || `Erreur Resend ${r.status}` };
+  }
+
   return { ok: true, id: json?.id || null };
+}
+
+function getProto(req: NextApiRequest) {
+  const xfProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0]?.trim();
+  if (xfProto) return xfProto;
+
+  const encrypted = !!(req.socket as any)?.encrypted;
+  return encrypted ? "https" : "http";
+}
+
+/**
+ * Appel serveur -> serveur vers /api/receipts/generate
+ * pour s'assurer que le PDF existe avant envoi.
+ */
+async function ensurePdfGenerated(params: {
+  req: NextApiRequest;
+  userId: string;
+  leaseId: string;
+  periodStart: string;
+  periodEnd: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const secret = process.env.INTERNAL_API_SECRET || "";
+  if (!secret) return { ok: false, error: "INTERNAL_API_SECRET manquant (impossible d’appeler generate en interne)." };
+
+  const proto = getProto(params.req);
+  const host = String(params.req.headers["x-forwarded-host"] || params.req.headers.host || "").split(",")[0].trim();
+  if (!host) return { ok: false, error: "Host manquant (impossible de construire l’URL interne)." };
+
+  const url = `${proto}://${host}/api/receipts/generate`;
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-internal-secret": secret,
+    },
+    body: JSON.stringify({
+      userId: params.userId,
+      leaseId: params.leaseId,
+      periodStart: params.periodStart,
+      periodEnd: params.periodEnd,
+    }),
+  });
+
+  const raw = await r.text();
+  let json: any = null;
+  try {
+    json = raw ? JSON.parse(raw) : null;
+  } catch {}
+
+  if (!r.ok) return { ok: false, error: json?.error || raw || `Erreur generate (${r.status})` };
+  return { ok: true };
+}
+
+function safeStr(v: any) {
+  return String(v ?? "").trim();
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Json>) {
@@ -90,9 +170,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       landlordEmail?: string; // optionnel (fallback CC)
     };
 
-    const userId = String(body.userId || "").trim();
-    const receiptId = String(body.receiptId || "").trim();
-    const landlordEmailFromBody = String(body.landlordEmail || "").trim() || null;
+    const userId = safeStr(body.userId);
+    const receiptId = safeStr(body.receiptId);
+    const landlordEmailFromBody = safeStr(body.landlordEmail) || null;
 
     if (!userId) return res.status(400).json({ error: "userId requis." });
     if (!receiptId) return res.status(400).json({ error: "receiptId requis." });
@@ -105,7 +185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 1) Load receipt
     const r0 = await supabaseAdmin.from("rent_receipts").select("*").eq("id", receiptId).single();
     if (r0.error || !r0.data) return res.status(404).json({ error: "Quittance introuvable." });
-    const receipt: any = r0.data;
+    let receipt: any = r0.data;
 
     // 2) Load lease, check owner
     const leaseRes = await supabaseAdmin.from("leases").select("*").eq("id", receipt.lease_id).single();
@@ -113,26 +193,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const lease: any = leaseRes.data;
 
     if (String(lease.user_id) !== userId) return res.status(403).json({ error: "Accès refusé." });
+    const canSendReceiptEmail = await userCanUseReceiptAutomation(userId);
 
-    // 3) Must have PDF (generated by cron)
-    if (!receipt.pdf_url) {
-      return res.status(400).json({
-        error: "PDF manquant sur la quittance. Génère d’abord la quittance PDF (cron/force).",
-      });
-    }
-    const parsed = parsePdfUrl(receipt.pdf_url);
-    if (!parsed) {
-      return res.status(400).json({ error: "pdf_url invalide (attendu rent-receipts-pdfs:<path>)" });
-    }
-
-    // 4) Idempotence check: if already confirmed/sent + payment exists + transaction exists => ok
-    // (on est permissif: on va re-upsert ce qui manque)
+    // 3) Idempotence check (souple)
     const alreadyPaid = !!receipt.payment_id || String(receipt.status || "").toLowerCase() === "sent";
 
-    // 5) Upsert rent_payment (paid_at)
+    // 4) Upsert rent_payment (paid_at)
     let paymentId: string | null = receipt.payment_id || null;
 
-    // try existing by (lease_id, period_start, period_end)
     const payExisting = await supabaseAdmin
       .from("rent_payments")
       .select("*")
@@ -153,7 +221,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           rent_amount: receipt.rent_amount,
           charges_amount: receipt.charges_amount,
           total_amount: receipt.total_amount,
-          updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(), // ✅ existe dans rent_payments
         })
         .eq("id", paymentId);
 
@@ -168,7 +236,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           rent_amount: receipt.rent_amount,
           charges_amount: receipt.charges_amount,
           total_amount: receipt.total_amount,
-          due_date: receipt.period_start, // optionnel
+          due_date: receipt.period_start,
           paid_at: new Date().toISOString(),
           payment_method: lease.payment_method || null,
           source: "confirm_manual",
@@ -182,9 +250,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       paymentId = insPay.data.id;
     }
 
-    // 6) Upsert transaction rent (Finance)
-    // Important: ton DB a un unique index partiel (user_id, receipt_id) where receipt_id is not null
-    // => onConflict "user_id,receipt_id" marche si receipt_id non null.
+    // 5) Upsert transaction rent (Finance)
     const occurredAt = String(receipt.period_end || receipt.period_start || "").slice(0, 10);
     const txPayload = [
       {
@@ -192,14 +258,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         property_id: lease.property_id ?? null,
         lease_id: receipt.lease_id ?? null,
         receipt_id: receipt.id,
-        occurred_at: occurredAt || String(receipt.issue_date || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+        occurred_at:
+          occurredAt ||
+          String(receipt.issue_date || "").slice(0, 10) ||
+          new Date().toISOString().slice(0, 10),
         direction: "in",
         status: "received",
         category: "rent",
         label: "Loyer (quittance)",
         amount: Number(receipt.total_amount || 0),
         notes: null,
-        updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(), // (suppose que transactions a updated_at; sinon dis-moi la table)
       },
     ];
 
@@ -208,13 +277,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(500).json({ error: `Upsert transaction échoué: ${txUp.error.message}` });
     }
 
+    // 6) ✅ Assurer que le PDF existe (après confirmation paiement)
+    if (!receipt.pdf_url) {
+      const gen = await ensurePdfGenerated({
+        req,
+        userId,
+        leaseId: safeStr(receipt.lease_id),
+        periodStart: safeStr(receipt.period_start),
+        periodEnd: safeStr(receipt.period_end),
+      });
+
+      if (!gen.ok) {
+        return res.status(500).json({
+          error: `Paiement confirmé + Finance OK, mais génération PDF échouée: ${gen.error || "unknown"}`,
+        });
+      }
+
+      const r1 = await supabaseAdmin.from("rent_receipts").select("*").eq("id", receiptId).single();
+      if (r1.error || !r1.data) return res.status(500).json({ error: "Reload quittance échoué après génération." });
+      receipt = r1.data;
+
+      if (!receipt.pdf_url) {
+        return res.status(500).json({ error: "Génération appelée, mais pdf_url toujours manquant." });
+      }
+    }
+
+    const parsed = parsePdfUrl(receipt.pdf_url);
+    if (!parsed) {
+      return res.status(400).json({ error: "pdf_url invalide (attendu rent-receipts-pdfs:<path>)" });
+    }
+
     // 7) Tenant email
     const tenantRes = await supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single();
     const tenant: any = tenantRes.data || null;
-    const toEmail = String(tenant?.email || "").trim();
+    const toEmail = safeStr(tenant?.email);
 
     // Bailleur CC : priorité body, sinon lease.reminder_email, sinon null
-    const ccEmail = landlordEmailFromBody || String(lease.reminder_email || "").trim() || null;
+    const ccEmail = landlordEmailFromBody || safeStr(lease.reminder_email) || null;
 
     // 8) Signed URL + download for attachment
     const signed = await supabaseAdmin.storage.from("rent-receipts-pdfs").createSignedUrl(parsed.path, 60 * 10);
@@ -223,13 +322,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const yyyymm = String(receipt.period_start || "").slice(0, 7) || "quittance";
     const filename = `quittance-${yyyymm}.pdf`;
 
-    let emailResult: { ok: boolean; id?: string | null; error?: string } = { ok: false, error: "Email non tenté." };
+    let emailResult: ResendResult = { ok: false, error: "Email non tenté." };
 
-    // email only if tenant has email
-    if (toEmail) {
+    // email only if tenant has email and paid automation/email access
+    if (!canSendReceiptEmail) {
+      emailResult = { ok: false, error: "Envoi email réservé aux abonnements payants (PDF généré en mode manuel gratuit)." };
+    } else if (toEmail) {
       const pdfResp = await fetch(signed.data.signedUrl);
       if (!pdfResp.ok) {
-        // on n'échoue pas tout: Finance a déjà été mise à jour, on log juste l'erreur
         emailResult = { ok: false, error: `Lecture PDF échouée (${pdfResp.status})` };
       } else {
         const pdfBuf = Buffer.from(await pdfResp.arrayBuffer());
@@ -239,7 +339,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
             <p>Bonjour,</p>
             <p>Veuillez trouver en pièce jointe votre quittance de loyer pour <b>${yyyymm}</b>.</p>
-            <p>Cordialement,<br/>ImmoPilot</p>
+            <p>Cordialement,<br/>lokt.fr — <a href="mailto:contact@lokt.fr">contact@lokt.fr</a></p>
           </div>
         `;
 
@@ -248,7 +348,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           cc: ccEmail,
           subject,
           html,
-          attachments: [{ filename, contentBase64: base64(pdfBuf) }],
+          attachments: [{ filename, content: base64(pdfBuf) }], // ✅ content
         });
       }
     } else {
@@ -257,6 +357,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // 9) Log email (non bloquant)
     try {
+      const disabled = isResendDisabled(emailResult);
+      const emailError = getResendError(emailResult);
+      const logStatus = (emailResult as any)?.ok === true ? "sent" : disabled ? "disabled" : "error";
+
       await supabaseAdmin.from("email_logs").insert({
         user_id: userId,
         lease_id: receipt.lease_id,
@@ -265,28 +369,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         cc_email: ccEmail,
         subject: `Quittance de loyer – ${yyyymm}`,
         body_preview: `Quittance ${yyyymm}`,
-        status: emailResult.ok ? "sent" : "error",
-        error_message: emailResult.ok ? null : emailResult.error,
+        status: logStatus,
+        error_message: (emailResult as any)?.ok === true ? null : emailError,
         sent_at: new Date().toISOString(),
       });
     } catch {
       // ignore
     }
 
-    // 10) Update rent_receipts
-    // - status: "sent" seulement si email ok, sinon "confirmed"
+    // 10) ✅ Update rent_receipts
+    // - status: "sent" seulement si email ok, sinon "generated"
     // - sent_at uniquement si email ok
-    const newStatus = emailResult.ok ? "sent" : "confirmed";
+    // - ⚠️ PAS de updated_at (n'existe pas dans rent_receipts)
+    const newStatus = (emailResult as any)?.ok === true ? "sent" : "generated";
+    const emailError = (emailResult as any)?.ok === true ? null : getResendError(emailResult);
 
     const upd = await supabaseAdmin
       .from("rent_receipts")
       .update({
         payment_id: paymentId,
         status: newStatus,
-        sent_to_tenant_email: toEmail || receipt.sent_to_tenant_email || null,
-        sent_at: emailResult.ok ? new Date().toISOString() : receipt.sent_at || null,
-        send_error: emailResult.ok ? null : String(emailResult.error || "email_failed"),
-        updated_at: new Date().toISOString(),
+        sent_to_tenant_email: (emailResult as any)?.ok === true ? toEmail || receipt.sent_to_tenant_email || null : receipt.sent_to_tenant_email || null,
+        sent_at: (emailResult as any)?.ok === true ? new Date().toISOString() : receipt.sent_at || null,
+        send_error: (emailResult as any)?.ok === true ? null : String(emailError || "email_failed"),
+        edited_at: new Date().toISOString(), // ✅ existe dans rent_receipts
       })
       .eq("id", receipt.id);
 
@@ -299,9 +405,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       payment_id: paymentId,
       status: newStatus,
       email: {
-        attempted: !!toEmail,
-        ok: !!emailResult.ok,
-        error: emailResult.ok ? null : emailResult.error,
+        attempted: canSendReceiptEmail && !!toEmail,
+        ok: (emailResult as any)?.ok === true,
+        disabled: isResendDisabled(emailResult) ? true : false,
+        error: (emailResult as any)?.ok === true ? null : emailError,
+        premium_required: !canSendReceiptEmail,
         to: toEmail || null,
         cc: ccEmail,
       },

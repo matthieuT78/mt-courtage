@@ -1,149 +1,180 @@
+import Head from "next/head";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
+import AppFooter from "../components/AppFooter";
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-2">
+      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+      <div className="space-y-2 text-sm leading-6 text-slate-700">{children}</div>
+    </section>
+  );
+}
 
 export default function ConfidentialitePage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
+      <Head>
+        <title>Politique de confidentialité | lokt.fr</title>
+        <meta
+          name="description"
+          content="Politique de confidentialité de lokt.fr : données collectées, finalités, prestataires, durée de conservation et droits RGPD."
+        />
+      </Head>
+
       <AppHeader />
 
       <main className="flex-1 px-4 py-10">
-        <div className="mx-auto max-w-3xl space-y-6">
-          <section className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 space-y-4">
-            <h1 className="text-xl font-semibold text-slate-900">
-              Politique de confidentialité (RGPD)
-            </h1>
-
-            <p className="text-sm text-slate-600">
-              Cette page explique quelles données sont collectées sur Lokt.fr,
-              pourquoi elles le sont, et quels sont vos droits.
+        <div className="mx-auto max-w-4xl space-y-6">
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">Données personnelles</p>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-950">Politique de confidentialité</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+              Cette page explique quelles données sont traitées par lokt.fr, pourquoi elles le sont, combien de temps elles sont conservées et
+              comment exercer vos droits.
             </p>
+          </section>
 
-            <div className="space-y-3 text-sm text-slate-700">
-              <p>
-                <strong>Responsable de traitement :</strong> Lokt.fr (éditeur indépendant – personne physique)
-              </p>
+          <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <div className="space-y-6">
+              <Section title="1. Responsable de traitement">
+                <p>
+                  <strong>Responsable :</strong> lokt.fr, éditeur indépendant.
+                </p>
+                <p>
+                  <strong>Contact données personnelles :</strong>{" "}
+                  <a href="mailto:contact@lokt.fr" className="underline">
+                    contact@lokt.fr
+                  </a>
+                </p>
+              </Section>
 
-              <p>
-                <strong>Contact :</strong>{" "}
-                <a href="mailto:contact@lokt.fr" className="underline">
-                  contact@lokt.fr
-                </a>
-              </p>
+              <Section title="2. Données collectées">
+                <p>Selon votre usage du service, lokt.fr peut traiter les catégories de données suivantes :</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>données de compte : email, nom, prénom, identifiants techniques, statut d’abonnement ;</li>
+                  <li>données de simulation : revenus, charges, montants, hypothèses de financement, prix, loyers, fiscalité estimée ;</li>
+                  <li>données bailleur : biens, adresses ou localisations, surfaces, montants de loyers, charges, dépôts de garantie ;</li>
+                  <li>données locataires et contacts : noms, emails, téléphones, informations utiles à la gestion locative ;</li>
+                  <li>données de documents : quittances, états des lieux, inventaires, fichiers PDF, photos ou notes ajoutées par l’utilisateur ;</li>
+                  <li>données financières de gestion : recettes, dépenses, exports, périodes analysées ;</li>
+                  <li>données d’emailing opérationnel : destinataires, objet, statut d’envoi, erreurs techniques ;</li>
+                  <li>données de paiement : identifiants Stripe, offre souscrite, statut de paiement, facturation. Les numéros complets de carte ne sont pas stockés par lokt.fr ;</li>
+                  <li>données techniques : logs, adresse IP, navigateur, erreurs, événements de sécurité et éléments nécessaires au fonctionnement.</li>
+                </ul>
+              </Section>
 
-              <hr className="my-4" />
+              <Section title="3. Finalités et bases légales">
+                <p>Les données sont utilisées pour :</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>fournir les simulateurs, l’espace bailleur, les documents et les tableaux de bord ;</li>
+                  <li>créer et sécuriser le compte utilisateur ;</li>
+                  <li>exécuter les abonnements, paiements, limites d’usage et facturation ;</li>
+                  <li>envoyer les emails opérationnels demandés ou configurés : quittances, alertes, rappels, confirmations ;</li>
+                  <li>assurer le support, la maintenance, la sécurité et la prévention des abus ;</li>
+                  <li>améliorer le produit à partir de statistiques agrégées ou anonymisées lorsque c’est possible.</li>
+                </ul>
+                <p>
+                  Les bases légales principales sont l’exécution du contrat, l’intérêt légitime de lokt.fr à maintenir et améliorer le service, le
+                  respect d’obligations légales éventuelles et, lorsque nécessaire, le consentement.
+                </p>
+              </Section>
 
-              <p>
-                <strong>Quelles données sont collectées ?</strong>
-                <br />
-                Lokt.fr collecte uniquement les données que vous saisissez volontairement
-                lors de l’utilisation des outils de simulation, notamment :
-              </p>
+              <Section title="4. Destinataires et sous-traitants">
+                <p>Les données peuvent être traitées par des prestataires techniques nécessaires au service, notamment :</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>hébergement, base de données et authentification ;</li>
+                  <li>hébergement applicatif et déploiement ;</li>
+                  <li>paiement et facturation via Stripe ;</li>
+                  <li>envoi d’emails opérationnels via un prestataire d’emailing ;</li>
+                  <li>outils de journalisation, sécurité ou support lorsque nécessaires.</li>
+                </ul>
+                <p>lokt.fr ne revend pas les données personnelles et ne les partage pas avec des partenaires commerciaux tiers pour prospection.</p>
+              </Section>
 
-              <ul className="list-disc pl-5">
-                <li>Données de simulation (prix, loyers, charges, crédit, etc.)</li>
-                <li>Localisation du bien (ville, code postal, surface)</li>
-                <li>Adresse e-mail si vous choisissez de la fournir pour débloquer ou sauvegarder une analyse</li>
-              </ul>
+              <Section title="5. Transferts hors Union européenne">
+                <p>
+                  Certains prestataires peuvent traiter des données en dehors de l’Union européenne. Dans ce cas, lokt.fr s’appuie sur les garanties
+                  prévues par le RGPD, comme les clauses contractuelles types ou les mécanismes de conformité applicables aux prestataires concernés.
+                </p>
+              </Section>
 
-              <p>
-                Aucune donnée sensible n’est demandée ni traitée.
-              </p>
+              <Section title="6. Durées de conservation">
+                <p>Les données sont conservées pendant des durées proportionnées à leur finalité :</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>données de compte : pendant la durée d’existence du compte, puis suppression ou archivage limité ;</li>
+                  <li>données bailleur et documents : tant que le compte est actif ou jusqu’à suppression demandée par l’utilisateur ;</li>
+                  <li>données de paiement et facturation : pendant les durées nécessaires aux obligations comptables et légales ;</li>
+                  <li>logs techniques et sécurité : pendant une durée limitée nécessaire au diagnostic, à la sécurité et à la prévention des abus ;</li>
+                  <li>données anonymisées ou agrégées : peuvent être conservées sans limite lorsqu’elles ne permettent plus d’identifier une personne.</li>
+                </ul>
+              </Section>
 
-              <p>
-                <strong>À quoi servent ces données ?</strong>
-                <br />
-                Les données sont utilisées exclusivement pour :
-              </p>
+              <Section title="7. Sécurité">
+                <p>
+                  lokt.fr met en œuvre des mesures raisonnables de sécurité : authentification, contrôle d’accès, isolation par utilisateur, stockage
+                  chez des prestataires spécialisés et limitation des accès techniques. Aucun système n’étant infaillible, l’utilisateur doit aussi
+                  protéger ses identifiants et signaler toute anomalie.
+                </p>
+              </Section>
 
-              <ul className="list-disc pl-5">
-                <li>Calculer vos résultats (rentabilité, cash-flow, graphiques)</li>
-                <li>Afficher vos dashboards et analyses</li>
-                <li>Améliorer la qualité et la pertinence des outils Lokt.fr (statistiques anonymisées)</li>
-              </ul>
+              <Section title="8. Cookies et stockage local">
+                <p>
+                  lokt.fr utilise des cookies ou stockages locaux nécessaires au fonctionnement du site : session, authentification, préférences,
+                  sauvegarde temporaire de formulaires ou consentements. Aucun cookie publicitaire tiers n’est prévu dans la version actuelle.
+                </p>
+              </Section>
 
-              <p>
-                Vos données ne sont jamais revendues, ni partagées à des partenaires commerciaux.
-              </p>
+              <Section title="9. Vos droits">
+                <p>Conformément au RGPD, vous pouvez demander :</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>l’accès à vos données ;</li>
+                  <li>leur rectification ;</li>
+                  <li>leur suppression ;</li>
+                  <li>la limitation du traitement ;</li>
+                  <li>votre opposition à certains traitements ;</li>
+                  <li>la portabilité des données lorsque ce droit s’applique ;</li>
+                  <li>le retrait d’un consentement lorsque le traitement repose sur celui-ci.</li>
+                </ul>
+                <p>
+                  Pour exercer vos droits, écrivez à{" "}
+                  <a href="mailto:contact@lokt.fr" className="underline">
+                    contact@lokt.fr
+                  </a>
+                  . Une vérification d’identité peut être demandée en cas de doute raisonnable.
+                </p>
+                <p>
+                  Vous pouvez également introduire une réclamation auprès de la CNIL si vous estimez que vos droits ne sont pas respectés.
+                </p>
+              </Section>
 
-              <p>
-                <strong>Où sont stockées les données ?</strong>
-                <br />
-                Les données sont stockées sur des serveurs sécurisés opérés par des prestataires techniques
-                (par exemple l’hébergement et la base de données), situés dans l’Union Européenne
-                ou offrant des garanties conformes au RGPD.
-              </p>
+              <Section title="10. Suppression du compte">
+                <p>
+                  Vous pouvez demander la suppression de votre compte et des données associées. Certaines informations peuvent être conservées lorsque
+                  cela est nécessaire pour respecter une obligation légale, établir une preuve ou gérer un litige.
+                </p>
+              </Section>
 
-              <p>
-                <strong>Combien de temps sont-elles conservées ?</strong>
-                <br />
-                Les données sont conservées tant qu’elles sont utiles pour :
-              </p>
-
-              <ul className="list-disc pl-5">
-                <li>vous restituer vos résultats et analyses</li>
-                <li>améliorer le service Lokt.fr</li>
-              </ul>
-
-              <p>
-                Vous pouvez demander leur suppression à tout moment.
-              </p>
-
-              <p>
-                <strong>Vos droits</strong>
-                <br />
-                Conformément au RGPD, vous disposez des droits suivants :
-              </p>
-
-              <ul className="list-disc pl-5">
-                <li>Droit d’accès à vos données</li>
-                <li>Droit de rectification</li>
-                <li>Droit à l’effacement (suppression)</li>
-                <li>Droit à la limitation du traitement</li>
-                <li>Droit d’opposition</li>
-                <li>Droit à la portabilité</li>
-              </ul>
-
-              <p>
-                Pour exercer vos droits, il suffit d’écrire à :
-                <br />
-                <a href="mailto:contact@lokt.fr" className="underline">
-                  contact@lokt.fr
-                </a>
-              </p>
-
-              <p>
-                Toute demande de suppression entraîne l’effacement de vos données de simulation
-                dans les meilleurs délais, sauf obligation légale contraire.
-              </p>
-
-              <p>
-                <strong>Cookies</strong>
-                <br />
-                Lokt.fr utilise uniquement des cookies techniques nécessaires
-                au bon fonctionnement du site.
-                Aucun cookie publicitaire ou de traçage tiers n’est utilisé.
-              </p>
-
-              <p>
-                <strong>Évolution de la politique</strong>
-                <br />
-                Cette politique pourra évoluer en fonction de l’évolution du service.
-                La version en vigueur est toujours celle publiée sur cette page.
-              </p>
+              <Section title="11. Évolution de la politique">
+                <p>
+                  Cette politique pourra évoluer avec le service, notamment lors de l’ajout de nouveaux prestataires, fonctionnalités ou traitements.
+                  La version applicable est celle publiée sur cette page.
+                </p>
+              </Section>
             </div>
 
-            <p className="mt-6 text-xs text-slate-500">
-              Dernière mise à jour : {new Date().toLocaleDateString("fr-FR")}
-            </p>
-
-            <div className="pt-4">
-              <Link href="/" className="underline text-sm text-slate-700">
-                ← Retour à l’accueil
+            <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-500">Dernière mise à jour : 21 mai 2026</p>
+              <Link href="/cgu" className="text-sm font-semibold text-slate-700 underline">
+                Voir les CGU/CGV
               </Link>
             </div>
           </section>
         </div>
       </main>
+
+      <AppFooter />
     </div>
   );
 }

@@ -1,2180 +1,1953 @@
-  // components/CapaciteWizard.tsx
-  import { useEffect, useMemo, useState } from "react";
-  import { supabase } from "../lib/supabaseClient";
-  import { buildCapaciteEmailHtml, buildCapaciteEmailText } from "../lib/emails/capaciteEmail";
-  import LeadGate from "./LeadGate";
-  import {
-    safeEmail,
-    loadLeadEmail,
-    persistLeadEmail,
-    isUnlockedForEmail,
-    persistUnlock,
-  } from "../lib/leads";
+// components/CapaciteWizard.tsx
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+import {
+  buildCapaciteEmailHtml,
+  buildCapaciteEmailText,
+} from "../lib/emails/capaciteEmail";
+import LeadGate from "./LeadGate";
+import {
+  safeEmail,
+  loadLeadEmail,
+  persistLeadEmail,
+  isUnlockedForEmail,
+  persistUnlock,
+} from "../lib/leads";
 
-  const CAPACITE_STORAGE_KEY = "capacite_simulation_v19_simple_only_no_advanced";
+const CAPACITE_STORAGE_KEY = "capacite_simulation_v19_simple_only_no_advanced";
 
-  /* ------------------------ Format helpers ------------------------ */
-  function formatEuro(val: number) {
-    if (!Number.isFinite(val)) return "-";
-    return val.toLocaleString("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-      maximumFractionDigits: 0,
-    });
-  }
+/* ------------------------ Format helpers ------------------------ */
+function formatEuro(val: number) {
+  if (!Number.isFinite(val)) return "-";
+  return val.toLocaleString("fr-FR", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  });
+}
 
-  function scoreTextColor(score: number) {
-    if (score >= 85) return "text-emerald-300";
-    if (score >= 70) return "text-emerald-200";
-    if (score >= 55) return "text-amber-300";
-    return "text-red-300";
-  }
-  
-  function formatPct(val: number) {
-    if (!Number.isFinite(val)) return "-";
-    return (
-      val.toLocaleString("fr-FR", {
-        maximumFractionDigits: 2,
-      }) + " %"
-    );
-  }
+function formatPct(val: number) {
+  if (!Number.isFinite(val)) return "-";
+  return (
+    val.toLocaleString("fr-FR", {
+      maximumFractionDigits: 2,
+    }) + " %"
+  );
+}
 
-  /** conserve uniquement les chiffres, mais autorise la chaîne vide */
-  function onlyDigits(s: string) {
-    return s.replace(/[^\d]/g, "");
-  }
+/** conserve uniquement les chiffres, mais autorise la chaîne vide */
+function onlyDigits(s: string) {
+  return s.replace(/[^\d]/g, "");
+}
 
-  /** autorise chiffres + un seul séparateur "." (on remplace "," par ".") */
-  function onlyNumberLike(s: string) {
-    const cleaned = s.replace(",", ".").replace(/[^0-9.]/g, "");
-    const parts = cleaned.split(".");
-    if (parts.length <= 1) return cleaned;
-    return parts[0] + "." + parts.slice(1).join("");
-  }
+/** autorise chiffres + un seul séparateur "." (on remplace "," par ".") */
+function onlyNumberLike(s: string) {
+  const cleaned = s.replace(",", ".").replace(/[^0-9.]/g, "");
+  const parts = cleaned.split(".");
+  if (parts.length <= 1) return cleaned;
+  return parts[0] + "." + parts.slice(1).join("");
+}
 
-  function toInt(v: string, fallback = 0) {
-    const x = parseInt(v, 10);
-    return Number.isFinite(x) ? x : fallback;
-  }
+function toInt(v: string, fallback = 0) {
+  const x = parseInt(v, 10);
+  return Number.isFinite(x) ? x : fallback;
+}
 
-  function toFloat(v: string, fallback = 0) {
-    const x = parseFloat(v);
-    return Number.isFinite(x) ? x : fallback;
-  }
+function toFloat(v: string, fallback = 0) {
+  const x = parseFloat(v);
+  return Number.isFinite(x) ? x : fallback;
+}
 
-  /* ------------------------ Types ------------------------ */
-  type TypeCredit = "immo" | "perso" | "auto" | "conso";
+/* ------------------------ Types ------------------------ */
+type TypeCredit = "immo" | "perso" | "auto" | "conso";
 
-  type ProjectType = "ancien" | "neuf" | "terrain";
-  type ProStatus = "cdi" | "fonctionnaire" | "independant" | "retraite" | "autre";
+type ProjectType = "ancien" | "neuf" | "terrain";
+type ProStatus = "cdi" | "fonctionnaire" | "independant" | "retraite" | "autre";
 
-  // (payload only)
-  type PropertyKind = "appartement" | "maison" | "terrain" | "autre";
+// (payload only)
+type PropertyKind = "appartement" | "maison" | "terrain" | "autre";
 
-  // UI keys
-  type ProjectUsageUI = "rp" | "rs" | "invest";
-  type ProjectTimelineUI = "0_3m" | "3_6m" | "6_12m" | "12m_plus" | "juste_info";
+// UI keys
+type ProjectUsageUI = "rp" | "rs" | "invest";
+type ProjectTimelineUI = "0_3m" | "3_6m" | "6_12m" | "12m_plus" | "juste_info";
 
-  // DB values (CHECK)
-  type ProjectUsageDB =
-    | "residence_principale"
-    | "residence_secondaire"
-    | "investissement";
-  type ProjectTimelineDB =
-    | "0_3_mois"
-    | "3_6_mois"
-    | "6_12_mois"
-    | "12_plus"
-    | "juste_info";
+// DB values (CHECK)
+type ProjectUsageDB =
+  | "residence_principale"
+  | "residence_secondaire"
+  | "investissement";
+type ProjectTimelineDB =
+  | "0_3_mois"
+  | "3_6_mois"
+  | "6_12_mois"
+  | "12_plus"
+  | "juste_info";
 
-  type ResumeCapacite = {
-    revenusPrisEnCompte: number;
-    mensualitesExistantes: number;
-    chargesHorsCredits: number;
+type ResumeCapacite = {
+  revenusPrisEnCompte: number;
+  mensualitesExistantes: number;
+  chargesHorsCredits: number;
 
-    tauxEndettementActuel: number;
-    tauxEndettementAvecProjet: number;
+  tauxEndettementActuel: number;
+  tauxEndettementAvecProjet: number;
 
-    mensualiteMax: number;
-    montantMax: number;
-    mensualiteProjet: number;
+  mensualiteMax: number;
+  montantMax: number;
+  mensualiteCreditHorsAssurance: number;
+  assuranceMensuelle: number;
+  tauxAssurance: number;
+  mensualiteProjet: number;
 
-    apport: number;
-    budgetTotalMax: number;
-    apportMinRecommande: number;
-    apportCouvreFrais: boolean;
+  apport: number;
+  budgetTotalMax: number;
+  apportMinRecommande: number;
+  apportCouvreFrais: boolean;
 
-    prixBienMax: number;
-    fraisNotaireEstimes: number;
-    fraisAgenceEstimes: number;
-    coutTotalProjetMax: number;
-  };
+  prixBienMax: number;
+  fraisNotaireEstimes: number;
+  fraisAgenceEstimes: number;
+  coutTotalProjetMax: number;
+};
 
-  type BankabilityAssessment = {
-    score: number;
-    label: string;
-    comment: string;
-    details: {
-      dtiRatio: number;
-      resteAVivreParUC: number;
-      resteApresProjet: number;
-      hardCapsApplied: {
-        ravNegative: boolean;
-        ravLow: boolean;
-        dtiHigh: boolean;
-        apportLow: boolean;
-      };
-      subScores: {
-        dti: number;
-        rav: number;
-        stability: number;
-        age: number;
-        conso: number;
-        apport: number;
-      };
+type ScenarioCapacite = {
+  duree: number;
+  montantMax: number;
+  mensualiteCreditHorsAssurance: number;
+  assuranceMensuelle: number;
+  mensualiteProjet: number;
+  budgetTotalMax: number;
+  prixBienMax: number;
+};
+
+type BankabilityAssessment = {
+  score: number;
+  label: string;
+  comment: string;
+  details: {
+    dtiRatio: number;
+    resteAVivreParUC: number;
+    resteApresProjet: number;
+    hardCapsApplied: {
+      ravNegative: boolean;
+      ravLow: boolean;
+      dtiHigh: boolean;
+      apportLow: boolean;
+    };
+    subScores: {
+      dti: number;
+      rav: number;
+      stability: number;
+      age: number;
+      conso: number;
+      apport: number;
     };
   };
+};
 
-  function InfoBadge({ text }: { text: string }) {
-    return (
-      <span className="relative inline-flex items-center group ml-1 align-middle">
-        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[0.6rem] font-semibold text-slate-500 cursor-help">
-          i
-        </span>
-        <span className="pointer-events-none absolute left-1/2 top-[125%] z-20 hidden w-64 -translate-x-1/2 rounded-md bg-slate-900 px-3 py-2 text-[0.7rem] text-white shadow-lg group-hover:block">
-          {text}
-        </span>
+type ComputedAll = {
+  resume: ResumeCapacite;
+  scenarios: ScenarioCapacite[];
+  texte: string;
+  assessment: BankabilityAssessment;
+  actionPlan: string;
+  parsed: {
+    revenusNet: number;
+    autresRev: number;
+    chargesHors: number;
+    apport: number;
+
+    age1: number;
+    age2: number;
+
+    adultes: number;
+    enfants: number;
+
+    tauxEndettement: number;
+    tauxCredit: number;
+    tauxAssurance: number;
+    dureeCredit: number;
+
+    mensualitesNums: number[];
+    resteAnneesNums: number[];
+    tauxCreditsNums: number[];
+    loyersNums: number[];
+  };
+};
+
+function InfoBadge({ text }: { text: string }) {
+  return (
+    <span className="relative inline-flex items-center group ml-1 align-middle">
+      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[0.6rem] font-semibold text-slate-500 cursor-help">
+        i
       </span>
-    );
-  }
+      <span className="pointer-events-none absolute left-1/2 top-[125%] z-20 hidden w-64 -translate-x-1/2 rounded-md bg-slate-900 px-3 py-2 text-[0.7rem] text-white shadow-lg group-hover:block">
+        {text}
+      </span>
+    </span>
+  );
+}
 
-  /* ------------------------ Tracking helpers ------------------------ */
-  function getUtmFromUrl(): Record<string, string> | null {
-    if (typeof window === "undefined") return null;
-    try {
-      const sp = new URLSearchParams(window.location.search);
-      const keys = [
-        "utm_source",
-        "utm_medium",
-        "utm_campaign",
-        "utm_term",
-        "utm_content",
-        "gclid",
-        "fbclid",
-        "msclkid",
-      ];
-      const utm: Record<string, string> = {};
-      for (const k of keys) {
-        const v = sp.get(k);
-        if (v) utm[k] = v;
-      }
-      return Object.keys(utm).length ? utm : null;
-    } catch {
-      return null;
+/* ------------------------ Tracking helpers ------------------------ */
+function getUtmFromUrl(): Record<string, string> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const sp = new URLSearchParams(window.location.search);
+    const keys = [
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_term",
+      "utm_content",
+      "gclid",
+      "fbclid",
+      "msclkid",
+    ];
+    const utm: Record<string, string> = {};
+    for (const k of keys) {
+      const v = sp.get(k);
+      if (v) utm[k] = v;
     }
+    return Object.keys(utm).length ? utm : null;
+  } catch {
+    return null;
   }
+}
 
-  function getSourceLabel(): string {
-    if (typeof window === "undefined") return "capacite_wizard";
-    try {
-      const ref = document.referrer || "";
-      if (!ref) return "direct";
-      const refHost = new URL(ref).host;
-      const curHost = window.location.host;
-      if (refHost && curHost && refHost === curHost) return "internal";
-      return `ref:${refHost || "unknown"}`;
-    } catch {
-      return "direct";
-    }
+function getSourceLabel(): string {
+  if (typeof window === "undefined") return "capacite_wizard";
+  try {
+    const ref = document.referrer || "";
+    if (!ref) return "direct";
+    const refHost = new URL(ref).host;
+    const curHost = window.location.host;
+    if (refHost && curHost && refHost === curHost) return "internal";
+    return `ref:${refHost || "unknown"}`;
+  } catch {
+    return "direct";
   }
+}
 
-  /* ------------------------ DB mapping (CHECK-safe) ------------------------ */
-  const TIMELINE_UI_TO_DB: Record<ProjectTimelineUI, ProjectTimelineDB> = {
-    "0_3m": "0_3_mois",
-    "3_6m": "3_6_mois",
-    "6_12m": "6_12_mois",
-    "12m_plus": "12_plus",
-    "juste_info": "juste_info",
-  };
+/* ------------------------ DB mapping (CHECK-safe) ------------------------ */
+const TIMELINE_UI_TO_DB: Record<ProjectTimelineUI, ProjectTimelineDB> = {
+  "0_3m": "0_3_mois",
+  "3_6m": "3_6_mois",
+  "6_12m": "6_12_mois",
+  "12m_plus": "12_plus",
+  "juste_info": "juste_info",
+};
 
-  const USAGE_UI_TO_DB: Record<ProjectUsageUI, ProjectUsageDB> = {
-    rp: "residence_principale",
-    rs: "residence_secondaire",
-    invest: "investissement",
-  };
+const USAGE_UI_TO_DB: Record<ProjectUsageUI, ProjectUsageDB> = {
+  rp: "residence_principale",
+  rs: "residence_secondaire",
+  invest: "investissement",
+};
 
-  /* ------------------------ Lokt Score helpers ------------------------ */
-  function clamp(n: number, a: number, b: number) {
-    return Math.max(a, Math.min(b, n));
+/* ------------------------ lokt.fr Score helpers ------------------------ */
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
+}
+function round0(n: number) {
+  return Math.round(n);
+}
+
+/* ------------------------ Loan helpers (monthly) ------------------------ */
+function monthlyPayment(principal: number, annualRatePct: number, years: number) {
+  const P = Math.max(0, principal || 0);
+  const n = Math.max(0, Math.round((years || 0) * 12));
+  const r = Math.max(0, (annualRatePct || 0) / 100) / 12;
+
+  if (P <= 0 || n <= 0) return 0;
+  if (r === 0) return P / n;
+
+  return (P * r) / (1 - Math.pow(1 + r, -n));
+}
+
+function monthlyInsurance(principal: number, annualInsurancePct: number) {
+  const P = Math.max(0, principal || 0);
+  const assurance = Math.max(0, annualInsurancePct || 0) / 100;
+  return (P * assurance) / 12;
+}
+
+function monthlyPaymentWithInsurance(
+  principal: number,
+  annualRatePct: number,
+  years: number,
+  annualInsurancePct: number
+) {
+  return monthlyPayment(principal, annualRatePct, years) + monthlyInsurance(principal, annualInsurancePct);
+}
+
+function principalFromPaymentWithInsurance(
+  payment: number,
+  annualRatePct: number,
+  years: number,
+  annualInsurancePct: number
+) {
+  const M = Math.max(0, payment || 0);
+  const n = Math.max(0, Math.round((years || 0) * 12));
+  const r = Math.max(0, (annualRatePct || 0) / 100) / 12;
+  const insuranceMonthlyRate = Math.max(0, annualInsurancePct || 0) / 100 / 12;
+
+  if (M <= 0 || n <= 0) return 0;
+
+  const creditMonthlyRate =
+    r === 0 ? 1 / n : r / (1 - Math.pow(1 + r, -n));
+  const totalMonthlyRate = creditMonthlyRate + insuranceMonthlyRate;
+
+  if (totalMonthlyRate <= 0) return 0;
+  return M / totalMonthlyRate;
+}
+
+function computeUC(nbAdultes: number, nbEnfants: number) {
+  const a = Math.max(1, nbAdultes || 1);
+  const e = Math.max(0, nbEnfants || 0);
+  return 1 + 0.5 * Math.max(0, a - 1) + 0.3 * e;
+}
+
+function proStabilityFactor(proStatus: ProStatus) {
+  switch (proStatus) {
+    case "fonctionnaire":
+      return 1.0;
+    case "cdi":
+      return 0.9;
+    case "retraite":
+      return 0.85;
+    case "independant":
+      return 0.75;
+    default:
+      return 0.7;
   }
-  function round0(n: number) {
-    return Math.round(n);
-  }
+}
 
-  /* ------------------------ Loan helpers (monthly) ------------------------ */
-  function monthlyPayment(
-    principal: number,
-    annualRatePct: number,
-    years: number
-  ) {
-    const P = Math.max(0, principal || 0);
-    const n = Math.max(0, Math.round((years || 0) * 12));
-    const r = Math.max(0, (annualRatePct || 0) / 100) / 12;
+/* ------------------------ Score lokt.fr ------------------------ */
+function computeLoktScore(params: {
+  resume: ResumeCapacite;
+  tauxEndettementCible: number;
+  proStatus: ProStatus;
+  ageEmprunteur: number;
+  ageCoEmprunteur: number;
+  nbAdultes: number;
+  nbEnfants: number;
+  dureeCreditCible: number;
+  nbCredits: number;
+  typesCredits: TypeCredit[];
+  mensualitesCredits: number[];
+}): BankabilityAssessment {
+  const {
+    resume,
+    tauxEndettementCible,
+    proStatus,
+    ageEmprunteur,
+    ageCoEmprunteur,
+    nbAdultes,
+    nbEnfants,
+    dureeCreditCible,
+    nbCredits,
+    typesCredits,
+    mensualitesCredits,
+  } = params;
 
-    if (P <= 0 || n <= 0) return 0;
-    if (r === 0) return P / n;
-
-    return (P * r) / (1 - Math.pow(1 + r, -n));
-  }
-
-  function principalFromPayment(
-    payment: number,
-    annualRatePct: number,
-    years: number
-  ) {
-    const M = Math.max(0, payment || 0);
-    const n = Math.max(0, Math.round((years || 0) * 12));
-    const r = Math.max(0, (annualRatePct || 0) / 100) / 12;
-
-    if (M <= 0 || n <= 0) return 0;
-    if (r === 0) return M * n;
-
-    const f = Math.pow(1 + r, n);
-    return M * ((f - 1) / (r * f));
-  }
-
-  function computeUC(nbAdultes: number, nbEnfants: number) {
-    const a = Math.max(1, nbAdultes || 1);
-    const e = Math.max(0, nbEnfants || 0);
-    return 1 + 0.5 * Math.max(0, a - 1) + 0.3 * e;
-  }
-
-  function proStabilityFactor(proStatus: ProStatus) {
-    switch (proStatus) {
-      case "fonctionnaire":
-        return 1.0;
-      case "cdi":
-        return 0.9;
-      case "retraite":
-        return 0.85;
-      case "independant":
-        return 0.75;
-      default:
-        return 0.7;
-    }
-  }
-
-  /* ------------------------ Score Lokt ------------------------ */
-  function computeLoktScore(params: {
-    resume: ResumeCapacite;
-    tauxEndettementCible: number;
-    proStatus: ProStatus;
-    ageEmprunteur: number;
-    ageCoEmprunteur: number;
-    nbAdultes: number;
-    nbEnfants: number;
-    dureeCreditCible: number;
-    nbCredits: number;
-    typesCredits: TypeCredit[];
-    mensualitesCredits: number[];
-  }): BankabilityAssessment {
-    const {
-      resume,
-      tauxEndettementCible,
-      proStatus,
-      ageEmprunteur,
-      ageCoEmprunteur,
-      nbAdultes,
-      nbEnfants,
-      dureeCreditCible,
-      nbCredits,
-      typesCredits,
-      mensualitesCredits,
-    } = params;
-
-    if (!Number.isFinite(resume.revenusPrisEnCompte) || resume.revenusPrisEnCompte <= 0) {
+  if (!Number.isFinite(resume.revenusPrisEnCompte) || resume.revenusPrisEnCompte <= 0) {
     return {
       score: 0,
       label: "Refus probable",
-      comment:
-        "Revenus pris en compte nuls : le score est quasi nul.",
+      comment: "Revenus pris en compte nuls : le score est quasi nul.",
       details: {
         dtiRatio: 1,
         resteAVivreParUC: 0,
         resteApresProjet: 0,
-        hardCapsApplied: { ravNegative: true, ravLow: false, dtiHigh: false, apportLow: false },
+        hardCapsApplied: {
+          ravNegative: true,
+          ravLow: false,
+          dtiHigh: false,
+          apportLow: false,
+        },
         subScores: { dti: 0, rav: 0, stability: 0, age: 0, conso: 0, apport: 0 },
       },
     };
   }
 
-    const cible = tauxEndettementCible > 0 ? tauxEndettementCible : 35;
-    const dtiRatio = cible > 0 ? resume.tauxEndettementAvecProjet / cible : 1;
+  const cible = tauxEndettementCible > 0 ? tauxEndettementCible : 35;
+  const dtiRatio = cible > 0 ? resume.tauxEndettementAvecProjet / cible : 1;
 
-    const chargesActuelles =
-      resume.mensualitesExistantes + resume.chargesHorsCredits;
-    const mensualiteScore = resume.mensualiteProjet || 0;
+  const chargesActuelles = resume.mensualitesExistantes + resume.chargesHorsCredits;
+  const mensualiteScore = resume.mensualiteProjet || 0;
 
-    const resteApresProjet =
-      (resume.revenusPrisEnCompte || 0) -
-      (chargesActuelles + (mensualiteScore || 0));
-    const uc = computeUC(nbAdultes, nbEnfants);
-    const resteAVivreParUC = uc > 0 ? resteApresProjet / uc : resteApresProjet;
+  const resteApresProjet = (resume.revenusPrisEnCompte || 0) - (chargesActuelles + (mensualiteScore || 0));
+  const uc = computeUC(nbAdultes, nbEnfants);
+  const resteAVivreParUC = uc > 0 ? resteApresProjet / uc : resteApresProjet;
 
-    let s_dti = 60;
-    if (!Number.isFinite(dtiRatio)) s_dti = 50;
-    else if (dtiRatio <= 0.7) s_dti = 100;
-    else if (dtiRatio <= 0.9) s_dti = 100 - ((dtiRatio - 0.7) / 0.2) * 15;
-    else if (dtiRatio <= 1.0) s_dti = 85 - ((dtiRatio - 0.9) / 0.1) * 15;
-    else if (dtiRatio <= 1.15) s_dti = 70 - ((dtiRatio - 1.0) / 0.15) * 25;
-    else s_dti = 15;
+  let s_dti = 60;
+  if (!Number.isFinite(dtiRatio)) s_dti = 50;
+  else if (dtiRatio <= 0.7) s_dti = 100;
+  else if (dtiRatio <= 0.9) s_dti = 100 - ((dtiRatio - 0.7) / 0.2) * 15;
+  else if (dtiRatio <= 1.0) s_dti = 85 - ((dtiRatio - 0.9) / 0.1) * 15;
+  else if (dtiRatio <= 1.15) s_dti = 70 - ((dtiRatio - 1.0) / 0.15) * 25;
+  else s_dti = 15;
 
-    let s_rav = 55;
-    if (!Number.isFinite(resteAVivreParUC)) s_rav = 30;
-    else if (resteAVivreParUC < 0) {
-      const deficit = Math.abs(resteAVivreParUC);
-      s_rav = clamp(18 - (deficit / 250) * 4, 0, 18);
-    } else if (resteAVivreParUC >= 1800) s_rav = 100;
-    else if (resteAVivreParUC >= 1400) s_rav = 85;
-    else if (resteAVivreParUC >= 1100) s_rav = 70;
-    else if (resteAVivreParUC >= 900) s_rav = 55;
-    else if (resteAVivreParUC >= 700) s_rav = 40;
-    else s_rav = 20;
+  let s_rav = 55;
+  if (!Number.isFinite(resteAVivreParUC)) s_rav = 30;
+  else if (resteAVivreParUC < 0) {
+    const deficit = Math.abs(resteAVivreParUC);
+    s_rav = clamp(18 - (deficit / 250) * 4, 0, 18);
+  } else if (resteAVivreParUC >= 1800) s_rav = 100;
+  else if (resteAVivreParUC >= 1400) s_rav = 85;
+  else if (resteAVivreParUC >= 1100) s_rav = 70;
+  else if (resteAVivreParUC >= 900) s_rav = 55;
+  else if (resteAVivreParUC >= 700) s_rav = 40;
+  else s_rav = 20;
 
-    const s_stability = proStabilityFactor(proStatus) * 100;
+  const s_stability = proStabilityFactor(proStatus) * 100;
 
-    const a1 = Math.max(0, ageEmprunteur || 0);
-    const a2 = Math.max(0, ageCoEmprunteur || 0);
-    const ageMax = Math.max(a1, a2);
-    const ageFin =
-      ageMax > 0 ? ageMax + Math.max(0, dureeCreditCible || 0) : 0;
+  const a1 = Math.max(0, ageEmprunteur || 0);
+  const a2 = Math.max(0, ageCoEmprunteur || 0);
+  const ageMax = Math.max(a1, a2);
+  const ageFin = ageMax > 0 ? ageMax + Math.max(0, dureeCreditCible || 0) : 0;
 
-    let s_age = 80;
-    if (ageFin > 0 && ageFin <= 70) s_age = 100;
-    else if (ageFin <= 75) s_age = 90;
-    else if (ageFin <= 80) s_age = 75;
-    else if (ageFin <= 85) s_age = 55;
-    else if (ageFin > 85) s_age = 35;
+  let s_age = 80;
+  if (ageFin > 0 && ageFin <= 70) s_age = 100;
+  else if (ageFin <= 75) s_age = 90;
+  else if (ageFin <= 80) s_age = 75;
+  else if (ageFin <= 85) s_age = 55;
+  else if (ageFin > 85) s_age = 35;
 
-    const consoIdx: number[] = [];
-    for (let i = 0; i < Math.max(0, nbCredits || 0); i++) {
-      const t = typesCredits[i];
-      if (t === "perso" || t === "auto" || t === "conso") consoIdx.push(i);
-    }
-    const consoCount = consoIdx.length;
-    const totalMensuConso = consoIdx.reduce(
-      (s, idx) => s + (mensualitesCredits[idx] || 0),
-      0
-    );
+  const consoIdx: number[] = [];
+  for (let i = 0; i < Math.max(0, nbCredits || 0); i++) {
+    const t = typesCredits[i];
+    if (t === "perso" || t === "auto" || t === "conso") consoIdx.push(i);
+  }
+  const consoCount = consoIdx.length;
+  const totalMensuConso = consoIdx.reduce((s, idx) => s + (mensualitesCredits[idx] || 0), 0);
 
-    const penMontant = clamp((totalMensuConso / 100) * 8, 0, 40);
-    const penCount = clamp(consoCount * 6, 0, 20);
-    const s_conso = clamp(100 - (penMontant + penCount), 25, 100);
+  const penMontant = clamp((totalMensuConso / 100) * 8, 0, 40);
+  const penCount = clamp(consoCount * 6, 0, 20);
+  const s_conso = clamp(100 - (penMontant + penCount), 25, 100);
 
-    let s_apport = 65;
-    if (resume.apportMinRecommande <= 0) s_apport = 65;
-    else if (resume.apport >= resume.apportMinRecommande) s_apport = 100;
-    else {
-      const ratio = clamp(resume.apport / resume.apportMinRecommande, 0, 1);
-      s_apport = 10 + 90 * Math.pow(ratio, 1.3);
-    }
+  let s_apport = 65;
+  if (resume.apportMinRecommande <= 0) s_apport = 65;
+  else if (resume.apport >= resume.apportMinRecommande) s_apport = 100;
+  else {
+    const ratio = clamp(resume.apport / resume.apportMinRecommande, 0, 1);
+    s_apport = 10 + 90 * Math.pow(ratio, 1.3);
+  }
 
-    const rawScore =
-      0.42 * s_dti +
-      0.24 * s_rav +
-      0.13 * s_stability +
-      0.08 * s_age +
-      0.05 * s_conso +
-      0.08 * s_apport;
-    let scoreR = clamp(round0(rawScore), 0, 100);
+  const rawScore =
+    0.42 * s_dti +
+    0.24 * s_rav +
+    0.13 * s_stability +
+    0.08 * s_age +
+    0.05 * s_conso +
+    0.08 * s_apport;
 
-    const hardCaps = { ravNegative: false, ravLow: false, dtiHigh: false, apportLow: false };
+  let scoreR = clamp(round0(rawScore), 0, 100);
 
-    const NEAR_ZERO_RAV = 200;
+  const hardCaps = { ravNegative: false, ravLow: false, dtiHigh: false, apportLow: false };
+  const NEAR_ZERO_RAV = 200;
 
-      if (resteApresProjet <= 0) {
-        hardCaps.ravNegative = true;
-        scoreR = 0;
-        } else if (resteApresProjet < NEAR_ZERO_RAV) {
-          hardCaps.ravLow = true;
-          scoreR = Math.min(scoreR, 10);
-        }
+  if (resteApresProjet <= 0) {
+    hardCaps.ravNegative = true;
+    scoreR = 0;
+  } else if (resteApresProjet < NEAR_ZERO_RAV) {
+    hardCaps.ravLow = true;
+    scoreR = Math.min(scoreR, 10);
+  }
 
-    const dti = resume.tauxEndettementAvecProjet || 0;
-    if (Number.isFinite(dti) && Number.isFinite(cible) && cible > 0) {
-      const delta = dti - cible;
-      if (delta > 10) {
-        hardCaps.dtiHigh = true;
-        scoreR = Math.min(scoreR, 40);
-      } else if (delta > 5) {
-        hardCaps.dtiHigh = true;
-        scoreR = Math.min(scoreR, 55);
-      }
-    }
-
-    if (
-      resume.apportMinRecommande > 0 &&
-      resume.apport < resume.apportMinRecommande
-    ) {
-      hardCaps.apportLow = true;
+  const dti = resume.tauxEndettementAvecProjet || 0;
+  if (Number.isFinite(dti) && Number.isFinite(cible) && cible > 0) {
+    const delta = dti - cible;
+    if (delta > 10) {
+      hardCaps.dtiHigh = true;
+      scoreR = Math.min(scoreR, 40);
+    } else if (delta > 5) {
+      hardCaps.dtiHigh = true;
       scoreR = Math.min(scoreR, 55);
-      if (hardCaps.ravNegative || hardCaps.dtiHigh) scoreR = Math.min(scoreR, 40);
     }
+  }
 
-    let label = "À optimiser";
-    if (hardCaps.ravNegative || (hardCaps.dtiHigh && dti - cible > 10))
-      label = "Refus probable";
-    else if (scoreR >= 85) label = "Très solide";
-    else if (scoreR >= 70) label = "Solide";
-    else if (scoreR >= 55) label = "À optimiser";
-    else label = "Sous tension";
+  if (resume.apportMinRecommande > 0 && resume.apport < resume.apportMinRecommande) {
+    hardCaps.apportLow = true;
+    scoreR = Math.min(scoreR, 55);
+    if (hardCaps.ravNegative || hardCaps.dtiHigh) scoreR = Math.min(scoreR, 40);
+  }
 
-    const subs = {
-      dti: s_dti,
-      rav: s_rav,
-      stability: s_stability,
-      age: s_age,
-      conso: s_conso,
-      apport: s_apport,
-    };
-    const weakest = (Object.keys(subs) as (keyof typeof subs)[]).sort(
-      (a, b) => subs[a] - subs[b]
-    )[0];
+  let label = "À optimiser";
+  if (hardCaps.ravNegative || (hardCaps.dtiHigh && dti - cible > 10)) label = "Refus probable";
+  else if (scoreR >= 85) label = "Très solide";
+  else if (scoreR >= 70) label = "Solide";
+  else if (scoreR >= 55) label = "À optimiser";
+  else label = "Sous tension";
 
-    let comment =
-      "Votre dossier est globalement cohérent, avec quelques optimisations possibles.";
+  const subs = {
+    dti: s_dti,
+    rav: s_rav,
+    stability: s_stability,
+    age: s_age,
+    conso: s_conso,
+    apport: s_apport,
+  };
+  const weakest = (Object.keys(subs) as (keyof typeof subs)[]).sort((a, b) => subs[a] - subs[b])[0];
 
-    if (hardCaps.ravNegative) {
+  let comment = "Votre dossier est globalement cohérent, avec quelques optimisations possibles.";
+
+  if (hardCaps.ravNegative) {
+    comment =
+      "Signal rouge : votre reste à vivre après projet est négatif. Dans cette configuration, une banque refusera très probablement.";
+  } else if (hardCaps.dtiHigh) {
+    comment =
+      "Point bloquant : votre endettement projeté dépasse nettement la cible. Le levier principal est de réduire la mensualité (durée / budget) ou de diminuer certaines charges, ou d’augmenter l’apport.";
+  } else if (hardCaps.apportLow) {
+    comment =
+      "Point d’attention : votre apport ne couvre pas les frais estimés (notaire + garantie). Beaucoup de banques demandent au minimum ces frais en apport.";
+  } else {
+    if (weakest === "apport") {
       comment =
-        "Signal rouge : votre reste à vivre après projet est négatif. Dans cette configuration, une banque refusera très probablement.";
-    } else if (hardCaps.dtiHigh) {
+        "Votre score est surtout pénalisé par un apport un peu faible par rapport aux frais. Couvrir au minimum les frais en apport améliore nettement la lecture bancaire.";
+    } else if (weakest === "dti") {
       comment =
-        "Point bloquant : votre endettement projeté dépasse nettement la cible. Le levier principal est de réduire la mensualité (durée / budget) ou de diminuer certaines charges, ou d’augmenter l’apport.";
-    } else if (hardCaps.apportLow) {
+        "Votre score est surtout lié à un endettement proche (ou au-dessus) de la cible. Le levier principal : réduire la mensualité (durée / budget) ou renforcer l’apport.";
+    } else if (weakest === "rav") {
       comment =
-        "Point d’attention : votre apport ne couvre pas les frais estimés (notaire + garantie). Beaucoup de banques demandent au minimum ces frais en apport.";
-    } else {
-      if (weakest === "apport") {
-        comment =
-          "Votre score est surtout pénalisé par un apport un peu faible par rapport aux frais. Couvrir au minimum les frais en apport améliore nettement la lecture bancaire.";
-      } else if (weakest === "dti") {
-        comment =
-          "Votre score est surtout lié à un endettement proche (ou au-dessus) de la cible. Le levier principal : réduire la mensualité (durée / budget) ou renforcer l’apport.";
-      } else if (weakest === "rav") {
-        comment =
-          "Votre score est surtout lié au reste à vivre. À situation égale, cela se joue via la maîtrise des charges fixes et le calibrage de la mensualité.";
-      } else if (weakest === "stability") {
-        comment =
-          "Selon votre statut, la banque peut être plus prudente. Il faut soigner la présentation : régularité des revenus, ancienneté, justificatifs, cohérence globale.";
-      } else if (weakest === "age") {
-        comment =
-          "La durée et l’âge en fin de prêt pèsent dans la décision. Selon les banques, il faudra peut-être ajuster la durée ou renforcer le dossier.";
-      } else if (weakest === "conso") {
-        comment =
-          "Les crédits conso/auto pèsent sur la décision. Une réduction ciblée (remboursement / regroupement) peut améliorer le score rapidement.";
-      }
+        "Votre score est surtout lié au reste à vivre. À situation égale, cela se joue via la maîtrise des charges fixes et le calibrage de la mensualité.";
+    } else if (weakest === "stability") {
+      comment =
+        "Selon votre statut, la banque peut être plus prudente. Il faut soigner la présentation : régularité des revenus, ancienneté, justificatifs, cohérence globale.";
+    } else if (weakest === "age") {
+      comment =
+        "La durée et l’âge en fin de prêt pèsent dans la décision. Selon les banques, il faudra peut-être ajuster la durée ou renforcer le dossier.";
+    } else if (weakest === "conso") {
+      comment =
+        "Les crédits conso/auto pèsent sur la décision. Une réduction ciblée (remboursement / regroupement) peut améliorer le score rapidement.";
     }
+  }
 
   if (resteApresProjet <= 0) {
     label = "Refus probable";
   }
 
-    return {
-      score: scoreR,
-      label,
-      comment,
-      details: {
-        dtiRatio: Number.isFinite(dtiRatio) ? dtiRatio : 1,
-        resteAVivreParUC: round0(resteAVivreParUC),
-        resteApresProjet: round0(resteApresProjet),
-        hardCapsApplied: hardCaps,
-        subScores: {
-          dti: round0(s_dti),
-          rav: round0(s_rav),
-          stability: round0(s_stability),
-          age: round0(s_age),
-          conso: round0(s_conso),
-          apport: round0(s_apport),
-        },
+  return {
+    score: scoreR,
+    label,
+    comment,
+    details: {
+      dtiRatio: Number.isFinite(dtiRatio) ? dtiRatio : 1,
+      resteAVivreParUC: round0(resteAVivreParUC),
+      resteApresProjet: round0(resteApresProjet),
+      hardCapsApplied: hardCaps,
+      subScores: {
+        dti: round0(s_dti),
+        rav: round0(s_rav),
+        stability: round0(s_stability),
+        age: round0(s_age),
+        conso: round0(s_conso),
+        apport: round0(s_apport),
       },
-    };
+    },
+  };
+}
+
+/* ------------------------ Action plan ------------------------ */
+function buildActionPlan(
+  resume: ResumeCapacite,
+  assessment: BankabilityAssessment,
+  tauxEndettementCible: number,
+  context: {
+    nbCredits: number;
+    typesCredits: TypeCredit[];
+    mensualitesCredits: number[];
+    resteAnneesCredits: number[];
+    tauxCredits: number[];
+    tauxCreditCible: number;
+    dureeCreditCible: number;
   }
+): string {
+  const chargesActuelles = resume.mensualitesExistantes + resume.chargesHorsCredits;
+  const margeSousCible = tauxEndettementCible - resume.tauxEndettementAvecProjet;
+  const depassementCible = resume.tauxEndettementAvecProjet - tauxEndettementCible;
 
-  /* ------------------------ Action plan ------------------------ */
-  function buildActionPlan(
-    resume: ResumeCapacite,
-    assessment: BankabilityAssessment,
-    tauxEndettementCible: number,
-    context: {
-      nbCredits: number;
-      typesCredits: TypeCredit[];
-      mensualitesCredits: number[];
-      resteAnneesCredits: number[];
-      tauxCredits: number[];
-      tauxCreditCible: number;
-      dureeCreditCible: number;
-    }
-  ): string {
-    const chargesActuelles =
-      resume.mensualitesExistantes + resume.chargesHorsCredits;
-    const margeSousCible =
-      tauxEndettementCible - resume.tauxEndettementAvecProjet;
-    const depassementCible =
-      resume.tauxEndettementAvecProjet - tauxEndettementCible;
+  const { nbCredits, typesCredits, mensualitesCredits } = context;
 
-    const { nbCredits, typesCredits, mensualitesCredits } = context;
-
-    const consoIdxs: number[] = [];
-    for (let i = 0; i < nbCredits; i++) {
-      const t = typesCredits[i];
-      if (t === "perso" || t === "auto" || t === "conso") consoIdxs.push(i);
-    }
-    const totalMensuConso = consoIdxs.reduce(
-      (s, idx) => s + (mensualitesCredits[idx] || 0),
-      0
-    );
-
-    // Numérotation dynamique (pas de trou)
-    let n = 0;
-    const blocks: string[] = [];
-    const push = (title: string, body: string) => {
-      n += 1;
-      blocks.push(`### ${n}) ${title}\n${body}`);
-    };
-
-    push(
-      "Le point de départ",
-      `Avec ${formatEuro(
-        resume.revenusPrisEnCompte
-      )} de revenus mensuels pris en compte, vos charges récurrentes tournent autour de ${formatEuro(
-        chargesActuelles
-      )}. Aujourd’hui, votre endettement est à ~${formatPct(
-        resume.tauxEndettementActuel
-      )}.`
-    );
-
-    if (assessment.details.hardCapsApplied.ravNegative) {
-      push(
-        "Signal rouge : votre reste à vivre devient négatif",
-        `Après projet, votre reste à vivre estimé est négatif (${formatEuro(
-          assessment.details.resteApresProjet
-        )}). Dans cette situation, une banque refusera très souvent.\n` +
-          `Le levier prioritaire : baisser la mensualité (durée / budget), réduire certaines charges/crédits, ou augmenter l’apport.`
-      );
-    }
-
-    if (!resume.apportCouvreFrais && resume.apportMinRecommande > 0) {
-      push(
-        "L’apport : ce que les banques aiment voir",
-        `Votre apport (${formatEuro(
-          resume.apport
-        )}) est inférieur aux frais estimés (~${formatEuro(
-          resume.apportMinRecommande
-        )}). Dans la plupart des dossiers, couvrir au moins les frais (notaire + garantie) facilite l’accord.`
-      );
-    }
-
-    if (depassementCible > 0.2) {
-      push(
-        "Revenir dans la zone “ok banque”",
-        `Votre endettement projeté ressort à ~${formatPct(
-          resume.tauxEndettementAvecProjet
-        )} pour une cible à ${formatPct(
-          tauxEndettementCible
-        )}. C’est au-dessus : il faut réduire la mensualité visée (durée / budget) ou renforcer l’apport.`
-      );
-    } else if (margeSousCible > 0.01) {
-      push(
-        "Vous avez de la marge (zone de sécurité)",
-        `Votre endettement projeté ressort à ~${formatPct(
-          resume.tauxEndettementAvecProjet
-        )} pour une cible à ${formatPct(
-          tauxEndettementCible
-        )}. Vous gardez une marge d’environ ${formatPct(margeSousCible)}.`
-      );
-    } else {
-      push(
-        "Ça passe, mais vous êtes sur la limite",
-        `Vous êtes très proche de la cible : ~${formatPct(
-          resume.tauxEndettementAvecProjet
-        )} pour ${formatPct(
-          tauxEndettementCible
-        )}. Ici, ce sont les détails qui font la différence (reste à vivre, tenue des comptes, apport, stabilité).`
-      );
-    }
-
-    // Remplace l’ancien point “négocier le taux” par quelque chose d’utile
-    push(
-      "Le levier le plus simple : ajuster la mensualité",
-      `Si vous êtes juste à la limite, le plus efficace est souvent de jouer sur la mensualité :\n` +
-        `- allonger un peu la durée (si l’âge en fin de prêt le permet)\n` +
-        `- ou viser un budget de bien légèrement inférieur\n` +
-        `L’objectif : retrouver une petite marge sous la cible d’endettement.`
-    );
-
-    if (consoIdxs.length > 0) {
-      push(
-        "Les crédits conso : le frein le plus fréquent",
-        `Vous avez ${consoIdxs.length} crédit(s) conso/auto pour une mensualité totale d’environ ${formatEuro(
-          totalMensuConso
-        )}. C’est souvent un levier fort pour améliorer l’accord.\n\n` +
-          `Deux options simples :\n` +
-          `- Remboursement ciblé (prioriser la mensualité la plus élevée)\n` +
-          `- Regroupement (réduire la mensualité globale avant de relancer le projet)`
-      );
-    } else {
-      push(
-        "Bonne nouvelle : pas de crédits conso pénalisants",
-        `Votre dossier n’est pas pénalisé par des mensualités conso. On peut se concentrer sur le projet et la qualité de présentation du dossier.`
-      );
-    }
-
-    push(
-      "La “forme” qui fait gagner du temps",
-      `Avant même de parler chiffres, la banque regarde la tenue des comptes : pas de découverts récurrents, dépenses cohérentes, justificatifs clairs, et un dossier bien présenté.`
-    );
-
-    return blocks.join("\n\n");
+  const consoIdxs: number[] = [];
+  for (let i = 0; i < nbCredits; i++) {
+    const t = typesCredits[i];
+    if (t === "perso" || t === "auto" || t === "conso") consoIdxs.push(i);
   }
+  const totalMensuConso = consoIdxs.reduce((s, idx) => s + (mensualitesCredits[idx] || 0), 0);
 
-  export type CapaciteWizardProps = {
-    showSaveButton?: boolean;
+  let n = 0;
+  const blocks: string[] = [];
+  const push = (title: string, body: string) => {
+    n += 1;
+    blocks.push(`### ${n}) ${title}\n${body}`);
   };
 
-  export default function CapaciteWizard({
-    showSaveButton = true,
-  }: CapaciteWizardProps) {
-    /* ======================== Session ======================== */
-    const [sessionEmail, setSessionEmail] = useState<string | null>(null);
-    const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  push(
+    "Le point de départ",
+    `Avec ${formatEuro(resume.revenusPrisEnCompte)} de revenus mensuels pris en compte, vos charges récurrentes tournent autour de ${formatEuro(
+      chargesActuelles
+    )}. Aujourd’hui, votre endettement est à ~${formatPct(resume.tauxEndettementActuel)}.`
+  );
 
-    useEffect(() => {
-      let mounted = true;
-      const run = async () => {
-        try {
-          if (!supabase) return;
-          const { data } = await supabase.auth.getSession();
-          const s = data.session;
-          if (!mounted) return;
-          setSessionEmail(s?.user?.email ?? null);
-          setSessionUserId(s?.user?.id ?? null);
-        } catch {
-          // silence
-        }
-      };
-      run();
-
-      const sub =
-        supabase?.auth.onAuthStateChange((_e, s) => {
-          setSessionEmail(s?.user?.email ?? null);
-          setSessionUserId(s?.user?.id ?? null);
-        }) ?? null;
-
-      return () => {
-        mounted = false;
-        sub?.data?.subscription?.unsubscribe?.();
-      };
-    }, []);
-
-    const isLoggedIn = !!sessionUserId;
-
-    /* ======================== Wizard steps ======================== */
-    const [step, setStep] = useState<number>(1);
-    const TOTAL_STEPS = 5;
-    const [maxStepReached, setMaxStepReached] = useState<number>(1);
-    useEffect(() => setMaxStepReached((m) => Math.max(m, step)), [step]);
-
-    const goNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
-    const goPrev = () => setStep((s) => Math.max(s - 1, 1));
-    const goToStep = (target: number) => {
-      const t = Math.min(Math.max(target, 1), TOTAL_STEPS);
-      if (t <= maxStepReached) setStep(t);
-    };
-
-    const stepLabels = useMemo(
-      () => [
-        "Votre projet",
-        "Votre profil",
-        "Vos revenus",
-        "Charges & crédits",
-        "Paramètres du prêt",
-      ],
-      []
+  if (assessment.details.hardCapsApplied.ravNegative) {
+    push(
+      "Signal rouge : votre reste à vivre devient négatif",
+      `Après projet, votre reste à vivre estimé est négatif (${formatEuro(assessment.details.resteApresProjet)}). Dans cette situation, une banque refusera très souvent.\n` +
+        `Le levier prioritaire : baisser la mensualité (durée / budget), réduire certaines charges/crédits, ou augmenter l’apport.`
     );
+  }
 
-    /* ======================== Common input styles ======================== */
-    const inputBase =
-      "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
-      "focus:outline-none focus:ring-1 focus:ring-emerald-500";
-
-    const inputSmall =
-      "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
-      "focus:outline-none focus:ring-1 focus:ring-emerald-500";
-
-    const selectBase =
-      "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
-      "focus:outline-none focus:ring-1 focus:ring-emerald-500";
-
-    const labelBase =
-      "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
-
-    /* ======================== Step 1: Votre projet ======================== */
-    const [projectDepartment, setProjectDepartment] = useState<string>("");
-    const [propertyKind, setPropertyKind] = useState<PropertyKind>("appartement");
-    const [projectType, setProjectType] = useState<ProjectType>("ancien");
-    const [projectUsageUI, setProjectUsageUI] = useState<ProjectUsageUI>("rp");
-    const [projectTimelineUI, setProjectTimelineUI] =
-      useState<ProjectTimelineUI>("3_6m");
-    const [apportPersonnel, setApportPersonnel] = useState<string>("");
-
-    /* ======================== Step 2: Votre profil ======================== */
-    const [ageEmprunteur, setAgeEmprunteur] = useState<string>("35");
-    const [ageCoEmprunteur, setAgeCoEmprunteur] = useState<string>("");
-    const [proStatus, setProStatus] = useState<ProStatus>("cdi");
-    const [nbAdultes, setNbAdultes] = useState<string>("2");
-    const [nbEnfants, setNbEnfants] = useState<string>("0");
-
-
-      /* ======================== Step 3: Vos revenus ======================== */
-    const [revenusNetMensuels, setRevenusNetMensuels] = useState<string>("4000");
-    const [autresRevenusMensuels, setAutresRevenusMensuels] = useState<string>("");
-    const [revenusError, setRevenusError] = useState<string | null>(null);
-
-    /* ======================== Step 4: Charges & crédits ======================== */
-    const [chargesMensuellesHorsCredits, setChargesMensuellesHorsCredits] =
-      useState<string>("");
-
-    const [nbCredits, setNbCredits] = useState<number>(0);
-    const [typesCredits, setTypesCredits] = useState<TypeCredit[]>([]);
-    const [mensualitesCredits, setMensualitesCredits] = useState<string[]>([]);
-    const [resteAnneesCredits, setResteAnneesCredits] = useState<string[]>([]);
-    const [tauxCredits, setTauxCredits] = useState<string[]>([]);
-    const [revenusLocatifs, setRevenusLocatifs] = useState<string[]>([]);
-
-    /* ======================== Step 5: Paramètres du prêt ======================== */
-    const [tauxEndettementCible, setTauxEndettementCible] =
-      useState<string>("35");
-    const [tauxCreditCible, setTauxCreditCible] = useState<string>("3.5");
-    const [dureeCreditCible, setDureeCreditCible] = useState<string>("25");
-
-    /* ======================== Résultats ======================== */
-    const [resumeCapacite, setResumeCapacite] = useState<ResumeCapacite | null>(
-      null
+  if (!resume.apportCouvreFrais && resume.apportMinRecommande > 0) {
+    push(
+      "L’apport : ce que les banques aiment voir",
+      `Votre apport (${formatEuro(resume.apport)}) est inférieur aux frais estimés (~${formatEuro(
+        resume.apportMinRecommande
+      )}). Dans la plupart des dossiers, couvrir au moins les frais (notaire + garantie) facilite l’accord.`
     );
-    const [resultCapaciteTexte, setResultCapaciteTexte] = useState<string>("");
-    const [bankability, setBankability] =
-      useState<BankabilityAssessment | null>(null);
-    const [actionPlanText, setActionPlanText] = useState<string>("");
+  }
 
-    const hasResult = !!resumeCapacite;
+  if (depassementCible > 0.2) {
+    push(
+      "Revenir dans la zone “ok banque”",
+      `Votre endettement projeté ressort à ~${formatPct(resume.tauxEndettementAvecProjet)} pour une cible à ${formatPct(
+        tauxEndettementCible
+      )}. C’est au-dessus : il faut réduire la mensualité visée (durée / budget) ou renforcer l’apport.`
+    );
+  } else if (margeSousCible > 0.01) {
+    push(
+      "Vous avez de la marge (zone de sécurité)",
+      `Votre endettement projeté ressort à ~${formatPct(resume.tauxEndettementAvecProjet)} pour une cible à ${formatPct(
+        tauxEndettementCible
+      )}. Vous gardez une marge d’environ ${formatPct(margeSousCible)}.`
+    );
+  } else {
+    push(
+      "Ça passe, mais vous êtes sur la limite",
+      `Vous êtes très proche de la cible : ~${formatPct(resume.tauxEndettementAvecProjet)} pour ${formatPct(
+        tauxEndettementCible
+      )}. Ici, ce sont les détails qui font la différence (reste à vivre, tenue des comptes, apport, stabilité).`
+    );
+  }
 
-    /* ======================== Gate (par calculette) ======================== */
-    const [unlocked, setUnlocked] = useState<boolean>(false);
-    const [leadEmail, setLeadEmail] = useState<string>("");
-    const [consentLokt, setConsentLokt] = useState<boolean>(false);
-    const [unlocking, setUnlocking] = useState<boolean>(false);
-    const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
+  push(
+    "Le levier le plus simple : ajuster la mensualité",
+    `Si vous êtes juste à la limite, le plus efficace est souvent de jouer sur la mensualité :\n` +
+      `- allonger un peu la durée (si l’âge en fin de prêt le permet)\n` +
+      `- ou viser un budget de bien légèrement inférieur\n` +
+      `L’objectif : retrouver une petite marge sous la cible d’endettement.`
+  );
 
-    const [sendByEmail, setSendByEmail] = useState<boolean>(true);
-    const [sendingEmail, setSendingEmail] = useState<boolean>(false);
-    const [sendEmailMsg, setSendEmailMsg] = useState<string | null>(null);
+  if (consoIdxs.length > 0) {
+    push(
+      "Les crédits conso : le frein le plus fréquent",
+      `Vous avez ${consoIdxs.length} crédit(s) conso/auto pour une mensualité totale d’environ ${formatEuro(
+        totalMensuConso
+      )}. C’est souvent un levier fort pour améliorer l’accord.\n\n` +
+        `Deux options simples :\n` +
+        `- Remboursement ciblé (prioriser la mensualité la plus élevée)\n` +
+        `- Regroupement (réduire la mensualité globale avant de relancer le projet)`
+    );
+  } else {
+    push(
+      "Bonne nouvelle : pas de crédits conso pénalisants",
+      `Votre dossier n’est pas pénalisé par des mensualités conso. On peut se concentrer sur le projet et la qualité de présentation du dossier.`
+    );
+  }
 
-    // 1) Restore email depuis session OU localStorage tool-specific
-    useEffect(() => {
-      if (typeof window === "undefined") return;
+  push(
+    "La “forme” qui fait gagner du temps",
+    `Avant même de parler chiffres, la banque regarde la tenue des comptes : pas de découverts récurrents, dépenses cohérentes, justificatifs clairs, et un dossier bien présenté.`
+  );
 
-      // si loggé -> pas de gate
-      if (isLoggedIn) {
-        setUnlocked(true);
-        setConsentLokt(true);
-        if (sessionEmail && !leadEmail) setLeadEmail(sessionEmail);
-        return;
+  return blocks.join("\n\n");
+}
+
+export type CapaciteWizardProps = {
+  showSaveButton?: boolean;
+};
+
+export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizardProps) {
+  /* ======================== Session ======================== */
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const run = async () => {
+      try {
+        if (!supabase) return;
+        const { data } = await supabase.auth.getSession();
+        const s = data.session;
+        if (!mounted) return;
+        setSessionEmail(s?.user?.email ?? null);
+        setSessionUserId(s?.user?.id ?? null);
+      } catch {
+        // silence
       }
-
-      const fromSession = safeEmail(sessionEmail ?? "");
-      const fromStorage = loadLeadEmail("capacite");
-      const next = fromSession || fromStorage;
-
-      if (next && safeEmail(leadEmail) !== next) {
-        setLeadEmail(next);
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionEmail, isLoggedIn]);
-
-    // 2) Persist email au fil de l’eau (tool-specific)
-    useEffect(() => {
-      const e = safeEmail(leadEmail);
-      if (!e) return;
-      persistLeadEmail("capacite", e);
-    }, [leadEmail]);
-
-    // 3) Restore unlock tool-specific (et invalide si email change)
-    useEffect(() => {
-      if (typeof window === "undefined") return;
-
-      if (isLoggedIn) {
-        setUnlocked(true);
-        setConsentLokt(true);
-        return;
-      }
-
-      const e = safeEmail(leadEmail);
-      if (!e) {
-        setUnlocked(false);
-        return;
-      }
-
-      const ok = isUnlockedForEmail("capacite", e);
-      setUnlocked(ok);
-      if (ok) setConsentLokt(true);
-    }, [leadEmail, isLoggedIn]);
-
-    /* ======================== Labels ======================== */
-    const projectTypeLabel = useMemo(() => {
-      if (projectType === "neuf") return "Neuf / VEFA";
-      if (projectType === "terrain") return "Terrain + construction";
-      return "Ancien";
-    }, [projectType]);
-
-    const proStatusLabel = useMemo(() => {
-      if (proStatus === "fonctionnaire") return "Fonctionnaire";
-      if (proStatus === "independant") return "Indépendant / société";
-      if (proStatus === "retraite") return "Retraité";
-      if (proStatus === "autre") return "Autre";
-      return "CDI";
-    }, [proStatus]);
-
-    const propertyKindLabel = useMemo(() => {
-      if (propertyKind === "maison") return "Maison";
-      if (propertyKind === "terrain") return "Terrain";
-      if (propertyKind === "autre") return "Autre";
-      return "Appartement";
-    }, [propertyKind]);
-
-    const projectUsageLabel = useMemo(() => {
-      if (projectUsageUI === "rs") return "Résidence secondaire";
-      if (projectUsageUI === "invest") return "Investissement";
-      return "Résidence principale";
-    }, [projectUsageUI]);
-
-    const projectTimelineLabel = useMemo(() => {
-      if (projectTimelineUI === "0_3m") return "0–3 mois";
-      if (projectTimelineUI === "3_6m") return "3–6 mois";
-      if (projectTimelineUI === "6_12m") return "6–12 mois";
-      if (projectTimelineUI === "12m_plus") return "12+ mois";
-      return "Je me renseigne";
-    }, [projectTimelineUI]);
-
-    /* ======================== Crédits: gestion dynamique ======================== */
-    const handleNbCreditsChange = (value: number) => {
-      const n = Math.min(Math.max(value, 0), 5);
-      setNbCredits(n);
-
-      setTypesCredits((prev) => {
-        const arr = [...prev];
-        while (arr.length < n) arr.push("immo");
-        return arr.slice(0, n);
-      });
-
-      setMensualitesCredits((prev) => {
-        const arr = [...prev];
-        while (arr.length < n) arr.push("");
-        return arr.slice(0, n);
-      });
-
-      setResteAnneesCredits((prev) => {
-        const arr = [...prev];
-        while (arr.length < n) arr.push("10");
-        return arr.slice(0, n);
-      });
-
-      setTauxCredits((prev) => {
-        const arr = [...prev];
-        while (arr.length < n) arr.push("1.5");
-        return arr.slice(0, n);
-      });
-
-      setRevenusLocatifs((prev) => {
-        const arr = [...prev];
-        while (arr.length < n) arr.push("");
-        return arr.slice(0, n);
-      });
     };
+    run();
 
-    const handleTypeCreditChange = (index: number, value: TypeCredit) => {
-      setTypesCredits((prev) => {
-        const arr = [...prev];
-        arr[index] = value;
-        return arr;
-      });
+    const sub =
+      supabase?.auth.onAuthStateChange((_e, s) => {
+        setSessionEmail(s?.user?.email ?? null);
+        setSessionUserId(s?.user?.id ?? null);
+      }) ?? null;
+
+    return () => {
+      mounted = false;
+      sub?.data?.subscription?.unsubscribe?.();
     };
+  }, []);
 
-    const handleMensualiteChange = (index: number, value: string) => {
-      setMensualitesCredits((prev) => {
-        const arr = [...prev];
-        arr[index] = value;
-        return arr;
-      });
-    };
+  const isLoggedIn = !!sessionUserId;
 
-    const handleResteAnneesChange = (index: number, value: string) => {
-      setResteAnneesCredits((prev) => {
-        const arr = [...prev];
-        arr[index] = value;
-        return arr;
-      });
-    };
+  /* ======================== Wizard steps ======================== */
+  const [step, setStep] = useState<number>(1);
+  const TOTAL_STEPS = 5;
+  const [maxStepReached, setMaxStepReached] = useState<number>(1);
+  useEffect(() => setMaxStepReached((m) => Math.max(m, step)), [step]);
 
-    const handleTauxCreditChange = (index: number, value: string) => {
-      setTauxCredits((prev) => {
-        const arr = [...prev];
-        arr[index] = value;
-        return arr;
-      });
-    };
+  const goNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
+  const goPrev = () => setStep((s) => Math.max(s - 1, 1));
+  const goToStep = (target: number) => {
+    const t = Math.min(Math.max(target, 1), TOTAL_STEPS);
+    if (t <= maxStepReached) setStep(t);
+  };
 
-    const handleRevenuLocatifChange = (index: number, value: string) => {
-      setRevenusLocatifs((prev) => {
-        const arr = [...prev];
-        arr[index] = value;
-        return arr;
-      });
-    };
+  const stepLabels = useMemo(
+    () => ["Votre projet", "Votre profil", "Vos revenus", "Charges & crédits", "Paramètres du prêt"],
+    []
+  );
 
-    /* ======================== Calcul global ======================== */
-    const computeAll = () => {
-      // conversions (permet de garder UI en string)
-      const revenusNet = toInt(revenusNetMensuels, 0);
-      const autresRev = toInt(autresRevenusMensuels, 0);
-      const chargesHors = toInt(chargesMensuellesHorsCredits, 0);
+  /* ======================== Common input styles ======================== */
+  const inputBase =
+    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
+    "focus:outline-none focus:ring-1 focus:ring-emerald-500";
+  const inputSmall =
+    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
+    "focus:outline-none focus:ring-1 focus:ring-emerald-500";
+  const selectBase =
+    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
+    "focus:outline-none focus:ring-1 focus:ring-emerald-500";
+  const labelBase = "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
 
+  /* ======================== Step 1: Votre projet ======================== */
+  const [projectDepartment, setProjectDepartment] = useState<string>("");
+  const [propertyKind, setPropertyKind] = useState<PropertyKind>("appartement");
+  const [projectType, setProjectType] = useState<ProjectType>("ancien");
+  const [projectUsageUI, setProjectUsageUI] = useState<ProjectUsageUI>("rp");
+  const [projectTimelineUI, setProjectTimelineUI] = useState<ProjectTimelineUI>("3_6m");
+  const [apportPersonnel, setApportPersonnel] = useState<string>("");
+
+  /* ======================== Step 2: Votre profil ======================== */
+  const [ageEmprunteur, setAgeEmprunteur] = useState<string>("35");
+  const [ageCoEmprunteur, setAgeCoEmprunteur] = useState<string>("");
+  const [proStatus, setProStatus] = useState<ProStatus>("cdi");
+  const [nbAdultes, setNbAdultes] = useState<string>("2");
+  const [nbEnfants, setNbEnfants] = useState<string>("0");
+
+  /* ======================== Step 3: Vos revenus ======================== */
+  const [revenusNetMensuels, setRevenusNetMensuels] = useState<string>("4000");
+  const [autresRevenusMensuels, setAutresRevenusMensuels] = useState<string>("");
+  const [revenusError, setRevenusError] = useState<string | null>(null);
+
+  /* ======================== Step 4: Charges & crédits ======================== */
+  const [chargesMensuellesHorsCredits, setChargesMensuellesHorsCredits] = useState<string>("");
+
+  const [nbCredits, setNbCredits] = useState<number>(0);
+  const [typesCredits, setTypesCredits] = useState<TypeCredit[]>([]);
+  const [mensualitesCredits, setMensualitesCredits] = useState<string[]>([]);
+  const [resteAnneesCredits, setResteAnneesCredits] = useState<string[]>([]);
+  const [tauxCredits, setTauxCredits] = useState<string[]>([]);
+  const [revenusLocatifs, setRevenusLocatifs] = useState<string[]>([]);
+
+  /* ======================== Step 5: Paramètres du prêt ======================== */
+  const [tauxEndettementCible, setTauxEndettementCible] = useState<string>("35");
+  const [tauxCreditCible, setTauxCreditCible] = useState<string>("3.5");
+  const [tauxAssuranceCible, setTauxAssuranceCible] = useState<string>("0.30");
+  const [dureeCreditCible, setDureeCreditCible] = useState<string>("25");
+
+  /* ======================== Résultats ======================== */
+  const [resumeCapacite, setResumeCapacite] = useState<ResumeCapacite | null>(null);
+  const [resultCapaciteTexte, setResultCapaciteTexte] = useState<string>("");
+  const [bankability, setBankability] = useState<BankabilityAssessment | null>(null);
+  const [actionPlanText, setActionPlanText] = useState<string>("");
+
+  // ✅ FIX: on stocke le computeAll (sinon computedAll restait null → synthèse jamais visible)
+  const [computedAll, setComputedAll] = useState<ComputedAll | null>(null);
+
+  const hasResult = !!resumeCapacite;
+
+  /* ======================== Gate (par calculette) ======================== */
+  const [unlocked, setUnlocked] = useState<boolean>(false);
+  const [leadEmail, setLeadEmail] = useState<string>("");
+  const [consentLokt, setConsentLokt] = useState<boolean>(false);
+  const [consentContact, setConsentContact] = useState<boolean>(false);
+  const [unlocking, setUnlocking] = useState<boolean>(false);
+  const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
+
+  const [sendByEmail, setSendByEmail] = useState<boolean>(true);
+  const [sendingEmail, setSendingEmail] = useState<boolean>(false);
+  const [sendEmailMsg, setSendEmailMsg] = useState<string | null>(null);
+
+  // 1) Restore email depuis session OU localStorage tool-specific
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // si loggé -> pas de gate
+    if (isLoggedIn) {
+      setUnlocked(true);
+      setConsentLokt(true);
+      if (sessionEmail && !leadEmail) setLeadEmail(sessionEmail);
+      return;
+    }
+
+    const fromSession = safeEmail(sessionEmail ?? "");
+    const fromStorage = loadLeadEmail("capacite");
+    const next = fromSession || fromStorage;
+
+    if (next && safeEmail(leadEmail) !== next) {
+      setLeadEmail(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionEmail, isLoggedIn]);
+
+  // 2) Persist email au fil de l’eau (tool-specific)
+  useEffect(() => {
+    const e = safeEmail(leadEmail);
+    if (!e) return;
+    persistLeadEmail("capacite", e);
+  }, [leadEmail]);
+
+  // 3) Restore unlock tool-specific (et invalide si email change)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (isLoggedIn) {
+      setUnlocked(true);
+      setConsentLokt(true);
+      return;
+    }
+
+    const e = safeEmail(leadEmail);
+    if (!e) {
+      setUnlocked(false);
+      return;
+    }
+
+    const ok = isUnlockedForEmail("capacite", e);
+    setUnlocked(ok);
+    if (ok) setConsentLokt(true);
+  }, [leadEmail, isLoggedIn]);
+
+  /* ======================== Labels ======================== */
+  const projectTypeLabel = useMemo(() => {
+    if (projectType === "neuf") return "Neuf / VEFA";
+    if (projectType === "terrain") return "Terrain + construction";
+    return "Ancien";
+  }, [projectType]);
+
+  const proStatusLabel = useMemo(() => {
+    if (proStatus === "fonctionnaire") return "Fonctionnaire";
+    if (proStatus === "independant") return "Indépendant / société";
+    if (proStatus === "retraite") return "Retraité";
+    if (proStatus === "autre") return "Autre";
+    return "CDI";
+  }, [proStatus]);
+
+  const propertyKindLabel = useMemo(() => {
+    if (propertyKind === "maison") return "Maison";
+    if (propertyKind === "terrain") return "Terrain";
+    if (propertyKind === "autre") return "Autre";
+    return "Appartement";
+  }, [propertyKind]);
+
+  const projectUsageLabel = useMemo(() => {
+    if (projectUsageUI === "rs") return "Résidence secondaire";
+    if (projectUsageUI === "invest") return "Investissement";
+    return "Résidence principale";
+  }, [projectUsageUI]);
+
+  const projectTimelineLabel = useMemo(() => {
+    if (projectTimelineUI === "0_3m") return "0–3 mois";
+    if (projectTimelineUI === "3_6m") return "3–6 mois";
+    if (projectTimelineUI === "6_12m") return "6–12 mois";
+    if (projectTimelineUI === "12m_plus") return "12+ mois";
+    return "Je me renseigne";
+  }, [projectTimelineUI]);
+
+  /* ======================== Crédits: gestion dynamique ======================== */
+  const handleNbCreditsChange = (value: number) => {
+    const n = Math.min(Math.max(value, 0), 5);
+    setNbCredits(n);
+
+    setTypesCredits((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push("immo");
+      return arr.slice(0, n);
+    });
+
+    setMensualitesCredits((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push("");
+      return arr.slice(0, n);
+    });
+
+    setResteAnneesCredits((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push("10");
+      return arr.slice(0, n);
+    });
+
+    setTauxCredits((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push("1.5");
+      return arr.slice(0, n);
+    });
+
+    setRevenusLocatifs((prev) => {
+      const arr = [...prev];
+      while (arr.length < n) arr.push("");
+      return arr.slice(0, n);
+    });
+  };
+
+  const handleTypeCreditChange = (index: number, value: TypeCredit) => {
+    setTypesCredits((prev) => {
+      const arr = [...prev];
+      arr[index] = value;
+      return arr;
+    });
+  };
+
+  const handleMensualiteChange = (index: number, value: string) => {
+    setMensualitesCredits((prev) => {
+      const arr = [...prev];
+      arr[index] = value;
+      return arr;
+    });
+  };
+
+  const handleResteAnneesChange = (index: number, value: string) => {
+    setResteAnneesCredits((prev) => {
+      const arr = [...prev];
+      arr[index] = value;
+      return arr;
+    });
+  };
+
+  const handleTauxCreditChange = (index: number, value: string) => {
+    setTauxCredits((prev) => {
+      const arr = [...prev];
+      arr[index] = value;
+      return arr;
+    });
+  };
+
+  const handleRevenuLocatifChange = (index: number, value: string) => {
+    setRevenusLocatifs((prev) => {
+      const arr = [...prev];
+      arr[index] = value;
+      return arr;
+    });
+  };
+
+  /* ======================== Calcul global ======================== */
+  const computeAll = (): ComputedAll => {
+    const revenusNet = toInt(revenusNetMensuels, 0);
+    const autresRev = toInt(autresRevenusMensuels, 0);
+    const chargesHors = toInt(chargesMensuellesHorsCredits, 0);
     const apport = toInt(apportPersonnel, 0);
 
-      const age1 = toInt(ageEmprunteur, 0);
-      const age2 = toInt(ageCoEmprunteur, 0);
+    const age1 = toInt(ageEmprunteur, 0);
+    const age2 = toInt(ageCoEmprunteur, 0);
 
-      const adultes = Math.max(1, toInt(nbAdultes, 1));
-      const enfants = Math.max(0, toInt(nbEnfants, 0));
+    const adultes = Math.max(1, toInt(nbAdultes, 1));
+    const enfants = Math.max(0, toInt(nbEnfants, 0));
 
-      const tauxEndettement = toFloat(tauxEndettementCible, 35);
-      const tauxCredit = toFloat(tauxCreditCible, 3.5);
-      const dureeCredit = toInt(dureeCreditCible, 25);
+    const tauxEndettement = toFloat(tauxEndettementCible, 35);
+    const tauxCredit = toFloat(tauxCreditCible, 3.5);
+    const tauxAssurance = toFloat(tauxAssuranceCible, 0.3);
+    const dureeCredit = toInt(dureeCreditCible, 25);
 
-      const mensualitesNums = mensualitesCredits.map((v) => toInt(v, 0));
-      const resteAnneesNums = resteAnneesCredits.map((v) => toInt(v, 0));
-      const tauxCreditsNums = tauxCredits.map((v) => toFloat(v, 0));
-      const loyersNums = revenusLocatifs.map((v) => toInt(v, 0));
+    const mensualitesNums = mensualitesCredits.map((v) => toInt(v, 0));
+    const resteAnneesNums = resteAnneesCredits.map((v) => toInt(v, 0));
+    const tauxCreditsNums = tauxCredits.map((v) => toFloat(v, 0));
+    const loyersNums = revenusLocatifs.map((v) => toInt(v, 0));
 
-      const revenusBase = revenusNet + autresRev;
+    const revenusBase = revenusNet + autresRev;
 
-      let revenuLocatifPrisEnCompte = 0;
-      for (let i = 0; i < nbCredits; i++) {
-        if (typesCredits[i] === "immo") {
-          const loyer = loyersNums[i] || 0;
-          revenuLocatifPrisEnCompte += loyer * 0.7;
-        }
+    let revenuLocatifPrisEnCompte = 0;
+    for (let i = 0; i < nbCredits; i++) {
+      if (typesCredits[i] === "immo") {
+        const loyer = loyersNums[i] || 0;
+        revenuLocatifPrisEnCompte += loyer * 0.7;
       }
+    }
 
-      const revenusPrisEnCompte = revenusBase + revenuLocatifPrisEnCompte;
-      const mensualitesExistantes = mensualitesNums
-        .slice(0, nbCredits)
-        .reduce((sum, v) => sum + (v || 0), 0);
+    const revenusPrisEnCompte = revenusBase + revenuLocatifPrisEnCompte;
+    const mensualitesExistantes = mensualitesNums.slice(0, nbCredits).reduce((sum, v) => sum + (v || 0), 0);
 
-      const enveloppeMax = revenusPrisEnCompte * ((tauxEndettement || 0) / 100);
-      const chargesActuelles = mensualitesExistantes + chargesHors;
-      const capaciteMensuelle = Math.max(enveloppeMax - chargesActuelles, 0);
+    const enveloppeMax = revenusPrisEnCompte * ((tauxEndettement || 0) / 100);
+    const chargesActuelles = mensualitesExistantes + chargesHors;
+    const capaciteMensuelle = Math.max(enveloppeMax - chargesActuelles, 0);
 
-      const tauxActuel =
-        revenusPrisEnCompte > 0
-          ? (chargesActuelles / revenusPrisEnCompte) * 100
-          : 0;
+    const tauxActuel = revenusPrisEnCompte > 0 ? (chargesActuelles / revenusPrisEnCompte) * 100 : 0;
 
-      const DUREE_REFERENCE = 25;
+    const tauxNotaire = projectType === "neuf" ? 0.025 : projectType === "terrain" ? 0.07 : 0.075;
+    const tauxAgence = projectType === "neuf" ? 0.0 : 0.04;
+    const denom = 1 + tauxNotaire + tauxAgence;
 
-      const montantMax = principalFromPayment(
-        capaciteMensuelle,
-        tauxCredit,
-        DUREE_REFERENCE
-      );
-      const mensualiteProjet = monthlyPayment(montantMax, tauxCredit, dureeCredit);
-
-      const tauxNotaire =
-        projectType === "neuf"
-          ? 0.025
-          : projectType === "terrain"
-          ? 0.07
-          : 0.075;
-      const tauxAgence = projectType === "neuf" ? 0.0 : 0.04;
-      const denom = 1 + tauxNotaire + tauxAgence;
-
-      const budgetTotalMax = Math.max(0, (montantMax || 0) + apport);
-
-      let prixBienMax = 0;
-      let fraisNotaireEstimes = 0;
-      let fraisAgenceEstimes = 0;
-      let coutTotalProjetMax = 0;
-
-      if (budgetTotalMax > 0 && denom > 0) {
-        prixBienMax = budgetTotalMax / denom;
-        fraisNotaireEstimes = prixBienMax * tauxNotaire;
-        fraisAgenceEstimes = prixBienMax * tauxAgence;
-        coutTotalProjetMax = prixBienMax + fraisNotaireEstimes + fraisAgenceEstimes;
-      }
-
-      const coussinGarantie =
-        prixBienMax > 0
-          ? Math.min(Math.max(prixBienMax * 0.012, 0) + 1500, 6000)
-          : 0;
-      const apportMinRecommande = Math.max(0, fraisNotaireEstimes + coussinGarantie);
-      const apportCouvreFrais =
-        apport >= apportMinRecommande && apportMinRecommande > 0;
-
-      const tauxAvecProjet =
-        revenusPrisEnCompte > 0
-          ? ((chargesActuelles + (mensualiteProjet || 0)) / revenusPrisEnCompte) *
-            100
-          : 0;
-
-      const resume: ResumeCapacite = {
-        revenusPrisEnCompte,
-        mensualitesExistantes,
-        chargesHorsCredits: chargesHors,
-        tauxEndettementActuel: tauxActuel,
-        tauxEndettementAvecProjet: tauxAvecProjet,
-        mensualiteMax: capaciteMensuelle,
-        montantMax,
-        mensualiteProjet,
-        apport,
-        budgetTotalMax,
-        apportMinRecommande,
-        apportCouvreFrais,
-        prixBienMax,
-        fraisNotaireEstimes,
-        fraisAgenceEstimes,
-        coutTotalProjetMax,
-      };
-
-      const ageMax = Math.max(age1, age2);
-      const ageFin = ageMax + (dureeCredit || 0);
-      const ageWarn = ageMax > 0 && (dureeCredit || 0) > 0 && ageFin >= 85;
-
-      const lignes: string[] = [
-        `Projet : ${propertyKindLabel} — ${projectTypeLabel} — ${projectUsageLabel} — horizon ${projectTimelineLabel}.`,
-        projectDepartment?.trim()
-          ? `Département (zone de recherche) : ${projectDepartment.trim()}.`
-          : `Département (zone de recherche) : non renseigné.`,
-        `Statut : ${proStatusLabel}. Foyer : ${adultes} adulte(s)${
-          enfants > 0 ? `, ${enfants} enfant(s)` : ""
-        }.`,
-        age1 > 0
-          ? `Âge(s) déclaré(s) : emprunteur ${age1} an(s)${
-              age2 > 0 ? `, co-emprunteur ${age2} an(s)` : ""
-            }.`
-          : `Âge(s) déclaré(s) : non renseigné.`,
-        ageWarn
-          ? `⚠️ Attention : à ${dureeCredit} ans de durée, l’âge à la fin du prêt serait ~${ageFin} ans (variable selon banques/profil).`
-          : `Âge fin de prêt estimé : ~${ageFin > 0 ? ageFin : "-"} ans.`,
-        `Vos revenus mensuels pris en compte (salaires, autres revenus et 70 % des loyers locatifs) s’élèvent à ${formatEuro(
-          revenusPrisEnCompte
-        )}.`,
-        `Vos charges récurrentes (crédits et autres charges) représentent ${formatEuro(
-          chargesActuelles
-        )} par mois, soit un taux d’endettement actuel d’environ ${formatPct(
-          tauxActuel
-        )}.`,
-        capaciteMensuelle > 0
-          ? `Votre capacité mensuelle “max” (cible ${formatPct(
-              tauxEndettement
-            )}) est ${formatEuro(
-              capaciteMensuelle
-            )}. Référence : cela donne ~${formatEuro(
-              montantMax
-            )} de capital sur 25 ans à ~${tauxCredit.toLocaleString("fr-FR", {
-              maximumFractionDigits: 2,
-            })} %.`
-          : `Avec les paramètres actuels, aucune capacité mensuelle n’apparaît si l’on reste sur un taux d’endettement cible de ${formatPct(
-              tauxEndettement
-            )}.`,
-        montantMax > 0
-          ? `Si vous gardez ce capital (~${formatEuro(
-              montantMax
-            )}) et changez la durée à ${dureeCredit} ans, la mensualité nécessaire serait ~${formatEuro(
-              mensualiteProjet
-            )} (ce qui fait varier l’endettement et le score).`
-          : `La mensualité projetée n’est pas calculable sans capital.`,
-        `Hypothèses frais (${projectTypeLabel}) : notaire ~${(
-          tauxNotaire * 100
-        ).toLocaleString("fr-FR", {
-          maximumFractionDigits: 1,
-        })}%${
-          tauxAgence > 0
-            ? `, agence ~${(tauxAgence * 100).toLocaleString("fr-FR", {
-                maximumFractionDigits: 1,
-              })}%`
-            : ""
-        }.`,
-        `Apport déclaré : ${formatEuro(
-          apport
-        )}. Apport minimum recommandé (≈ notaire + garantie/dossier) : ${formatEuro(
-          apportMinRecommande
-        )}. ${
-          apportMinRecommande > 0
-            ? apportCouvreFrais
-              ? "✅ Apport ≥ frais."
-              : "⚠️ Apport < frais : souvent bloquant."
-            : ""
-        }`,
-        prixBienMax > 0
-          ? `Budget max estimatif (apport inclus) : ${formatEuro(
-              budgetTotalMax
-            )}. Prix de bien “envisageable” ~${formatEuro(
-              prixBienMax
-            )} (coût total projet ~${formatEuro(coutTotalProjetMax)}).`
-          : `La projection d’un budget max n’est pas pertinente avec ces paramètres : retravaillez durée, taux ou charges.`,
-        `Mode “what-if durée” : le capital max est calculé sur 25 ans, puis la durée change la mensualité et donc le score.`,
-      ];
-
-      const texte = lignes.join("\n");
-
-      const assessment = computeLoktScore({
-        resume,
-        tauxEndettementCible: tauxEndettement,
-        proStatus,
-        ageEmprunteur: age1,
-        ageCoEmprunteur: age2,
-        nbAdultes: adultes,
-        nbEnfants: enfants,
-        dureeCreditCible: dureeCredit,
-        nbCredits,
-        typesCredits,
-        mensualitesCredits: mensualitesNums,
-      });
-
-      const actionPlan = buildActionPlan(resume, assessment, tauxEndettement, {
-        nbCredits,
-        typesCredits,
-        mensualitesCredits: mensualitesNums,
-        resteAnneesCredits: resteAnneesNums,
-        tauxCredits: tauxCreditsNums,
-        tauxCreditCible: tauxCredit,
-        dureeCreditCible: dureeCredit,
-      });
+    const buildScenario = (duration: number): ScenarioCapacite => {
+      const capital = principalFromPaymentWithInsurance(capaciteMensuelle, tauxCredit, duration, tauxAssurance);
+      const mensualiteCredit = monthlyPayment(capital, tauxCredit, duration);
+      const assurance = monthlyInsurance(capital, tauxAssurance);
+      const mensualiteTotale = monthlyPaymentWithInsurance(capital, tauxCredit, duration, tauxAssurance);
+      const budget = Math.max(0, capital + apport);
+      const prixBien = budget > 0 && denom > 0 ? budget / denom : 0;
 
       return {
-        resume,
-        texte,
-        assessment,
-        actionPlan,
-        parsed: {
-          revenusNet,
-          autresRev,
-          chargesHors,
-          apport,
-          age1,
-          age2,
-          adultes,
-          enfants,
-          tauxEndettement,
-          tauxCredit,
-          dureeCredit,
-          mensualitesNums,
-          resteAnneesNums,
-          tauxCreditsNums,
-          loyersNums,
-        },
+        duree: duration,
+        montantMax: capital,
+        mensualiteCreditHorsAssurance: mensualiteCredit,
+        assuranceMensuelle: assurance,
+        mensualiteProjet: mensualiteTotale,
+        budgetTotalMax: budget,
+        prixBienMax: prixBien,
       };
     };
 
-    const handleCalculCapacite = async () => {
-      setSendEmailMsg(null);
-      setUnlockMsg(null);
-      const rn = toInt(revenusNetMensuels, 0);
-      if (!revenusNetMensuels || rn <= 0) {
-        setRevenusError("Revenus obligatoires (montant > 0).");
-        setStep(3);
-        return;
-      }
-  setRevenusError(null);
+    const scenarioDurations = Array.from(new Set([15, 20, dureeCredit, 25]))
+      .filter((duration) => duration > 0)
+      .sort((a, b) => a - b);
+    const scenarios = scenarioDurations.map(buildScenario);
+    const selectedScenario = buildScenario(dureeCredit);
 
-      const computed = computeAll();
+    const montantMax = selectedScenario.montantMax;
+    const mensualiteCreditHorsAssurance = selectedScenario.mensualiteCreditHorsAssurance;
+    const assuranceMensuelle = selectedScenario.assuranceMensuelle;
+    const mensualiteProjet = selectedScenario.mensualiteProjet;
+    const budgetTotalMax = Math.max(0, (montantMax || 0) + apport);
 
-      setResumeCapacite(computed.resume);
-      setResultCapaciteTexte(computed.texte);
-      setBankability(computed.assessment);
-      setActionPlanText(computed.actionPlan);
+    let prixBienMax = 0;
+    let fraisNotaireEstimes = 0;
+    let fraisAgenceEstimes = 0;
+    let coutTotalProjetMax = 0;
 
-      if (typeof window !== "undefined") {
-        const payload = {
-          projectDepartment,
-          propertyKind,
-          projectType,
-          projectUsageUI,
-          projectTimelineUI,
-          apportPersonnel,
-          ageEmprunteur,
-          ageCoEmprunteur,
-          proStatus,
-          nbAdultes,
-          nbEnfants,
-          revenusNetMensuels,
-          autresRevenusMensuels,
-          chargesMensuellesHorsCredits,
-          nbCredits,
-          typesCredits,
-          mensualitesCredits,
-          resteAnneesCredits,
-          tauxCredits,
-          revenusLocatifs,
-          tauxCreditCible,
-          dureeCreditCible,
-          tauxEndettementCible,
-        };
-        window.localStorage.setItem(
-          CAPACITE_STORAGE_KEY,
-          JSON.stringify(payload)
-        );
-      }
+    if (budgetTotalMax > 0 && denom > 0) {
+      prixBienMax = budgetTotalMax / denom;
+      fraisNotaireEstimes = prixBienMax * tauxNotaire;
+      fraisAgenceEstimes = prixBienMax * tauxAgence;
+      coutTotalProjetMax = prixBienMax + fraisNotaireEstimes + fraisAgenceEstimes;
+    }
 
-      const el = document.getElementById("resultats-capacite");
-      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const coussinGarantie = prixBienMax > 0 ? Math.min(Math.max(prixBienMax * 0.012, 0) + 1500, 6000) : 0;
+    const apportMinRecommande = Math.max(0, fraisNotaireEstimes + coussinGarantie);
+    const apportCouvreFrais = apport >= apportMinRecommande && apportMinRecommande > 0;
+
+    const tauxAvecProjet =
+      revenusPrisEnCompte > 0 ? ((chargesActuelles + (mensualiteProjet || 0)) / revenusPrisEnCompte) * 100 : 0;
+
+    const resume: ResumeCapacite = {
+      revenusPrisEnCompte,
+      mensualitesExistantes,
+      chargesHorsCredits: chargesHors,
+      tauxEndettementActuel: tauxActuel,
+      tauxEndettementAvecProjet: tauxAvecProjet,
+      mensualiteMax: capaciteMensuelle,
+      montantMax,
+      mensualiteCreditHorsAssurance,
+      assuranceMensuelle,
+      tauxAssurance,
+      mensualiteProjet,
+      apport,
+      budgetTotalMax,
+      apportMinRecommande,
+      apportCouvreFrais,
+      prixBienMax,
+      fraisNotaireEstimes,
+      fraisAgenceEstimes,
+      coutTotalProjetMax,
     };
 
-    /* ======================== Restore inputs ======================== */
-    useEffect(() => {
-      if (typeof window === "undefined") return;
-      const raw = window.localStorage.getItem(CAPACITE_STORAGE_KEY);
-      if (!raw) return;
+    const ageMax = Math.max(age1, age2);
+    const ageFin = ageMax + (dureeCredit || 0);
+    const ageWarn = ageMax > 0 && (dureeCredit || 0) > 0 && ageFin >= 85;
 
-      try {
-        const saved = JSON.parse(raw);
+    const lignes: string[] = [
+      `Projet : ${propertyKindLabel} — ${projectTypeLabel} — ${projectUsageLabel} — horizon ${projectTimelineLabel}.`,
+      projectDepartment?.trim()
+        ? `Département (zone de recherche) : ${projectDepartment.trim()}.`
+        : `Département (zone de recherche) : non renseigné.`,
+      `Statut : ${proStatusLabel}. Foyer : ${adultes} adulte(s)${enfants > 0 ? `, ${enfants} enfant(s)` : ""}.`,
+      age1 > 0
+        ? `Âge(s) déclaré(s) : emprunteur ${age1} an(s)${age2 > 0 ? `, co-emprunteur ${age2} an(s)` : ""}.`
+        : `Âge(s) déclaré(s) : non renseigné.`,
+      ageWarn
+        ? `⚠️ Attention : à ${dureeCredit} ans de durée, l’âge à la fin du prêt serait ~${ageFin} ans (variable selon banques/profil).`
+        : `Âge fin de prêt estimé : ~${ageFin > 0 ? ageFin : "-"} ans.`,
+      `Vos revenus mensuels pris en compte (salaires, autres revenus et 70 % des loyers locatifs) s’élèvent à ${formatEuro(
+        revenusPrisEnCompte
+      )}.`,
+      `Vos charges récurrentes (crédits et autres charges) représentent ${formatEuro(
+        chargesActuelles
+      )} par mois, soit un taux d’endettement actuel d’environ ${formatPct(tauxActuel)}.`,
+      capaciteMensuelle > 0
+        ? `Votre capacité mensuelle “max” (cible ${formatPct(tauxEndettement)}) est ${formatEuro(
+            capaciteMensuelle
+          )}. Sur ${dureeCredit} ans à ~${tauxCredit.toLocaleString(
+            "fr-FR",
+            { maximumFractionDigits: 2 }
+          )} % avec une assurance estimée à ${formatPct(tauxAssurance)}, cela donne ~${formatEuro(
+            montantMax
+          )} de capital.`
+        : `Avec les paramètres actuels, aucune capacité mensuelle n’apparaît si l’on reste sur un taux d’endettement cible de ${formatPct(
+            tauxEndettement
+          )}.`,
+      montantMax > 0
+        ? `La mensualité projetée ressort à ~${formatEuro(mensualiteProjet)} assurance incluse (${formatEuro(
+            mensualiteCreditHorsAssurance
+          )} de crédit + ${formatEuro(assuranceMensuelle)} d’assurance).`
+        : `La mensualité projetée n’est pas calculable sans capital.`,
+      `Hypothèses frais (${projectTypeLabel}) : notaire ~${(tauxNotaire * 100).toLocaleString("fr-FR", {
+        maximumFractionDigits: 1,
+      })}%${
+        tauxAgence > 0
+          ? `, agence ~${(tauxAgence * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}%`
+          : ""
+      }.`,
+      `Apport déclaré : ${formatEuro(apport)}. Apport minimum recommandé (≈ notaire + garantie/dossier) : ${formatEuro(
+        apportMinRecommande
+      )}. ${
+        apportMinRecommande > 0 ? (apportCouvreFrais ? "✅ Apport ≥ frais." : "⚠️ Apport < frais : souvent bloquant.") : ""
+      }`,
+      prixBienMax > 0
+        ? `Budget max estimatif (apport inclus) : ${formatEuro(budgetTotalMax)}. Prix de bien “envisageable” ~${formatEuro(
+            prixBienMax
+          )} (coût total projet ~${formatEuro(coutTotalProjetMax)}).`
+        : `La projection d’un budget max n’est pas pertinente avec ces paramètres : retravaillez durée, taux ou charges.`,
+      `Comparaison de durées : les scénarios 15 / 20 / 25 ans recalculent le capital avec assurance incluse, pour éviter une lecture artificiellement optimiste.`,
+    ];
 
-        setProjectDepartment(saved.projectDepartment ?? "");
-        setPropertyKind(saved.propertyKind ?? "appartement");
-        setProjectType(saved.projectType ?? "ancien");
-        setProjectUsageUI(saved.projectUsageUI ?? "rp");
-        setProjectTimelineUI(saved.projectTimelineUI ?? "3_6m");
-        setApportPersonnel(saved.apportPersonnel ? String(saved.apportPersonnel) : "");
+    const texte = lignes.join("\n");
 
-        setAgeEmprunteur(saved.ageEmprunteur ? String(saved.ageEmprunteur) : "35");
-        setAgeCoEmprunteur(saved.ageCoEmprunteur ? String(saved.ageCoEmprunteur) : "");
-        setNbAdultes(saved.nbAdultes ? String(saved.nbAdultes) : "2");
-        setNbEnfants(saved.nbEnfants !== undefined ? String(saved.nbEnfants) : "0");
-        setProStatus(saved.proStatus ?? "cdi");
+    const assessment = computeLoktScore({
+      resume,
+      tauxEndettementCible: tauxEndettement,
+      proStatus,
+      ageEmprunteur: age1,
+      ageCoEmprunteur: age2,
+      nbAdultes: adultes,
+      nbEnfants: enfants,
+      dureeCreditCible: dureeCredit,
+      nbCredits,
+      typesCredits,
+      mensualitesCredits: mensualitesNums,
+    });
 
-        setRevenusNetMensuels(saved.revenusNetMensuels ? String(saved.revenusNetMensuels) : "4000");
-        setAutresRevenusMensuels(saved.autresRevenusMensuels ? String(saved.autresRevenusMensuels) : "");
+    const actionPlan = buildActionPlan(resume, assessment, tauxEndettement, {
+      nbCredits,
+      typesCredits,
+      mensualitesCredits: mensualitesNums,
+      resteAnneesCredits: resteAnneesNums,
+      tauxCredits: tauxCreditsNums,
+      tauxCreditCible: tauxCredit,
+      dureeCreditCible: dureeCredit,
+    });
 
-        setChargesMensuellesHorsCredits(
-          saved.chargesMensuellesHorsCredits ? String(saved.chargesMensuellesHorsCredits) : ""
-        );
+    return {
+      resume,
+      scenarios,
+      texte,
+      assessment,
+      actionPlan,
+      parsed: {
+        revenusNet,
+        autresRev,
+        chargesHors,
+        apport,
+        age1,
+        age2,
+        adultes,
+        enfants,
+        tauxEndettement,
+        tauxCredit,
+        tauxAssurance,
+        dureeCredit,
+        mensualitesNums,
+        resteAnneesNums,
+        tauxCreditsNums,
+        loyersNums,
+      },
+    };
+  };
 
-        setNbCredits(saved.nbCredits ?? 0);
-        setTypesCredits(saved.typesCredits ?? []);
-        setMensualitesCredits((saved.mensualitesCredits ?? []).map((x: any) => (x ? String(x) : "")));
-        setResteAnneesCredits((saved.resteAnneesCredits ?? []).map((x: any) => (x ? String(x) : "10")));
-        setTauxCredits((saved.tauxCredits ?? []).map((x: any) => (x ? String(x) : "1.5")));
-        setRevenusLocatifs((saved.revenusLocatifs ?? []).map((x: any) => (x ? String(x) : "")));
+  const handleCalculCapacite = async () => {
+    setSendEmailMsg(null);
+    setUnlockMsg(null);
 
-        setTauxCreditCible(saved.tauxCreditCible ? String(saved.tauxCreditCible) : "3.5");
-        setDureeCreditCible(saved.dureeCreditCible ? String(saved.dureeCreditCible) : "25");
-        setTauxEndettementCible(saved.tauxEndettementCible ? String(saved.tauxEndettementCible) : "35");
+    const rn = toInt(revenusNetMensuels, 0);
+    if (!revenusNetMensuels || rn <= 0) {
+      setRevenusError("Revenus obligatoires (montant > 0).");
+      setStep(3);
+      return;
+    }
+    setRevenusError(null);
 
-        setUnlockMsg(null);
-        setMaxStepReached(1);
-        setStep(1);
-      } catch (e) {
-        console.error("Erreur de restauration de la simulation capacité :", e);
-      }
-    }, []);
+    const computed = computeAll();
 
-    /* ======================== RPC lead capture ======================== */
-    const captureLeadViaRpc = async (params: {
-      email: string;
-      computed: ReturnType<typeof computeAll>;
-    }) => {
-      if (!supabase) throw new Error("Supabase non configuré.");
+    // ✅ FIX: stocker computedAll (sinon la synthèse ne s’affiche jamais)
+    setComputedAll(computed);
 
-      const email = safeEmail(params.email);
-      if (!email) throw new Error("Email manquant.");
+    setResumeCapacite(computed.resume);
+    setResultCapaciteTexte(computed.texte);
+    setBankability(computed.assessment);
+    setActionPlanText(computed.actionPlan);
 
-      const { resume, texte, assessment, actionPlan, parsed } = params.computed;
-
-      const utm = (typeof window !== "undefined" ? getUtmFromUrl() : null) ?? null;
-      const source = getSourceLabel();
-
-      const lead_age = parsed.age1 > 0 ? Math.round(parsed.age1) : null;
-      const project_budget_target =
-        resume?.prixBienMax && resume.prixBienMax > 0 ? Math.round(resume.prixBienMax) : null;
-
-      const timelineDb: ProjectTimelineDB = TIMELINE_UI_TO_DB[projectTimelineUI];
-      const usageDb: ProjectUsageDB = USAGE_UI_TO_DB[projectUsageUI];
-
-      // payload "propre" (numérisé)
+    if (typeof window !== "undefined") {
       const payload = {
-        meta: { tool: "capacite", version: "v19_simple_only_no_advanced" },
-        project: {
-          department: projectDepartment?.trim() || null,
-          propertyKind,
-          projectType,
-          usage_ui: projectUsageUI,
-          usage_db: usageDb,
-          timeline_ui: projectTimelineUI,
-          timeline_db: timelineDb,
-        },
-        profile: {
-          ageEmprunteur: parsed.age1,
-          ageCoEmprunteur: parsed.age2 > 0 ? parsed.age2 : null,
-          proStatus,
-          nbAdultes: parsed.adultes,
-          nbEnfants: parsed.enfants,
-        },
-        input: {
-          revenusNetMensuels: parsed.revenusNet,
-          autresRevenusMensuels: parsed.autresRev,
-          chargesMensuellesHorsCredits: parsed.chargesHors,
-          tauxEndettementCible: parsed.tauxEndettement,
-          nbCredits,
-          typesCredits,
-          mensualitesCredits: parsed.mensualitesNums,
-          resteAnneesCredits: parsed.resteAnneesNums,
-          tauxCredits: parsed.tauxCreditsNums,
-          revenusLocatifs: parsed.loyersNums,
-          tauxCreditCible: parsed.tauxCredit,
-          dureeCreditCible: parsed.dureeCredit,
-          apportPersonnel: parsed.apport,
-        },
-        output: {
-          resume,
-          texte,
-          bankability: {
-            score: assessment.score,
-            label: assessment.label,
-            comment: assessment.comment,
-            details: assessment.details,
-          },
-          actionPlan,
-        },
-        tracking: {
-          source,
-          utm,
-          referrer: typeof window !== "undefined" ? document.referrer || null : null,
-          path: typeof window !== "undefined" ? window.location.pathname : null,
-          createdAtClient: new Date().toISOString(),
-        },
-        consent: {
-          consent_analysis: true,
-          consent_contact: false,
-        },
-        user: { user_id: sessionUserId || null, email: sessionEmail || null },
+        projectDepartment,
+        propertyKind,
+        projectType,
+        projectUsageUI,
+        projectTimelineUI,
+        apportPersonnel,
+        ageEmprunteur,
+        ageCoEmprunteur,
+        proStatus,
+        nbAdultes,
+        nbEnfants,
+        revenusNetMensuels,
+        autresRevenusMensuels,
+        chargesMensuellesHorsCredits,
+        nbCredits,
+        typesCredits,
+        mensualitesCredits,
+        resteAnneesCredits,
+        tauxCredits,
+        revenusLocatifs,
+        tauxCreditCible,
+        tauxAssuranceCible,
+        dureeCreditCible,
+        tauxEndettementCible,
       };
+      window.localStorage.setItem(CAPACITE_STORAGE_KEY, JSON.stringify(payload));
+    }
 
-      const { error } = await supabase.rpc("upsert_lead_v1", {
-        p_tool: "capacite",
-        p_email: email,
-        p_payload: payload,
-        p_postal_code: null,
-        p_city: null,
-        p_phone: null,
-        p_source: source,
-        p_utm: utm,
-        p_lead_age: lead_age,
-        p_project_property_kind: projectType || null,
-        p_project_usage: usageDb,
-        p_project_timeline: timelineDb,
-        p_project_budget_target: project_budget_target,
+    const el = document.getElementById("resultats-capacite");
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  /* ======================== Restore inputs ======================== */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(CAPACITE_STORAGE_KEY);
+    if (!raw) return;
+
+    try {
+      const saved = JSON.parse(raw);
+
+      setProjectDepartment(saved.projectDepartment ?? "");
+      setPropertyKind(saved.propertyKind ?? "appartement");
+      setProjectType(saved.projectType ?? "ancien");
+      setProjectUsageUI(saved.projectUsageUI ?? "rp");
+      setProjectTimelineUI(saved.projectTimelineUI ?? "3_6m");
+      setApportPersonnel(saved.apportPersonnel ? String(saved.apportPersonnel) : "");
+
+      setAgeEmprunteur(saved.ageEmprunteur ? String(saved.ageEmprunteur) : "35");
+      setAgeCoEmprunteur(saved.ageCoEmprunteur ? String(saved.ageCoEmprunteur) : "");
+      setNbAdultes(saved.nbAdultes ? String(saved.nbAdultes) : "2");
+      setNbEnfants(saved.nbEnfants !== undefined ? String(saved.nbEnfants) : "0");
+      setProStatus(saved.proStatus ?? "cdi");
+
+      setRevenusNetMensuels(saved.revenusNetMensuels ? String(saved.revenusNetMensuels) : "4000");
+      setAutresRevenusMensuels(saved.autresRevenusMensuels ? String(saved.autresRevenusMensuels) : "");
+
+      setChargesMensuellesHorsCredits(saved.chargesMensuellesHorsCredits ? String(saved.chargesMensuellesHorsCredits) : "");
+
+      setNbCredits(saved.nbCredits ?? 0);
+      setTypesCredits(saved.typesCredits ?? []);
+      setMensualitesCredits((saved.mensualitesCredits ?? []).map((x: any) => (x ? String(x) : "")));
+      setResteAnneesCredits((saved.resteAnneesCredits ?? []).map((x: any) => (x ? String(x) : "10")));
+      setTauxCredits((saved.tauxCredits ?? []).map((x: any) => (x ? String(x) : "1.5")));
+      setRevenusLocatifs((saved.revenusLocatifs ?? []).map((x: any) => (x ? String(x) : "")));
+
+      setTauxCreditCible(saved.tauxCreditCible ? String(saved.tauxCreditCible) : "3.5");
+      setTauxAssuranceCible(saved.tauxAssuranceCible ? String(saved.tauxAssuranceCible) : "0.30");
+      setDureeCreditCible(saved.dureeCreditCible ? String(saved.dureeCreditCible) : "25");
+      setTauxEndettementCible(saved.tauxEndettementCible ? String(saved.tauxEndettementCible) : "35");
+
+      setUnlockMsg(null);
+      setMaxStepReached(1);
+      setStep(1);
+    } catch (e) {
+      console.error("Erreur de restauration de la simulation capacité :", e);
+    }
+  }, []);
+
+  /* ======================== RPC lead capture ======================== */
+  const captureLeadViaRpc = async (params: { email: string; computed: ComputedAll }) => {
+    if (!supabase) throw new Error("Supabase non configuré.");
+
+    const email = safeEmail(params.email);
+    if (!email) throw new Error("Email manquant.");
+
+    const { resume, texte, assessment, actionPlan, parsed } = params.computed;
+
+    const utm = (typeof window !== "undefined" ? getUtmFromUrl() : null) ?? null;
+    const source = getSourceLabel();
+
+    const lead_age = parsed.age1 > 0 ? Math.round(parsed.age1) : null;
+    const project_budget_target = resume?.prixBienMax && resume.prixBienMax > 0 ? Math.round(resume.prixBienMax) : null;
+
+    const timelineDb: ProjectTimelineDB = TIMELINE_UI_TO_DB[projectTimelineUI];
+    const usageDb: ProjectUsageDB = USAGE_UI_TO_DB[projectUsageUI];
+
+    const payload = {
+      meta: { tool: "capacite", version: "v19_simple_only_no_advanced" },
+      project: {
+        department: projectDepartment?.trim() || null,
+        propertyKind,
+        projectType,
+        usage_ui: projectUsageUI,
+        usage_db: usageDb,
+        timeline_ui: projectTimelineUI,
+        timeline_db: timelineDb,
+      },
+      profile: {
+        ageEmprunteur: parsed.age1,
+        ageCoEmprunteur: parsed.age2 > 0 ? parsed.age2 : null,
+        proStatus,
+        nbAdultes: parsed.adultes,
+        nbEnfants: parsed.enfants,
+      },
+      input: {
+        revenusNetMensuels: parsed.revenusNet,
+        autresRevenusMensuels: parsed.autresRev,
+        chargesMensuellesHorsCredits: parsed.chargesHors,
+        tauxEndettementCible: parsed.tauxEndettement,
+        nbCredits,
+        typesCredits,
+        mensualitesCredits: parsed.mensualitesNums,
+        resteAnneesCredits: parsed.resteAnneesNums,
+        tauxCredits: parsed.tauxCreditsNums,
+        revenusLocatifs: parsed.loyersNums,
+        tauxCreditCible: parsed.tauxCredit,
+        tauxAssuranceCible: parsed.tauxAssurance,
+        dureeCreditCible: parsed.dureeCredit,
+        apportPersonnel: parsed.apport,
+      },
+      output: {
+        resume,
+        scenarios: params.computed.scenarios,
+        texte,
+        bankability: {
+          score: assessment.score,
+          label: assessment.label,
+          comment: assessment.comment,
+          details: assessment.details,
+        },
+        actionPlan,
+      },
+      tracking: {
+        source,
+        utm,
+        referrer: typeof window !== "undefined" ? document.referrer || null : null,
+        path: typeof window !== "undefined" ? window.location.pathname : null,
+        createdAtClient: new Date().toISOString(),
+      },
+      consent: {
+        consent_analysis: true,
+        consent_contact: consentContact,
+      },
+      user: { user_id: sessionUserId || null, email: sessionEmail || null },
+    };
+
+    const { error } = await supabase.rpc("upsert_lead_v1", {
+      p_tool: "capacite",
+      p_email: email,
+      p_payload: payload,
+      p_postal_code: null,
+      p_city: null,
+      p_phone: null,
+      p_source: source,
+      p_utm: utm,
+      p_lead_age: lead_age,
+      p_project_property_kind: projectType || null,
+      p_project_usage: usageDb,
+      p_project_timeline: timelineDb,
+      p_project_budget_target: project_budget_target,
+    });
+
+    if (error) {
+      console.warn("[rpc upsert_lead_v1] error:", error);
+      throw new Error(error.message || "Erreur RPC");
+    }
+  };
+
+  async function sendAnalysisEmail(email: string, computed: ComputedAll) {
+    setSendEmailMsg(null);
+
+    const html = buildCapaciteEmailHtml({
+      resume: computed.resume,
+      assessment: computed.assessment,
+      actionPlan: computed.actionPlan,
+    });
+
+    const text = buildCapaciteEmailText({
+      resume: computed.resume,
+      assessment: computed.assessment,
+      actionPlan: computed.actionPlan,
+    });
+
+    const subject = "Votre rapport de capacité d’emprunt — lokt.fr";
+
+    setSendingEmail(true);
+    try {
+      const r = await fetch("/api/tools/capacite/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, subject, html, text }),
       });
 
-      if (error) {
-        console.warn("[rpc upsert_lead_v1] error:", error);
-        throw new Error(error.message || "Erreur RPC");
-      }
-    };
+      const data = await r.json().catch(() => null);
+      if (!r.ok || !data?.ok) throw new Error(data?.error || "email_failed");
 
-    function buildEmailHtml(computed: ReturnType<typeof computeAll>) {
-      const r = computed.resume;
-      const b = computed.assessment;
-
-      const lines: string[] = [];
-
-      lines.push(
-        `<div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;padding:16px;">`,
-        `<h1 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Votre capacite d'emprunt — lokt.fr</h1>`,
-        `<p style="margin:0 0 12px;color:#334155;">Recapitulatif de votre simulation.</p>`,
-        `<ul style="margin:0 0 12px;padding-left:18px;color:#0f172a;line-height:1.5;">`,
-        `<li><strong>Mensualite max :</strong> ${formatEuro(r.mensualiteMax)}</li>`,
-        `<li><strong>Capital empruntable (ref 25 ans) :</strong> ${formatEuro(r.montantMax)}</li>`,
-        `<li><strong>Budget max (avec apport) :</strong> ${formatEuro(r.budgetTotalMax)}</li>`,
-        `<li><strong>Endettement apres projet :</strong> ${formatPct(r.tauxEndettementAvecProjet)}</li>`,
-        `</ul>`
-      );
-
-      if (b) {
-        lines.push(
-          `<h2 style="margin:16px 0 8px;font-size:16px;color:#0f172a;">Score Lokt.fr</h2>`,
-          `<p style="margin:0 0 6px;color:#0f172a;"><strong>${b.score}/100</strong> — ${b.label}</p>`,
-          `<p style="margin:0 0 12px;color:#334155;line-height:1.5;">${b.comment}</p>`
-        );
-      }
-
-      if (computed.actionPlan) {
-        const blocks = computed.actionPlan
-          .split("\n\n")
-          .map((x) => x.trim())
-          .filter(Boolean)
-          .slice(0, 12);
-
-        lines.push(`<h2 style="margin:16px 0 8px;font-size:16px;color:#0f172a;">Plan d'action</h2>`);
-
-        for (const block of blocks) {
-    if (block.startsWith("###")) {
-      lines.push(
-        `<h3 style="margin:12px 0 6px;font-size:14px;color:#0f172a;">${block.replace(
-          /^###\s*/,
-          ""
-        )}</h3>`
-      );
-    } else {
-      const safe = block.replace(/\n/g, "<br/>");
-      lines.push(
-        `<p style="margin:0 0 10px;color:#0f172a;line-height:1.5;">${safe}</p>`
-      );
+      setSendEmailMsg("✅ Email envoyé (pensez à vérifier les spams si besoin).");
+      return true;
+    } catch (e: any) {
+      setSendEmailMsg("❌ Envoi email impossible : " + (e?.message || "erreur"));
+      return false;
+    } finally {
+      setSendingEmail(false);
     }
   }
-      }
 
-      lines.push(
-        `<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;"/>`,
-        `<p style="margin:0;color:#64748b;font-size:12px;">Calculs indicatifs. Ne constitue pas une offre de pret.</p>`,
-        `<p style="margin:6px 0 0;color:#64748b;font-size:12px;">— lokt.fr</p>`,
-        `</div>`
-      );
+  const handleUnlock = async () => {
+    setUnlockMsg(null);
 
-      return lines.join("");
+    if (!hasResult) {
+      setUnlockMsg("Calculez d’abord votre capacité pour débloquer l’analyse.");
+      return;
     }
 
-      async function sendAnalysisEmail(email: string, computed: ReturnType<typeof computeAll>) {
-      setSendEmailMsg(null);
-
-      const html = buildCapaciteEmailHtml({
-        resume: computed.resume,
-        assessment: computed.assessment,
-        actionPlan: computed.actionPlan,
-      });
-
-      const text = buildCapaciteEmailText({
-        resume: computed.resume,
-        assessment: computed.assessment,
-        actionPlan: computed.actionPlan,
-      });
-
-      const subject = "Votre capacité d’emprunt — lokt.fr";
-
-      setSendingEmail(true);
-      try {
-        const r = await fetch("/api/tools/capacite/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, subject, html, text }),
-        });
-
-        const data = await r.json().catch(() => null);
-        if (!r.ok || !data?.ok) throw new Error(data?.error || "email_failed");
-
-        setSendEmailMsg("✅ Email envoyé (pensez à vérifier les spams si besoin).");
-        return true;
-      } catch (e: any) {
-        setSendEmailMsg("❌ Envoi email impossible : " + (e?.message || "erreur"));
-        return false;
-      } finally {
-        setSendingEmail(false);
-      }
+    const email = safeEmail(leadEmail);
+    if (!email || !email.includes("@")) {
+      setUnlockMsg("Merci de renseigner une adresse e-mail valide.");
+      return;
     }
 
-    const handleUnlock = async () => {
-      setUnlockMsg(null);
+    if (!consentLokt) {
+      setUnlockMsg("Pour recevoir le rapport, merci d’accepter l’utilisation de vos données pour cette simulation.");
+      return;
+    }
 
-      if (!hasResult) {
-        setUnlockMsg("Calculez d’abord votre capacité pour débloquer l’analyse.");
-        return;
+    // ✅ FIX: réutilise computedAll si dispo, sinon recalcule
+    const computed = computedAll ?? computeAll();
+    if (!computedAll) setComputedAll(computed);
+
+    setUnlocking(true);
+    try {
+      await captureLeadViaRpc({ email, computed });
+
+      persistLeadEmail("capacite", email);
+      persistUnlock("capacite", email);
+
+      setUnlocked(true);
+      setUnlockMsg("✅ Rapport prêt. Votre simulation est bien enregistrée.");
+
+      if (sendByEmail) {
+        await sendAnalysisEmail(email, computed);
       }
-
-      const email = safeEmail(leadEmail);
-      if (!email || !email.includes("@")) {
-        setUnlockMsg("Merci de renseigner une adresse e-mail valide.");
-        return;
-      }
-
-      if (!consentLokt) {
-        setUnlockMsg(
-          "Pour débloquer l’analyse, merci d’accepter l’utilisation de vos données (Lokt.fr)."
-        );
-        return;
-      }
-
-      const computed = computeAll();
-
-      setUnlocking(true);
-      try {
-        await captureLeadViaRpc({ email, computed });
-
-        persistLeadEmail("capacite", email);
-        persistUnlock("capacite", email);
-
-        setUnlocked(true);
-        setUnlockMsg("✅ Analyse débloquée. (Votre simulation est bien enregistrée.)");
-              if (sendByEmail) {
-          await sendAnalysisEmail(email, computed);
-        }
-      } catch (e: any) {
-        setUnlockMsg(
-          "❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue")
-        );
-      } finally {
-        setUnlocking(false);
-      }
-    };
+    } catch (e: any) {
+      setUnlockMsg("❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue"));
+    } finally {
+      setUnlocking(false);
+    }
+  };
 
     /* ======================== Render helpers ======================== */
-    const renderRichText = (text: string) => {
-      const parts = text
-        .split("\n\n")
-        .map((s) => s.trim())
-        .filter(Boolean);
+  const renderRichText = (text: string) => {
+    const parts = text
+      .split("\n\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-      return (
-        <div className="space-y-3">
-          {parts.map((block, idx) => {
-            if (block.startsWith("### ")) {
-              const title = block.replace(/^###\s+/, "");
-              return (
-                <h4 key={idx} className="text-[0.8rem] font-semibold text-slate-900">
-                  {title}
-                </h4>
-              );
-            }
+    return (
+      <div className="space-y-3">
+        {parts.map((block, idx) => {
+          if (block.startsWith("### ")) {
+            const title = block.replace(/^###\s+/, "");
+            return (
+              <h4 key={idx} className="text-[0.8rem] font-semibold text-slate-900">
+                {title}
+              </h4>
+            );
+          }
 
-            const lines = block.split("\n");
-            const hasBullets = lines.some((l) => l.trim().startsWith("- "));
-            if (hasBullets) {
-              const before = lines
-                .filter((l) => !l.trim().startsWith("- "))
-                .join(" ")
-                .trim();
-              const bullets = lines
-                .filter((l) => l.trim().startsWith("- "))
-                .map((l) => l.replace(/^\-\s+/, "").trim());
-
-              return (
-                <div key={idx} className="space-y-2">
-                  {before ? (
-                    <p className="text-[0.75rem] text-slate-700 leading-relaxed">{before}</p>
-                  ) : null}
-                  <ul className="list-disc pl-5 space-y-1">
-                    {bullets.map((b, i) => (
-                      <li key={i} className="text-[0.75rem] text-slate-700 leading-relaxed">
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            }
+          const lines = block.split("\n");
+          const hasBullets = lines.some((l) => l.trim().startsWith("- "));
+          if (hasBullets) {
+            const before = lines
+              .filter((l) => !l.trim().startsWith("- "))
+              .join(" ")
+              .trim();
+            const bullets = lines
+              .filter((l) => l.trim().startsWith("- "))
+              .map((l) => l.replace(/^\-\s+/, "").trim());
 
             return (
-              <p key={idx} className="text-[0.75rem] text-slate-700 leading-relaxed">
-                {block}
-              </p>
-            );
-          })}
-        </div>
-      );
-    };
-
-    const scoreColor =
-      !bankability
-        ? "text-slate-900"
-        : bankability.label === "Refus probable"
-        ? "text-red-200"
-        : bankability.score >= 80
-        ? "text-emerald-300"
-        : bankability.score >= 60
-        ? "text-amber-200"
-        : "text-red-200";
-
-    const loktScoreLabel = useMemo(() => {
-      if (!bankability) return "Score Lokt.fr";
-      if (bankability.label === "Refus probable") return "Score Lokt.fr — Refus probable";
-      if (bankability.score >= 85) return "Score Lokt.fr — Très solide";
-      if (bankability.score >= 70) return "Score Lokt.fr — Solide";
-      if (bankability.score >= 55) return "Score Lokt.fr — À optimiser";
-      return "Score Lokt.fr — Sous tension";
-    }, [bankability]);
-
-    const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
-
-    const tauxCreditNum = toFloat(tauxCreditCible, 0);
-    const dureeCreditNum = toInt(dureeCreditCible, 0);
-    const tauxEndettementNum = toFloat(tauxEndettementCible, 0);
-
-    /* ======================== UI ======================== */
-    return (
-      <div className="space-y-6">
-        {/* Wizard */}
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 sm:p-6 space-y-5">
-          {/* Stepper */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex-1 overflow-x-auto">
-              <div className="flex items-center gap-2 whitespace-nowrap pr-2">
-                {stepLabels.map((label, index) => {
-                  const num = index + 1;
-                  const active = step === num;
-                  const done = step > num;
-                  const clickable = num <= maxStepReached;
-
-                  return (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => goToStep(num)}
-                      disabled={!clickable}
-                      className={
-                        "inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 transition border " +
-                        (active
-                          ? "bg-slate-900 text-white border-slate-900"
-                          : done
-                          ? "bg-emerald-50 text-slate-900 border-emerald-200 hover:bg-emerald-100"
-                          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50") +
-                        (clickable ? "" : " opacity-60 cursor-not-allowed")
-                      }
-                      aria-label={`Aller à l’étape ${num} : ${label}`}
-                      title={label}
-                    >
-                      <span
-                        className={
-                          "flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] font-semibold " +
-                          (active
-                            ? "bg-white text-slate-900"
-                            : done
-                            ? "bg-emerald-500 text-white"
-                            : "bg-slate-200 text-slate-700")
-                        }
-                      >
-                        {num}
-                      </span>
-                      <span className={"text-[0.72rem] " + (active ? "font-semibold" : "")}>
-                        {label}
-                      </span>
-                    </button>
-                  );
-                })}
+              <div key={idx} className="space-y-2">
+                {before ? (
+                  <p className="text-[0.75rem] text-slate-700 leading-relaxed">{before}</p>
+                ) : null}
+                <ul className="list-disc pl-5 space-y-1">
+                  {bullets.map((b, i) => (
+                    <li key={i} className="text-[0.75rem] text-slate-700 leading-relaxed">
+                      {b}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
+            );
+          }
 
-            <p className="text-[0.7rem] text-slate-500 shrink-0">
-              Étape {step} / {TOTAL_STEPS}
+          return (
+            <p key={idx} className="text-[0.75rem] text-slate-700 leading-relaxed">
+              {block}
             </p>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const scoreColor =
+    !bankability
+      ? "text-slate-900"
+      : bankability.label === "Refus probable"
+      ? "text-red-200"
+      : bankability.score >= 80
+      ? "text-emerald-300"
+      : bankability.score >= 60
+      ? "text-amber-200"
+      : "text-red-200";
+
+  const loktScoreLabel = useMemo(() => {
+    if (!bankability) return "Score lokt.fr";
+    if (bankability.label === "Refus probable") return "Score lokt.fr — Refus probable";
+    if (bankability.score >= 85) return "Score lokt.fr — Très solide";
+    if (bankability.score >= 70) return "Score lokt.fr — Solide";
+    if (bankability.score >= 55) return "Score lokt.fr — À optimiser";
+    return "Score lokt.fr — Sous tension";
+  }, [bankability]);
+
+  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
+
+  const tauxCreditNum = toFloat(tauxCreditCible, 0);
+  const tauxAssuranceNum = toFloat(tauxAssuranceCible, 0);
+  const dureeCreditNum = toInt(dureeCreditCible, 0);
+  const tauxEndettementNum = toFloat(tauxEndettementCible, 0);
+
+  /* ======================== UI ======================== */
+  return (
+    <div className="space-y-6">
+      {/* Wizard */}
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 sm:p-6 space-y-5">
+        {/* Stepper */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 overflow-x-auto">
+            <div className="flex items-center gap-2 whitespace-nowrap pr-2">
+              {stepLabels.map((label, index) => {
+                const num = index + 1;
+                const active = step === num;
+                const done = step > num;
+                const clickable = num <= maxStepReached;
+
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => goToStep(num)}
+                    disabled={!clickable}
+                    className={
+                      "inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 transition border " +
+                      (active
+                        ? "bg-slate-900 text-white border-slate-900"
+                        : done
+                        ? "bg-emerald-50 text-slate-900 border-emerald-200 hover:bg-emerald-100"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50") +
+                      (clickable ? "" : " opacity-60 cursor-not-allowed")
+                    }
+                    aria-label={`Aller à l’étape ${num} : ${label}`}
+                    title={label}
+                  >
+                    <span
+                      className={
+                        "flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] font-semibold " +
+                        (active
+                          ? "bg-white text-slate-900"
+                          : done
+                          ? "bg-emerald-500 text-white"
+                          : "bg-slate-200 text-slate-700")
+                      }
+                    >
+                      {num}
+                    </span>
+                    <span className={"text-[0.72rem] " + (active ? "font-semibold" : "")}>
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Contenu */}
-          <div className="border border-slate-100 rounded-xl bg-slate-50/70 p-4 space-y-3">
-            {/* === Step 1 === */}
-            {step === 1 && (
-              <>
-                <h2 className="text-sm font-semibold text-slate-900">Votre projet</h2>
-                <p className="text-[0.75rem] text-slate-600">
-                  On estime votre capacité d’emprunt et le prix de bien que vous pouvez viser (ordre de grandeur).
-                </p>
+          <p className="text-[0.7rem] text-slate-500 shrink-0">
+            Étape {step} / {TOTAL_STEPS}
+          </p>
+        </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Type de bien
-                      <InfoBadge text="Pour adapter l’estimation à votre projet (appartement, maison, etc.)." />
-                    </label>
-                    <select
-                      value={propertyKind}
-                      onChange={(e) => setPropertyKind(e.target.value as PropertyKind)}
-                      className={selectBase}
-                    >
-                      <option value="appartement">Appartement</option>
-                      <option value="maison">Maison</option>
-                      <option value="terrain">Terrain</option>
-                      <option value="autre">Autre</option>
-                    </select>
-                  </div>
+        {/* Contenu */}
+        <div className="border border-slate-100 rounded-xl bg-slate-50/70 p-4 space-y-3">
+          {step === 1 ? (
+            <>
+              <h2 className="text-sm font-semibold text-slate-900">Votre projet</h2>
+              <p className="text-[0.75rem] text-slate-600">
+                Ces informations servent à adapter les frais, le budget et la lecture bancaire de votre projet.
+              </p>
 
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Nature du projet
-                      <InfoBadge text="Les frais de notaire et d’agence ne sont pas les mêmes selon ancien/neuf/terrain." />
-                    </label>
-                    <select
-                      value={projectType}
-                      onChange={(e) => setProjectType(e.target.value as ProjectType)}
-                      className={selectBase}
-                    >
-                      <option value="ancien">Ancien</option>
-                      <option value="neuf">Neuf / VEFA</option>
-                      <option value="terrain">Terrain + construction</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Usage
-                      <InfoBadge text="Un achat pour y vivre, une résidence secondaire ou un investissement n’ont pas toujours la même lecture bancaire." />
-                    </label>
-                    <select
-                      value={projectUsageUI}
-                      onChange={(e) => setProjectUsageUI(e.target.value as ProjectUsageUI)}
-                      className={selectBase}
-                    >
-                      <option value="rp">Résidence principale</option>
-                      <option value="rs">Résidence secondaire</option>
-                      <option value="invest">Investissement</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1 lg:col-span-2">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Département (optionnel)
-                      <InfoBadge text="Optionnel : ça aide juste à comprendre la zone de recherche (sans demander d’adresse)." />
-                    </label>
-                    <input
-                      type="text"
-                      value={projectDepartment}
-                      onChange={(e) => setProjectDepartment(e.target.value)}
-                      placeholder="Ex: 75, 92, 33…"
-                      className={inputBase}
-                    />
-                    <p className="text-[0.7rem] text-slate-500">Vous pouvez laisser vide si vous ne savez pas encore.</p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Horizon
-                      <InfoBadge text="Quand vous pensez acheter : bientôt, plus tard, ou juste pour vous renseigner." />
-                    </label>
-                    <select
-                      value={projectTimelineUI}
-                      onChange={(e) => setProjectTimelineUI(e.target.value as ProjectTimelineUI)}
-                      className={selectBase}
-                    >
-                      <option value="0_3m">0–3 mois</option>
-                      <option value="3_6m">3–6 mois</option>
-                      <option value="6_12m">6–12 mois</option>
-                      <option value="12m_plus">12+ mois</option>
-                      <option value="juste_info">Je me renseigne</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Apport personnel (€)
-                      <InfoBadge text="C’est l’argent que vous mettez de côté pour l’achat. Souvent, les banques aiment au minimum que l’apport couvre les frais (notaire + garantie)." />
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={apportPersonnel}
-                      onChange={(e) => setApportPersonnel(onlyDigits(e.target.value))}
-                      placeholder="Ex: 20000"
-                      className={inputBase}
-                    />
-                  </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <label className={labelBase}>
+                    Usage du futur bien
+                    <InfoBadge text="Résidence principale, secondaire ou investissement : la banque ne lit pas toujours le dossier de la même façon." />
+                  </label>
+                  <select value={projectUsageUI} onChange={(e) => setProjectUsageUI(e.target.value as ProjectUsageUI)} className={selectBase}>
+                    <option value="rp">Résidence principale</option>
+                    <option value="rs">Résidence secondaire</option>
+                    <option value="invest">Investissement locatif</option>
+                  </select>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <p className="text-[0.75rem] text-slate-700">
-                    Résumé : <span className="font-semibold">{propertyKindLabel}</span>,{" "}
-                    <span className="font-semibold">{projectTypeLabel}</span>,{" "}
-                    <span className="font-semibold">{projectUsageLabel}</span>, horizon{" "}
-                    <span className="font-semibold">{projectTimelineLabel}</span>
-                    {projectDepartment?.trim() ? (
-                      <>
-                        {" "}
-                        — département <span className="font-semibold">{projectDepartment.trim()}</span>
-                      </>
-                    ) : null}
-                    . Apport <span className="font-semibold">{formatEuro(toInt(apportPersonnel, 0))}</span>.
-                  </p>
-                </div>
-              </>
-            )}
-
-            {/* === Step 2 === */}
-            {step === 2 && (
-              <>
-                <h2 className="text-sm font-semibold text-slate-900">Votre profil</h2>
-                <p className="text-[0.75rem] text-slate-600">
-                  Ces infos servent à estimer la lecture banque : âge, foyer et situation pro.
-                </p>
-
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Statut principal
-                      <InfoBadge text="Selon le statut, les banques ne retiennent pas les revenus de la même façon (plus ou moins “stable”)." />
-                    </label>
-                    <select
-                      value={proStatus}
-                      onChange={(e) => setProStatus(e.target.value as ProStatus)}
-                      className={selectBase}
-                    >
-                      <option value="cdi">CDI</option>
-                      <option value="fonctionnaire">Fonctionnaire</option>
-                      <option value="independant">Indépendant / société</option>
-                      <option value="retraite">Retraité</option>
-                      <option value="autre">Autre</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Âge emprunteur (ans)
-                      <InfoBadge text="La banque regarde surtout l’âge en fin de prêt (ça peut limiter la durée possible)." />
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={ageEmprunteur}
-                      onChange={(e) => setAgeEmprunteur(onlyDigits(e.target.value))}
-                      className={inputBase}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Âge co-emprunteur (optionnel)
-                      <InfoBadge text="S’il y a 2 emprunteurs, la banque retient souvent l’âge le plus élevé." />
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={ageCoEmprunteur}
-                      onChange={(e) => setAgeCoEmprunteur(onlyDigits(e.target.value))}
-                      className={inputBase}
-                      placeholder="Laisser vide si non"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Adultes dans le foyer
-                      <InfoBadge text="Sert à estimer le “reste à vivre” par personne (plus il y a de personnes, plus le budget de vie doit être confortable)." />
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={nbAdultes}
-                      onChange={(e) => setNbAdultes(onlyDigits(e.target.value))}
-                      className={inputBase}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700 flex items-center gap-1">
-                      Enfants à charge
-                      <InfoBadge text="Le reste à vivre “attendu” augmente généralement avec le nombre d’enfants." />
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={nbEnfants}
-                      onChange={(e) => setNbEnfants(onlyDigits(e.target.value))}
-                      className={inputBase}
-                    />
-                  </div>
-
-                  <div className="rounded-xl border border-slate-200 bg-white p-3 sm:col-span-2 lg:col-span-3">
-                    <p className="text-[0.75rem] text-slate-700">
-                      Lecture banque : <span className="font-semibold">{proStatusLabel}</span> — foyer{" "}
-                      <span className="font-semibold">
-                        {toInt(nbAdultes, 1)} adulte(s)
-                        {toInt(nbEnfants, 0) > 0 ? `, ${toInt(nbEnfants, 0)} enfant(s)` : ""}
-                      </span>
-                      — âge emprunteur <span className="font-semibold">{ageEmprunteur || "-"}</span>
-                      {ageCoEmprunteur ? (
-                        <>
-                          {" "}
-                          / co-emprunteur <span className="font-semibold">{ageCoEmprunteur}</span>
-                        </>
-                      ) : null}
-                      .
-                    </p>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* === Step 3 === */}
-            {step === 3 && (
-              <>
-                <h2 className="text-sm font-semibold text-slate-900">Vos revenus</h2>
-                <p className="text-[0.75rem] text-slate-600">
-                  Renseignez vos revenus mensuels. Les loyers (si vous avez un crédit immo locatif) seront ajoutés à l’étape suivante.
-                </p>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700">Revenus nets du foyer (€/mois)</label>
-                      <input
-                        required
-                        inputMode="numeric"
-                        value={revenusNetMensuels}
-                        onChange={(e) => {
-                          setRevenusNetMensuels(onlyDigits(e.target.value));
-                          setRevenusError(null);
-                        }}
-                        className={
-                          inputBase + (revenusError ? " border-red-400 focus:ring-red-500" : "")
-                        }
-                        aria-invalid={!!revenusError}
-                      />
-                      {revenusError && (
-                        <p className="text-[0.7rem] text-red-600 mt-1">{revenusError}</p>
-                      )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs text-slate-700">
-                      Autres revenus récurrents (€/mois)
-                      <InfoBadge text="Exemples : pension, prime fixe, rente… Mettez uniquement ce qui est régulier." />
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={autresRevenusMensuels}
-                      onChange={(e) => setAutresRevenusMensuels(onlyDigits(e.target.value))}
-                      className={inputBase}
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <label className={labelBase}>
+                    Type de bien
+                    <InfoBadge text="Permet de qualifier le projet et de contextualiser l'analyse." />
+                  </label>
+                  <select value={propertyKind} onChange={(e) => setPropertyKind(e.target.value as PropertyKind)} className={selectBase}>
+                    <option value="appartement">Appartement</option>
+                    <option value="maison">Maison</option>
+                    <option value="terrain">Terrain</option>
+                    <option value="autre">Autre</option>
+                  </select>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <p className="text-[0.75rem] text-slate-700">
-                    Revenus déclarés :{" "}
-                    <span className="font-semibold">
-                      {formatEuro(toInt(revenusNetMensuels, 0) + toInt(autresRevenusMensuels, 0))}
-                    </span>{" "}
-                    / mois (hors loyers).
-                  </p>
+                <div className="space-y-1">
+                  <label className={labelBase}>
+                    Département
+                    <InfoBadge text="Zone de recherche indicative, par exemple 75, 78 ou 13." />
+                  </label>
+                  <input
+                    value={projectDepartment}
+                    onChange={(e) => setProjectDepartment(e.target.value.replace(/\s+/g, ""))}
+                    placeholder="ex: 78"
+                    className={inputBase}
+                  />
                 </div>
-              </>
-            )}
+              </div>
 
-            {/* === Step 4 === */}
-            {step === 4 && (
-              <>
-                <h2 className="text-sm font-semibold text-slate-900">Charges & crédits</h2>
-                <p className="text-[0.75rem] text-slate-600">
-                  Indiquez vos charges fixes (hors crédits), puis vos crédits en cours.
-                </p>
-
-                <div className="grid gap-3 sm:grid-cols-2 items-end">
-                  <div className="space-y-1">
-                    <label className={labelBase}>
-                      Charges fixes hors crédits (€/mois)
-                      <InfoBadge text="Exemples : loyer actuel, pensions, assurances, frais récurrents… Mettez un ordre de grandeur." />
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={chargesMensuellesHorsCredits}
-                      onChange={(e) => setChargesMensuellesHorsCredits(onlyDigits(e.target.value))}
-                      className={inputSmall}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className={labelBase}>
-                      Nombre de crédits en cours
-                      <InfoBadge text="Incluez prêt immo, auto, conso… Si vous avez un prêt immo locatif, on peut intégrer une partie du loyer." />
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={5}
-                      value={nbCredits}
-                      onChange={(e) => handleNbCreditsChange(parseInt(e.target.value, 10) || 0)}
-                      className={inputSmall}
-                    />
-                  </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <label className={labelBase}>
+                    Nature du projet
+                    <InfoBadge text="Les frais d'acquisition varient fortement entre ancien, neuf et terrain + construction." />
+                  </label>
+                  <select value={projectType} onChange={(e) => setProjectType(e.target.value as ProjectType)} className={selectBase}>
+                    <option value="ancien">Ancien</option>
+                    <option value="neuf">Neuf / VEFA</option>
+                    <option value="terrain">Terrain + construction</option>
+                  </select>
                 </div>
 
-                {nbCredits === 0 ? (
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
-                    <p className="text-[0.75rem] text-slate-600">
-                      Aucun crédit déclaré. Vous pouvez passer à l’étape suivante.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mt-2 space-y-3 max-h-80 overflow-y-auto pr-1">
-                    {Array.from({ length: nbCredits }).map((_, index) => (
-                      <div key={index} className="rounded-xl border border-slate-200 bg-white px-3 py-2 space-y-2">
-                        <p className="text-[0.7rem] font-semibold text-slate-700">Crédit #{index + 1}</p>
+                <div className="space-y-1">
+                  <label className={labelBase}>Horizon d'achat</label>
+                  <select value={projectTimelineUI} onChange={(e) => setProjectTimelineUI(e.target.value as ProjectTimelineUI)} className={selectBase}>
+                    <option value="0_3m">0-3 mois</option>
+                    <option value="3_6m">3-6 mois</option>
+                    <option value="6_12m">6-12 mois</option>
+                    <option value="12m_plus">12+ mois</option>
+                    <option value="juste_info">Je me renseigne</option>
+                  </select>
+                </div>
 
-                        <div className="grid gap-2 sm:grid-cols-2 items-start">
-                          <div className="space-y-1">
-                            <label className="text-[0.7rem] text-slate-700">
-                              Type de crédit
-                              <InfoBadge text="Choisissez le type le plus proche : immo, auto, conso…" />
-                            </label>
-                            <select
-                              value={typesCredits[index] || "immo"}
-                              onChange={(e) => handleTypeCreditChange(index, e.target.value as TypeCredit)}
-                              className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            >
-                              <option value="immo">Crédit immobilier</option>
-                              <option value="perso">Crédit personnel</option>
-                              <option value="auto">Crédit auto</option>
-                              <option value="conso">Crédit consommation</option>
-                            </select>
-                          </div>
+                <div className="space-y-1">
+                  <label className={labelBase}>Apport personnel (€)</label>
+                  <input
+                    inputMode="numeric"
+                    value={apportPersonnel}
+                    onChange={(e) => setApportPersonnel(onlyDigits(e.target.value))}
+                    placeholder="ex: 30000"
+                    className={inputBase}
+                  />
+                </div>
+              </div>
+            </>
+          ) : null}
 
-                          <div className="space-y-1">
-                            <label className="text-[0.7rem] text-slate-700">
-                              Mensualité (€/mois)
-                              <InfoBadge text="Montant que vous payez chaque mois pour ce crédit." />
-                            </label>
-                            <input
-                              inputMode="numeric"
-                              value={mensualitesCredits[index] ?? ""}
-                              onChange={(e) => handleMensualiteChange(index, onlyDigits(e.target.value))}
-                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
-                          </div>
+          {step === 2 ? (
+            <>
+              <h2 className="text-sm font-semibold text-slate-900">Votre profil</h2>
+              <p className="text-[0.75rem] text-slate-600">
+                Profil, foyer et âge influencent la durée possible, le reste à vivre et la solidité du dossier.
+              </p>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <label className={labelBase}>
+                    Statut principal
+                    <InfoBadge text="CDI, fonctionnaire, indépendant ou retraité : la stabilité perçue change selon les banques." />
+                  </label>
+                  <select value={proStatus} onChange={(e) => setProStatus(e.target.value as ProStatus)} className={selectBase}>
+                    <option value="cdi">CDI</option>
+                    <option value="fonctionnaire">Fonctionnaire</option>
+                    <option value="independant">Indépendant / société</option>
+                    <option value="retraite">Retraité</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className={labelBase}>Âge emprunteur</label>
+                  <input
+                    inputMode="numeric"
+                    value={ageEmprunteur}
+                    onChange={(e) => setAgeEmprunteur(onlyDigits(e.target.value))}
+                    className={inputBase}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className={labelBase}>Âge co-emprunteur</label>
+                  <input
+                    inputMode="numeric"
+                    value={ageCoEmprunteur}
+                    onChange={(e) => setAgeCoEmprunteur(onlyDigits(e.target.value))}
+                    placeholder="optionnel"
+                    className={inputBase}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className={labelBase}>Adultes dans le foyer</label>
+                  <input
+                    inputMode="numeric"
+                    value={nbAdultes}
+                    onChange={(e) => setNbAdultes(onlyDigits(e.target.value))}
+                    className={inputBase}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className={labelBase}>Enfants à charge</label>
+                  <input
+                    inputMode="numeric"
+                    value={nbEnfants}
+                    onChange={(e) => setNbEnfants(onlyDigits(e.target.value))}
+                    className={inputBase}
+                  />
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          {step === 3 ? (
+            <>
+              <h2 className="text-sm font-semibold text-slate-900">Vos revenus</h2>
+              <p className="text-[0.75rem] text-slate-600">
+                Indiquez les revenus nets mensuels du foyer. Les loyers locatifs liés à des crédits existants se renseignent à l'étape suivante.
+              </p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className={labelBase}>Revenus nets mensuels du foyer (€) *</label>
+                  <input
+                    required
+                    inputMode="numeric"
+                    value={revenusNetMensuels}
+                    onChange={(e) => {
+                      setRevenusNetMensuels(onlyDigits(e.target.value));
+                      setRevenusError(null);
+                    }}
+                    className={
+                      "w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 " +
+                      (revenusError ? "border-red-400 focus:ring-red-500" : "border-slate-300 focus:ring-emerald-500")
+                    }
+                    aria-invalid={!!revenusError}
+                  />
+                  {revenusError ? <p className="text-[0.7rem] text-red-600">{revenusError}</p> : null}
+                </div>
+
+                <div className="space-y-1">
+                  <label className={labelBase}>
+                    Autres revenus mensuels (€)
+                    <InfoBadge text="Pensions, revenus réguliers ou primes mensualisées. Restez prudent." />
+                  </label>
+                  <input
+                    inputMode="numeric"
+                    value={autresRevenusMensuels}
+                    onChange={(e) => setAutresRevenusMensuels(onlyDigits(e.target.value))}
+                    placeholder="optionnel"
+                    className={inputBase}
+                  />
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          {step === 4 ? (
+            <>
+              <h2 className="text-sm font-semibold text-slate-900">Charges & crédits</h2>
+              <p className="text-[0.75rem] text-slate-600">
+                Ajoutez vos charges récurrentes et vos crédits en cours. Pour un crédit immobilier locatif, indiquez aussi le loyer perçu.
+              </p>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className={labelBase}>Charges mensuelles hors crédits (€)</label>
+                  <input
+                    inputMode="numeric"
+                    value={chargesMensuellesHorsCredits}
+                    onChange={(e) => setChargesMensuellesHorsCredits(onlyDigits(e.target.value))}
+                    placeholder="pension, loyer restant, etc."
+                    className={inputBase}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className={labelBase}>Nombre de crédits en cours</label>
+                  <select value={nbCredits} onChange={(e) => handleNbCreditsChange(Number(e.target.value))} className={selectBase}>
+                    {[0, 1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {nbCredits > 0 ? (
+                <div className="space-y-3">
+                  {Array.from({ length: nbCredits }).map((_, index) => (
+                    <div key={index} className="rounded-xl border border-slate-200 bg-white p-3 space-y-3">
+                      <p className="text-xs font-semibold text-slate-900">Crédit {index + 1}</p>
+                      <div className="grid gap-3 sm:grid-cols-5">
+                        <div className="space-y-1 sm:col-span-1">
+                          <label className="text-xs text-slate-700">Type</label>
+                          <select value={typesCredits[index] || "immo"} onChange={(e) => handleTypeCreditChange(index, e.target.value as TypeCredit)} className={selectBase}>
+                            <option value="immo">Immobilier</option>
+                            <option value="perso">Personnel</option>
+                            <option value="auto">Auto</option>
+                            <option value="conso">Conso</option>
+                          </select>
                         </div>
-
-                        <div className="grid gap-2 sm:grid-cols-3 items-start">
-                          <div className="space-y-1">
-                            <label className="text-[0.7rem] text-slate-700">
-                              Durée restante (années)
-                              <InfoBadge text="Approximation OK. Sert surtout à comprendre la structure de vos crédits." />
-                            </label>
-                            <input
-                              inputMode="numeric"
-                              value={resteAnneesCredits[index] ?? ""}
-                              onChange={(e) => handleResteAnneesChange(index, onlyDigits(e.target.value))}
-                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[0.7rem] text-slate-700">
-                              Taux du crédit (%)
-                              <InfoBadge text="Optionnel : si vous ne savez pas, laissez tel quel." />
-                            </label>
-                            <input
-                              inputMode="decimal"
-                              value={tauxCredits[index] ?? ""}
-                              onChange={(e) => handleTauxCreditChange(index, onlyNumberLike(e.target.value))}
-                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                            />
-                          </div>
-
-                          {typesCredits[index] === "immo" ? (
-                            <div className="space-y-1">
-                              <label className="text-[0.7rem] text-slate-700">
-                                Loyer associé (€/mois)
-                                <InfoBadge text="Si ce prêt finance un bien loué, indiquez le loyer mensuel. Une partie peut être comptée dans les revenus." />
-                              </label>
-                              <input
-                                inputMode="numeric"
-                                value={revenusLocatifs[index] ?? ""}
-                                onChange={(e) => handleRevenuLocatifChange(index, onlyDigits(e.target.value))}
-                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                              />
-                              <p className="text-[0.65rem] text-slate-500">
-                                Par prudence, on retient 70 % du loyer.
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="space-y-1 opacity-0 pointer-events-none select-none">
-                              <label className="text-[0.7rem] text-slate-700">—</label>
-                              <input
-                                type="text"
-                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                                value=""
-                                readOnly
-                              />
-                            </div>
-                          )}
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Mensualité (€)</label>
+                          <input inputMode="numeric" value={mensualitesCredits[index] || ""} onChange={(e) => handleMensualiteChange(index, onlyDigits(e.target.value))} className={inputSmall} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Reste (années)</label>
+                          <input inputMode="numeric" value={resteAnneesCredits[index] || ""} onChange={(e) => handleResteAnneesChange(index, onlyDigits(e.target.value))} className={inputSmall} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Taux (%)</label>
+                          <input inputMode="decimal" value={tauxCredits[index] || ""} onChange={(e) => handleTauxCreditChange(index, onlyNumberLike(e.target.value))} className={inputSmall} />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-700">Loyer mensuel (€)</label>
+                          <input
+                            inputMode="numeric"
+                            value={revenusLocatifs[index] || ""}
+                            onChange={(e) => handleRevenuLocatifChange(index, onlyDigits(e.target.value))}
+                            disabled={(typesCredits[index] || "immo") !== "immo"}
+                            placeholder={(typesCredits[index] || "immo") === "immo" ? "si locatif" : "—"}
+                            className={inputSmall + " disabled:bg-slate-100 disabled:text-slate-400"}
+                          />
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-white p-3 text-[0.75rem] text-slate-600">
+                  Aucun crédit en cours déclaré.
+                </div>
+              )}
+            </>
+          ) : null}
 
-            {/* === Step 5 === */}
-            {step === 5 && (
-              <>
-                <h2 className="text-sm font-semibold text-slate-900">Paramètres du prêt</h2>
-                <p className="text-[0.75rem] text-slate-600">
-                  Ajustez durée, taux et cible d’endettement pour affiner l’estimation.
+          {step === 5 ? (
+            <>
+              <h2 className="text-sm font-semibold text-slate-900">Paramètres du prêt</h2>
+              <p className="text-[0.75rem] text-slate-600">
+                Ajustez les hypothèses de calcul. Par défaut, la capacité est estimée avec une cible bancaire de 35 %.
+              </p>
+
+              <div className="grid gap-3 sm:grid-cols-4">
+                <div className="space-y-1">
+                  <label className={labelBase}>Taux d'endettement cible (%)</label>
+                  <input inputMode="decimal" value={tauxEndettementCible} onChange={(e) => setTauxEndettementCible(onlyNumberLike(e.target.value))} className={inputBase} />
+                </div>
+                <div className="space-y-1">
+                  <label className={labelBase}>Taux crédit indicatif (%)</label>
+                  <input inputMode="decimal" value={tauxCreditCible} onChange={(e) => setTauxCreditCible(onlyNumberLike(e.target.value))} className={inputBase} />
+                </div>
+                <div className="space-y-1">
+                  <label className={labelBase}>
+                    Assurance emprunteur (%/an)
+                    <InfoBadge text="Hypothèse annuelle appliquée au capital emprunté. Elle est intégrée dans la mensualité, comme dans la lecture bancaire." />
+                  </label>
+                  <input inputMode="decimal" value={tauxAssuranceCible} onChange={(e) => setTauxAssuranceCible(onlyNumberLike(e.target.value))} className={inputBase} />
+                </div>
+                <div className="space-y-1">
+                  <label className={labelBase}>Durée souhaitée (années)</label>
+                  <input inputMode="numeric" value={dureeCreditCible} onChange={(e) => setDureeCreditCible(onlyDigits(e.target.value))} className={inputBase} />
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-3 text-[0.75rem] text-slate-700">
+                <p className="font-semibold text-slate-900">Résumé avant calcul</p>
+                <p className="mt-1">
+                  {propertyKindLabel} — {projectTypeLabel} — {projectUsageLabel} — horizon {projectTimelineLabel}.
                 </p>
+                <p className="mt-1">
+                  Revenus déclarés : {formatEuro(toInt(revenusNetMensuels, 0) + toInt(autresRevenusMensuels, 0))} · Charges hors crédits :{" "}
+                  {formatEuro(toInt(chargesMensuellesHorsCredits, 0))} · Apport : {formatEuro(toInt(apportPersonnel, 0))}.
+                </p>
+                <p className="mt-1">
+                  Hypothèses : cible {formatPct(tauxEndettementNum)}, taux {formatPct(tauxCreditNum)}, assurance{" "}
+                  {formatPct(tauxAssuranceNum)}, durée {dureeCreditNum || "-"} ans.
+                </p>
+              </div>
+            </>
+          ) : null}
+        </div>
 
-                <div className="grid gap-3 sm:grid-cols-3 items-end">
-                  <div className="space-y-1">
-                    <label className={labelBase}>
-                      Taux du crédit (annuel, %)
-                      <InfoBadge text="Si vous ne savez pas, laissez une valeur moyenne (ex : 3,5%)." />
-                    </label>
-                    <input
-                      inputMode="decimal"
-                      value={tauxCreditCible}
-                      onChange={(e) => setTauxCreditCible(onlyNumberLike(e.target.value))}
-                      className={inputSmall}
-                    />
-                  </div>
+        {/* Navigation */}
+        <div className="flex items-center justify-between pt-1">
+          <button
+            type="button"
+            onClick={goPrev}
+            disabled={step === 1}
+            className="text-[0.75rem] text-slate-600 disabled:opacity-40 disabled:cursor-default hover:text-slate-900"
+          >
+            ← Précédent
+          </button>
 
-                  <div className="space-y-1">
-                    <label className={labelBase}>
-                      Durée du crédit (années)
-                      <InfoBadge text="Allonger la durée baisse souvent la mensualité, mais dépend de l’âge en fin de prêt selon les banques." />
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={dureeCreditCible}
-                      onChange={(e) => setDureeCreditCible(onlyDigits(e.target.value))}
-                      className={inputSmall}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className={labelBase}>
-                      Taux d&apos;endettement cible (%)
-                      <InfoBadge text="Souvent autour de 33–35 %. Certains profils peuvent dépasser, mais c’est plus exigeant." />
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={tauxEndettementCible}
-                      onChange={(e) => setTauxEndettementCible(onlyDigits(e.target.value))}
-                      className={inputSmall}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-white p-3">
-                  <p className="text-[0.75rem] text-slate-700">
-                    Hypothèse : {dureeCreditNum} ans à ~{tauxCreditNum.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%,
-                    cible endettement {tauxEndettementNum}%.
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Navigation */}
-          <div className="flex items-center justify-between pt-1">
+          {step < TOTAL_STEPS ? (
             <button
               type="button"
-              onClick={goPrev}
-              disabled={step === 1}
-              className="text-[0.75rem] text-slate-600 disabled:opacity-40 disabled:cursor-default hover:text-slate-900"
-            >
-              ← Précédent
-            </button>
-
-            {step < TOTAL_STEPS ? (
-              <button
-                type="button"
-                onClick={() => {
+              onClick={() => {
                 if (step === 3) {
                   const rn = toInt(revenusNetMensuels, 0);
                   if (!revenusNetMensuels || rn <= 0) {
@@ -2186,282 +1959,310 @@
                 setMaxStepReached((m) => Math.max(m, Math.min(step + 1, TOTAL_STEPS)));
                 goNext();
               }}
-                className="rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
-              >
-                Suivant →
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={async () => {
-                  setMaxStepReached(TOTAL_STEPS);
-                  await handleCalculCapacite();
-                }}
-                className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-lg hover:shadow-2xl active:scale-[0.99]"
-              >
-                Calculer ma capacité d&apos;emprunt
-              </button>
-            )}
-          </div>
-        </section>
-
-        {/* Résultats */}
-        <section
-          id="resultats-capacite"
-          className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600 mb-1">
-                Résultats de votre simulation
-              </p>
-              <h2 className="text-sm font-semibold text-slate-900">
-                Votre capacité d&apos;emprunt et votre budget indicatif
-              </h2>
-              <p className="text-[0.75rem] text-slate-600">
-                Chiffres “bruts” pour vous positionner. Le Score Lokt.fr™ et le plan d’action sont débloqués ensuite.
-              </p>
-            </div>
-          </div>
-
-          {!hasResult ? (
-            <p className="text-[0.8rem] text-slate-600">
-              Complétez les 5 étapes puis cliquez sur « Calculer ma capacité » pour afficher vos résultats.
-            </p>
+              className="rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
+            >
+              Suivant →
+            </button>
           ) : (
-            <>
-              {/* Cartes visibles (gratuites) */}
-              <div className="grid gap-3 sm:grid-cols-4 items-stretch">
-                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
-                  <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Mensualité max</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.mensualiteMax)}</p>
-                  <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">Capacité théorique sans dépasser la cible.</p>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
-                  <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Capital empruntable</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.montantMax)}</p>
-                  <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                    Référence : 25 ans à ~{tauxCreditNum.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%.
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
-                  <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Budget max (avec apport)</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.budgetTotalMax)}</p>
-                  <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                    Apport : {formatEuro(resumeCapacite!.apport)}{" "}
-                    {resumeCapacite!.apportMinRecommande > 0 ? (
-                      resumeCapacite!.apportCouvreFrais ? (
-                        <span className="text-emerald-700 font-semibold">— OK frais</span>
-                      ) : (
-                        <span className="text-amber-700 font-semibold">— apport &lt; frais</span>
-                      )
-                    ) : null}
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
-                  <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Endettement</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatPct(resumeCapacite!.tauxEndettementAvecProjet)}</p>
-                  <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                    Actuel : {formatPct(resumeCapacite!.tauxEndettementActuel)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-4 items-stretch mt-3">
-                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2 h-full flex flex-col">
-                  <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-                    Mensualité estimée (pour garder le capital)
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resumeCapacite!.mensualiteProjet)}</p>
-                  <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
-                    Sur {dureeCreditNum} ans à ~{tauxCreditNum.toLocaleString("fr-FR", { maximumFractionDigits: 2 })}%,
-                    pour emprunter {formatEuro(resumeCapacite!.montantMax)}.
-                  </p>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2 h-full flex flex-col">
-                  <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Lecture</p>
-                  <p className="mt-1 text-[0.75rem] text-slate-700 leading-relaxed">
-                    La durée ne change pas votre “capacité” (mensualité max), mais change la mensualité nécessaire si vous gardez le même capital — et donc l’endettement & le score.
-                  </p>
-                  <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">C’est exactement l’effet “25 ans → 2 ans”.</p>
-                </div>
-              </div>
-
-              {/* 🔒 Gate */}
-              {!canShowFullAnalysis ? (
-    <div className="space-y-3">
-
-        <LeadGate
-          theme="cyan-emerald"
-          title="Débloquer le Score Lokt.fr™"
-          subtitle="Débloquez votre score et un plan d’action concret. Pas de démarchage : on enregistre uniquement la simulation et des stats agrégées."
-          email={leadEmail}
-          setEmail={setLeadEmail}
-          consent={consentLokt}
-          setConsent={setConsentLokt}
-          unlocking={unlocking || sendingEmail}
-          unlockMsg={unlockMsg}
-          onUnlock={handleUnlock}
-          sendByEmail={sendByEmail}
-          setSendByEmail={setSendByEmail}
-          sendingEmail={sendingEmail}
-          sendEmailMsg={sendEmailMsg}
-        />
-    </div>
-  ) : null}
-
-  {/* ✅ Partie débloquée (affichée mais floutée tant que non débloquée) */}
-  {(bankability || actionPlanText || resultCapaciteTexte) && (
-    <>
-      <div className={canShowFullAnalysis ? "" : "blur-sm select-none pointer-events-none"}>
-        {bankability && (
-  <div className="mt-4 grid gap-3 sm:grid-cols-4">
-    {/* Bloc Score (compact) */}
-    <div className="rounded-xl bg-slate-900 text-white px-3 py-2.5 sm:col-span-2">
-      <p className="text-[0.65rem] uppercase tracking-[0.14em] text-cyan-200">
-        Score Lokt.fr™
-      </p>
-
-      <div className="mt-1 flex items-baseline gap-2">
-        <p
-          className={
-            "text-2xl font-semibold transition-colors " +
-            scoreTextColor(bankability.score)
-          }
-        >
-          {bankability.score}/100
-        </p>
-        <p className="text-[0.85rem] font-medium text-white">{bankability.label}</p>
-      </div>
-
-      <p className="mt-1 text-[0.75rem] text-slate-100">{bankability.comment}</p>
-
-      <p className="mt-3 text-[0.7rem] text-slate-200">
-        Indicateur indicatif : chaque banque a ses propres règles.
-      </p>
-    </div>
-
-    {/* Bloc “Comprendre” à côté */}
-    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2">
-      <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-        Détail pour comprendre
-      </p>
-
-      <div className="mt-2 grid gap-2 sm:grid-cols-3">
-        <div className="rounded-lg border border-slate-200 bg-white px-2 py-2">
-          <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-            Endettement vs cible
-          </p>
-          <p className="text-[0.8rem] text-slate-900 font-semibold">
-            {formatPct(bankability.details.dtiRatio * 100)}
-          </p>
-          <p className="text-[0.65rem] text-slate-500 mt-1">
-            100% = sur la cible
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-slate-200 bg-white px-2 py-2">
-          <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-            Reste à vivre / part (UC)
-          </p>
-          <p className="text-[0.8rem] text-slate-900 font-semibold">
-            {formatEuro(bankability.details.resteAVivreParUC)}
-          </p>
-          <p className="text-[0.65rem] text-slate-500 mt-1">
-            Approx. par unité de conso
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-slate-200 bg-white px-2 py-2">
-          <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-            Reste après projet
-          </p>
-          <p
-            className={
-              "text-[0.8rem] font-semibold " +
-              (bankability.details.resteApresProjet < 0 ? "text-red-700" : "text-slate-900")
-            }
-          >
-            {formatEuro(bankability.details.resteApresProjet)}
-          </p>
-          {bankability.details.resteApresProjet < 0 ? (
-            <p className="text-[0.7rem] text-red-700 mt-1">
-              Reste négatif = refus très probable.
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      {(bankability.details.hardCapsApplied.ravNegative ||
-        bankability.details.hardCapsApplied.ravLow ||
-        bankability.details.hardCapsApplied.dtiHigh ||
-        bankability.details.hardCapsApplied.apportLow) ? (
-        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2">
-          <p className="text-[0.7rem] text-amber-800 font-semibold">
-            Points d’attention détectés :
-          </p>
-          <ul className="mt-1 list-disc pl-5 space-y-0.5">
-            {bankability.details.hardCapsApplied.ravNegative && (
-              <li className="text-[0.7rem] text-amber-800">Reste à vivre négatif</li>
-            )}
-            {bankability.details.hardCapsApplied.ravLow && (
-              <li className="text-[0.7rem] text-amber-800">Reste à vivre très faible</li>
-            )}
-            {bankability.details.hardCapsApplied.dtiHigh && (
-              <li className="text-[0.7rem] text-amber-800">Endettement au-dessus de la cible</li>
-            )}
-            {bankability.details.hardCapsApplied.apportLow && (
-              <li className="text-[0.7rem] text-amber-800">Apport inférieur aux frais estimés</li>
-            )}
-          </ul>
-        </div>
-      ) : null}
-
-      <p className="mt-2 text-[0.75rem] text-slate-600">
-        Le score combine : endettement, reste à vivre, stabilité, âge, crédits conso et apport.
-      </p>
-    </div>
-  </div>
-)}
-
-        {actionPlanText && (
-          <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-              Plan d&apos;action Lokt.fr™
-            </p>
-            {renderRichText(actionPlanText)}
-          </div>
-        )}
-
-        {resultCapaciteTexte && (
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-1">Analyse détaillée</p>
-            {resultCapaciteTexte.split("\n").map((line, idx) => (
-              <p key={idx} className="text-[0.75rem] text-slate-700 leading-relaxed">
-                {line}
-              </p>
-            ))}
-            <p className="mt-2 text-[0.65rem] text-slate-500">Calculs indicatifs. Ne constitue pas une offre de prêt.</p>
-          </div>
-        )}
-      </div>
-
-      {!canShowFullAnalysis ? (
-        <p className="mt-3 text-[0.75rem] text-slate-500">Débloquez l’analyse pour afficher le détail.</p>
-      ) : null}
-    </>
-  )}
-
-              <p className="mt-2 text-[0.65rem] text-slate-500">
-                Résultats indicatifs. Ils ne constituent pas une offre de prêt.
-              </p>
-            </>
+            <button
+              type="button"
+              onClick={async () => {
+                setMaxStepReached(TOTAL_STEPS);
+                await handleCalculCapacite();
+              }}
+              className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-lg hover:shadow-2xl active:scale-[0.99]"
+            >
+              Calculer ma capacité d&apos;emprunt
+            </button>
           )}
-        </section>
-      </div>
-    );
+        </div>
+      </section>
+
+      {/* Résultats */}
+      <section
+        id="resultats-capacite"
+        className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600 mb-1">
+              Résultats de votre simulation
+            </p>
+            <h2 className="text-sm font-semibold text-slate-900">
+              Votre capacité d&apos;emprunt et votre budget indicatif
+            </h2>
+            <p className="text-[0.75rem] text-slate-600">
+              Chiffres “bruts” pour vous positionner. Le Score lokt.fr™ et le plan d’action sont débloqués ensuite.
+            </p>
+          </div>
+        </div>
+
+        {!hasResult ? (
+          <p className="text-[0.8rem] text-slate-600">
+            Complétez les 5 étapes puis cliquez sur « Calculer ma capacité » pour afficher vos résultats.
+          </p>
+        ) : (
+          <>
+            {/* Cartes visibles (gratuites) */}
+            <div className="grid gap-3 sm:grid-cols-4 items-stretch">
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
+                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Mensualité max</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {formatEuro(resumeCapacite!.mensualiteMax)}
+                </p>
+                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
+                  Capacité théorique sans dépasser la cible.
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
+                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Capital empruntable</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {formatEuro(resumeCapacite!.montantMax)}
+                </p>
+                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
+                  {dureeCreditNum || "-"} ans · taux {formatPct(tauxCreditNum)} · assurance {formatPct(tauxAssuranceNum)}.
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
+                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                  Budget max (avec apport)
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {formatEuro(resumeCapacite!.budgetTotalMax)}
+                </p>
+                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
+                  Apport : {formatEuro(resumeCapacite!.apport)}{" "}
+                  {resumeCapacite!.apportMinRecommande > 0 ? (
+                    resumeCapacite!.apportCouvreFrais ? (
+                      <span className="text-emerald-700 font-semibold">— OK frais</span>
+                    ) : (
+                      <span className="text-amber-700 font-semibold">— apport &lt; frais</span>
+                    )
+                  ) : null}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
+                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Endettement</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {formatPct(resumeCapacite!.tauxEndettementAvecProjet)}
+                </p>
+                <p className="mt-auto pt-1 text-[0.7rem] text-slate-500">
+                  Mensualité projet : {formatEuro(resumeCapacite!.mensualiteProjet)} assurance incluse.
+                </p>
+              </div>
+            </div>
+
+            {computedAll?.scenarios?.length ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                      Comparer les durées
+                    </p>
+                    <p className="text-[0.75rem] text-slate-600">
+                      Même cible d’endettement, même taux, assurance incluse.
+                    </p>
+                  </div>
+                  <p className="text-[0.7rem] text-slate-500">
+                    Durée sélectionnée : {dureeCreditNum || "-"} ans
+                  </p>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                  {computedAll.scenarios.map((scenario) => (
+                    <div
+                      key={scenario.duree}
+                      className={
+                        "rounded-lg border px-3 py-2 " +
+                        (scenario.duree === dureeCreditNum
+                          ? "border-emerald-300 bg-emerald-50"
+                          : "border-slate-200 bg-slate-50")
+                      }
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[0.75rem] font-semibold text-slate-900">{scenario.duree} ans</p>
+                        {scenario.duree === dureeCreditNum ? (
+                          <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[0.6rem] font-semibold text-white">
+                            choisi
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(scenario.montantMax)}</p>
+                      <p className="text-[0.68rem] text-slate-600">
+                        {formatEuro(scenario.mensualiteCreditHorsAssurance)} + {formatEuro(scenario.assuranceMensuelle)} ass.
+                      </p>
+                      <p className="mt-1 text-[0.68rem] text-slate-500">
+                        Prix bien env. {formatEuro(scenario.prixBienMax)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {/* 🔒 Gate */}
+            {!canShowFullAnalysis ? (
+              <div className="space-y-3">
+                <LeadGate
+                  theme="cyan-emerald"
+                  title="Recevoir mon rapport de capacité"
+                  subtitle="Score lokt.fr™, budget estimé, points de vigilance et plan d’action concret."
+                  email={leadEmail}
+                  setEmail={setLeadEmail}
+                  consent={consentLokt}
+                  setConsent={setConsentLokt}
+                  contactConsent={consentContact}
+                  setContactConsent={setConsentContact}
+                  unlocking={unlocking || sendingEmail}
+                  unlockMsg={unlockMsg}
+                  onUnlock={handleUnlock}
+                  sendByEmail={sendByEmail}
+                  setSendByEmail={setSendByEmail}
+                  sendingEmail={sendingEmail}
+                  sendEmailMsg={sendEmailMsg}
+                />
+              </div>
+            ) : null}
+
+            {/* ✅ Partie débloquée */}
+            {canShowFullAnalysis && bankability ? (
+              <>
+                <div className="mt-4 grid gap-3 sm:grid-cols-4 items-stretch">
+                  <div className="rounded-xl bg-slate-900 text-white px-3 py-2.5 sm:col-span-2 h-full flex flex-col">
+                    <p className="text-[0.65rem] uppercase tracking-[0.14em] text-emerald-200">{loktScoreLabel}</p>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <p className={`text-2xl font-semibold ${scoreColor}`}>{bankability.score}/100</p>
+                      <p className="text-[0.85rem] font-medium text-white">{bankability.label}</p>
+                    </div>
+                    <p className="mt-1 text-[0.75rem] text-slate-100">{bankability.comment}</p>
+                    <p className="mt-auto pt-2 text-[0.7rem] text-slate-200">
+                      Indice indicatif : il reflète surtout endettement, reste à vivre, apport et situation.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2 h-full flex flex-col">
+                    <div>
+                      <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                        Détails (pour comprendre)
+                      </p>
+
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-lg border border-slate-200 bg-white px-2 py-2">
+                          <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                            Endettement vs cible
+                          </p>
+                          <p className="text-[0.8rem] text-slate-900 mt-0.5">
+                            {(bankability.details.dtiRatio * 100).toFixed(0)}% de la cible
+                          </p>
+                        </div>
+
+                        <div className="rounded-lg border border-slate-200 bg-white px-2 py-2">
+                          <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                            Reste à vivre (par “part”)
+                          </p>
+                          <p className="text-[0.8rem] text-slate-900 mt-0.5">
+                            ~{formatEuro(bankability.details.resteAVivreParUC)}
+                          </p>
+                        </div>
+
+                        <div className="rounded-lg border border-slate-200 bg-white px-2 py-2 sm:col-span-2">
+                          <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                            Reste à vivre total après projet
+                          </p>
+                          <p
+                            className={`text-[0.8rem] mt-0.5 ${
+                              bankability.details.resteApresProjet < 0
+                                ? "text-red-700 font-semibold"
+                                : "text-slate-900"
+                            }`}
+                          >
+                            {formatEuro(bankability.details.resteApresProjet)}
+                          </p>
+                          {bankability.details.resteApresProjet < 0 ? (
+                            <p className="text-[0.7rem] text-red-700 mt-1">
+                              Un reste à vivre négatif est généralement un “non” bancaire.
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="rounded-lg border border-slate-200 bg-white px-2 py-2 sm:col-span-2">
+                          <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                            Sous-scores
+                          </p>
+                          <p className="text-[0.75rem] text-slate-700 mt-1">
+                            Endettement {bankability.details.subScores.dti} · Reste à vivre{" "}
+                            {bankability.details.subScores.rav} · Stabilité{" "}
+                            {bankability.details.subScores.stability} · Âge{" "}
+                            {bankability.details.subScores.age} · Conso{" "}
+                            {bankability.details.subScores.conso} · Apport{" "}
+                            {bankability.details.subScores.apport}
+                          </p>
+                        </div>
+                      </div>
+
+                      {(bankability.details.hardCapsApplied.ravNegative ||
+                        bankability.details.hardCapsApplied.ravLow ||
+                        bankability.details.hardCapsApplied.dtiHigh ||
+                        bankability.details.hardCapsApplied.apportLow) ? (
+                        <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2">
+                          <p className="text-[0.7rem] text-amber-800 font-semibold">
+                            Points d’attention détectés :
+                          </p>
+                          <ul className="mt-1 list-disc pl-5 space-y-0.5">
+                            {bankability.details.hardCapsApplied.ravNegative && (
+                              <li className="text-[0.7rem] text-amber-800">Reste à vivre négatif</li>
+                            )}
+                            {bankability.details.hardCapsApplied.ravLow && (
+                              <li className="text-[0.7rem] text-amber-800">Reste à vivre très faible</li>
+                            )}
+                            {bankability.details.hardCapsApplied.dtiHigh && (
+                              <li className="text-[0.7rem] text-amber-800">Endettement au-dessus de la cible</li>
+                            )}
+                            {bankability.details.hardCapsApplied.apportLow && (
+                              <li className="text-[0.7rem] text-amber-800">Apport inférieur aux frais estimés</li>
+                            )}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <p className="mt-auto pt-2 text-[0.7rem] text-slate-600">
+                      Indicateur indicatif : chaque banque a ses propres règles.
+                    </p>
+                  </div>
+                </div>
+
+                {actionPlanText ? (
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
+                      Plan d&apos;action lokt.fr™
+                    </p>
+                    {renderRichText(actionPlanText)}
+                  </div>
+                ) : null}
+
+                {resultCapaciteTexte ? (
+                  <details className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
+                    <summary className="cursor-pointer text-[0.75rem] font-semibold text-slate-900">
+                      Voir l’analyse complète (texte)
+                    </summary>
+                    <div className="mt-3">{renderRichText(resultCapaciteTexte)}</div>
+                    <p className="mt-2 text-[0.65rem] text-slate-500">
+                      Calculs indicatifs. Ne constitue pas une offre de prêt.
+                    </p>
+                  </details>
+                ) : null}
+              </>
+            ) : null}
+
+            <p className="mt-2 text-[0.65rem] text-slate-500">
+              Résultats indicatifs. Ils ne constituent pas une offre de prêt.
+            </p>
+          </>
+        )}
+      </section>
+    </div>
+  );
 }

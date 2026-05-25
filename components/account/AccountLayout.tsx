@@ -1,12 +1,12 @@
 // components/account/AccountLayout.tsx
 import Link from "next/link";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import AppHeader from "../AppHeader";
 import AppFooter from "../AppFooter";
 
 type Props = {
   userEmail: string | null;
-  active: "profile" | "securite" | "projets" | "abonnement";
+  active: "overview" | "profile" | "securite" | "projets" | "abonnement";
   onLogout: () => Promise<void> | void;
   children: ReactNode;
 };
@@ -55,6 +55,19 @@ function NavItem({
 }
 
 export default function AccountLayout({ userEmail, active, onLogout, children }: Props) {
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+
+    try {
+      await onLogout();
+    } finally {
+      window.location.href = "/";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-100">
       <AppHeader />
@@ -69,12 +82,12 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
             </div>
 
             <div className="p-3 space-y-2">
-              <NavItem href="/mon-compte/profil" active={active === "profile"} sub="Infos perso & adresse">
-                Profil
+              <NavItem href="/mon-compte" active={active === "overview"} sub="Statut & raccourcis">
+                Vue d’ensemble
               </NavItem>
 
-              <NavItem href="/mon-compte/projets" active={active === "projets"} sub="Calculettes sauvegardées">
-                Projets sauvegardés
+              <NavItem href="/mon-compte/profil" active={active === "profile"} sub="Infos perso & adresse">
+                Profil
               </NavItem>
 
               <NavItem href="/mon-compte/securite" active={active === "securite"} sub="Mot de passe & newsletter">
@@ -89,10 +102,11 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
             <div className="p-3 border-t border-slate-200">
               <button
                 type="button"
-                onClick={() => onLogout()}
-                className="w-full rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="w-full rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
               >
-                Se déconnecter
+                {loggingOut ? "Déconnexion…" : "Se déconnecter"}
               </button>
             </div>
           </div>

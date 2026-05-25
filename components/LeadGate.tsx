@@ -2,12 +2,14 @@
 import { useMemo } from "react";
 
 export default function LeadGate({
-  title = "Débloquer l’analyse",
-  subtitle = "Conservez votre simulation et débloquez l’analyse détaillée.",
+  title = "Recevoir mon rapport personnalisé",
+  subtitle = "Score, points de vigilance et plan d’action clair à conserver.",
   email,
   setEmail,
   consent,
   setConsent,
+  contactConsent,
+  setContactConsent,
   unlocking,
   unlockMsg,
   onUnlock,
@@ -25,6 +27,8 @@ export default function LeadGate({
   setEmail: (v: string) => void;
   consent: boolean;
   setConsent: (v: boolean) => void;
+  contactConsent?: boolean;
+  setContactConsent?: (v: boolean) => void;
   unlocking: boolean;
   unlockMsg: string | null;
   onUnlock: () => void;
@@ -47,6 +51,8 @@ export default function LeadGate({
 
   const showEmailOption =
     typeof sendByEmail === "boolean" && typeof setSendByEmail === "function";
+  const showContactConsent =
+    typeof contactConsent === "boolean" && typeof setContactConsent === "function";
 
   return (
     <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden">
@@ -55,7 +61,7 @@ export default function LeadGate({
 
       <div className="relative space-y-3">
         <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">
-          DÉBLOQUER
+          RAPPORT PERSONNALISÉ
         </p>
 
         <h3 className="text-lg font-semibold">{title}</h3>
@@ -75,7 +81,7 @@ export default function LeadGate({
               className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
             />
             <p className="text-[0.7rem] text-slate-300">
-              Utilisé pour enregistrer votre analyse et mesurer la demande (stats agrégées).
+              Utilisé pour vous envoyer le rapport, retrouver votre simulation et améliorer le service.
             </p>
           </div>
 
@@ -102,10 +108,10 @@ export default function LeadGate({
                 />
                 <div className="text-[0.75rem] text-slate-100 leading-relaxed">
                   <p className="font-semibold">
-                    Recevoir l’analyse complète par email
+                    Recevoir le rapport complet par email
                   </p>
                   <p className="text-[0.7rem] text-slate-300 mt-1">
-                    Pratique pour relire vos résultats plus tard ou les partager.
+                    Score, synthèse, points de vigilance et plan d’action.
                   </p>
                 </div>
               </div>
@@ -150,15 +156,48 @@ export default function LeadGate({
                 className="text-[0.75rem] text-slate-200 leading-relaxed cursor-pointer"
               >
                 <span className="font-semibold">J’accepte</span> que mes données
-                soient utilisées pour enregistrer mon analyse et améliorer
-                Lokt.fr (statistiques anonymisées).
+                soient utilisées pour m’envoyer mon rapport, retrouver ma
+                simulation et améliorer lokt.fr.
                 <span className="block mt-2 text-[0.7rem] text-slate-300">
-                  Pas de démarchage partenaire. Aucun consentement “recontact”
-                  n’est demandé.
+                  Aucune revente de données. Aucun démarchage partenaire sans accord séparé.
                 </span>
               </label>
             </div>
           </div>
+
+          {showContactConsent ? (
+            <div
+              className="rounded-lg bg-white/5 border border-white/10 p-3 cursor-pointer"
+              onClick={() => setContactConsent(!contactConsent)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  setContactConsent(!contactConsent);
+                }
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  id="lokt-contact-consent"
+                  type="checkbox"
+                  checked={!!contactConsent}
+                  onChange={(e) => setContactConsent(e.target.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="mt-1 h-4 w-4 accent-cyan-400"
+                />
+                <label
+                  htmlFor="lokt-contact-consent"
+                  className="text-[0.75rem] text-slate-200 leading-relaxed cursor-pointer"
+                >
+                  <span className="font-semibold">Optionnel :</span> j’accepte que lokt.fr me recontacte pour m’aider à analyser mon projet.
+                  <span className="block mt-1 text-[0.7rem] text-slate-300">
+                    Cette case n’est pas obligatoire pour recevoir le rapport.
+                  </span>
+                </label>
+              </div>
+            </div>
+          ) : null}
 
           {/* CTA */}
           <button
@@ -167,7 +206,7 @@ export default function LeadGate({
             disabled={!canClick}
             className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
           >
-            {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
+            {unlocking ? "Préparation..." : "Recevoir mon rapport"}
           </button>
 
           {unlockMsg && (

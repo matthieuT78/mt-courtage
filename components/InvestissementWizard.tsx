@@ -283,6 +283,7 @@ export default function InvestissementWizard({
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [leadEmail, setLeadEmail] = useState<string>("");
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
+  const [consentContact, setConsentContact] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
   const [sendByEmail, setSendByEmail] = useState<boolean>(true);
@@ -435,6 +436,9 @@ export default function InvestissementWizard({
       const data = (await res.json()) as CitySuggestion[];
       setCitySuggestions(data || []);
       setShowCitySuggestions(true);
+      if (!data?.length && query.length >= 3) {
+        setCityError("Aucune commune trouvée. Essayez avec le code postal seul ou le nom de la ville sans le quartier.");
+      }
     } catch (err: any) {
       setCityError(
         err?.message ||
@@ -571,7 +575,7 @@ export default function InvestissementWizard({
       },
       user: { user_id: sessionUserId || null, email: sessionEmail || null },
         consent: {
-        consent_contact: false,
+        consent_contact: consentContact,
         consent_analysis: !!consentLokt,
       },
         
@@ -1021,7 +1025,7 @@ export default function InvestissementWizard({
     }
 
     if (!consentLokt) {
-      setUnlockMsg("Pour débloquer l’analyse, merci d’accepter l’utilisation de vos données (Lokt.fr).");
+      setUnlockMsg("Pour recevoir le rapport, merci d’accepter l’utilisation de vos données pour cette simulation.");
       return;
     }
 
@@ -1044,7 +1048,7 @@ export default function InvestissementWizard({
       }
 
       setUnlocked(true);
-      setUnlockMsg("✅ Analyse débloquée.");
+      setUnlockMsg("✅ Rapport prêt. Votre simulation est bien enregistrée.");
             if (sendByEmail) {
         await sendInvestEmail(email);
       }
@@ -1060,20 +1064,12 @@ export default function InvestissementWizard({
     setSendingEmail(true);
     try {
       const computed = buildEmailComputed();
-      console.log("=== INVEST EMAIL DEBUG ===");
-      console.log("computed keys:", Object.keys(computed || {}));
-      console.log("output keys:", Object.keys(computed?.output || {}));
-      console.log(
-        "resume keys:",
-      Object.keys(computed?.output?.resume || {})
-	);
-      console.log("=== END INVEST EMAIL DEBUG ===");
       const r = await fetch("/api/tools/investissement/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
-          subject: "Votre simulation d’investissement locatif — lokt.fr",
+          subject: "Votre rapport d’investissement locatif — lokt.fr",
           computed,
         }),
       });
@@ -1221,7 +1217,7 @@ const canClickUnlock =
               <div className="relative space-y-1 sm:col-span-2">
                 <label className="text-xs text-slate-700 flex items-center gap-1">
                   Localité du bien (optionnel)
-                  <InfoBadge text="Tapez un code postal ou le nom de la commune, puis sélectionnez dans la liste." />
+                  <InfoBadge text="Tapez un code postal, une commune, ou une localité copiée depuis une annonce. Exemples : 75011 Paris, Lyon 3e, Cargèse." />
                 </label>
                 <input
                   type="text"
@@ -1230,7 +1226,7 @@ const canClickUnlock =
                   onFocus={() => {
                     if (citySuggestions.length > 0) setShowCitySuggestions(true);
                   }}
-                  placeholder="Ex. 75015, Paris, Lyon, Cargèse…"
+                  placeholder="Ex. 75011 Paris, Lyon 3e, Cargèse…"
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 {cityLoading && <p className="mt-1 text-[0.7rem] text-slate-500">Recherche des communes…</p>}
@@ -1784,103 +1780,9 @@ const canClickUnlock =
                       </div>
 
                       {!canShowFullDetails && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm rounded-xl">
-                          <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
-                            <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
-                            <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
-
-                            <div className="relative space-y-3">
-                              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">
-                                DÉBLOQUER L’ANALYSE COMPLÈTE
-                              </p>
-                              <h3 className="text-lg font-semibold">
-                                Vos chiffres sont prêts. Débloquez l’analyse détaillée.
-                              </h3>
-                              <p className="text-sm text-slate-200">
-                                Débloquez l’analyse (et conservez l’accès) en laissant un e-mail.
-                              </p>
-
-                              <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4">
-                                <div className="grid gap-3 sm:grid-cols-2 items-start">
-                                  <div className="space-y-1 sm:col-span-2">
-                                    <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
-                                    <input
-                                      type="email"
-                                      value={leadEmail}
-                                      onChange={(e) => setLeadEmail(e.target.value)}
-                                      placeholder="ex: prenom.nom@gmail.com"
-                                      className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-                                    />
-                                    <p className="text-[0.7rem] text-slate-300">
-                                      On l’utilise pour enregistrer votre analyse et mesurer la demande.
-                                    </p>
-                                  </div>
-                                    {/* ✅ Recevoir par email */}
-                                  <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
-                                    <label className="flex items-start gap-3 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={sendByEmail}
-                                        onChange={(e) => setSendByEmail(e.target.checked)}
-                                        className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-                                      />
-                                      <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                                        <span className="font-semibold">Recevoir l’analyse complète par email</span>
-                                        <span className="block text-[0.7rem] text-slate-300 mt-1">
-                                          Pratique pour relire les résultats plus tard.
-                                        </span>
-                                      </span>
-                                    </label>
-
-                                    {sendingEmail ? (
-                                      <p className="mt-2 text-[0.7rem] text-slate-300">Envoi de l’email…</p>
-                                    ) : null}
-
-                                    {sendEmailMsg ? (
-                                      <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p>
-                                    ) : null}
-                                  </div>
-                                  <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
-                                    <label className="flex items-start gap-3 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={consentLokt}
-                                        onChange={(e) => setConsentLokt(e.target.checked)}
-                                        className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-                                      />
-                                      <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                                        <span className="font-semibold">J’accepte</span> que mes données soient utilisées
-                                        pour enregistrer mon analyse et améliorer Lokt.fr (stats anonymisées).
-                                      </span>
-                                    </label>
-                                    <p className="mt-2 text-[0.7rem] text-slate-300">Pas de démarchage partenaire ici.</p>
-                                  </div>
-
-                                  <div className="sm:col-span-2 flex items-end">
-                                    <button
-                                      type="button"
-                                      onClick={handleUnlock}
-                                      disabled={!canClickUnlock}
-                                      className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
-                                    >
-                                      {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {unlockMsg && <p className="mt-3 text-[0.75rem] text-slate-200">{unlockMsg}</p>}
-
-                                {!leadEmailValid ? (
-                                  <p className="mt-2 text-[0.7rem] text-slate-300">
-                                    Astuce : renseigne un email valide pour activer le bouton.
-                                  </p>
-                                ) : !consentLokt ? (
-                                  <p className="mt-2 text-[0.7rem] text-slate-300">
-                                    Astuce : coche le consentement pour activer le bouton.
-                                  </p>
-                                ) : null}
-                              </div>
-                            </div>
+                        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/55 backdrop-blur-[2px]">
+                          <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm">
+                            Rapport complet disponible juste en dessous
                           </div>
                         </div>
                       )}
@@ -1905,7 +1807,7 @@ const canClickUnlock =
 
                       <div className="relative space-y-3">
                         <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE COMPLÈTE</p>
-                        <h3 className="text-lg font-semibold">Débloquez l’analyse complète</h3>
+                        <h3 className="text-lg font-semibold">Recevoir mon rapport personnalisé</h3>
                         <p className="text-sm text-slate-200">L’analyse détaillée est masquée tant que vous n’êtes pas connecté ou débloqué.</p>
 
                         <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4">
@@ -1930,9 +1832,9 @@ const canClickUnlock =
                                 className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
                               />
                               <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                                <span className="font-semibold">Recevoir l’analyse complète par email</span>
+                                <span className="font-semibold">Recevoir le rapport complet par email</span>
                                 <span className="block text-[0.7rem] text-slate-300 mt-1">
-                                  Pratique pour relire les résultats plus tard.
+                                  Score, synthèse, points de vigilance et plan d’action.
                                 </span>
                               </span>
                             </label>
@@ -1955,10 +1857,25 @@ const canClickUnlock =
                                 />
                                 <span className="text-[0.75rem] text-slate-200 leading-relaxed">
                                   <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour
-                                  enregistrer mon analyse et améliorer Lokt.fr (stats anonymisées).
+                                  m’envoyer mon rapport, retrouver ma simulation et améliorer lokt.fr.
                                 </span>
                               </label>
-                              <p className="mt-2 text-[0.7rem] text-slate-300">Pas de démarchage partenaire ici.</p>
+                              <p className="mt-2 text-[0.7rem] text-slate-300">Aucune revente de données. Aucun démarchage partenaire sans accord séparé.</p>
+                            </div>
+
+                            <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
+                              <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={consentContact}
+                                  onChange={(e) => setConsentContact(e.target.checked)}
+                                  className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
+                                />
+                                <span className="text-[0.75rem] text-slate-200 leading-relaxed">
+                                  <span className="font-semibold">Optionnel :</span> j’accepte que lokt.fr me recontacte pour m’aider à analyser mon projet.
+                                  <span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span>
+                                </span>
+                              </label>
                             </div>
 
                             <div className="sm:col-span-2 flex items-end">
@@ -1968,7 +1885,7 @@ const canClickUnlock =
                                 disabled={!canClickUnlock}
                                 className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
                               >
-                                {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
+                                {unlocking ? "Préparation..." : "Recevoir mon rapport"}
                               </button>
                             </div>
                           </div>
@@ -1996,4 +1913,3 @@ const canClickUnlock =
     </div>
   );
 }
-

@@ -32,7 +32,9 @@ export default function MonCompteProfilPage() {
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 max-w-2xl">
           <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Profil</p>
           <h2 className="text-lg font-semibold text-slate-900">Mes informations</h2>
-          <p className="text-sm text-slate-600 mt-1">Ces données sont enregistrées dans la table <code className="text-xs">profiles</code>.</p>
+          <p className="text-sm text-slate-600 mt-1">
+            Ces informations servent à préremplir vos quittances, états des lieux, documents bailleur et informations de facturation.
+          </p>
 
           {error ? <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div> : null}
           {ok ? <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{ok}</div> : null}

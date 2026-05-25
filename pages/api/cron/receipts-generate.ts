@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import PDFDocument from "pdfkit";
+import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 
 /* ------------------------------------------------------------------ */
 /* Utils                                                              */
@@ -135,6 +136,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const debug: any[] = [];
 
     for (const lease of leases || []) {
+      const canUseAutomation = await userCanUseReceiptAutomation(String((lease as any).user_id || ""));
+      if (!canUseAutomation) {
+        skipped++;
+        continue;
+      }
+
       const paymentType = ((lease as any).payment_type as string | null) || "terme_a_echoir";
       const rawPaymentDay = Number((lease as any).payment_day || 1);
 

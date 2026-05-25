@@ -52,6 +52,8 @@ export type Lease = {
   deposit_amount: number | null;
   payment_day: number | null;
   payment_method: string | null;
+  lease_kind?: string | null;
+  auto_renewal_enabled?: boolean | null;
   status: string | null;
   auto_reminder_enabled: boolean | null;
   auto_quittance_enabled: boolean | null;

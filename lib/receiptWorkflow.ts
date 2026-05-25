@@ -1,0 +1,417 @@
+import PDFDocument from "pdfkit";
+import { supabaseAdmin } from "./supabaseAdmin";
+
+type Result = {
+  ok: true;
+  receiptId: string;
+  paymentId: string | null;
+  status: "generated" | "sent";
+  email: {
+    attempted: boolean;
+    ok: boolean;
+    disabled: boolean;
+    error: string | null;
+    to: string | null;
+    cc: string | null;
+  };
+  signedUrl: string | null;
+};
+
+const BUCKET = "rent-receipts-pdfs";
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+};
+
+function safeStr(v: unknown) {
+  return String(v ?? "").trim();
+}
+
+function euro(v: unknown) {
+  const n = Number(v || 0);
+  return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+}
+
+function formatDateFR(v: string) {
+  const d = new Date(`${String(v).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return v;
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function parsePdfUrl(pdfUrl?: string | null) {
+  if (!pdfUrl) return null;
+  const idx = String(pdfUrl).indexOf(":");
+  if (idx <= 0) return null;
+  const bucket = String(pdfUrl).slice(0, idx);
+  const path = String(pdfUrl).slice(idx + 1);
+  if (bucket !== BUCKET || !path) return null;
+  return { bucket, path };
+}
+
+function buildReceiptText(params: {
+  landlordName: string;
+  tenantName: string;
+  propertyAddress: string;
+  periodStart: string;
+  periodEnd: string;
+  rent: number;
+  charges: number;
+  total: number;
+  paymentMethod?: string | null;
+}) {
+  return [
+    `Quittance de loyer`,
+    ``,
+    `Je soussigné(e), ${params.landlordName || "le bailleur"}, reconnais avoir reçu de ${params.tenantName || "le locataire"} la somme de ${euro(params.total)} au titre du paiement du loyer et des charges.`,
+    ``,
+    `Logement : ${params.propertyAddress || "—"}`,
+    `Période : du ${formatDateFR(params.periodStart)} au ${formatDateFR(params.periodEnd)}`,
+    `Loyer hors charges : ${euro(params.rent)}`,
+    `Charges : ${euro(params.charges)}`,
+    `Total reçu : ${euro(params.total)}`,
+    params.paymentMethod ? `Mode de paiement : ${params.paymentMethod}` : "",
+    ``,
+    `La présente quittance vaut reçu pour solde de toute dette locative pour la période indiquée, sous réserve d’encaissement effectif.`,
+    ``,
+    `Fait le ${formatDateFR(todayISO())}`,
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+}
+
+function buildPdfBuffer(text: string) {
+  return new Promise<Buffer>((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 48 });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    doc.fontSize(18).text("Quittance de loyer", { align: "center" });
+    doc.moveDown();
+    doc.fontSize(11).text(text, { lineGap: 4 });
+    doc.moveDown(2);
+    doc.fontSize(8).fillColor("#64748b").text("Document généré par lokt.fr", { align: "center" });
+    doc.end();
+  });
+}
+
+async function sendEmailViaResend(params: {
+  to: string;
+  cc?: string | null;
+  subject: string;
+  html: string;
+  filename: string;
+  pdf: Buffer;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!apiKey || !from) {
+    return { ok: false as const, disabled: true, error: "Email non configuré (RESEND_API_KEY / RESEND_FROM manquants)." };
+  }
+
+  const payload: any = {
+    from,
+    to: params.to,
+    subject: params.subject,
+    html: params.html,
+    attachments: [{ filename: params.filename, content: params.pdf.toString("base64") }],
+  };
+  if (params.cc) payload.cc = params.cc;
+
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const raw = await r.text();
+  let json: any = null;
+  try {
+    json = raw ? JSON.parse(raw) : null;
+  } catch {
+    // ignore
+  }
+
+  if (!r.ok) return { ok: false as const, disabled: false, error: json?.message || raw || `Erreur Resend ${r.status}` };
+  return { ok: true as const, disabled: false, error: null };
+}
+
+export async function confirmLeasePaymentAndSendReceipt(params: {
+  userId: string;
+  leaseId: string;
+  periodStart: string;
+  periodEnd: string;
+  landlordEmail?: string | null;
+}): Promise<Result> {
+  if (!supabaseAdmin) throw new Error("Supabase admin non configuré.");
+
+  const userId = safeStr(params.userId);
+  const leaseId = safeStr(params.leaseId);
+  const periodStart = safeStr(params.periodStart);
+  const periodEnd = safeStr(params.periodEnd);
+  if (!userId || !leaseId || !periodStart || !periodEnd) throw new Error("Paramètres quittance incomplets.");
+
+  const leaseRes = await supabaseAdmin.from("leases").select("*").eq("id", leaseId).single();
+  if (leaseRes.error || !leaseRes.data) throw new Error("Bail introuvable.");
+  const lease: any = leaseRes.data;
+  if (String(lease.user_id) !== userId) throw new Error("Accès refusé.");
+
+  const [{ data: tenant }, { data: property }, { data: landlord }] = await Promise.all([
+    supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).maybeSingle(),
+    supabaseAdmin.from("properties").select("*").eq("id", lease.property_id).maybeSingle(),
+    supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle(),
+  ]);
+
+  const rent = Number(lease.rent_amount || 0);
+  const charges = Number(lease.charges_amount || 0);
+  const total = rent + charges;
+  const issueDate = todayISO();
+
+  const tenantName = safeStr((tenant as any)?.full_name) || "Locataire";
+  const landlordName = safeStr((landlord as any)?.display_name) || "Bailleur";
+  const propertyAddress =
+    [
+      safeStr((property as any)?.address_line1),
+      safeStr((property as any)?.address_line2),
+      [safeStr((property as any)?.postal_code), safeStr((property as any)?.city)].filter(Boolean).join(" "),
+      safeStr((property as any)?.country || "FR"),
+    ]
+      .filter(Boolean)
+      .join(", ") || safeStr((property as any)?.label);
+
+  const contentText = buildReceiptText({
+    landlordName,
+    tenantName,
+    propertyAddress,
+    periodStart,
+    periodEnd,
+    rent,
+    charges,
+    total,
+    paymentMethod: lease.payment_method,
+  });
+
+  let receipt: any = null;
+  const existingReceipt = await supabaseAdmin
+    .from("rent_receipts")
+    .select("*")
+    .eq("lease_id", leaseId)
+    .eq("period_start", periodStart)
+    .eq("period_end", periodEnd)
+    .maybeSingle();
+
+  if (existingReceipt.error) throw existingReceipt.error;
+
+  if (existingReceipt.data) {
+    const upd = await supabaseAdmin
+      .from("rent_receipts")
+      .update({
+        rent_amount: rent,
+        charges_amount: charges,
+        total_amount: total,
+        issue_date: issueDate,
+        content_text: existingReceipt.data.content_text || contentText,
+        status: existingReceipt.data.status || "generated",
+        edited_at: new Date().toISOString(),
+      })
+      .eq("id", existingReceipt.data.id)
+      .select("*")
+      .single();
+    if (upd.error || !upd.data) throw new Error(upd.error?.message || "Update quittance échoué.");
+    receipt = upd.data;
+  } else {
+    const ins = await supabaseAdmin
+      .from("rent_receipts")
+      .insert({
+        lease_id: leaseId,
+        owner_user_id: userId,
+        period_start: periodStart,
+        period_end: periodEnd,
+        rent_amount: rent,
+        charges_amount: charges,
+        total_amount: total,
+        issue_date: issueDate,
+        issued_at: new Date().toISOString(),
+        content_text: contentText,
+        status: "generated",
+      })
+      .select("*")
+      .single();
+    if (ins.error || !ins.data) throw new Error(ins.error?.message || "Création quittance échouée.");
+    receipt = ins.data;
+  }
+
+  let paymentId: string | null = receipt.payment_id || null;
+  const existingPayment = await supabaseAdmin
+    .from("rent_payments")
+    .select("id")
+    .eq("lease_id", leaseId)
+    .eq("period_start", periodStart)
+    .eq("period_end", periodEnd)
+    .maybeSingle();
+
+  const paymentPayload = {
+    lease_id: leaseId,
+    period_start: periodStart,
+    period_end: periodEnd,
+    rent_amount: rent,
+    charges_amount: charges,
+    total_amount: total,
+    due_date: periodStart,
+    paid_at: new Date().toISOString(),
+    payment_method: lease.payment_method || null,
+    source: "owner_confirm_email",
+    updated_at: new Date().toISOString(),
+  };
+
+  if (existingPayment.data?.id) {
+    paymentId = existingPayment.data.id;
+    const updPay = await supabaseAdmin.from("rent_payments").update(paymentPayload).eq("id", paymentId);
+    if (updPay.error) throw updPay.error;
+  } else {
+    const insPay = await supabaseAdmin.from("rent_payments").insert(paymentPayload).select("id").single();
+    if (insPay.error || !insPay.data) throw new Error(insPay.error?.message || "Création paiement échouée.");
+    paymentId = insPay.data.id;
+  }
+
+  let parsedPdf = parsePdfUrl(receipt.pdf_url);
+  let pdfBuffer: Buffer | null = null;
+
+  if (!parsedPdf) {
+    pdfBuffer = await buildPdfBuffer(receipt.content_text || contentText);
+    const yyyymm = periodStart.slice(0, 7) || "quittance";
+    const filenamePart = `quittance-${yyyymm}.pdf`;
+    const storagePath = `${userId}/${leaseId}/${receipt.id}/${filenamePart}`;
+    const up = await supabaseAdmin.storage.from(BUCKET).upload(storagePath, pdfBuffer, {
+      contentType: "application/pdf",
+      upsert: true,
+    });
+    if (up.error) throw up.error;
+
+    const pdfUrl = `${BUCKET}:${storagePath}`;
+    const updReceipt = await supabaseAdmin
+      .from("rent_receipts")
+      .update({
+        pdf_url: pdfUrl,
+        payment_id: paymentId,
+        archived_at: new Date().toISOString(),
+        edited_at: new Date().toISOString(),
+      })
+      .eq("id", receipt.id)
+      .select("*")
+      .single();
+    if (updReceipt.error || !updReceipt.data) throw new Error(updReceipt.error?.message || "Update PDF quittance échoué.");
+    receipt = updReceipt.data;
+    parsedPdf = parsePdfUrl(pdfUrl);
+  }
+
+  if (!parsedPdf) throw new Error("pdf_url invalide après génération.");
+
+  const signed = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(parsedPdf.path, 60 * 10);
+  if (signed.error || !signed.data?.signedUrl) throw new Error(signed.error?.message || "Signed URL échouée.");
+
+  if (!pdfBuffer) {
+    const pdfResp = await fetch(signed.data.signedUrl);
+    if (pdfResp.ok) pdfBuffer = Buffer.from(await pdfResp.arrayBuffer());
+  }
+
+  const toEmail = safeStr(lease.tenant_receipt_email) || safeStr((tenant as any)?.email);
+  const ccEmail = safeStr(params.landlordEmail) || safeStr(lease.reminder_email) || null;
+  const alreadySent = String(receipt.status || "").toLowerCase() === "sent" && !!receipt.sent_at;
+
+  let email = { ok: false, disabled: false, error: "Email non tenté." };
+  if (alreadySent) {
+    email = { ok: true, disabled: false, error: null };
+  } else if (!toEmail) {
+    email = { ok: false, disabled: false, error: "Email locataire manquant." };
+  } else if (!pdfBuffer) {
+    email = { ok: false, disabled: false, error: "PDF indisponible pour pièce jointe." };
+  } else {
+    const yyyymm = periodStart.slice(0, 7) || "quittance";
+    email = await sendEmailViaResend({
+      to: toEmail,
+      cc: ccEmail,
+      subject: `Quittance de loyer - ${yyyymm}`,
+      filename: `quittance-${yyyymm}.pdf`,
+      pdf: pdfBuffer,
+      html: `
+        <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
+          <p>Bonjour,</p>
+          <p>Veuillez trouver en pièce jointe votre quittance de loyer pour <b>${yyyymm}</b>.</p>
+          <p>Cordialement,<br/>lokt.fr</p>
+        </div>
+      `,
+    });
+  }
+
+  await supabaseAdmin.from("transactions").upsert(
+    [
+      {
+        user_id: userId,
+        property_id: lease.property_id ?? null,
+        lease_id: leaseId,
+        receipt_id: receipt.id,
+        occurred_at: periodEnd,
+        direction: "in",
+        status: "received",
+        category: "rent",
+        label: "Loyer (quittance confirmée)",
+        amount: total,
+        notes: null,
+        updated_at: new Date().toISOString(),
+      },
+    ] as any,
+    { onConflict: "user_id,receipt_id" }
+  );
+
+  const finalStatus: "generated" | "sent" = email.ok ? "sent" : "generated";
+  const upd = await supabaseAdmin
+    .from("rent_receipts")
+    .update({
+      payment_id: paymentId,
+      status: finalStatus,
+      sent_to_tenant_email: toEmail || receipt.sent_to_tenant_email || null,
+      sent_at: email.ok ? receipt.sent_at || new Date().toISOString() : receipt.sent_at || null,
+      send_error: email.ok ? null : email.error,
+      edited_at: new Date().toISOString(),
+    })
+    .eq("id", receipt.id);
+  if (upd.error) throw upd.error;
+
+  if (toEmail) {
+    try {
+      await supabaseAdmin.from("email_logs").insert({
+        user_id: userId,
+        lease_id: leaseId,
+        receipt_id: receipt.id,
+        to_email: toEmail,
+        subject: `Quittance de loyer - ${periodStart.slice(0, 7)}`,
+        body_preview: `Quittance ${periodStart.slice(0, 7)}`,
+        sent_at: new Date().toISOString(),
+        status: email.ok ? "sent" : email.disabled ? "disabled" : "error",
+        error_message: email.ok ? null : email.error,
+      });
+    } catch {
+      // log non bloquant
+    }
+  }
+
+  return {
+    ok: true,
+    receiptId: receipt.id,
+    paymentId,
+    status: finalStatus,
+    email: {
+      attempted: !!toEmail && !alreadySent,
+      ok: email.ok,
+      disabled: email.disabled,
+      error: email.ok ? null : email.error,
+      to: toEmail || null,
+      cc: ccEmail,
+    },
+    signedUrl: signed.data.signedUrl,
+  };
+}

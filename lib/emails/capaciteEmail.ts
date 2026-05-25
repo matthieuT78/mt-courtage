@@ -3,6 +3,8 @@ type ComputeAllResult = {
   resume: {
     mensualiteMax: number;
     montantMax: number;
+    mensualiteProjet?: number;
+    assuranceMensuelle?: number;
     budgetTotalMax: number;
     tauxEndettementAvecProjet: number;
   };
@@ -45,17 +47,23 @@ export function buildCapaciteEmailText(computed: ComputeAllResult) {
   const b = computed.assessment;
 
   const parts: string[] = [];
-  parts.push("VOTRE CAPACITE D’EMPRUNT — lokt.fr");
+  parts.push("VOTRE RAPPORT DE CAPACITE D’EMPRUNT — lokt.fr");
+  parts.push("");
+  parts.push("Bonjour,");
+  parts.push("Voici votre rapport personnalisé : chiffres clés, score lokt.fr et plan d’action pour mieux préparer votre dossier.");
   parts.push("");
   parts.push("Récapitulatif :");
   parts.push(`- Mensualité max : ${formatEuro(r.mensualiteMax)}`);
-  parts.push(`- Capital empruntable (réf 25 ans) : ${formatEuro(r.montantMax)}`);
+  parts.push(`- Capital empruntable : ${formatEuro(r.montantMax)}`);
+  if (typeof r.mensualiteProjet === "number") {
+    parts.push(`- Mensualité projet assurance incluse : ${formatEuro(r.mensualiteProjet)}`);
+  }
   parts.push(`- Budget max (avec apport) : ${formatEuro(r.budgetTotalMax)}`);
   parts.push(`- Endettement après projet : ${formatPct(r.tauxEndettementAvecProjet)}`);
   parts.push("");
 
   if (b) {
-    parts.push(`Score Lokt.fr : ${b.score}/100 — ${b.label}`);
+    parts.push(`Score lokt.fr : ${b.score}/100 — ${b.label}`);
     parts.push(b.comment);
     parts.push("");
   }
@@ -77,6 +85,7 @@ export function buildCapaciteEmailText(computed: ComputeAllResult) {
   parts.push("Relire / refaire la simulation : https://lokt.fr/capacite");
   parts.push("");
   parts.push("Calculs indicatifs. Ne constitue pas une offre de prêt.");
+  parts.push("Vos données servent uniquement à vous transmettre ce rapport, retrouver votre simulation et améliorer lokt.fr. Aucune revente de données.");
   parts.push("— lokt.fr");
 
   return parts.join("\n");
@@ -119,21 +128,36 @@ export function buildCapaciteEmailHtml(computed: ComputeAllResult) {
     <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
       <div style="padding:18px 18px 10px 18px;border-bottom:1px solid #e2e8f0;background:#ffffff;">
         <img src="${logoUrl}" alt="lokt.fr" width="130" style="display:block;max-width:130px;height:auto;margin:0 auto 8px;" />
-        <h1 style="margin:0;text-align:center;font-size:18px;color:#0f172a;">Votre capacité d’emprunt</h1>
+        <h1 style="margin:0;text-align:center;font-size:18px;color:#0f172a;">Votre rapport de capacité d’emprunt</h1>
         <p style="margin:6px 0 0;text-align:center;color:#64748b;font-size:13px;line-height:1.5;">
-          Récapitulatif de votre simulation (calculs indicatifs).
+          Chiffres clés, score lokt.fr™ et plan d’action personnalisé.
         </p>
       </div>
 
       <div style="padding:16px 18px;">
+        <p style="margin:0 0 14px;color:#334155;font-size:13px;line-height:1.55;">
+          Bonjour,<br/>
+          voici une synthèse claire de votre capacité d’emprunt. Les montants restent indicatifs, mais ils donnent une base utile pour préparer un échange bancaire ou affiner votre projet.
+        </p>
+
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:10px;">
           <tr>
             ${fmtSmall("Mensualité max", formatEuro(r.mensualiteMax))}
-            ${fmtSmall("Capital (réf 25 ans)", formatEuro(r.montantMax))}
+            ${fmtSmall("Capital empruntable", formatEuro(r.montantMax))}
+          </tr>
+          <tr>
+            ${fmtSmall(
+              "Mensualité assurance incluse",
+              typeof r.mensualiteProjet === "number" ? formatEuro(r.mensualiteProjet) : "-"
+            )}
+            ${fmtSmall("Endettement après projet", formatPct(r.tauxEndettementAvecProjet))}
           </tr>
           <tr>
             ${fmtSmall("Budget max (avec apport)", formatEuro(r.budgetTotalMax))}
-            ${fmtSmall("Endettement après projet", formatPct(r.tauxEndettementAvecProjet))}
+            ${fmtSmall(
+              "Assurance estimée",
+              typeof r.assuranceMensuelle === "number" ? formatEuro(r.assuranceMensuelle) + " / mois" : "-"
+            )}
           </tr>
         </table>
 
@@ -141,7 +165,7 @@ export function buildCapaciteEmailHtml(computed: ComputeAllResult) {
           b
             ? `
           <div style="margin-top:10px;padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#0f172a;color:#ffffff;">
-            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a5f3fc;">Score Lokt.fr™</div>
+            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a5f3fc;">Score lokt.fr™</div>
             <div style="margin-top:6px;font-size:22px;font-weight:800;color:#ffffff;">${b.score}/100 <span style="font-size:14px;font-weight:700;color:#e2e8f0;">— ${escapeHtml(
                 b.label
               )}</span></div>
@@ -171,6 +195,9 @@ export function buildCapaciteEmailHtml(computed: ComputeAllResult) {
         <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;" />
         <p style="margin:0;color:#64748b;font-size:12px;line-height:1.5;">
           Calculs indicatifs. Ne constitue pas une offre de prêt.
+        </p>
+        <p style="margin:6px 0 0;color:#64748b;font-size:12px;line-height:1.5;">
+          Vos données servent à vous transmettre ce rapport, retrouver votre simulation et améliorer lokt.fr. Aucune revente de données.
         </p>
         <p style="margin:6px 0 0;color:#64748b;font-size:12px;">— lokt.fr</p>
       </div>

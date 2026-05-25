@@ -1,9 +1,50 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
-import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
+import type { Lease, Property, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
 import { supabase } from "../../../lib/supabaseClient";
+
+type DashboardAlert = {
+  tone: "emerald" | "amber" | "red";
+  title: string;
+  desc: string;
+  action?: string;
+};
+
+type TransactionRow = {
+  id: string;
+  occurred_at: string;
+  direction: "in" | "out";
+  amount: number;
+};
+
+const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+const addMonths = (d: Date, delta: number) => new Date(d.getFullYear(), d.getMonth() + delta, 1);
+const normalizeDate = (value?: string | null) => {
+  if (!value) return null;
+  const d = new Date(String(value).slice(0, 10) + "T00:00:00");
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+const monthLabel = (key: string) => {
+  const [year, month] = key.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "short" });
+};
+const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+
+function actionTarget(action?: string): LandlordSectionKey | null {
+  const a = (action || "").toLowerCase();
+  if (a.includes("bien")) return "biens";
+  if (a.includes("locataire")) return "locataires";
+  if (a.includes("bail")) return "baux";
+  if (a.includes("quittance") || a.includes("retard") || a.includes("paiement")) return "quittances";
+  if (a.includes("déclaration") || a.includes("declaration")) return "declaration";
+  if (a.includes("inventaire")) return "inventaire";
+  if (a.includes("état") || a.includes("etat")) return "etat_des_lieux";
+  if (a.includes("finance")) return "finance";
+  return null;
+}
 
 export function SectionDashboard({
   monthRange,
@@ -12,18 +53,17 @@ export function SectionDashboard({
   lateCount,
   depositTotal,
   occupancyRate,
+  healthScore,
   alerts,
   activeLeases,
+  payments,
+  receipts,
   propertyById,
   tenantById,
-
-  // ✅ NEW (parcours guidé)
   propertiesCount,
   tenantsCount,
   leasesCount,
   onGo,
-
-  // ✅ optionnel : pour persister en DB (sinon on reste localStorage only)
   userId,
 }: {
   monthRange: { startISO: string; endISO: string };
@@ -32,22 +72,31 @@ export function SectionDashboard({
   lateCount: number;
   depositTotal: number;
   occupancyRate: number;
-  alerts: { tone: "emerald" | "amber" | "red"; title: string; desc: string; action?: string }[];
+  healthScore: number;
+  alerts: DashboardAlert[];
   activeLeases: Lease[];
+  payments: RentPayment[];
+  receipts: RentReceipt[];
   propertyById: Map<string, Property>;
   tenantById: Map<string, Tenant>;
-
   propertiesCount: number;
   tenantsCount: number;
   leasesCount: number;
   onGo: (k: LandlordSectionKey) => void;
-
   userId?: string;
 }) {
-  const ratio = monthlyExpected > 0 ? Math.round((monthlyPaid / monthlyExpected) * 100) : 0;
+  const ratio = monthlyExpected > 0 ? clampPct((monthlyPaid / monthlyExpected) * 100) : 0;
+  const remainingToCollect = Math.max(0, monthlyExpected - monthlyPaid);
+  const currentMonthPayments = Array.isArray(payments) ? payments : [];
+  const currentMonthReceipts = Array.isArray(receipts) ? receipts : [];
+  const receiptCoverage = activeLeases.length > 0 ? clampPct((currentMonthReceipts.length / activeLeases.length) * 100) : 0;
+
+  const [transactions, setTransactions] = useState<TransactionRow[]>([]);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
 
   // -----------------------------
-  // ✅ Onboarding: persistence + auto-hide
+  // Onboarding: persistence + auto-hide
   // -----------------------------
   const HIDE_AFTER_DAYS = 7;
 
@@ -60,13 +109,12 @@ export function SectionDashboard({
   const [justCompleted, setJustCompleted] = useState(false);
   const prevPercentRef = useRef<number>(-1);
 
-  // Load localStorage doneAt
   useEffect(() => {
     try {
-      const v = window.localStorage.getItem(storageKey);
-      if (v) setDoneAtISO(v);
+      const value = window.localStorage.getItem(storageKey);
+      if (value) setDoneAtISO(value);
     } catch {
-      // ignore
+      // localStorage indisponible : l'onboarding reste purement visuel.
     }
   }, [storageKey]);
 
@@ -81,38 +129,31 @@ export function SectionDashboard({
       { key: "baux" as LandlordSectionKey, label: "Créer un bail", done: hasLease },
     ];
 
-    const doneCount = steps.filter((s) => s.done).length;
+    const doneCount = steps.filter((step) => step.done).length;
     const percent = Math.round((doneCount / steps.length) * 100);
-
-    const next =
-      !hasProperty ? steps[0] : !hasTenant ? steps[1] : !hasLease ? steps[2] : null;
+    const next = !hasProperty ? steps[0] : !hasTenant ? steps[1] : !hasLease ? steps[2] : null;
 
     const headline =
       percent === 100
-        ? "✅ Mise en route terminée"
+        ? "Mise en route terminée"
         : percent >= 66
         ? "Plus qu’une étape avant votre premier workflow complet"
         : percent >= 33
-        ? "Bien joué — on continue"
+        ? "Bien joué, on continue"
         : "Démarrons en 2 minutes";
 
     const sub =
       percent === 100
-        ? "Vous pouvez maintenant gérer loyers, quittances et états des lieux."
+        ? "Vous pouvez maintenant gérer loyers, quittances, états des lieux et suivi financier."
         : next?.key === "biens"
-        ? "Commencez par créer un bien : adresse, infos, statut…"
+        ? "Commencez par créer un bien : adresse, libellé et informations utiles."
         : next?.key === "locataires"
-        ? "Ajoutez le locataire : nom, email, téléphone…"
-        : "Créez le bail : c’est lui qui relie Bien + Locataire et active loyers/quittances.";
+        ? "Ajoutez le locataire : nom, email, téléphone et notes utiles."
+        : "Créez le bail : il relie le bien, le locataire, le loyer et les quittances.";
 
-    // ✅ IMPORTANT: pas de bouton “Générer une quittance”
-    const cta = next ? { key: next.key, label: `→ ${next.label}` } : null;
-
+    const cta = next ? { key: next.key, label: next.label } : null;
     return { steps, doneCount, percent, next, headline, sub, cta };
   }, [propertiesCount, tenantsCount, leasesCount]);
-
-  const toneFromPercent = (p: number) =>
-    (p >= 100 ? "emerald" : p >= 66 ? "indigo" : p >= 33 ? "amber" : "slate");
 
   const shouldHideOnboarding = useMemo(() => {
     if (!doneAtISO) return false;
@@ -122,70 +163,319 @@ export function SectionDashboard({
     return days >= HIDE_AFTER_DAYS;
   }, [doneAtISO]);
 
-  // Persist + animate when reaching 100%
   useEffect(() => {
-    const prev = prevPercentRef.current;
-    const curr = onboarding.percent;
-    prevPercentRef.current = curr;
+    const previous = prevPercentRef.current;
+    const current = onboarding.percent;
+    prevPercentRef.current = current;
 
-    if (curr === 100 && prev >= 0 && prev < 100) {
+    if (current === 100 && previous >= 0 && previous < 100) {
       setJustCompleted(true);
-      const t = setTimeout(() => setJustCompleted(false), 2200);
-      // persist doneAt (local)
+      const timer = setTimeout(() => setJustCompleted(false), 2200);
       const nowISO = new Date().toISOString();
       setDoneAtISO(nowISO);
+
       try {
         window.localStorage.setItem(storageKey, nowISO);
       } catch {
         // ignore
       }
 
-      // (optionnel) persist en DB via app_settings (si policies OK)
-      // clé par user: "onboarding_done_at:<userId>"
       (async () => {
         try {
           if (!supabase || !userId) return;
           const key = `onboarding_done_at:${userId}`;
-          await supabase.from("app_settings").upsert(
-            { key, value_json: { done_at: nowISO } },
-            { onConflict: "key" }
-          );
+          await supabase.from("app_settings").upsert({ key, value_json: { done_at: nowISO } }, { onConflict: "key" });
         } catch {
-          // silence: on ne casse pas l’UX si la policy bloque
+          // On ne bloque pas le dashboard si cette table/policy n'est pas disponible.
         }
       })();
 
-      return () => clearTimeout(t);
+      return () => clearTimeout(timer);
     }
   }, [onboarding.percent, storageKey, userId]);
 
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    let mounted = true;
+
+    const start = addMonths(new Date(new Date().getFullYear(), new Date().getMonth(), 1), -5);
+
+    (async () => {
+      setTransactionsLoading(true);
+      setTransactionsError(null);
+      try {
+        const { data, error } = await supabase
+          .from("transactions")
+          .select("id, occurred_at, direction, amount")
+          .eq("user_id", userId)
+          .gte("occurred_at", toISODate(start))
+          .order("occurred_at", { ascending: true });
+
+        if (error) throw error;
+        if (mounted) setTransactions(((data || []) as TransactionRow[]) || []);
+      } catch (e: any) {
+        if (mounted) setTransactionsError(e?.message || "Impossible de charger les écritures comptables.");
+      } finally {
+        if (mounted) setTransactionsLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
+
+  const accountingMonths = useMemo(() => {
+    const now = new Date();
+    const base = new Date(now.getFullYear(), now.getMonth(), 1);
+    return Array.from({ length: 6 }, (_, index) => monthKey(addMonths(base, index - 5)));
+  }, []);
+
+  const accountingSeries = useMemo(() => {
+    const byMonth = new Map(accountingMonths.map((key) => [key, { key, income: 0, expense: 0 }]));
+
+    for (const tx of transactions) {
+      const d = normalizeDate(tx.occurred_at);
+      if (!d) continue;
+      const key = monthKey(d);
+      const row = byMonth.get(key);
+      if (!row) continue;
+      if (tx.direction === "in") row.income += Number(tx.amount || 0);
+      else row.expense += Number(tx.amount || 0);
+    }
+
+    if (transactions.length === 0) {
+      for (const payment of currentMonthPayments) {
+        const d = normalizeDate(payment.period_start);
+        if (!d || !payment.paid_at) continue;
+        const row = byMonth.get(monthKey(d));
+        if (row) row.income += Number(payment.total_amount || 0);
+      }
+    }
+
+    return Array.from(byMonth.values());
+  }, [accountingMonths, currentMonthPayments, transactions]);
+
+  const accountingTotals = useMemo(() => {
+    const income = accountingSeries.reduce((sum, row) => sum + row.income, 0);
+    const expense = accountingSeries.reduce((sum, row) => sum + row.expense, 0);
+    return { income, expense, net: income - expense };
+  }, [accountingSeries]);
+
+  const maxChartValue = Math.max(1, ...accountingSeries.flatMap((row) => [row.income, row.expense]));
+
+  const leaseCards = useMemo(() => {
+    const now = new Date();
+    const in90Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 90);
+
+    return activeLeases.map((lease) => {
+      const property = propertyById.get(lease.property_id);
+      const tenant = tenantById.get(lease.tenant_id);
+      const payment = currentMonthPayments.find((p) => p.lease_id === lease.id);
+      const receipt = currentMonthReceipts.find((r) => r.lease_id === lease.id);
+      const total = Number(lease.rent_amount || 0) + Number(lease.charges_amount || 0);
+      const endDate = normalizeDate(lease.end_date);
+      const leaseEndingSoon = !!endDate && endDate <= in90Days;
+      const paymentStatus = payment?.paid_at ? "Encaissé" : payment?.due_date && normalizeDate(payment.due_date)! < now ? "En retard" : "À suivre";
+
+      return {
+        lease,
+        propertyLabel: property?.label || "Bien",
+        tenantName: tenant?.full_name || "Locataire",
+        total,
+        paymentStatus,
+        hasReceipt: !!receipt,
+        leaseEndingSoon,
+        endDate,
+      };
+    });
+  }, [activeLeases, currentMonthPayments, currentMonthReceipts, propertyById, tenantById]);
+
+  const rentsToCollect = useMemo(
+    () =>
+      leaseCards
+        .filter((card) => card.paymentStatus !== "Encaissé")
+        .sort((a, b) => {
+          if (a.paymentStatus === "En retard" && b.paymentStatus !== "En retard") return -1;
+          if (a.paymentStatus !== "En retard" && b.paymentStatus === "En retard") return 1;
+          return a.propertyLabel.localeCompare(b.propertyLabel);
+        }),
+    [leaseCards]
+  );
+
+  const priorityActions = useMemo(() => {
+    const actions: Array<{
+      tone: "red" | "amber" | "emerald" | "indigo";
+      title: string;
+      desc: string;
+      details?: string[];
+      target?: LandlordSectionKey;
+      cta?: string;
+    }> = [];
+
+    if (lateCount > 0) {
+      const lateDetails = leaseCards
+        .filter((card) => card.paymentStatus === "En retard")
+        .slice(0, 3)
+        .map((card) => `${card.propertyLabel} · ${card.tenantName} · ${formatEuro(card.total)}`);
+
+      actions.push({
+        tone: "red",
+        title: `${lateCount} paiement${lateCount > 1 ? "s" : ""} en retard`,
+        desc: "Confirmez le paiement s’il est arrivé, sinon relancez le locataire.",
+        details: lateDetails,
+        target: "quittances",
+        cta: "Voir les retards",
+      });
+    }
+
+    if (monthlyExpected > 0 && remainingToCollect > 0 && lateCount === 0) {
+      const pendingDetails = rentsToCollect
+        .slice(0, 3)
+        .map((card) => `${card.propertyLabel} · ${card.tenantName} · ${formatEuro(card.total)} à confirmer`);
+
+      actions.push({
+        tone: ratio >= 70 ? "amber" : "red",
+        title: `${formatEuro(remainingToCollect)} reste à encaisser`,
+        desc: `Encaissement à ${ratio}%. Vérifiez les loyers du mois non confirmés avant de considérer le mois comme complet.`,
+        details: pendingDetails.length ? pendingDetails : ["Contrôlez les paiements du mois et marquez les loyers reçus."],
+        target: "quittances",
+        cta: "Confirmer les loyers",
+      });
+    }
+
+    if (activeLeases.length > 0 && currentMonthReceipts.length < activeLeases.length) {
+      const missingReceiptDetails = leaseCards
+        .filter((card) => !card.hasReceipt)
+        .slice(0, 3)
+        .map((card) => `${card.propertyLabel} · ${card.tenantName}`);
+
+      actions.push({
+        tone: "amber",
+        title: "Quittances du mois à finaliser",
+        desc: `${currentMonthReceipts.length}/${activeLeases.length} quittance${activeLeases.length > 1 ? "s" : ""} générée${currentMonthReceipts.length > 1 ? "s" : ""}.`,
+        details: missingReceiptDetails,
+        target: "quittances",
+        cta: "Gérer les quittances",
+      });
+    }
+
+    const endingSoonCards = leaseCards.filter((card) => card.leaseEndingSoon);
+    if (endingSoonCards.length > 0) {
+      actions.push({
+        tone: "amber",
+        title: `${endingSoonCards.length} bail${endingSoonCards.length > 1 ? "s" : ""} à surveiller`,
+        desc: "Décidez si le bail continue, s’il faut un avenant, ou si vous devez préparer une sortie.",
+        details: endingSoonCards
+          .slice(0, 3)
+          .map((card) => `${card.propertyLabel} · ${card.tenantName} · fin ${fmtDate(card.lease.end_date)}`),
+        target: "baux",
+        cta: "Ouvrir les baux",
+      });
+    }
+
+    for (const alert of alerts) {
+      const target = actionTarget(alert.action);
+      if (!target) continue;
+      if (actions.some((action) => action.target === target && action.title === alert.title)) continue;
+      actions.push({
+        tone: alert.tone === "red" ? "red" : alert.tone === "amber" ? "amber" : "emerald",
+        title: alert.title,
+        desc: alert.desc,
+        target,
+        cta: alert.action,
+      });
+    }
+
+    if (actions.length === 0) {
+      actions.push({
+        tone: "emerald",
+        title: "Rien d’urgent aujourd’hui",
+        desc: "Le mois est propre. Surveillez simplement les encaissements et les charges.",
+        target: "finance",
+        cta: "Voir la finance",
+      });
+    }
+
+    return actions.slice(0, 5);
+  }, [
+    activeLeases.length,
+    alerts,
+    currentMonthReceipts.length,
+    lateCount,
+    leaseCards,
+    monthlyExpected,
+    rentsToCollect,
+    ratio,
+    remainingToCollect,
+  ]);
+
+  const healthDetails = useMemo(() => {
+    const rows = [
+      {
+        label: "Encaissement",
+        value: monthlyExpected > 0 ? `${ratio}%` : "Sans loyer",
+        tone: ratio >= 95 || monthlyExpected === 0 ? "emerald" : ratio >= 70 ? "amber" : "red",
+        desc:
+          monthlyExpected === 0
+            ? "Aucun loyer attendu ce mois-ci."
+            : remainingToCollect > 0
+            ? `${formatEuro(remainingToCollect)} reste à confirmer dans Quittances.`
+            : "Tous les loyers attendus sont confirmés.",
+        target: remainingToCollect > 0 ? ("quittances" as LandlordSectionKey) : null,
+      },
+      {
+        label: "Retards",
+        value: lateCount > 0 ? `${lateCount}` : "0",
+        tone: lateCount > 0 ? "red" : "emerald",
+        desc: lateCount > 0 ? "Traitez les paiements échus non confirmés." : "Aucun loyer échu en retard.",
+        target: lateCount > 0 ? ("quittances" as LandlordSectionKey) : null,
+      },
+      {
+        label: "Quittances",
+        value: activeLeases.length > 0 ? `${receiptCoverage}%` : "À créer",
+        tone: receiptCoverage >= 100 || activeLeases.length === 0 ? "emerald" : receiptCoverage >= 50 ? "amber" : "red",
+        desc:
+          activeLeases.length === 0
+            ? "Créez un bail actif pour démarrer le workflow."
+            : receiptCoverage < 100
+            ? "Certaines quittances du mois ne sont pas encore prêtes."
+            : "Les quittances du mois sont prêtes.",
+        target: activeLeases.length === 0 ? ("baux" as LandlordSectionKey) : receiptCoverage < 100 ? ("quittances" as LandlordSectionKey) : null,
+      },
+      {
+        label: "Occupation",
+        value: `${occupancyRate}%`,
+        tone: occupancyRate >= 80 ? "emerald" : occupancyRate >= 60 ? "amber" : "red",
+        desc: occupancyRate >= 100 ? "Tous les biens ont un bail actif." : "Vérifiez les biens sans bail actif.",
+        target: occupancyRate < 100 ? ("biens" as LandlordSectionKey) : null,
+      },
+    ] as const;
+    return rows;
+  }, [activeLeases.length, lateCount, monthlyExpected, occupancyRate, ratio, receiptCoverage, remainingToCollect]);
+
+  const toneFromPercent = (percent: number) =>
+    (percent >= 100 ? "emerald" : percent >= 66 ? "indigo" : percent >= 33 ? "amber" : "slate");
+
   return (
     <div className="space-y-5">
-      {/* ✅ WAOU: parcours guidé (auto-masqué après X jours) */}
       {!shouldHideOnboarding ? (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                Mise en route
-              </p>
-              <p className="mt-1 text-base font-semibold text-slate-900">
-                {onboarding.headline}
-              </p>
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Mise en route</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">{onboarding.headline}</p>
               <p className="mt-1 text-[0.85rem] text-slate-600">{onboarding.sub}</p>
               {doneAtISO && onboarding.percent === 100 ? (
                 <p className="mt-1 text-xs text-slate-500">
-                  Terminé le {new Date(doneAtISO).toLocaleDateString("fr-FR")}
-                  {" • "}Masqué automatiquement après {HIDE_AFTER_DAYS} jours
+                  Terminé le {new Date(doneAtISO).toLocaleDateString("fr-FR")} · Masqué automatiquement après {HIDE_AFTER_DAYS} jours
                 </p>
               ) : null}
             </div>
 
-            <div className="shrink-0 flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <span className={justCompleted ? "animate-pulse" : ""}>
-                <Pill tone={toneFromPercent(onboarding.percent) as any}>
-                  {onboarding.percent}%
-                </Pill>
+                <Pill tone={toneFromPercent(onboarding.percent) as any}>{onboarding.percent}%</Pill>
               </span>
 
               {onboarding.cta ? (
@@ -197,57 +487,32 @@ export function SectionDashboard({
                   {onboarding.cta.label}
                 </button>
               ) : (
-                <span
-                  className={
-                    "rounded-full px-3 py-1.5 text-xs font-semibold " +
-                    (justCompleted
-                      ? "bg-emerald-200 text-emerald-900 animate-pulse"
-                      : "bg-emerald-100 text-emerald-800")
-                  }
-                >
-                  ✔ Prêt
-                </span>
+                <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800">Prêt</span>
               )}
             </div>
           </div>
 
-          {/* Progress bar */}
           <div className="mt-4">
-            <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
-              <div
-                className={justCompleted ? "h-full bg-emerald-500 transition-all duration-700" : "h-full bg-emerald-500"}
-                style={{ width: `${onboarding.percent}%` }}
-              />
+            <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+              <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${onboarding.percent}%` }} />
             </div>
-            <p className="mt-2 text-xs text-slate-600">
-              {onboarding.doneCount}/3 étapes terminées
-              {onboarding.percent === 100 ? " • Vous êtes prêt ✅" : ""}
-            </p>
+            <p className="mt-2 text-xs text-slate-600">{onboarding.doneCount}/3 étapes terminées</p>
           </div>
 
-          {/* Checklist */}
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
-            {onboarding.steps.map((s) => (
+            {onboarding.steps.map((step) => (
               <button
-                key={s.key}
+                key={step.key}
                 type="button"
-                onClick={() => onGo(s.key)}
+                onClick={() => onGo(step.key)}
                 className={
                   "rounded-xl border px-3 py-3 text-left transition " +
-                  (s.done
-                    ? "border-emerald-200 bg-emerald-50"
-                    : "border-slate-200 bg-slate-50 hover:bg-slate-100")
+                  (step.done ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50 hover:bg-slate-100")
                 }
               >
-                <p className="text-sm font-semibold text-slate-900">
-                  {s.done ? "✅" : "⬜"} {s.label}
-                </p>
+                <p className="text-sm font-semibold text-slate-900">{step.done ? "Fait" : "À faire"} · {step.label}</p>
                 <p className="mt-0.5 text-[0.8rem] text-slate-600">
-                  {s.key === "biens"
-                    ? "Adresse, infos, statut…"
-                    : s.key === "locataires"
-                    ? "Nom, email, contact…"
-                    : "Bien + Locataire + loyer"}
+                  {step.key === "biens" ? "Adresse, infos, statut" : step.key === "locataires" ? "Nom, email, contact" : "Bien, locataire et loyer"}
                 </p>
               </button>
             ))}
@@ -255,123 +520,266 @@ export function SectionDashboard({
         </div>
       ) : null}
 
-      {/* Tableau de bord existant */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-950 px-5 py-5 text-white">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">Cockpit bailleur</p>
+              <h2 className="mt-1 text-xl font-semibold">Ce qui mérite votre attention aujourd’hui</h2>
+              <p className="mt-1 max-w-3xl text-sm text-slate-200">
+                Période : {fmtDate(monthRange.startISO)} → {fmtDate(monthRange.endISO)} · loyers, quittances, retards et performance.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white">Score {healthScore}/100</span>
+              <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-white">Occupation {occupancyRate}%</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-5 lg:grid-cols-[1fr,0.85fr]">
+          <div className="space-y-3">
+            {priorityActions.map((action, index) => (
+              <div
+                key={`${action.title}-${index}`}
+                className={
+                  "rounded-2xl border px-4 py-3 " +
+                  (action.tone === "red"
+                    ? "border-red-200 bg-red-50"
+                    : action.tone === "amber"
+                    ? "border-amber-200 bg-amber-50"
+                    : action.tone === "indigo"
+                    ? "border-indigo-200 bg-indigo-50"
+                    : "border-emerald-200 bg-emerald-50")
+                }
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">{action.title}</p>
+                    <p className="mt-1 text-sm text-slate-700">{action.desc}</p>
+                    {action.details?.length ? (
+                      <div className="mt-3 space-y-1">
+                        {action.details.map((detail) => (
+                          <p key={detail} className="rounded-xl border border-white/70 bg-white/70 px-3 py-1.5 text-xs font-semibold text-slate-800">
+                            {detail}
+                          </p>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                  {action.target ? (
+                    <button
+                      type="button"
+                      onClick={() => onGo(action.target!)}
+                      className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                    >
+                      {action.cta || "Ouvrir"}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Score de gestion</p>
+                <p className="mt-1 text-xs text-slate-600">Pourquoi le score monte ou descend.</p>
+              </div>
+              <p className="text-2xl font-semibold text-slate-950">{healthScore}</p>
+            </div>
+            <div className="mt-4 space-y-2">
+              {healthDetails.map((detail) => (
+                <button
+                  key={detail.label}
+                  type="button"
+                  onClick={() => detail.target && onGo(detail.target)}
+                  disabled={!detail.target}
+                  className={
+                    "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left " +
+                    (detail.target ? "hover:bg-slate-50" : "cursor-default")
+                  }
+                >
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-slate-800">{detail.label}</span>
+                    <Pill tone={detail.tone as any}>{detail.value}</Pill>
+                  </span>
+                  <span className="mt-1 block text-xs text-slate-500">{detail.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <SectionTitle
-          kicker="Vue globale"
-          title="Tableau de bord"
-          desc={`Période : ${fmtDate(monthRange.startISO)} → ${fmtDate(
-            monthRange.endISO
-          )} • Suivi loyers, retards, quittances et santé du parc.`}
+          kicker="Mois en cours"
+          title="Encaissement et quittances"
+          desc="La lecture opérationnelle du mois : ce qui est prévu, reçu, restant et documenté."
           right={
-            <div className="flex items-center gap-2">
-              <Pill tone={occupancyRate >= 80 ? "emerald" : occupancyRate >= 60 ? "amber" : "red"}>
-                Occupation {occupancyRate}%
-              </Pill>
-              <Pill tone={lateCount > 0 ? "red" : "emerald"}>
-                {lateCount > 0 ? "Retards" : "RAS"}
-              </Pill>
+            <div className="flex flex-wrap gap-2">
+              <Pill tone={ratio >= 95 ? "emerald" : ratio >= 70 ? "amber" : "red"}>Encaissement {ratio}%</Pill>
+              <Pill tone={receiptCoverage >= 100 ? "emerald" : receiptCoverage >= 50 ? "amber" : "red"}>Quittances {receiptCoverage}%</Pill>
             </div>
           }
         />
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard
-            title="Loyers attendus (mois)"
-            value={formatEuro(monthlyExpected)}
-            hint="Charges incluses (si paramétrées)"
-          />
-          <KpiCard
-            title="Loyers encaissés (mois)"
-            value={formatEuro(monthlyPaid)}
-            hint={monthlyExpected > 0 ? `Taux d’encaissement : ${ratio}%` : "—"}
-            tone={monthlyExpected > 0 && monthlyPaid >= monthlyExpected ? "emerald" : "slate"}
-          />
-          <KpiCard
-            title="Retards"
-            value={`${lateCount}`}
-            hint={lateCount > 0 ? "À traiter rapidement" : "Tout est à l’heure"}
-            tone={lateCount > 0 ? "red" : "emerald"}
-          />
-          <KpiCard
-            title="Dépôts de garantie"
-            value={formatEuro(depositTotal)}
-            hint="Somme des dépôts (baux actifs)"
-            tone="indigo"
-          />
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <KpiCard title="Attendu" value={formatEuro(monthlyExpected)} hint="Loyers + charges des baux actifs" />
+          <KpiCard title="Encaissé" value={formatEuro(monthlyPaid)} hint={`${ratio}% du mois`} tone={ratio >= 95 ? "emerald" : "slate"} />
+          <KpiCard title="Reste à encaisser" value={formatEuro(remainingToCollect)} hint={remainingToCollect > 0 ? "À suivre" : "Tout est encaissé"} tone={remainingToCollect > 0 ? "amber" : "emerald"} />
+          <KpiCard title="Retards" value={String(lateCount)} hint={lateCount > 0 ? "Action requise" : "Aucun retard"} tone={lateCount > 0 ? "red" : "emerald"} />
+          <KpiCard title="Dépôts" value={formatEuro(depositTotal)} hint="Baux actifs" tone="indigo" />
         </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
-          <SectionTitle
-            kicker="Priorités"
-            title="Alertes & actions"
-            desc="Ce qui mérite votre attention maintenant."
-          />
-          <div className="space-y-2">
-            {alerts.map((a, idx) => {
-              const cls =
-                a.tone === "red"
-                  ? "border-red-200 bg-red-50 text-red-900"
-                  : a.tone === "amber"
-                  ? "border-amber-200 bg-amber-50 text-amber-900"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-900";
-              return (
-                <div key={idx} className={"rounded-xl border px-3 py-3 " + cls}>
-                  <p className="text-sm font-semibold">{a.title}</p>
-                  <p className="mt-0.5 text-[0.8rem] opacity-90">{a.desc}</p>
-                </div>
-              );
-            })}
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Loyers du mois à encaisser</p>
+              <p className="mt-1 text-xs text-slate-600">
+                Liste opérationnelle des loyers non confirmés sur la période affichée.
+              </p>
+            </div>
+            {rentsToCollect.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => onGo("quittances")}
+                className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+              >
+                Confirmer les loyers
+              </button>
+            ) : null}
           </div>
-        </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-3">
-          <SectionTitle kicker="Pilotage" title="Baux actifs" desc="Un bail = Bien + Locataire + loyers/quittances." />
-          {activeLeases.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-[0.85rem] text-slate-700">
-              Aucun bail actif. Ajoutez un bien, un locataire, puis créez un bail.
+          {rentsToCollect.length === 0 ? (
+            <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
+              Tous les loyers attendus du mois sont confirmés.
             </div>
           ) : (
-            <div className="space-y-2">
-              {activeLeases.slice(0, 6).map((l) => {
-                const p = propertyById.get(l.property_id);
-                const t = tenantById.get(l.tenant_id);
-                const total = Number(l.rent_amount || 0) + Number(l.charges_amount || 0);
+            <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="grid grid-cols-[1.2fr,0.9fr,0.7fr,0.7fr] gap-3 border-b border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">
+                <span>Bien</span>
+                <span>Locataire</span>
+                <span>Statut</span>
+                <span className="text-right">Montant</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {rentsToCollect.map((card) => (
+                  <button
+                    key={card.lease.id}
+                    type="button"
+                    onClick={() => onGo("quittances")}
+                    className="grid w-full grid-cols-[1.2fr,0.9fr,0.7fr,0.7fr] gap-3 px-3 py-2.5 text-left text-sm hover:bg-slate-50"
+                  >
+                    <span className="truncate font-semibold text-slate-900">{card.propertyLabel}</span>
+                    <span className="truncate text-slate-700">{card.tenantName}</span>
+                    <span>
+                      <Pill tone={card.paymentStatus === "En retard" ? "red" : "amber"}>{card.paymentStatus}</Pill>
+                    </span>
+                    <span className="text-right font-semibold text-slate-900">{formatEuro(card.total)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <SectionTitle
+          kicker="Comptabilité"
+          title="Revenus et dépenses sur 6 mois"
+          desc="Graphique basé sur les écritures Finance. Si aucune écriture n’existe encore, les loyers encaissés servent de repère."
+          right={
+            <button
+              type="button"
+              onClick={() => onGo("finance")}
+              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Ouvrir Finance
+            </button>
+          }
+        />
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1fr,280px]">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex h-64 items-end gap-3 overflow-x-auto border-b border-slate-200 pb-3">
+              {accountingSeries.map((row) => {
+                const incomeHeight = Math.max(4, (row.income / maxChartValue) * 190);
+                const expenseHeight = Math.max(4, (row.expense / maxChartValue) * 190);
                 return (
-                  <div key={l.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">
-                          {p?.label || "Bien"} • {t?.full_name || "Locataire"}
-                        </p>
-                        <p className="mt-0.5 text-[0.8rem] text-slate-700">
-                          Total mensuel : <span className="font-semibold">{formatEuro(total)}</span>{" "}
-                          <span className="text-slate-500">
-                            ({formatEuro(l.rent_amount)} + {formatEuro(l.charges_amount)})
-                          </span>
-                        </p>
-                        <p className="mt-0.5 text-[0.75rem] text-slate-500">
-                          Début : {fmtDate(l.start_date)} • Fin : {fmtDate(l.end_date)}
-                        </p>
-                      </div>
-                      <div className="shrink-0">
-                        <Pill tone={(l.auto_quittance_enabled ? "emerald" : "amber") as any}>
-                          Quittances {l.auto_quittance_enabled ? "auto" : "manuel"}
-                        </Pill>
-                      </div>
+                  <div key={row.key} className="flex min-w-[72px] flex-1 flex-col items-center justify-end gap-2">
+                    <div className="flex h-52 items-end gap-1">
+                      <div className="w-5 rounded-t-lg bg-emerald-500" style={{ height: `${incomeHeight}px` }} title={`Revenus ${formatEuro(row.income)}`} />
+                      <div className="w-5 rounded-t-lg bg-rose-500" style={{ height: `${expenseHeight}px` }} title={`Dépenses ${formatEuro(row.expense)}`} />
                     </div>
+                    <p className="text-xs font-semibold text-slate-600">{monthLabel(row.key)}</p>
                   </div>
                 );
               })}
-              {activeLeases.length > 6 ? (
-                <p className="text-[0.75rem] text-slate-500">+{activeLeases.length - 6} autres baux…</p>
-              ) : null}
             </div>
-          )}
-        </section>
-      </div>
+            <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-600">
+              <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Revenus</span>
+              <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-rose-500" /> Dépenses</span>
+              {transactionsLoading ? <span>Chargement des écritures...</span> : null}
+              {transactionsError ? <span className="text-red-700">{transactionsError}</span> : null}
+            </div>
+          </div>
+
+          <div className="grid gap-3">
+            <KpiCard title="Revenus 6 mois" value={formatEuro(accountingTotals.income)} hint="Écritures entrantes" tone="emerald" />
+            <KpiCard title="Dépenses 6 mois" value={formatEuro(accountingTotals.expense)} hint="Écritures sortantes" tone={accountingTotals.expense > 0 ? "red" : "slate"} />
+            <KpiCard title="Résultat net" value={formatEuro(accountingTotals.net)} hint="Revenus - dépenses" tone={accountingTotals.net >= 0 ? "emerald" : "red"} />
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <SectionTitle
+          kicker="Par bien"
+          title="Statut du parc"
+          desc="Une lecture rapide par bail actif : paiement, quittance, montant et événement à surveiller."
+        />
+
+        {leaseCards.length === 0 ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-700">
+            Aucun bail actif. Ajoutez un bien, un locataire, puis créez un bail pour activer le suivi.
+          </div>
+        ) : (
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+            <div className="grid grid-cols-[1.3fr,0.8fr,0.8fr,0.8fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600">
+              <span>Bien / locataire</span>
+              <span>Paiement</span>
+              <span>Quittance</span>
+              <span className="text-right">Mensuel</span>
+            </div>
+            <div className="divide-y divide-slate-100 bg-white">
+              {leaseCards.slice(0, 8).map((card) => (
+                <div key={card.lease.id} className="grid grid-cols-[1.3fr,0.8fr,0.8fr,0.8fr] gap-3 px-4 py-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">{card.propertyLabel}</p>
+                    <p className="truncate text-xs text-slate-600">{card.tenantName}</p>
+                    {card.leaseEndingSoon ? (
+                      <p className="mt-1 text-xs font-semibold text-amber-700">Fin à surveiller : {fmtDate(card.lease.end_date)}</p>
+                    ) : null}
+                  </div>
+                  <div>
+                    <Pill tone={card.paymentStatus === "Encaissé" ? "emerald" : card.paymentStatus === "En retard" ? "red" : "amber"}>
+                      {card.paymentStatus}
+                    </Pill>
+                  </div>
+                  <div>
+                    <Pill tone={card.hasReceipt ? "emerald" : "amber"}>{card.hasReceipt ? "Prête" : "À générer"}</Pill>
+                  </div>
+                  <p className="text-right font-semibold text-slate-900">{formatEuro(card.total)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

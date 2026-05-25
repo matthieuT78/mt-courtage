@@ -6,16 +6,18 @@
     "dev": "next dev",
     "build": "npm run sitemap && next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "sitemap": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@sparticuz/chromium": "^143.0.4",
     "@supabase/supabase-js": "^2.86.2",
     "chart.js": "^4.5.1",
     "gray-matter": "^4.0.3",
     "next": "^14.2.33",
     "pdfkit": "^0.17.2",
+    "puppeteer-core": "^24.36.1",
     "react": "18.2.0",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "18.2.0",
@@ -29,6 +31,7 @@
     "autoprefixer": "10.4.19",
     "eslint-config-next": "^16.0.7",
     "postcss": "8.4.38",
+    "puppeteer": "^24.36.1",
     "tailwindcss": "3.4.4",
     "typescript": "5.4.5"
   }

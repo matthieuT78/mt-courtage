@@ -382,7 +382,10 @@ export function buildInvestissementEmailText(computed: any) {
   const k = extractKpis(computed || {});
   const parts: string[] = [];
 
-  parts.push("VOTRE SIMULATION D’INVESTISSEMENT — lokt.fr");
+  parts.push("VOTRE RAPPORT D’INVESTISSEMENT LOCATIF — lokt.fr");
+  parts.push("");
+  parts.push("Bonjour,");
+  parts.push("Voici votre rapport personnalisé : rentabilité, cash-flow, score d’opportunité et recommandations.");
   parts.push("");
   parts.push(detectStatusFromCashflow(k.cashflowMensuel));
   parts.push("");
@@ -432,6 +435,7 @@ export function buildInvestissementEmailText(computed: any) {
   parts.push("Relire / refaire la simulation : https://lokt.fr/investissement");
   parts.push("");
   parts.push("Calculs indicatifs. Ne constitue pas une offre de prêt.");
+  parts.push("Vos données servent uniquement à vous transmettre ce rapport, retrouver votre simulation et améliorer lokt.fr. Aucune revente de données.");
   parts.push("— lokt.fr");
 
   return parts.join("\n");
@@ -515,13 +519,18 @@ export function buildInvestissementEmailHtml(computed: any) {
     <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
       <div style="padding:22px 18px 12px 18px;border-bottom:1px solid #e2e8f0;background:#ffffff;">
         <img src="${logoUrl}" alt="lokt.fr" width="190" style="display:block;max-width:190px;height:auto;margin:0 auto 10px;" />
-        <h1 style="margin:0;text-align:center;font-size:18px;color:#0f172a;">Votre simulation d’investissement</h1>
+        <h1 style="margin:0;text-align:center;font-size:18px;color:#0f172a;">Votre rapport d’investissement locatif</h1>
         <p style="margin:6px 0 0;text-align:center;color:#64748b;font-size:13px;line-height:1.5;">
-          Récapitulatif de votre simulation (calculs indicatifs).
+          Rentabilité, cash-flow, score d’opportunité et recommandations.
         </p>
       </div>
 
       <div style="padding:16px 18px;">
+        <p style="margin:0 0 14px;color:#334155;font-size:13px;line-height:1.55;">
+          Bonjour,<br/>
+          voici une synthèse de votre projet locatif. Le rapport met en avant les chiffres clés et les leviers à travailler pour améliorer la rentabilité.
+        </p>
+
         <p style="margin:0 0 12px;text-align:center;color:#0f172a;font-size:13px;font-weight:700;">
           ${escapeHtml(status)}
         </p>
@@ -554,7 +563,7 @@ export function buildInvestissementEmailHtml(computed: any) {
           k.scoreOpp !== undefined
             ? `
           <div style="margin-top:10px;padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#0f172a;color:#ffffff;">
-            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a5f3fc;">Score Lokt.fr™</div>
+            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a5f3fc;">Score lokt.fr™</div>
             <div style="margin-top:6px;font-size:22px;font-weight:800;color:#ffffff;">${escapeHtml(
               k.scoreOpp
             )}/10 ${
@@ -608,6 +617,9 @@ export function buildInvestissementEmailHtml(computed: any) {
         <p style="margin:0;color:#64748b;font-size:12px;line-height:1.5;">
           Calculs indicatifs. Ne constitue pas une offre de prêt.
         </p>
+        <p style="margin:6px 0 0;color:#64748b;font-size:12px;line-height:1.5;">
+          Vos données servent à vous transmettre ce rapport, retrouver votre simulation et améliorer lokt.fr. Aucune revente de données.
+        </p>
         <p style="margin:6px 0 0;color:#64748b;font-size:12px;">— lokt.fr</p>
       </div>
     </div>
@@ -618,7 +630,7 @@ export function buildInvestissementEmailHtml(computed: any) {
 
 /* (Optionnel) Builder standard si tu veux l'utiliser ailleurs */
 export function buildInvestissementEmail(params: { email: string; computed: any }) {
-  const subject = "Votre simulation d’investissement — lokt.fr";
+  const subject = "Votre rapport d’investissement locatif — lokt.fr";
   const html = buildInvestissementEmailHtml(params.computed);
   const text = buildInvestissementEmailText(params.computed);
   return { subject, html, text };

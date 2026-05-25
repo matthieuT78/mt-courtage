@@ -199,15 +199,28 @@ function surtaxePlusValueEstimee(gainTaxableIR: number) {
   const g = Math.max(0, gainTaxableIR || 0);
   if (g <= 50000) return 0;
 
-  if (g <= 60000) return 0.02;
-  if (g <= 100000) return 0.03;
-  if (g <= 110000) return 0.04;
-  if (g <= 150000) return 0.05;
-  return 0.06;
+  if (g <= 60000) return Math.max(0, g * 0.02 - (60000 - g) / 20);
+  if (g <= 100000) return g * 0.02;
+  if (g <= 110000) return Math.max(0, g * 0.03 - (110000 - g) / 10);
+  if (g <= 150000) return g * 0.03;
+  if (g <= 160000) return Math.max(0, g * 0.04 - (160000 - g) * 0.15);
+  if (g <= 200000) return g * 0.04;
+  if (g <= 210000) return Math.max(0, g * 0.05 - (210000 - g) * 0.2);
+  if (g <= 250000) return g * 0.05;
+  if (g <= 260000) return Math.max(0, g * 0.06 - (260000 - g) * 0.25);
+  return g * 0.06;
+}
+
+function iraPlafondLegal(crd: number, annualRatePct: number) {
+  const capital = Math.max(0, crd || 0);
+  const rate = Math.max(0, annualRatePct || 0) / 100;
+  if (capital <= 0 || rate <= 0) return 0;
+  return Math.round(Math.min(capital * 0.03, (capital * rate) / 2));
 }
 
 /* ------------------------ Types ------------------------ */
 type ResidenceType = "principale" | "secondaire" | "invest";
+type RentalTaxMode = "nu" | "lmnp";
 type AcquisitionFraisMode = "reel" | "forfait_7_5";
 type TravauxMode = "reel" | "forfait_15" | "aucun";
 
@@ -219,6 +232,7 @@ type PVResult = {
   purchasePrice: number;
   acquisitionCosts: number;
   worksCosts: number;
+  lmnpAmortizationReintegration: number;
   totalPurchaseCost: number;
 
   grossGain: number;
@@ -236,6 +250,7 @@ type PVResult = {
 
   crd: number;
   ira: number;
+  iraCap: number;
   loanPayoff: number;
   netCashSeller: number;
 
@@ -346,6 +361,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
   /* ======================== Step 1: Vente ======================== */
   const [residenceType, setResidenceType] = useState<ResidenceType>("principale");
+  const [rentalTaxMode, setRentalTaxMode] = useState<RentalTaxMode>("nu");
+  const [lmnpAmortization, setLmnpAmortization] = useState<string>("0");
   const [yearsHeld, setYearsHeld] = useState<string>("8");
 
   const [salePrice, setSalePrice] = useState<string>("350000");
@@ -372,7 +389,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   const [loanYearsTotal, setLoanYearsTotal] = useState<string>("20");
   const [loanYearsElapsed, setLoanYearsElapsed] = useState<string>("8");
 
-  const [iraMode, setIraMode] = useState<"aucune" | "pourcent">("pourcent");
+  const [iraMode, setIraMode] = useState<"aucune" | "plafond_legal" | "pourcent">("plafond_legal");
   const [iraPct, setIraPct] = useState<string>("1.0");
 
   /* ======================== Step 4: Fiscalité ======================== */
@@ -385,6 +402,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [leadEmail, setLeadEmail] = useState<string>("");
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
+  const [consentContact, setConsentContact] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
 
@@ -466,7 +484,10 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     const saleCosts = Math.max(0, saleAgencyNum + saleOtherNum);
     const netSalePriceForPV = Math.max(0, salePriceNum - saleCosts);
 
-    const totalPurchaseCost = Math.max(0, purchasePriceNum + acquisitionCosts + worksCosts);
+    const lmnpAmortizationReintegration =
+      residenceType === "invest" && rentalTaxMode === "lmnp" ? Math.max(0, toInt(lmnpAmortization, 0)) : 0;
+
+    const totalPurchaseCost = Math.max(0, purchasePriceNum + acquisitionCosts + worksCosts - lmnpAmortizationReintegration);
 
     const grossGain = Math.round(netSalePriceForPV - totalPurchaseCost);
 
@@ -481,8 +502,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     const taxIR = isExempt ? 0 : Math.round(taxableIR * 0.19);
     const taxPS = isExempt ? 0 : Math.round(taxablePS * 0.172);
 
-    const surtaxRate = !isExempt && applySurtax === "oui" ? surtaxePlusValueEstimee(taxableIR) : 0;
-    const surtax = !isExempt ? Math.round(taxableIR * surtaxRate) : 0;
+    const surtax = !isExempt && applySurtax === "oui" ? Math.round(surtaxePlusValueEstimee(taxableIR)) : 0;
 
     const totalTax = Math.max(0, taxIR + taxPS + surtax);
 
@@ -507,8 +527,13 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     }
 
     let ira = 0;
+    const iraCap = loanHas === "oui" ? iraPlafondLegal(crd, toFloat(loanRate, 0)) : 0;
     if (loanHas === "oui") {
-      if (iraMode === "pourcent") ira = Math.round(crd * (toFloat(iraPct, 0) / 100));
+      if (iraMode === "plafond_legal") ira = iraCap;
+      else if (iraMode === "pourcent") {
+        const rawIra = Math.round(crd * (toFloat(iraPct, 0) / 100));
+        ira = iraCap > 0 ? Math.min(rawIra, iraCap) : rawIra;
+      }
       else ira = 0;
     }
 
@@ -526,6 +551,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       purchasePrice: purchasePriceNum,
       acquisitionCosts,
       worksCosts,
+      lmnpAmortizationReintegration,
       totalPurchaseCost,
 
       grossGain,
@@ -543,6 +569,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
       crd,
       ira,
+      iraCap,
       loanPayoff,
       netCashSeller,
 
@@ -582,6 +609,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     if (typeof window !== "undefined") {
       const payload = {
         residenceType,
+        rentalTaxMode,
+        lmnpAmortization,
         yearsHeld,
         salePrice,
         saleAgencyFeesSeller,
@@ -620,6 +649,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       const saved = JSON.parse(raw);
 
       setResidenceType(saved.residenceType ?? "principale");
+      setRentalTaxMode(saved.rentalTaxMode ?? "nu");
+      setLmnpAmortization(saved.lmnpAmortization ? String(saved.lmnpAmortization) : "0");
       setYearsHeld(saved.yearsHeld ? String(saved.yearsHeld) : "8");
 
       setSalePrice(saved.salePrice ? String(saved.salePrice) : "350000");
@@ -644,7 +675,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       setLoanYearsTotal(saved.loanYearsTotal ? String(saved.loanYearsTotal) : "20");
       setLoanYearsElapsed(saved.loanYearsElapsed ? String(saved.loanYearsElapsed) : "8");
 
-      setIraMode(saved.iraMode ?? "pourcent");
+      setIraMode(saved.iraMode ?? "plafond_legal");
       setIraPct(saved.iraPct ? String(saved.iraPct) : "1.0");
 
       setApplySurtax(saved.applySurtax ?? "oui");
@@ -673,6 +704,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       meta: { tool: "plus_value", version: "v1" },
       input: {
         residenceType,
+        rentalTaxMode,
+        lmnpAmortization: toInt(lmnpAmortization, 0),
         yearsHeld: toInt(yearsHeld, 0),
         sale: {
           salePrice: toInt(salePrice, 0),
@@ -708,7 +741,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         path: typeof window !== "undefined" ? window.location.pathname : null,
         createdAtClient: new Date().toISOString(),
       },
-      consent: { consent_analysis: true, consent_contact: false },
+      consent: { consent_analysis: true, consent_contact: consentContact },
       user: { user_id: sessionUserId || null, email: sessionEmail || null },
     };
 
@@ -741,6 +774,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       meta: { tool: "plus-value-vente-immobiliere", version: "v1_email" },
       input: {
         residenceType,
+        rentalTaxMode,
+        lmnpAmortization,
         yearsHeld,
         salePrice,
         saleAgencyFeesSeller,
@@ -808,7 +843,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     }
 
     if (!consentLokt) {
-      setUnlockMsg("Pour débloquer l’analyse, merci d’accepter l’utilisation de vos données (Lokt.fr).");
+      setUnlockMsg("Pour recevoir le rapport, merci d’accepter l’utilisation de vos données pour cette simulation.");
       return false;
     }
 
@@ -820,7 +855,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       persistUnlock("plus-value-vente-immobiliere", email);
 
       setUnlocked(true);
-      setUnlockMsg("✅ Analyse débloquée. (Votre simulation est bien enregistrée.)");
+      setUnlockMsg("✅ Rapport prêt. Votre simulation est bien enregistrée.");
       return true;
     } catch (e: any) {
       setUnlockMsg("❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue"));
@@ -856,8 +891,10 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   }, [
     result,
     salePriceScenario,
-    residenceType,
-    yearsHeld,
+        residenceType,
+        rentalTaxMode,
+        lmnpAmortization,
+        yearsHeld,
     saleAgencyFeesSeller,
     saleOtherCosts,
     purchasePrice,
@@ -873,7 +910,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     loanRate,
     loanYearsTotal,
     loanYearsElapsed,
-    iraMode,
+        iraMode,
     iraPct,
     applySurtax,
   ]);
@@ -885,12 +922,25 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   }, [result, scenarioEnabled, scenarioResult]);
 
   /* ======================== Analyse texte ======================== */
+  const buildDecisionLabel = (r: PVResult) => {
+    if (r.netCashSeller < 0) return "Vente tendue : le prix ne couvre pas totalement impôts et prêt à solder.";
+    if (!r.isExempt && r.totalTax > Math.max(1, r.netSalePriceForPV) * 0.08) {
+      return "Fiscalité lourde : comparez avec un scénario d’attente ou un prix de vente supérieur.";
+    }
+    if (r.crd > 0 && r.loanPayoff > Math.max(1, r.netSalePriceForPV) * 0.55) {
+      return "Banque dominante : le CRD absorbe une part importante du prix de vente.";
+    }
+    if (r.netCashSeller > 0) return "Vente lisible : le cash net reste positif après impôts et banque.";
+    return "À vérifier : la conclusion dépend surtout du prix de vente final.";
+  };
+
   const buildPlusValueTextDetail = (r: PVResult) => {
     const lines: string[] = [];
 
     lines.push(
       [
         "1) Résumé (ce que vous récupérez)",
+        buildDecisionLabel(r),
         `Cash net vendeur : ${formatEuro(r.netCashSeller)}.`,
         `Prix net vendeur (après frais vendeur) : ${formatEuro(r.netSalePriceForPV)}.`,
         `Prêt à solder (CRD + IRA) : ${formatEuro(r.loanPayoff)}.`,
@@ -902,12 +952,15 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       [
         "2) Plus-value (base de calcul)",
         `Plus-value brute : ${formatEuro(r.grossGain)}.`,
-        `Coût total d’acquisition : ${formatEuro(r.totalPurchaseCost)} (achat + frais + travaux).`,
+        `Coût fiscal retenu : ${formatEuro(r.totalPurchaseCost)} (achat + frais + travaux${r.lmnpAmortizationReintegration > 0 ? " − amortissements LMNP réintégrés" : ""}).`,
         `Prix net vendeur retenu : ${formatEuro(r.netSalePriceForPV)}.`,
+        r.lmnpAmortizationReintegration > 0
+          ? `LMNP : ${formatEuro(r.lmnpAmortizationReintegration)} d’amortissements déduits sont réintégrés dans cette estimation.`
+          : "",
         r.isExempt
           ? "Résidence principale : présumé exonéré dans ce simulateur."
           : `Durée de détention : ${r.yearsHeld} an(s) → abattements : IR ${formatPct(r.abIR)} / PS ${formatPct(r.abPS)}.`,
-      ].join("\n")
+      ].filter(Boolean).join("\n")
     );
 
     lines.push(
@@ -918,7 +971,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
           : [
               `Base taxable IR : ${formatEuro(r.taxableIR)} → IR (19%) ≈ ${formatEuro(r.taxIR)}.`,
               `Base taxable PS : ${formatEuro(r.taxablePS)} → PS (17,2%) ≈ ${formatEuro(r.taxPS)}.`,
-              `Surtaxe (modèle simplifié) ≈ ${formatEuro(r.surtax)}.`,
+              `Surtaxe plus-value élevée ≈ ${formatEuro(r.surtax)}.`,
               `Total impôts ≈ ${formatEuro(r.totalTax)}.`,
             ].join("\n"),
       ].join("\n")
@@ -929,9 +982,10 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         "4) Crédit / remboursement anticipé",
         `CRD : ${formatEuro(r.crd)}.`,
         `IRA : ${formatEuro(r.ira)}.`,
+        r.iraCap > 0 ? `Plafond indicatif utilisé : ${formatEuro(r.iraCap)} (min. 6 mois d’intérêts / 3% du CRD).` : "",
         `Total à solder : ${formatEuro(r.loanPayoff)}.`,
         "À vérifier : attestation banque (le CRD exact peut changer la conclusion).",
-      ].join("\n")
+      ].filter(Boolean).join("\n")
     );
 
     lines.push(
@@ -939,6 +993,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         "5) Point de repère",
         `Prix de vente “à l’équilibre” (coût + frais + prêt) ≈ ${formatEuro(r.breakevenSalePrice)}.`,
         "Repère : c’est le prix auquel le cash net vendeur serait proche de 0 € (dans ce modèle).",
+        "Documents à réunir : acte d’achat, décompte notaire, factures travaux, tableau d’amortissement ou attestation CRD.",
       ].join("\n")
     );
 
@@ -1028,16 +1083,37 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     Type d’occupation
                     <InfoBadge text="Si vous sélectionnez “résidence principale”, le simulateur considère la plus-value exonérée (0 €). En vrai, il existe des conditions (occupation effective, délais…). Si doute, choisissez “secondaire” pour une estimation prudente." />
                   </label>
-                  <select
-                    value={residenceType}
-                    onChange={(e) => setResidenceType(e.target.value as ResidenceType)}
-                    className={selectBase}
-                  >
+                    <select
+                      value={residenceType}
+                      onChange={(e) => {
+                        const next = e.target.value as ResidenceType;
+                        setResidenceType(next);
+                        if (next !== "invest") setRentalTaxMode("nu");
+                      }}
+                      className={selectBase}
+                    >
                     <option value="principale">Résidence principale</option>
                     <option value="secondaire">Résidence secondaire</option>
                     <option value="invest">Investissement locatif</option>
-                  </select>
-                </div>
+                    </select>
+                  </div>
+
+                  {residenceType === "invest" ? (
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700 flex items-center gap-1">
+                        Régime locatif
+                        <InfoBadge text="Le LMNP peut modifier l’estimation depuis 2025 si des amortissements ont été déduits. Pour une location nue, gardez “location nue”." />
+                      </label>
+                      <select
+                        value={rentalTaxMode}
+                        onChange={(e) => setRentalTaxMode(e.target.value as RentalTaxMode)}
+                        className={selectBase}
+                      >
+                        <option value="nu">Location nue / non meublée</option>
+                        <option value="lmnp">LMNP / meublé amorti</option>
+                      </select>
+                    </div>
+                  ) : null}
 
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
@@ -1197,9 +1273,9 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Travaux
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-700 flex items-center gap-1">
+                      Travaux
                     <InfoBadge text="Les travaux augmentent le coût d’acquisition. En pratique, seuls certains travaux sont éligibles (factures, nature). Le forfait 15% est un repère simplifié." />
                   </label>
                   <select
@@ -1209,7 +1285,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                   >
                     <option value="reel">Montant réel</option>
                     <option value="forfait_15">Forfait 15% (si &gt; 5 ans)</option>
-		    <option value="aucun">Aucun</option>
+        <option value="aucun">Aucun</option>
                   </select>
                 </div>
 
@@ -1239,8 +1315,23 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                       </span>
                     </p>
                   </div>
-                )}
-              </div>
+                  )}
+
+                  {residenceType === "invest" && rentalTaxMode === "lmnp" ? (
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-700 flex items-center gap-1">
+                        Amortissements LMNP déjà déduits
+                        <InfoBadge text="Montant total des amortissements réellement déduits fiscalement. Dans cette estimation, ils augmentent la plus-value imposable. Si vous ne savez pas, laissez 0 puis vérifiez avec votre liasse ou expert-comptable." />
+                      </label>
+                      <input
+                        inputMode="numeric"
+                        value={lmnpAmortization}
+                        onChange={(e) => setLmnpAmortization(onlyDigits(e.target.value))}
+                        className={inputBase}
+                      />
+                    </div>
+                  ) : null}
+                </div>
             </>
           )}
 
@@ -1256,9 +1347,9 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
               <StepHint
                 title="Ce que fait cette étape"
                 bullets={[
-                  "CRD obligatoire si vous avez un prêt : c’est le montant à solder le jour de la vente.",
-                  "Si vous ne connaissez pas le CRD, on l’estime via amortissement (capital, taux, durée, ancienneté).",
-                  "Optionnel : estimation d’IRA (% du CRD).",
+                    "CRD obligatoire si vous avez un prêt : c’est le montant à solder le jour de la vente.",
+                    "Si vous ne connaissez pas le CRD, on l’estime via amortissement (capital, taux, durée, ancienneté).",
+                    "Optionnel : IRA estimées avec un plafond indicatif ou un pourcentage de votre contrat.",
                 ]}
                 tone="warn"
               />
@@ -1370,30 +1461,45 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         IRA (remboursement anticipé)
                         <InfoBadge text="Certaines banques facturent des indemnités. Ici, on applique un % du CRD (repère)." />
                       </label>
-                      <select
-                        value={iraMode}
-                        onChange={(e) => setIraMode(e.target.value as "aucune" | "pourcent")}
-                        className={selectBase}
-                      >
-                        <option value="pourcent">Estimer en % du CRD</option>
-                        <option value="aucune">Aucune / je ne sais pas</option>
-                      </select>
-                    </div>
+                        <select
+                          value={iraMode}
+                          onChange={(e) => setIraMode(e.target.value as "aucune" | "plafond_legal" | "pourcent")}
+                          className={selectBase}
+                        >
+                          <option value="plafond_legal">Plafond indicatif légal</option>
+                          <option value="pourcent">Taux prévu au contrat</option>
+                          <option value="aucune">Aucune / je ne sais pas</option>
+                        </select>
+                      </div>
 
-                    {iraMode === "pourcent" ? (
-                      <div className="space-y-1">
-                        <label className={labelBase}>
-                          IRA (% du CRD)
-                          <InfoBadge text="Exemple : CRD 120 000 € et 1% ⇒ 1 200 €. Mets 0 pour ignorer." />
-                        </label>
+                      {iraMode === "plafond_legal" && crdMode === "connu" ? (
+                        <div className="space-y-1">
+                          <label className={labelBase}>
+                            Taux du prêt (%)
+                            <InfoBadge text="Utilisé pour estimer 6 mois d’intérêts et comparer avec 3% du CRD." />
+                          </label>
+                          <input
+                            inputMode="decimal"
+                            value={loanRate}
+                            onChange={(e) => setLoanRate(onlyNumberLike(e.target.value))}
+                            className={inputSmall}
+                          />
+                          <p className="text-[0.65rem] text-slate-500">Repère : min. 6 mois d’intérêts / 3% du CRD.</p>
+                        </div>
+                      ) : iraMode === "pourcent" ? (
+                        <div className="space-y-1">
+                          <label className={labelBase}>
+                            Taux IRA contrat (% du CRD)
+                            <InfoBadge text="Exemple : CRD 120 000 € et 1% ⇒ 1 200 €. Si un taux du prêt est renseigné, on plafonne aussi par un repère légal indicatif." />
+                          </label>
                         <input
                           inputMode="decimal"
                           value={iraPct}
                           onChange={(e) => setIraPct(onlyNumberLike(e.target.value))}
                           className={inputSmall}
                         />
-                        <p className="text-[0.65rem] text-slate-500">Repère : souvent 0,5% à 3% selon contrat.</p>
-                      </div>
+                          <p className="text-[0.65rem] text-slate-500">Repère : souvent 0,5% à 3% selon contrat.</p>
+                        </div>
                     ) : (
                       <div className="space-y-1 opacity-0 pointer-events-none select-none">
                         <label className={labelBase}>—</label>
@@ -1426,15 +1532,15 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 bullets={[
                   "Si résidence principale : 0 € (présumé exonéré dans ce simulateur).",
                   "Sinon : base taxable IR/PS après abattements de durée.",
-                  "Option : surtaxe (modèle simplifié).",
+                    "Option : surtaxe des plus-values imposables supérieures à 50 000 €.",
                 ]}
               />
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 items-end">
                 <div className="space-y-1">
                   <label className={labelBase}>
-                    Appliquer la surtaxe ?
-                    <InfoBadge text="Si la plus-value taxable IR dépasse certains seuils, une surtaxe peut s’appliquer. Ici c’est un modèle simplifié, utile comme repère." />
+                      Appliquer la surtaxe ?
+                      <InfoBadge text="Si la plus-value imposable dépasse 50 000 €, une surtaxe progressive peut s’appliquer. Les terrains à bâtir et cas particuliers ne sont pas traités ici." />
                   </label>
                   <select
                     value={applySurtax}
@@ -1518,7 +1624,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         ) : (
           <>
             {/* Synthèse visible */}
-            <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-4">
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
                 <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Prix net vendeur</p>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.netSalePriceForPV)}</p>
@@ -1550,8 +1656,16 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                   {formatEuro(displayResult.netCashSeller)}
                 </p>
                 <p className="mt-1 text-[0.7rem] text-slate-500">Après impôts + banque.</p>
+                </div>
               </div>
-            </div>
+
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700">Verdict vendeur</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{buildDecisionLabel(displayResult)}</p>
+                <p className="mt-1 text-[0.75rem] text-slate-700">
+                  Le bon réflexe : comparez le prix cible avec un scénario prudent et demandez le CRD exact à la banque avant signature.
+                </p>
+              </div>
 
             {/* Scénario (bonus) : seulement si débloqué */}
             {canShowFullAnalysis ? (
@@ -1638,7 +1752,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
                       />
                       <p className="text-[0.7rem] text-slate-300">
-                        On l’utilise pour enregistrer la simulation et mesurer la demande (stats agrégées).
+                        Utilisé pour vous envoyer le rapport, retrouver votre simulation et améliorer le service.
                       </p>
                     </div>
 
@@ -1652,9 +1766,9 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                           className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
                         />
                         <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                          <span className="font-semibold">Recevoir l’analyse complète par email</span>
+                          <span className="font-semibold">Recevoir le rapport complet par email</span>
                           <span className="block text-[0.7rem] text-slate-300 mt-1">
-                            Pratique pour relire les résultats plus tard.
+                            Synthèse, cash net, points de vigilance et plan d’action.
                           </span>
                         </span>
                       </label>
@@ -1673,13 +1787,28 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                           className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
                         />
                         <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                          <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour enregistrer mon analyse
-                          et améliorer Lokt.fr (statistiques anonymisées).
+                          <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour m’envoyer mon rapport,
+                          retrouver ma simulation et améliorer lokt.fr.
                         </span>
                       </label>
                       <p className="mt-2 text-[0.7rem] text-slate-300">
-                        Pas de démarchage partenaire. Aucun consentement “contact partenaire”.
+                        Aucune revente de données. Aucun démarchage partenaire sans accord séparé.
                       </p>
+                    </div>
+
+                    <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={consentContact}
+                          onChange={(e) => setConsentContact(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
+                        />
+                        <span className="text-[0.75rem] text-slate-200 leading-relaxed">
+                          <span className="font-semibold">Optionnel :</span> j’accepte que lokt.fr me recontacte pour m’aider à analyser mon projet.
+                          <span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span>
+                        </span>
+                      </label>
                     </div>
 
                     {/* Bouton */}
@@ -1697,7 +1826,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                       disabled={unlocking}
                       className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
                     >
-                      {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
+                      {unlocking ? "Préparation..." : "Recevoir mon rapport"}
                     </button>
 
                     {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}

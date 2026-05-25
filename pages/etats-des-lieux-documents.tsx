@@ -1,5 +1,6 @@
 // pages/etats-des-lieux-documents.tsx
 import { useEffect, useMemo, useState } from "react";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
@@ -428,6 +429,15 @@ export default function EtatsDesLieuxDocumentsPage() {
   // -------------------------
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
+      <Head>
+        <title>État des lieux location : checklist et documents | lokt.fr</title>
+        <meta
+          name="description"
+          content="Préparez un état des lieux d’entrée ou de sortie avec checklist, pièces locataire et documents utiles pour propriétaire bailleur."
+        />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://lokt.fr/etats-des-lieux-documents" />
+      </Head>
       <AppHeader />
 
       <main className="flex-1 px-4 py-6">
@@ -965,7 +975,7 @@ export default function EtatsDesLieuxDocumentsPage() {
 
           {/* Footer actions */}
           <div className="text-right">
-            <a href="/outils-proprietaire" className="text-[0.75rem] text-slate-500 underline underline-offset-2">
+            <a href="/outil-gestion-locative" className="text-[0.75rem] text-slate-500 underline underline-offset-2">
               ← Retour à la boîte à outils propriétaire
             </a>
           </div>

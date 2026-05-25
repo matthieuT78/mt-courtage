@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import { fetchEffectivePlan } from "../lib/subscriptions";
 import {
   landlordMaxActiveLeases,
+  landlordMaxActiveProperties,
   Plan,
   planAllowsLandlord,
   planShowsCalcDetails,
@@ -17,6 +18,7 @@ type PermissionsState = {
   canSeeCalcDetails: boolean;
   canUseLandlord: boolean;
   maxActiveLeases: number;
+  maxActiveProperties: number;
 
   refresh: () => Promise<void>;
 };
@@ -50,6 +52,13 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     if (mountedRef.current) setLoading(true);
 
     try {
+      if (!supabase) {
+        if (!mountedRef.current || refreshIdRef.current !== myRefreshId) return;
+        setIsLoggedIn(false);
+        setPlan(DEFAULT_PLAN);
+        return;
+      }
+
       // 1) session
       const { data, error } = await supabase.auth.getSession();
       if (error) throw error;
@@ -89,9 +98,10 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     refresh();
 
     // sync login/logout/refresh token
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      refresh();
-    });
+    const { data: sub } =
+      supabase?.auth.onAuthStateChange(() => {
+        refresh();
+      }) ?? { data: { subscription: { unsubscribe: () => {} } } };
 
     return () => {
       mountedRef.current = false;
@@ -104,6 +114,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
     const canSeeCalcDetails = planShowsCalcDetails(plan);
     const canUseLandlord = planAllowsLandlord(plan);
     const maxActiveLeases = landlordMaxActiveLeases(plan);
+    const maxActiveProperties = landlordMaxActiveProperties(plan);
 
     return {
       loading,
@@ -112,6 +123,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       canSeeCalcDetails,
       canUseLandlord,
       maxActiveLeases,
+      maxActiveProperties,
       refresh,
     };
   }, [loading, plan, isLoggedIn]);

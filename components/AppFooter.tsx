@@ -7,7 +7,7 @@ export default function AppFooter() {
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
         <Link href="/cgu" className="underline hover:text-slate-700">
-          CGU
+          CGU / CGV
         </Link>
         <Link href="/confidentialite" className="underline hover:text-slate-700">
           Confidentialité (RGPD)

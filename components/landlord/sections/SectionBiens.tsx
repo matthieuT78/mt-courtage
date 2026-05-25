@@ -1,10 +1,12 @@
 // components/landlord/sections/SectionBiens.tsx
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, pluralFR } from "../ui/uiHelpers";
+import { usePermissions } from "../../PermissionProvider";
 
 type Props = {
   userId: string;
@@ -14,6 +16,8 @@ type Props = {
 };
 
 const CREATE_ID = "__create__";
+const FREE_PROPERTY_LIMIT = 1;
+const SUBSCRIPTION_URL = "/mon-compte/abonnement";
 
 const EMPTY = {
   id: null as string | null,
@@ -40,6 +44,7 @@ function isArchived(p: any) {
 }
 
 export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
+  const { loading: permissionsLoading, maxActiveProperties } = usePermissions();
   const safeProperties = Array.isArray(properties) ? properties : [];
   const safePhotos = Array.isArray(photos) ? photos : [];
 
@@ -64,6 +69,14 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     const ar = safeProperties.filter((p) => isArchived(p));
     return { actifs: a, archives: ar };
   }, [safeProperties]);
+  const activePropertyCount = actifs.length;
+  const activePropertyLimit = permissionsLoading ? FREE_PROPERTY_LIMIT : Math.max(maxActiveProperties, FREE_PROPERTY_LIMIT);
+  const hasFreeLimit = activePropertyLimit === FREE_PROPERTY_LIMIT;
+  const freeLimitReached = activePropertyCount >= activePropertyLimit;
+  const upgradeMessage =
+    activePropertyLimit === FREE_PROPERTY_LIMIT
+      ? "L’offre gratuite inclut 1 logement actif. Pour ajouter ou restaurer un 2e logement, vous devez souscrire à un abonnement."
+      : `Votre abonnement permet ${activePropertyLimit} logements actifs. Passez à l’offre supérieure pour en ajouter davantage.`;
 
   const [createForm, setCreateForm] = useState(EMPTY);
   const [editForms, setEditForms] = useState<Record<string, typeof EMPTY>>({});
@@ -137,6 +150,8 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
 
       const isEdit = !!propertyId;
+      if (!isEdit && freeLimitReached) throw new Error(upgradeMessage);
+
       const form = isEdit ? editForms[propertyId!] : createForm;
       if (!form) throw new Error("Formulaire introuvable.");
 
@@ -214,6 +229,7 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     try {
       if (!supabase) throw new Error("Supabase non initialisé.");
       if (!userId) throw new Error("userId manquant.");
+      if (freeLimitReached) throw new Error(upgradeMessage);
 
       const { error } = await supabase
         .from("properties")
@@ -441,7 +457,11 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
       <SectionTitle
         kicker="Biens"
         title="Parc immobilier"
-        desc="Même UX partout : une ligne Créer + sections Actifs / Archivés. Chaque ligne est cliquable."
+        desc={
+          hasFreeLimit
+            ? "Renseignez les logements à suivre dans lokt.fr. L’offre gratuite inclut 1 logement actif ; l’ajout d’un 2e logement nécessite un abonnement."
+            : `Renseignez les logements à suivre dans lokt.fr. Votre abonnement permet jusqu’à ${activePropertyLimit} logements actifs.`
+        }
       />
 
       {err ? (
@@ -466,23 +486,46 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
           left={
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                {badge("sky", "Créer")}
+                {freeLimitReached ? badge("amber", "Abonnement requis") : badge("sky", "Créer")}
                 <p className="text-sm font-semibold text-slate-900">+ Nouveau bien</p>
               </div>
-              <p className="mt-0.5 text-xs text-slate-600">Nom + Adresse (ligne 1) obligatoires.</p>
+              <p className="mt-0.5 text-xs text-slate-600">
+                {freeLimitReached
+                  ? hasFreeLimit
+                    ? "Limite gratuite atteinte : 1 logement actif."
+                    : `Limite atteinte : ${activePropertyLimit} logements actifs.`
+                  : "Nom + Adresse (ligne 1) obligatoires."}
+              </p>
             </div>
           }
         >
+          {freeLimitReached ? (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <p className="font-semibold">Vous avez déjà {pluralFR(activePropertyCount, "logement actif")}.</p>
+              <p className="mt-1">
+                {hasFreeLimit
+                  ? "L’offre gratuite permet de gérer 1 logement. Pour créer un 2e logement et continuer votre gestion locative, passez sur une offre adaptée."
+                  : "Votre abonnement actuel a atteint sa limite de logements actifs. Passez sur une offre supérieure pour continuer."}
+              </p>
+              <Link
+                href={SUBSCRIPTION_URL}
+                className="mt-3 inline-flex rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+              >
+                Voir les abonnements
+              </Link>
+            </div>
+          ) : null}
+
           {renderForm(createForm, (updater) => setCreateForm((prev) => updater(prev)), null)}
 
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => saveProperty(undefined)}
-              disabled={saving}
+              disabled={saving || freeLimitReached}
               className="rounded-full bg-sky-600 px-5 py-2 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-60"
             >
-              {saving ? "Enregistrement…" : "Créer"}
+              {saving ? "Enregistrement…" : freeLimitReached ? "Abonnement requis" : "Créer"}
             </button>
 
             <button
@@ -508,7 +551,7 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
         >
           {actifs.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
-              Aucun bien actif.
+              Aucun logement actif.
             </div>
           ) : (
             <div className="space-y-2">
@@ -667,11 +710,20 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
                       <button
                         type="button"
                         onClick={() => restore(p.id)}
-                        disabled={saving}
+                        disabled={saving || freeLimitReached}
                         className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
                       >
-                        Restaurer
+                        {freeLimitReached ? "Abonnement requis" : "Restaurer"}
                       </button>
+
+                      {freeLimitReached ? (
+                        <Link
+                          href={SUBSCRIPTION_URL}
+                          className="rounded-full border border-amber-200 bg-amber-50 px-5 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                        >
+                          Voir les abonnements
+                        </Link>
+                      ) : null}
 
                       <button
                         type="button"

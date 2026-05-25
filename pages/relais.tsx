@@ -113,7 +113,7 @@ const PretRelaisPage: NextPage = () => {
   const [leadPostalCode, setLeadPostalCode] = useState<string>("");
   const [leadCity, setLeadCity] = useState<string>("");
 
-  // Consentement Lokt.fr (obligatoire pour stocker et débloquer)
+  // Consentement lokt.fr (obligatoire pour stocker et débloquer)
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
 
   // Pré-remplir email si session
@@ -850,7 +850,7 @@ const PretRelaisPage: NextPage = () => {
                       </h3>
                       <p className="text-[0.8rem] text-slate-200">
                         On enregistre votre simulation pour vous permettre de la retrouver
-                        (et pour améliorer Lokt.fr via des statistiques anonymisées).
+                        (et pour améliorer lokt.fr via des statistiques anonymisées).
                       </p>
 
                       <div className="grid gap-3 sm:grid-cols-2">
@@ -915,7 +915,7 @@ const PretRelaisPage: NextPage = () => {
                           />
                           <span>
                             J’accepte que mes données soient utilisées pour m’envoyer mon analyse
-                            et améliorer les services Lokt.fr.
+                            et améliorer les services lokt.fr.
                           </span>
                         </label>
 

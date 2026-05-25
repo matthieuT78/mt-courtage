@@ -33,12 +33,28 @@ export type Lease = {
   start_date: string;
   end_date: string | null;
   status: string | null;
+  auto_reminder_enabled?: boolean | null;
+  auto_quittance_enabled?: boolean | null;
   created_at?: string;
 };
 
 export type PropertyLite = {
   id: string;
   label: string | null;
+};
+
+type InventoryExitReport = {
+  id: string;
+  status: "draft" | "ready" | "signed" | "archived" | string | null;
+  performed_at: string | null;
+};
+
+type ArchiveWorkflow = {
+  tenantId: string;
+  leaseId: string;
+  exitDate: string;
+  exitReport: InventoryExitReport | null;
+  edlConfirmed: boolean;
 };
 
 type Props = {
@@ -50,6 +66,7 @@ type Props = {
 };
 
 const fmt = (v?: string | null) => (v ? v : "—");
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 /* ======================================================
    UTIL
@@ -131,6 +148,7 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [archiveWorkflow, setArchiveWorkflow] = useState<ArchiveWorkflow | null>(null);
 
   const propertyById = useMemo(() => {
     const m = new Map<string, PropertyLite>();
@@ -147,7 +165,7 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
         const startOk = l.start_date ? new Date(l.start_date) <= now : false;
         const notEnded = !l.end_date || new Date(l.end_date) >= now;
 
-        if ((l.status || "").toLowerCase() === "active") return true;
+        if ((l.status || "").toLowerCase() === "active") return notEnded;
         return startOk && notEnded;
       }) || null
     );
@@ -312,7 +330,28 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
     }
   };
 
-  const archiveTenant = async (tenantId: string) => {
+  const getExitReportForLease = async (leaseId: string) => {
+    if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
+
+    const res = await withTimeout(
+      Promise.resolve(
+        supabase
+          .from("inventory_reports")
+          .select("id,status,performed_at")
+          .eq("user_id", userId)
+          .eq("lease_id", leaseId)
+          .eq("report_type", "exit")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      )
+    );
+    // @ts-ignore
+    if ((res as any)?.error) throw (res as any).error;
+    return ((res as any)?.data ?? null) as InventoryExitReport | null;
+  };
+
+  const archiveTenantOnly = async (tenantId: string, message = "Locataire archivé ✅") => {
     if (!userId) return;
 
     setLoading(true);
@@ -338,11 +377,164 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
       // @ts-ignore
       if ((res as any)?.error) throw (res as any).error;
 
-      setOk("Locataire archivé ✅");
+      setOk(message);
       await safeRefresh();
     } catch (e: any) {
       console.error("[archiveTenant] error:", e);
       setErr(e?.message || "Archivage impossible.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const archiveTenant = async (tenantId: string) => {
+    if (!userId) return;
+
+    const activeLease = activeLeaseForTenant(tenantId);
+    if (!activeLease) {
+      await archiveTenantOnly(tenantId);
+      return;
+    }
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const exitReport = await getExitReportForLease(activeLease.id);
+      setArchiveWorkflow({
+        tenantId,
+        leaseId: activeLease.id,
+        exitDate: activeLease.end_date || todayISO(),
+        exitReport,
+        edlConfirmed: false,
+      });
+      setOk("Bail actif détecté : termine le workflow de sortie avant archivage.");
+    } catch (e: any) {
+      console.error("[archiveTenant] exit workflow error:", e);
+      setErr(e?.message || "Impossible de préparer le workflow de sortie.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createExitReportDraft = async (tenantId: string, leaseId: string) => {
+    if (!userId) return;
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
+
+      const existing = await getExitReportForLease(leaseId);
+      if (existing) {
+        setArchiveWorkflow((w) => (w?.tenantId === tenantId ? { ...w, exitReport: existing } : w));
+        setOk("État des lieux de sortie déjà existant.");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("inventory_reports")
+        .insert({
+          user_id: userId,
+          lease_id: leaseId,
+          report_type: "exit",
+          status: "draft",
+          performed_at: new Date().toISOString(),
+          performed_place: "",
+          counters_json: null,
+          general_notes: "",
+          pdf_url: null,
+        })
+        .select("id,status,performed_at")
+        .single();
+
+      if (error) throw error;
+      setArchiveWorkflow((w) => (w?.tenantId === tenantId ? { ...w, exitReport: (data as any) ?? null } : w));
+      setOk("État des lieux de sortie créé en brouillon. Complète-le avant la remise des clés.");
+      await safeRefresh();
+    } catch (e: any) {
+      console.error("[createExitReportDraft] error:", e);
+      setErr(e?.message || "Impossible de créer l’état des lieux de sortie.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const completeExitAndArchive = async (tenantId: string) => {
+    if (!userId || !archiveWorkflow || archiveWorkflow.tenantId !== tenantId) return;
+
+    const activeLease = safeLeases.find((l) => l.id === archiveWorkflow.leaseId) || null;
+    if (!activeLease) {
+      setErr("Bail actif introuvable. Recharge la page puis réessaie.");
+      return;
+    }
+
+    const exitStatus = (archiveWorkflow.exitReport?.status || "").toLowerCase();
+    const exitReportReady = ["ready", "signed", "archived"].includes(exitStatus);
+
+    if (!archiveWorkflow.exitDate) {
+      setErr("Renseigne la date de sortie avant de clôturer le bail.");
+      return;
+    }
+    if (archiveWorkflow.exitDate < activeLease.start_date) {
+      setErr("La date de sortie doit être postérieure au début du bail.");
+      return;
+    }
+    if (!exitReportReady && !archiveWorkflow.edlConfirmed) {
+      setErr("Confirme que l’état des lieux de sortie a été fait ou qu’il doit être finalisé séparément.");
+      return;
+    }
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
+
+      const f = editForms[tenantId];
+      const reason = f?.archived_reason?.trim() || "Départ du locataire";
+      const now = new Date().toISOString();
+
+      const leaseRes = await withTimeout(
+        Promise.resolve(
+          supabase
+            .from("leases")
+            .update({
+              status: "ended",
+              end_date: archiveWorkflow.exitDate,
+              auto_reminder_enabled: false,
+              auto_quittance_enabled: false,
+              updated_at: now,
+            })
+            .eq("id", activeLease.id)
+            .eq("user_id", userId)
+        )
+      );
+      // @ts-ignore
+      if ((leaseRes as any)?.error) throw (leaseRes as any).error;
+
+      const tenantRes = await withTimeout(
+        Promise.resolve(
+          supabase
+            .from("tenants")
+            .update({ archived_at: now, archived_reason: reason })
+            .eq("id", tenantId)
+            .eq("user_id", userId)
+        )
+      );
+      // @ts-ignore
+      if ((tenantRes as any)?.error) throw (tenantRes as any).error;
+
+      setArchiveWorkflow(null);
+      setOk("Sortie clôturée : bail terminé, automatisations arrêtées, locataire archivé ✅");
+      await safeRefresh();
+    } catch (e: any) {
+      console.error("[completeExitAndArchive] error:", e);
+      setErr(e?.message || "Impossible de clôturer le workflow de sortie.");
     } finally {
       setLoading(false);
     }
@@ -719,6 +911,91 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                       />
                     </div>
 
+                    {archiveWorkflow?.tenantId === t.id && activeLease ? (
+                      <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
+                            <p className="font-semibold">Workflow de sortie locataire</p>
+                            <p className="mt-1 text-amber-900">
+                              Ce locataire a encore un bail actif. Pour l’archiver proprement, lokt.fr doit clôturer le bail,
+                              arrêter les quittances automatiques et vérifier l’état des lieux de sortie.
+                            </p>
+                          </div>
+                          {badge("amber", "Bail actif")}
+                        </div>
+
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          <div className="space-y-1">
+                            <label className="text-[0.7rem] font-semibold text-amber-950">Date de sortie / fin de bail</label>
+                            <input
+                              type="date"
+                              value={archiveWorkflow.exitDate}
+                              onChange={(e) =>
+                                setArchiveWorkflow((w) => (w?.tenantId === t.id ? { ...w, exitDate: e.target.value } : w))
+                              }
+                              className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-slate-900"
+                            />
+                          </div>
+
+                          <div className="rounded-xl border border-amber-200 bg-white px-3 py-2">
+                            <p className="text-[0.7rem] font-semibold text-amber-950">État des lieux de sortie</p>
+                            <p className="mt-1 text-sm text-slate-800">
+                              {archiveWorkflow.exitReport
+                                ? `Trouvé (${archiveWorkflow.exitReport.status || "brouillon"})`
+                                : "Aucun EDL de sortie trouvé"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {!archiveWorkflow.exitReport ? (
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => createExitReportDraft(t.id, activeLease.id)}
+                            className="mt-3 rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100 disabled:opacity-60"
+                          >
+                            Créer l’état des lieux de sortie
+                          </button>
+                        ) : null}
+
+                        {!["ready", "signed", "archived"].includes((archiveWorkflow.exitReport?.status || "").toLowerCase()) ? (
+                          <label className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs text-slate-800">
+                            <input
+                              type="checkbox"
+                              checked={archiveWorkflow.edlConfirmed}
+                              onChange={(e) =>
+                                setArchiveWorkflow((w) => (w?.tenantId === t.id ? { ...w, edlConfirmed: e.target.checked } : w))
+                              }
+                              className="mt-0.5"
+                            />
+                            <span>
+                              Je confirme que l’état des lieux de sortie a été réalisé, ou que je souhaite clôturer le bail
+                              maintenant et finaliser le document séparément.
+                            </span>
+                          </label>
+                        ) : null}
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => completeExitAndArchive(t.id)}
+                            className="rounded-full bg-amber-900 px-5 py-2 text-xs font-semibold text-white hover:bg-amber-800 disabled:opacity-60"
+                          >
+                            Clôturer le bail et archiver
+                          </button>
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => setArchiveWorkflow(null)}
+                            className="rounded-full border border-amber-300 bg-white px-5 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100 disabled:opacity-60"
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className="mt-3 flex flex-wrap gap-2 items-center">
                       <button
                         type="button"
@@ -735,7 +1012,7 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                         onClick={() => archiveTenant(t.id)}
                         className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
                       >
-                        Archiver
+                        {activeLease ? "Préparer la sortie" : "Archiver"}
                       </button>
 
                       {!hasLease ? (

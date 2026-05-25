@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 
 type Json = Record<string, any>;
 
@@ -72,6 +73,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     let skipped = 0;
 
     for (const l of leases || []) {
+      const canUseAutomation = await userCanUseReceiptAutomation(String(l.user_id || ""));
+      if (!canUseAutomation) { skipped++; continue; }
+
       const tz = l.timezone || "Europe/Paris";
       const today = yyyymmddInTz(now, tz);
       const period = yyyymmInTz(now, tz); // YYYY-MM (mois courant local)

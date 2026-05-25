@@ -120,7 +120,10 @@ export function buildPretRelaisEmailText(computedAny: any) {
   const { resume, bankability, texteDetail } = pickOutput(computedAny);
 
   const parts: string[] = [];
-  parts.push("VOTRE SIMULATION DE PRÊT RELAIS — lokt.fr");
+  parts.push("VOTRE RAPPORT DE PRÊT RELAIS — lokt.fr");
+  parts.push("");
+  parts.push("Bonjour,");
+  parts.push("Voici votre rapport personnalisé : budget de rachat, relais estimé, score lokt.fr et points de vigilance.");
   parts.push("");
   parts.push("Récapitulatif :");
 
@@ -136,7 +139,7 @@ export function buildPretRelaisEmailText(computedAny: any) {
   }
 
   if (bankability) {
-    parts.push(`Score Lokt.fr : ${bankability.score}/100 — ${bankability.label}`);
+    parts.push(`Score lokt.fr : ${bankability.score}/100 — ${bankability.label}`);
     parts.push(bankability.comment);
     parts.push("");
   }
@@ -153,6 +156,7 @@ export function buildPretRelaisEmailText(computedAny: any) {
   parts.push("Relire / refaire la simulation : https://lokt.fr/pret-relais");
   parts.push("");
   parts.push("Calculs indicatifs. Ne constitue pas une offre de prêt.");
+  parts.push("Vos données servent uniquement à vous transmettre ce rapport, retrouver votre simulation et améliorer lokt.fr. Aucune revente de données.");
   parts.push("— lokt.fr");
 
   return parts.join("\n");
@@ -199,13 +203,18 @@ export function buildPretRelaisEmailHtml(computedAny: any) {
     <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
       <div style="padding:18px 18px 10px 18px;border-bottom:1px solid #e2e8f0;background:#ffffff;">
         <img src="${logoUrl}" alt="lokt.fr" width="130" style="display:block;max-width:130px;height:auto;margin:0 auto 8px;" />
-        <h1 style="margin:0;text-align:center;font-size:18px;color:#0f172a;">Votre simulation de prêt relais</h1>
+        <h1 style="margin:0;text-align:center;font-size:18px;color:#0f172a;">Votre rapport de prêt relais</h1>
         <p style="margin:6px 0 0;text-align:center;color:#64748b;font-size:13px;line-height:1.5;">
-          Récapitulatif de votre simulation (calculs indicatifs).
+          Budget de rachat, relais estimé, score lokt.fr™ et points de vigilance.
         </p>
       </div>
 
       <div style="padding:16px 18px;">
+        <p style="margin:0 0 14px;color:#334155;font-size:13px;line-height:1.55;">
+          Bonjour,<br/>
+          voici une synthèse de votre projet achat-revente. Le prêt relais est un montage sensible : vérifiez toujours les hypothèses avec votre banque avant de vous engager.
+        </p>
+
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:10px;">
           ${recapCells}
         </table>
@@ -214,7 +223,7 @@ export function buildPretRelaisEmailHtml(computedAny: any) {
           bankability
             ? `
           <div style="margin-top:10px;padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#0f172a;color:#ffffff;">
-            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a5f3fc;">Score Lokt.fr™</div>
+            <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#a5f3fc;">Score lokt.fr™</div>
             <div style="margin-top:6px;font-size:22px;font-weight:800;color:#ffffff;">${bankability.score}/100 <span style="font-size:14px;font-weight:700;color:#e2e8f0;">— ${escapeHtml(
                 bankability.label
               )}</span></div>
@@ -246,6 +255,9 @@ export function buildPretRelaisEmailHtml(computedAny: any) {
         <hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0;" />
         <p style="margin:0;color:#64748b;font-size:12px;line-height:1.5;">
           Calculs indicatifs. Ne constitue pas une offre de prêt.
+        </p>
+        <p style="margin:6px 0 0;color:#64748b;font-size:12px;line-height:1.5;">
+          Vos données servent à vous transmettre ce rapport, retrouver votre simulation et améliorer lokt.fr. Aucune revente de données.
         </p>
         <p style="margin:6px 0 0;color:#64748b;font-size:12px;">— lokt.fr</p>
       </div>

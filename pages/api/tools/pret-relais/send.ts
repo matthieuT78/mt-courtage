@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { sendEmailViaResend } from "../../../../lib/mailer/resend";
 import { buildPretRelaisEmailHtml, buildPretRelaisEmailText } from "../../../../lib/emails/pret-relais";
+import { rateLimitEmailSendOrThrow } from "../../../../lib/emailRateLimit";
 
 function safeEmail(v: any) {
   return String(v || "").trim().toLowerCase();
@@ -14,6 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    rateLimitEmailSendOrThrow(req);
     const email = safeEmail(req.body?.email);
     const computed = req.body?.computed;
 
@@ -29,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const result = await sendEmailViaResend({
       to: email,
-      subject: "Votre simulation de prêt relais — lokt.fr",
+      subject: "Votre rapport de prêt relais — lokt.fr",
       html,
       text,
       replyTo: "contact@lokt.fr",
@@ -41,6 +43,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({ ok: true });
   } catch (e: any) {
+    if (String(e?.message || "").startsWith("RATE_LIMIT:")) {
+      return res.status(429).json({ ok: false, error: e.message });
+    }
     return res.status(500).json({ ok: false, error: e?.message || "unknown_error" });
   }
 }

@@ -1,11 +1,12 @@
 // components/AppHeader.tsx
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { supabase } from "../lib/supabaseClient";
 
 /**
  * ✅ LOKT V1 (landing-first)
- * - Pas de nav "Calculettes", pas de "Tarifs", pas de compte (pas prêt), pas d'espace bailleur.
- * - Header minimal : Logo + (optionnel) FAQ + Contact.
+ * - Header minimal : Logo + pages clés.
  *
  * Quand tu passeras à la V2 SaaS : tu pourras remettre la logique auth/nav.
  */
@@ -18,12 +19,55 @@ type NavLink = {
 
 export default function AppHeader() {
   const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    let unsubscribe: (() => void) | null = null;
+
+    const init = async () => {
+      try {
+        if (!supabase) {
+          if (mounted) setAuthReady(true);
+          return;
+        }
+
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setIsLoggedIn(!!data.session?.user?.id);
+        setAuthReady(true);
+
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (!mounted) return;
+          setIsLoggedIn(!!session?.user?.id);
+          setAuthReady(true);
+        });
+        unsubscribe = () => sub.subscription.unsubscribe();
+      } catch {
+        if (!mounted) return;
+        setIsLoggedIn(false);
+        setAuthReady(true);
+      }
+    };
+
+    init();
+
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, []);
 
   // ✅ Toggle simple : V1 landing
   const LOKT_V1_LANDING = true;
 
   // Liens minimalistes V1
   const v1Links: NavLink[] = [
+    ...(authReady && isLoggedIn ? [{ href: "/mon-compte/profil", label: "Mon compte" }] : []),
+    { href: "/calculettes", label: "Calculettes" },
+    { href: "/outil-gestion-locative", label: "Outil bailleur" },
+    { href: "/tarifs", label: "Tarifs" },
     { href: "/#faq", label: "FAQ" },
     { href: "mailto:contact@lokt.fr", label: "Contact", external: true },
   ];

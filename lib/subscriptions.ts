@@ -21,6 +21,8 @@ function normalizePlan(plan: string | null | undefined): Plan | null {
 }
 
 export async function fetchEffectivePlan(): Promise<Plan> {
+  if (!supabase) return DEFAULT_LOGGED_OUT_PLAN;
+
   // 1) session ?
   const { data: sData } = await supabase.auth.getSession();
   const user = sData.session?.user;

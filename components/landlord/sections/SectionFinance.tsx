@@ -1,8 +1,34 @@
 // components/landlord/sections/SectionFinance.tsx
-import React, { FormEvent, useEffect, useMemo, useState } from "react";
+import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import {
+  ArrowDownCircleIcon,
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  ArrowUpCircleIcon,
+  BanknotesIcon,
+  PlusIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import {
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LineElement,
+  LinearScale,
+  PointElement,
+  Tooltip,
+} from "chart.js";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, formatEuro } from "../UiBits";
 import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
+
+const Chart = dynamic(() => import("react-chartjs-2").then((m) => m.Chart), {
+  ssr: false,
+});
 
 type Receipt = {
   id: string;
@@ -16,6 +42,7 @@ type Receipt = {
 
 type TxDirection = "in" | "out";
 type TxStatus = "expected" | "received" | "paid";
+type PeriodMode = "month" | "last6" | "year" | "custom";
 
 type Transaction = {
   id: string;
@@ -75,6 +102,27 @@ const monthStartEnd = (yyyymm: string) => {
   return { start, end };
 };
 
+const addMonths = (d: Date, delta: number) => new Date(d.getFullYear(), d.getMonth() + delta, 1);
+const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+const periodRange = (mode: PeriodMode, anchorMonth: string, customStart?: string, customEnd?: string) => {
+  if (mode === "custom" && customStart && customEnd) {
+    const { start } = monthStartEnd(customStart);
+    const { end } = monthStartEnd(customEnd);
+    return start <= end ? { start, end } : { start: monthStartEnd(customEnd).start, end: monthStartEnd(customStart).end };
+  }
+
+  const { start: anchorStart, end: anchorEnd } = monthStartEnd(anchorMonth);
+  if (mode === "year") {
+    const year = anchorStart.getFullYear();
+    return { start: new Date(year, 0, 1), end: new Date(year, 11, 31) };
+  }
+  if (mode === "last6") {
+    return { start: addMonths(anchorStart, -5), end: anchorEnd };
+  }
+  return { start: anchorStart, end: anchorEnd };
+};
+
 const normalizeDate = (val?: string | null) => {
   if (!val) return null;
   // supports "YYYY-MM-DD" or already ISO-ish strings
@@ -88,6 +136,13 @@ const fmtMonthFR = (yyyymm: string) => {
   const [y, m] = yyyymm.split("-").map(Number);
   const d = new Date(y, m - 1, 1);
   return d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+};
+
+const fmtPeriodFR = (mode: PeriodMode, anchorMonth: string, customStart?: string, customEnd?: string) => {
+  const { start, end } = periodRange(mode, anchorMonth, customStart, customEnd);
+  if (mode === "month") return fmtMonthFR(anchorMonth);
+  if (mode === "year") return String(start.getFullYear());
+  return `${fmtMonthFR(monthKey(start))} -> ${fmtMonthFR(monthKey(end))}`;
 };
 
 function cx(...c: Array<string | false | null | undefined>) {
@@ -122,9 +177,67 @@ const CATEGORIES: Array<{ value: string; label: string; dir?: TxDirection }> = [
   { value: "other", label: "Autre", dir: undefined },
 ];
 
+const categoryLabel = (value: string) => CATEGORIES.find((c) => c.value === value)?.label || value;
+const statusLabel = (value: TxStatus) =>
+  value === "expected" ? "Prévu" : value === "received" ? "Encaissé" : "Payé";
+const directionLabel = (value: TxDirection) => (value === "in" ? "Recette" : "Dépense");
+const sourceLabel = (tx: Transaction) => (tx.receipt_id ? "Quittance auto" : "Manuel");
+
+const QUICK_EXPENSES = [
+  { label: "Taxe foncière", category: "tax", direction: "out" as TxDirection, status: "paid" as TxStatus },
+  { label: "Assurance PNO / GLI", category: "insurance", direction: "out" as TxDirection, status: "paid" as TxStatus },
+  { label: "Travaux / entretien", category: "repairs", direction: "out" as TxDirection, status: "paid" as TxStatus },
+  { label: "Charges copropriété", category: "copro", direction: "out" as TxDirection, status: "paid" as TxStatus },
+  { label: "Mensualité crédit", category: "loan", direction: "out" as TxDirection, status: "paid" as TxStatus },
+  { label: "Frais gestion", category: "management", direction: "out" as TxDirection, status: "paid" as TxStatus },
+];
+
 function num(v: any) {
   const n = typeof v === "number" ? v : parseFloat(String(v || "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
+}
+
+const csvCell = (value: string | number | null | undefined) => {
+  const raw = value == null ? "" : String(value);
+  return `"${raw.replace(/"/g, '""')}"`;
+};
+
+function actionPlanForProperty(r: {
+  label: string;
+  cashflow: number;
+  yieldNet: number;
+  income: number;
+  expense: number;
+  loan: number;
+  fixed: number;
+  taxM: number;
+  invest: number;
+}) {
+  const actions: string[] = [];
+
+  if (r.invest <= 0) {
+    actions.push("Renseigner le prix d'achat, les frais et les travaux pour calculer une rentabilité fiable.");
+  }
+  if (r.loan <= 0) {
+    actions.push("Ajouter la mensualité de crédit pour obtenir un cashflow réel, pas seulement locatif.");
+  }
+  if (r.taxM <= 0) {
+    actions.push("Ajouter la taxe foncière annuelle : elle pèse souvent fortement sur la performance nette.");
+  }
+  if (r.cashflow < 0) {
+    actions.push("Identifier les charges qui tirent le bien sous zéro et vérifier si le loyer est encore au prix du marché.");
+  }
+  if (r.expense > r.income * 0.35 && r.income > 0) {
+    actions.push("Les dépenses représentent plus de 35% des recettes du mois : isoler travaux, copropriété ou frais récurrents.");
+  }
+  if (r.invest > 0 && r.yieldNet < 0.025) {
+    actions.push("Rentabilité nette faible : simuler une hausse de loyer, une réduction de charges ou un arbitrage du bien.");
+  }
+  if (r.cashflow > 0 && r.invest > 0 && r.yieldNet >= 0.04) {
+    actions.push("Bien performant : conserver le suivi, surveiller la vacance et documenter les charges pour la déclaration.");
+  }
+
+  return actions.slice(0, 3);
 }
 
 export function SectionFinance({ userId, leases, payments, receipts, propertyById, onRefresh }: Props) {
@@ -138,7 +251,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const safeReceipts = Array.isArray(receipts) ? receipts : [];
   const propsById = propertyById instanceof Map ? propertyById : new Map<string, Property>();
 
-  const [month, setMonth] = useState<string>(toMonthISO(new Date()));
+  const currentMonth = useMemo(() => toMonthISO(new Date()), []);
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
+  const [customStartMonth, setCustomStartMonth] = useState<string>(toMonthISO(addMonths(new Date(), -2)));
+  const [customEndMonth, setCustomEndMonth] = useState<string>(toMonthISO(new Date()));
+  const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
 
   // Ledger
   const [tx, setTx] = useState<Transaction[]>([]);
@@ -147,17 +264,25 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [syncState, setSyncState] = useState<"idle" | "syncing" | "error">("idle");
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Filtres liste
   const [filterPropertyId, setFilterPropertyId] = useState<string>("");
   const [filterDirection, setFilterDirection] = useState<TxDirection | "">("");
   const [filterCategory, setFilterCategory] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<TxStatus | "">("");
+  const [filterSource, setFilterSource] = useState<"auto" | "manual" | "">("");
+  const [filterAmountMin, setFilterAmountMin] = useState<string>("");
+  const [filterAmountMax, setFilterAmountMax] = useState<string>("");
   const [filterText, setFilterText] = useState<string>("");
 
   // Sélection pour suppression
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected]);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [txWizardOpen, setTxWizardOpen] = useState(false);
 
   // Form ajout manuel
   const [form, setForm] = useState({
@@ -173,7 +298,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   });
 
   // ========== Sync quittances -> transactions (idempotent + dedupe payload) ==========
-  const syncReceiptsToTransactions = async () => {
+  const syncReceiptsToTransactions = useCallback(async () => {
     if (!supabase || !userId) return;
     if (safeReceipts.length === 0) return;
 
@@ -210,14 +335,16 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     // ⚠️ utilise l'index unique existant (user_id, receipt_id) WHERE receipt_id IS NOT NULL
     const { error } = await supabase.from("transactions").upsert(payload, { onConflict: "user_id,receipt_id" });
     if (error) throw error;
-  };
+  }, [safeLeases, safeReceipts, userId]);
 
-  const loadFinance = async () => {
+  const loadFinance = useCallback(async (options?: { silent?: boolean }) => {
     if (!supabase || !userId) return;
+    const silent = options?.silent ?? false;
 
+    setSyncState("syncing");
     setLoading(true);
     setErr(null);
-    setOk(null);
+    if (!silent) setOk(null);
 
     try {
       await syncReceiptsToTransactions();
@@ -243,23 +370,95 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       for (const row of (pData || []) as any[]) map.set(row.property_id, row);
       setPf(map);
 
-      setOk("Finance chargée ✅");
+      setLastSyncedAt(new Date());
+      setSyncState("idle");
+      if (!silent) setOk("Finance chargée ✅");
     } catch (e: any) {
+      setSyncState("error");
       setErr(e?.message || "Impossible de charger Finance.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [syncReceiptsToTransactions, userId]);
+
+  const scheduleAutoRefresh = useCallback(() => {
+    if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current);
+    autoRefreshTimerRef.current = setTimeout(() => {
+      loadFinance({ silent: true });
+    }, 350);
+  }, [loadFinance]);
 
   useEffect(() => {
     if (!userId) return;
-    loadFinance();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+    loadFinance({ silent: true });
 
-  // ========= Month view (attendu vs encaissé) =========
-  const monthInfo = useMemo(() => {
-    const { start, end } = monthStartEnd(month);
+    return () => {
+      if (autoRefreshTimerRef.current) clearTimeout(autoRefreshTimerRef.current);
+    };
+  }, [loadFinance, userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const handleFocus = () => loadFinance({ silent: true });
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") loadFinance({ silent: true });
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [loadFinance, userId]);
+
+  useEffect(() => {
+    if (!supabase || !userId) return;
+
+    const channel = (supabase as any)
+      .channel(`finance-live-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "transactions", filter: `user_id=eq.${userId}` },
+        scheduleAutoRefresh
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "property_finance", filter: `user_id=eq.${userId}` },
+        scheduleAutoRefresh
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rent_receipts", filter: `user_id=eq.${userId}` },
+        scheduleAutoRefresh
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [scheduleAutoRefresh, userId]);
+
+  const selectedPeriod = useMemo(() => {
+    const { start, end } = periodRange(periodMode, currentMonth, customStartMonth, customEndMonth);
+    return {
+      start,
+      end,
+      label: fmtPeriodFR(periodMode, currentMonth, customStartMonth, customEndMonth),
+      monthCount: (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth() + 1,
+    };
+  }, [periodMode, currentMonth, customStartMonth, customEndMonth]);
+
+  // ========= Period view (attendu vs encaissé) =========
+  const periodInfo = useMemo(() => {
+    const { start, end } = selectedPeriod;
+
+    const months: Date[] = [];
+    for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
+      months.push(cursor);
+    }
 
     const activeLeases = safeLeases.filter((l) => {
       const s = normalizeDate((l as any).start_date);
@@ -272,10 +471,21 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     });
 
     const expected = sum(
-      activeLeases.map((l) => Number((l as any).rent_amount || 0) + Number((l as any).charges_amount || 0))
+      months.map((mStart) => {
+        const mEnd = new Date(mStart.getFullYear(), mStart.getMonth() + 1, 0);
+        return sum(
+          activeLeases
+            .filter((l) => {
+              const s = normalizeDate((l as any).start_date);
+              const e = normalizeDate((l as any).end_date);
+              return !!s && s <= mEnd && (!e || e >= mStart);
+            })
+            .map((l) => Number((l as any).rent_amount || 0) + Number((l as any).charges_amount || 0))
+        );
+      })
     );
 
-    const monthPayments = safePayments.filter((p) => {
+    const periodPayments = safePayments.filter((p) => {
       const ps = normalizeDate((p as any).period_start);
       const pe = normalizeDate((p as any).period_end);
       if (!ps || !pe) return false;
@@ -283,16 +493,16 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     });
 
     const received = sum(
-      monthPayments.filter((p) => !!(p as any).paid_at).map((p) => Number((p as any).total_amount || 0))
+      periodPayments.filter((p) => !!(p as any).paid_at).map((p) => Number((p as any).total_amount || 0))
     );
 
     const pending = Math.max(0, expected - received);
     return { expected, received, pending, activeLeases };
-  }, [month, safeLeases, safePayments]);
+  }, [selectedPeriod, safeLeases, safePayments]);
 
-  // ========= Ledger: rows for month =========
-  const monthLedger = useMemo(() => {
-    const { start, end } = monthStartEnd(month);
+  // ========= Ledger: rows for period =========
+  const periodLedger = useMemo(() => {
+    const { start, end } = selectedPeriod;
     const s = start.getTime();
     const e = end.getTime();
 
@@ -306,26 +516,124 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const income = sum(rows.filter((r) => r.direction === "in").map((r) => Number(r.amount || 0)));
     const expense = sum(rows.filter((r) => r.direction === "out").map((r) => Number(r.amount || 0)));
     return { rows, income, expense, net: income - expense };
-  }, [tx, month]);
+  }, [tx, selectedPeriod]);
 
   // ========= Month ledger filtered (UI filters) =========
   const filteredMonthLedger = useMemo(() => {
     const text = filterText.trim().toLowerCase();
-    return monthLedger.rows.filter((r) => {
+    const amountMin = filterAmountMin.trim() ? num(filterAmountMin) : null;
+    const amountMax = filterAmountMax.trim() ? num(filterAmountMax) : null;
+
+    return periodLedger.rows.filter((r) => {
       if (filterPropertyId && (r.property_id || "") !== filterPropertyId) return false;
       if (filterDirection && r.direction !== filterDirection) return false;
       if (filterCategory && r.category !== filterCategory) return false;
+      if (filterStatus && r.status !== filterStatus) return false;
+      if (filterSource === "auto" && !r.receipt_id) return false;
+      if (filterSource === "manual" && r.receipt_id) return false;
+      if (amountMin !== null && Number(r.amount || 0) < amountMin) return false;
+      if (amountMax !== null && Number(r.amount || 0) > amountMax) return false;
 
       if (!text) return true;
-      const hay = [r.category, r.status, r.label || "", r.notes || "", r.occurred_at, r.direction].join(" ").toLowerCase();
+      const propertyName = r.property_id ? propsById.get(r.property_id)?.label || "" : "";
+      const hay = [
+        propertyName,
+        categoryLabel(r.category),
+        statusLabel(r.status),
+        sourceLabel(r),
+        r.label || "",
+        r.notes || "",
+        r.occurred_at,
+        directionLabel(r.direction),
+      ]
+        .join(" ")
+        .toLowerCase();
       return hay.includes(text);
     });
-  }, [monthLedger.rows, filterPropertyId, filterDirection, filterCategory, filterText]);
+  }, [
+    periodLedger.rows,
+    filterPropertyId,
+    filterDirection,
+    filterCategory,
+    filterStatus,
+    filterSource,
+    filterAmountMin,
+    filterAmountMax,
+    filterText,
+    propsById,
+  ]);
+
+  const filteredLedgerSummary = useMemo(() => {
+    const income = sum(filteredMonthLedger.filter((r) => r.direction === "in").map((r) => Number(r.amount || 0)));
+    const expense = sum(filteredMonthLedger.filter((r) => r.direction === "out").map((r) => Number(r.amount || 0)));
+    return { income, expense, net: income - expense, count: filteredMonthLedger.length };
+  }, [filteredMonthLedger]);
+
+  const resetLedgerFilters = () => {
+    setFilterPropertyId("");
+    setFilterDirection("");
+    setFilterCategory("");
+    setFilterStatus("");
+    setFilterSource("");
+    setFilterAmountMin("");
+    setFilterAmountMax("");
+    setFilterText("");
+  };
+
+  const exportFilteredLedger = () => {
+    if (filteredMonthLedger.length === 0) {
+      setErr("Aucune écriture à exporter avec les filtres actuels.");
+      return;
+    }
+
+    const headers = ["Date", "Bien", "Sens", "Catégorie", "Statut", "Libellé", "Montant", "Source", "Notes", "ID"];
+    const rows = filteredMonthLedger.map((r) => {
+      const propertyName = r.property_id ? propsById.get(r.property_id)?.label || "Bien" : "Non affecté";
+      return [
+        r.occurred_at,
+        propertyName,
+        directionLabel(r.direction),
+        categoryLabel(r.category),
+        statusLabel(r.status),
+        r.label || "",
+        Number(r.amount || 0).toFixed(2).replace(".", ","),
+        sourceLabel(r),
+        r.notes || "",
+        r.id,
+      ];
+    });
+
+    const csv = [headers, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n");
+    const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const slugPeriod = periodLabel.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
+    link.href = url;
+    link.download = `finance-${slugPeriod || "periode"}-${toISODate(new Date())}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setOk(`Export Excel prêt ✅ (${filteredMonthLedger.length} ligne${filteredMonthLedger.length > 1 ? "s" : ""})`);
+  };
 
   // reset selection when list changes / filters change
   useEffect(() => {
     setSelected({});
-  }, [month, filterPropertyId, filterDirection, filterCategory, filterText, tx.length]);
+  }, [
+    periodMode,
+    selectedPeriod.start,
+    selectedPeriod.end,
+    filterPropertyId,
+    filterDirection,
+    filterCategory,
+    filterStatus,
+    filterSource,
+    filterAmountMin,
+    filterAmountMax,
+    filterText,
+    tx.length,
+  ]);
 
   const allVisibleSelected = useMemo(() => {
     if (filteredMonthLedger.length === 0) return false;
@@ -398,7 +706,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const perProperty = useMemo(() => {
     const by = new Map<string, { income: number; expense: number; net: number }>();
 
-    for (const r of monthLedger.rows) {
+    for (const r of periodLedger.rows) {
       const pid = r.property_id || "—";
       const cur = by.get(pid) || { income: 0, expense: 0, net: 0 };
       if (r.direction === "in") cur.income += Number(r.amount || 0);
@@ -415,7 +723,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       const fixed = Number(fin?.fixed_charges_monthly || 0);
       const taxM = Number(fin?.property_tax_yearly || 0) / 12;
 
-      const cashflow = v.net - loan - fixed - taxM;
+      const cashflow = v.net - (loan + fixed + taxM) * selectedPeriod.monthCount;
 
       const invest =
         Number(fin?.purchase_price || 0) +
@@ -423,7 +731,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         Number(fin?.agency_fees || 0) +
         Number(fin?.works || 0);
 
-      const annualNet = cashflow * 12;
+      const annualNet = selectedPeriod.monthCount > 0 ? (cashflow / selectedPeriod.monthCount) * 12 : 0;
       const yieldNet = invest > 0 ? annualNet / invest : 0;
 
       return {
@@ -442,7 +750,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     });
 
     return rows.sort((a, b) => b.cashflow - a.cashflow);
-  }, [monthLedger.rows, propsById, pf]);
+  }, [periodLedger.rows, propsById, pf, selectedPeriod.monthCount]);
 
   // ========= CRUD: Add manual transaction =========
   const addTx = async (e: FormEvent) => {
@@ -476,6 +784,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       if (error) throw error;
 
       setOk("Écriture ajoutée ✅");
+      setTxWizardOpen(false);
       setForm((s) => ({ ...s, amount: "", label: "", notes: "" }));
 
       await loadFinance();
@@ -504,14 +813,176 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     await loadFinance();
   };
 
-  const monthLabel = fmtMonthFR(month);
+  const periodLabel = selectedPeriod.label;
+
+  const totalCashflow = sum(perProperty.map((p) => p.cashflow));
+  const weakProperties = perProperty.filter((p) => p.cashflow < 0);
+  const bestProperty = perProperty[0] || null;
+
+  const globalActionPlan = useMemo(() => {
+    const actions: string[] = [];
+
+    if (periodInfo.pending > 0) {
+      actions.push(`Relancer ou confirmer les paiements restants : ${formatEuro(periodInfo.pending)} à encaisser sur ${periodLabel}.`);
+    }
+    if (weakProperties.length > 0) {
+      actions.push(`${weakProperties.length} bien(s) en cashflow négatif : traiter d'abord ${weakProperties[0].label}.`);
+    }
+    if (perProperty.some((p) => p.invest <= 0)) {
+      actions.push("Compléter les prix d'achat et frais par bien pour fiabiliser les rendements.");
+    }
+    if (periodLedger.expense === 0 && periodLedger.income > 0) {
+      actions.push("Ajouter les charges de la période pour préparer une synthèse utile à la déclaration.");
+    }
+    if (actions.length === 0) {
+      actions.push("La période semble propre : garder le rythme de saisie et vérifier les charges récurrentes.");
+    }
+
+    return actions.slice(0, 4);
+  }, [periodInfo.pending, periodLabel, weakProperties, perProperty, periodLedger.expense, periodLedger.income]);
+
+  const accountingChartRows = useMemo(() => {
+    const { start, end } = selectedPeriod;
+    const months: Array<{ key: string; label: string; income: number; expense: number; net: number }> = [];
+
+    for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
+      const key = monthKey(cursor);
+      months.push({ key, label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()), income: 0, expense: 0, net: 0 });
+    }
+
+    const byKey = new Map(months.map((row) => [row.key, row]));
+    for (const row of periodLedger.rows) {
+      const d = normalizeDate(row.occurred_at);
+      if (!d) continue;
+      const bucket = byKey.get(monthKey(d));
+      if (!bucket) continue;
+      if (row.direction === "in") bucket.income += Number(row.amount || 0);
+      else bucket.expense += Number(row.amount || 0);
+      bucket.net = bucket.income - bucket.expense;
+    }
+
+    return months;
+  }, [periodLedger.rows, selectedPeriod]);
+
+  const chartMax = useMemo(
+    () => Math.max(1, ...accountingChartRows.flatMap((row) => [row.income, row.expense, Math.abs(row.net)])),
+    [accountingChartRows]
+  );
+
+  const accountingChartData = useMemo(
+    () => ({
+      labels: accountingChartRows.map((row) => row.label),
+      datasets: [
+        {
+          type: "bar" as const,
+          label: "Revenus",
+          data: accountingChartRows.map((row) => row.income),
+          backgroundColor: "rgba(16, 185, 129, 0.82)",
+          borderColor: "rgb(5, 150, 105)",
+          borderWidth: 1,
+          borderRadius: 8,
+          barPercentage: 0.72,
+          categoryPercentage: 0.72,
+        },
+        {
+          type: "bar" as const,
+          label: "Dépenses",
+          data: accountingChartRows.map((row) => row.expense),
+          backgroundColor: "rgba(244, 63, 94, 0.78)",
+          borderColor: "rgb(225, 29, 72)",
+          borderWidth: 1,
+          borderRadius: 8,
+          barPercentage: 0.72,
+          categoryPercentage: 0.72,
+        },
+        {
+          type: "line" as const,
+          label: "Résultat net",
+          data: accountingChartRows.map((row) => row.net),
+          borderColor: "rgb(15, 23, 42)",
+          backgroundColor: "rgba(15, 23, 42, 0.08)",
+          pointBackgroundColor: "rgb(15, 23, 42)",
+          pointBorderColor: "white",
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          tension: 0.35,
+          yAxisID: "y",
+        },
+      ],
+    }),
+    [accountingChartRows]
+  );
+
+  const accountingChartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index" as const, intersect: false },
+      plugins: {
+        legend: {
+          position: "bottom" as const,
+          labels: { usePointStyle: true, boxWidth: 8, color: "#475569", font: { size: 12, weight: "600" as const } },
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx: any) => `${ctx.dataset.label}: ${formatEuro(Number(ctx.raw || 0))}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: "#64748b", font: { size: 11, weight: "600" as const } },
+        },
+        y: {
+          suggestedMax: chartMax * 1.15,
+          grid: { color: "rgba(148, 163, 184, 0.22)" },
+          ticks: {
+            color: "#64748b",
+            callback: (value: any) => formatEuro(Number(value)).replace(",00", ""),
+          },
+        },
+      },
+    }),
+    [chartMax]
+  );
+
+  const expenseBreakdown = useMemo(() => {
+    const byCategory = new Map<string, number>();
+    for (const row of periodLedger.rows) {
+      if (row.direction !== "out") continue;
+      byCategory.set(row.category, (byCategory.get(row.category) || 0) + Number(row.amount || 0));
+    }
+    return Array.from(byCategory.entries())
+      .map(([category, amount]) => ({ category, label: categoryLabel(category), amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 6);
+  }, [periodLedger.rows]);
+
+  const applyQuickExpense = (preset: (typeof QUICK_EXPENSES)[number]) => {
+    setForm((s) => ({
+      ...s,
+      direction: preset.direction,
+      status: preset.status,
+      category: preset.category,
+      label: preset.label,
+      occurred_at: s.occurred_at || toISODate(new Date()),
+    }));
+  };
+
+  const chapters = [
+    { href: "#finance-periode", number: "01", label: "Période", sub: periodLabel },
+    { href: "#finance-pilotage", number: "02", label: "Pilotage", sub: "KPIs & actions" },
+    { href: "#finance-ecritures", number: "03", label: "Écritures", sub: `${filteredLedgerSummary.count} ligne${filteredLedgerSummary.count > 1 ? "s" : ""}` },
+    { href: "#finance-performance", number: "04", label: "Performance", sub: `${perProperty.length} bien${perProperty.length > 1 ? "s" : ""}` },
+  ];
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
+    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm sm:p-5 space-y-5">
       <SectionTitle
         kicker="Finance"
-        title="Comptabilité & pilotage"
-        desc="Quittances → écritures automatiques, saisie dépenses/recettes, cashflow & rendement par bien."
+        title="Rentabilité & pilotage financier"
+        desc="Suivez les recettes, les dépenses, le cashflow et les actions à mener pour améliorer la performance de vos biens."
       />
 
       {!userId ? (
@@ -520,205 +991,542 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
       ) : null}
 
-      {/* Top actions */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1">
-            <label className="text-[0.7rem] text-slate-700">Mois analysé</label>
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+      <nav className="sticky top-3 z-20 -mx-1 overflow-x-auto rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur">
+        <div className="flex min-w-max gap-2">
+          {chapters.map((chapter) => (
+            <a
+              key={chapter.href}
+              href={chapter.href}
+              className="group flex min-w-[160px] items-center gap-3 rounded-2xl border border-transparent px-3 py-2 text-left transition hover:border-slate-200 hover:bg-slate-50"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
+                {chapter.number}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-slate-900">{chapter.label}</span>
+                <span className="block truncate text-xs text-slate-500">{chapter.sub}</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </nav>
+
+      {/* Period selector */}
+      <section id="finance-periode" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <ChapterHeader
+              eyebrow="01 · Période"
+              title="Choisir l’angle d’analyse"
+              desc="Les vues rapides se basent automatiquement sur la date du jour."
             />
+            <div className="mt-3 grid gap-2 sm:grid-cols-4">
+              {[
+                { key: "month" as const, label: "Mois", sub: "Vue précise" },
+                { key: "last6" as const, label: "6 derniers mois", sub: "Tendance" },
+                { key: "year" as const, label: "Année", sub: "Déclaration" },
+                { key: "custom" as const, label: "Choisir période", sub: "Sur mesure" },
+              ].map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => {
+                    if (option.key === "custom") setPeriodPickerOpen(true);
+                    else setPeriodMode(option.key);
+                  }}
+                  className={cx(
+                    "rounded-2xl border px-4 py-3 text-left transition",
+                    periodMode === option.key ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                  )}
+                >
+                  <span className="block text-sm font-semibold">{option.label}</span>
+                  <span className={cx("mt-0.5 block text-xs", periodMode === option.key ? "text-slate-200" : "text-slate-500")}>{option.sub}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <button
-            type="button"
-            onClick={loadFinance}
-            disabled={loading || !userId}
-            className={cx(
-              "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold",
-              brandBg,
-              brandText,
-              brandHover,
-              (loading || !userId) && "opacity-60"
-            )}
-          >
-            {loading ? "…" : "Sync quittances + rafraîchir"}
-          </button>
-
-          <div className="text-[0.75rem] text-slate-500">
-            Période : <span className="font-semibold text-slate-900">{monthLabel}</span>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+              Période : <span className="font-semibold text-slate-900">{periodLabel}</span>
+            </div>
+            <div
+              className={cx(
+                "inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs",
+                syncState === "error"
+                  ? "border-red-200 bg-red-50 text-red-700"
+                  : syncState === "syncing"
+                  ? "border-cyan-200 bg-cyan-50 text-cyan-800"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
+              )}
+              title="Les données se mettent à jour automatiquement à l'ouverture, au retour sur l'onglet et lorsqu'une écriture change."
+            >
+              <span
+                className={cx(
+                  "h-2 w-2 rounded-full",
+                  syncState === "error" ? "bg-red-500" : syncState === "syncing" ? "animate-pulse bg-cyan-500" : "bg-emerald-500"
+                )}
+              />
+              <span className="font-semibold">
+                {syncState === "error" ? "Synchronisation à vérifier" : syncState === "syncing" ? "Synchronisation..." : "Données à jour"}
+              </span>
+              {lastSyncedAt ? (
+                <span className="text-slate-500">
+                  {lastSyncedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {periodPickerOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
+          <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => setPeriodPickerOpen(false)} />
+          <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Choisir une période</p>
+                <p className="mt-1 text-sm text-slate-600">Sélectionnez un mois de début et un mois de fin.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPeriodPickerOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                aria-label="Fermer"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-700">Début</label>
+                <input
+                  type="month"
+                  value={customStartMonth}
+                  onChange={(e) => setCustomStartMonth(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700">Fin</label>
+                <input
+                  type="month"
+                  value={customEndMonth}
+                  onChange={(e) => setCustomEndMonth(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              Période sélectionnée : <span className="font-semibold text-slate-900">{fmtPeriodFR("custom", currentMonth, customStartMonth, customEndMonth)}</span>
+            </div>
+
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPeriodPickerOpen(false)}
+                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPeriodMode("custom");
+                  setPeriodPickerOpen(false);
+                }}
+                className={cx("rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover)}
+              >
+                Appliquer
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div>
       ) : null}
 
-      {/* KPI */}
-      <div className="grid gap-3 md:grid-cols-4">
-        <Kpi title="Attendu (baux)" value={formatEuro(monthInfo.expected)} sub="Selon baux actifs" />
-        <Kpi title="Encaissé (paiements)" value={formatEuro(monthInfo.received)} sub="Selon paiements saisis" />
-        <Kpi title="Net (ledger)" value={formatEuro(monthLedger.net)} sub="Entrées − sorties (mois)" />
-        <Kpi title="À encaisser" value={formatEuro(monthInfo.pending)} sub="Attendu − encaissé" />
-      </div>
+      <section id="finance-pilotage" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <ChapterHeader
+          eyebrow="02 · Pilotage"
+          title="Lecture rapide de la période"
+          desc="Une synthèse claire avant d’entrer dans le détail comptable."
+        />
 
-      {/* ✅ Interversion demandée : Ajouter une écriture AVANT le grand livre */}
-      <form onSubmit={addTx} className="rounded-3xl border border-slate-200 bg-white shadow-sm p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Ajouter une écriture</p>
-            <p className="text-[0.8rem] text-slate-600">
-              Dépenses (travaux, assurance, TF…) et recettes diverses. Les loyers quittances sont ajoutés automatiquement.
-            </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <Kpi title="Loyers attendus" value={formatEuro(periodInfo.expected)} sub="Selon les baux actifs" />
+          <Kpi title="Loyers encaissés" value={formatEuro(periodInfo.received)} sub="Paiements confirmés" />
+          <Kpi title="Cashflow estimé" value={formatEuro(totalCashflow)} sub="Après crédit, charges fixes et TF" />
+          <Kpi title="À traiter" value={String(weakProperties.length)} sub="Biens en cashflow négatif" />
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1fr,320px]">
+          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Graphique comptable</p>
+                <p className="mt-1 text-[0.8rem] text-slate-600">
+                  Revenus, dépenses et résultat net sur la période analysée.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[0.7rem] font-semibold">
+                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-800">
+                  Revenus {formatEuro(periodLedger.income)}
+                </span>
+                <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-800">
+                  Dépenses {formatEuro(periodLedger.expense)}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-800">
+                  Net {formatEuro(periodLedger.net)}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4 h-[320px] rounded-2xl border border-slate-200 bg-white p-3">
+              <Chart type="bar" data={accountingChartData as any} options={accountingChartOptions as any} />
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5">
+            <p className="text-sm font-semibold text-slate-900">Postes de dépenses</p>
+            <p className="mt-1 text-[0.8rem] text-slate-600">Les catégories qui pèsent le plus sur la période.</p>
+
+            {expenseBreakdown.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-600">
+                Aucune dépense saisie sur cette période.
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {expenseBreakdown.map((item) => {
+                  const pct = periodLedger.expense > 0 ? Math.round((item.amount / periodLedger.expense) * 100) : 0;
+                  return (
+                    <div key={item.category} className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="font-semibold text-slate-800">{item.label}</span>
+                        <span className="text-slate-600">{formatEuro(item.amount)}</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full bg-rose-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <p className="text-[0.68rem] text-slate-500">{pct}% des dépenses</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr,0.9fr]">
+        <section className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Lecture propriétaire</p>
+              <p className="text-[0.8rem] text-slate-600">
+                Ce tableau résume ce que la période raconte vraiment : encaissement, charges et performance.
+              </p>
+            </div>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+              {periodLabel}
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <Stat label="Recettes période" value={formatEuro(periodLedger.income)} />
+            <Stat label="Dépenses période" value={formatEuro(periodLedger.expense)} />
+            <Stat label="Résultat période" value={formatEuro(periodLedger.net)} />
+          </div>
+
+          <div className="mt-4">
+            <MiniBar value={periodInfo.received} max={periodInfo.expected} label="Taux d'encaissement de la période" />
+          </div>
+
+          {bestProperty ? (
+            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Meilleur contributeur</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{bestProperty.label}</p>
+              <p className="mt-1 text-sm text-slate-700">
+                Cashflow estimé : <span className="font-semibold">{formatEuro(bestProperty.cashflow)}</span>
+              </p>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="rounded-3xl border border-slate-200 bg-white p-5">
+          <p className="text-sm font-semibold text-slate-900">Plan d'action performance</p>
+          <p className="mt-1 text-[0.8rem] text-slate-600">Les priorités à traiter pour fiabiliser ou améliorer vos résultats.</p>
+          <div className="mt-4 space-y-2">
+            {globalActionPlan.map((action, idx) => (
+              <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Action {idx + 1}</p>
+                <p className="mt-1 text-sm text-slate-800">{action}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+      </section>
+
+      {/* Ajouter une écriture */}
+      <section id="finance-ecritures" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 space-y-4">
+      <ChapterHeader
+        eyebrow="03 · Écritures"
+        title="Saisir, filtrer et exporter"
+        desc="Les loyers viennent des quittances. Les écritures manuelles servent aux charges, travaux et recettes exceptionnelles."
+      />
+
+      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
+              <BanknotesIcon className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Recettes & dépenses</p>
+              <p className="mt-1 max-w-2xl text-sm text-slate-600">
+                Les loyers remontent automatiquement depuis les quittances. Pour le reste, ajoutez une écriture guidée en quelques étapes.
+              </p>
+            </div>
           </div>
           <button
-            type="submit"
-            disabled={loading || !userId}
-            className={cx(
-              "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold",
-              brandBg,
-              brandText,
-              brandHover,
-              (loading || !userId) && "opacity-60"
-            )}
+            type="button"
+            onClick={() => setTxWizardOpen(true)}
+            className={cx("inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold", brandBg, brandText, brandHover)}
           >
-            {loading ? "…" : "Ajouter"}
+            <PlusIcon className="h-4 w-4" />
+            Nouvelle écriture
           </button>
         </div>
+      </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-6">
-          <div className="md:col-span-1">
-            <label className="text-xs text-slate-600">Date</label>
-            <input
-              type="date"
-              value={form.occurred_at}
-              onChange={(e) => setForm((s) => ({ ...s, occurred_at: e.target.value }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            />
-          </div>
+      {txWizardOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
+          <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => setTxWizardOpen(false)} />
+          <form onSubmit={addTx} className="relative max-h-[92vh] w-full max-w-4xl overflow-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
+        <div className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-5 py-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                  <BanknotesIcon className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Nouvelle écriture</p>
+                  <p className="text-[0.8rem] text-slate-600">Étape 1 : type • Étape 2 : montant • Étape 3 : qualification.</p>
+                </div>
+              </div>
+            </div>
 
-          <div className="md:col-span-1">
-            <label className="text-xs text-slate-600">Sens</label>
-            <select
-              value={form.direction}
-              onChange={(e) => setForm((s) => ({ ...s, direction: e.target.value as TxDirection }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="in">Entrée</option>
-              <option value="out">Sortie</option>
-            </select>
-          </div>
-
-          <div className="md:col-span-1">
-            <label className="text-xs text-slate-600">Statut</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm((s) => ({ ...s, status: e.target.value as TxStatus }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="expected">Attendu</option>
-              <option value="received">Encaissé</option>
-              <option value="paid">Payé</option>
-            </select>
-          </div>
-
-          <div className="md:col-span-1">
-            <label className="text-xs text-slate-600">Catégorie</label>
-            <select
-              value={form.category}
-              onChange={(e) => {
-                const cat = e.target.value;
-                const def = CATEGORIES.find((c) => c.value === cat);
-                setForm((s) => ({
-                  ...s,
-                  category: cat,
-                  direction: def?.dir ? def.dir : s.direction,
-                }));
-              }}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-1">
-            <label className="text-xs text-slate-600">Bien</label>
-            <select
-              value={form.property_id}
-              onChange={(e) => setForm((s) => ({ ...s, property_id: e.target.value }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">—</option>
-              {Array.from(propsById.entries()).map(([id, p]) => (
-                <option key={id} value={id}>
-                  {p.label || "Bien"}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-1">
-            <label className="text-xs text-slate-600">Montant (€)</label>
-            <input
-              value={form.amount}
-              onChange={(e) => setForm((s) => ({ ...s, amount: e.target.value }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-              placeholder="0"
-            />
+            <button type="button" onClick={() => setTxWizardOpen(false)} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" aria-label="Fermer">
+              <XMarkIcon className="h-5 w-5" />
+            </button>
           </div>
         </div>
 
-        <div className="mt-3 grid gap-3 md:grid-cols-6">
-          <div className="md:col-span-3">
-            <label className="text-xs text-slate-600">Libellé</label>
-            <input
-              value={form.label}
-              onChange={(e) => setForm((s) => ({ ...s, label: e.target.value }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-              placeholder="Ex: Assurance PNO, frais Airbnb, ..."
-            />
+        <div className="p-5">
+          <div className="grid gap-3 md:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setForm((s) => ({ ...s, direction: "out", status: "paid", category: s.category === "rent" ? "fees" : s.category }))}
+              className={cx(
+                "flex items-start gap-3 rounded-2xl border px-4 py-3 text-left transition",
+                form.direction === "out" ? "border-red-200 bg-red-50" : "border-slate-200 bg-white hover:bg-slate-50"
+              )}
+            >
+              <ArrowDownCircleIcon className={cx("mt-0.5 h-5 w-5", form.direction === "out" ? "text-red-600" : "text-slate-500")} />
+              <span>
+                <span className="block text-sm font-semibold text-slate-900">Dépense</span>
+                <span className="mt-0.5 block text-xs text-slate-600">Travaux, taxe foncière, assurance, copro, crédit.</span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setForm((s) => ({ ...s, direction: "in", status: "received", category: s.category === "rent" ? "rent" : "other" }))}
+              className={cx(
+                "flex items-start gap-3 rounded-2xl border px-4 py-3 text-left transition",
+                form.direction === "in" ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
+              )}
+            >
+              <ArrowUpCircleIcon className={cx("mt-0.5 h-5 w-5", form.direction === "in" ? "text-emerald-600" : "text-slate-500")} />
+              <span>
+                <span className="block text-sm font-semibold text-slate-900">Recette</span>
+                <span className="mt-0.5 block text-xs text-slate-600">Remboursement, revenu exceptionnel ou régularisation.</span>
+              </span>
+            </button>
           </div>
-          <div className="md:col-span-3">
-            <label className="text-xs text-slate-600">Notes</label>
-            <input
-              value={form.notes}
-              onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-              placeholder="Optionnel"
-            />
+
+          <div className="mt-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Modèles rapides</p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {QUICK_EXPENSES.map((preset) => (
+                <button
+                  key={preset.category}
+                  type="button"
+                  onClick={() => applyQuickExpense(preset)}
+                  className={cx(
+                    "flex items-center justify-between rounded-2xl border px-3 py-2 text-left text-xs font-semibold transition",
+                    form.category === preset.category
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                  )}
+                >
+                  <span>{preset.label}</span>
+                  <PlusIcon className="h-4 w-4 opacity-80" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Montant et affectation</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-semibold text-slate-700">Montant</label>
+                  <div className="mt-1 flex items-center rounded-2xl border border-slate-300 bg-white px-3 py-2 focus-within:border-slate-900">
+                    <input
+                      inputMode="decimal"
+                      value={form.amount}
+                      onChange={(e) => setForm((s) => ({ ...s, amount: e.target.value }))}
+                      className="min-w-0 flex-1 border-0 bg-transparent text-2xl font-semibold text-slate-900 outline-none"
+                      placeholder="0"
+                    />
+                    <span className="text-sm font-semibold text-slate-500">EUR</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Date</label>
+                  <input
+                    type="date"
+                    value={form.occurred_at}
+                    onChange={(e) => setForm((s) => ({ ...s, occurred_at: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Bien concerné</label>
+                  <select
+                    value={form.property_id}
+                    onChange={(e) => setForm((s) => ({ ...s, property_id: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="">Non affecté</option>
+                    {Array.from(propsById.entries()).map(([id, p]) => (
+                      <option key={id} value={id}>
+                        {p.label || "Bien"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Qualification</p>
+              <div className="mt-3 grid gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Catégorie</label>
+                  <select
+                    value={form.category}
+                    onChange={(e) => {
+                      const cat = e.target.value;
+                      const def = CATEGORIES.find((c) => c.value === cat);
+                      setForm((s) => ({
+                        ...s,
+                        category: cat,
+                        direction: def?.dir ? def.dir : s.direction,
+                      }));
+                    }}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Statut</label>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm((s) => ({ ...s, status: e.target.value as TxStatus }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="expected">Prévu</option>
+                    <option value="received">Encaissé</option>
+                    <option value="paid">Payé</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Libellé</label>
+              <input
+                value={form.label}
+                onChange={(e) => setForm((s) => ({ ...s, label: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                placeholder="Ex : Assurance PNO, taxe foncière, réparation plomberie"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Note interne</label>
+              <input
+                value={form.notes}
+                onChange={(e) => setForm((s) => ({ ...s, notes: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                placeholder="Optionnel : facture, période, précision comptable"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-cyan-200 bg-cyan-50 px-3 py-3 text-xs text-cyan-950 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              Les loyers confirmés via le workflow quittance remontent automatiquement. Cette saisie sert surtout aux charges,
+              frais et recettes exceptionnelles.
+            </p>
+            <button
+              type="submit"
+              disabled={loading || !userId}
+              className={cx(
+                "inline-flex shrink-0 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold",
+                brandBg,
+                brandText,
+                brandHover,
+                (loading || !userId) && "opacity-60"
+              )}
+            >
+              <PlusIcon className="h-4 w-4" />
+              {loading ? "Ajout…" : "Ajouter l'écriture"}
+            </button>
           </div>
         </div>
-
-        <p className="mt-3 text-[0.75rem] text-slate-500">
-          Astuce : pour les écritures “Crédit/TF/charges fixes”, tu peux aussi les saisir une fois par mois (ou automatiser plus tard).
-        </p>
       </form>
+        </div>
+      ) : null}
 
       {/* Grand livre + suppression sélection */}
       <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-slate-900">Grand livre ({monthLabel})</p>
-            <p className="text-[0.8rem] text-slate-600">Toutes tes entrées/sorties catégorisées (utile LMNP).</p>
+            <p className="text-sm font-semibold text-slate-900">Recettes & dépenses ({periodLabel})</p>
+            <p className="text-[0.8rem] text-slate-600">Détail comptable de la période, utile pour contrôler et préparer la déclaration.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-3 text-sm mr-2">
-              <span className="text-slate-600">Entrées</span>
-              <span className="font-semibold text-slate-900">{formatEuro(monthLedger.income)}</span>
-              <span className="text-slate-600">Sorties</span>
-              <span className="font-semibold text-slate-900">{formatEuro(monthLedger.expense)}</span>
-            </div>
-
             <button
               type="button"
               disabled={deleteBusy || selectedIds.length === 0}
@@ -736,65 +1544,174 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
 
         {/* Filters */}
-        <div className="mt-3 grid gap-3 md:grid-cols-4">
-          <div>
-            <label className="text-xs text-slate-600">Bien</label>
-            <select
-              value={filterPropertyId}
-              onChange={(e) => setFilterPropertyId(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">Tous</option>
-              {Array.from(propsById.entries()).map(([id, p]) => (
-                <option key={id} value={id}>
-                  {p.label || "Bien"}
-                </option>
-              ))}
-            </select>
+        <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Rechercher une écriture</p>
+              <p className="mt-1 text-xs text-slate-600">Commencez par les filtres principaux. Les filtres avancés restent disponibles si besoin.</p>
+            </div>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+              {periodLabel}
+            </span>
           </div>
 
-          <div>
-            <label className="text-xs text-slate-600">Sens</label>
-            <select
-              value={filterDirection}
-              onChange={(e) => setFilterDirection(e.target.value as any)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">Tous</option>
-              <option value="in">Entrées</option>
-              <option value="out">Sorties</option>
-            </select>
+          <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr,0.8fr]">
+            <div>
+              <label className="text-xs font-semibold text-slate-600">Recherche</label>
+              <input
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+                placeholder="Libellé, note, bien, statut..."
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-600">Bien</label>
+              <select
+                value={filterPropertyId}
+                onChange={(e) => setFilterPropertyId(e.target.value)}
+                className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+              >
+                <option value="">Tous les biens</option>
+                {Array.from(propsById.entries()).map(([id, p]) => (
+                  <option key={id} value={id}>
+                    {p.label || "Bien"}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label className="text-xs text-slate-600">Catégorie</label>
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">Toutes</option>
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              { label: "Tout", value: "" },
+              { label: "Recettes", value: "in" },
+              { label: "Dépenses", value: "out" },
+            ].map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => setFilterDirection(option.value as TxDirection | "")}
+                className={cx(
+                  "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                  filterDirection === option.value
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-white"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
 
-          <div>
-            <label className="text-xs text-slate-600">Recherche</label>
-            <input
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-              placeholder="libellé, notes, statut…"
-            />
+          <details className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-900">Filtres avancés</summary>
+            <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label className="text-xs font-semibold text-slate-600">Catégorie</label>
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Toutes</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-600">Statut</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as TxStatus | "")}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Tous</option>
+                  <option value="expected">Prévu</option>
+                  <option value="received">Encaissé</option>
+                  <option value="paid">Payé</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-600">Source</label>
+                <select
+                  value={filterSource}
+                  onChange={(e) => setFilterSource(e.target.value as "auto" | "manual" | "")}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Toutes</option>
+                  <option value="auto">Quittance auto</option>
+                  <option value="manual">Manuel</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Min.</label>
+                  <input
+                    inputMode="decimal"
+                    value={filterAmountMin}
+                    onChange={(e) => setFilterAmountMin(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    placeholder="100"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Max.</label>
+                  <input
+                    inputMode="decimal"
+                    value={filterAmountMax}
+                    onChange={(e) => setFilterAmountMax(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    placeholder="1200"
+                  />
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="grid gap-2 sm:grid-cols-4 lg:min-w-[560px]">
+              <Stat label="Lignes" value={String(filteredLedgerSummary.count)} />
+              <Stat label="Recettes" value={formatEuro(filteredLedgerSummary.income)} />
+              <Stat label="Dépenses" value={formatEuro(filteredLedgerSummary.expense)} />
+              <Stat label="Résultat" value={formatEuro(filteredLedgerSummary.net)} />
+            </div>
+
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              <button
+                type="button"
+                onClick={resetLedgerFilters}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                <ArrowPathIcon className="h-4 w-4" />
+                Réinitialiser
+              </button>
+              <button
+                type="button"
+                onClick={exportFilteredLedger}
+                disabled={filteredMonthLedger.length === 0}
+                className={cx(
+                  "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
+                  filteredMonthLedger.length === 0 ? "bg-slate-200 text-slate-600" : `${brandBg} ${brandText} ${brandHover}`
+                )}
+                title="Export CSV compatible Excel des lignes affichées."
+              >
+                <ArrowDownTrayIcon className="h-4 w-4" />
+                Exporter le résultat
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="mt-3 overflow-auto rounded-2xl border border-slate-200 bg-white">
-          <table className="min-w-[1100px] w-full text-sm">
+        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <table className="w-full table-fixed text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr className="text-left">
                 <th className="px-3 py-2 text-xs text-slate-600 w-[44px]">
@@ -806,21 +1723,18 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                     title="Tout sélectionner (lignes visibles)"
                   />
                 </th>
-                <th className="px-3 py-2 text-xs text-slate-600">Date</th>
-                <th className="px-3 py-2 text-xs text-slate-600">Bien</th>
-                <th className="px-3 py-2 text-xs text-slate-600">Sens</th>
-                <th className="px-3 py-2 text-xs text-slate-600">Catégorie</th>
-                <th className="px-3 py-2 text-xs text-slate-600">Statut</th>
-                <th className="px-3 py-2 text-xs text-slate-600">Libellé</th>
-                <th className="px-3 py-2 text-xs text-slate-600 text-right">Montant</th>
-                <th className="px-3 py-2 text-xs text-slate-600">Source</th>
+                <th className="w-[110px] px-3 py-2 text-xs text-slate-600">Date</th>
+                <th className="w-[22%] px-3 py-2 text-xs text-slate-600">Bien</th>
+                <th className="px-3 py-2 text-xs text-slate-600">Écriture</th>
+                <th className="w-[120px] px-3 py-2 text-xs text-slate-600">Statut</th>
+                <th className="w-[130px] px-3 py-2 text-xs text-slate-600 text-right">Montant</th>
               </tr>
             </thead>
 
             <tbody>
               {filteredMonthLedger.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-3 py-4 text-slate-500">
+                  <td colSpan={6} className="px-3 py-4 text-slate-500">
                     Aucune écriture (ou filtres trop restrictifs).
                   </td>
                 </tr>
@@ -828,7 +1742,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 filteredMonthLedger.map((r) => {
                   const p = r.property_id ? propsById.get(r.property_id) : null;
                   const isChecked = !!selected[r.id];
-                  const isAuto = !!r.receipt_id;
 
                   return (
                     <tr key={r.id} className="border-b border-slate-100">
@@ -842,25 +1755,19 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                       </td>
 
                       <td className="px-3 py-2 text-slate-700">{r.occurred_at}</td>
-                      <td className="px-3 py-2 text-slate-700">{p?.label || "—"}</td>
-                      <td className="px-3 py-2 text-slate-700">{r.direction === "in" ? "Entrée" : "Sortie"}</td>
-                      <td className="px-3 py-2 text-slate-700">{r.category}</td>
-                      <td className="px-3 py-2 text-slate-700">{r.status}</td>
-                      <td className="px-3 py-2 text-slate-700">{r.label || "—"}</td>
+                      <td className="truncate px-3 py-2 text-slate-700">{p?.label || "—"}</td>
+                      <td className="px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-slate-900">{r.label || categoryLabel(r.category)}</p>
+                          <p className="truncate text-xs text-slate-500">
+                            {directionLabel(r.direction)} · {categoryLabel(r.category)} · {sourceLabel(r)}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-slate-700">{statusLabel(r.status)}</td>
                       <td className="px-3 py-2 text-right font-semibold text-slate-900">
                         {r.direction === "out" ? "− " : ""}
                         {formatEuro(Number(r.amount || 0))}
-                      </td>
-                      <td className="px-3 py-2 text-xs">
-                        {isAuto ? (
-                          <span className="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[0.7rem] font-semibold text-cyan-700">
-                            Quittance (auto)
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.7rem] font-semibold text-slate-700">
-                            Manuel
-                          </span>
-                        )}
                       </td>
                     </tr>
                   );
@@ -875,13 +1782,15 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           <span className="font-semibold">Quittance (auto)</span> sont protégées (sinon elles reviendraient au prochain sync).
         </p>
       </div>
+      </section>
 
       {/* Cashflow & rendement par bien */}
-      <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-5">
-        <p className="text-sm font-semibold text-slate-900">Cashflow & rentabilité par bien</p>
-        <p className="text-[0.8rem] text-slate-600">
-          Pour un résultat fiable : renseigne (optionnel) le prix, le crédit, charges fixes, taxe foncière.
-        </p>
+      <section id="finance-performance" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <ChapterHeader
+          eyebrow="04 · Performance"
+          title="Cashflow & rentabilité par bien"
+          desc="Pour un résultat fiable : renseignez le prix, le crédit, les charges fixes et la taxe foncière."
+        />
 
         {perProperty.length === 0 ? (
           <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
@@ -915,6 +1824,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                   <Stat label="Investissement" value={formatEuro(r.invest)} />
                 </div>
 
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Plan d'action</p>
+                  <div className="mt-2 space-y-1.5">
+                    {actionPlanForProperty(r).map((action, idx) => (
+                      <p key={idx} className="text-sm text-slate-700">
+                        <span className="font-semibold text-slate-900">{idx + 1}.</span> {action}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+
                 {r.propertyId !== "—" ? (
                   <details className="mt-3">
                     <summary className="cursor-pointer text-sm font-semibold text-slate-900">
@@ -928,13 +1848,13 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
             ))}
           </div>
         )}
-      </div>
+      </section>
 
       {/* Attendu vs encaissé */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <p className="text-sm font-semibold text-slate-900">Encaissement (baux/paiements)</p>
         <div className="mt-3">
-          <MiniBar value={monthInfo.received} max={monthInfo.expected} label="Taux d’encaissement" />
+          <MiniBar value={periodInfo.received} max={periodInfo.expected} label="Taux d’encaissement" />
         </div>
         <p className="mt-2 text-[0.75rem] text-slate-600">
           Remarque : les quittances alimentent le ledger en “expected”. Les paiements (si tu les utilises) donnent la réalité “encaissé”.
@@ -946,10 +1866,20 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
 function Kpi({ title, value, sub }: { title: string; value: string; sub: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">{title}</p>
       <p className="mt-1 text-xl font-semibold text-slate-900">{value}</p>
       <p className="mt-1 text-xs text-slate-600">{sub}</p>
+    </div>
+  );
+}
+
+function ChapterHeader({ eyebrow, title, desc }: { eyebrow: string; title: string; desc: string }) {
+  return (
+    <div className="flex flex-col gap-1 border-b border-slate-100 pb-3">
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">{eyebrow}</p>
+      <h3 className="text-base font-semibold text-slate-950">{title}</h3>
+      <p className="max-w-3xl text-sm text-slate-600">{desc}</p>
     </div>
   );
 }

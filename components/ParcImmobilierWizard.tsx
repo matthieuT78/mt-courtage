@@ -1,34 +1,5 @@
 // components/ParcImmobilierWizard.tsx
 import { useMemo, useState } from "react";
-import dynamic from "next/dynamic";
-
-import {
-  Chart as ChartJS,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-} from "chart.js";
-
-ChartJS.register(
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement
-);
-
-const Bar = dynamic(() => import("react-chartjs-2").then((m) => m.Bar), {
-  ssr: false,
-});
-const Line = dynamic(() => import("react-chartjs-2").then((m) => m.Line), {
-  ssr: false,
-});
 
 function formatEuro(val: number) {
   if (!Number.isFinite(val)) return "-";
@@ -98,6 +69,10 @@ type Bien = {
 type ResumeGlobal = {
   valeurParc: number;
   encoursCredit: number;
+  equityNette: number;
+  loyersAnnuels: number;
+  chargesAnnuelles: number;
+  serviceDetteAnnuel: number;
   cashflowMensuelGlobal: number;
   rendementNetMoyen: number;
 
@@ -106,6 +81,42 @@ type ResumeGlobal = {
   ltvGlobal: number;
   dscrGlobal: number;
 };
+
+function metricCashflow(b: Bien, advancedMode: boolean) {
+  return advancedMode ? b.cashflowMensuelAjuste || 0 : b.cashflowMensuel || 0;
+}
+
+function metricRendement(b: Bien, advancedMode: boolean) {
+  return advancedMode ? b.rendementNetAjuste || 0 : b.rendementNet || 0;
+}
+
+function cashflowProfile(cashflow: number) {
+  if (cashflow >= 0) return "autofinancé";
+  if (cashflow >= -50) return "quasi autofinancé";
+  if (cashflow >= -150) return "effort maîtrisé";
+  if (cashflow >= -300) return "à optimiser";
+  return "sous tension";
+}
+
+function scoreParc(resume: ResumeGlobal, advancedMode: boolean) {
+  const cashflow = advancedMode ? resume.cashflowMensuelGlobalAjuste : resume.cashflowMensuelGlobal;
+  const rendement = advancedMode ? resume.rendementNetMoyenAjuste : resume.rendementNetMoyen;
+  let score = 50;
+  score +=
+    cashflow >= 0
+      ? 18
+      : cashflow >= -50
+      ? 12
+      : cashflow >= -150
+      ? 4
+      : cashflow >= -300
+      ? -6
+      : Math.max(-18, cashflow / 80);
+  score += clamp((rendement - 3) * 5, -12, 18);
+  score += resume.ltvGlobal <= 60 ? 14 : resume.ltvGlobal <= 80 ? 4 : -12;
+  score += resume.dscrGlobal >= 1.2 ? 14 : resume.dscrGlobal >= 1.05 ? 4 : -14;
+  return Math.round(clamp(score, 0, 100));
+}
 
 function InfoBadge({ text }: { text: string }) {
   return (
@@ -160,10 +171,7 @@ export default function ParcImmobilierWizard() {
   const [resumeGlobal, setResumeGlobal] = useState<ResumeGlobal | null>(null);
   const [analyseTexte, setAnalyseTexte] = useState<string>("");
 
-  const [barData, setBarData] = useState<any | null>(null);
-  const [lineData, setLineData] = useState<any | null>(null);
-
-  const hasSimulation = !!resumeGlobal && !!barData && !!lineData;
+  const hasSimulation = !!resumeGlobal;
 
   const handleNbBiensChange = (value: number) => {
     const n = Math.min(Math.max(value, 1), 20);
@@ -318,40 +326,16 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
     setResumeGlobal({
       valeurParc,
       encoursCredit,
+      equityNette: Math.max(0, valeurParc - encoursCredit),
+      loyersAnnuels: updatedBiens.reduce((sum, b) => sum + toFloat(b.loyerMensuel, 0) * 12, 0),
+      chargesAnnuelles: updatedBiens.reduce((sum, b) => sum + toFloat(b.chargesAnnuelles, 0), 0),
+      serviceDetteAnnuel: totalServiceDette,
       cashflowMensuelGlobal,
       rendementNetMoyen,
       cashflowMensuelGlobalAjuste,
       rendementNetMoyenAjuste,
       ltvGlobal,
       dscrGlobal,
-    });
-
-    const labels = updatedBiens.map((b, idx) => b.nom || `Bien #${idx + 1}`);
-    const cashFlows = updatedBiens.map((b) => (advancedMode ? b.resultatNetAnnuelAjuste : b.resultatNetAnnuel) || 0);
-    const rendements = updatedBiens.map((b) => (advancedMode ? b.rendementNetAjuste : b.rendementNet) || 0);
-
-    setBarData({
-      labels,
-      datasets: [
-        {
-          label: advancedMode ? "Cash-flow annuel ajusté (€)" : "Cash-flow annuel (€)",
-          data: cashFlows,
-          backgroundColor: cashFlows.map((v: number) => (v >= 0 ? "#22c55e" : "#ef4444")),
-        },
-      ],
-    });
-
-    setLineData({
-      labels,
-      datasets: [
-        {
-          label: advancedMode ? "Rendement net ajusté (%)" : "Rendement net (%)",
-          data: rendements,
-          borderColor: "#0f172a",
-          backgroundColor: "rgba(15,23,42,0.08)",
-          tension: 0.25,
-        },
-      ],
     });
 
     let bienTop = updatedBiens[0];
@@ -371,6 +355,39 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
         valeurParc
       )} et un encours de crédit d’environ ${formatEuro(encoursCredit)}.`,
     ];
+
+    const score = scoreParc(
+      {
+        valeurParc,
+        encoursCredit,
+        equityNette: Math.max(0, valeurParc - encoursCredit),
+        loyersAnnuels: updatedBiens.reduce((sum, b) => sum + toFloat(b.loyerMensuel, 0) * 12, 0),
+        chargesAnnuelles: updatedBiens.reduce((sum, b) => sum + toFloat(b.chargesAnnuelles, 0), 0),
+        serviceDetteAnnuel: totalServiceDette,
+        cashflowMensuelGlobal,
+        rendementNetMoyen,
+        cashflowMensuelGlobalAjuste,
+        rendementNetMoyenAjuste,
+        ltvGlobal,
+        dscrGlobal,
+      },
+      advancedMode
+    );
+
+    const cashflowReference = advancedMode ? cashflowMensuelGlobalAjuste : cashflowMensuelGlobal;
+    const profile = cashflowProfile(cashflowReference);
+
+    lignes.push(
+      profile === "autofinancé"
+        ? `Score patrimoine : ${score}/100. Le parc est autofinancé : les loyers couvrent les charges et la dette.`
+        : profile === "quasi autofinancé"
+        ? `Score patrimoine : ${score}/100. Le parc est quasi autofinancé : le léger effort mensuel reste plutôt avantageux.`
+        : profile === "effort maîtrisé"
+        ? `Score patrimoine : ${score}/100. L’effort d’épargne reste maîtrisé : l’enjeu est l’optimisation, pas l’urgence.`
+        : profile === "à optimiser"
+        ? `Score patrimoine : ${score}/100. Le parc mérite une optimisation ciblée : loyers, charges, dette ou fiscalité.`
+        : `Score patrimoine : ${score}/100. Le parc est sous tension : priorisez la dette, la vacance ou les biens déficitaires.`
+    );
 
     if (!advancedMode) {
       lignes.push(
@@ -473,6 +490,295 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
       </div>
     );
   }, [resumeGlobal]);
+
+  const activeBiens = useMemo(() => biens.slice(0, nbBiens), [biens, nbBiens]);
+
+  const rankedBiens = useMemo(() => {
+    return [...activeBiens].sort((a, b) => metricCashflow(b, advancedMode) - metricCashflow(a, advancedMode));
+  }, [activeBiens, advancedMode]);
+
+  const cockpit = useMemo(() => {
+    if (!resumeGlobal || !activeBiens.length) return null;
+
+    const score = scoreParc(resumeGlobal, advancedMode);
+    const cashflow = advancedMode ? resumeGlobal.cashflowMensuelGlobalAjuste : resumeGlobal.cashflowMensuelGlobal;
+    const profile = cashflowProfile(cashflow);
+    const worst = [...activeBiens].sort((a, b) => metricCashflow(a, advancedMode) - metricCashflow(b, advancedMode))[0];
+    const highestDebt = [...activeBiens].sort(
+      (a, b) => toFloat(b.capitalRestantDu, 0) - toFloat(a.capitalRestantDu, 0)
+    )[0];
+    const biggestValue = [...activeBiens].sort((a, b) => toFloat(b.valeurBien, 0) - toFloat(a.valeurBien, 0))[0];
+    const concentration =
+      resumeGlobal.valeurParc > 0 ? (toFloat(biggestValue?.valeurBien || "0", 0) / resumeGlobal.valeurParc) * 100 : 0;
+
+    const verdict =
+      profile === "autofinancé"
+        ? "Parc autofinancé"
+        : profile === "quasi autofinancé"
+        ? "Parc quasi autofinancé"
+        : profile === "effort maîtrisé"
+        ? "Effort maîtrisé"
+        : profile === "à optimiser"
+        ? "Parc à optimiser"
+        : "Parc sous tension";
+
+    const priority =
+      profile === "quasi autofinancé" && worst
+        ? `${worst.nom} est presque à l’équilibre (${formatEuro(
+            metricCashflow(worst, advancedMode)
+          )}/mois) : l’enjeu est d’optimiser, pas de traiter une urgence.`
+        : profile === "effort maîtrisé" && worst
+        ? `${worst.nom} demande un effort maîtrisé (${formatEuro(
+            metricCashflow(worst, advancedMode)
+          )}/mois) : vérifiez charges, loyer et fiscalité.`
+        : cashflow < -150 && worst
+        ? `Traiter ${worst.nom} : il pèse ${formatEuro(metricCashflow(worst, advancedMode))}/mois sur le parc.`
+        : resumeGlobal.dscrGlobal > 0 && resumeGlobal.dscrGlobal < 1.2
+        ? "Renforcer la marge bancaire : viser un DSCR global supérieur à 1,20."
+        : resumeGlobal.ltvGlobal > 80 && highestDebt
+        ? `Réduire le levier : ${highestDebt.nom} porte l’encours le plus élevé.`
+        : concentration > 55 && biggestValue
+        ? `Surveiller la concentration : ${biggestValue.nom} représente ${formatPct(concentration)} de la valeur.`
+        : "Comparer un nouveau projet avec ce parc avant d’acheter.";
+
+    return { score, verdict, priority, profile, worst, highestDebt, biggestValue, concentration };
+  }, [activeBiens, advancedMode, resumeGlobal]);
+
+  const stressScenarios = useMemo(() => {
+    if (!resumeGlobal) return [];
+
+    const currentCashflow = advancedMode ? resumeGlobal.cashflowMensuelGlobalAjuste : resumeGlobal.cashflowMensuelGlobal;
+    const loyerMensuel = resumeGlobal.loyersAnnuels / 12;
+    const chargesMensuelles = resumeGlobal.chargesAnnuelles / 12;
+
+    return [
+      {
+        label: "Vacance +5%",
+        value: currentCashflow - (resumeGlobal.loyersAnnuels * 0.05) / 12,
+        hint: "un mois vide ou relocation plus lente",
+      },
+      {
+        label: "Charges +10%",
+        value: currentCashflow - chargesMensuelles * 0.1,
+        hint: "copropriété, taxe foncière, entretien",
+      },
+      {
+        label: "Loyers -5%",
+        value: currentCashflow - loyerMensuel * 0.05,
+        hint: "négociation, vacance ou marché plus mou",
+      },
+      {
+        label: "Dette +100 €/bien",
+        value: currentCashflow - activeBiens.length * 100,
+        hint: "refinancement ou hausse de mensualité",
+      },
+    ];
+  }, [activeBiens.length, advancedMode, resumeGlobal]);
+
+  const renderCashflowRanking = () => {
+    if (!rankedBiens.length) return null;
+
+    const maxAbs = Math.max(1, ...rankedBiens.map((b) => Math.abs(metricCashflow(b, advancedMode))));
+
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Cash-flow par bien</p>
+            <h3 className="mt-1 text-sm font-semibold text-slate-900">Du meilleur contributeur au bien à traiter</h3>
+          </div>
+          <span className="rounded-full border border-slate-200 px-3 py-1 text-[0.7rem] font-semibold text-slate-600">
+            {advancedMode ? "Ajusté" : "Standard"}
+          </span>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {rankedBiens.map((b, idx) => {
+            const cashflow = metricCashflow(b, advancedMode);
+            const width = Math.max(8, Math.min(100, (Math.abs(cashflow) / maxAbs) * 100));
+            return (
+              <div key={`${b.nom}-${idx}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold leading-snug text-slate-900 break-words">{b.nom || `Bien #${idx + 1}`}</p>
+                    <p className="mt-0.5 text-[0.7rem] text-slate-500">Rendement {formatPct(metricRendement(b, advancedMode))}</p>
+                  </div>
+                  <p className={(cashflow >= 0 ? "text-emerald-700" : "text-rose-700") + " text-sm font-bold sm:text-right"}>
+                    {formatEuro(cashflow)}/mois
+                  </p>
+                </div>
+                <div className="mt-3 h-3 overflow-hidden rounded-full bg-white">
+                  <div
+                    className={(cashflow >= 0 ? "bg-emerald-500" : "bg-rose-500") + " h-full rounded-full"}
+                    style={{ width: `${width}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderRiskMatrix = () => {
+    if (!activeBiens.length) return null;
+    const maxValue = Math.max(1, ...activeBiens.map((b) => toFloat(b.valeurBien, 0)));
+
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Matrice rendement / risque</p>
+        <h3 className="mt-1 text-sm font-semibold text-slate-900">Identifier les biens performants et risqués</h3>
+        <p className="mt-2 text-xs leading-relaxed text-slate-500">
+          Plus un point est à droite, plus le rendement est élevé. Plus il est haut, plus la dette est faible.
+        </p>
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between text-[0.7rem] font-semibold text-slate-500">
+            <span>Dette faible</span>
+            <span>Rendement élevé</span>
+          </div>
+          <div className="relative h-64 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 sm:h-72">
+            <div className="absolute left-1/2 top-0 h-full w-px bg-slate-200" />
+            <div className="absolute left-0 top-1/2 h-px w-full bg-slate-200" />
+            <div className="absolute left-4 top-4 rounded-full bg-white/80 px-2 py-1 text-[0.65rem] font-semibold text-slate-500">
+              prudent
+            </div>
+            <div className="absolute bottom-4 right-4 rounded-full bg-white/80 px-2 py-1 text-[0.65rem] font-semibold text-slate-500">
+              performant
+            </div>
+
+            {activeBiens.map((b, idx) => {
+              const rendement = metricRendement(b, advancedMode);
+              const ltv = b.ltv || 0;
+              const x = clamp((rendement / 10) * 100, 12, 88);
+              const y = clamp(100 - ltv, 14, 86);
+              const value = toFloat(b.valeurBien, 0);
+              const size = clamp(22 + (value / maxValue) * 18, 24, 40);
+              const cashflow = metricCashflow(b, advancedMode);
+
+              return (
+                <div
+                  key={`${b.nom}-matrix-${idx}`}
+                  className="absolute -translate-x-1/2 -translate-y-1/2"
+                  style={{ left: `${x}%`, top: `${y}%` }}
+                  title={`${b.nom} • rendement ${formatPct(rendement)} • LTV ${formatPct(ltv)}`}
+                >
+                  <div
+                    className={
+                      "flex items-center justify-center rounded-full border-4 text-xs font-bold shadow-md " +
+                      (cashflow >= 0
+                        ? "border-emerald-100 bg-emerald-500 text-white"
+                        : "border-rose-100 bg-rose-500 text-white")
+                    }
+                    style={{ width: size, height: size }}
+                  >
+                    {idx + 1}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[0.7rem] font-semibold text-slate-500">
+            <span>Dette élevée</span>
+            <span>Rendement faible</span>
+          </div>
+        </div>
+        <div className="mt-4 space-y-2">
+          {activeBiens.map((b, idx) => {
+            const cashflow = metricCashflow(b, advancedMode);
+            return (
+              <div key={`${b.nom}-legend-${idx}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <div className="flex items-start gap-2">
+                  <span
+                    className={
+                      (cashflow >= 0 ? "bg-emerald-500" : "bg-rose-500") +
+                      " mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.65rem] font-bold text-white"
+                    }
+                  >
+                    {idx + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold leading-snug text-slate-900 break-words">{b.nom || `Bien #${idx + 1}`}</p>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[0.7rem] leading-snug text-slate-600">
+                      <span>Rendement : {formatPct(metricRendement(b, advancedMode))}</span>
+                      <span>LTV : {formatPct(b.ltv || 0)}</span>
+                      <span className={cashflow >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                        Cash-flow : {formatEuro(cashflow)}/mois
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderDebtValueChart = () => {
+    if (!activeBiens.length) return null;
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Dette vs valeur</p>
+        <h3 className="mt-1 text-sm font-semibold text-slate-900">Voir l’equity disponible bien par bien</h3>
+        <div className="mt-4 space-y-3">
+          {activeBiens.map((b, idx) => {
+            const value = toFloat(b.valeurBien, 0);
+            const debt = toFloat(b.capitalRestantDu, 0);
+            const debtPct = value > 0 ? clamp((debt / value) * 100, 0, 100) : 0;
+            const equity = Math.max(0, value - debt);
+            return (
+              <div key={`${b.nom}-debt-${idx}`} className="space-y-1">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="truncate font-semibold text-slate-800">{b.nom}</span>
+                  <span className="text-slate-500">Equity {formatEuro(equity)}</span>
+                </div>
+                <div className="flex h-4 overflow-hidden rounded-full bg-emerald-100">
+                  <div className="bg-slate-900" style={{ width: `${debtPct}%` }} />
+                  <div className="bg-emerald-500" style={{ width: `${100 - debtPct}%` }} />
+                </div>
+                <div className="flex justify-between text-[0.65rem] text-slate-500">
+                  <span>Dette {formatEuro(debt)}</span>
+                  <span>Valeur {formatEuro(value)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderStressTest = () => {
+    if (!stressScenarios.length) return null;
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Stress test</p>
+        <h3 className="mt-1 text-sm font-semibold text-slate-900">Ce qui se passe si le marché bouge</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {stressScenarios.map((s) => (
+            <div key={s.label} className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <div className="grid min-w-0 gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-slate-900">{s.label}</p>
+                  <p className="mt-1 text-[0.7rem] leading-snug text-slate-500">{s.hint}</p>
+                </div>
+                <p
+                  className={
+                    (s.value >= 0 ? "text-emerald-700" : "text-rose-700") +
+                    " min-w-0 break-words rounded-lg bg-white px-2 py-1.5 text-right text-sm font-bold"
+                  }
+                >
+                  {formatEuro(s.value)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const renderRecapTable = () => {
     if (!hasSimulation) return null;
@@ -589,7 +895,9 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-indigo-600 mb-1">Calculette</p>
               <h2 className="text-lg font-semibold text-slate-900">Décrivez vos biens locatifs</h2>
-              <p className="text-xs text-slate-500">Valeur actuelle, loyer, charges, capital restant dû et crédit.</p>
+              <p className="text-xs text-slate-500">
+                Saisie rapide par bien : valeur, dette, loyer, charges et mensualité. Le cockpit classe ensuite les biens.
+              </p>
             </div>
 
             <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
@@ -600,10 +908,10 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                   onChange={(e) => setAdvancedMode(e.target.checked)}
                   className="h-4 w-4"
                 />
-                <span className="text-[0.75rem] font-semibold text-slate-700">Version avancée</span>
+                <span className="text-[0.75rem] font-semibold text-slate-700">Analyse prudente</span>
               </label>
               <p className="text-[0.65rem] text-slate-500 mt-1 max-w-[180px]">
-                Paramètres par bien + indicateurs (DSCR/LTV).
+                Vacance, gestion, impôts + DSCR/LTV.
               </p>
             </div>
           </div>
@@ -810,6 +1118,22 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
 
           {hasSimulation ? (
             <>
+              {cockpit ? (
+                <div className="rounded-2xl border border-indigo-200 bg-indigo-950 px-4 py-4 text-white">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[0.7rem] uppercase tracking-[0.2em] text-indigo-200">Cockpit patrimonial</p>
+                      <h3 className="mt-1 text-xl font-semibold">{cockpit.verdict}</h3>
+                      <p className="mt-1 text-sm text-indigo-100">{cockpit.priority}</p>
+                    </div>
+                    <div className="shrink-0 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-center">
+                      <p className="text-[0.65rem] uppercase tracking-[0.16em] text-indigo-200">Score</p>
+                      <p className="text-3xl font-bold">{cockpit.score}/100</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="grid gap-3 sm:grid-cols-4 mt-1">
                 <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
                   <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Valeur du parc</p>
@@ -819,10 +1143,11 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                 </div>
 
                 <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Encours de crédit</p>
+                  <p className="text-[0.7rem] text-slate-500 uppercase tracking-[0.14em]">Equity nette</p>
                   <p className="mt-1 text-sm font-semibold text-slate-900">
-                    {formatEuro(resumeGlobal!.encoursCredit)}
+                    {formatEuro(resumeGlobal!.equityNette)}
                   </p>
+                  <p className="mt-1 text-[0.7rem] text-slate-500">Valeur − dette.</p>
                 </div>
 
                 <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
@@ -857,44 +1182,11 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
 
               {advancedMode ? advancedCards : null}
 
-              <div className="grid gap-4 lg:grid-cols-2 mt-3">
-                <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
-                  <p className="text-xs text-slate-600 mb-2">
-                    {advancedMode ? "Cash-flow annuel ajusté par bien." : "Cash-flow annuel par bien."}
-                  </p>
-                  {barData && (
-                    <Bar
-                      data={barData}
-                      options={{
-                        plugins: { legend: { display: false } },
-                        scales: {
-                          x: { ticks: { color: "#0f172a", font: { size: 9 } }, grid: { color: "#e5e7eb" } },
-                          y: { ticks: { color: "#0f172a", font: { size: 10 } }, grid: { color: "#e5e7eb" } },
-                        },
-                      }}
-                    />
-                  )}
-                </div>
-
-                <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
-                  <p className="text-xs text-slate-600 mb-2">
-                    {advancedMode ? "Rendement net ajusté par bien." : "Rendement net par bien (avant impôts)."}
-                  </p>
-                  {lineData && (
-                    <Line
-                      data={lineData}
-                      options={{
-                        plugins: {
-                          legend: { labels: { color: "#0f172a", font: { size: 11 } } },
-                        },
-                        scales: {
-                          x: { ticks: { color: "#0f172a", font: { size: 9 } }, grid: { color: "#e5e7eb" } },
-                          y: { ticks: { color: "#0f172a", font: { size: 10 } }, grid: { color: "#e5e7eb" } },
-                        },
-                      }}
-                    />
-                  )}
-                </div>
+              <div className="grid gap-4 mt-3">
+                {renderCashflowRanking()}
+                {renderRiskMatrix()}
+                {renderDebtValueChart()}
+                {renderStressTest()}
               </div>
 
               <div className="mt-3 rounded-xl bg-slate-50 border border-slate-200 px-3 py-3">
@@ -906,9 +1198,20 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
               </div>
             </>
           ) : (
-            <p className="text-sm text-slate-500">
-              Renseignez vos biens et cliquez sur “Calculer la rentabilité du parc” pour obtenir une vue d&apos;ensemble complète.
-            </p>
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5">
+              <p className="text-sm font-semibold text-slate-900">Votre cockpit apparaîtra ici.</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Après calcul, vous verrez le score du parc, le bien à traiter en priorité, une matrice rendement/risque,
+                la dette face à la valeur et un stress test.
+              </p>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {["Cash-flow par bien", "Rendement vs LTV", "Dette vs valeur", "Stress test"].map((label) => (
+                  <div key={label} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </section>

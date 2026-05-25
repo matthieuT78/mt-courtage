@@ -6,11 +6,14 @@ import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import PretRelaisWizard from "../components/PretRelaisWizard";
 import { supabase } from "../lib/supabaseClient";
+import { firstNameFromUser } from "../lib/userDisplay";
 
 type SimpleUser = {
   email?: string;
   user_metadata?: {
     full_name?: string;
+    first_name?: string;
+    given_name?: string;
   };
 };
 
@@ -33,16 +36,6 @@ function JsonLd({ data }: { data: any }) {
       ))}
     </>
   );
-}
-
-function firstNameFromUser(user: SimpleUser | null) {
-  const raw = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "");
-  const first =
-    String(raw || "")
-      .trim()
-      .split(/\s+/)[0] || "";
-  if (!first) return "";
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }
 
 function FaqItem({ q, a }: { q: string; a: React.ReactNode }) {
@@ -380,4 +373,3 @@ export default function PretRelaisPage() {
     </div>
   );
 }
-

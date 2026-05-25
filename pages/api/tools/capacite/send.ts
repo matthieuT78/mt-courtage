@@ -127,7 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const email = safeEmail(req.body?.email);
     const recapHtml = String(req.body?.html || "").trim();
-    const subject = String(req.body?.subject || "Votre capacité d’emprunt – lokt.fr").trim();
+    const subject = String(req.body?.subject || "Votre rapport de capacité d’emprunt — lokt.fr").trim();
     const replyTo = String(req.body?.replyTo || "contact@lokt.fr").trim();
 
     // Optionnel: text fourni, sinon fallback

@@ -1,6 +1,7 @@
 // components/PretRelaisWizard.tsx
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import LeadGate from "./LeadGate";
 
 const PRET_RELAIS_STORAGE_KEY = "pret_relais_simulation_v2";
 
@@ -63,7 +64,7 @@ type ResumeRelais = {
   capitalNouveau: number;
   budgetMax: number;
 
-  // ✅ pour le Score Lokt.fr™
+  // ✅ pour le Score lokt.fr™
   revenusPrisEnCompte: number;
   mensualitesExistantes: number;
   chargesHorsCredits: number;
@@ -239,7 +240,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   const [resume, setResume] = useState<ResumeRelais | null>(null);
   const [texteDetail, setTexteDetail] = useState<string>("");
 
-  // ✅ Score Lokt.fr™
+  // ✅ Score lokt.fr™
   const [bankabilityScore, setBankabilityScore] = useState<number | null>(null);
   const [bankabilityLabel, setBankabilityLabel] = useState<string>("");
   const [bankabilityComment, setBankabilityComment] = useState<string>("");
@@ -252,6 +253,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [leadEmail, setLeadEmail] = useState<string>("");
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
+  const [consentContact, setConsentContact] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
   // ✅ Email (optionnel)
@@ -375,11 +377,11 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       : "text-red-300";
 
   const loktScoreLabel = useMemo(() => {
-    if (bankabilityScore === null) return "Score Lokt.fr";
-    if (bankabilityScore >= 85) return "Score Lokt.fr — Très solide";
-    if (bankabilityScore >= 70) return "Score Lokt.fr — Solide";
-    if (bankabilityScore >= 55) return "Score Lokt.fr — À optimiser";
-    return "Score Lokt.fr — Sous tension";
+    if (bankabilityScore === null) return "Score lokt.fr";
+    if (bankabilityScore >= 85) return "Score lokt.fr — Très solide";
+    if (bankabilityScore >= 70) return "Score lokt.fr — Solide";
+    if (bankabilityScore >= 55) return "Score lokt.fr — À optimiser";
+    return "Score lokt.fr — Sous tension";
   }, [bankabilityScore]);
 
   // ---------------------------
@@ -519,8 +521,8 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
         `Autres mensualités de crédits : ${formatEuro(autresMens)}.`,
         `Endettement cible : ${tauxEndettement.toFixed(0)} % → plafond ≈ ${formatEuro(plafondEndettement)}/mois.`,
         `Mensualité disponible estimée : ${formatEuro(mensualiteNouveauMax)}.`,
-        `Lecture Lokt (prudente) : on retient ~${Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de la mensualité disponible pour estimer l’endettement projeté.`,
-        `Endettement actuel : ~${formatPct(tauxActuel)} ; endettement projeté (Lokt) : ~${formatPct(tauxAvecProjet)}.`,
+        `Lecture lokt.fr (prudente) : on retient ~${Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de la mensualité disponible pour estimer l’endettement projeté.`,
+        `Endettement actuel : ~${formatPct(tauxActuel)} ; endettement projeté (lokt.fr) : ~${formatPct(tauxAvecProjet)}.`,
       ].join("\n"),
       "",
       [
@@ -721,7 +723,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
         bankability:
           bankabilityScore !== null ? { score: bankabilityScore, label: bankabilityLabel, comment: bankabilityComment } : null,
       },
-      consent: { consent_analysis: true, consent_contact: false },
+      consent: { consent_analysis: true, consent_contact: consentContact },
       tracking,
     };
 
@@ -833,7 +835,7 @@ async function sendPretRelaisEmail(email: string) {
     }
 
     if (!consentLokt) {
-      setUnlockMsg("Pour débloquer l’analyse, merci d’accepter l’utilisation de vos données (Lokt.fr).");
+      setUnlockMsg("Pour recevoir le rapport, merci d’accepter l’utilisation de vos données pour cette simulation.");
       return;
     }
 
@@ -841,7 +843,7 @@ async function sendPretRelaisEmail(email: string) {
     try {
       await capturePretRelaisViaRpc();
       setUnlocked(true);
-      setUnlockMsg("✅ Analyse débloquée. (Votre simulation est bien enregistrée.)");
+      setUnlockMsg("✅ Rapport prêt. Votre simulation est bien enregistrée.");
 if (sendByEmail) {
   await sendPretRelaisEmail(email);
 }
@@ -1406,7 +1408,7 @@ const renderAnalysisBlocks = (text: string) => {
               </div>
             </div>
 
-            {/* Score Lokt.fr™ */}
+            {/* Score lokt.fr™ */}
             {canShowFullAnalysis && bankabilityScore !== null ? (
               <div className="mt-4 grid gap-3 sm:grid-cols-4">
                 <div className="rounded-xl bg-slate-900 text-white px-3 py-2.5 sm:col-span-2">
@@ -1431,84 +1433,24 @@ const renderAnalysisBlocks = (text: string) => {
 
             {/* Gate */}
 {!canShowFullAnalysis ? (
-  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden">
-    <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
-    <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-amber-400" />
-
-    <div className="relative space-y-3">
-      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE</p>
-      <h3 className="text-lg font-semibold">Conservez votre simulation et débloquez l’analyse détaillée.</h3>
-
-      <div className="mt-2 rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
-        {/* Email */}
-        <div className="space-y-1">
-          <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
-          <input
-            type="email"
-            value={leadEmail}
-            onChange={(e) => setLeadEmail(e.target.value)}
-            placeholder="ex: prenom.nom@gmail.com"
-            className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-          />
-          <p className="text-[0.7rem] text-slate-300">
-            On l’utilise pour enregistrer la simulation et mesurer la demande (stats agrégées).
-          </p>
-        </div>
-
-        {/* ✅ Option email */}
-        <div className="rounded-lg bg-white/5 border border-white/10 p-3">
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={sendByEmail}
-              onChange={(e) => setSendByEmail(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-            />
-            <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-              <span className="font-semibold">Recevoir l’analyse complète par email</span>
-              <span className="block text-[0.7rem] text-slate-300 mt-1">
-                Pratique pour relire les résultats plus tard.
-              </span>
-            </span>
-          </label>
-
-          {sendingEmail ? <p className="mt-2 text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
-          {sendEmailMsg ? <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
-        </div>
-
-        {/* ✅ Consentement */}
-        <div className="rounded-lg bg-white/5 border border-white/10 p-3">
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={consentLokt}
-              onChange={(e) => setConsentLokt(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-            />
-            <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-              <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour enregistrer mon analyse et
-              améliorer Lokt.fr (statistiques anonymisées).
-            </span>
-          </label>
-          <p className="mt-2 text-[0.7rem] text-slate-300">
-            Pas de démarchage partenaire ici. Aucun consentement “contact partenaire” n’est demandé.
-          </p>
-        </div>
-
-        {/* Bouton */}
-        <button
-          type="button"
-          onClick={handleUnlock}
-          disabled={unlocking}
-          className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
-        >
-          {unlocking ? "Déblocage..." : "Débloquer l’analyse"}
-        </button>
-
-        {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
-      </div>
-    </div>
-  </div>
+  <LeadGate
+    theme="cyan-amber"
+    title="Recevoir mon rapport prêt relais"
+    subtitle="Budget de rachat, risque relais, points de vigilance et synthèse à conserver."
+    email={leadEmail}
+    setEmail={setLeadEmail}
+    consent={consentLokt}
+    setConsent={setConsentLokt}
+    contactConsent={consentContact}
+    setContactConsent={setConsentContact}
+    unlocking={unlocking || sendingEmail}
+    unlockMsg={unlockMsg}
+    onUnlock={handleUnlock}
+    sendByEmail={sendByEmail}
+    setSendByEmail={setSendByEmail}
+    sendingEmail={sendingEmail}
+    sendEmailMsg={sendEmailMsg}
+  />
 ) : null}
 
             {/* Analyse */}
@@ -1535,4 +1477,3 @@ const renderAnalysisBlocks = (text: string) => {
     </div>
   );
 }
-

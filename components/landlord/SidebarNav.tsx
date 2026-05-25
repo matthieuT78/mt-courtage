@@ -8,9 +8,9 @@ export type LandlordSectionKey =
   | "baux"
   | "etat_des_lieux"
   | "quittances"
-  | "loyers"
   | "finance"
   | "inventaire"
+  | "documents"
   | "declaration"; // ✅ NEW
 
 type Item = {
@@ -53,8 +53,6 @@ export function SidebarNav({
     { key: "baux", label: "Baux", icon: "📄" },
     { key: "etat_des_lieux", label: "État des lieux", icon: "📝", badge: <Pill tone="indigo">Nouveau</Pill> },
     { key: "quittances", label: "Quittances", icon: "🧾" },
-
-    { key: "loyers", label: "Loyers", icon: "💶" },
     { key: "finance", label: "Finance", icon: "📊" },
     { key: "inventaire", label: "Inventaire", icon: "📦", badge: <Pill tone="indigo">Nouveau</Pill> },
 

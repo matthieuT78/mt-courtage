@@ -1,5 +1,6 @@
 // pages/espace-bailleur.tsx
 import React from "react";
+import Head from "next/head";
 import AppHeader from "../components/AppHeader";
 import { useLandlordDashboard } from "../lib/landlord/useLandlordDashboard";
 import { DashboardShell } from "../components/landlord/DashboardShell";
@@ -14,6 +15,10 @@ export default function EspaceBailleurPage() {
   if (d.checkingAuth) {
     return (
       <div className="min-h-screen flex flex-col bg-slate-100">
+        <Head>
+          <title>Espace bailleur | lokt.fr</title>
+          <meta name="robots" content="noindex, nofollow" />
+        </Head>
         <AppHeader />
         <main className="flex-1 px-4 py-8">
           <div className="max-w-5xl mx-auto">
@@ -49,6 +54,10 @@ export default function EspaceBailleurPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
+      <Head>
+        <title>Espace bailleur | lokt.fr</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Head>
       <AppHeader />
 
       {/* On garde le shell monté même pendant loading,

@@ -1,7 +1,11 @@
+// pages/api/inventory/pdf-url.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+type Json = Record<string, any>;
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse<Json>) {
   try {
     // ======================================================
     // METHOD
@@ -13,6 +17,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!supabaseAdmin) {
       return res.status(500).json({ error: "Supabase admin non configuré." });
     }
+    const auth = await requireApiUser(req);
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
     // ======================================================
     // PARAMS
@@ -23,13 +29,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!reportId || !userId) {
       return res.status(400).json({ error: "reportId et userId requis." });
     }
+    const userCheck = requireMatchingUser(auth, userId);
+    if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
 
     // ======================================================
     // FETCH REPORT
     // ======================================================
     const { data: report, error: reportErr } = await supabaseAdmin
       .from("inventory_reports")
-      .select("id,user_id,pdf_url")
+      .select("id,user_id,status,pdf_url")
       .eq("id", reportId)
       .single();
 
@@ -39,6 +47,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (report.user_id !== userId) {
       return res.status(403).json({ error: "Accès refusé." });
+    }
+
+    // ✅ Règle métier : pas d’ouverture en draft
+    const status = String(report.status || "").toLowerCase();
+    if (!["ready", "signed", "archived"].includes(status)) {
+      return res
+        .status(409)
+        .json({ error: "PDF indisponible tant que l’état des lieux n’est pas finalisé (statut “Prêt”)." });
     }
 
     if (!report.pdf_url) {
@@ -66,9 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ======================================================
     // SIGNED URL
     // ======================================================
-    const { data, error: signErr } = await supabaseAdmin.storage
-      .from(bucket)
-      .createSignedUrl(path, 60 * 10); // 10 minutes
+    const { data, error: signErr } = await supabaseAdmin.storage.from(bucket).createSignedUrl(path, 60 * 10); // 10 minutes
 
     if (signErr || !data?.signedUrl) {
       return res.status(500).json({ error: signErr?.message || "Impossible de signer l’URL." });

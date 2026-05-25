@@ -6,11 +6,14 @@ import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import ParcImmobilierWizard from "../components/ParcImmobilierWizard";
 import { supabase } from "../lib/supabaseClient";
+import { firstNameFromUser } from "../lib/userDisplay";
 
 type SimpleUser = {
   email?: string;
   user_metadata?: {
     full_name?: string;
+    first_name?: string;
+    given_name?: string;
   };
 };
 
@@ -66,7 +69,7 @@ export default function ParcImmobilierPage() {
     };
   }, []);
 
-  const displayName = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : null);
+  const displayName = firstNameFromUser(user);
   const isLoggedIn = !!user;
 
   // --- SEO
@@ -220,7 +223,7 @@ export default function ParcImmobilierPage() {
               </p>
 
               <span className="hidden sm:inline-flex items-center rounded-full border border-indigo-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-indigo-700">
-                Lokt.fr
+                lokt.fr
               </span>
             </div>
 

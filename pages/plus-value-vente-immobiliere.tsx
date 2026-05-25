@@ -6,11 +6,14 @@ import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import PlusValueWizard from "../components/PlusValueWizard";
 import { supabase } from "../lib/supabaseClient";
+import { firstNameFromUser } from "../lib/userDisplay";
 
 type SimpleUser = {
   email?: string;
   user_metadata?: {
     full_name?: string;
+    first_name?: string;
+    given_name?: string;
   };
 };
 
@@ -32,16 +35,6 @@ function JsonLd({ data }: { data: any }) {
       ))}
     </>
   );
-}
-
-function firstNameFromUser(user: SimpleUser | null) {
-  const raw = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "");
-  const first =
-    String(raw || "")
-      .trim()
-      .split(/\s+/)[0] || "";
-  if (!first) return "";
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }
 
 export default function PlusValueVenteImmobilierePage() {
@@ -84,9 +77,9 @@ export default function PlusValueVenteImmobilierePage() {
   const pageUrl = `${siteUrl}${pagePath}`;
 
   // ✅ CTR-first
-  const title = "Calcul plus-value immobilière gratuit – Cash net après vente (CRD, frais, impôts) | lokt.fr";
+  const title = "Calcul plus-value immobilière gratuit – Cash net, CRD, LMNP et impôts | lokt.fr";
   const description =
-    "Calculez gratuitement votre plus-value immobilière et surtout le cash net après vente : prix net vendeur, coût d’achat (notaire/travaux), capital restant dû (CRD), IRA/pénalités et impôt (si applicable).";
+    "Calculez gratuitement votre plus-value immobilière et le cash net après vente : prix net vendeur, frais, travaux, CRD, IRA, LMNP/amortissements et impôts.";
 
   // OG image (non transparent)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
@@ -116,6 +109,10 @@ export default function PlusValueVenteImmobilierePage() {
       {
         q: "Les abattements pour durée de détention sont-ils pris en compte ?",
         a: "La logique de la calculette est de donner un ordre de grandeur. Les abattements (durée de détention, exonérations) dépendent de votre situation et des règles en vigueur.",
+      },
+      {
+        q: "La calculette tient-elle compte du LMNP ?",
+        a: "Oui, elle permet d’ajouter les amortissements LMNP déjà déduits pour obtenir une estimation plus prudente du cash net vendeur. Le montant exact doit être vérifié avec votre liasse ou votre expert-comptable.",
       },
     ],
     []
@@ -233,9 +230,9 @@ export default function PlusValueVenteImmobilierePage() {
             </h1>
 
             <p className="text-xs text-slate-600 max-w-3xl">
-              Parcours guidé : prix de vente, coût d’achat (notaire/travaux), <strong>CRD</strong>, pénalités (IRA) et
-              imposition si applicable. Le résultat est présenté en <strong>cash net</strong> (ce que vous récupérez
-              réellement).
+              Parcours guidé : prix de vente, coût d’achat (notaire/travaux), <strong>CRD</strong>, pénalités (IRA),
+              LMNP/amortissements et imposition si applicable. Le résultat est présenté en <strong>cash net</strong>{" "}
+              (ce que vous récupérez réellement).
             </p>
 
             {/* Maillage interne discret */}

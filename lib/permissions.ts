@@ -30,14 +30,33 @@ export function planAllowsLandlord(plan: Plan) {
   return plan === "landlord_5" || plan === "landlord_15" || plan === "landlord_unlimited";
 }
 
+export function planAllowsReceiptAutomation(plan: Plan) {
+  return planAllowsLandlord(plan);
+}
+
 export function landlordMaxActiveLeases(plan: Plan): number {
   switch (plan) {
     case "landlord_5":
-      return 5;
+      return 3;
     case "landlord_15":
-      return 15;
+      return 10;
     case "landlord_unlimited":
       return 999999;
+    default:
+      return 0;
+  }
+}
+
+export function landlordMaxActiveProperties(plan: Plan): number {
+  switch (plan) {
+    case "landlord_5":
+      return 3;
+    case "landlord_15":
+      return 10;
+    case "landlord_unlimited":
+      return 999999;
+    case "calc_full":
+      return 1;
     default:
       return 0;
   }

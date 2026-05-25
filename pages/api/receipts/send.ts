@@ -1,6 +1,8 @@
 // pages/api/receipts/send.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
+import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 
 type Json = Record<string, any>;
 
@@ -25,7 +27,7 @@ async function sendEmailViaResend(params: {
   to: string;
   subject: string;
   html: string;
-  attachments?: { filename: string; contentBase64: string }[];
+  attachments?: { filename: string; content: string }[]; // ✅ Resend expects `content` (base64)
 }): Promise<ResendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;
@@ -78,6 +80,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
     if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin non configuré." });
+    const auth = await requireApiUser(req, { allowInternal: true });
+    if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
     const { userId, receiptId, resendOnly } = (req.body || {}) as {
       userId?: string;
@@ -86,6 +90,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     };
 
     if (!userId) return res.status(400).json({ error: "userId requis." });
+    const userCheck = requireMatchingUser(auth, String(userId));
+    if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
     if (!receiptId) return res.status(400).json({ error: "receiptId requis." });
 
     // 1) receipt
@@ -99,6 +105,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const lease: any = leaseRes.data;
 
     if (lease.user_id !== userId) return res.status(403).json({ error: "Accès refusé." });
+    const canSendReceiptEmail = await userCanUseReceiptAutomation(userId);
+    if (!canSendReceiptEmail) {
+      return res.status(402).json({
+        error:
+          "L’envoi des quittances par email est réservé aux abonnements payants. La génération PDF manuelle reste disponible en gratuit.",
+      });
+    }
 
     // 3) tenant email
     const tenantRes = await supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single();
@@ -133,7 +146,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
         <p>Bonjour,</p>
         <p>Veuillez trouver en pièce jointe votre quittance de loyer pour <b>${yyyymm}</b>.</p>
-        <p>Cordialement,<br/>ImmoPilot</p>
+        <p>Cordialement,<br/>lokt.fr — <a href="mailto:contact@lokt.fr">contact@lokt.fr</a></p>
       </div>
     `;
 
@@ -141,7 +154,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       to: toEmail,
       subject,
       html,
-      attachments: [{ filename, contentBase64: pdfBuf.toString("base64") }],
+      attachments: [{ filename, content: pdfBuf.toString("base64") }], // ✅ content
     });
 
     const disabled = isResendDisabled(email);
@@ -172,7 +185,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .update({
           status: receipt.status || "generated",
           send_error: emailError,
-          updated_at: new Date().toISOString(),
         })
         .eq("id", receipt.id);
 
@@ -192,7 +204,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .from("rent_receipts")
         .update({
           send_error: emailError,
-          updated_at: new Date().toISOString(),
         })
         .eq("id", receipt.id);
 
@@ -207,7 +218,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         sent_at: new Date().toISOString(),
         status: "sent",
         send_error: null,
-        updated_at: new Date().toISOString(),
       })
       .eq("id", receipt.id);
 

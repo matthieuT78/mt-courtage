@@ -19,7 +19,7 @@ export function buildCapaciteEmail(computed: any) {
   ${
     a
       ? `<div style="margin-top:16px;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#ffffff;">
-           <p style="margin:0;font-size:12px;color:#64748b;letter-spacing:.12em;text-transform:uppercase;">Score Lokt.fr™</p>
+           <p style="margin:0;font-size:12px;color:#64748b;letter-spacing:.12em;text-transform:uppercase;">Score lokt.fr™</p>
            <p style="margin:6px 0 0 0;font-size:16px;font-weight:800;color:#0f172a;">${a.score}/100 — ${escapeHtml(a.label)}</p>
            <p style="margin:8px 0 0 0;font-size:13px;color:#334155;line-height:1.5;">${escapeHtml(a.comment)}</p>
          </div>`
@@ -28,8 +28,8 @@ export function buildCapaciteEmail(computed: any) {
   `;
 
   return emailLayout({
-    title: "Votre capacité d’emprunt — lokt.fr",
-    preheader: "Récapitulatif de votre simulation et score Lokt.fr™",
+    title: "Votre rapport de capacité d’emprunt — lokt.fr",
+    preheader: "Budget, mensualité, score lokt.fr™ et plan d’action.",
     contentHtml,
   });
 }

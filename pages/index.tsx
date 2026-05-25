@@ -5,21 +5,12 @@ import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import { supabase } from "../lib/supabaseClient";
+import { firstNameFromUser } from "../lib/userDisplay";
 
 type SimpleUser = {
   email?: string;
-  user_metadata?: { full_name?: string };
+  user_metadata?: { full_name?: string; first_name?: string; given_name?: string };
 };
-
-function firstNameFromUser(user: SimpleUser | null) {
-  const raw = user?.user_metadata?.full_name || (user?.email ? user.email.split("@")[0] : "");
-  const first =
-    String(raw || "")
-      .trim()
-      .split(/\s+/)[0] || "";
-  if (!first) return "";
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
-}
 
 // ✅ JSON-LD SAFE (évite crash si schéma malformé)
 function JsonLd({ data }: { data: any }) {
@@ -535,48 +526,48 @@ export default function Home() {
   const pageUrl = `${siteUrl}/`;
 
   const title =
-    "Simulateurs immobiliers gratuits — capacité d’emprunt, prêt relais, rentabilité, plus-value & parc | lokt.fr";
+    "Gestion locative gratuite et simulateurs immobiliers | lokt.fr";
   const description =
-    "Simulateurs immobiliers gratuits : capacité d’emprunt, prêt relais, rentabilité locative, plus-value immobilière et analyse de parc. Comparez vos scénarios en quelques minutes.";
+    "lokt.fr aide les propriétaires à gérer gratuitement un logement locatif et à simuler leurs projets immobiliers : baux, quittances, états des lieux, loyers, finance, capacité d’emprunt et rentabilité.";
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
 
   const faqData = useMemo(
     () => [
       {
-        q: "Les résultats sont-ils fiables ?",
-        a: "Les résultats sont indicatifs. Ils reposent sur les hypothèses que vous saisissez (revenus, charges, taux, loyers, fiscalité). L’objectif de lokt.fr est de comparer des scénarios de manière cohérente, pas de fournir une promesse bancaire.",
+        q: "À quoi sert l’espace bailleur lokt.fr ?",
+        a: "L’espace bailleur aide un propriétaire à centraliser sa gestion locative : bien, bail, locataire, loyers, quittances, états des lieux, inventaire, finance et alertes importantes.",
       },
       {
         q: "Est-ce que lokt.fr est gratuit ?",
-        a: "Oui. Les simulateurs actuellement disponibles sont gratuits. Aucune carte bancaire n’est demandée.",
+        a: "Oui. Vous pouvez gérer gratuitement un premier logement actif et utiliser les simulateurs immobiliers. Aucune carte bancaire n’est demandée pour démarrer.",
       },
       {
-        q: "Par où commencer si je débute ?",
-        a: "Si vous débutez, commencez par la capacité d’emprunt. C’est la base pour connaître votre budget réaliste avant de simuler un achat, un investissement ou une vente.",
+        q: "Puis-je générer des quittances de loyer avec lokt.fr ?",
+        a: "Oui. L’outil permet de suivre les paiements, générer des quittances PDF, les archiver et préparer un workflow d’envoi au locataire depuis l’espace bailleur.",
       },
       {
-        q: "Quelles hypothèses de crédit utilisez-vous ?",
-        a: "Vous renseignez vous-même les paramètres principaux : taux d’intérêt, durée, apport, assurance. Les calculs suivent une logique bancaire classique pour garantir une lecture cohérente.",
+        q: "L’outil remplace-t-il un contrat de location signé ?",
+        a: "Non. lokt.fr sert à gérer et suivre la location au quotidien. Le contrat de location reste un document juridique distinct, signé par les parties avec les annexes nécessaires.",
       },
       {
-        q: "La fiscalité est-elle prise en compte ?",
-        a: "Oui, lorsque c’est pertinent (investissement locatif, plus-value). Les règles appliquées sont simplifiées et visent à donner un ordre de grandeur, pas un calcul fiscal exhaustif.",
+        q: "Est-ce adapté à un propriétaire avec un seul bien ?",
+        a: "Oui. La logique produit est pensée pour être utile dès le premier logement : bail, locataire, quittances, état des lieux, inventaire et suivi financier simple.",
       },
       {
-        q: "Location longue durée vs saisonnière : comment comparez-vous ?",
-        a: "Les simulateurs permettent d’intégrer des hypothèses différentes de loyers, charges et vacance. Cela permet de comparer les scénarios sur une base homogène, mais sans modéliser tous les cas spécifiques.",
+        q: "Quels simulateurs immobiliers sont disponibles ?",
+        a: "lokt.fr propose des simulateurs pour la capacité d’emprunt, le prêt relais, la rentabilité locative, la plus-value immobilière et l’analyse d’un parc immobilier.",
       },
       {
-        q: "Que faites-vous de mes données ?",
-        a: "Les données saisies peuvent être stockées uniquement pour améliorer les fonctionnalités et permettre de retrouver vos simulations. Elles ne sont jamais utilisées à des fins commerciales sans votre accord.",
-      },
-      {
-        q: "Est-ce que lokt.fr revend mes données ?",
-        a: "Non. Aucune donnée personnelle n’est vendue à des tiers.",
+        q: "Les résultats des simulateurs sont-ils fiables ?",
+        a: "Les résultats sont indicatifs. Ils reposent sur les hypothèses saisies et servent à comparer des scénarios de manière cohérente, pas à fournir une promesse bancaire ou fiscale.",
       },
       {
         q: "Dois-je créer un compte ?",
-        a: "Non. Les simulateurs sont accessibles sans création de compte. Un compte peut être proposé ultérieurement pour sauvegarder vos analyses.",
+        a: "Les simulateurs peuvent être utilisés librement. Un compte est nécessaire pour accéder à l’espace bailleur et retrouver votre gestion locative.",
+      },
+      {
+        q: "Que faites-vous de mes données ?",
+        a: "Les données saisies servent à faire fonctionner le service et à retrouver vos informations. Aucune donnée personnelle n’est vendue à des tiers.",
       },
       {
         q: "Comment vous contacter ?",
@@ -603,6 +594,21 @@ export default function Home() {
       email: "contact@lokt.fr",
     };
 
+    const softwareApplication = {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "lokt.fr - Outil de gestion locative",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: `${siteUrl}/outil-gestion-locative`,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "EUR",
+        description: "Outil gratuit pour gérer un premier logement locatif.",
+      },
+    };
+
     const faqPage = {
       "@context": "https://schema.org",
       "@type": "FAQPage",
@@ -616,7 +622,7 @@ export default function Home() {
       })),
     };
 
-    return [webSite, organization, faqPage];
+    return [webSite, organization, softwareApplication, faqPage];
   }, [faqData, ogImage, siteUrl]);
 
   return (
@@ -636,7 +642,7 @@ export default function Home() {
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
         <meta property="og:image:secure_url" content={ogImage} />
-        <meta property="og:image:alt" content="lokt.fr — simulateurs immobiliers gratuits" />
+        <meta property="og:image:alt" content="lokt.fr — gestion locative gratuite et simulateurs immobiliers" />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -721,69 +727,86 @@ export default function Home() {
   </div>
 
   <div className="relative p-7 sm:p-10">
-    {/* HERO TOP : texte + logo */}
-    <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
-      <div className="space-y-5">
-        <div className="anim-fadeUp d-0 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 backdrop-blur">
-          <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-          Simulations immobilières <span className="text-slate-900">gratuites</span>
+    <div className="mx-auto max-w-3xl text-center">
+      <div className="anim-fadeUp d-0 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 backdrop-blur">
+        <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+        Gestion locative gratuite · simulateurs immobiliers
+      </div>
+
+      <h1 className="anim-fadeUp d-1 mt-5 text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900 leading-tight">
+        {isLoggedIn && displayName ? `Bonjour ${displayName}.` : "Tout devient plus clair pour vos projets immobiliers."}
+      </h1>
+
+      <p className="anim-fadeUp d-2 mt-4 text-base text-slate-600">
+        Un espace bailleur pour gérer votre location, et des simulateurs pour décider avant d’acheter, vendre ou investir.
+      </p>
+    </div>
+
+    <div className="anim-fadeUp d-3 mt-8 grid gap-4 lg:grid-cols-2">
+      <div className="flex h-full flex-col rounded-[2rem] border border-slate-200 bg-white/85 p-6 shadow-sm backdrop-blur">
+        <div className="flex-1">
+          <div className="flex items-start gap-4">
+            <Sticker kind="loan" className="h-14 w-14" />
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Projet immobilier</p>
+              <h2 className="mt-1 text-2xl font-semibold text-slate-900">Simuler avant d’acheter, vendre ou investir</h2>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-slate-600">
+            Capacité d’emprunt, prêt relais, rentabilité locative, parc immobilier et plus-value : comparez vos scénarios avec des résultats lisibles.
+          </p>
         </div>
-
-        <h1 className="anim-fadeUp d-1 text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900 leading-tight">
-          {isLoggedIn && displayName ? (
-            <>
-              Bonjour {displayName}.
-              <br />
-              Simulez gratuitement, décidez avec méthode.
-            </>
-          ) : (
-            <>
-              Simulateurs immobiliers gratuits
-              <br />
-              pour arbitrer plus sereinement.
-            </>
-          )}
-        </h1>
-
-        <p className="anim-fadeUp d-2 text-base text-slate-600 max-w-2xl">
-          Une lecture claire et structurée pour comparer vos scénarios :{" "}
-          <span className="font-semibold text-slate-900">achat</span>,{" "}
-          <span className="font-semibold text-slate-900">investissement</span>,{" "}
-          <span className="font-semibold text-slate-900">vente</span> et{" "}
-          <span className="font-semibold text-slate-900">patrimoine</span>.
-        </p>
-
-        <div className="anim-fadeUp d-3 pt-1 flex flex-wrap items-center gap-3">
+        <div className="mt-5 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
-            className="inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
+            className="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-95"
           >
             Lancer une simulation →
           </button>
-
-          <span className="text-[0.8rem] text-slate-500">
-            Résultats indicatifs — comparez des scénarios, identifiez les leviers.
-          </span>
         </div>
       </div>
 
-      {/* Logo à droite du hero */}
-    	<div className="anim-fadeUp d-2 justify-self-center lg:justify-self-end">
-  <div className="rounded-3xl border border-slate-200 bg-white/70 p-5 shadow-sm backdrop-blur flex items-center justify-center">
-    <img
-      src="/slogan.png"
-      alt="lokt.fr — Tout devient plus clair"
-      className="w-56 h-auto object-contain"
-      loading="eager"
-    />
-  </div>
-</div>
-     </div>
+      <div className="flex h-full flex-col rounded-[2rem] border border-emerald-200 bg-emerald-50/85 p-6 shadow-sm backdrop-blur">
+        <div className="flex-1">
+          <div className="flex items-start gap-4">
+            <Sticker kind="bailleur" className="h-14 w-14" />
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700">Outil bailleur · 1 logement gratuit</p>
+              <h2 className="mt-1 text-2xl font-semibold text-slate-900">Gérer un bien en location</h2>
+            </div>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-slate-700">
+            Gérez gratuitement un premier logement : bail, locataire, loyers, quittances PDF, envoi automatique, états des lieux, inventaire et finance.
+          </p>
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          {isLoggedIn ? (
+            <Link
+              href="/espace-bailleur"
+              className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600"
+            >
+              Accéder à l’espace bailleur →
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/mon-compte?mode=register&redirect=/espace-bailleur"
+                className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600"
+              >
+                Créer mon compte gratuit →
+              </Link>
+              <Link href="/mon-compte?mode=login&redirect=/espace-bailleur" className="text-sm font-semibold text-emerald-900 underline decoration-emerald-300">
+                J’ai déjà un compte
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
 
-    {/* TUILES DIRECTEMENT SOUS LE TITRE (dans le hero) */}
     <div className="mt-8">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <FintechTile
           title="Capacité d’emprunt"
           oneLiner="Pour connaître votre budget réaliste (mensualité, durée, apport)."
@@ -835,17 +858,23 @@ export default function Home() {
             <div className="h-1.5 w-full bg-gradient-to-r from-indigo-50 to-cyan-50" />
             <div className="p-7 sm:p-8">
               <h2 className="text-lg sm:text-xl font-semibold text-slate-900">
-                Simulateurs immobiliers gratuits : comparez vos scénarios (achat, relais, investissement, vente)
+                Gestion locative gratuite et simulateurs immobiliers : un seul point d’entrée pour propriétaires
               </h2>
 
               <p className="mt-2 text-sm text-slate-600 leading-relaxed max-w-4xl">
-                lokt.fr regroupe des <strong>simulateurs immobiliers gratuits</strong> conçus pour obtenir une lecture claire et comparable :{" "}
-                <strong>capacité d’emprunt</strong> (mensualité, capital, budget), <strong>prêt relais</strong> (acheter avant de vendre),{" "}
-                <strong>rentabilité locative</strong> (cash-flow / rendement), <strong>analyse de parc immobilier</strong> (vision consolidée) et{" "}
-                <strong>plus-value immobilière</strong> (cash net après vente).
+                lokt.fr regroupe un <strong>outil de gestion locative gratuit</strong> pour propriétaires bailleurs et des{" "}
+                <strong>simulateurs immobiliers gratuits</strong>. L’espace bailleur permet de suivre un logement, un bail, un locataire,
+                les loyers, les quittances, les états des lieux, l’inventaire et la finance. Les calculettes servent à préparer les décisions :
+                capacité d’emprunt, prêt relais, rentabilité locative, parc immobilier et plus-value.
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
+                <Link href="/outil-gestion-locative" className="text-sm font-semibold underline decoration-slate-300 text-slate-900">
+                  Outil de gestion locative gratuit →
+                </Link>
+                <Link href="/tarifs" className="text-sm font-semibold underline decoration-slate-300 text-slate-900">
+                  Tarifs espace bailleur →
+                </Link>
                 <Link href="/capacite" className="text-sm font-semibold underline decoration-slate-300 text-slate-900">
                   Simulateur de capacité d’emprunt →
                 </Link>
@@ -866,7 +895,7 @@ export default function Home() {
           </section>
 
           {/* =========================================================
-              MARKETING (focus calculette)
+              MARKETING (double valeur)
           ========================================================== */}
           <section className="rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="h-1.5 w-full bg-gradient-to-r from-indigo-50 to-cyan-50" />
@@ -876,36 +905,47 @@ export default function Home() {
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Pourquoi lokt.fr</p>
 
                   <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 leading-tight">
-                    Une simulation pour éclairer vos choix.
+                    Décider plus clairement, puis gérer plus proprement.
                   </h2>
 
                   <p className="text-sm text-slate-600 max-w-2xl">
-                    Objectif : une lecture claire, structurée et partageable. Pas uniquement un résultat :{" "}
-                    <span className="font-semibold text-slate-900">les leviers</span> (durée, apport, charges) et la{" "}
-                    <span className="font-semibold text-slate-900">cohérence</span> du scénario sont mis en évidence.
+                    lokt.fr couvre deux moments clés du propriétaire : la décision immobilière avec les simulateurs, puis la gestion quotidienne
+                    avec l’espace bailleur. L’idée est simple : moins de fichiers dispersés, plus de repères utiles.
                   </p>
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm font-semibold text-slate-900">Score lokt</p>
-                      <p className="mt-1 text-xs text-slate-600">Repère de cohérence pour identifier ce qui doit être ajusté.</p>
+                      <p className="text-sm font-semibold text-slate-900">Gestion locative</p>
+                      <p className="mt-1 text-xs text-slate-600">Baux, locataires, loyers, quittances, états des lieux et inventaire.</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm font-semibold text-slate-900">Orientation “dossier banque”</p>
-                      <p className="mt-1 text-xs text-slate-600">Structure lisible : revenus, charges, hypothèses.</p>
+                      <p className="text-sm font-semibold text-slate-900">Quittances</p>
+                      <p className="mt-1 text-xs text-slate-600">PDF, archives, suivi des paiements et envoi au locataire.</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm font-semibold text-slate-900">Scénarios comparables</p>
-                      <p className="mt-1 text-xs text-slate-600">Comparer à périmètre constant en quelques minutes.</p>
+                      <p className="text-sm font-semibold text-slate-900">Simulations</p>
+                      <p className="mt-1 text-xs text-slate-600">Capacité, rentabilité, prêt relais, parc et plus-value.</p>
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-sm font-semibold text-slate-900">Simple</p>
-                      <p className="mt-1 text-xs text-slate-600">Rapide, clair, sans friction.</p>
+                      <p className="text-sm font-semibold text-slate-900">Pilotage</p>
+                      <p className="mt-1 text-xs text-slate-600">Finance, alertes, échéances et vision par logement.</p>
                     </div>
                   </div>
 
                   {/* ✅ Bouton "Choisir une calculette" supprimé ici */}
                   <div className="pt-2 flex flex-wrap items-center gap-2">
+                    <Link
+                      href="/calculettes"
+                      className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                    >
+                      Voir toutes les calculettes
+                    </Link>
+                    <Link
+                      href="/outil-gestion-locative"
+                      className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 px-5 py-2.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100"
+                    >
+                      Découvrir l’outil bailleur
+                    </Link>
                     <button
                       type="button"
                       onClick={() => setPickerOpen(true)}
@@ -953,7 +993,7 @@ export default function Home() {
           </section>
 
           {/* =========================================================
-              ESPACE BAILLEUR (inchangé, complet)
+              ESPACE BAILLEUR
           ========================================================== */}
           <section id="espace-bailleur" className="rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
             <div className="relative bg-gradient-to-r from-indigo-700 to-cyan-500 text-white p-7 sm:p-10 overflow-hidden">
@@ -962,19 +1002,18 @@ export default function Home() {
 
               <div className="relative grid gap-8 lg:grid-cols-2 lg:items-center">
                 <div className="space-y-4">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-white/80">Fonctionnalité à venir</p>
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-white/80">Outil gratuit · 1 logement actif</p>
 
                   <div className="space-y-2">
                     <h3 className="text-2xl sm:text-3xl font-semibold leading-tight">
-                      Votre gestion locative, au même endroit
-                      <br className="hidden sm:block" /> que vos simulations.
+                      Gérez votre location sans tableur dispersé.
                     </h3>
 
                     <p className="text-sm text-white/90 max-w-2xl">
-                      L’espace bailleur lokt.fr est en préparation : un endroit clair pour{" "}
+                      L’espace bailleur lokt.fr vous aide à{" "}
                       <span className="font-semibold">centraliser vos documents</span>,{" "}
                       <span className="font-semibold">suivre vos échéances</span> et{" "}
-                      <span className="font-semibold">piloter vos biens</span> sans tableurs dispersés.
+                      <span className="font-semibold">piloter vos logements</span>. Un premier logement actif est gratuit, avec un parcours clair pour gérer le quotidien.
                     </p>
                   </div>
 
@@ -988,41 +1027,65 @@ export default function Home() {
                       <p className="text-xs text-white/85 mt-1">Une vision claire de vos biens et échéances.</p>
                     </div>
                     <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
-                      <p className="text-sm font-semibold">Documents prêts</p>
-                      <p className="text-xs text-white/85 mt-1">Historique, organisation, accès rapide.</p>
+                      <p className="text-sm font-semibold">Gratuit utile</p>
+                      <p className="text-xs text-white/85 mt-1">Un premier logement actif sans carte bancaire.</p>
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-white/20 bg-white/10 p-5">
-                    <p className="text-sm font-semibold">Ce que vous pourrez faire</p>
+                    <p className="text-sm font-semibold">Ce que l’outil couvre</p>
                     <ul className="mt-2 space-y-1 text-xs text-white/85">
                       <li>• Centraliser vos documents (quittances, états des lieux, pièces clés)</li>
+                      <li>• Générer et envoyer automatiquement les quittances de loyer</li>
                       <li>• Suivre dépôts de garantie et restitutions</li>
                       <li>• Gérer les échéances (rappels, révisions, renouvellements)</li>
-                      <li>
-                        • <span className="font-semibold">Templates de documents</span> : des dizaines de modèles prêts à l’emploi
-                      </li>
+                      <li>• Suivre finance, recettes, dépenses, inventaire et alertes métier</li>
                     </ul>
 
                     <div className="mt-4 pt-4 border-t border-white/15">
-                      <p className="text-sm font-semibold">Tarifs</p>
-                      <p className="mt-1 text-xs text-white/85">Les tarifs seront publiés lorsque l’espace bailleur sera prêt à ouvrir.</p>
+                      <p className="text-sm font-semibold">Modèle clair</p>
+                      <p className="mt-1 text-xs text-white/85">
+                        Vous commencez gratuitement avec un logement actif. Les fonctionnalités avancées restent optionnelles quand le besoin devient concret.
+                      </p>
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
-                    <p className="text-sm font-semibold">Être informé à l’ouverture</p>
+                    <p className="text-sm font-semibold">{isLoggedIn ? "Votre accès gratuit" : "Inscription gratuite"}</p>
                     <p className="text-xs text-white/85 mt-1">
-                      Écrivez-nous à{" "}
-                      <a className="underline" href="mailto:contact@lokt.fr">
-                        contact@lokt.fr
-                      </a>{" "}
-                      pour être ajouté à la liste des accès prioritaires.
+                      {isLoggedIn
+                        ? "Vous êtes connecté : vous pouvez accéder à l’espace bailleur et gérer un premier logement gratuitement."
+                        : "Créez un compte pour gérer un premier logement gratuitement : bail, locataire, quittances, états des lieux, inventaire et finance."}
                     </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {isLoggedIn ? (
+                        <Link
+                          href="/espace-bailleur"
+                          className="inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-xs font-semibold text-indigo-700 shadow-sm hover:bg-white/90"
+                        >
+                          Accéder à l’espace bailleur →
+                        </Link>
+                      ) : (
+                        <>
+                          <Link
+                            href="/mon-compte?mode=register&redirect=/espace-bailleur"
+                            className="inline-flex items-center justify-center rounded-full bg-white px-4 py-2 text-xs font-semibold text-indigo-700 shadow-sm hover:bg-white/90"
+                          >
+                            Créer mon compte gratuit →
+                          </Link>
+                          <Link
+                            href="/mon-compte?mode=login&redirect=/espace-bailleur"
+                            className="inline-flex items-center justify-center rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/15"
+                          >
+                            J’ai déjà un compte
+                          </Link>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   <p className="text-[0.75rem] text-white/70">
-                    Aperçu non contractuel — l’interface et le périmètre peuvent évoluer avant lancement.
+                    Outil gratuit pour 1 logement actif, pensé pour les propriétaires qui veulent gérer simplement.
                   </p>
                 </div>
 
@@ -1067,6 +1130,51 @@ export default function Home() {
           </section>
 
           {/* =========================================================
+              TARIFS
+          ========================================================== */}
+          <section id="tarifs" className="rounded-[2rem] border border-slate-200 bg-white p-7 shadow-sm sm:p-8">
+            <div className="grid gap-6 lg:grid-cols-[1fr,360px] lg:items-center">
+              <div>
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-700">Tarifs</p>
+                <h3 className="mt-2 text-2xl font-semibold text-slate-900">Un logement gratuit, puis des paliers quand lokt.fr vous fait gagner du temps.</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  L’outil reste gratuit pour gérer un premier logement. Starter ajoute l’automatisation des quittances. Essentiel
+                  ajoute le pilotage financier, les exports et l’aide à la déclaration.
+                </p>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">Gratuit</p>
+                    <p className="mt-1 text-xs text-slate-600">1 logement actif</p>
+                  </div>
+                  <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">Starter</p>
+                    <p className="mt-1 text-xs text-slate-600">Automatisation · jusqu’à 3 logements</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">Essentiel</p>
+                    <p className="mt-1 text-xs text-slate-600">Pilotage & déclaration · jusqu’à 10 logements</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                <p className="text-sm font-semibold text-slate-900">Logique produit</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Vous testez sans risque. Vous payez quand lokt.fr remplace vraiment du travail manuel : relances, emails, déclaration, finance et
+                  pilotage du parc.
+                </p>
+                <Link
+                  href="/tarifs"
+                  className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                >
+                  Voir les tarifs →
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* =========================================================
               FAQ LARGE
           ========================================================== */}
           <section id="faq" className="rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -1077,7 +1185,7 @@ export default function Home() {
                   <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-slate-600">FAQ</p>
                   <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 mt-1">Questions fréquentes</h2>
                   <p className="text-sm text-slate-600 mt-2 max-w-3xl">
-                    Des réponses rapides sur les calculettes, les hypothèses de calcul et la gestion des données.
+                    Des réponses rapides sur l’espace bailleur, les quittances, les simulateurs et la gestion des données.
                   </p>
                 </div>
 

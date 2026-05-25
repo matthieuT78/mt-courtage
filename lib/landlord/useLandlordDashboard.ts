@@ -305,9 +305,9 @@ export function useLandlordDashboard() {
     if (properties.length === 0)
       a.push({
         tone: "amber",
-        title: "Ajoutez votre premier bien",
-        desc: "Créez un bien pour démarrer la gestion (adresse, libellé…)",
-        action: "Créer un bien",
+        title: "Ajoutez votre premier logement",
+        desc: "Créez un logement pour démarrer la gestion (adresse, libellé…)",
+        action: "Créer un logement",
       });
 
     if (tenants.length === 0)
@@ -331,7 +331,7 @@ export function useLandlordDashboard() {
         tone: "red",
         title: `${lateCount} retard(s) de paiement`,
         desc: "Certains loyers sont échus et non marqués payés.",
-        action: "Voir les loyers",
+        action: "Voir les quittances",
       });
 
     if (activeLeases.length > 0 && receiptsThisMonth.length === 0)

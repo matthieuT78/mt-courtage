@@ -27,6 +27,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 *.log
+tsconfig.tsbuildinfo
 
 ###############################################
 # PYTHON
@@ -115,6 +116,7 @@ Desktop.ini
 # Local backups
 *.bak
 *.tmp
+pages_v2__backup/
 
 # Generated images or temporary exports
 exports/
