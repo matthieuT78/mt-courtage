@@ -282,7 +282,7 @@ export default function MonCompteAbonnementPage() {
                   disabled={portalLoading}
                   className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
                 >
-                  {portalLoading ? "Ouverture Stripe…" : "Gérer mon abonnement"}
+                  {portalLoading ? "Ouverture Stripe…" : "Paiement et annulation"}
                 </button>
               ) : null}
             </div>
@@ -322,7 +322,7 @@ export default function MonCompteAbonnementPage() {
                   disabled={portalLoading}
                   className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
                 >
-                  {portalLoading ? "Ouverture…" : "Portail Stripe"}
+                  {portalLoading ? "Ouverture Stripe…" : "Paiement et annulation"}
                 </button>
               ) : null}
             </div>
