@@ -68,6 +68,86 @@ async function saveSubscription(params: {
   if (error) throw error;
 }
 
+async function findUserIdForInvoice(invoice: any) {
+  if (!supabaseAdmin) throw new Error("Supabase admin non configuré.");
+
+  const subscriptionId = typeof invoice?.subscription === "string" ? invoice.subscription : invoice?.subscription?.id || null;
+  const customerId = typeof invoice?.customer === "string" ? invoice.customer : invoice?.customer?.id || null;
+
+  if (subscriptionId) {
+    const { data, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("user_id")
+      .eq("stripe_subscription_id", subscriptionId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if ((data as any)?.user_id) return String((data as any).user_id);
+  }
+
+  if (customerId) {
+    const { data, error } = await supabaseAdmin
+      .from("subscriptions")
+      .select("user_id")
+      .eq("stripe_customer_id", customerId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if ((data as any)?.user_id) return String((data as any).user_id);
+  }
+
+  return null;
+}
+
+function tsToIso(value: any) {
+  const n = Number(value || 0);
+  return n > 0 ? new Date(n * 1000).toISOString() : null;
+}
+
+async function saveInvoice(invoice: any) {
+  if (!supabaseAdmin) throw new Error("Supabase admin non configuré.");
+  const invoiceId = typeof invoice?.id === "string" ? invoice.id : "";
+  if (!invoiceId) throw new Error("stripe_invoice_id manquant.");
+
+  const userId = await findUserIdForInvoice(invoice);
+  if (!userId) throw new Error(`Utilisateur introuvable pour la facture ${invoiceId}.`);
+
+  const subscriptionId = typeof invoice?.subscription === "string" ? invoice.subscription : invoice?.subscription?.id || null;
+  const customerId = typeof invoice?.customer === "string" ? invoice.customer : invoice?.customer?.id || null;
+  const line = invoice?.lines?.data?.[0] || null;
+  const periodStart = invoice?.period_start || line?.period?.start || null;
+  const periodEnd = invoice?.period_end || line?.period?.end || null;
+  const priceId = line?.price?.id || null;
+
+  const { error } = await supabaseAdmin.from("billing_invoices").upsert(
+    {
+      user_id: userId,
+      stripe_invoice_id: invoiceId,
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscriptionId,
+      stripe_price_id: priceId,
+      invoice_number: invoice?.number || null,
+      amount_due: typeof invoice?.amount_due === "number" ? invoice.amount_due : null,
+      amount_paid: typeof invoice?.amount_paid === "number" ? invoice.amount_paid : null,
+      currency: invoice?.currency || null,
+      status: invoice?.status || null,
+      hosted_invoice_url: invoice?.hosted_invoice_url || null,
+      invoice_pdf_url: invoice?.invoice_pdf || null,
+      period_start: tsToIso(periodStart),
+      period_end: tsToIso(periodEnd),
+      paid_at: tsToIso(invoice?.status_transitions?.paid_at),
+      finalized_at: tsToIso(invoice?.status_transitions?.finalized_at),
+      stripe_created_at: tsToIso(invoice?.created),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "stripe_invoice_id" }
+  );
+
+  if (error) throw error;
+}
+
 async function stripeGet(path: string) {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) throw new Error("STRIPE_SECRET_KEY manquant.");
@@ -137,6 +217,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         cancelAtPeriodEnd: !!object?.cancel_at_period_end,
         currentPeriodEnd: object?.current_period_end || null,
       });
+    }
+
+    if (
+      event.type === "invoice.payment_succeeded" ||
+      event.type === "invoice.paid" ||
+      event.type === "invoice.finalized" ||
+      event.type === "invoice.payment_failed"
+    ) {
+      await saveInvoice(object);
     }
 
     return res.status(200).json({ received: true });

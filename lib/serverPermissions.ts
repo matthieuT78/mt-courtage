@@ -26,12 +26,16 @@ export async function getServerUserPlan(userId: string): Promise<Plan> {
     .select("plan,status,ends_at,updated_at")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false })
-    .limit(10);
+    .limit(1);
 
   if (error || !Array.isArray(data)) return DEFAULT_LOGGED_IN_PLAN;
 
-  const active = data.find((row: any) => isSubscriptionActive(row?.status) && isStillValid(row?.ends_at));
-  return isPlan(active?.plan) ? active.plan : DEFAULT_LOGGED_IN_PLAN;
+  const latest = data[0] as any;
+  if (isSubscriptionActive(latest?.status) && isStillValid(latest?.ends_at) && isPlan(latest?.plan)) {
+    return latest.plan;
+  }
+
+  return DEFAULT_LOGGED_IN_PLAN;
 }
 
 export async function userCanUseReceiptAutomation(userId: string): Promise<boolean> {

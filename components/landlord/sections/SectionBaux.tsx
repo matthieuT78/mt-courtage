@@ -671,6 +671,20 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
     };
   };
 
+  const guardReceiptEmailForAutomation = (receiptEmail: string | null | undefined, context = "activer le workflow automatique") => {
+    const email = String(receiptEmail || "").trim();
+    setOk(null);
+    if (!email) {
+      setErr(`Impossible de ${context} : renseigne d’abord l’email du locataire destinataire de la quittance.`);
+      return false;
+    }
+    if (!isEmailLike(email)) {
+      setErr(`Impossible de ${context} : l’email du locataire est invalide.`);
+      return false;
+    }
+    return true;
+  };
+
   const safeRefresh = async () => {
     try {
       await withTimeout(onRefresh(), 4000);
@@ -836,6 +850,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
       setErr("Le workflow automatique des quittances est réservé aux abonnements payants. La gestion manuelle reste disponible dans Quittances.");
       setOk(null);
       return;
+    }
+    if (nextEnabled) {
+      const tenant = tenantById.get(lease.tenant_id) || null;
+      const receiptEmail = String(lease.tenant_receipt_email || "").trim() || getTenantEmail(tenant);
+      if (!guardReceiptEmailForAutomation(receiptEmail)) return;
     }
     setLoading(true);
     setErr(null);
@@ -1254,6 +1273,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
     const sched = flow.sched;
     const renewal = leaseRenewalInfo(fakeLease as any);
     const leaseRule = getLeaseKindRule(form.lease_kind);
+    const enableAutoWorkflow = (withPaymentValidation: boolean) => {
+      if (!canUseReceiptAutomation) {
+        setOk(null);
+        setErr("Le gratuit inclut les quittances manuelles. Les rappels, emails et générations automatiques nécessitent un abonnement payant.");
+        return;
+      }
+      if (!guardReceiptEmailForAutomation(receiptEmail)) return;
+      setErr(null);
+      setForm((s) => ({ ...s, auto_quittance_enabled: true, auto_reminder_enabled: withPaymentValidation }));
+    };
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
@@ -1589,7 +1618,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
               tone="emerald"
               selected={form.auto_quittance_enabled && form.auto_reminder_enabled}
               disabled={!canUseReceiptAutomation}
-              onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: true, auto_reminder_enabled: true }))}
+              onClick={() => enableAutoWorkflow(true)}
             />
 
             <WorkflowChoice
@@ -1599,7 +1628,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
               tone="amber"
               selected={form.auto_quittance_enabled && !form.auto_reminder_enabled}
               disabled={!canUseReceiptAutomation}
-              onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: true, auto_reminder_enabled: false }))}
+              onClick={() => enableAutoWorkflow(false)}
             />
 
             <WorkflowChoice

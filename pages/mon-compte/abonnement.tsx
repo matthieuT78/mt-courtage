@@ -9,6 +9,22 @@ import { usePermissions } from "../../components/PermissionProvider";
 
 type Billing = "monthly" | "yearly";
 
+type BillingInvoice = {
+  id: string;
+  stripe_invoice_id: string;
+  invoice_number: string | null;
+  amount_due: number | null;
+  amount_paid: number | null;
+  currency: string | null;
+  status: string | null;
+  hosted_invoice_url: string | null;
+  invoice_pdf_url: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  stripe_created_at: string | null;
+  created_at: string | null;
+};
+
 function PlanCard({
   title,
   subtitle,
@@ -34,6 +50,28 @@ function PlanCard({
   );
 }
 
+function formatInvoiceAmount(amount: number | null | undefined, currency: string | null | undefined) {
+  const value = Number(amount || 0) / 100;
+  return value.toLocaleString("fr-FR", {
+    style: "currency",
+    currency: (currency || "EUR").toUpperCase(),
+  });
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatInvoiceStatus(status: string | null | undefined) {
+  if (status === "paid") return "Payée";
+  if (status === "open") return "À régler";
+  if (status === "draft") return "Brouillon";
+  if (status === "void") return "Annulée";
+  if (status === "uncollectible") return "Irrécouvrable";
+  return status || "-";
+}
+
 export default function MonCompteAbonnementPage() {
   const router = useRouter();
   const { checking, user, isLoggedIn } = useAuthUser();
@@ -43,6 +81,9 @@ export default function MonCompteAbonnementPage() {
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoicesError, setInvoicesError] = useState<string | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -63,6 +104,32 @@ export default function MonCompteAbonnementPage() {
       setPropertyCount(activeCount);
     };
     load();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const loadInvoices = async () => {
+      if (!supabase || !user?.id) return;
+      setInvoicesLoading(true);
+      setInvoicesError(null);
+      try {
+        const { data, error } = await supabase
+          .from("billing_invoices")
+          .select(
+            "id,stripe_invoice_id,invoice_number,amount_due,amount_paid,currency,status,hosted_invoice_url,invoice_pdf_url,period_start,period_end,stripe_created_at,created_at"
+          )
+          .eq("user_id", user.id)
+          .order("stripe_created_at", { ascending: false, nullsFirst: false })
+          .limit(24);
+        if (error) throw error;
+        setInvoices((data as BillingInvoice[]) || []);
+      } catch (error: any) {
+        setInvoicesError(error?.message || "Impossible de charger les factures.");
+        setInvoices([]);
+      } finally {
+        setInvoicesLoading(false);
+      }
+    };
+    loadInvoices();
   }, [user?.id]);
 
   const startCheckout = async (plan: string) => {
@@ -238,6 +305,92 @@ export default function MonCompteAbonnementPage() {
               ))}
             </div>
             <p className="mt-2 text-xs text-slate-500">Le paiement, les factures et l’annulation sont gérés par Stripe.</p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Mes factures</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Les factures payées via Stripe apparaissent ici après confirmation du webhook.
+                </p>
+              </div>
+              {!isFreePlan ? (
+                <button
+                  type="button"
+                  onClick={openCustomerPortal}
+                  disabled={portalLoading}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {portalLoading ? "Ouverture…" : "Portail Stripe"}
+                </button>
+              ) : null}
+            </div>
+
+            {invoicesError ? (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                {invoicesError}
+              </div>
+            ) : null}
+
+            <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead className="bg-slate-50">
+                  <tr className="text-left">
+                    <th className="p-3 text-xs font-semibold text-slate-600">Date</th>
+                    <th className="p-3 text-xs font-semibold text-slate-600">Facture</th>
+                    <th className="p-3 text-xs font-semibold text-slate-600">Période</th>
+                    <th className="p-3 text-xs font-semibold text-slate-600">Montant</th>
+                    <th className="p-3 text-xs font-semibold text-slate-600">Statut</th>
+                    <th className="p-3 text-xs font-semibold text-slate-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((invoice) => (
+                    <tr key={invoice.id} className="border-t border-slate-100">
+                      <td className="p-3 text-slate-700">{formatDate(invoice.stripe_created_at || invoice.created_at)}</td>
+                      <td className="p-3 font-semibold text-slate-900">{invoice.invoice_number || invoice.stripe_invoice_id}</td>
+                      <td className="p-3 text-slate-700">
+                        {formatDate(invoice.period_start)} → {formatDate(invoice.period_end)}
+                      </td>
+                      <td className="p-3 text-slate-700">{formatInvoiceAmount(invoice.amount_paid || invoice.amount_due, invoice.currency)}</td>
+                      <td className="p-3 text-slate-700">{formatInvoiceStatus(invoice.status)}</td>
+                      <td className="p-3">
+                        <div className="flex flex-wrap gap-2">
+                          {invoice.invoice_pdf_url ? (
+                            <a
+                              href={invoice.invoice_pdf_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                            >
+                              PDF
+                            </a>
+                          ) : null}
+                          {invoice.hosted_invoice_url ? (
+                            <a
+                              href={invoice.hosted_invoice_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 hover:bg-slate-50"
+                            >
+                              Voir
+                            </a>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!invoices.length ? (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-center text-sm text-slate-500">
+                        {invoicesLoading ? "Chargement des factures…" : "Aucune facture disponible pour le moment."}
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="grid gap-3 lg:grid-cols-4">
