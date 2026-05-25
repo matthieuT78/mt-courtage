@@ -17,6 +17,7 @@ export default function Capacite3000() {
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
+        <meta name="robots" content="noindex, follow" />
         <link rel="canonical" href={pageUrl} />
       </Head>
 

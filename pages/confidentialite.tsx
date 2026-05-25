@@ -21,6 +21,8 @@ export default function ConfidentialitePage() {
           name="description"
           content="Politique de confidentialité de lokt.fr : données collectées, finalités, prestataires, durée de conservation et droits RGPD."
         />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://lokt.fr/confidentialite" />
       </Head>
 
       <AppHeader />

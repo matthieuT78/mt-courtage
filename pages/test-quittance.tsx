@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
@@ -335,6 +336,10 @@ export default function TestQuittancePage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
+      <Head>
+        <meta name="robots" content="noindex, nofollow" />
+      </Head>
+
       <AppHeader />
 
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-5">

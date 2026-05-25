@@ -1,5 +1,6 @@
 // pages/projets.tsx
 import { useEffect, useState } from "react";
+import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
@@ -507,6 +508,10 @@ export default function ProjetsPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
+      <Head>
+        <meta name="robots" content="noindex, nofollow" />
+      </Head>
+
       <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 py-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>

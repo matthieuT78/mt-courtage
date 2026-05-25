@@ -134,7 +134,7 @@ export default function PretRelaisValeurPage({ valeur }: Props) {
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
-        <meta name="robots" content="index, follow" />
+        <meta name="robots" content="noindex, follow" />
         <link rel="canonical" href={pageUrl} />
 
         {/* Open Graph */}

@@ -1,4 +1,5 @@
 // pages/commencer.tsx
+import Head from "next/head";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AppHeader from "../components/AppHeader";
@@ -116,6 +117,10 @@ export default function CommencerPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
+      <Head>
+        <meta name="robots" content="noindex, follow" />
+      </Head>
+
       <AppHeader />
 
       <main className="flex-1 px-4 py-10">

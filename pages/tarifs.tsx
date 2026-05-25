@@ -115,6 +115,26 @@ function PlanCard({
 
 export default function TarifsPage() {
   const router = useRouter();
+  const title = "Tarifs gestion locative propriétaire bailleur | lokt.fr";
+  const description =
+    "Comparez les offres lokt.fr : gestion locative gratuite pour un logement actif, puis automatisation des quittances, finance, déclaration et alertes.";
+  const pageUrl = "https://lokt.fr/tarifs";
+  const ogImage = "https://lokt.fr/lokt-logo.jpg";
+  const pricingJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "lokt.fr",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    url: pageUrl,
+    description,
+    offers: [
+      { "@type": "Offer", name: "Gratuit", price: "0", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
+      { "@type": "Offer", name: "Starter", price: "4.90", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
+      { "@type": "Offer", name: "Essentiel", price: "9.90", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
+      { "@type": "Offer", name: "Pro / Agence", priceCurrency: "EUR", availability: "https://schema.org/PreOrder" },
+    ],
+  };
   const [billing, setBilling] = useState<Billing>("monthly");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -180,11 +200,23 @@ export default function TarifsPage() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
       <Head>
-        <title>Tarifs espace bailleur | lokt.fr</title>
-        <meta
-          name="description"
-          content="Tarifs lokt.fr pour propriétaires bailleurs : un logement gratuit, puis automatisation des quittances, pilotage finance, déclaration et offres pro."
-        />
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href={pageUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="lokt.fr" />
+        <meta property="og:locale" content="fr_FR" />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:alt" content="Tarifs de l'espace bailleur lokt.fr" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={ogImage} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd) }} />
       </Head>
 
       <AppHeader />

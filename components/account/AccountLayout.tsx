@@ -1,4 +1,5 @@
 // components/account/AccountLayout.tsx
+import Head from "next/head";
 import Link from "next/link";
 import { ReactNode, useState } from "react";
 import AppHeader from "../AppHeader";
@@ -70,6 +71,10 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
 
   return (
     <div className="min-h-screen bg-slate-100">
+      <Head>
+        <meta name="robots" content="noindex, nofollow" />
+      </Head>
+
       <AppHeader />
       <div className="h-1 w-full bg-gradient-to-r from-sky-600 via-sky-500 to-cyan-400" />
 
