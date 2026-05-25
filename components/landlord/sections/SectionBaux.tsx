@@ -3,7 +3,6 @@ import React, { useMemo, useState } from "react";
 import {
   ArrowPathIcon,
   ArrowRightIcon,
-  BoltIcon,
   CheckCircleIcon,
   HandRaisedIcon,
   PencilSquareIcon,
@@ -615,42 +614,31 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
     const receiptEmail = String(lease.tenant_receipt_email || "").trim() || getTenantEmail(tenant);
     const ownerEmail = String(lease.reminder_email || "").trim() || String(userEmail || "").trim();
     const auto = canUseReceiptAutomation && !!lease.auto_quittance_enabled;
-    const confirm = canUseReceiptAutomation && auto && !!lease.auto_reminder_enabled;
+    const confirm = canUseReceiptAutomation && auto;
     const manualMode = !auto;
-    const autoWithoutValidation = auto && !confirm;
 
     const blockers: string[] = [];
     const warnings: string[] = [];
 
     if (manualMode) warnings.push("Mode manuel : le paiement, le PDF et l’envoi se traitent depuis l’onglet Quittances.");
-    if (autoWithoutValidation) {
-      warnings.push("Le PDF peut être préparé automatiquement sans confirmation explicite du paiement.");
-      warnings.push("À utiliser uniquement si l’encaissement est certain, par exemple prélèvement ou virement déjà contrôlé.");
-    }
     if (auto && !receiptEmail) blockers.push("Email locataire manquant pour envoyer la quittance.");
-    if (auto && confirm && !ownerEmail) blockers.push("Email bailleur manquant pour confirmer le paiement.");
+    if (auto && !ownerEmail) blockers.push("Email bailleur manquant pour confirmer le paiement.");
     if (receiptEmail && !isEmailLike(receiptEmail)) blockers.push("Email locataire invalide.");
     if (ownerEmail && !isEmailLike(ownerEmail)) blockers.push("Email bailleur invalide.");
 
-    const tone = blockers.length ? "red" : autoWithoutValidation ? "amber" : manualMode ? "slate" : "emerald";
+    const tone = blockers.length ? "red" : manualMode ? "slate" : "emerald";
     const label = blockers.length
       ? "À compléter"
-      : autoWithoutValidation
-      ? "Sans validation paiement"
       : manualMode
       ? "Mode manuel"
       : "Workflow prêt";
     const noticeTitle = blockers.length
       ? "Configuration incomplète"
-      : autoWithoutValidation
-      ? "Pourquoi cette alerte ?"
       : manualMode
       ? "Mode manuel sélectionné"
       : "";
     const noticeAdvice = blockers.length
       ? "Complète ces informations avant d’automatiser les quittances."
-      : autoWithoutValidation
-      ? "Recommandation : choisis “Auto validé” pour recevoir un email bailleur et générer la quittance uniquement après confirmation du paiement."
       : manualMode
       ? "C’est correct en gratuit ou si tu veux garder la main : tu confirmeras le paiement et généreras le PDF dans Quittances."
       : "";
@@ -667,7 +655,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
       label,
       noticeTitle,
       noticeAdvice,
-      modeLabel: !auto ? "Manuel" : confirm ? "Automatique avec validation" : "Auto sans validation paiement",
+      modeLabel: !auto ? "Manuel" : "Automatique avec validation paiement",
     };
   };
 
@@ -818,7 +806,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
     const meta = leaseLine(lease);
     if (
       !confirm(
-        `Mettre fin au bail (suivi quittances) :\n${meta.propertyLabel} • ${meta.tenantName}\n\n→ Statut: ended\n→ Date de fin: ${
+        `Clôturer ce bail dans lokt.fr :\n${meta.propertyLabel} • ${meta.tenantName}\n\nAvant de confirmer, vérifiez idéalement :\n- état des lieux de sortie réalisé ou planifié\n- dépôt de garantie à traiter\n- dernière quittance / dernier paiement contrôlé\n\n→ Statut: terminé\n→ Date de fin: ${
           lease.end_date || todayISO()
         }\n\nConfirmer ?`
       )
@@ -861,7 +849,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
     setOk(null);
 
     try {
-      await patchLease(lease.id, { auto_quittance_enabled: nextEnabled, auto_reminder_enabled: nextEnabled ? lease.auto_reminder_enabled : false });
+      await patchLease(lease.id, { auto_quittance_enabled: nextEnabled, auto_reminder_enabled: nextEnabled });
       setOk(`Quittance auto ${nextEnabled ? "activée" : "désactivée"} ✅`);
       await safeRefresh();
     } catch (e: any) {
@@ -913,7 +901,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
       if (form.auto_quittance_enabled && !isEmailLike(receiptEmail)) {
         throw new Error("Email quittance locataire invalide.");
       }
-      if (form.auto_quittance_enabled && form.auto_reminder_enabled && !ownerEmail) {
+      if (form.auto_quittance_enabled && !ownerEmail) {
         throw new Error("Pour la validation paiement, renseigne l’email bailleur de notification.");
       }
       if (ownerEmail && !isEmailLike(ownerEmail)) {
@@ -942,7 +930,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
         payment_type: form.payment_type || null,
         status: form.status || "active",
         auto_quittance_enabled: canUseReceiptAutomation ? !!form.auto_quittance_enabled : false,
-        auto_reminder_enabled: canUseReceiptAutomation ? !!form.auto_reminder_enabled : false,
+        auto_reminder_enabled: canUseReceiptAutomation ? !!form.auto_quittance_enabled : false,
         reminder_day_of_month: reminderDayNum,
         reminder_email: ownerEmail || null,
         tenant_receipt_email: receiptEmail || null,
@@ -1049,7 +1037,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
                   {canUseReceiptAutomation && l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"}
                 </InfoPill>
                 <InfoPill tone={canUseReceiptAutomation && l.auto_reminder_enabled ? "emerald" : "slate"}>
-                  {canUseReceiptAutomation && l.auto_reminder_enabled ? "Rappel ON" : "Rappel OFF"}
+                  {canUseReceiptAutomation && l.auto_reminder_enabled ? "Validation paiement" : "Validation manuelle"}
                 </InfoPill>
                 <InfoPill tone={flow.tone as any}>{flow.label}</InfoPill>
                 <InfoPill tone={renewal.tone as any}>{renewal.status}</InfoPill>
@@ -1080,6 +1068,17 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
                   }}
                 >
                   {l.auto_quittance_enabled ? "Désactiver auto" : canUseReceiptAutomation ? "Activer auto" : "Auto premium"}
+                </ActionButton>
+
+                <ActionButton
+                  icon={ArrowRightIcon}
+                  disabled={loading}
+                  onClick={(e) => {
+                    stop(e);
+                    onGoToQuittances?.();
+                  }}
+                >
+                  Quittances
                 </ActionButton>
 
                 {isActiveLease(l) ? (
@@ -1229,7 +1228,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <p className="text-[0.7rem] font-semibold text-slate-500">3. Paiement</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{flow.confirm ? "Validation bailleur" : "Sans validation"}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{flow.auto ? "Validation bailleur" : "Manuel"}</p>
               <p className="text-xs text-slate-600">La quittance vaut reçu après paiement.</p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -1273,7 +1272,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
     const sched = flow.sched;
     const renewal = leaseRenewalInfo(fakeLease as any);
     const leaseRule = getLeaseKindRule(form.lease_kind);
-    const enableAutoWorkflow = (withPaymentValidation: boolean) => {
+    const enableAutoWorkflow = () => {
       if (!canUseReceiptAutomation) {
         setOk(null);
         setErr("Le gratuit inclut les quittances manuelles. Les rappels, emails et générations automatiques nécessitent un abonnement payant.");
@@ -1281,15 +1280,15 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
       }
       if (!guardReceiptEmailForAutomation(receiptEmail)) return;
       setErr(null);
-      setForm((s) => ({ ...s, auto_quittance_enabled: true, auto_reminder_enabled: withPaymentValidation }));
+      setForm((s) => ({ ...s, auto_quittance_enabled: true, auto_reminder_enabled: true }));
     };
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-slate-900">{mode === "edit" ? "Modifier le bail" : "Nouveau bail"}</p>
-            <p className="text-xs text-slate-500">Paramètres utilisés pour loyers/quittances. Sauvegarde en bas.</p>
+            <p className="text-sm font-semibold text-slate-900">{mode === "edit" ? "Modifier le bail" : "Assistant bail"}</p>
+            <p className="text-xs text-slate-500">4 étapes : bail, loyer, quittances, suivi. Les options techniques sont rangées en avancé.</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -1316,6 +1315,26 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
               Annuler
             </ActionButton>
           </div>
+        </div>
+
+        <div className="grid gap-2 md:grid-cols-4">
+          {[
+            ["1", "Le bail", "Bien, locataire, dates"],
+            ["2", "Le loyer", "Montants et échéance"],
+            ["3", "Quittances", "Manuel ou auto validé"],
+            ["4", "Suivi", "Renouvellement et clôture"],
+          ].map(([num, title, desc]) => (
+            <div key={num} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+              <p className="text-xs font-semibold text-slate-500">{num}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-950">{title}</p>
+              <p className="text-xs text-slate-600">{desc}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">1 · Le bail</p>
+          <p className="mt-1 text-sm text-slate-600">Rattachez le logement, le locataire et la nature juridique du suivi.</p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -1445,6 +1464,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
           </div>
         </div>
 
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">2 · Le loyer</p>
+          <p className="mt-1 text-sm text-slate-600">Ces montants alimentent le suivi des loyers, les quittances et les alertes d’encaissement.</p>
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-1">
             <label className="text-[0.7rem] text-slate-700">Loyer (€)</label>
@@ -1519,6 +1543,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
           </div>
         </div>
 
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">3 · Quittances</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Le mode recommandé est simple : le bailleur confirme que le paiement est reçu, puis la quittance est générée et envoyée.
+          </p>
+        </div>
+
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -1536,8 +1567,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
               ["Échéance", `Jour ${form.payment_day}`, paymentTypeShort(form.payment_type)],
               [
                 "Paiement",
-                form.auto_reminder_enabled ? "Validation bailleur" : form.auto_quittance_enabled ? "Sans validation" : "Manuel",
-                form.auto_reminder_enabled ? "avant PDF/envoi" : form.auto_quittance_enabled ? "à contrôler" : "dans Quittances",
+                form.auto_quittance_enabled ? "Validation bailleur" : "Manuel",
+                form.auto_quittance_enabled ? "avant PDF/envoi" : "dans Quittances",
               ],
               ["PDF", form.auto_quittance_enabled ? "Automatique" : "Manuel", "après paiement"],
               ["Envoi", form.auto_quittance_enabled ? receiptEmail || "Email manquant" : "Manuel", form.auto_quittance_enabled ? "locataire" : "depuis Quittances"],
@@ -1571,34 +1602,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
           </div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <label className="text-[0.7rem] text-slate-700">Statut</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm((s) => ({ ...s, status: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="active">Actif</option>
-              <option value="ended">Terminé</option>
-              <option value="draft">Brouillon</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[0.7rem] text-slate-700">Timezone</label>
-            <select
-              value={form.timezone}
-              onChange={(e) => setForm((s) => ({ ...s, timezone: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="Europe/Paris">Europe/Paris</option>
-              <option value="Europe/London">Europe/London</option>
-              <option value="UTC">UTC</option>
-            </select>
-          </div>
-        </div>
-
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -1610,25 +1613,15 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
             {badge(flow.tone as any, flow.label)}
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             <WorkflowChoice
-              title="Auto validé"
+              title="Automatique validé"
               description="Email bailleur, puis PDF et envoi après confirmation du paiement."
               icon={ShieldCheckIcon}
               tone="emerald"
               selected={form.auto_quittance_enabled && form.auto_reminder_enabled}
               disabled={!canUseReceiptAutomation}
-              onClick={() => enableAutoWorkflow(true)}
-            />
-
-            <WorkflowChoice
-              title="Auto sans validation"
-              description="PDF préparé sans confirmation. À réserver aux encaissements certains."
-              icon={BoltIcon}
-              tone="amber"
-              selected={form.auto_quittance_enabled && !form.auto_reminder_enabled}
-              disabled={!canUseReceiptAutomation}
-              onClick={() => enableAutoWorkflow(false)}
+              onClick={() => enableAutoWorkflow()}
             />
 
             <WorkflowChoice
@@ -1679,6 +1672,44 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
             La quittance est un reçu : le workflow recommandé garde une validation de paiement avant l’envoi au locataire.
           </p>
         </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">4 · Suivi du bail</p>
+          <p className="mt-1 text-sm text-slate-600">Vérifiez la reconduction et gardez les réglages rarement modifiés en options avancées.</p>
+        </div>
+
+        <details className="rounded-xl border border-slate-200 bg-white p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-900">Options avancées</summary>
+          <div className="mt-3 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-[0.7rem] text-slate-700">Statut</label>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm((s) => ({ ...s, status: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="active">Actif</option>
+                  <option value="ended">Terminé</option>
+                  <option value="draft">Brouillon</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[0.7rem] text-slate-700">Fuseau horaire</label>
+                <select
+                  value={form.timezone}
+                  onChange={(e) => setForm((s) => ({ ...s, timezone: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="Europe/Paris">Europe/Paris</option>
+                  <option value="Europe/London">Europe/London</option>
+                  <option value="UTC">UTC</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
     );
   };

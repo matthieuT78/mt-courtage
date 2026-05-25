@@ -301,6 +301,23 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     return map;
   }, [safeLeases]);
 
+  const analysisPropertyIds = useMemo(
+    () => (analysisPropertyId ? [analysisPropertyId] : propertyOptions.map((property) => property.id)),
+    [analysisPropertyId, propertyOptions]
+  );
+
+  const monthlyRecurringByProperty = useMemo(() => {
+    const map = new Map<string, { loan: number; fixed: number; taxM: number; total: number }>();
+    for (const propertyId of analysisPropertyIds) {
+      const fin = pf.get(propertyId) || null;
+      const loan = Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
+      const fixed = Number(fin?.fixed_charges_monthly || 0);
+      const taxM = Number(fin?.property_tax_yearly || 0) / 12;
+      map.set(propertyId, { loan, fixed, taxM, total: loan + fixed + taxM });
+    }
+    return map;
+  }, [analysisPropertyIds, pf]);
+
   // Form ajout manuel
   const [form, setForm] = useState({
     property_id: "",
@@ -727,6 +744,10 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const perProperty = useMemo(() => {
     const by = new Map<string, { income: number; expense: number; net: number }>();
 
+    for (const propertyId of analysisPropertyIds) {
+      by.set(propertyId, { income: 0, expense: 0, net: 0 });
+    }
+
     for (const r of periodLedger.rows) {
       const pid = r.property_id || "—";
       const cur = by.get(pid) || { income: 0, expense: 0, net: 0 };
@@ -740,11 +761,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       const p = propertyId === "—" ? null : propsById.get(propertyId);
       const fin = propertyId === "—" ? null : pf.get(propertyId) || null;
 
-      const loan = Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
-      const fixed = Number(fin?.fixed_charges_monthly || 0);
-      const taxM = Number(fin?.property_tax_yearly || 0) / 12;
+      const recurring = propertyId === "—" ? { loan: 0, fixed: 0, taxM: 0, total: 0 } : monthlyRecurringByProperty.get(propertyId) || { loan: 0, fixed: 0, taxM: 0, total: 0 };
+      const loan = recurring.loan;
+      const fixed = recurring.fixed;
+      const taxM = recurring.taxM;
 
-      const cashflow = v.net - (loan + fixed + taxM) * selectedPeriod.monthCount;
+      const cashflow = v.net - recurring.total * selectedPeriod.monthCount;
 
       const invest =
         Number(fin?.purchase_price || 0) +
@@ -771,7 +793,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     });
 
     return rows.sort((a, b) => b.cashflow - a.cashflow);
-  }, [periodLedger.rows, propsById, pf, selectedPeriod.monthCount]);
+  }, [analysisPropertyIds, monthlyRecurringByProperty, periodLedger.rows, propsById, pf, selectedPeriod.monthCount]);
 
   // ========= CRUD: Add manual transaction =========
   const addTx = async (e: FormEvent) => {
@@ -837,6 +859,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const periodLabel = selectedPeriod.label;
 
   const totalCashflow = sum(perProperty.map((p) => p.cashflow));
+  const recurringPeriodTotal = sum(perProperty.map((p) => (p.loan + p.fixed + p.taxM) * selectedPeriod.monthCount));
   const weakProperties = perProperty.filter((p) => p.cashflow < 0);
   const bestProperty = perProperty[0] || null;
 
@@ -864,11 +887,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
   const accountingChartRows = useMemo(() => {
     const { start, end } = selectedPeriod;
-    const months: Array<{ key: string; label: string; income: number; expense: number; net: number }> = [];
+    const monthlyRecurring = sum(Array.from(monthlyRecurringByProperty.values()).map((row) => row.total));
+    const months: Array<{ key: string; label: string; income: number; expense: number; recurring: number; net: number }> = [];
 
     for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
       const key = monthKey(cursor);
-      months.push({ key, label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()), income: 0, expense: 0, net: 0 });
+      months.push({ key, label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()), income: 0, expense: 0, recurring: monthlyRecurring, net: -monthlyRecurring });
     }
 
     const byKey = new Map(months.map((row) => [row.key, row]));
@@ -879,14 +903,14 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       if (!bucket) continue;
       if (row.direction === "in") bucket.income += Number(row.amount || 0);
       else bucket.expense += Number(row.amount || 0);
-      bucket.net = bucket.income - bucket.expense;
+      bucket.net = bucket.income - bucket.expense - bucket.recurring;
     }
 
     return months;
-  }, [periodLedger.rows, selectedPeriod]);
+  }, [monthlyRecurringByProperty, periodLedger.rows, selectedPeriod]);
 
   const chartMax = useMemo(
-    () => Math.max(1, ...accountingChartRows.flatMap((row) => [row.income, row.expense, Math.abs(row.net)])),
+    () => Math.max(1, ...accountingChartRows.flatMap((row) => [row.income, row.expense, row.recurring, Math.abs(row.net)])),
     [accountingChartRows]
   );
 
@@ -907,7 +931,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         },
         {
           type: "bar" as const,
-          label: "Dépenses",
+          label: "Dépenses saisies",
           data: accountingChartRows.map((row) => row.expense),
           backgroundColor: "rgba(244, 63, 94, 0.78)",
           borderColor: "rgb(225, 29, 72)",
@@ -917,8 +941,19 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           categoryPercentage: 0.72,
         },
         {
+          type: "bar" as const,
+          label: "Charges récurrentes",
+          data: accountingChartRows.map((row) => row.recurring),
+          backgroundColor: "rgba(245, 158, 11, 0.7)",
+          borderColor: "rgb(217, 119, 6)",
+          borderWidth: 1,
+          borderRadius: 8,
+          barPercentage: 0.72,
+          categoryPercentage: 0.72,
+        },
+        {
           type: "line" as const,
-          label: "Résultat net",
+          label: "Résultat après récurrent",
           data: accountingChartRows.map((row) => row.net),
           borderColor: "rgb(15, 23, 42)",
           backgroundColor: "rgba(15, 23, 42, 0.08)",
@@ -1204,7 +1239,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           <Kpi title="Loyers attendus" value={formatEuro(periodInfo.expected)} sub="Selon les baux actifs" />
           <Kpi title="Loyers encaissés" value={formatEuro(periodInfo.received)} sub="Paiements confirmés" />
           <Kpi title="Cashflow estimé" value={formatEuro(totalCashflow)} sub="Après crédit, charges fixes et TF" />
-          <Kpi title="À traiter" value={String(weakProperties.length)} sub="Biens en cashflow négatif" />
+          <Kpi title="Charges récurrentes" value={formatEuro(recurringPeriodTotal)} sub="Appliquées automatiquement" />
         </div>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[1fr,320px]">
@@ -1215,6 +1250,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 <p className="mt-1 text-[0.8rem] text-slate-600">
                   Revenus, dépenses et résultat net sur la période analysée
                   {analysisPropertyId ? ` · ${propsById.get(analysisPropertyId)?.label || "bien sélectionné"}` : " · tous les biens"}.
+                  Les charges récurrentes paramétrées par bien sont ajoutées automatiquement.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-[0.7rem] font-semibold">
@@ -1222,10 +1258,13 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                   Revenus {formatEuro(periodLedger.income)}
                 </span>
                 <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-800">
-                  Dépenses {formatEuro(periodLedger.expense)}
+                  Dépenses saisies {formatEuro(periodLedger.expense)}
+                </span>
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-800">
+                  Récurrent {formatEuro(recurringPeriodTotal)}
                 </span>
                 <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-800">
-                  Net {formatEuro(periodLedger.net)}
+                  Net {formatEuro(periodLedger.net - recurringPeriodTotal)}
                 </span>
               </div>
             </div>
@@ -1281,8 +1320,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <Stat label="Recettes période" value={formatEuro(periodLedger.income)} />
-            <Stat label="Dépenses période" value={formatEuro(periodLedger.expense)} />
-            <Stat label="Résultat période" value={formatEuro(periodLedger.net)} />
+            <Stat label="Dépenses saisies" value={formatEuro(periodLedger.expense)} />
+            <Stat label="Résultat après récurrent" value={formatEuro(periodLedger.net - recurringPeriodTotal)} />
           </div>
 
           <div className="mt-4">
@@ -1830,8 +1869,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       <section id="finance-performance" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <ChapterHeader
           eyebrow="04 · Performance"
-          title="Cashflow & rentabilité par bien"
-          desc="Pour un résultat fiable : renseignez le prix, le crédit, les charges fixes et la taxe foncière."
+          title="Charges récurrentes, cashflow & rentabilité par bien"
+          desc="Renseignez une seule fois le crédit, l’assurance, les charges fixes et la taxe foncière : lokt.fr les applique ensuite automatiquement à chaque période."
         />
 
         {perProperty.length === 0 ? (
@@ -1851,7 +1890,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                   </div>
 
                   <div className="text-right">
-                    <p className="text-xs text-slate-600">Cashflow (avec crédit/fixes si saisis)</p>
+                    <p className="text-xs text-slate-600">Cashflow après charges récurrentes</p>
                     <p className="text-lg font-semibold text-slate-900">{formatEuro(r.cashflow)}</p>
                     <p className="text-xs text-slate-500">
                       Rendement net approx : <span className="font-semibold">{(r.yieldNet * 100).toFixed(2)}%</span>
@@ -1864,6 +1903,10 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                   <Stat label="Charges fixes (mensuel)" value={formatEuro(r.fixed)} />
                   <Stat label="TF (mensuel)" value={formatEuro(r.taxM)} />
                   <Stat label="Investissement" value={formatEuro(r.invest)} />
+                </div>
+
+                <div className="mt-3 rounded-2xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs leading-5 text-cyan-900">
+                  Ces montants ne sont pas à ressaisir chaque mois. Ils sont stockés sur le bien et proratisés automatiquement sur la période analysée.
                 </div>
 
                 <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
@@ -1990,6 +2033,14 @@ function PropertyFinanceForm({
 
   return (
     <form onSubmit={save} className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+      <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-3 py-3 text-sm text-cyan-900">
+        <p className="font-semibold">Paramètres récurrents du bien</p>
+        <p className="mt-1 text-xs leading-5">
+          À remplir une seule fois. Ces montants servent au cashflow, au graphique et aux périodes futures. Ne les ressaisissez en écriture mensuelle
+          que si vous voulez aussi garder une trace comptable détaillée.
+        </p>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-4">
         <Field label="Prix d’achat" value={s.purchase_price} onChange={(v) => setS((p) => ({ ...p, purchase_price: v }))} />
         <Field label="Frais notaire" value={s.notary_fees} onChange={(v) => setS((p) => ({ ...p, notary_fees: v }))} />
@@ -1998,19 +2049,19 @@ function PropertyFinanceForm({
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
-        <Field label="Mensualité crédit" value={s.loan_monthly} onChange={(v) => setS((p) => ({ ...p, loan_monthly: v }))} />
+        <Field label="Crédit mensuel récurrent" value={s.loan_monthly} onChange={(v) => setS((p) => ({ ...p, loan_monthly: v }))} />
         <Field
-          label="Assurance crédit (mensuel)"
+          label="Assurance crédit mensuelle"
           value={s.loan_insurance_monthly}
           onChange={(v) => setS((p) => ({ ...p, loan_insurance_monthly: v }))}
         />
         <Field
-          label="Charges fixes (mensuel)"
+          label="Charges fixes mensuelles"
           value={s.fixed_charges_monthly}
           onChange={(v) => setS((p) => ({ ...p, fixed_charges_monthly: v }))}
         />
         <Field
-          label="Taxe foncière (annuel)"
+          label="Taxe foncière annuelle"
           value={s.property_tax_yearly}
           onChange={(v) => setS((p) => ({ ...p, property_tax_yearly: v }))}
         />
