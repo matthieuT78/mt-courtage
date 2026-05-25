@@ -1,5 +1,6 @@
 // components/landlord/DashboardShell.tsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import { SidebarNav, LandlordSectionKey } from "./SidebarNav";
 
 import { SectionDashboard } from "./sections/SectionDashboard";
@@ -11,9 +12,12 @@ import { SectionFinance } from "./sections/SectionFinance";
 import { SectionEtatDesLieux } from "./sections/SectionEtatDesLieux";
 import { SectionInventaire } from "./sections/SectionInventaire";
 import { SectionDeclaration } from "./sections/SectionDeclaration";
+import { SectionSimulateursBailleur } from "./sections/SectionSimulateursBailleur";
 import { usePermissions } from "../PermissionProvider";
+import { planAllowsLandlord } from "../../lib/permissions";
 
 export function DashboardShell(props: any) {
+  const router = useRouter();
   const { loading: permissionsLoading, plan, maxActiveProperties } = usePermissions();
   const [active, setActive] = useState<LandlordSectionKey>("dashboard");
 
@@ -47,10 +51,21 @@ export function DashboardShell(props: any) {
   const activePropertiesCount = properties.filter((property: any) => String(property?.status || "").toLowerCase() !== "archived").length;
   const propertyLimitLabel = maxActiveProperties >= 999999 ? "illimité" : `${maxActiveProperties} logement${maxActiveProperties > 1 ? "s" : ""}`;
   const isFreePlan = plan === "calc_full";
+  const canUsePaidLandlordTools = planAllowsLandlord(plan);
 
   const onChangeTab = (k: LandlordSectionKey) => {
+    if (k === "simulateurs" && !permissionsLoading && !canUsePaidLandlordTools) {
+      router.push("/mon-compte/abonnement?source=simulateurs-bailleur");
+      return;
+    }
     setActive(k);
   };
+
+  useEffect(() => {
+    if (active === "simulateurs" && !permissionsLoading && !canUsePaidLandlordTools) {
+      router.push("/mon-compte/abonnement?source=simulateurs-bailleur");
+    }
+  }, [active, canUsePaidLandlordTools, permissionsLoading, router]);
 
   const content = useMemo(() => {
     if (!userId) {
@@ -132,6 +147,9 @@ export function DashboardShell(props: any) {
           />
         );
 
+      case "simulateurs":
+        return <SectionSimulateursBailleur plan={plan} />;
+
       case "etat_des_lieux":
         return <SectionEtatDesLieux userId={userId} leases={leases} properties={properties} tenants={tenants} onRefresh={refresh} />;
 
@@ -150,6 +168,7 @@ export function DashboardShell(props: any) {
     }
   }, [
     active,
+    plan,
     userId,
     userEmail,
     properties,

@@ -17,6 +17,7 @@ type TransactionRow = {
   occurred_at: string;
   direction: "in" | "out";
   amount: number;
+  property_id?: string | null;
 };
 
 const toISODate = (d: Date) => d.toISOString().slice(0, 10);
@@ -94,6 +95,15 @@ export function SectionDashboard({
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [accountingPropertyId, setAccountingPropertyId] = useState<string>("");
+
+  const propertyOptions = useMemo(
+    () =>
+      Array.from(propertyById.values()).sort((a, b) =>
+        String(a.label || a.address_line1 || "").localeCompare(String(b.label || b.address_line1 || ""))
+      ),
+    [propertyById]
+  );
 
   // -----------------------------
   // Onboarding: persistence + auto-hide
@@ -206,7 +216,7 @@ export function SectionDashboard({
       try {
         const { data, error } = await supabase
           .from("transactions")
-          .select("id, occurred_at, direction, amount")
+          .select("id, occurred_at, direction, amount, property_id")
           .eq("user_id", userId)
           .gte("occurred_at", toISODate(start))
           .order("occurred_at", { ascending: true });
@@ -235,6 +245,7 @@ export function SectionDashboard({
     const byMonth = new Map(accountingMonths.map((key) => [key, { key, income: 0, expense: 0 }]));
 
     for (const tx of transactions) {
+      if (accountingPropertyId && (tx.property_id || "") !== accountingPropertyId) continue;
       const d = normalizeDate(tx.occurred_at);
       if (!d) continue;
       const key = monthKey(d);
@@ -246,6 +257,10 @@ export function SectionDashboard({
 
     if (transactions.length === 0) {
       for (const payment of currentMonthPayments) {
+        if (accountingPropertyId) {
+          const lease = activeLeases.find((l) => l.id === payment.lease_id);
+          if ((lease?.property_id || "") !== accountingPropertyId) continue;
+        }
         const d = normalizeDate(payment.period_start);
         if (!d || !payment.paid_at) continue;
         const row = byMonth.get(monthKey(d));
@@ -254,7 +269,7 @@ export function SectionDashboard({
     }
 
     return Array.from(byMonth.values());
-  }, [accountingMonths, currentMonthPayments, transactions]);
+  }, [accountingMonths, accountingPropertyId, activeLeases, currentMonthPayments, transactions]);
 
   const accountingTotals = useMemo(() => {
     const income = accountingSeries.reduce((sum, row) => sum + row.income, 0);
@@ -693,13 +708,28 @@ export function SectionDashboard({
           title="Revenus et dépenses sur 6 mois"
           desc="Graphique basé sur les écritures Finance. Si aucune écriture n’existe encore, les loyers encaissés servent de repère."
           right={
-            <button
-              type="button"
-              onClick={() => onGo("finance")}
-              className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              Ouvrir Finance
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={accountingPropertyId}
+                onChange={(e) => setAccountingPropertyId(e.target.value)}
+                className="rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
+                aria-label="Filtrer le graphique par bien"
+              >
+                <option value="">Tous les biens</option>
+                {propertyOptions.map((property) => (
+                  <option key={property.id} value={property.id}>
+                    {property.label || property.address_line1 || "Bien"}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => onGo("finance")}
+                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                Ouvrir Finance
+              </button>
+            </div>
           }
         />
 

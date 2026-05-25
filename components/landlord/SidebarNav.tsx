@@ -10,6 +10,7 @@ export type LandlordSectionKey =
   | "quittances"
   | "finance"
   | "inventaire"
+  | "simulateurs"
   | "documents"
   | "declaration"; // ✅ NEW
 
@@ -54,6 +55,7 @@ export function SidebarNav({
     { key: "etat_des_lieux", label: "État des lieux", icon: "📝", badge: <Pill tone="indigo">Nouveau</Pill> },
     { key: "quittances", label: "Quittances", icon: "🧾" },
     { key: "finance", label: "Finance", icon: "📊" },
+    { key: "simulateurs", label: "Simulateurs bailleur", icon: "🧮", badge: <Pill tone="amber">Payant</Pill> },
     { key: "inventaire", label: "Inventaire", icon: "📦", badge: <Pill tone="indigo">Nouveau</Pill> },
 
     // ✅ NEW

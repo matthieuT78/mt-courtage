@@ -256,6 +256,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [customStartMonth, setCustomStartMonth] = useState<string>(toMonthISO(addMonths(new Date(), -2)));
   const [customEndMonth, setCustomEndMonth] = useState<string>(toMonthISO(new Date()));
   const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
+  const [analysisPropertyId, setAnalysisPropertyId] = useState<string>("");
 
   // Ledger
   const [tx, setTx] = useState<Transaction[]>([]);
@@ -283,6 +284,22 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected]);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [txWizardOpen, setTxWizardOpen] = useState(false);
+
+  const propertyOptions = useMemo(
+    () =>
+      Array.from(propsById.values()).sort((a, b) =>
+        String(a.label || a.address_line1 || "").localeCompare(String(b.label || b.address_line1 || ""))
+      ),
+    [propsById]
+  );
+
+  const leasePropertyById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const lease of safeLeases) {
+      if ((lease as any)?.id && (lease as any)?.property_id) map.set(String((lease as any).id), String((lease as any).property_id));
+    }
+    return map;
+  }, [safeLeases]);
 
   // Form ajout manuel
   const [form, setForm] = useState({
@@ -463,6 +480,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const activeLeases = safeLeases.filter((l) => {
       const s = normalizeDate((l as any).start_date);
       const e = normalizeDate((l as any).end_date);
+      if (analysisPropertyId && String((l as any).property_id || "") !== analysisPropertyId) return false;
       if (!s) return false;
       const startsBeforeEnd = s.getTime() <= end.getTime();
       const notEnded = !e || e.getTime() >= start.getTime();
@@ -486,6 +504,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     );
 
     const periodPayments = safePayments.filter((p) => {
+      if (analysisPropertyId && (leasePropertyById.get(String((p as any).lease_id || "")) || "") !== analysisPropertyId) return false;
       const ps = normalizeDate((p as any).period_start);
       const pe = normalizeDate((p as any).period_end);
       if (!ps || !pe) return false;
@@ -498,7 +517,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
     const pending = Math.max(0, expected - received);
     return { expected, received, pending, activeLeases };
-  }, [selectedPeriod, safeLeases, safePayments]);
+  }, [analysisPropertyId, leasePropertyById, selectedPeriod, safeLeases, safePayments]);
 
   // ========= Ledger: rows for period =========
   const periodLedger = useMemo(() => {
@@ -507,6 +526,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const e = end.getTime();
 
     const rows = tx.filter((t) => {
+      if (analysisPropertyId && (t.property_id || "") !== analysisPropertyId) return false;
       const d = normalizeDate(t.occurred_at);
       if (!d) return false;
       const ms = d.getTime();
@@ -516,7 +536,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const income = sum(rows.filter((r) => r.direction === "in").map((r) => Number(r.amount || 0)));
     const expense = sum(rows.filter((r) => r.direction === "out").map((r) => Number(r.amount || 0)));
     return { rows, income, expense, net: income - expense };
-  }, [tx, selectedPeriod]);
+  }, [analysisPropertyId, tx, selectedPeriod]);
 
   // ========= Month ledger filtered (UI filters) =========
   const filteredMonthLedger = useMemo(() => {
@@ -632,6 +652,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     filterAmountMin,
     filterAmountMax,
     filterText,
+    analysisPropertyId,
     tx.length,
   ]);
 
@@ -1047,6 +1068,26 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           </div>
 
           <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="mb-1 block text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Bien analysé
+              </label>
+              <select
+                value={analysisPropertyId}
+                onChange={(e) => {
+                  setAnalysisPropertyId(e.target.value);
+                  setFilterPropertyId("");
+                }}
+                className="w-full min-w-[220px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
+              >
+                <option value="">Tous les biens</option>
+                {propertyOptions.map((property) => (
+                  <option key={property.id} value={property.id}>
+                    {property.label || property.address_line1 || "Bien"}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
               Période : <span className="font-semibold text-slate-900">{periodLabel}</span>
             </div>
@@ -1172,7 +1213,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               <div>
                 <p className="text-sm font-semibold text-slate-900">Graphique comptable</p>
                 <p className="mt-1 text-[0.8rem] text-slate-600">
-                  Revenus, dépenses et résultat net sur la période analysée.
+                  Revenus, dépenses et résultat net sur la période analysée
+                  {analysisPropertyId ? ` · ${propsById.get(analysisPropertyId)?.label || "bien sélectionné"}` : " · tous les biens"}.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-[0.7rem] font-semibold">
