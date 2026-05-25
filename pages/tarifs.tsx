@@ -37,6 +37,7 @@ function PlanCard({
   onCheckout: (planId: string) => void;
 }) {
   const isQuote = plan.monthlyPrice == null;
+  const isComingSoon = plan.id === "landlord_unlimited";
 
   return (
     <article
@@ -54,17 +55,28 @@ function PlanCard({
           <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[0.68rem] font-semibold text-cyan-800">
             Recommandé
           </span>
+        ) : isComingSoon ? (
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.68rem] font-semibold text-amber-800">
+            À venir
+          </span>
         ) : null}
       </div>
 
       <div className="mt-4 min-h-[4.5rem]">
         <p className="text-2xl font-semibold leading-tight text-slate-950">{priceLabel(plan, billing)}</p>
         <p className="mt-1 text-xs text-slate-600">
-          {isQuote ? plan.limitLabel : billing === "monthly" ? `${plan.yearlyPrice} € / an` : "2 mois offerts"}
+          {isComingSoon ? "Module en préparation" : isQuote ? plan.limitLabel : billing === "monthly" ? `${plan.yearlyPrice} € / an` : "2 mois offerts"}
         </p>
       </div>
 
       <p className="mt-4 text-sm leading-6 text-slate-600">{plan.description}</p>
+
+      {isComingSoon ? (
+        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+          Cette offre n’est pas encore ouverte. Elle est pensée pour les agences, administrateurs de biens et bailleurs qui ont besoin de dossiers
+          locataires, pièces sensibles, diagnostics et preuves de gestion au même endroit.
+        </div>
+      ) : null}
 
       <ul className="mt-4 flex-1 space-y-2 text-sm text-slate-700">
         <li className="font-semibold text-slate-900">{plan.limitLabel}</li>
@@ -78,10 +90,10 @@ function PlanCard({
 
       {isQuote ? (
         <a
-          href="mailto:contact@lokt.fr?subject=Offre%20Pro%20Agence%20Lokt"
+          href="mailto:contact@lokt.fr?subject=Offre%20Pro%20Agence%20lokt.fr"
           className="mt-5 inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
         >
-          Nous contacter
+          Contacter lokt.fr
         </a>
       ) : (
         <button
@@ -270,6 +282,25 @@ export default function TarifsPage() {
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le palier supérieur ajoute la vision investisseur : rentabilité, exports finance, aide à la déclaration et plans d’action.
               </p>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-amber-950">Pro / Agence arrive ensuite</p>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900">
+                  L’offre Pro / Agence n’est pas encore commercialisée. Elle sera construite autour de la gestion documentaire : dossiers
+                  locataires, justificatifs, assurances, diagnostics, accès équipe et traçabilité. Les agences intéressées peuvent déjà nous
+                  contacter pour cadrer le besoin.
+                </p>
+              </div>
+              <a
+                href="mailto:contact@lokt.fr?subject=Offre%20Pro%20Agence%20lokt.fr"
+                className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                Contacter lokt.fr
+              </a>
             </div>
           </section>
 
