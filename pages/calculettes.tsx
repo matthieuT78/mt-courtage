@@ -54,10 +54,13 @@ function formatPrice(value: number | null | undefined) {
 
 function StatCard({ label, value, text }: { label: string; value: string; text: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-semibold text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-slate-950">{value}</p>
-      <p className="mt-1 text-xs leading-5 text-slate-500">{text}</p>
+    <div className="relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="pointer-events-none absolute -right-5 -top-7 text-[7rem] font-semibold leading-none text-slate-100">
+        {label}
+      </div>
+      <p className="relative text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">{label}</p>
+      <p className="relative mt-3 text-2xl font-semibold text-slate-950">{value}</p>
+      <p className="relative mt-2 text-sm leading-6 text-slate-600">{text}</p>
     </div>
   );
 }

@@ -3,9 +3,14 @@ import Link from "next/link";
 import {
   ArchiveBoxIcon,
   BanknotesIcon,
+  BellAlertIcon,
+  CalendarDaysIcon,
+  ChartBarSquareIcon,
   ClipboardDocumentCheckIcon,
   DocumentTextIcon,
+  EnvelopeIcon,
   HomeModernIcon,
+  KeyIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
@@ -117,6 +122,19 @@ function FeatureCard({ feature }: { feature: (typeof features)[number] }) {
   );
 }
 
+function LmnpStepCard({ step, title, text }: { step: string; title: string; text: string }) {
+  return (
+    <div className="relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="pointer-events-none absolute -right-5 -top-7 text-[7rem] font-semibold leading-none text-slate-100">
+        {step}
+      </div>
+      <p className="relative text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">{step}</p>
+      <h3 className="relative mt-3 text-lg font-semibold text-slate-950">{title}</h3>
+      <p className="relative mt-2 text-sm leading-6 text-slate-600">{text}</p>
+    </div>
+  );
+}
+
 export default function GestionLocativeLmnpPage() {
   return (
     <div className="min-h-screen bg-[#f6f9fc] flex flex-col">
@@ -191,29 +209,77 @@ export default function GestionLocativeLmnpPage() {
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.68rem] font-semibold text-slate-600">Dossier meublé</span>
                   </div>
                   <div className="p-5 sm:p-6">
-                    <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Logement meublé</p>
-                    <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Une fiche claire par bien</h2>
-                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                        <p className="text-sm font-semibold text-emerald-950">Inventaire</p>
-                        <p className="mt-1 text-xs text-emerald-800">Mobilier, pièces, état, preuves.</p>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Dossier LMNP</p>
+                        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Un cockpit pensé pour le meublé</h2>
+                        <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
+                          Bail, locataire, mobilier, loyers et pièces utiles restent reliés au même logement.
+                        </p>
                       </div>
-                      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                        <p className="text-sm font-semibold text-amber-950">Loyers</p>
-                        <p className="mt-1 text-xs text-amber-800">Payé, incomplet, non reçu.</p>
-                      </div>
-                      <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
-                        <p className="text-sm font-semibold text-sky-950">Déclaration</p>
-                        <p className="mt-1 text-xs text-sky-800">Recettes et charges classées.</p>
-                      </div>
+                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-[0.68rem] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                        1 logement gratuit
+                      </span>
                     </div>
-                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-950">Résultat mensuel</p>
-                          <p className="mt-1 text-xs text-slate-500">Revenus, dépenses et justificatifs reliés au logement.</p>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                      {[
+                        [KeyIcon, "Locataire en place", "Bail actif · dépôt 1 200 €"],
+                        [ArchiveBoxIcon, "Inventaire LMNP", "34 éléments · 2 à remplacer"],
+                        [EnvelopeIcon, "Quittance", "Paiement confirmé · PDF prêt"],
+                        [BellAlertIcon, "Relance", "Loyer incomplet à traiter"],
+                      ].map(([Icon, titleCard, textCard]) => {
+                        const TypedIcon = Icon as typeof HomeModernIcon;
+                        return (
+                          <div key={String(titleCard)} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div className="flex items-start gap-3">
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#635bff] ring-1 ring-slate-200">
+                                <TypedIcon className="h-5 w-5" />
+                              </span>
+                              <div>
+                                <p className="text-sm font-semibold text-slate-950">{String(titleCard)}</p>
+                                <p className="mt-1 text-xs leading-5 text-slate-600">{String(textCard)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-[1fr,0.9fr]">
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                        <div className="flex items-center gap-2">
+                          <ChartBarSquareIcon className="h-5 w-5 text-emerald-700" />
+                          <p className="text-sm font-semibold text-emerald-950">Résultat mensuel</p>
                         </div>
-                        <p className="text-2xl font-semibold text-slate-950">+1 840 €</p>
+                        <div className="mt-3 space-y-2 text-xs text-emerald-900">
+                          <div className="flex justify-between gap-3">
+                            <span>Loyers encaissés</span>
+                            <strong>2 480 €</strong>
+                          </div>
+                          <div className="flex justify-between gap-3">
+                            <span>Charges classées</span>
+                            <strong>-640 €</strong>
+                          </div>
+                          <div className="flex justify-between gap-3 border-t border-emerald-200 pt-2">
+                            <span>Solde net</span>
+                            <strong>+1 840 €</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+                        <div className="flex items-center gap-2">
+                          <CalendarDaysIcon className="h-5 w-5 text-indigo-700" />
+                          <p className="text-sm font-semibold text-indigo-950">À conserver</p>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {["Bail", "EDL", "Inventaire", "Quittances", "Charges"].map((tag) => (
+                            <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-indigo-900 ring-1 ring-indigo-100">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -246,11 +312,7 @@ export default function GestionLocativeLmnpPage() {
                     ["02", "Suivre le mois", "Loyer attendu, paiement reçu, quittance et relance si besoin."],
                     ["03", "Préparer les preuves", "Inventaire, état des lieux, justificatifs et finance classée."],
                   ].map(([step, titleStep, textStep]) => (
-                    <div key={step} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">{step}</p>
-                      <h3 className="mt-3 text-lg font-semibold text-slate-950">{titleStep}</h3>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{textStep}</p>
-                    </div>
+                    <LmnpStepCard key={step} step={step} title={titleStep} text={textStep} />
                   ))}
                 </div>
               </div>
