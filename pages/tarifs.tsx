@@ -42,8 +42,8 @@ function PlanCard({
   return (
     <article
       className={cx(
-        "flex h-full flex-col rounded-2xl border bg-white p-5 shadow-sm",
-        plan.recommended ? "border-cyan-300 ring-2 ring-cyan-100" : "border-slate-200"
+        "flex h-full flex-col rounded-[1.75rem] border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
+        plan.recommended ? "border-[#635bff]/30 ring-2 ring-[#635bff]/10" : "border-slate-200"
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -52,7 +52,7 @@ function PlanCard({
           <p className="mt-1 text-xs text-slate-500">{plan.audience}</p>
         </div>
         {plan.recommended ? (
-          <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[0.68rem] font-semibold text-cyan-800">
+          <span className="rounded-full border border-[#635bff]/20 bg-[#635bff]/10 px-2 py-0.5 text-[0.68rem] font-semibold text-[#3f37c9]">
             Recommandé
           </span>
         ) : isComingSoon ? (
@@ -82,7 +82,7 @@ function PlanCard({
         <li className="font-semibold text-slate-900">{plan.limitLabel}</li>
         {plan.features.map((feature) => (
           <li key={feature} className="flex gap-2">
-            <span className="text-cyan-700">✓</span>
+            <span className="text-[#635bff]">✓</span>
             <span>{feature}</span>
           </li>
         ))}
@@ -102,7 +102,7 @@ function PlanCard({
           disabled={loading}
           className={cx(
             "mt-5 inline-flex w-full items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-white",
-            plan.recommended ? "bg-gradient-to-r from-indigo-700 to-cyan-500 hover:opacity-95" : "bg-slate-900 hover:bg-slate-800",
+            plan.recommended ? "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] hover:opacity-95" : "bg-slate-950 hover:bg-slate-800",
             loading && "opacity-60"
           )}
         >
@@ -198,7 +198,7 @@ export default function TarifsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#f6f9fc] flex flex-col">
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
@@ -220,24 +220,28 @@ export default function TarifsPage() {
       </Head>
 
       <AppHeader />
-      <main className="flex-1 px-4 py-8">
-        <div className="mx-auto max-w-6xl space-y-6">
-          <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="grid gap-6 lg:grid-cols-[1fr,340px] lg:items-end">
+      <main className="flex-1">
+        <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:pb-20 sm:pt-16">
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[430px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[430px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)]" />
+          <div className="relative mx-auto max-w-6xl">
+            <div className="grid gap-8 lg:grid-cols-[1fr,360px] lg:items-end">
               <div>
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">Tarifs espace bailleur</p>
-                <h1 className="mt-2 max-w-3xl text-3xl font-semibold leading-tight text-slate-950">
-                  Gratuit pour démarrer, payant quand lokt.fr automatise et sécurise votre gestion.
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 shadow-sm backdrop-blur">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Tarifs espace bailleur
+                </div>
+                <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-[1.03] tracking-tight text-white sm:text-6xl">
+                  Gratuit pour gérer. Payant quand lokt.fr automatise.
                 </h1>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-                  Le premier logement actif reste gratuit pour tester le produit en conditions réelles. Les offres payantes ne vendent pas seulement
-                  plus de volume : elles débloquent l’automatisation des quittances, les alertes, le pilotage financier et l’aide à la déclaration.
+                <p className="mt-6 max-w-3xl text-base leading-7 text-white/90 sm:text-lg">
+                  Un logement actif gratuit pour démarrer. Les offres payantes ajoutent les quittances automatiques, les alertes, le pilotage financier et l’aide à la déclaration.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-900">Facturation</p>
-                <div className="mt-3 inline-flex rounded-xl border border-slate-200 bg-white p-1">
+              <div className="rounded-[1.75rem] border border-white/60 bg-white/90 p-4 shadow-xl shadow-slate-900/10 backdrop-blur">
+                <p className="text-sm font-semibold text-slate-950">Facturation</p>
+                <div className="mt-3 inline-flex rounded-xl border border-slate-200 bg-[#f6f9fc] p-1">
                   {(["monthly", "yearly"] as Billing[]).map((value) => (
                     <button
                       key={value}
@@ -245,7 +249,7 @@ export default function TarifsPage() {
                       onClick={() => setBilling(value)}
                       className={cx(
                         "rounded-lg px-4 py-2 text-xs font-semibold transition",
-                        billing === value ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-50"
+                        billing === value ? "bg-slate-950 text-white" : "text-slate-700 hover:bg-white"
                       )}
                     >
                       {value === "monthly" ? "Mensuel" : "Annuel"}
@@ -255,10 +259,14 @@ export default function TarifsPage() {
                 <p className="mt-3 text-xs text-slate-600">L’annuel garde une remise lisible, sans engagement complexe.</p>
               </div>
             </div>
-          </section>
+          </div>
+        </section>
+
+        <section className="-mt-10 px-4 pb-12 sm:pb-16">
+          <div className="relative mx-auto max-w-6xl space-y-6">
 
           <section className="grid gap-4 lg:grid-cols-4">
-            <article className="flex h-full flex-col rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+            <article className="flex h-full flex-col rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <p className="text-sm font-semibold text-slate-900">Gratuit</p>
               <p className="mt-1 text-xs text-emerald-800">Gestion manuelle</p>
               <div className="mt-4 min-h-[4.5rem]">
@@ -275,9 +283,9 @@ export default function TarifsPage() {
               </ul>
               <Link
                 href={isLoggedIn ? "/espace-bailleur" : "/mon-compte?mode=register&redirect=/espace-bailleur"}
-                className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+                className="mt-5 inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-full bg-emerald-700 px-3 py-2 text-[0.8rem] font-semibold text-white hover:bg-emerald-600"
               >
-                {isLoggedIn ? "Accéder à mon espace" : "Créer un compte gratuit"}
+                {isLoggedIn ? "Accéder à mon espace" : "Créer espace gratuit"}
               </Link>
             </article>
 
@@ -297,19 +305,19 @@ export default function TarifsPage() {
           ) : null}
 
           <section className="grid gap-4 lg:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-semibold text-slate-900">Gratuit = gestion manuelle</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Un propriétaire peut tester un vrai usage : créer son logement, rattacher un bail, générer une quittance PDF et garder ses archives.
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-semibold text-slate-900">Starter = automatisation</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le propriétaire paie quand lokt.fr enlève les tâches répétitives : validation paiement, génération PDF, envoi email et rappels.
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-semibold text-slate-900">Essentiel = pilotage</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le palier supérieur ajoute la vision investisseur : rentabilité, exports finance, aide à la déclaration et plans d’action.
@@ -317,7 +325,7 @@ export default function TarifsPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <section className="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-5 shadow-sm">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm font-semibold text-amber-950">Pro / Agence arrive ensuite</p>
@@ -329,14 +337,14 @@ export default function TarifsPage() {
               </div>
               <a
                 href="mailto:contact@lokt.fr?subject=Offre%20Pro%20Agence%20lokt.fr"
-                className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               >
                 Contacter lokt.fr
               </a>
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-semibold text-slate-900">Logement actif ou bail actif ?</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Les limites commerciales sont exprimées en <span className="font-semibold text-slate-900">logements actifs</span> : c’est le plus clair
@@ -345,7 +353,7 @@ export default function TarifsPage() {
             </p>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-900">Vous hésitez sur le bon plan ?</p>
@@ -357,7 +365,7 @@ export default function TarifsPage() {
                 <Link href="/#espace-bailleur" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50">
                   Voir l’espace bailleur
                 </Link>
-                <Link href="/mon-compte?mode=register&redirect=/espace-bailleur" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                <Link href="/mon-compte?mode=register&redirect=/espace-bailleur" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                   Démarrer gratuitement
                 </Link>
               </div>
@@ -367,7 +375,8 @@ export default function TarifsPage() {
           <p className="text-xs text-slate-500">
             {checking ? "Vérification de la session…" : isLoggedIn ? "Vous êtes connecté." : "Aucune carte bancaire demandée pour le plan gratuit."}
           </p>
-        </div>
+          </div>
+        </section>
       </main>
       <AppFooter />
     </div>
