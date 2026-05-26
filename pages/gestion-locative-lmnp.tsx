@@ -164,65 +164,65 @@ export default function GestionLocativeLmnpPage() {
       <AppHeader />
 
       <main className="flex-1">
-        <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:pb-20 sm:pt-16">
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[520px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[520px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)]" />
+        <section className="relative overflow-hidden px-4 pb-10 pt-10 sm:pb-20 sm:pt-16">
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[700px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:h-[520px]" />
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[700px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)] sm:h-[520px]" />
           <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
 
           <div className="relative mx-auto max-w-6xl">
-            <div className="grid gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">
+            <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 shadow-sm backdrop-blur">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Location meublée et LMNP
                 </div>
-                <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-[1.03] tracking-tight text-white sm:text-6xl">
+                <h1 className="mt-5 max-w-3xl text-[2.55rem] font-semibold leading-[0.99] tracking-tight text-white sm:mt-6 sm:text-6xl">
                   Gérer un meublé LMNP sans tableur dispersé.
                 </h1>
-                <p className="mt-6 max-w-xl text-base leading-7 text-white/90 sm:text-lg">
+                <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
                   La page cas d’usage pour les propriétaires en location meublée : inventaire, loyers, quittances, état des lieux, finance et préparation de déclaration autour d’un logement LMNP.
                 </p>
-                <div className="mt-8 flex flex-wrap gap-3">
+                <div className="mt-7 grid gap-3 sm:mt-8 sm:flex sm:flex-wrap">
                   <Link
                     href="/mon-compte?mode=register&redirect=/espace-bailleur"
-                    className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800 sm:w-auto"
                   >
                     Créer mon espace bailleur gratuit →
                   </Link>
                   <Link
                     href="/outil-gestion-locative"
-                    className="inline-flex items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white sm:w-auto"
                   >
                     Voir la page produit générale →
                   </Link>
                 </div>
               </div>
 
-              <div className="rounded-[2rem] bg-white/35 p-2 shadow-2xl shadow-slate-900/20 backdrop-blur">
-                <div className="overflow-hidden rounded-[1.55rem] border border-white/60 bg-white">
-                  <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+              <div className="rounded-[1.5rem] bg-white/35 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
+                <div className="overflow-hidden rounded-[1.25rem] border border-white/60 bg-white sm:rounded-[1.55rem]">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
                     <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+                      <span className="h-2 w-2 rounded-full bg-[#ff5f57] sm:h-2.5 sm:w-2.5" />
+                      <span className="h-2 w-2 rounded-full bg-[#ffbd2e] sm:h-2.5 sm:w-2.5" />
+                      <span className="h-2 w-2 rounded-full bg-[#28c840] sm:h-2.5 sm:w-2.5" />
                     </div>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.68rem] font-semibold text-slate-600">Dossier meublé</span>
                   </div>
-                  <div className="p-5 sm:p-6">
+                  <div className="p-3 sm:p-6">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Dossier LMNP</p>
-                        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Un cockpit pensé pour le meublé</h2>
+                        <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Un cockpit pensé pour le meublé</h2>
                         <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
                           Bail, locataire, mobilier, loyers et pièces utiles restent reliés au même logement.
                         </p>
                       </div>
-                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-[0.68rem] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                      <span className="hidden rounded-full bg-emerald-50 px-3 py-1 text-[0.68rem] font-semibold text-emerald-700 ring-1 ring-emerald-200 sm:inline-flex">
                         1 logement gratuit
                       </span>
                     </div>
 
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-4 grid gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-3">
                       {[
                         [KeyIcon, "Locataire en place", "Bail actif · dépôt 1 200 €"],
                         [ArchiveBoxIcon, "Inventaire LMNP", "34 éléments · 2 à remplacer"],
@@ -231,7 +231,7 @@ export default function GestionLocativeLmnpPage() {
                       ].map(([Icon, titleCard, textCard]) => {
                         const TypedIcon = Icon as typeof HomeModernIcon;
                         return (
-                          <div key={String(titleCard)} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <div key={String(titleCard)} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
                             <div className="flex items-start gap-3">
                               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#635bff] ring-1 ring-slate-200">
                                 <TypedIcon className="h-5 w-5" />
@@ -246,8 +246,8 @@ export default function GestionLocativeLmnpPage() {
                       })}
                     </div>
 
-                    <div className="mt-4 grid gap-3 sm:grid-cols-[1fr,0.9fr]">
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                    <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-[1fr,0.9fr] sm:gap-3">
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
                         <div className="flex items-center gap-2">
                           <ChartBarSquareIcon className="h-5 w-5 text-emerald-700" />
                           <p className="text-sm font-semibold text-emerald-950">Résultat mensuel</p>
@@ -268,7 +268,7 @@ export default function GestionLocativeLmnpPage() {
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+                      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-3 sm:p-4">
                         <div className="flex items-center gap-2">
                           <CalendarDaysIcon className="h-5 w-5 text-indigo-700" />
                           <p className="text-sm font-semibold text-indigo-950">À conserver</p>
@@ -289,7 +289,7 @@ export default function GestionLocativeLmnpPage() {
           </div>
         </section>
 
-        <section className="px-4 pb-12 sm:pb-16">
+        <section className="px-4 pb-10 sm:pb-16">
           <div className="mx-auto max-w-6xl space-y-6">
             <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {features.map((feature) => (
@@ -297,16 +297,16 @@ export default function GestionLocativeLmnpPage() {
               ))}
             </section>
 
-            <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
               <div className="grid gap-0 lg:grid-cols-[0.82fr,1.18fr]">
-                <div className="p-6 sm:p-8">
+                <div className="p-5 sm:p-8">
                   <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Pourquoi LMNP</p>
-                  <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Cette page répond au cas LMNP. L’outil reste utilisable plus largement.</h2>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Cette page répond au cas LMNP. L’outil reste utilisable plus largement.</h2>
                   <p className="mt-4 text-sm leading-6 text-slate-600">
                     La page outil gestion locative présente le produit global. Cette page se concentre sur les recherches liées à la location meublée et au LMNP : mobilier, inventaire, justificatifs, recettes, charges et documents à conserver.
                   </p>
                 </div>
-                <div className="grid gap-3 bg-slate-50 p-6 sm:p-8">
+                <div className="grid gap-3 bg-slate-50 p-4 sm:p-8">
                   {[
                     ["01", "Créer le logement", "Adresse, type de location, bail, locataire et montants."],
                     ["02", "Suivre le mois", "Loyer attendu, paiement reçu, quittance et relance si besoin."],
@@ -318,7 +318,7 @@ export default function GestionLocativeLmnpPage() {
               </div>
             </section>
 
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
               <div className="grid gap-8 lg:grid-cols-[1fr,420px] lg:items-start">
                 <div>
                   <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Sources et prudence</p>
@@ -351,7 +351,7 @@ export default function GestionLocativeLmnpPage() {
               </div>
             </section>
 
-            <section className="rounded-[2rem] border border-slate-200 bg-slate-50 p-6 sm:p-8">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 sm:rounded-[2rem] sm:p-8">
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">FAQ</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Questions fréquentes</h2>
               <div className="mt-6 grid gap-3">

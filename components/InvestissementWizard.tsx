@@ -1092,9 +1092,9 @@ const canClickUnlock =
   
   /* ======================== UI helpers ======================== */
   const primaryNavButtonClass =
-    "rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-lg shadow-sky-400/40 hover:shadow-2xl hover:shadow-sky-400/60 transition-transform active:scale-[0.99]";
+    "min-h-11 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-400/40 transition-transform hover:shadow-2xl hover:shadow-sky-400/60 active:scale-[0.99] sm:text-sm";
   const secondaryNavButtonClass =
-    "rounded-full border border-slate-300 bg-white px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 hover:bg-slate-50";
+    "min-h-11 rounded-full border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:text-sm";
 
   
 
@@ -1168,14 +1168,14 @@ const canClickUnlock =
 
       {/* STEP: Coûts */}
       {step === "couts" && (
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-          <div className="flex items-center justify-between gap-3">
+        <section className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 1</p>
               <h2 className="text-lg font-semibold text-slate-900">Coût global du projet</h2>
               <p className="text-xs text-slate-500">Prix, notaire, agence, travaux (+ localité & surface optionnelles).</p>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:flex">
               <button
               type="button"
               onClick={() => {
@@ -1204,7 +1204,7 @@ const canClickUnlock =
                 value={prixBien}
                 onChange={(e) => handlePrixBienChange(e.target.value)}
                 className={
-                  "w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 " +
+                  "w-full min-w-0 rounded-xl border bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 " +
                   (prixBienError ? "border-red-400 focus:ring-red-500" : "border-slate-300 focus:ring-emerald-500")
                 }
                 aria-invalid={!!prixBienError}
@@ -1227,7 +1227,7 @@ const canClickUnlock =
                     if (citySuggestions.length > 0) setShowCitySuggestions(true);
                   }}
                   placeholder="Ex. 75011 Paris, Lyon 3e, Cargèse…"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 {cityLoading && <p className="mt-1 text-[0.7rem] text-slate-500">Recherche des communes…</p>}
                 {cityError && <p className="mt-1 text-[0.7rem] text-red-600">{cityError}</p>}
@@ -1262,7 +1262,7 @@ const canClickUnlock =
                   value={surfaceM2}
                   onChange={(e) => setSurfaceM2(onlyNumberInput(e.target.value))}
                   placeholder="Ex. 55"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -1278,7 +1278,7 @@ const canClickUnlock =
                 value={listingUrl}
                 onChange={(e) => setListingUrl(e.target.value)}
                 placeholder="https://www.leboncoin.fr/... ou https://www.seloger.com/..."
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
               <p className="text-[0.7rem] text-slate-500">Optionnel, mais pratique pour rattacher la simulation à une annonce.</p>
             </div>
@@ -1294,7 +1294,7 @@ const canClickUnlock =
                     setNotaireCustom(true);
                     setFraisNotaire(onlyNumberInput(e.target.value));
                   }}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <p className="text-[0.7rem] text-slate-500">Pré-rempli à ~7,5 %, modifiable.</p>
               </div>
@@ -1309,7 +1309,7 @@ const canClickUnlock =
                     setAgenceCustom(true);
                     setFraisAgence(onlyNumberInput(e.target.value));
                   }}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <p className="text-[0.7rem] text-slate-500">Pré-rempli à ~4 %, modifiable.</p>
               </div>
@@ -1321,7 +1321,7 @@ const canClickUnlock =
                   inputMode="numeric"
                   value={travaux}
                   onChange={(e) => setTravaux(onlyNumberInput(e.target.value))}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -1341,14 +1341,14 @@ const canClickUnlock =
 
       {/* STEP: Revenus */}
       {step === "revenus" && (
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-          <div className="flex items-center justify-between gap-3">
+        <section className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 2</p>
               <h2 className="text-lg font-semibold text-slate-900">Revenus locatifs : longue durée & saisonnière</h2>
               <p className="text-xs text-slate-500">Configurez le nombre de lots et le mode de location.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>
               Précédent
             </button>
@@ -1367,7 +1367,7 @@ const canClickUnlock =
                 min={1}
                 max={10}
                 onChange={(e) => handleNbAppartsChange(parseInt(e.target.value, 10) || 1)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
 
@@ -1389,7 +1389,7 @@ const canClickUnlock =
                       <select
                         value={type}
                         onChange={(e) => handleLocationTypeChange(idx, e.target.value as LocationType)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       >
                         <option value="longue">Location longue durée (loyer mensuel)</option>
                         <option value="airbnb">Location saisonnière (type Airbnb)</option>
@@ -1404,7 +1404,7 @@ const canClickUnlock =
                           value={loyersApparts[idx] ?? ""}
                           onChange={(e) => handleLoyerAppartChange(idx, onlyNumberInput(e.target.value))}
                           required
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-1.5 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           placeholder="Loyer mensuel (€)"
                         />
                       </div>
@@ -1418,7 +1418,7 @@ const canClickUnlock =
                               value={airbnbNuitees[idx] ?? ""}
                               onChange={(e) => handleAirbnbNuiteeChange(idx, onlyNumberInput(e.target.value))}
                               required
-                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-1.5 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                               placeholder="Ex. 90 €"
                             />
                           </div>
@@ -1428,7 +1428,7 @@ const canClickUnlock =
                               type="number"
                               value={airbnbOccupation[idx] ?? ""}
                               onChange={(e) => handleAirbnbOccupationChange(idx, onlyNumberInput(e.target.value))}
-                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-1.5 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                               placeholder={`Ex. ${DEFAULT_AIRBNB_OCCUPATION} %`}
                             />
                           </div>
@@ -1446,14 +1446,14 @@ const canClickUnlock =
 
       {/* STEP: Charges */}
       {step === "charges" && (
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-          <div className="flex items-center justify-between gap-3">
+        <section className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 3</p>
               <h2 className="text-lg font-semibold text-slate-900">Charges récurrentes & gestion</h2>
               <p className="text-xs text-slate-500">Copro, taxe foncière, assurance, gestion / conciergerie.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               <button onClick={goPrev} className={secondaryNavButtonClass}>
                 Précédent
               </button>
@@ -1472,7 +1472,7 @@ const canClickUnlock =
                   inputMode="numeric"
                   value={chargesCopro}
                   onChange={(e) => setChargesCopro(onlyNumberInput(e.target.value))}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div className="space-y-1">
@@ -1482,7 +1482,7 @@ const canClickUnlock =
                   inputMode="numeric"
                   value={taxeFonc}
                   onChange={(e) => setTaxeFonc(onlyNumberInput(e.target.value))}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
               <div className="space-y-1">
@@ -1492,7 +1492,7 @@ const canClickUnlock =
                   inputMode="numeric"
                   value={assurance}
                   onChange={(e) => setAssurance(onlyNumberInput(e.target.value))}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
               </div>
             </div>
@@ -1507,7 +1507,7 @@ const canClickUnlock =
                 inputMode="numeric"
                 value={tauxGestion}
                 onChange={(e) => setTauxGestion(onlyNumberInput(e.target.value))}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
           </div>
@@ -1516,14 +1516,14 @@ const canClickUnlock =
 
       {/* STEP: Crédit */}
       {step === "credit" && (
-        <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-          <div className="flex items-center justify-between gap-3">
+        <section className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 4</p>
               <h2 className="text-lg font-semibold text-slate-900">Paramètres du financement</h2>
               <p className="text-xs text-slate-500">Apport, taux, durée du crédit et assurance.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               <button onClick={goPrev} className={secondaryNavButtonClass}>
                 Précédent
               </button>
@@ -1543,7 +1543,7 @@ const canClickUnlock =
       inputMode="numeric"
       value={apport}
       onChange={(e) => setApport(onlyNumberInput(e.target.value))}
-      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
     />
   </div>
 
@@ -1556,7 +1556,7 @@ const canClickUnlock =
       inputMode="decimal"
       value={tauxCredLoc}
       onChange={(e) => setTauxCredLoc(onlyNumberInput(e.target.value))}
-      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
       placeholder="Ex. 3,5"
     />
   </div>
@@ -1570,7 +1570,7 @@ const canClickUnlock =
       inputMode="numeric"
       value={dureeCredLoc}
       onChange={(e) => setDureeCredLoc(onlyNumberInput(e.target.value))}
-      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
       placeholder="Ex. 25"
     />
   </div>
@@ -1585,7 +1585,7 @@ const canClickUnlock =
       inputMode="decimal"
       value={tauxAssuranceEmp}
       onChange={(e) => setTauxAssuranceEmp(onlyNumberInput(e.target.value))}
-      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
       placeholder="Ex. 0,25"
     />
   </div>
@@ -1597,7 +1597,7 @@ const canClickUnlock =
       {step === "resultats" && (
         <section
           ref={resultSectionRef}
-          className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4"
+          className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1819,7 +1819,7 @@ const canClickUnlock =
                                 value={leadEmail}
                                 onChange={(e) => setLeadEmail(e.target.value)}
                                 placeholder="ex: prenom.nom@gmail.com"
-                                className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
+                                className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white sm:rounded-lg sm:py-2 sm:text-sm placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
                               />
                             </div>
                               {/* ✅ Recevoir par email */}

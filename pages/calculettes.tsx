@@ -313,29 +313,29 @@ export default function CalculettesPage() {
       <ToolPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} tools={tools} />
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
-        <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:pb-20 sm:pt-16">
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[520px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[520px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.7)_0%,transparent_35%),linear-gradient(75deg,transparent_56%,rgba(255,184,0,.42)_100%)]" />
+        <section className="relative overflow-hidden px-4 pb-10 pt-10 sm:pb-20 sm:pt-16">
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[660px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:h-[520px]" />
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[660px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.7)_0%,transparent_35%),linear-gradient(75deg,transparent_56%,rgba(255,184,0,.42)_100%)] sm:h-[520px]" />
           <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
 
           <div className="relative mx-auto max-w-6xl">
-            <div className="grid gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">
+            <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 shadow-sm backdrop-blur">
                   <SparklesIcon className="h-4 w-4 text-[#635bff]" />
                   Simulateurs immobiliers gratuits
                 </div>
-                <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-[1.03] tracking-tight text-white sm:text-6xl">
+                <h1 className="mt-5 max-w-3xl text-[2.55rem] font-semibold leading-[0.99] tracking-tight text-white sm:mt-6 sm:text-6xl">
                   {displayName ? `Bonjour ${displayName}, simulez votre projet.` : "Simuler avant d’acheter, vendre ou investir."}
                 </h1>
-                <p className="mt-6 max-w-xl text-base leading-7 text-white/90 sm:text-lg">
+                <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
                   Capacité d’emprunt, rentabilité, achat-revente, parc immobilier et plus-value : des résultats lisibles pour prendre une décision sans tableur.
                 </p>
-                <div className="mt-8 flex flex-wrap gap-3">
+                <div className="mt-7 grid gap-3 sm:mt-8 sm:flex sm:flex-wrap">
                   <button
                     type="button"
                     onClick={() => setPickerOpen(true)}
-                    className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800 sm:w-auto"
                   >
                     Lancer une simulation →
                   </button>
@@ -350,31 +350,31 @@ export default function CalculettesPage() {
               </div>
 
               <div>
-                <div className="relative rounded-[2rem] bg-white/35 p-2 shadow-2xl shadow-slate-900/20 backdrop-blur">
-                  <div className="overflow-hidden rounded-[1.55rem] border border-white/60 bg-white">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <div className="relative rounded-[1.5rem] bg-white/35 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
+                  <div className="overflow-hidden rounded-[1.25rem] border border-white/60 bg-white sm:rounded-[1.55rem]">
+                    <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
                       <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+                        <span className="h-2 w-2 rounded-full bg-[#ff5f57] sm:h-2.5 sm:w-2.5" />
+                        <span className="h-2 w-2 rounded-full bg-[#ffbd2e] sm:h-2.5 sm:w-2.5" />
+                        <span className="h-2 w-2 rounded-full bg-[#28c840] sm:h-2.5 sm:w-2.5" />
                       </div>
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.68rem] font-semibold text-slate-600">Capacité d’emprunt</span>
                     </div>
-                    <div className="p-5 sm:p-6">
-                      <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="p-3 sm:p-6">
+                      <div className="grid gap-2 sm:grid-cols-3 sm:gap-3">
                         {[
                           ["Mensualité max", "1 470 €", "Hors assurance"],
                           ["Emprunt possible", "302 000 €", "Sur 25 ans"],
                           ["Budget achat", "327 000 €", "Apport inclus"],
                         ].map(([label, value, hint]) => (
-                          <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
                             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-                            <p className="mt-3 text-2xl font-semibold text-slate-950">{value}</p>
+                            <p className="mt-2 text-xl font-semibold text-slate-950 sm:mt-3 sm:text-2xl">{value}</p>
                             <p className="mt-1 text-xs text-slate-500">{hint}</p>
                           </div>
                         ))}
                       </div>
-                      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3 sm:mt-4 sm:p-4">
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <p className="text-sm font-semibold text-slate-950">Combien puis-je emprunter ?</p>
@@ -392,12 +392,12 @@ export default function CalculettesPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                      <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-2 sm:gap-3">
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
                           <p className="text-sm font-semibold text-emerald-950">Lecture simple</p>
                           <p className="mt-1 text-xs leading-5 text-emerald-800">Vous voyez tout de suite la mensualité réaliste.</p>
                         </div>
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
                           <p className="text-sm font-semibold text-amber-950">Marge bancaire</p>
                           <p className="mt-1 text-xs leading-5 text-amber-800">Le reste à vivre reste visible avant de visiter.</p>
                         </div>
@@ -410,7 +410,7 @@ export default function CalculettesPage() {
           </div>
         </section>
 
-        <section className="px-4 py-12 sm:py-16">
+        <section className="px-4 py-8 sm:py-16">
           <div className="mx-auto max-w-6xl space-y-6">
             <section className="grid gap-4 sm:grid-cols-2">
               {tools.map((tool) => {
@@ -420,7 +420,7 @@ export default function CalculettesPage() {
                     key={tool.key}
                     type="button"
                     onClick={() => go(tool.href)}
-                    className="group flex h-full flex-col rounded-[1.75rem] border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md"
+                    className="group flex h-full flex-col rounded-[1.5rem] border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md sm:rounded-[1.75rem] sm:p-5"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex min-w-0 items-start gap-4">
@@ -451,7 +451,7 @@ export default function CalculettesPage() {
               <StatCard label="03" value="Gérer" text="Si le projet devient un bien loué, l’espace bailleur prend la suite." />
             </section>
 
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="grid gap-6 lg:grid-cols-[1fr,360px] lg:items-center">
                 <div>
                   <p className="text-sm font-semibold text-slate-950">Après la simulation : l’espace bailleur</p>
@@ -466,13 +466,13 @@ export default function CalculettesPage() {
                 <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
                   <Link
                     href="/outil-gestion-locative"
-                    className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                    className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
                   >
                     Découvrir l’outil bailleur
                   </Link>
                   <Link
                     href="/tarifs"
-                    className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
                   >
                     Voir les tarifs
                   </Link>

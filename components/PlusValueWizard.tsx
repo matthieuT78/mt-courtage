@@ -349,13 +349,13 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
   /* ======================== Common input styles ======================== */
   const inputBase =
-    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
+    "w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm " +
     "focus:outline-none focus:ring-1 focus:ring-emerald-500";
   const inputSmall =
-    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
+    "w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm " +
     "focus:outline-none focus:ring-1 focus:ring-emerald-500";
   const selectBase =
-    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
+    "w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm " +
     "focus:outline-none focus:ring-1 focus:ring-emerald-500";
   const labelBase = "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
 
@@ -1004,10 +1004,10 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   return (
     <div className="space-y-6">
       {/* Wizard */}
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 sm:p-6 space-y-5">
+      <section className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-6 space-y-4 sm:space-y-5">
         {/* Stepper */}
         <div className="flex items-center justify-between gap-3">
-          <div className="flex-1 overflow-x-auto">
+          <div className="-mx-1 flex-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:px-0 sm:pb-0">
             <div className="flex items-center gap-2 whitespace-nowrap pr-2">
               {stepLabels.map((label, index) => {
                 const num = index + 1;
@@ -1058,7 +1058,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         </div>
 
         {/* Contenu */}
-        <div className="border border-slate-100 rounded-xl bg-slate-50/70 p-4 space-y-3">
+        <div className="space-y-3 rounded-[1.1rem] border border-slate-100 bg-slate-50/70 p-3 sm:rounded-xl sm:p-4">
           {/* === Step 1 === */}
           {step === 1 && (
             <>
@@ -1570,12 +1570,12 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between pt-1">
+        <div className="grid grid-cols-2 gap-2 pt-1 sm:flex sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={goPrev}
             disabled={step === 1}
-            className="text-[0.75rem] text-slate-600 disabled:opacity-40 disabled:cursor-default hover:text-slate-900"
+            className="min-h-11 rounded-full border border-slate-200 bg-white px-4 text-[0.8rem] font-semibold text-slate-600 hover:text-slate-900 disabled:cursor-default disabled:opacity-40 sm:min-h-0 sm:border-0 sm:bg-transparent sm:px-0 sm:text-[0.75rem]"
           >
             ← Précédent
           </button>
@@ -1587,7 +1587,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 setMaxStepReached((m) => Math.max(m, Math.min(step + 1, TOTAL_STEPS)));
                 goNext();
               }}
-              className="rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
+              className="min-h-11 rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
             >
               Suivant →
             </button>
@@ -1598,7 +1598,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 setMaxStepReached(TOTAL_STEPS);
                 await handleCalculate();
               }}
-              className="rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-lg hover:shadow-2xl active:scale-[0.99]"
+              className="min-h-11 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-lg hover:shadow-2xl active:scale-[0.99]"
             >
               Calculer ma plus-value
             </button>
@@ -1749,7 +1749,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         value={leadEmail}
                         onChange={(e) => setLeadEmail(e.target.value)}
                         placeholder="ex: prenom.nom@gmail.com"
-                        className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
+                        className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white sm:rounded-lg sm:py-2 sm:text-sm placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
                       />
                       <p className="text-[0.7rem] text-slate-300">
                         Utilisé pour vous envoyer le rapport, retrouver votre simulation et améliorer le service.

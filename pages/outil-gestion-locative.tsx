@@ -259,34 +259,34 @@ export default function OutilGestionLocativePage() {
       <AppHeader />
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
-        <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:pb-20 sm:pt-16">
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[540px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[540px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)]" />
+        <section className="relative overflow-hidden px-4 pb-10 pt-10 sm:pb-20 sm:pt-16">
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[720px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:h-[540px]" />
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[720px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)] sm:h-[540px]" />
           <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
 
           <div className="relative mx-auto max-w-6xl">
-            <div className="grid gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">
+            <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 shadow-sm backdrop-blur">
                   <HomeModernIcon className="h-4 w-4 text-[#635bff]" />
                   Gratuit pour un logement actif
                 </div>
-                <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-[1.03] tracking-tight text-white sm:text-6xl">
+                <h1 className="mt-5 max-w-3xl text-[2.55rem] font-semibold leading-[0.99] tracking-tight text-white sm:mt-6 sm:text-6xl">
                   Un espace bailleur simple, clair, prêt à piloter.
                 </h1>
-                <p className="mt-6 max-w-xl text-base leading-7 text-white/90 sm:text-lg">
+                <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
                   La page produit générale pour gérer une location nue, meublée ou LMNP : baux, loyers, quittances, états des lieux, inventaire, finance et alertes.
                 </p>
-                <div className="mt-8 flex flex-wrap gap-3">
+                <div className="mt-7 grid gap-3 sm:mt-8 sm:flex sm:flex-wrap">
                   <Link
                     href={authReady && isLoggedIn ? "/espace-bailleur" : "/mon-compte?mode=register&redirect=/espace-bailleur"}
-                    className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800 sm:w-auto"
                   >
                     {authReady && isLoggedIn ? "Aller à l’outil bailleur →" : "Créer un compte gratuit →"}
                   </Link>
                   <Link
                     href="/gestion-locative-lmnp"
-                    className="inline-flex items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white sm:w-auto"
                   >
                     Voir le cas LMNP →
                   </Link>
@@ -294,35 +294,35 @@ export default function OutilGestionLocativePage() {
               </div>
 
               <div>
-                <div className="relative rounded-[2rem] bg-white/35 p-2 shadow-2xl shadow-slate-900/20 backdrop-blur">
-                  <div className="overflow-hidden rounded-[1.55rem] border border-white/60 bg-white">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <div className="relative rounded-[1.5rem] bg-white/35 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
+                  <div className="overflow-hidden rounded-[1.25rem] border border-white/60 bg-white sm:rounded-[1.55rem]">
+                    <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
                       <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
-                        <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+                        <span className="h-2 w-2 rounded-full bg-[#ff5f57] sm:h-2.5 sm:w-2.5" />
+                        <span className="h-2 w-2 rounded-full bg-[#ffbd2e] sm:h-2.5 sm:w-2.5" />
+                        <span className="h-2 w-2 rounded-full bg-[#28c840] sm:h-2.5 sm:w-2.5" />
                       </div>
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.68rem] font-semibold text-slate-600">Cockpit bailleur</span>
                     </div>
-                    <div className="p-5 sm:p-6">
+                    <div className="p-3 sm:p-6">
                       <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Cockpit du mois</p>
-                      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Tout ce qui compte, au même endroit</h2>
-                      <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Tout ce qui compte, au même endroit</h2>
+                      <div className="mt-4 grid gap-2 sm:mt-5 sm:grid-cols-3 sm:gap-3">
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
                           <p className="text-sm font-semibold text-amber-950">2 loyers attendus</p>
                           <p className="mt-1 text-xs leading-5 text-amber-800">1 complet, 1 incomplet à relancer.</p>
                         </div>
-                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
                           <p className="text-sm font-semibold text-emerald-950">Quittances suivies</p>
                           <p className="mt-1 text-xs leading-5 text-emerald-800">PDF, archive et envoi locataire.</p>
                         </div>
-                        <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+                        <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 sm:p-4">
                           <p className="text-sm font-semibold text-sky-950">Bail à surveiller</p>
                           <p className="mt-1 text-xs leading-5 text-sky-800">Renouvellement et état des lieux.</p>
                         </div>
                       </div>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-[1fr,0.9fr]">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-[1fr,0.9fr] sm:gap-3">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
                           <p className="text-sm font-semibold text-slate-950">Vue finance</p>
                           <div className="mt-3 space-y-2 text-xs">
                             <div className="flex justify-between gap-3"><span className="text-slate-500">Revenus encaissés</span><span className="font-semibold text-emerald-700">2 480 €</span></div>
@@ -330,7 +330,7 @@ export default function OutilGestionLocativePage() {
                             <div className="flex justify-between gap-3 border-t border-slate-100 pt-2"><span className="text-slate-500">Résultat mensuel</span><span className="font-semibold text-slate-950">1 840 €</span></div>
                           </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
                           <p className="text-sm font-semibold text-slate-950">Dossier logement</p>
                           <div className="mt-3 grid gap-2 text-xs text-slate-600">
                             <span className="rounded-full bg-white px-3 py-1.5">Bail actif</span>
@@ -339,7 +339,7 @@ export default function OutilGestionLocativePage() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-4 grid gap-3">
+                      <div className="mt-3 grid gap-2 sm:mt-4 sm:gap-3">
                         <IncludedLine
                           icon={BuildingOffice2Icon}
                           title="Un logement actif gratuit"
@@ -364,7 +364,7 @@ export default function OutilGestionLocativePage() {
           </div>
         </section>
 
-        <section className="px-4 py-12 sm:py-16">
+        <section className="px-4 py-8 sm:py-16">
           <div className="mx-auto max-w-6xl space-y-6">
             <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <article className="flex h-full flex-col rounded-[1.75rem] border border-[#635bff]/20 bg-white p-5 shadow-sm">
@@ -384,16 +384,16 @@ export default function OutilGestionLocativePage() {
               ))}
             </section>
 
-            <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
               <div className="grid gap-0 lg:grid-cols-[0.8fr,1.2fr]">
-                <div className="p-6 sm:p-8">
+                <div className="p-5 sm:p-8">
                   <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Workflow bailleur</p>
-                  <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Un parcours guidé, pas une pile de formulaires.</h2>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Un parcours guidé, pas une pile de formulaires.</h2>
                   <p className="mt-4 text-sm leading-6 text-slate-600">
                     Chaque étape produit quelque chose d’utile pour le propriétaire : un logement exploitable, un bail suivi, puis des actions visibles dans le cockpit.
                   </p>
                 </div>
-                <div className="grid gap-4 bg-slate-50 p-6 lg:grid-cols-3 sm:p-8">
+                <div className="grid gap-3 bg-slate-50 p-4 sm:p-8 lg:grid-cols-3 lg:gap-4">
                   <StepCard
                     index="01"
                     icon={HomeModernIcon}
@@ -419,7 +419,7 @@ export default function OutilGestionLocativePage() {
               </div>
             </section>
 
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="grid gap-6 lg:grid-cols-[1fr,360px] lg:items-center">
                 <div>
                   <p className="text-lg font-semibold text-slate-950">Tout se pilote depuis l’espace bailleur</p>
@@ -431,7 +431,7 @@ export default function OutilGestionLocativePage() {
                 <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
                   <Link
                     href={authReady && isLoggedIn ? "/espace-bailleur" : "/mon-compte?mode=register&redirect=/espace-bailleur"}
-                    className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                    className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
                   >
                     {authReady && isLoggedIn ? "Aller à l’outil bailleur" : "Créer un compte gratuit"}
                   </Link>
@@ -439,7 +439,7 @@ export default function OutilGestionLocativePage() {
               </div>
             </section>
 
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="grid gap-6 lg:grid-cols-[0.8fr,1.2fr]">
                 <div>
                   <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Questions fréquentes</p>

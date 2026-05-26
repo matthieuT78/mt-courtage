@@ -827,7 +827,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
     const rendementGlobal = totalValeur > 0 ? (totalRevenuNetAvantCredit / totalValeur) * 100 : 0;
 
     return (
-      <section className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-md p-4 space-y-4">
+      <section className="mt-4 space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl">
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
           <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
             Synthèse globale du parc
@@ -890,8 +890,8 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
     <div className="space-y-4">
       <section className="grid gap-4 lg:grid-cols-2">
         {/* Formulaire biens */}
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 space-y-4">
-          <div className="flex items-start justify-between gap-3">
+        <div className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-indigo-600 mb-1">Calculette</p>
               <h2 className="text-lg font-semibold text-slate-900">Décrivez vos biens locatifs</h2>
@@ -900,7 +900,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
               </p>
             </div>
 
-            <div className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 sm:shrink-0">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -928,7 +928,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                 max={20}
                 value={nbBiens}
                 onChange={(e) => handleNbBiensChange(parseInt(e.target.value, 10) || 1)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
 
@@ -944,7 +944,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                       type="text"
                       value={b.nom}
                       onChange={(e) => updateBienField(idx, "nom", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     />
                   </div>
 
@@ -956,7 +956,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                         inputMode="numeric"
                         value={b.valeurBien}
                         onChange={(e) => updateBienField(idx, "valeurBien", e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                        />
                     </div>
                     <div className="space-y-1">
@@ -966,7 +966,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                       inputMode="numeric"
                       value={b.capitalRestantDu}
                       onChange={(e) => updateBienField(idx, "capitalRestantDu", e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     />
                     </div>
                   </div>
@@ -979,7 +979,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                         inputMode="numeric"
                         value={b.loyerMensuel}
                         onChange={(e) => updateBienField(idx, "loyerMensuel", e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
                     <div className="space-y-1">
@@ -992,7 +992,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                         inputMode="numeric"
                         value={b.chargesAnnuelles}
                         onChange={(e) => updateBienField(idx, "chargesAnnuelles", e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
                   </div>
@@ -1005,7 +1005,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                         inputMode="numeric"
                         value={b.mensualiteCredit}
                         onChange={(e) => updateBienField(idx, "mensualiteCredit", e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1015,7 +1015,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                         inputMode="numeric"
                         value={b.assuranceEmprunteurAnnuelle}
                         onChange={(e) => updateBienField(idx, "assuranceEmprunteurAnnuelle", e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
                   </div>
@@ -1037,7 +1037,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                             inputMode="decimal"
                             value={b.vacancePct}
                             onChange={(e) => updateBienField(idx, "vacancePct", e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </div>
 
@@ -1051,7 +1051,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                             inputMode="decimal"
                             value={b.gestionPct}
                             onChange={(e) => updateBienField(idx, "gestionPct", e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </div>
 
@@ -1065,7 +1065,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                           inputMode="decimal"
                           value={b.impotsPct}
                           onChange={(e) => updateBienField(idx, "impotsPct", e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         />
                         </div>
 
@@ -1079,7 +1079,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                             inputMode="decimal"
                             value={b.fraisVentePct}
                             onChange={(e) => updateBienField(idx, "fraisVentePct", e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </div>
                       </div>
@@ -1098,7 +1098,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
 
               <button
                 onClick={handleCalculParc}
-                className="rounded-full bg-gradient-to-r from-indigo-500 to-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-2xl active:scale-[0.99]"
+                className="min-h-11 w-full rounded-full bg-gradient-to-r from-indigo-500 to-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-2xl active:scale-[0.99] sm:w-auto"
               >
                 Calculer la rentabilité du parc
               </button>
@@ -1107,7 +1107,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
         </div>
 
         {/* Résultats */}
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 flex flex-col gap-3">
+        <div className="flex flex-col gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-indigo-600 mb-1">Résultats</p>

@@ -42,7 +42,7 @@ function PlanCard({
   return (
     <article
       className={cx(
-        "flex h-full flex-col rounded-[1.75rem] border bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
+        "flex h-full flex-col rounded-[1.5rem] border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-[1.75rem] sm:p-5",
         plan.recommended ? "border-[#635bff]/30 ring-2 ring-[#635bff]/10" : "border-slate-200"
       )}
     >
@@ -221,26 +221,26 @@ export default function TarifsPage() {
 
       <AppHeader />
       <main className="flex-1">
-        <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:pb-20 sm:pt-16">
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[430px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[430px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)]" />
+        <section className="relative overflow-hidden px-4 pb-10 pt-10 sm:pb-20 sm:pt-16">
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[560px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:h-[430px]" />
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[560px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)] sm:h-[430px]" />
           <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
           <div className="relative mx-auto max-w-6xl">
-            <div className="grid gap-8 lg:grid-cols-[1fr,360px] lg:items-end">
+            <div className="grid gap-6 sm:gap-8 lg:grid-cols-[1fr,360px] lg:items-end">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 shadow-sm backdrop-blur">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Tarifs espace bailleur
                 </div>
-                <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-[1.03] tracking-tight text-white sm:text-6xl">
+                <h1 className="mt-5 max-w-3xl text-[2.55rem] font-semibold leading-[0.99] tracking-tight text-white sm:mt-6 sm:text-6xl">
                   Gratuit pour gérer. Payant quand lokt.fr automatise.
                 </h1>
-                <p className="mt-6 max-w-3xl text-base leading-7 text-white/90 sm:text-lg">
+                <p className="mt-5 max-w-3xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
                   Un logement actif gratuit pour démarrer. Les offres payantes ajoutent les quittances automatiques, les alertes, le pilotage financier et l’aide à la déclaration.
                 </p>
               </div>
 
-              <div className="rounded-[1.75rem] border border-white/60 bg-white/90 p-4 shadow-xl shadow-slate-900/10 backdrop-blur">
+              <div className="rounded-[1.5rem] border border-white/60 bg-white/90 p-4 shadow-xl shadow-slate-900/10 backdrop-blur sm:rounded-[1.75rem]">
                 <p className="text-sm font-semibold text-slate-950">Facturation</p>
                 <div className="mt-3 inline-flex rounded-xl border border-slate-200 bg-[#f6f9fc] p-1">
                   {(["monthly", "yearly"] as Billing[]).map((value) => (
@@ -263,11 +263,11 @@ export default function TarifsPage() {
           </div>
         </section>
 
-        <section className="-mt-10 px-4 pb-12 sm:pb-16">
+        <section className="-mt-6 px-4 pb-10 sm:-mt-10 sm:pb-16">
           <div className="relative mx-auto max-w-6xl space-y-6">
 
-          <section className="grid gap-4 lg:grid-cols-4">
-            <article className="flex h-full flex-col rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <article className="flex h-full flex-col rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-[1.75rem] sm:p-5">
               <div className="min-h-[3.65rem]">
                 <p className="text-sm font-semibold text-slate-900">Gratuit</p>
                 <p className="mt-1 text-xs leading-5 text-emerald-800">Gestion manuelle</p>
@@ -308,19 +308,19 @@ export default function TarifsPage() {
           ) : null}
 
           <section className="grid gap-4 lg:grid-cols-3">
-            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Gratuit = gestion manuelle</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Un propriétaire peut tester un vrai usage : créer son logement, rattacher un bail, générer une quittance PDF et garder ses archives.
               </p>
             </div>
-            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Starter = automatisation</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le propriétaire paie quand lokt.fr enlève les tâches répétitives : validation paiement, génération PDF, envoi email et rappels.
               </p>
             </div>
-            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Essentiel = pilotage</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le palier supérieur ajoute la vision investisseur : rentabilité, exports finance, aide à la déclaration et plans d’action.
@@ -328,7 +328,7 @@ export default function TarifsPage() {
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+          <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
             <div className="grid gap-4 lg:grid-cols-[0.85fr,1.15fr] lg:items-center">
               <div>
                 <p className="text-sm font-semibold text-emerald-950">Un coût utile pour piloter votre location</p>
@@ -344,7 +344,7 @@ export default function TarifsPage() {
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-5 shadow-sm">
+          <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm font-semibold text-amber-950">Pro / Agence arrive ensuite</p>
@@ -356,14 +356,14 @@ export default function TarifsPage() {
               </div>
               <a
                 href="mailto:contact@lokt.fr?subject=Offre%20Pro%20Agence%20lokt.fr"
-                className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               >
                 Contacter lokt.fr
               </a>
             </div>
           </section>
 
-          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
             <p className="text-sm font-semibold text-slate-900">Logement actif ou bail actif ?</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Les limites commerciales sont exprimées en <span className="font-semibold text-slate-900">logements actifs</span> : c’est le plus clair
@@ -372,7 +372,7 @@ export default function TarifsPage() {
             </p>
           </section>
 
-          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-900">Vous hésitez sur le bon plan ?</p>
@@ -380,14 +380,14 @@ export default function TarifsPage() {
                   Commencez gratuitement avec un logement actif. lokt.fr vous proposera l’abonnement seulement quand le besoin devient concret.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Link href="/#espace-bailleur" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
+                <Link href="/#espace-bailleur" className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50">
                   Voir l’espace bailleur
                 </Link>
-                <Link href="/gestion-locative-lmnp" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+                <Link href="/gestion-locative-lmnp" className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50">
                   Gestion LMNP
                 </Link>
-                <Link href="/mon-compte?mode=register&redirect=/espace-bailleur" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                <Link href="/mon-compte?mode=register&redirect=/espace-bailleur" className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                   Démarrer gratuitement
                 </Link>
               </div>

@@ -213,12 +213,12 @@ export default function ParcImmobilierPage() {
 
       <AppHeader />
 
-      <main className="flex-1 px-4 py-8">
-        <div className="max-w-5xl mx-auto space-y-6">
+      <main className="flex-1 px-3 py-5 sm:px-4 sm:py-8">
+        <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
           {/* Header de la page */}
-          <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
             <div className="h-1.5 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-            <div className="space-y-3 p-5">
+            <div className="space-y-3 p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-[#635bff]">
                 CALCULETTE PARC IMMOBILIER
@@ -229,13 +229,13 @@ export default function ParcImmobilierPage() {
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
+            <h1 className="text-[1.35rem] font-semibold leading-tight text-slate-900 sm:text-2xl">
               {displayName
                 ? `Bonjour ${displayName}, analysez votre parc immobilier.`
                 : "Analysez votre parc immobilier (multi-biens)."}
             </h1>
 
-            <p className="text-xs text-slate-600 max-w-3xl">
+            <p className="max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-xs">
               Ajoutez 1 à 20 biens locatifs et obtenez une synthèse globale : valeur du parc, encours, cash-flow,
               rendements, graphiques. Activez la version avancée pour intégrer vacance/gestion/impôts et afficher les
               indicateurs DSCR/LTV.

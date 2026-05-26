@@ -909,10 +909,10 @@ const renderAnalysisBlocks = (text: string) => {
   return (
     <div className="space-y-6">
       {/* Wizard */}
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 sm:p-6 space-y-5">
+      <section className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-6 space-y-4 sm:space-y-5">
         {/* Stepper */}
         <div className="flex items-center justify-between gap-3">
-          <div className="flex-1 overflow-x-auto">
+          <div className="-mx-1 flex-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:px-0 sm:pb-0">
             <div className="flex items-center gap-2 min-w-max">
               {STEP_LABELS.map((label, index) => {
                 const num = index + 1;
@@ -961,7 +961,7 @@ const renderAnalysisBlocks = (text: string) => {
         </div>
 
         {/* Contenu */}
-        <div className="border border-slate-100 rounded-xl bg-slate-50/70 p-4 space-y-3">
+        <div className="space-y-3 rounded-[1.1rem] border border-slate-100 bg-slate-50/70 p-3 sm:rounded-xl sm:p-4">
           {/* --- (identique à ton UI : steps 1..5) --- */}
           {/* ✅ IMPORTANT : je n'ai pas modifié le contenu des steps pour éviter les régressions */}
           {/* Tu peux garder ton JSX tel quel ici (copie/colle depuis ton fichier actuel) */}
@@ -982,7 +982,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <select
                     value={projectUsageDb}
                     onChange={(e) => setProjectUsageDb(e.target.value as ProjectUsageDB)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="residence_principale">Résidence principale</option>
                     <option value="residence_secondaire">Résidence secondaire</option>
@@ -998,7 +998,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <select
                     value={timelineDb}
                     onChange={(e) => setTimelineDb(e.target.value as ProjectTimelineDB)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="0_3_mois">0–3 mois</option>
                     <option value="3_6_mois">3–6 mois</option>
@@ -1018,7 +1018,7 @@ const renderAnalysisBlocks = (text: string) => {
                     value={department}
                     onChange={(e) => setDepartment(e.target.value.replace(/\s+/g, ""))}
                     placeholder="ex: 78"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -1032,7 +1032,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <select
                     value={projectType}
                     onChange={(e) => setProjectType(e.target.value as ProjectType)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="ancien">Ancien</option>
                     <option value="neuf">Neuf</option>
@@ -1067,7 +1067,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <select
                     value={proStatus}
                     onChange={(e) => setProStatus(e.target.value as ProStatus)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="cdi">CDI</option>
                     <option value="fonctionnaire">Fonctionnaire</option>
@@ -1085,7 +1085,7 @@ const renderAnalysisBlocks = (text: string) => {
                     max={95}
                     value={ageEmprunteur}
                     onChange={(e) => setAgeEmprunteur(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
 
@@ -1098,7 +1098,7 @@ const renderAnalysisBlocks = (text: string) => {
                     value={ageCoEmprunteur}
                     onChange={(e) => setAgeCoEmprunteur(parseFloat(e.target.value) || 0)}
                     placeholder="0 = non renseigné"
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -1112,7 +1112,7 @@ const renderAnalysisBlocks = (text: string) => {
                     max={10}
                     value={nbAdultes}
                     onChange={(e) => setNbAdultes(parseFloat(e.target.value) || 1)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
 
@@ -1124,7 +1124,7 @@ const renderAnalysisBlocks = (text: string) => {
                     max={10}
                     value={nbEnfants}
                     onChange={(e) => setNbEnfants(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -1150,7 +1150,7 @@ const renderAnalysisBlocks = (text: string) => {
                       setRevError(null);
                     }}
                     className={
-                      "w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 " +
+                      "w-full min-w-0 rounded-xl border bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 " +
                       (revError ? "border-red-400 focus:ring-red-500" : "border-slate-300 focus:ring-amber-500")
                     }
                     aria-invalid={!!revError}
@@ -1167,7 +1167,7 @@ const renderAnalysisBlocks = (text: string) => {
                     type="number"
                     value={tauxEndettement}
                     onChange={(e) => setTauxEndettement(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -1191,7 +1191,7 @@ const renderAnalysisBlocks = (text: string) => {
                     type="number"
                     value={autresMensualites}
                     onChange={(e) => setAutresMensualites(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
 
@@ -1216,7 +1216,7 @@ const renderAnalysisBlocks = (text: string) => {
                       type="number"
                       value={valeurBienActuel}
                       onChange={(e) => setValeurBienActuel(parseFloat(e.target.value) || 0)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
 
@@ -1229,7 +1229,7 @@ const renderAnalysisBlocks = (text: string) => {
                       type="number"
                       value={crdActuel}
                       onChange={(e) => setCrdActuel(parseFloat(e.target.value) || 0)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
 
@@ -1242,7 +1242,7 @@ const renderAnalysisBlocks = (text: string) => {
                       type="number"
                       value={pctRetenu}
                       onChange={(e) => setPctRetenu(parseFloat(e.target.value) || 0)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
@@ -1257,7 +1257,7 @@ const renderAnalysisBlocks = (text: string) => {
                       type="number"
                       value={tauxRelais}
                       onChange={(e) => setTauxRelais(parseFloat(e.target.value) || 0)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
 
@@ -1270,7 +1270,7 @@ const renderAnalysisBlocks = (text: string) => {
                       type="number"
                       value={apportPerso}
                       onChange={(e) => setApportPerso(parseFloat(e.target.value) || 0)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 </div>
@@ -1292,7 +1292,7 @@ const renderAnalysisBlocks = (text: string) => {
                     type="number"
                     value={tauxNouveau}
                     onChange={(e) => setTauxNouveau(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
 
@@ -1302,7 +1302,7 @@ const renderAnalysisBlocks = (text: string) => {
                     type="number"
                     value={dureeNouveau}
                     onChange={(e) => setDureeNouveau(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
 
@@ -1315,7 +1315,7 @@ const renderAnalysisBlocks = (text: string) => {
                     type="number"
                     value={prixCible}
                     onChange={(e) => setPrixCible(parseFloat(e.target.value) || 0)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -1325,12 +1325,12 @@ const renderAnalysisBlocks = (text: string) => {
         </div>
 
         {/* Navigation */}
-        <div className="flex items-center justify-between pt-1">
+        <div className="grid grid-cols-2 gap-2 pt-1 sm:flex sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={goPrev}
             disabled={step === 1}
-            className="text-[0.75rem] text-slate-600 disabled:opacity-40 disabled:cursor-default hover:text-slate-900"
+            className="min-h-11 rounded-full border border-slate-200 bg-white px-4 text-[0.8rem] font-semibold text-slate-600 hover:text-slate-900 disabled:cursor-default disabled:opacity-40 sm:min-h-0 sm:border-0 sm:bg-transparent sm:px-0 sm:text-[0.75rem]"
           >
             ← Précédent
           </button>
@@ -1349,7 +1349,7 @@ const renderAnalysisBlocks = (text: string) => {
                   setRevError(null);
                   goNext();
                 }}
-              className="rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
+              className="min-h-11 rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
             >
               Suivant →
             </button>
@@ -1357,7 +1357,7 @@ const renderAnalysisBlocks = (text: string) => {
             <button
               type="button"
               onClick={handleCalculRelais}
-              className="rounded-full bg-gradient-to-r from-amber-500 to-sky-500 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-lg shadow-amber-300/40 hover:shadow-2xl hover:shadow-amber-300/60 active:scale-[0.99]"
+              className="min-h-11 rounded-full bg-gradient-to-r from-amber-500 to-sky-500 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-lg shadow-amber-300/40 hover:shadow-2xl hover:shadow-amber-300/60 active:scale-[0.99]"
             >
               Calculer mon budget avec prêt relais
             </button>

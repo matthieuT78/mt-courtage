@@ -209,12 +209,12 @@ export default function PlusValueVenteImmobilierePage() {
 
       <AppHeader />
 
-      <main className="flex-1 px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <main className="flex-1 px-3 py-5 sm:px-4 sm:py-8">
+        <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
           {/* Header de la page */}
-          <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
             <div className="h-1.5 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-            <div className="space-y-3 p-5">
+            <div className="space-y-3 p-4 sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-[#635bff]">
                 CALCULETTE PLUS-VALUE IMMOBILIÈRE
@@ -225,13 +225,13 @@ export default function PlusValueVenteImmobilierePage() {
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900">
+            <h1 className="text-[1.35rem] font-semibold leading-tight text-slate-900 sm:text-2xl">
               {isLoggedIn && displayName
                 ? `Bonjour ${displayName}, calculez votre cash net après vente.`
                 : "Calculer le cash net après vente (plus-value immobilière)"}
             </h1>
 
-            <p className="text-xs text-slate-600 max-w-3xl">
+            <p className="max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-xs">
               Parcours guidé : prix de vente, coût d’achat (notaire/travaux), <strong>CRD</strong>, pénalités (IRA),
               LMNP/amortissements et imposition si applicable. Le résultat est présenté en <strong>cash net</strong>{" "}
               (ce que vous récupérez réellement).
