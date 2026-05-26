@@ -130,5 +130,12 @@ pages/blog/
 lib/blog.ts
 
 ###############################################
+# TEST / ADMIN LOCAL (pas en prod)
+###############################################
+pages/test-quittance.tsx
+pages/admin/
+pages/api/admin/
+
+###############################################
 # FAVICON WORK FILES (ne pas ignorer les vrais)
 ###############################################
