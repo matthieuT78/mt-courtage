@@ -78,6 +78,12 @@ type PropertyFinance = {
 
   fixed_charges_monthly: number | null;
   property_tax_yearly: number | null;
+  pno_insurance_monthly?: number | null;
+  copro_charges_monthly?: number | null;
+  cfe_yearly?: number | null;
+  loan_interest_monthly?: number | null;
+  bank_fees_monthly?: number | null;
+  maintenance_monthly?: number | null;
 
   created_at?: string;
   updated_at?: string;
@@ -211,6 +217,7 @@ function actionPlanForProperty(r: {
   loan: number;
   fixed: number;
   taxM: number;
+  lmnpRecurring: number;
   invest: number;
 }) {
   const actions: string[] = [];
@@ -311,9 +318,15 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     for (const propertyId of analysisPropertyIds) {
       const fin = pf.get(propertyId) || null;
       const loan = Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
-      const fixed = Number(fin?.fixed_charges_monthly || 0);
+      const fixed =
+        Number(fin?.fixed_charges_monthly || 0) +
+        Number(fin?.pno_insurance_monthly || 0) +
+        Number(fin?.copro_charges_monthly || 0) +
+        Number(fin?.bank_fees_monthly || 0) +
+        Number(fin?.maintenance_monthly || 0);
       const taxM = Number(fin?.property_tax_yearly || 0) / 12;
-      map.set(propertyId, { loan, fixed, taxM, total: loan + fixed + taxM });
+      const cfeM = Number(fin?.cfe_yearly || 0) / 12;
+      map.set(propertyId, { loan, fixed, taxM: taxM + cfeM, total: loan + fixed + taxM + cfeM });
     }
     return map;
   }, [analysisPropertyIds, pf]);
@@ -765,6 +778,13 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       const loan = recurring.loan;
       const fixed = recurring.fixed;
       const taxM = recurring.taxM;
+      const lmnpRecurring =
+        Number(fin?.pno_insurance_monthly || 0) +
+        Number(fin?.copro_charges_monthly || 0) +
+        Number(fin?.bank_fees_monthly || 0) +
+        Number(fin?.maintenance_monthly || 0) +
+        Number(fin?.property_tax_yearly || 0) / 12 +
+        Number(fin?.cfe_yearly || 0) / 12;
 
       const cashflow = v.net - recurring.total * selectedPeriod.monthCount;
 
@@ -786,6 +806,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         loan,
         fixed,
         taxM,
+        lmnpRecurring,
         cashflow,
         invest,
         yieldNet,
@@ -1898,15 +1919,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                   </div>
                 </div>
 
-                <div className="mt-3 grid gap-2 md:grid-cols-4">
+                <div className="mt-3 grid gap-2 md:grid-cols-5">
                   <Stat label="Crédit (mensuel)" value={formatEuro(r.loan)} />
-                  <Stat label="Charges fixes (mensuel)" value={formatEuro(r.fixed)} />
-                  <Stat label="TF (mensuel)" value={formatEuro(r.taxM)} />
+                  <Stat label="Charges LMNP auto" value={formatEuro(r.lmnpRecurring)} />
+                  <Stat label="Autres charges fixes" value={formatEuro(Number((pf.get(r.propertyId) as any)?.fixed_charges_monthly || 0))} />
+                  <Stat label="Taxes mensuelles" value={formatEuro(r.taxM)} />
                   <Stat label="Investissement" value={formatEuro(r.invest)} />
                 </div>
 
                 <div className="mt-3 rounded-2xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs leading-5 text-cyan-900">
-                  Ces montants ne sont pas à ressaisir chaque mois. Ils sont stockés sur le bien et proratisés automatiquement sur la période analysée.
+                  Taxe foncière, CFE, assurance PNO, copropriété, frais bancaires et entretien sont stockés sur le bien et proratisés automatiquement
+                  sur la période analysée. Les intérêts d’emprunt sont isolés pour préparer le dossier comptable.
                 </div>
 
                 <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
@@ -1923,7 +1946,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 {r.propertyId !== "—" ? (
                   <details className="mt-3">
                     <summary className="cursor-pointer text-sm font-semibold text-slate-900">
-                      Paramétrer ce bien (prix, crédit, charges)
+                      Paramétrer ce bien (prix, crédit, charges récurrentes)
                     </summary>
 
                     <PropertyFinanceForm propertyId={r.propertyId} existing={pf.get(r.propertyId) || null} onSave={upsertPropertyFinance} />
@@ -1999,6 +2022,12 @@ function PropertyFinanceForm({
     loan_insurance_monthly: existing?.loan_insurance_monthly ?? null,
     fixed_charges_monthly: existing?.fixed_charges_monthly ?? null,
     property_tax_yearly: existing?.property_tax_yearly ?? null,
+    pno_insurance_monthly: existing?.pno_insurance_monthly ?? null,
+    copro_charges_monthly: existing?.copro_charges_monthly ?? null,
+    cfe_yearly: existing?.cfe_yearly ?? null,
+    loan_interest_monthly: existing?.loan_interest_monthly ?? null,
+    bank_fees_monthly: existing?.bank_fees_monthly ?? null,
+    maintenance_monthly: existing?.maintenance_monthly ?? null,
   });
 
   useEffect(() => {
@@ -2013,6 +2042,12 @@ function PropertyFinanceForm({
       loan_insurance_monthly: existing?.loan_insurance_monthly ?? null,
       fixed_charges_monthly: existing?.fixed_charges_monthly ?? null,
       property_tax_yearly: existing?.property_tax_yearly ?? null,
+      pno_insurance_monthly: existing?.pno_insurance_monthly ?? null,
+      copro_charges_monthly: existing?.copro_charges_monthly ?? null,
+      cfe_yearly: existing?.cfe_yearly ?? null,
+      loan_interest_monthly: existing?.loan_interest_monthly ?? null,
+      bank_fees_monthly: existing?.bank_fees_monthly ?? null,
+      maintenance_monthly: existing?.maintenance_monthly ?? null,
     }));
   }, [existing]);
 
@@ -2028,16 +2063,22 @@ function PropertyFinanceForm({
       loan_insurance_monthly: s.loan_insurance_monthly,
       fixed_charges_monthly: s.fixed_charges_monthly,
       property_tax_yearly: s.property_tax_yearly,
+      pno_insurance_monthly: s.pno_insurance_monthly,
+      copro_charges_monthly: s.copro_charges_monthly,
+      cfe_yearly: s.cfe_yearly,
+      loan_interest_monthly: s.loan_interest_monthly,
+      bank_fees_monthly: s.bank_fees_monthly,
+      maintenance_monthly: s.maintenance_monthly,
     });
   };
 
   return (
     <form onSubmit={save} className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
       <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-3 py-3 text-sm text-cyan-900">
-        <p className="font-semibold">Paramètres récurrents du bien</p>
+        <p className="font-semibold">Charges récurrentes automatiques du bien</p>
         <p className="mt-1 text-xs leading-5">
-          À remplir une seule fois. Ces montants servent au cashflow, au graphique et aux périodes futures. Ne les ressaisissez en écriture mensuelle
-          que si vous voulez aussi garder une trace comptable détaillée.
+          À remplir une seule fois. lokt.fr les applique automatiquement aux périodes analysées : taxe foncière, CFE, assurance, copropriété,
+          frais bancaires, entretien et crédit. Les intérêts sont isolés pour le dossier comptable LMNP.
         </p>
       </div>
 
@@ -2056,7 +2097,7 @@ function PropertyFinanceForm({
           onChange={(v) => setS((p) => ({ ...p, loan_insurance_monthly: v }))}
         />
         <Field
-          label="Charges fixes mensuelles"
+          label="Autres charges fixes"
           value={s.fixed_charges_monthly}
           onChange={(v) => setS((p) => ({ ...p, fixed_charges_monthly: v }))}
         />
@@ -2065,6 +2106,15 @@ function PropertyFinanceForm({
           value={s.property_tax_yearly}
           onChange={(v) => setS((p) => ({ ...p, property_tax_yearly: v }))}
         />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <Field label="Assurance PNO / GLI mensuelle" value={s.pno_insurance_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, pno_insurance_monthly: v }))} />
+        <Field label="Copropriété mensuelle" value={s.copro_charges_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, copro_charges_monthly: v }))} />
+        <Field label="CFE annuelle" value={s.cfe_yearly ?? null} onChange={(v) => setS((p) => ({ ...p, cfe_yearly: v }))} />
+        <Field label="Intérêts d’emprunt mensuels" value={s.loan_interest_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, loan_interest_monthly: v }))} />
+        <Field label="Frais bancaires mensuels" value={s.bank_fees_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, bank_fees_monthly: v }))} />
+        <Field label="Entretien provisionné mensuel" value={s.maintenance_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, maintenance_monthly: v }))} />
       </div>
 
       <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">

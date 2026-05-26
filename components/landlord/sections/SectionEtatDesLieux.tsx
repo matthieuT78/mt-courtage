@@ -387,9 +387,24 @@ const INVENTORY_BUCKET = "inventory-pdfs";
 function parseInventoryPdfUrl(pdfUrl?: string | null) {
   const raw = String(pdfUrl || "").trim();
   if (!raw) return null;
-  const [bucket, path] = raw.includes(":") ? raw.split(":") : [INVENTORY_BUCKET, raw];
+  const sepIndex = raw.indexOf(":");
+  const bucket = sepIndex >= 0 ? raw.slice(0, sepIndex) : INVENTORY_BUCKET;
+  const path = sepIndex >= 0 ? raw.slice(sepIndex + 1) : raw;
   if (!bucket || !path) return null;
   return { bucket, path };
+}
+
+function openPdfUrl(url: string) {
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (!opened) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
 }
 // =========================
 // BLOCK 2/4
@@ -892,8 +907,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       return;
     }
 
-    const win = window.open("about:blank", "_blank", "noopener,noreferrer");
-
     setLoading(true);
     setErr(null);
     setOk(null);
@@ -911,8 +924,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       } catch {}
 
       if (r.ok && json?.signedUrl) {
-        if (win) win.location.href = json.signedUrl;
-        else window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+        openPdfUrl(json.signedUrl);
         setOk("PDF ouvert ✅");
         return;
       }
@@ -925,12 +937,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       if (eSigned) throw eSigned;
       if (!signed?.signedUrl) throw new Error("Impossible de signer l’URL du PDF.");
 
-      if (win) win.location.href = signed.signedUrl;
-      else window.open(signed.signedUrl, "_blank", "noopener,noreferrer");
+      openPdfUrl(signed.signedUrl);
 
       setOk("PDF ouvert ✅");
     } catch (e: any) {
-      if (win) win.close();
       setErr(e?.message || "Impossible d’ouvrir le PDF.");
     } finally {
       setLoading(false);
