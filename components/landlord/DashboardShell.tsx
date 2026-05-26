@@ -247,9 +247,11 @@ export function DashboardShell(props: any) {
   ]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="mx-auto max-w-7xl px-4 py-6">
       {!permissionsLoading ? (
-        <div className="mb-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-4 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+          <div className="h-1 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+          <div className="p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
@@ -268,11 +270,12 @@ export function DashboardShell(props: any) {
             {isFreePlan && activePropertiesCount >= 1 ? (
               <a
                 href="/mon-compte/abonnement"
-                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                className="inline-flex items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               >
                 Débloquer plusieurs logements
               </a>
             ) : null}
+          </div>
           </div>
         </div>
       ) : null}

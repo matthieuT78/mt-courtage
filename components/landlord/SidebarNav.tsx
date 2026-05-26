@@ -33,7 +33,7 @@ export function SidebarNav({
   overLimit: boolean;
 }) {
   // 🎨 Brand lokt.fr
-  const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
+  const brandBg = "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
 
@@ -85,11 +85,13 @@ export function SidebarNav({
 
   return (
     <aside className="w-full lg:w-[280px] lg:sticky lg:top-4 h-max">
-      <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-3">
+      <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur">
         {/* Header sidebar */}
         <div className="px-2 pt-1 pb-3">
           <div className="flex items-center gap-2">
-            <span className={`h-2 w-2 rounded-full ${brandBg}`} />
+            <span className={`flex h-7 w-7 items-center justify-center rounded-xl ${brandBg} text-xs font-semibold text-white shadow-sm`}>
+              L
+            </span>
             <p className="text-[0.7rem] lowercase tracking-[0.18em] text-slate-600">lokt.fr</p>
           </div>
 
@@ -113,7 +115,7 @@ export function SidebarNav({
                   "select-none cursor-pointer w-full text-left rounded-2xl px-3 py-2 border transition flex items-center justify-between gap-2 " +
                   (isActive
                     ? `${brandBg} ${brandText} border-transparent shadow-sm`
-                    : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50")
+                    : "bg-white text-slate-800 border-slate-200 hover:border-[#635bff]/30 hover:bg-[#f6f9fc]")
                 }
               >
                 <span className="flex items-center gap-2 min-w-0">
@@ -130,7 +132,7 @@ export function SidebarNav({
         </div>
 
         {/* Shortcuts */}
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-[#f6f9fc] px-3 py-3">
           <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Raccourcis</p>
 
           <div className="mt-2 flex flex-wrap gap-2">

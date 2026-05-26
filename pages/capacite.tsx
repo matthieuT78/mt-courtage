@@ -191,7 +191,7 @@ export default function CapaciteEmpruntPage() {
   }, [title, description, pageUrl, siteUrl, ogImage, faqData]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100">
+    <div className="min-h-screen flex flex-col bg-[#f6f9fc]">
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
@@ -221,16 +221,18 @@ export default function CapaciteEmpruntPage() {
 
       <AppHeader />
 
-      <main className="flex-1 px-4 py-6">
+      <main className="flex-1 px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Header */}
-          <section className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm p-5 space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">
+          <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+            <div className="h-1.5 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+            <div className="space-y-3 p-5">
+              <div className="flex items-center justify-between gap-3">
+              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-[#635bff]">
                 CALCULETTE CAPACITÉ D&apos;EMPRUNT
               </p>
 
-              <span className="hidden sm:inline-flex items-center rounded-full border border-emerald-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-emerald-700">
+              <span className="hidden sm:inline-flex items-center rounded-full border border-slate-200 bg-[#f6f9fc] px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
                 lokt.fr
               </span>
             </div>
@@ -249,30 +251,31 @@ export default function CapaciteEmpruntPage() {
 
             {/* Maillage interne discret */}
             <div className="pt-1 flex flex-wrap gap-2">
-              <Link href="/" className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800">
+              <Link href="/" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
                 Accueil →
               </Link>
-              <Link href="/pret-relais" className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800">
+              <Link href="/pret-relais" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
                 Prêt relais →
               </Link>
               <Link
                 href="/investissement"
-                className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800"
+                className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]"
               >
                 Rentabilité locative →
               </Link>
               <Link
                 href="/plus-value-vente-immobiliere"
-                className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800"
+                className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]"
               >
                 Plus-value immobilière →
               </Link>
               <Link
                 href="/parc-immobilier"
-                className="text-xs font-semibold underline decoration-emerald-200 text-emerald-800"
+                className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]"
               >
                 Parc immobilier →
               </Link>
+            </div>
             </div>
           </section>
 

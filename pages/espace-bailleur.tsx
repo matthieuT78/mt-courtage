@@ -9,12 +9,12 @@ export default function EspaceBailleurPage() {
   const d = useLandlordDashboard();
 
   // 🎨 Brand lokt.fr
-  const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
+  const brandBg = "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]";
   const brandText = "text-white";
 
   if (d.checkingAuth) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-100">
+      <div className="min-h-screen flex flex-col bg-[#f6f9fc]">
         <Head>
           <title>Espace bailleur | lokt.fr</title>
           <meta name="robots" content="noindex, nofollow" />
@@ -22,12 +22,12 @@ export default function EspaceBailleurPage() {
         <AppHeader />
         <main className="flex-1 px-4 py-8">
           <div className="max-w-5xl mx-auto">
-            <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
               <div className={`h-1.5 w-full ${brandBg}`} />
               <div className="p-6">
                 <div className="flex items-center gap-3">
                   <div className={`h-9 w-9 rounded-2xl ${brandBg} ${brandText} flex items-center justify-center text-sm font-semibold`}>
-                    ⏳
+                    L
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-slate-900">Espace bailleur</p>
@@ -53,7 +53,7 @@ export default function EspaceBailleurPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100">
+    <div className="min-h-screen flex flex-col bg-[#f6f9fc]">
       <Head>
         <title>Espace bailleur | lokt.fr</title>
         <meta name="robots" content="noindex, nofollow" />
@@ -65,7 +65,7 @@ export default function EspaceBailleurPage() {
       {d.error ? (
         <main className="flex-1 px-4 py-8">
           <div className="max-w-5xl mx-auto">
-            <div className="rounded-3xl border border-red-200 bg-white shadow-sm overflow-hidden">
+            <div className="rounded-[2rem] border border-red-200 bg-white shadow-sm overflow-hidden">
               <div className="h-1.5 w-full bg-red-500" />
               <div className="p-6">
                 <p className="text-sm font-semibold text-red-700">Impossible d’ouvrir l’espace bailleur</p>
@@ -86,7 +86,7 @@ export default function EspaceBailleurPage() {
           {d.loading ? (
             <div className="px-4 pt-4">
               <div className="max-w-7xl mx-auto">
-                <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div className="rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden">
                   <div className={`h-1 w-full ${brandBg}`} />
                   <div className="px-4 py-3 flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold text-slate-700">
@@ -107,7 +107,7 @@ export default function EspaceBailleurPage() {
         </>
       )}
 
-      <footer className="border-t border-slate-200 py-5 text-center text-xs text-slate-500 bg-white">
+      <footer className="border-t border-slate-200 bg-white py-5 text-center text-xs text-slate-500">
         <p>© {new Date().getFullYear()} lokt.fr – Espace bailleur.</p>
         <p className="mt-1">
           Contact :{" "}
