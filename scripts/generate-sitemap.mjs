@@ -13,18 +13,18 @@ const staticPagesV1 = [
   "/investissement",
   "/plus-value-vente-immobiliere",
   "/parc-immobilier",
-  "/commencer",
   "/gestion-locative-lmnp",
   "/outil-gestion-locative",
   "/quittances-loyer",
   "/etats-des-lieux-documents",
   "/cautions-loyers",
+  "/blog",
   "/tarifs",
   "/cgu",
   "/confidentialite",
 ];
 
-// Pages simulateur (SEO programmatique utile)
+// Pages simulateur générées, mais non poussées dans le sitemap.
 const REVENUS = [
   1500, 1800, 2000, 2200, 2500, 2800, 3000, 3200, 3500, 3800, 4000, 4500, 5000, 5500, 6000, 7000, 8000,
 ];
@@ -35,8 +35,9 @@ const VALEURS = [
 
 const PRIX = Array.from({ length: 70 }, (_, i) => 100000 + i * 10000);
 
-// ✅ Mets TRUE pour indexer les pages /simulateur/...
-const INCLUDE_SIMULATEUR = true;
+// Les pages /simulateur/... sont des pages techniques/programmatique noindex.
+// On les laisse crawlables si Google les découvre, mais on ne les pousse pas dans le sitemap.
+const INCLUDE_SIMULATEUR = false;
 
 const urls = [];
 
