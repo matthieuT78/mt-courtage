@@ -224,6 +224,7 @@ export default function TarifsPage() {
         <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:pb-20 sm:pt-16">
           <div aria-hidden className="absolute inset-x-0 top-0 h-[430px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
           <div aria-hidden className="absolute inset-x-0 top-0 h-[430px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)]" />
+          <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-8 lg:grid-cols-[1fr,360px] lg:items-end">
               <div>
@@ -364,6 +365,9 @@ export default function TarifsPage() {
               <div className="flex flex-wrap gap-2">
                 <Link href="/#espace-bailleur" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50">
                   Voir l’espace bailleur
+                </Link>
+                <Link href="/gestion-locative-lmnp" className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+                  Gestion LMNP
                 </Link>
                 <Link href="/mon-compte?mode=register&redirect=/espace-bailleur" className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                   Démarrer gratuitement

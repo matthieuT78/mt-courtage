@@ -22,7 +22,7 @@ const pageUrl = `${siteUrl}/outil-gestion-locative`;
 const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
 const title = "Outil de gestion locative gratuit pour propriétaire bailleur | lokt.fr";
 const description =
-  "Outil gratuit de gestion locative pour propriétaire bailleur : baux, locataires, quittances PDF, envoi automatique, états des lieux, inventaire, finance et alertes.";
+  "Outil gratuit de gestion locative pour propriétaire bailleur : baux, locataires, quittances PDF, envoi automatique, états des lieux, inventaire, finance et alertes. Pour location nue, meublée ou LMNP.";
 
 type Feature = {
   title: string;
@@ -262,6 +262,7 @@ export default function OutilGestionLocativePage() {
         <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:pb-20 sm:pt-16">
           <div aria-hidden className="absolute inset-x-0 top-0 h-[540px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
           <div aria-hidden className="absolute inset-x-0 top-0 h-[540px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)]" />
+          <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
 
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">
@@ -274,7 +275,7 @@ export default function OutilGestionLocativePage() {
                   Un espace bailleur simple, clair, prêt à piloter.
                 </h1>
                 <p className="mt-6 max-w-xl text-base leading-7 text-white/90 sm:text-lg">
-                  Baux, loyers, quittances, états des lieux, inventaire, finance et alertes : lokt.fr rassemble les actions utiles d’un propriétaire dans un seul outil.
+                  La page produit générale pour gérer une location nue, meublée ou LMNP : baux, loyers, quittances, états des lieux, inventaire, finance et alertes.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-3">
                   <Link
@@ -282,6 +283,12 @@ export default function OutilGestionLocativePage() {
                     className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800"
                   >
                     {authReady && isLoggedIn ? "Aller à l’outil bailleur →" : "Créer un compte gratuit →"}
+                  </Link>
+                  <Link
+                    href="/gestion-locative-lmnp"
+                    className="inline-flex items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white"
+                  >
+                    Voir le cas LMNP →
                   </Link>
                 </div>
               </div>
@@ -360,6 +367,18 @@ export default function OutilGestionLocativePage() {
         <section className="px-4 py-12 sm:py-16">
           <div className="mx-auto max-w-6xl space-y-6">
             <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <article className="flex h-full flex-col rounded-[1.75rem] border border-[#635bff]/20 bg-white p-5 shadow-sm">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f6f9fc] text-[#635bff] ring-1 ring-slate-200">
+                  <HomeModernIcon className="h-6 w-6" />
+                </div>
+                <h2 className="mt-4 text-base font-semibold text-slate-950">Page produit générale</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Cette page explique l’outil complet : biens, locataires, baux, quittances, états des lieux, inventaire, finance et alertes. Pour le référencement LMNP, consultez la page dédiée au cas d’usage meublé.
+                </p>
+                <Link href="/gestion-locative-lmnp" className="mt-4 text-sm font-semibold text-[#3f37c9]">
+                  Gestion locative LMNP →
+                </Link>
+              </article>
               {features.map((feature) => (
                 <FeatureCard key={feature.title} {...feature} />
               ))}

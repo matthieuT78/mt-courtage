@@ -114,7 +114,7 @@ function ToolPickerModal({
           />
           <div className="relative p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="rounded-[2rem] border border-white/60 bg-white/88 p-6 shadow-2xl shadow-slate-900/10 backdrop-blur sm:p-8">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Démarrer</p>
                 <h3 className="mt-1 text-lg font-semibold text-slate-900 sm:text-xl">Choisir une calculette</h3>
                 <p className="mt-1 text-sm text-slate-600">Sélectionnez l’outil adapté à votre situation.</p>
@@ -313,6 +313,7 @@ export default function CalculettesPage() {
         <section className="relative overflow-hidden px-4 pb-14 pt-12 sm:pb-20 sm:pt-16">
           <div aria-hidden className="absolute inset-x-0 top-0 h-[520px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
           <div aria-hidden className="absolute inset-x-0 top-0 h-[520px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.7)_0%,transparent_35%),linear-gradient(75deg,transparent_56%,rgba(255,184,0,.42)_100%)]" />
+          <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
 
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">

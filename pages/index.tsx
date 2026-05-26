@@ -368,7 +368,7 @@ function ToolPickerModal({ open, onClose }: { open: boolean; onClose: () => void
           />
           <div className="relative p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
-              <div>
+              <div className="rounded-[2rem] border border-white/60 bg-white/88 p-6 shadow-2xl shadow-slate-900/10 backdrop-blur sm:p-8">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Démarrer</p>
                 <h3 className="mt-1 text-lg sm:text-xl font-semibold text-slate-900">Choisir une calculette</h3>
                 <p className="mt-1 text-sm text-slate-600">Sélectionnez l’outil adapté à votre situation.</p>
@@ -645,6 +645,7 @@ export default function Home() {
         <section className="relative overflow-hidden px-4 pb-16 pt-14 sm:pb-24 sm:pt-20">
           <div aria-hidden className="absolute inset-x-0 top-0 h-[560px] -skew-y-6 bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] origin-top-left" />
           <div aria-hidden className="absolute inset-x-0 top-0 h-[560px] -skew-y-6 bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)] origin-top-left" />
+          <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
 
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-10 lg:grid-cols-[0.92fr,1.08fr] lg:items-center">
@@ -892,10 +893,12 @@ export default function Home() {
               <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">
                 lokt.fr regroupe un outil de gestion locative gratuit pour propriétaires bailleurs et des simulateurs immobiliers gratuits.
                 L’espace bailleur permet de suivre un logement, un bail, un locataire, les loyers, les quittances, les états des lieux,
-                l’inventaire et la finance. Les calculettes servent à préparer les décisions.
+                l’inventaire et la finance. Il est particulièrement utile en location meublée / LMNP, avec inventaire, suivi des recettes et préparation des informations de déclaration.
+                Les calculettes servent à préparer les décisions.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
                 {[
+                  ["/gestion-locative-lmnp", "Gestion locative LMNP"],
                   ["/outil-gestion-locative", "Outil de gestion locative gratuit"],
                   ["/quittances-loyer", "Quittance de loyer"],
                   ["/etats-des-lieux-documents", "État des lieux"],

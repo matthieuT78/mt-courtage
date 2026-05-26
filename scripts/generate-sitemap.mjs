@@ -14,6 +14,7 @@ const staticPagesV1 = [
   "/plus-value-vente-immobiliere",
   "/parc-immobilier",
   "/commencer",
+  "/gestion-locative-lmnp",
   "/outil-gestion-locative",
   "/quittances-loyer",
   "/etats-des-lieux-documents",
