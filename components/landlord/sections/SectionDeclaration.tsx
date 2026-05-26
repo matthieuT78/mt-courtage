@@ -412,18 +412,20 @@ export function SectionDeclaration({ userId, properties }: Props) {
   return (
     <div className="space-y-4">
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 bg-slate-950 px-5 py-5 text-white">
+        <div className="border-b border-slate-200 bg-[#f6f9fc] px-5 py-6 sm:px-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">Premium · aide à la déclaration</p>
-              <h2 className="mt-2 text-2xl font-semibold">Préparer un dossier fiscal propre, sans se noyer dans les cases.</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Aide à la déclaration</p>
+              <h2 className="mt-2 max-w-3xl text-3xl font-semibold leading-tight text-slate-950">
+                Préparer un dossier fiscal propre, sans se noyer dans les cases.
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
                 lokt.fr vous guide en trois temps : importer les données, vérifier les montants, puis exporter une synthèse claire pour vous ou votre comptable.
               </p>
             </div>
-            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Dossier prêt</p>
-              <p className="mt-1 text-2xl font-semibold">{completionPct}%</p>
+            <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Dossier prêt</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-950">{completionPct}%</p>
             </div>
           </div>
         </div>

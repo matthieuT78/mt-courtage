@@ -202,14 +202,53 @@ function SellOrRentSimulator() {
   );
 }
 
-const simulators: Array<{ key: SimulatorKey; label: string; desc: string }> = [
-  { key: "lmnp", label: "LMNP réel ou micro-BIC", desc: "Comparer le régime simple et le réel avec charges, intérêts et amortissements." },
-  { key: "furnished", label: "Meublé ou nu", desc: "Mesurer le vrai gain après vacance, mobilier et fiscalité indicative." },
-  { key: "irl", label: "Révision IRL", desc: "Calculer un nouveau loyer avec les indices de référence renseignés." },
-  { key: "sell", label: "Louer ou vendre", desc: "Comparer cash-flow, valorisation et rendement alternatif." },
+const simulators: Array<{ key: SimulatorKey; label: string; desc: string; outcome: string; badge: string }> = [
+  {
+    key: "lmnp",
+    label: "LMNP réel ou micro-BIC",
+    desc: "Comparer le régime simple et le réel avec charges, intérêts et amortissements.",
+    outcome: "Décider si le réel mérite d’être étudié avec un comptable.",
+    badge: "Fiscalité",
+  },
+  {
+    key: "furnished",
+    label: "Meublé ou nu",
+    desc: "Mesurer le vrai gain après vacance, mobilier et fiscalité indicative.",
+    outcome: "Voir si le meublé compense vraiment le turn-over et l’équipement.",
+    badge: "Arbitrage",
+  },
+  {
+    key: "irl",
+    label: "Révision IRL",
+    desc: "Calculer un nouveau loyer avec les indices de référence renseignés.",
+    outcome: "Préparer une révision propre, lisible et justifiable.",
+    badge: "Loyer",
+  },
+  {
+    key: "sell",
+    label: "Louer ou vendre",
+    desc: "Comparer cash-flow, valorisation et rendement alternatif.",
+    outcome: "Savoir si le bien doit être conservé, optimisé ou arbitré.",
+    badge: "Décision",
+  },
 ];
 
-export function SectionSimulateursBailleur({ plan }: Props) {
+const premiumUseCases = [
+  {
+    title: "Choisir le bon régime",
+    text: "Micro-BIC, réel, meublé ou nu : l’objectif est de repérer rapidement le scénario qui mérite une vraie analyse.",
+  },
+  {
+    title: "Justifier une décision",
+    text: "Chaque calcul donne une lecture métier : gain potentiel, risque de vacance, impact fiscal ou effort mensuel.",
+  },
+  {
+    title: "Relier à vos données",
+    text: "Les paramètres financiers renseignés dans Finance alimentent ensuite Performance pour prioriser les actions.",
+  },
+];
+
+export function SectionSimulateursBailleur({ plan: _plan }: Props) {
   const [active, setActive] = useState<SimulatorKey>("lmnp");
   const current = simulators.find((s) => s.key === active) || simulators[0];
 
@@ -223,16 +262,31 @@ export function SectionSimulateursBailleur({ plan }: Props) {
   return (
     <div className="space-y-4">
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 bg-slate-950 px-5 py-5 text-white">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-cyan-200">Simulateurs bailleur</p>
-          <h2 className="mt-2 text-2xl font-semibold">Optimiser les décisions qui changent vraiment la rentabilité.</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-            Réservé aux comptes Starter et Essentiel : fiscalité LMNP, arbitrage meublé/nu, révision de loyer et décision louer ou vendre.
-          </p>
+        <div className="relative overflow-hidden border-b border-slate-200 bg-[#f6f9fc] px-5 py-6 sm:px-6">
+          <div>
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#635bff]">Simulateurs bailleur</p>
+            <h2 className="mt-3 max-w-3xl text-3xl font-semibold leading-tight text-slate-950">
+              Des simulateurs pour décider, pas juste calculer.
+            </h2>
+            <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">
+              Cette section aide un propriétaire à arbitrer les décisions qui ont un vrai impact : fiscalité LMNP,
+              passage en meublé, révision de loyer, conservation ou vente d’un bien.
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-3">
+            {premiumUseCases.map((item, index) => (
+              <div key={item.title} className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <span className="absolute -right-2 -top-6 text-6xl font-semibold text-slate-100">0{index + 1}</span>
+                <p className="relative text-sm font-semibold text-slate-950">{item.title}</p>
+                <p className="relative mt-2 text-sm leading-6 text-slate-600">{item.text}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="grid gap-0 xl:grid-cols-[300px,minmax(0,1fr)]">
-          <aside className="border-b border-slate-200 bg-slate-50 p-4 lg:border-b-0 lg:border-r">
+          <aside className="border-b border-slate-200 bg-white p-4 lg:border-b-0 lg:border-r">
             <div className="space-y-2">
               {simulators.map((simulator) => (
                 <button
@@ -240,10 +294,17 @@ export function SectionSimulateursBailleur({ plan }: Props) {
                   type="button"
                   onClick={() => setActive(simulator.key)}
                   className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
-                    active === simulator.key ? "border-cyan-300 bg-white shadow-sm" : "border-slate-200 bg-white/70 hover:bg-white"
+                    active === simulator.key
+                      ? "border-[#635bff]/30 bg-[#f6f9fc] shadow-sm"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                   }`}
                 >
-                  <p className="text-sm font-semibold text-slate-950">{simulator.label}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-950">{simulator.label}</p>
+                    <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[0.65rem] font-semibold text-[#635bff] shadow-sm">
+                      {simulator.badge}
+                    </span>
+                  </div>
                   <p className="mt-1 text-xs leading-5 text-slate-500">{simulator.desc}</p>
                 </button>
               ))}
@@ -251,14 +312,16 @@ export function SectionSimulateursBailleur({ plan }: Props) {
           </aside>
 
           <div className="p-5">
-            <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div className="mb-5 grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1fr),280px]">
               <div>
-                <p className="text-sm font-semibold text-slate-950">{current.label}</p>
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Simulation active</p>
+                <p className="mt-1 text-xl font-semibold text-slate-950">{current.label}</p>
                 <p className="mt-1 text-sm text-slate-600">{current.desc}</p>
               </div>
-              <span className="w-max rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
-                Plan actif : {plan === "landlord_5" ? "Starter" : plan === "landlord_15" ? "Essentiel" : "Pro"}
-              </span>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Ce que ça apporte</p>
+                <p className="mt-2 text-sm font-semibold leading-5 text-emerald-950">{current.outcome}</p>
+              </div>
             </div>
             {renderSimulator()}
           </div>

@@ -177,12 +177,12 @@ function Badge({
 
 function NoticeTop() {
   return (
-    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5">
+    <div className="rounded-2xl border border-slate-200 bg-[#f6f9fc] p-4 sm:p-5">
       <div className="flex items-start gap-3">
-        <ClipboardDocumentCheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-800" aria-hidden="true" />
+        <ClipboardDocumentCheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#635bff]" aria-hidden="true" />
         <div>
-          <p className="text-sm font-semibold text-emerald-950">Parcours sur place</p>
-          <p className="mt-1 text-sm text-emerald-900">
+          <p className="text-sm font-semibold text-slate-950">Parcours sur place</p>
+          <p className="mt-1 text-sm text-slate-600">
             Dans le logement, avance pièce par pièce : ajoute les pièces, marque une pièce sans anomalie avec{" "}
             <span className="font-semibold">“Pièce OK”</span>, note uniquement les défauts utiles, puis finalise le PDF à faire signer.
           </p>
@@ -190,21 +190,21 @@ function NoticeTop() {
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <div className="rounded-xl border border-emerald-200 bg-white p-3">
-          <p className="text-xs font-semibold text-emerald-950">1. Préparer</p>
-          <p className="mt-1 text-xs text-emerald-900">Choisir le bail, créer l’entrée ou la sortie, vérifier date et lieu.</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <p className="text-xs font-semibold text-slate-950">1. Préparer</p>
+          <p className="mt-1 text-xs text-slate-600">Choisir le bail, créer l’entrée ou la sortie, vérifier date et lieu.</p>
         </div>
-        <div className="rounded-xl border border-emerald-200 bg-white p-3">
-          <p className="text-xs font-semibold text-emerald-950">2. Relever</p>
-          <p className="mt-1 text-xs text-emerald-900">Pièces, état, anomalies, compteurs, clés, badges et observations.</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <p className="text-xs font-semibold text-slate-950">2. Relever</p>
+          <p className="mt-1 text-xs text-slate-600">Pièces, état, anomalies, compteurs, clés, badges et observations.</p>
         </div>
-        <div className="rounded-xl border border-emerald-200 bg-white p-3">
-          <p className="text-xs font-semibold text-emerald-950">3. Signer</p>
-          <p className="mt-1 text-xs text-emerald-900">Générer le PDF, le faire signer, puis importer le PDF signé pour verrouiller.</p>
+        <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <p className="text-xs font-semibold text-slate-950">3. Signer</p>
+          <p className="mt-1 text-xs text-slate-600">Générer le PDF, le faire signer, puis importer le PDF signé pour verrouiller.</p>
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-emerald-900">
+      <p className="mt-3 text-xs text-slate-500">
         Un état des lieux signé ou archivé est verrouillé pour préserver la valeur du document.
       </p>
     </div>
@@ -1751,7 +1751,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
                   {/* Colonne droite : ajouter */}
                   <div className="space-y-4">
-                    <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-emerald-50 p-5">
+                    <div className="rounded-2xl border border-slate-200 bg-[#f6f9fc] p-5">
                       <p className="text-sm font-semibold text-slate-900">Ajouter des pièces</p>
                       <p className="text-xs text-slate-700 mt-2">Coche uniquement ce que tu veux ajouter. Aucun doublon.</p>
 
@@ -1777,7 +1777,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
                       <div className="mt-4 space-y-2 max-h-[360px] overflow-auto pr-1" style={{ overflowAnchor: "none" }}>
                         {suggestedRooms.map((s) => (
-                          <label key={s.tempId} className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white p-3">
+                          <label key={s.tempId} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3">
                             <input
                               type="checkbox"
                               checked={s.checked}
@@ -1877,7 +1877,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       <>
                         <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
                           <div className="relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-emerald-50" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-[#f6f9fc]" />
                             <div className="relative p-4 sm:p-5">
                               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                 <div className="min-w-0">
@@ -2318,7 +2318,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                   </div>
 
                   <div className="space-y-4">
-                    <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-emerald-50 p-5">
+                    <div className="rounded-2xl border border-slate-200 bg-[#f6f9fc] p-5">
                       <p className="text-sm font-semibold text-slate-900">Conseil ✅</p>
                       <p className="text-xs text-slate-700 mt-2">
                         Si une pièce n’a aucun élément, ajoute au minimum : <span className="font-semibold">mur + sol + plafond + ouverture</span>.
@@ -2386,10 +2386,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="relative">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_34%),linear-gradient(135deg,#f8fafc,#ffffff_46%,#ecfdf5)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,91,255,0.10),transparent_34%),linear-gradient(135deg,#f8fafc,#ffffff_48%,#f6f9fc)]" />
           <div className="relative grid gap-5 p-5 lg:grid-cols-[1fr,420px] lg:p-6">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/85 px-3 py-1.5 text-xs font-semibold text-emerald-900">
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/85 px-3 py-1.5 text-xs font-semibold text-slate-700">
                 <BuildingOffice2Icon className="h-4 w-4" aria-hidden="true" />
                 Dossier de visite
               </div>
@@ -2399,8 +2399,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               </p>
 
               {selectedLeaseId ? (
-                <div className="mt-4 rounded-2xl border border-emerald-200 bg-white/90 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Bail sélectionné</p>
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white/90 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#635bff]">Bail sélectionné</p>
                   <p className="mt-1 text-base font-semibold text-slate-950">{selectedLeaseNiceLabel}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Badge tone="slate">{reports.length} état(s) des lieux</Badge>
@@ -2415,10 +2415,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       key={l.id}
                       type="button"
                       onClick={() => setSelectedLeaseId(l.id)}
-                      className="group min-h-[72px] rounded-2xl border border-slate-200 bg-white/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"
+                      className="group min-h-[72px] rounded-2xl border border-slate-200 bg-white/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md"
                     >
                       <span className="block text-sm font-semibold text-slate-950">{leaseLabel(l)}</span>
-                      <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                      <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#635bff]">
                         Ouvrir ce dossier
                         <ArrowRightIcon className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
                       </span>
@@ -2437,7 +2437,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               <select
                 value={selectedLeaseId}
                 onChange={(e) => setSelectedLeaseId(e.target.value)}
-                className="mt-2 min-h-[48px] w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-100"
+                className="mt-2 min-h-[48px] w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-[#635bff] focus:outline-none focus:ring-4 focus:ring-[#635bff]/10"
               >
                 <option value="">Sélectionner un bail</option>
                 {safeLeases.map((l: any) => (
@@ -2469,7 +2469,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     type="button"
                     disabled={loading || isLocked}
                     onClick={() => selectedReportId && openWizard(selectedReportId)}
-                    className="inline-flex min-h-[46px] items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
+                    className="inline-flex min-h-[46px] items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-slate-50 disabled:opacity-50"
                   >
                     Continuer sur téléphone
                   </button>
@@ -2518,7 +2518,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       {selectedLeaseId ? (
       <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white" style={{ overflowAnchor: "none" }}>
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-emerald-50" />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-[#f6f9fc]" />
           <div className="relative p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
