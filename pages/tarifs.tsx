@@ -46,23 +46,23 @@ function PlanCard({
         plan.recommended ? "border-[#635bff]/30 ring-2 ring-[#635bff]/10" : "border-slate-200"
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="flex min-h-[3.65rem] items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">{plan.name}</p>
-          <p className="mt-1 text-xs text-slate-500">{plan.audience}</p>
+          <p className="mt-1 max-w-[11rem] text-xs leading-5 text-slate-500">{plan.audience}</p>
         </div>
         {plan.recommended ? (
-          <span className="rounded-full border border-[#635bff]/20 bg-[#635bff]/10 px-2 py-0.5 text-[0.68rem] font-semibold text-[#3f37c9]">
+          <span className="shrink-0 rounded-full border border-[#635bff]/20 bg-[#635bff]/10 px-2 py-0.5 text-[0.68rem] font-semibold text-[#3f37c9]">
             Recommandé
           </span>
         ) : isComingSoon ? (
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.68rem] font-semibold text-amber-800">
+          <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.68rem] font-semibold text-amber-800">
             À venir
           </span>
         ) : null}
       </div>
 
-      <div className="mt-4 min-h-[4.5rem]">
+      <div className="mt-3 min-h-[4.5rem]">
         <p className="text-2xl font-semibold leading-tight text-slate-950">{priceLabel(plan, billing)}</p>
         <p className="mt-1 text-xs text-slate-600">
           {isComingSoon ? "Module en préparation" : isQuote ? plan.limitLabel : billing === "monthly" ? `${plan.yearlyPrice} € / an` : "2 mois offerts"}
@@ -268,9 +268,11 @@ export default function TarifsPage() {
 
           <section className="grid gap-4 lg:grid-cols-4">
             <article className="flex h-full flex-col rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <p className="text-sm font-semibold text-slate-900">Gratuit</p>
-              <p className="mt-1 text-xs text-emerald-800">Gestion manuelle</p>
-              <div className="mt-4 min-h-[4.5rem]">
+              <div className="min-h-[3.65rem]">
+                <p className="text-sm font-semibold text-slate-900">Gratuit</p>
+                <p className="mt-1 text-xs leading-5 text-emerald-800">Gestion manuelle</p>
+              </div>
+              <div className="mt-3 min-h-[4.5rem]">
                 <p className="text-2xl font-semibold leading-tight text-slate-950">0 €</p>
                 <p className="mt-1 text-xs text-slate-600">1 logement actif inclus</p>
               </div>
@@ -323,6 +325,22 @@ export default function TarifsPage() {
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le palier supérieur ajoute la vision investisseur : rentabilité, exports finance, aide à la déclaration et plans d’action.
               </p>
+            </div>
+          </section>
+
+          <section className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+            <div className="grid gap-4 lg:grid-cols-[0.85fr,1.15fr] lg:items-center">
+              <div>
+                <p className="text-sm font-semibold text-emerald-950">Un coût utile pour piloter votre location</p>
+                <p className="mt-2 text-sm leading-6 text-emerald-900">
+                  Pour un bailleur LMNP, Pinel ou investisseur locatif, lokt.fr sert à organiser les loyers, quittances, justificatifs,
+                  charges, états des lieux et exports. L’abonnement peut donc s’inscrire dans l’outillage de gestion du bien.
+                </p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-white/70 px-4 py-3 text-xs leading-5 text-emerald-950">
+                À vérifier selon votre situation : la déduction fiscale éventuelle dépend du régime choisi, de l’usage réel du service et de
+                la validation par votre expert-comptable ou conseil fiscal. lokt.fr aide à piloter, mais ne remplace pas un conseil fiscal personnalisé.
+              </div>
             </div>
           </section>
 

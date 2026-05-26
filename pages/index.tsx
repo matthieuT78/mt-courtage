@@ -866,12 +866,16 @@ export default function Home() {
                     Un logement actif gratuit. Starter ajoute les automatismes utiles. Essentiel ajoute le pilotage,
                     les exports et l’aide à la déclaration.
                   </p>
+                  <p className="mt-3 text-xs leading-5 text-slate-500">
+                    Pour un bailleur LMNP, Pinel ou investisseur locatif, l’abonnement peut s’analyser comme un outil de gestion du bien.
+                    La déduction éventuelle dépend de votre régime fiscal et doit être vérifiée avec votre expert-comptable.
+                  </p>
                 </div>
                 <div className="grid gap-3">
                   {[
-                    ["Gratuit", "1 logement actif", "0 €"],
-                    ["Starter", "Quittances automatiques · jusqu’à 3 logements", "4,90 € / mois"],
-                    ["Essentiel", "Pilotage & déclaration · jusqu’à 10 logements", "9,90 € / mois"],
+                    ["Gratuit", "1 logement actif · gestion manuelle", "0 €"],
+                    ["Starter", "Automatisation quittances · jusqu’à 3 logements", "4,90 € / mois"],
+                    ["Essentiel", "Finance, exports & déclaration · jusqu’à 10 logements", "9,90 € / mois"],
                   ].map(([plan, desc, price]) => (
                     <div key={plan} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div>
