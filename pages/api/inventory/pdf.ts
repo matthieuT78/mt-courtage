@@ -285,6 +285,8 @@ function buildHtmlPremiumEDL(params: {
 
   const headerLogo = logoDataUrl ? `<img class="logo" src="${logoDataUrl}" alt="lokt.fr" />` : `<div class="brandText">lokt<span>.fr</span></div>`;
   const footerLogo = logoDataUrl ? `<img class="footerLogo" src="${logoDataUrl}" alt="lokt.fr" />` : ``;
+  const followTone = totalDefects > 0 ? "warn" : "ok";
+  const followLabel = totalDefects > 0 ? `${totalDefects} point${totalDefects > 1 ? "s" : ""} à suivre` : "Aucun point critique";
 
   const notesHtml = generalNotes ? escapeHtml(generalNotes).replace(/\n/g, "<br/>") : "";
   const countersHtml = counters.length
@@ -348,21 +350,23 @@ function buildHtmlPremiumEDL(params: {
 
               const photoWrap = photosHtml ? `<div class="photos">${photosHtml}</div>` : "";
 
-              return `<tr>
-                <td class="colEl">
-                  <div class="elTitle">${escapeHtml(it.label || "—")}</div>
-                  <div class="muted small">Usure : ${escapeHtml(String(it.wear_level ?? "—"))}/5 • Gravité : ${escapeHtml(
+              return `<article class="itemCard ${important ? "important" : ""}">
+                <div class="itemTop">
+                  <div class="itemMain">
+                    <div class="elTitle">${escapeHtml(it.label || "—")}</div>
+                    <div class="muted small">Usure : ${escapeHtml(String(it.wear_level ?? "—"))}/5 • Gravité : ${escapeHtml(
                 String(it.severity ?? 0)
               )}/5</div>
-                </td>
-                <td class="colEtat"><span class="statePill ${conditionClass(it.condition)}">${escapeHtml(conditionLabel(it.condition))}</span></td>
-                <td class="colYN">${escapeHtml(yn(it.is_clean))}</td>
-                <td class="colYN">${escapeHtml(yn(it.is_functional))}</td>
-                <td class="colObs ${hasDefects ? "hasDefects" : ""}">
-                  ${obsHtml}
-                  ${photoWrap}
-                </td>
-              </tr>`;
+                  </div>
+                  <div class="itemBadges">
+                    <span class="statePill ${conditionClass(it.condition)}">${escapeHtml(conditionLabel(it.condition))}</span>
+                    <span class="miniBadge">Propre ${escapeHtml(yn(it.is_clean))}</span>
+                    <span class="miniBadge">Fonct. ${escapeHtml(yn(it.is_functional))}</span>
+                  </div>
+                </div>
+                <div class="colObs ${hasDefects ? "hasDefects" : ""}">${obsHtml}</div>
+                ${photoWrap}
+              </article>`;
             })
             .join("");
 
@@ -375,20 +379,7 @@ function buildHtmlPremiumEDL(params: {
 
           return `<div class="cat">
             <div class="catTitle">${escapeHtml(cat.name || "Autre")}</div>
-            <div class="tableWrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th class="colEl">Élément</th>
-                    <th class="colEtat">État</th>
-                    <th class="colYN">Propre</th>
-                    <th class="colYN">Fonct.</th>
-                    <th class="colObs">Observations</th>
-                  </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-              </table>
-            </div>
+            <div class="itemList">${rows}</div>
           </div>`;
         })
         .join("");
@@ -452,40 +443,29 @@ function buildHtmlPremiumEDL(params: {
 
                   const photoWrap = photosHtml ? `<div class="photos">${photosHtml}</div>` : "";
 
-                  return `<tr>
-                    <td class="colEl">
-                      <div class="elTitle">${escapeHtml(it.label || "—")}</div>
-                      <div class="muted small">Usure : ${escapeHtml(String(it.wear_level ?? "—"))}/5 • Gravité : ${escapeHtml(
+                  return `<article class="itemCard ${important ? "important" : ""}">
+                    <div class="itemTop">
+                      <div class="itemMain">
+                        <div class="elTitle">${escapeHtml(it.label || "—")}</div>
+                        <div class="muted small">Usure : ${escapeHtml(String(it.wear_level ?? "—"))}/5 • Gravité : ${escapeHtml(
                     String(it.severity ?? 0)
                   )}/5</div>
-                    </td>
-                    <td class="colEtat"><span class="statePill ${conditionClass(it.condition)}">${escapeHtml(conditionLabel(it.condition))}</span></td>
-                    <td class="colYN">${escapeHtml(yn(it.is_clean))}</td>
-                    <td class="colYN">${escapeHtml(yn(it.is_functional))}</td>
-                    <td class="colObs ${hasDefects ? "hasDefects" : ""}">
-                      ${obsHtml}
-                      ${photoWrap}
-                    </td>
-                  </tr>`;
+                      </div>
+                      <div class="itemBadges">
+                        <span class="statePill ${conditionClass(it.condition)}">${escapeHtml(conditionLabel(it.condition))}</span>
+                        <span class="miniBadge">Propre ${escapeHtml(yn(it.is_clean))}</span>
+                        <span class="miniBadge">Fonct. ${escapeHtml(yn(it.is_functional))}</span>
+                      </div>
+                    </div>
+                    <div class="colObs ${hasDefects ? "hasDefects" : ""}">${obsHtml}</div>
+                    ${photoWrap}
+                  </article>`;
                 })
                 .join("");
 
               return `<div class="cat">
                 <div class="catTitle">${escapeHtml(cat.name || "Autre")}</div>
-                <div class="tableWrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th class="colEl">Élément</th>
-                        <th class="colEtat">État</th>
-                        <th class="colYN">Propre</th>
-                        <th class="colYN">Fonct.</th>
-                        <th class="colObs">Observations</th>
-                      </tr>
-                    </thead>
-                    <tbody>${rows || ""}</tbody>
-                  </table>
-                </div>
+                <div class="itemList">${rows || `<div class="emptyBox">Aucun élément.</div>`}</div>
               </div>`;
             })
             .join("") || ""
@@ -501,8 +481,8 @@ function buildHtmlPremiumEDL(params: {
 <style>
   @page { size: A4; margin: 14mm; }
   :root{
-    --ink:#111827; --muted:#64748b; --line:#dbe4ee; --soft:#f8fafc;
-    --brand:#047857; --brandSoft:#ecfdf5; --danger:#b91c1c; --warn:#b45309;
+    --ink:#0f172a; --muted:#64748b; --line:#dbe4ee; --soft:#f8fafc;
+    --brand:#2563eb; --brand2:#06b6d4; --green:#047857; --brandSoft:#eff6ff; --danger:#b91c1c; --warn:#b45309;
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; padding:0; }
@@ -514,10 +494,10 @@ function buildHtmlPremiumEDL(params: {
 
   .header{
     display:flex; justify-content:space-between; gap:16px;
-    padding-bottom:12px; border-bottom:2px solid #0f172a;
+    padding-bottom:10px; border-bottom:1px solid #e2e8f0;
     align-items:flex-start;
   }
-  .logo{ height:34px; width:auto; object-fit:contain; }
+  .logo{ height:38px; width:auto; object-fit:contain; }
   .brandText{ font-weight:950; font-size:22px; letter-spacing:-0.03em; }
   .brandText span{ color:var(--brand); }
 
@@ -528,21 +508,30 @@ function buildHtmlPremiumEDL(params: {
 
   .hero{
     margin-top:14px;
-    border:1px solid var(--line);
-    border-radius:18px;
-    padding:16px;
-    background:linear-gradient(135deg,#f8fafc 0%,#ffffff 48%,#ecfdf5 100%);
+    border-radius:24px;
+    padding:20px;
+    color:white;
+    background:
+      radial-gradient(circle at 86% 18%, rgba(6,182,212,.62), transparent 30%),
+      linear-gradient(135deg,#111827 0%,#1e3a8a 54%,#0891b2 100%);
+    box-shadow:0 18px 44px rgba(15,23,42,.16);
   }
-  .docKicker{ font-size:10px; font-weight:900; letter-spacing:0.16em; text-transform:uppercase; color:var(--brand); }
-  .title{ margin-top:5px; font-size:25px; line-height:1.05; font-weight:950; letter-spacing:-0.035em; }
-  .legalNote{ margin-top:9px; max-width:92%; font-size:10.5px; line-height:1.45; color:#334155; }
+  .docKicker{ font-size:10px; font-weight:900; letter-spacing:0.16em; text-transform:uppercase; color:#bae6fd; }
+  .title{ margin-top:6px; max-width:82%; font-size:31px; line-height:1.02; font-weight:950; letter-spacing:-0.04em; }
+  .legalNote{ margin-top:10px; max-width:86%; font-size:11px; line-height:1.55; color:rgba(255,255,255,.84); }
   .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:13px; }
-  .stat{ border:1px solid var(--line); border-radius:13px; padding:9px; background:rgba(255,255,255,0.82); }
-  .statLabel{ font-size:8.5px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
-  .statValue{ margin-top:3px; font-size:15px; font-weight:950; color:var(--ink); }
+  .stat{ border:1px solid rgba(255,255,255,.28); border-radius:15px; padding:10px; background:rgba(255,255,255,0.13); backdrop-filter:blur(4px); }
+  .statLabel{ font-size:8px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,.72); }
+  .statValue{ margin-top:4px; font-size:17px; font-weight:950; color:white; }
+  .followPill{
+    display:inline-flex; align-items:center; margin-top:12px; border-radius:999px; padding:7px 10px;
+    font-size:10px; font-weight:900; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.24);
+  }
+  .followPill.ok{ color:#bbf7d0; }
+  .followPill.warn{ color:#fde68a; }
 
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
-  .card{ border:1px solid var(--line); border-radius:14px; padding:10px; background:#fff; }
+  .card{ border:1px solid var(--line); border-radius:16px; padding:12px; background:#fff; box-shadow:0 8px 20px rgba(15,23,42,.035); }
   .cardTitle{ font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:6px; }
   .kv{ font-size:11px; line-height:1.35; word-break:break-word; }
   .muted{ color:var(--muted); }
@@ -567,7 +556,7 @@ function buildHtmlPremiumEDL(params: {
   .infoValue{ margin-top:3px; font-size:11px; font-weight:800; color:var(--ink); word-break:break-word; }
 
   .toc{
-    margin-top:10px; border:1px solid var(--line); border-radius:14px; padding:10px; background:#fff;
+    margin-top:10px; border:1px solid var(--line); border-radius:16px; padding:12px; background:#fff;
   }
   .tocTitle{ font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:8px; }
   .tocRow{ display:flex; justify-content:space-between; gap:10px; border-top:1px solid var(--line); padding-top:6px; margin-top:6px; }
@@ -578,23 +567,25 @@ function buildHtmlPremiumEDL(params: {
   .tocRight{ font-size:11px; color:var(--muted); }
 
   .room{
-    break-before:page;
-    padding-top:2mm;
+    margin-top:10px;
+    break-inside:auto;
   }
+  .room:first-of-type{ margin-top:14px; }
   .roomHeader{
     display:flex; justify-content:space-between; gap:14px; align-items:flex-start;
-    border:1px solid var(--line); border-radius:14px; padding:10px; background:linear-gradient(135deg, #f8fafc, #ffffff, #ecfdf5);
+    border:1px solid #bfdbfe; border-radius:18px; padding:13px; background:linear-gradient(135deg, #eff6ff, #ffffff 58%, #ecfeff);
     margin-top:10px;
+    break-after:avoid;
   }
-  .roomKicker{ font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
-  .roomTitle{ font-size:16px; font-weight:900; margin-top:4px; }
+  .roomKicker{ font-size:9px; font-weight:900; letter-spacing:0.14em; text-transform:uppercase; color:var(--brand); }
+  .roomTitle{ font-size:19px; font-weight:950; margin-top:4px; letter-spacing:-0.02em; }
   .roomCount{
     white-space:nowrap;
-    border:1px solid #bbf7d0;
+    border:1px solid #bfdbfe;
     border-radius:999px;
-    background:#ecfdf5;
-    color:#047857;
-    padding:5px 9px;
+    background:white;
+    color:#1d4ed8;
+    padding:6px 10px;
     font-size:10px;
     font-weight:900;
   }
@@ -602,38 +593,21 @@ function buildHtmlPremiumEDL(params: {
   .cat{ margin-top:10px; }
   .catTitle{
     font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase;
-    background:var(--soft); border:1px solid var(--line); border-radius:12px;
-    padding:8px 10px;
+    background:#0f172a; border:1px solid #0f172a; color:white; border-radius:14px;
+    padding:9px 11px;
+    break-after:avoid;
   }
 
-  .tableWrap{
-    margin-top:8px;
-    border:1px solid var(--line); border-radius:14px; overflow:hidden;
+  .itemList{ margin-top:8px; display:grid; gap:8px; }
+  .itemCard{
+    border:1px solid var(--line); border-radius:16px; padding:10px;
+    background:#fff; break-inside:avoid; box-shadow:0 6px 16px rgba(15,23,42,.035);
   }
-  table{ width:100%; border-collapse:collapse; font-size:11px; }
-  thead th{
-    background:#fff;
-    text-align:left;
-    padding:8px 10px;
-    border-bottom:1px solid var(--line);
-    color:var(--muted);
-    font-size:10px;
-    letter-spacing:0.08em;
-    text-transform:uppercase;
-  }
-  tbody td{
-    padding:8px 10px;
-    border-top:1px solid #f1f5f9;
-    vertical-align:top;
-  }
-  tbody tr:nth-child(even) td{ background:#fcfcfd; }
-
-  .colEl{ width:32%; }
-  .colEtat{ width:14%; }
-  .colYN{ width:8%; }
-  .colObs{ width:38%; }
-
-  .elTitle{ font-weight:800; }
+  .itemCard.important{ border-color:#fecaca; background:linear-gradient(180deg,#fff,#fff7f7); }
+  .itemTop{ display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+  .itemMain{ min-width:0; }
+  .itemBadges{ display:flex; flex-wrap:wrap; justify-content:flex-end; gap:5px; max-width:46%; }
+  .elTitle{ font-weight:900; font-size:12px; }
   .statePill{
     display:inline-flex;
     border-radius:999px;
@@ -644,9 +618,14 @@ function buildHtmlPremiumEDL(params: {
     background:#f8fafc;
     color:#334155;
   }
-  .statePill.ok{ border-color:#bbf7d0; background:#ecfdf5; color:#047857; }
+  .statePill.ok{ border-color:#bbf7d0; background:#ecfdf5; color:var(--green); }
   .statePill.warn{ border-color:#fed7aa; background:#fff7ed; color:var(--warn); }
   .statePill.bad{ border-color:#fecaca; background:#fef2f2; color:var(--danger); }
+  .miniBadge{
+    display:inline-flex; border-radius:999px; padding:4px 7px; font-size:9.5px; font-weight:800;
+    border:1px solid #e2e8f0; background:#f8fafc; color:#475569;
+  }
+  .colObs{ margin-top:8px; border-top:1px solid #eef2f7; padding-top:8px; font-size:11px; line-height:1.45; color:#334155; }
   .hasDefects{ color:var(--ink); }
   .hasDefects b, .hasDefects strong{ color:var(--danger); }
 
@@ -722,6 +701,7 @@ function buildHtmlPremiumEDL(params: {
       <div class="stat"><div class="statLabel">Pièces complétées</div><div class="statValue">${completedRooms}/${totalRooms || 0}</div></div>
       <div class="stat"><div class="statLabel">Points à suivre</div><div class="statValue">${totalDefects}</div></div>
     </div>
+    <div class="followPill ${followTone}">${escapeHtml(followLabel)}</div>
   </section>
 
   <div class="grid2">

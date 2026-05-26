@@ -44,6 +44,17 @@ type Receipt = {
   created_at: string | null;
 };
 
+type InventoryReportLite = {
+  id: string;
+  user_id: string;
+  lease_id: string;
+  report_type: string | null;
+  status: string | null;
+  pdf_url: string | null;
+  performed_at: string | null;
+  created_at: string | null;
+};
+
 type UserLite = {
   id: string;
   email?: string | null;
@@ -78,16 +89,19 @@ export default function TestQuittancePage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [reports, setReports] = useState<InventoryReportLite[]>([]);
 
   const [leaseId, setLeaseId] = useState("");
   const [periodStart, setPeriodStart] = useState(isoDate(monthStart()));
   const [periodEnd, setPeriodEnd] = useState(isoDate(monthEnd()));
   const [receiptId, setReceiptId] = useState("");
+  const [reportId, setReportId] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [lastJson, setLastJson] = useState<any>(null);
   const [lastPdfUrl, setLastPdfUrl] = useState<string | null>(null);
+  const [lastEdlPdfUrl, setLastEdlPdfUrl] = useState<string | null>(null);
   const [lastReceiptId, setLastReceiptId] = useState<string | null>(null);
   const [confirmUrl, setConfirmUrl] = useState<string | null>(null);
   const [confirmToken, setConfirmToken] = useState<string | null>(null);
@@ -96,6 +110,7 @@ export default function TestQuittancePage() {
   const tenantById = useMemo(() => new Map(tenants.map((t) => [t.id, t])), [tenants]);
   const selectedLease = useMemo(() => leases.find((l) => l.id === leaseId) || null, [leases, leaseId]);
   const selectedReceipt = useMemo(() => receipts.find((r) => r.id === receiptId) || null, [receipts, receiptId]);
+  const selectedReport = useMemo(() => reports.find((r) => r.id === reportId) || null, [reports, reportId]);
 
   useEffect(() => {
     let mounted = true;
@@ -157,7 +172,7 @@ export default function TestQuittancePage() {
     setLoading("refresh");
     setErr(null);
     try {
-      const [leaseRes, propertyRes, tenantRes, receiptRes] = await Promise.all([
+      const [leaseRes, propertyRes, tenantRes, receiptRes, reportRes] = await Promise.all([
         supabase.from("leases").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("properties").select("id,label,city").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("tenants").select("id,full_name,email").eq("user_id", user.id).order("created_at", { ascending: false }),
@@ -166,22 +181,32 @@ export default function TestQuittancePage() {
           .select("id,lease_id,period_start,period_end,total_amount,status,pdf_url,sent_at,sent_to_tenant_email,send_error,created_at")
           .order("created_at", { ascending: false })
           .limit(50),
+        supabase
+          .from("inventory_reports")
+          .select("id,user_id,lease_id,report_type,status,pdf_url,performed_at,created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(30),
       ]);
 
       if (leaseRes.error) throw leaseRes.error;
       if (propertyRes.error) throw propertyRes.error;
       if (tenantRes.error) throw tenantRes.error;
       if (receiptRes.error) throw receiptRes.error;
+      if (reportRes.error) throw reportRes.error;
 
       const nextLeases = (leaseRes.data as Lease[]) || [];
       const nextReceipts = (receiptRes.data as Receipt[]) || [];
+      const nextReports = (reportRes.data as InventoryReportLite[]) || [];
       setLeases(nextLeases);
       setProperties((propertyRes.data as Property[]) || []);
       setTenants((tenantRes.data as Tenant[]) || []);
       setReceipts(nextReceipts);
+      setReports(nextReports);
 
       if (!leaseId && nextLeases[0]?.id) setLeaseId(nextLeases[0].id);
       if (!receiptId && nextReceipts[0]?.id) setReceiptId(nextReceipts[0].id);
+      if (!reportId && nextReports[0]?.id) setReportId(nextReports[0].id);
     } catch (e: any) {
       setErr(e?.message || "Chargement impossible.");
     } finally {
@@ -208,6 +233,8 @@ export default function TestQuittancePage() {
         setLastReceiptId(json.receipt_id);
       }
       if (json?.signedUrl) setLastPdfUrl(json.signedUrl);
+      if (json?.reportId || json?.report_id) setReportId(json.reportId || json.report_id);
+      if (json?.edlSignedUrl) setLastEdlPdfUrl(json.edlSignedUrl);
       if (json?.confirmUrl) setConfirmUrl(json.confirmUrl);
       if (json?.token) setConfirmToken(json.token);
       setOk("Action executee. Si un PDF a ete genere, le lien apparait ci-dessous.");
@@ -320,6 +347,180 @@ export default function TestQuittancePage() {
       popupOpened: !!opened,
       message: "Lien ouvert. Cette page confirme le paiement, genere la quittance et tente l'envoi au locataire.",
     };
+  };
+
+  const getEdlSignedUrl = async (nextReportId: string) => {
+    if (!user?.id) throw new Error("Utilisateur introuvable.");
+    const resp = await fetch(`/api/inventory/pdf-url?reportId=${encodeURIComponent(nextReportId)}&userId=${encodeURIComponent(user.id)}`, {
+      method: "GET",
+      headers: await authHeaders(),
+    });
+    return parseResponse(resp);
+  };
+
+  const createTestEdl = async () => {
+    if (!supabase || !user?.id || !leaseId) throw new Error("Choisis un bail.");
+
+    const lease = leases.find((l) => l.id === leaseId);
+    const property = lease?.property_id ? propertyById.get(lease.property_id) : null;
+    const tenant = lease?.tenant_id ? tenantById.get(lease.tenant_id) : null;
+
+    const { data: existingReport, error: existingReportError } = await supabase
+      .from("inventory_reports")
+      .select("id,status")
+      .eq("user_id", user.id)
+      .eq("lease_id", leaseId)
+      .eq("report_type", "entry")
+      .maybeSingle();
+
+    if (existingReportError) throw existingReportError;
+
+    let nextReportId = (existingReport as any)?.id as string | undefined;
+    let shouldSeedDemoData = false;
+
+    if (!nextReportId) {
+      const { data: report, error: reportError } = await supabase
+      .from("inventory_reports")
+      .insert({
+        user_id: user.id,
+        lease_id: leaseId,
+        report_type: "entry",
+        status: "ready",
+        performed_at: new Date().toISOString(),
+        performed_place: property?.city || "Dans le logement",
+        counters_json: {
+          electricity: "HP 12 458 / HC 3 812",
+          water: "00218 m3",
+          gas: "Non concerne",
+          keys: "2 jeux de cles + 1 badge immeuble",
+          badges: "1 badge immeuble",
+          remotes: "1 telecommande parking",
+        },
+        general_notes: `EDL de test genere depuis /test-quittance pour valider le rendu PDF. Locataire test : ${tenant?.full_name || "locataire"}.`,
+        pdf_url: null,
+      })
+      .select("id")
+      .single();
+
+      if (reportError) throw reportError;
+      nextReportId = (report as any).id as string;
+      shouldSeedDemoData = true;
+    } else {
+      const { data: existingRooms, error: existingRoomsError } = await supabase
+        .from("inventory_rooms")
+        .select("id")
+        .eq("report_id", nextReportId)
+        .limit(1);
+
+      if (existingRoomsError) throw existingRoomsError;
+      shouldSeedDemoData = !existingRooms?.length;
+
+      const { error: readyError } = await supabase
+        .from("inventory_reports")
+        .update({ status: "ready", updated_at: new Date().toISOString() })
+        .eq("id", nextReportId)
+        .eq("user_id", user.id);
+
+      if (readyError) throw readyError;
+    }
+
+    if (!nextReportId) throw new Error("Impossible de creer ou retrouver l'EDL de test.");
+
+    if (shouldSeedDemoData) {
+      const roomsPayload = [
+        { report_id: nextReportId, name: "Entree", floor_level: "RDC", notes: "Sol propre, peinture en bon etat.", sort_order: 1 },
+        { report_id: nextReportId, name: "Sejour", floor_level: "RDC", notes: "Piece lumineuse, mobilier en place.", sort_order: 2 },
+        { report_id: nextReportId, name: "Cuisine equipee", floor_level: "RDC", notes: "Equipements testes et fonctionnels.", sort_order: 3 },
+        { report_id: nextReportId, name: "Chambre", floor_level: "RDC", notes: "Literie complete pour location meublee.", sort_order: 4 },
+        { report_id: nextReportId, name: "Salle de bain", floor_level: "RDC", notes: "Robinetterie testee, ventilation a surveiller.", sort_order: 5 },
+      ];
+
+      const { data: rooms, error: roomsError } = await supabase.from("inventory_rooms").insert(roomsPayload).select("id,name");
+      if (roomsError) throw roomsError;
+
+      const roomByName = new Map(((rooms as Array<{ id: string; name: string }>) || []).map((room) => [room.name, room.id]));
+      const item = (
+        roomName: string,
+        category: string,
+        label: string,
+        condition: "tres_bon" | "bon" | "moyen" | "mauvais",
+        wearLevel: number,
+        isClean = true,
+        isFunctional = true,
+        description = "",
+        defectTags: string[] = [],
+        severity = 0
+      ) => ({
+        report_id: nextReportId,
+        room_id: roomByName.get(roomName) || null,
+        category,
+        label,
+        condition,
+        wear_level: wearLevel,
+        is_clean: isClean,
+        is_functional: isFunctional,
+        description,
+        defect_tags: defectTags,
+        recommended_action: null,
+        estimated_cost: null,
+        severity,
+      });
+
+      const itemsPayload = [
+        item("Entree", "Structure", "Porte d'entree trois points", "bon", 1, true, true, "Ouverture et fermeture controlees."),
+        item("Entree", "Structure", "Interphone", "bon", 1),
+        item("Entree", "Sols et murs", "Sol entree", "tres_bon", 0),
+        item("Sejour", "Mobilier", "Canape convertible", "bon", 1, true, true, "Assise propre, mecanisme fonctionnel."),
+        item("Sejour", "Mobilier", "Table basse et meuble TV", "bon", 1),
+        item("Sejour", "Electricite", "Luminaire principal", "tres_bon", 0),
+        item("Cuisine equipee", "Electromenager", "Plaques de cuisson", "bon", 1, true, true, "Test allumage OK."),
+        item("Cuisine equipee", "Electromenager", "Refrigerateur", "bon", 1, true, true, "Propre, froid constate."),
+        item("Cuisine equipee", "Equipement LMNP", "Vaisselle - 12 assiettes, 12 verres, couverts", "tres_bon", 0),
+        item("Cuisine equipee", "Equipement LMNP", "Ustensiles de cuisine et casseroles", "bon", 1),
+        item("Chambre", "Mobilier", "Lit 140 cm avec matelas", "bon", 1, true, true, "Matelas protege par housse."),
+        item("Chambre", "Equipement LMNP", "Couette, oreillers et linge de lit", "bon", 1),
+        item("Chambre", "Rangement", "Placard avec cintres", "bon", 1),
+        item("Salle de bain", "Sanitaires", "Lavabo et mitigeur", "moyen", 2, true, true, "Joint silicone a reprendre sous 3 mois.", ["Joint a surveiller"], 2),
+        item("Salle de bain", "Sanitaires", "Douche", "bon", 1, true, true, "Ecoulement correct."),
+        item("Salle de bain", "Sanitaires", "WC", "bon", 1),
+      ];
+
+      const { error: itemsError } = await supabase.from("inventory_items").insert(itemsPayload);
+      if (itemsError) throw itemsError;
+    }
+
+    const pdfResp = await fetch("/api/inventory/pdf", {
+      method: "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify({ userId: user.id, reportId: nextReportId }),
+    });
+    const pdfJson = await parseResponse(pdfResp);
+    const signed = await getEdlSignedUrl(nextReportId);
+
+    if (signed.signedUrl) {
+      setLastEdlPdfUrl(signed.signedUrl);
+      window.open(signed.signedUrl, "_blank", "noopener,noreferrer");
+    }
+
+    return {
+      ok: true,
+      reportId: nextReportId,
+      edlSignedUrl: signed.signedUrl,
+      pdf: pdfJson,
+      message: shouldSeedDemoData
+        ? "EDL de test cree, finalise et PDF genere."
+        : "Un EDL d'entree existait deja pour ce bail : il a ete reutilise et le PDF a ete regenere.",
+    };
+  };
+
+  const openEdlPdf = async () => {
+    if (!reportId) throw new Error("Choisis ou cree un EDL.");
+    const signed = await getEdlSignedUrl(reportId);
+    if (signed.signedUrl) {
+      setLastEdlPdfUrl(signed.signedUrl);
+      window.open(signed.signedUrl, "_blank", "noopener,noreferrer");
+    }
+    return { ok: true, reportId, edlSignedUrl: signed.signedUrl };
   };
 
   if (checking) {
@@ -495,6 +696,79 @@ export default function TestQuittancePage() {
                   type="button"
                   onClick={() => navigator.clipboard?.writeText(confirmUrl)}
                   className="rounded-lg border border-teal-300 bg-white px-4 py-2 text-xs font-semibold text-teal-900 hover:bg-teal-100"
+                >
+                  Copier le lien
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold">Test etat des lieux</h2>
+              <p className="mt-1 max-w-2xl text-sm text-slate-600">
+                Cree un EDL d'entree complet avec pieces, mobilier LMNP, compteurs et un point a suivre, puis genere le PDF avec le template actuel.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button disabled={!!loading || !leaseId} onClick={() => runAction("edl-test", createTestEdl)} className={`${buttonBase} border-violet-300 bg-violet-50 text-violet-950 hover:bg-violet-100`}>
+                Creer EDL test + PDF
+              </button>
+              <button disabled={!!loading || !reportId} onClick={() => runAction("edl-open", openEdlPdf)} className={`${buttonBase} border-slate-300 bg-white text-slate-800 hover:bg-slate-50`}>
+                Ouvrir PDF EDL
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">EDL recent</label>
+              <select value={reportId} onChange={(e) => setReportId(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option value="">Selectionner</option>
+                {reports.map((report) => (
+                  <option key={report.id} value={report.id}>
+                    {report.report_type === "exit" ? "Sortie" : "Entree"} - {report.status || "-"} - {report.performed_at ? report.performed_at.slice(0, 10) : report.id.slice(0, 8)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedReport ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                <p>
+                  <span className="font-semibold">ID :</span> {selectedReport.id}
+                </p>
+                <p>
+                  <span className="font-semibold">Statut :</span> {selectedReport.status || "-"} · <span className="font-semibold">PDF :</span>{" "}
+                  {selectedReport.pdf_url ? "present" : "absent"}
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">Aucun EDL selectionne.</div>
+            )}
+          </div>
+
+          {lastEdlPdfUrl ? (
+            <div className="mt-4 rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-950">
+              <p className="font-semibold">PDF EDL prêt</p>
+              <p className="mt-1">
+                EDL : <span className="font-mono text-xs">{reportId || "-"}</span>
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <a
+                  href={lastEdlPdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg bg-violet-700 px-4 py-2 text-xs font-semibold text-white hover:bg-violet-600"
+                >
+                  Voir le PDF EDL
+                </a>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(lastEdlPdfUrl)}
+                  className="rounded-lg border border-violet-300 bg-white px-4 py-2 text-xs font-semibold text-violet-900 hover:bg-violet-100"
                 >
                   Copier le lien
                 </button>
