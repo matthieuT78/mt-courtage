@@ -53,7 +53,9 @@ export default function RepairsGuideCard() {
 
   const grouped = useMemo(() => groupBySide(filtered), [filtered]);
 
-  const pdfHref = "/docs/guide-reparations-locatives.pdf";
+  const pdfHref =
+    "https://www.caf.fr/sites/default/files/medias/911/Logement/Votre%20habitation%20qui%20r%C3%A9pare%20qui%20entretient.pdf";
+  const decreeHref = "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000522461";
 
   return (
     <section className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -69,11 +71,11 @@ export default function RepairsGuideCard() {
               Réparations locatives : qui répare, qui entretient ?
             </h3>
             <p className="mt-1 text-sm text-slate-600 max-w-2xl">
-              Recherche rapide (ex : “robinet”, “serrure”, “VMC”, “volet”). Puis ouvre le guide officiel complet si besoin.
+              Recherche rapide avant de qualifier une dégradation : entretien courant, vétusté, remplacement ou réparation imputable.
             </p>
           </div>
 
-          <div className="shrink-0 flex gap-2">
+          <div className="shrink-0 flex flex-wrap gap-2">
             <a
               href={pdfHref}
               target="_blank"
@@ -81,6 +83,14 @@ export default function RepairsGuideCard() {
               className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
             >
               Ouvrir le guide PDF
+            </a>
+            <a
+              href={decreeHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Base légale
             </a>
           </div>
         </div>
@@ -93,7 +103,7 @@ export default function RepairsGuideCard() {
             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900/20"
           />
           <p className="mt-2 text-[0.75rem] text-slate-500">
-            Source : guide illustré “Votre habitat — Qui répare, qui entretient ?”
+            Source : guide illustré “Votre habitat — Qui répare, qui entretient ?” et décret n°87-712 du 26 août 1987.
           </p>
         </div>
 
@@ -135,7 +145,8 @@ export default function RepairsGuideCard() {
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-xs text-slate-600">
-            Astuce : en cas de litige, garde le PDF en pièce jointe dans l’échange (mise en demeure / état des lieux / retenue).
+            Astuce : en sortie, qualifie toujours la cause avant retenue sur dépôt de garantie : usure normale, défaut d’entretien,
+            casse, remplacement ou réparation propriétaire.
           </p>
         </div>
       </div>

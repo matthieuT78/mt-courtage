@@ -11,6 +11,7 @@ import {
 import { supabase } from "../../../lib/supabaseClient";
 import type { Property } from "../../../lib/landlord/types";
 import { usePermissions } from "../../PermissionProvider";
+import { planAllowsPerformance } from "../../../lib/permissions";
 
 type Regime = "lmnp_micro" | "lmnp_reel" | "nu_micro" | "nu_reel" | "pinel";
 type LocationKind = "meuble_longue" | "meuble_saisonnier";
@@ -91,8 +92,8 @@ function Field({ label, value, onChange }: { label: string; value: number; onCha
 }
 
 export function SectionDeclaration({ userId, properties }: Props) {
-  const { loading: permissionsLoading, plan, canUseLandlord } = usePermissions();
-  const isPremium = canUseLandlord;
+  const { loading: permissionsLoading, plan } = usePermissions();
+  const isPremium = planAllowsPerformance(plan);
 
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";

@@ -9,12 +9,13 @@ import { SectionLocataires } from "./sections/SectionLocataires";
 import { SectionBaux } from "./sections/SectionBaux";
 import { SectionQuittances } from "./sections/SectionQuittances";
 import { SectionFinance } from "./sections/SectionFinance";
+import { SectionPerformance } from "./sections/SectionPerformance";
 import { SectionEtatDesLieux } from "./sections/SectionEtatDesLieux";
 import { SectionInventaire } from "./sections/SectionInventaire";
 import { SectionDeclaration } from "./sections/SectionDeclaration";
 import { SectionSimulateursBailleur } from "./sections/SectionSimulateursBailleur";
 import { usePermissions } from "../PermissionProvider";
-import { planAllowsLandlord } from "../../lib/permissions";
+import { planAllowsLandlord, planAllowsPerformance } from "../../lib/permissions";
 
 export function DashboardShell(props: any) {
   const router = useRouter();
@@ -52,6 +53,7 @@ export function DashboardShell(props: any) {
   const propertyLimitLabel = maxActiveProperties >= 999999 ? "illimité" : `${maxActiveProperties} logement${maxActiveProperties > 1 ? "s" : ""}`;
   const isFreePlan = plan === "calc_full";
   const canUsePaidLandlordTools = planAllowsLandlord(plan);
+  const canUsePerformance = planAllowsPerformance(plan);
 
   const rentFeedback = useMemo(() => {
     const result = typeof router.query.rentResult === "string" ? router.query.rentResult : "";
@@ -100,6 +102,7 @@ export function DashboardShell(props: any) {
       "baux",
       "quittances",
       "finance",
+      "performance",
       "simulateurs",
       "etat_des_lieux",
       "inventaire",
@@ -113,6 +116,14 @@ export function DashboardShell(props: any) {
       router.push("/mon-compte/abonnement?source=simulateurs-bailleur");
       return;
     }
+    if (k === "performance" && !permissionsLoading && !canUsePerformance) {
+      router.push("/mon-compte/abonnement?source=performance");
+      return;
+    }
+    if (k === "declaration" && !permissionsLoading && !canUsePerformance) {
+      router.push("/mon-compte/abonnement?source=declaration");
+      return;
+    }
     setActive(k);
   };
 
@@ -120,7 +131,13 @@ export function DashboardShell(props: any) {
     if (active === "simulateurs" && !permissionsLoading && !canUsePaidLandlordTools) {
       router.push("/mon-compte/abonnement?source=simulateurs-bailleur");
     }
-  }, [active, canUsePaidLandlordTools, permissionsLoading, router]);
+    if (active === "performance" && !permissionsLoading && !canUsePerformance) {
+      router.push("/mon-compte/abonnement?source=performance");
+    }
+    if (active === "declaration" && !permissionsLoading && !canUsePerformance) {
+      router.push("/mon-compte/abonnement?source=declaration");
+    }
+  }, [active, canUsePaidLandlordTools, canUsePerformance, permissionsLoading, router]);
 
   const content = useMemo(() => {
     if (!userId) {
@@ -201,6 +218,9 @@ export function DashboardShell(props: any) {
             onRefresh={refresh}
           />
         );
+
+      case "performance":
+        return <SectionPerformance userId={userId} leases={leases} payments={payments} propertyById={propertyById} />;
 
       case "simulateurs":
         return <SectionSimulateursBailleur plan={plan} />;

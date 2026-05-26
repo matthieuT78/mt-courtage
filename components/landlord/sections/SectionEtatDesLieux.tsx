@@ -16,6 +16,7 @@ import {
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
+import RepairsGuideCard from "../RepairsGuideCard";
 
 /* ======================================================
    TYPES
@@ -2504,6 +2505,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
           ))}
         </div>
       </div>
+
+      <RepairsGuideCard />
 
       {/* zone messages : réserve la place => évite layout shift (scroll jump) */}
       <div className="min-h-[44px] space-y-2" style={{ overflowAnchor: "none" }}>

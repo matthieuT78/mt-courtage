@@ -9,6 +9,7 @@ export type LandlordSectionKey =
   | "etat_des_lieux"
   | "quittances"
   | "finance"
+  | "performance"
   | "inventaire"
   | "simulateurs"
   | "documents"
@@ -25,7 +26,6 @@ export function SidebarNav({
   active,
   onChange,
   healthScore,
-  overLimit,
 }: {
   active: LandlordSectionKey;
   onChange: (k: LandlordSectionKey) => void;
@@ -52,21 +52,18 @@ export function SidebarNav({
     { key: "locataires", label: "Locataires", icon: "👤" },
     { key: "biens", label: "Biens", icon: "🏠" },
     { key: "baux", label: "Baux", icon: "📄" },
-    { key: "etat_des_lieux", label: "État des lieux", icon: "📝", badge: <Pill tone="indigo">Nouveau</Pill> },
+    { key: "etat_des_lieux", label: "État des lieux", icon: "📝" },
     { key: "quittances", label: "Quittances", icon: "🧾" },
     { key: "finance", label: "Finance", icon: "📊" },
-    { key: "simulateurs", label: "Simulateurs bailleur", icon: "🧮", badge: <Pill tone="amber">Payant</Pill> },
-    { key: "inventaire", label: "Inventaire", icon: "📦", badge: <Pill tone="indigo">Nouveau</Pill> },
+    { key: "performance", label: "Performance", icon: "📈" },
+    { key: "simulateurs", label: "Simulateurs bailleur", icon: "🧮" },
+    { key: "inventaire", label: "Inventaire", icon: "📦" },
 
-    // ✅ NEW
     {
       key: "declaration",
       label: "Aide à la déclaration",
       icon: "🧾",
-      badge: overLimit ? <Pill tone="amber">Pro</Pill> : <Pill tone="indigo">Guide</Pill>,
     },
-
-    // ❌ supprimé : revision / compteurs / parametres
   ];
 
   const go = (e: React.SyntheticEvent, key: LandlordSectionKey) => {

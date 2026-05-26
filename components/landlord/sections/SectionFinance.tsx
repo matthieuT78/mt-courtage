@@ -75,6 +75,9 @@ type PropertyFinance = {
 
   loan_monthly: number | null;
   loan_insurance_monthly: number | null;
+  loan_rate_percent?: number | null;
+  loan_remaining_months?: number | null;
+  tax_regime?: string | null;
 
   fixed_charges_monthly: number | null;
   property_tax_yearly: number | null;
@@ -170,6 +173,88 @@ function MiniBar({ value, max, label }: { value: number; max: number; label: str
   );
 }
 
+const RECOVERABLE_CHARGES = [
+  {
+    title: "Ascenseur",
+    items: ["électricité", "visites et entretien courant", "menues réparations et petit matériel"],
+  },
+  {
+    title: "Eau & chauffage collectif",
+    items: ["eau froide / chaude", "énergie", "exploitation, entretien courant et menues réparations"],
+  },
+  {
+    title: "Installations individuelles",
+    items: ["entretien chauffage / eau chaude", "réglages", "petites réparations de robinetterie et chasse d’eau"],
+  },
+  {
+    title: "Parties communes",
+    items: ["électricité", "produits d’entretien", "minuterie, tapis, propreté et petit matériel"],
+  },
+  {
+    title: "Extérieurs & hygiène",
+    items: ["espaces verts et abords", "aires de jeux", "sacs, désinsectisation, élimination des rejets"],
+  },
+  {
+    title: "Taxes récupérables",
+    items: ["taxe ou redevance d’enlèvement des ordures ménagères", "taxe de balayage"],
+  },
+];
+
+function RecoverableChargesGuide() {
+  return (
+    <section id="finance-charges" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <ChapterHeader
+        eyebrow="02 · Charges récupérables"
+        title="Savoir ce qui peut être refacturé au locataire"
+        desc="Un mémo pratique pour classer les charges sans confondre dépense propriétaire, charge récupérable et fiscalité."
+      />
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr,360px]">
+        <div className="grid gap-3 md:grid-cols-2">
+          {RECOVERABLE_CHARGES.map((group) => (
+            <div key={group.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-semibold text-slate-950">{group.title}</p>
+              <ul className="mt-2 space-y-1.5 text-xs leading-5 text-slate-600">
+                {group.items.map((item) => (
+                  <li key={item} className="flex gap-2">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <aside className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm font-semibold text-amber-950">Règle de pilotage lokt.fr</p>
+          <p className="mt-2 text-sm leading-6 text-amber-900">
+            Quand vous saisissez une dépense, classez-la d’abord comme dépense propriétaire. Ne la marquez récupérable que
+            si elle correspond à la liste du décret ou au décompte de copropriété.
+          </p>
+          <div className="mt-4 space-y-2 text-xs leading-5 text-amber-900">
+            <p>
+              <span className="font-semibold">À ne pas mélanger :</span> taxe foncière, assurance PNO, intérêts d’emprunt,
+              gros travaux et vétusté restent en principe des charges propriétaire.
+            </p>
+            <p>
+              <span className="font-semibold">À conserver :</span> justificatif, décompte de copropriété, facture et période concernée.
+            </p>
+          </div>
+          <a
+            href="https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000000333863"
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex items-center justify-center rounded-full bg-amber-950 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-900"
+          >
+            Voir le décret 87-713
+          </a>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
 const CATEGORIES: Array<{ value: string; label: string; dir?: TxDirection }> = [
   { value: "rent", label: "Loyer (quittance)", dir: "in" },
   { value: "fees", label: "Frais plateforme / conciergerie", dir: "out" },
@@ -207,45 +292,6 @@ const csvCell = (value: string | number | null | undefined) => {
   const raw = value == null ? "" : String(value);
   return `"${raw.replace(/"/g, '""')}"`;
 };
-
-function actionPlanForProperty(r: {
-  label: string;
-  cashflow: number;
-  yieldNet: number;
-  income: number;
-  expense: number;
-  loan: number;
-  fixed: number;
-  taxM: number;
-  lmnpRecurring: number;
-  invest: number;
-}) {
-  const actions: string[] = [];
-
-  if (r.invest <= 0) {
-    actions.push("Renseigner le prix d'achat, les frais et les travaux pour calculer une rentabilité fiable.");
-  }
-  if (r.loan <= 0) {
-    actions.push("Ajouter la mensualité de crédit pour obtenir un cashflow réel, pas seulement locatif.");
-  }
-  if (r.taxM <= 0) {
-    actions.push("Ajouter la taxe foncière annuelle : elle pèse souvent fortement sur la performance nette.");
-  }
-  if (r.cashflow < 0) {
-    actions.push("Identifier les charges qui tirent le bien sous zéro et vérifier si le loyer est encore au prix du marché.");
-  }
-  if (r.expense > r.income * 0.35 && r.income > 0) {
-    actions.push("Les dépenses représentent plus de 35% des recettes du mois : isoler travaux, copropriété ou frais récurrents.");
-  }
-  if (r.invest > 0 && r.yieldNet < 0.025) {
-    actions.push("Rentabilité nette faible : simuler une hausse de loyer, une réduction de charges ou un arbitrage du bien.");
-  }
-  if (r.cashflow > 0 && r.invest > 0 && r.yieldNet >= 0.04) {
-    actions.push("Bien performant : conserver le suivi, surveiller la vacance et documenter les charges pour la déclaration.");
-  }
-
-  return actions.slice(0, 3);
-}
 
 export function SectionFinance({ userId, leases, payments, receipts, propertyById, onRefresh }: Props) {
   // 🎨 lokt.fr
@@ -1048,18 +1094,18 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   };
 
   const chapters = [
-    { href: "#finance-periode", number: "01", label: "Période", sub: periodLabel },
-    { href: "#finance-pilotage", number: "02", label: "Pilotage", sub: "KPIs & actions" },
-    { href: "#finance-ecritures", number: "03", label: "Écritures", sub: `${filteredLedgerSummary.count} ligne${filteredLedgerSummary.count > 1 ? "s" : ""}` },
-    { href: "#finance-performance", number: "04", label: "Performance", sub: `${perProperty.length} bien${perProperty.length > 1 ? "s" : ""}` },
+    { href: "#finance-ecritures", number: "01", label: "Écritures", sub: `${filteredLedgerSummary.count} ligne${filteredLedgerSummary.count > 1 ? "s" : ""}` },
+    { href: "#finance-charges", number: "02", label: "Charges", sub: "Récupérables" },
+    { href: "#finance-periode", number: "03", label: "Période", sub: periodLabel },
+    { href: "#finance-pilotage", number: "04", label: "Synthèse", sub: "Lecture rapide" },
   ];
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm sm:p-5 space-y-5">
       <SectionTitle
         kicker="Finance"
-        title="Rentabilité & pilotage financier"
-        desc="Suivez les recettes, les dépenses, le cashflow et les actions à mener pour améliorer la performance de vos biens."
+        title="Écritures & suivi financier"
+        desc="La priorité ici : saisir, retrouver et exporter les recettes et dépenses. La période et la synthèse servent de filtres de lecture."
       />
 
       {!userId ? (
@@ -1068,34 +1114,158 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
       ) : null}
 
-      <nav className="sticky top-3 z-20 -mx-1 overflow-x-auto rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur">
-        <div className="flex min-w-max gap-2">
+      <nav className="sticky top-3 z-20 -mx-1 overflow-x-auto rounded-[1.75rem] border border-slate-200 bg-white/85 p-1.5 shadow-sm backdrop-blur">
+        <div className="grid min-w-[760px] grid-cols-4 gap-1">
           {chapters.map((chapter) => (
             <a
               key={chapter.href}
               href={chapter.href}
-              className="group flex min-w-[160px] items-center gap-3 rounded-2xl border border-transparent px-3 py-2 text-left transition hover:border-slate-200 hover:bg-slate-50"
+              className="group relative overflow-hidden rounded-[1.35rem] px-4 py-3 text-left transition hover:bg-slate-50"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
+              <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-slate-400 transition group-hover:text-[#635bff]">
                 {chapter.number}
               </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-slate-900">{chapter.label}</span>
-                <span className="block truncate text-xs text-slate-500">{chapter.sub}</span>
-              </span>
+              <span className="mt-1 block text-sm font-semibold text-slate-950">{chapter.label}</span>
+              <span className="mt-0.5 block truncate text-xs text-slate-500">{chapter.sub}</span>
+              <span className="absolute inset-x-4 bottom-1 h-0.5 origin-left scale-x-0 rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] transition group-hover:scale-x-100" />
             </a>
           ))}
         </div>
       </nav>
+
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
+              <BanknotesIcon className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-indigo-700">Action principale</p>
+              <h3 className="mt-1 text-xl font-semibold text-slate-950">Ajouter une recette ou une dépense</h3>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                Les loyers viennent des quittances. Les autres mouvements, taxe foncière, assurance, copropriété, travaux ou frais,
+                se saisissent ici pour alimenter les exports et la performance.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+            <button
+              type="button"
+              onClick={() => setTxWizardOpen(true)}
+              className={cx("inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold", brandBg, brandText, brandHover)}
+            >
+              <PlusIcon className="h-4 w-4" />
+              Nouvelle écriture
+            </button>
+            <a
+              href="#finance-ecritures"
+              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              Voir le grand livre
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-2 md:grid-cols-4">
+          <Stat label="Lignes filtrées" value={String(filteredLedgerSummary.count)} />
+          <Stat label="Recettes" value={formatEuro(filteredLedgerSummary.income)} />
+          <Stat label="Dépenses" value={formatEuro(filteredLedgerSummary.expense)} />
+          <Stat label="Résultat" value={formatEuro(filteredLedgerSummary.net)} />
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">Paramètres financiers</p>
+            <h3 className="text-lg font-semibold text-slate-950">Charges récurrentes et crédit par bien</h3>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+              C’est ici que vous renseignez une fois les informations utilisées par Finance et Performance : mensualité de crédit,
+              taux, durée restante, assurance PNO, copropriété, CFE, taxe foncière, frais bancaires et entretien.
+            </p>
+          </div>
+          <a
+            href="#finance-pilotage"
+            className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+          >
+            Voir l’impact
+          </a>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          {propertyOptions.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600 lg:col-span-2">
+              Créez d’abord un bien pour renseigner ses paramètres financiers.
+            </div>
+          ) : (
+            propertyOptions.map((property) => {
+              const existing = pf.get(property.id) || null;
+              const loanMonthly = Number(existing?.loan_monthly || 0) + Number(existing?.loan_insurance_monthly || 0);
+              const taxesMonthly = Number(existing?.property_tax_yearly || 0) / 12 + Number(existing?.cfe_yearly || 0) / 12;
+              const operatingMonthly =
+                Number(existing?.fixed_charges_monthly || 0) +
+                Number(existing?.pno_insurance_monthly || 0) +
+                Number(existing?.copro_charges_monthly || 0) +
+                Number(existing?.bank_fees_monthly || 0) +
+                Number(existing?.maintenance_monthly || 0);
+              const monthlyTotal =
+                loanMonthly + taxesMonthly + operatingMonthly;
+              const missing = [
+                !existing?.loan_monthly ? "crédit" : "",
+                !existing?.loan_rate_percent ? "taux" : "",
+                !existing?.tax_regime ? "régime" : "",
+              ].filter(Boolean);
+
+              return (
+                <details key={property.id} className="group overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm open:bg-white">
+                  <summary className="cursor-pointer list-none px-4 py-3">
+                    <div className="grid items-center gap-3 lg:grid-cols-[minmax(180px,1fr)_110px_110px_110px_150px_150px_96px]">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-sm font-semibold text-slate-900 ring-1 ring-slate-200">
+                          {(property.label || property.address_line1 || "B").slice(0, 1).toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-950">{property.label || property.address_line1 || "Bien"}</p>
+                          <p className="truncate text-xs text-slate-500">
+                            {missing.length ? `À compléter : ${missing.join(", ")}` : "Paramètres prêts pour Performance"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <LineMetric label="Total" value={formatEuro(monthlyTotal)} strong />
+                      <LineMetric label="Crédit" value={formatEuro(loanMonthly)} />
+                      <LineMetric label="Taxes" value={formatEuro(taxesMonthly)} />
+                      <LineMetric
+                        label="Taux"
+                        value={existing?.loan_rate_percent ? `${Number(existing.loan_rate_percent).toLocaleString("fr-FR")} %` : "—"}
+                      />
+                      <LineMetric label="Régime" value={existing?.tax_regime ? taxRegimeLabel(existing.tax_regime) : "—"} />
+
+                      <span className="inline-flex items-center justify-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 group-open:hidden">
+                        Modifier
+                      </span>
+                    </div>
+                  </summary>
+
+                  <div className="border-t border-slate-200 bg-white px-4 pb-4">
+                    <PropertyFinanceForm propertyId={property.id} existing={existing} onSave={upsertPropertyFinance} />
+                  </div>
+                </details>
+              );
+            })
+          )}
+        </div>
+      </section>
 
       {/* Period selector */}
       <section id="finance-periode" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <ChapterHeader
-              eyebrow="01 · Période"
-              title="Choisir l’angle d’analyse"
-              desc="Les vues rapides se basent automatiquement sur la date du jour."
+              eyebrow="03 · Période"
+              title="Filtrer la lecture"
+              desc="La période ne pilote pas le workflow : elle sert à lire les écritures et les synthèses sous le bon angle."
             />
             <div className="mt-3 grid gap-2 sm:grid-cols-4">
               {[
@@ -1251,9 +1421,9 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
       <section id="finance-pilotage" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <ChapterHeader
-          eyebrow="02 · Pilotage"
-          title="Lecture rapide de la période"
-          desc="Une synthèse claire avant d’entrer dans le détail comptable."
+          eyebrow="04 · Synthèse"
+          title="Cockpit de lecture"
+          desc="Une synthèse de contrôle, utile après la saisie ou pour comprendre une période."
         />
 
         <div className="mt-4 grid gap-3 md:grid-cols-4">
@@ -1375,10 +1545,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       </div>
       </section>
 
+      <RecoverableChargesGuide />
+
       {/* Ajouter une écriture */}
       <section id="finance-ecritures" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 space-y-4">
       <ChapterHeader
-        eyebrow="03 · Écritures"
+        eyebrow="01 · Écritures"
         title="Saisir, filtrer et exporter"
         desc="Les loyers viennent des quittances. Les écritures manuelles servent aux charges, travaux et recettes exceptionnelles."
       />
@@ -1886,78 +2058,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       </div>
       </section>
 
-      {/* Cashflow & rendement par bien */}
-      <section id="finance-performance" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <ChapterHeader
-          eyebrow="04 · Performance"
-          title="Charges récurrentes, cashflow & rentabilité par bien"
-          desc="Renseignez une seule fois le crédit, l’assurance, les charges fixes et la taxe foncière : lokt.fr les applique ensuite automatiquement à chaque période."
-        />
-
-        {perProperty.length === 0 ? (
-          <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
-            Pas d’écritures affectées à des biens ce mois-ci.
-          </div>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {perProperty.map((r) => (
-              <div key={r.propertyId} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{r.label}</p>
-                    <p className="text-xs text-slate-600">
-                      Entrées {formatEuro(r.income)} • Sorties {formatEuro(r.expense)} • Net {formatEuro(r.net)}
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-xs text-slate-600">Cashflow après charges récurrentes</p>
-                    <p className="text-lg font-semibold text-slate-900">{formatEuro(r.cashflow)}</p>
-                    <p className="text-xs text-slate-500">
-                      Rendement net approx : <span className="font-semibold">{(r.yieldNet * 100).toFixed(2)}%</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-3 grid gap-2 md:grid-cols-5">
-                  <Stat label="Crédit (mensuel)" value={formatEuro(r.loan)} />
-                  <Stat label="Charges LMNP auto" value={formatEuro(r.lmnpRecurring)} />
-                  <Stat label="Autres charges fixes" value={formatEuro(Number((pf.get(r.propertyId) as any)?.fixed_charges_monthly || 0))} />
-                  <Stat label="Taxes mensuelles" value={formatEuro(r.taxM)} />
-                  <Stat label="Investissement" value={formatEuro(r.invest)} />
-                </div>
-
-                <div className="mt-3 rounded-2xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs leading-5 text-cyan-900">
-                  Taxe foncière, CFE, assurance PNO, copropriété, frais bancaires et entretien sont stockés sur le bien et proratisés automatiquement
-                  sur la période analysée. Les intérêts d’emprunt sont isolés pour préparer le dossier comptable.
-                </div>
-
-                <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Plan d'action</p>
-                  <div className="mt-2 space-y-1.5">
-                    {actionPlanForProperty(r).map((action, idx) => (
-                      <p key={idx} className="text-sm text-slate-700">
-                        <span className="font-semibold text-slate-900">{idx + 1}.</span> {action}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-
-                {r.propertyId !== "—" ? (
-                  <details className="mt-3">
-                    <summary className="cursor-pointer text-sm font-semibold text-slate-900">
-                      Paramétrer ce bien (prix, crédit, charges récurrentes)
-                    </summary>
-
-                    <PropertyFinanceForm propertyId={r.propertyId} existing={pf.get(r.propertyId) || null} onSave={upsertPropertyFinance} />
-                  </details>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
       {/* Attendu vs encaissé */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <p className="text-sm font-semibold text-slate-900">Encaissement (baux/paiements)</p>
@@ -2001,6 +2101,26 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function LineMetric({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
+      <p className={cx("mt-0.5 truncate text-sm font-semibold", strong ? "text-slate-950" : "text-slate-700")}>{value}</p>
+    </div>
+  );
+}
+
+function taxRegimeLabel(value: string) {
+  const labels: Record<string, string> = {
+    lmnp_micro: "LMNP micro-BIC",
+    lmnp_real: "LMNP réel",
+    nu_micro: "Location nue micro",
+    nu_real: "Location nue réel",
+    pinel: "Pinel",
+  };
+  return labels[value] || value;
+}
+
 function PropertyFinanceForm({
   propertyId,
   existing,
@@ -2020,6 +2140,9 @@ function PropertyFinanceForm({
     down_payment: existing?.down_payment ?? null,
     loan_monthly: existing?.loan_monthly ?? null,
     loan_insurance_monthly: existing?.loan_insurance_monthly ?? null,
+    loan_rate_percent: existing?.loan_rate_percent ?? null,
+    loan_remaining_months: existing?.loan_remaining_months ?? null,
+    tax_regime: existing?.tax_regime ?? null,
     fixed_charges_monthly: existing?.fixed_charges_monthly ?? null,
     property_tax_yearly: existing?.property_tax_yearly ?? null,
     pno_insurance_monthly: existing?.pno_insurance_monthly ?? null,
@@ -2040,6 +2163,9 @@ function PropertyFinanceForm({
       down_payment: existing?.down_payment ?? null,
       loan_monthly: existing?.loan_monthly ?? null,
       loan_insurance_monthly: existing?.loan_insurance_monthly ?? null,
+      loan_rate_percent: existing?.loan_rate_percent ?? null,
+      loan_remaining_months: existing?.loan_remaining_months ?? null,
+      tax_regime: existing?.tax_regime ?? null,
       fixed_charges_monthly: existing?.fixed_charges_monthly ?? null,
       property_tax_yearly: existing?.property_tax_yearly ?? null,
       pno_insurance_monthly: existing?.pno_insurance_monthly ?? null,
@@ -2061,6 +2187,9 @@ function PropertyFinanceForm({
       down_payment: s.down_payment,
       loan_monthly: s.loan_monthly,
       loan_insurance_monthly: s.loan_insurance_monthly,
+      loan_rate_percent: s.loan_rate_percent,
+      loan_remaining_months: s.loan_remaining_months,
+      tax_regime: s.tax_regime,
       fixed_charges_monthly: s.fixed_charges_monthly,
       property_tax_yearly: s.property_tax_yearly,
       pno_insurance_monthly: s.pno_insurance_monthly,
@@ -2096,6 +2225,15 @@ function PropertyFinanceForm({
           value={s.loan_insurance_monthly}
           onChange={(v) => setS((p) => ({ ...p, loan_insurance_monthly: v }))}
         />
+        <Field label="Taux crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} />
+        <Field
+          label="Durée restante (mois)"
+          value={s.loan_remaining_months ?? null}
+          onChange={(v) => setS((p) => ({ ...p, loan_remaining_months: v == null ? null : Math.round(v) }))}
+        />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
         <Field
           label="Autres charges fixes"
           value={s.fixed_charges_monthly}
@@ -2106,6 +2244,21 @@ function PropertyFinanceForm({
           value={s.property_tax_yearly}
           onChange={(v) => setS((p) => ({ ...p, property_tax_yearly: v }))}
         />
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-slate-700">Régime fiscal suivi</label>
+          <select
+            value={s.tax_regime || ""}
+            onChange={(e) => setS((p) => ({ ...p, tax_regime: e.target.value || null }))}
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+          >
+            <option value="">Non renseigné</option>
+            <option value="lmnp_micro">LMNP micro-BIC</option>
+            <option value="lmnp_real">LMNP réel</option>
+            <option value="nu_micro">Location nue micro-foncier</option>
+            <option value="nu_real">Location nue réel</option>
+            <option value="pinel">Pinel</option>
+          </select>
+        </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
