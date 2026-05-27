@@ -64,7 +64,6 @@ export default function AppHeader() {
 
   // Liens minimalistes V1
   const v1Links: NavLink[] = [
-    ...(authReady && isLoggedIn ? [{ href: "/mon-compte/profil", label: "Mon compte" }] : []),
     { href: "/calculettes", label: "Calculettes" },
     { href: "/outil-gestion-locative", label: "Outil bailleur" },
     { href: "/tarifs", label: "Tarifs" },
@@ -87,7 +86,7 @@ export default function AppHeader() {
   if (LOKT_V1_LANDING) {
     return (
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto max-w-5xl px-4 py-3">
+        <div className="mx-auto max-w-6xl px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             {/* Brand */}
             <Link href="/" className="flex items-center gap-3">
@@ -102,13 +101,13 @@ export default function AppHeader() {
             </Link>
 
             {/* Minimal links */}
-            <nav className="flex items-center gap-2">
+            <nav className="flex items-center gap-1.5">
               {v1Links.map((l) =>
                 l.external ? (
                   <a
                     key={l.label}
                     href={l.href}
-                    className="rounded-full px-3 py-2 text-[0.8rem] font-semibold text-slate-700 hover:bg-slate-100"
+                    className="hidden rounded-full px-3 py-2 text-[0.8rem] font-semibold text-slate-700 hover:bg-slate-100 xl:inline-flex"
                   >
                     {l.label}
                   </a>
@@ -117,7 +116,7 @@ export default function AppHeader() {
                     key={l.label}
                     href={l.href}
                     className={
-                      "rounded-full px-3 py-2 text-[0.8rem] font-semibold transition " +
+                      "hidden rounded-full px-3 py-2 text-[0.8rem] font-semibold transition md:inline-flex " +
                       (isActive(l.href)
                         ? `${brandBg} ${brandText} ${brandHover}`
                         : "text-slate-700 hover:bg-slate-100")
@@ -128,10 +127,37 @@ export default function AppHeader() {
                 )
               )}
 
-              {/* Optionnel : petit badge produit */}
-              <span className="hidden sm:inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-semibold text-slate-600">
-                lokt.fr
-              </span>
+              {authReady && isLoggedIn ? (
+                <>
+                  <Link
+                    href="/mon-compte/profil"
+                    className="hidden rounded-full border border-slate-200 bg-white px-3 py-2 text-[0.8rem] font-semibold text-slate-700 hover:bg-slate-50 sm:inline-flex"
+                  >
+                    Mon compte
+                  </Link>
+                  <Link
+                    href="/espace-bailleur"
+                    className={`inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-[0.8rem] font-semibold shadow-sm ${brandBg} ${brandText} ${brandHover}`}
+                  >
+                    Outil bailleur
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/mon-compte?mode=login&redirect=/espace-bailleur"
+                    className="hidden min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[0.8rem] font-semibold text-slate-800 hover:bg-slate-50 sm:inline-flex"
+                  >
+                    Se connecter
+                  </Link>
+                  <Link
+                    href="/mon-compte?mode=register&redirect=/espace-bailleur"
+                    className={`inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-[0.8rem] font-semibold shadow-sm ${brandBg} ${brandText} ${brandHover}`}
+                  >
+                    Créer un compte gratuit
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
         </div>

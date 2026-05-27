@@ -29,6 +29,25 @@ function cx(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
 }
 
+function normalizeEmail(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function isEmailLike(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+async function checkEmailAlreadyExists(email: string) {
+  const response = await fetch("/api/auth/check-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error || "Impossible de vérifier cette adresse e-mail.");
+  return !!payload?.exists;
+}
+
 export default function MonCompteIndexPage() {
   const router = useRouter();
   const { checking, user, isLoggedIn } = useAuthUser();
@@ -169,9 +188,11 @@ export default function MonCompteIndexPage() {
 
     if (!supabase) return setAuthError("Auth indisponible.");
 
-    const email = regEmail.trim();
+    const email = normalizeEmail(regEmail);
     if (!email) return setAuthError("Merci de renseigner un e-mail.");
+    if (!isEmailLike(email)) return setAuthError("Merci de renseigner une adresse e-mail valide.");
     if (!regPassword) return setAuthError("Merci de renseigner un mot de passe.");
+    if (regPassword.length < 8) return setAuthError("Le mot de passe doit contenir au moins 8 caractères.");
     if (regPassword !== regPassword2) return setAuthError("Les mots de passe ne correspondent pas.");
     if (!firstName.trim() || !lastName.trim()) return setAuthError("Merci de renseigner votre prénom et votre nom.");
     if (!address1.trim() || !postalCode.trim() || !city.trim()) {
@@ -185,6 +206,16 @@ export default function MonCompteIndexPage() {
 
     setAuthLoading(true);
     try {
+      const emailAlreadyExists = await checkEmailAlreadyExists(email);
+      if (emailAlreadyExists) {
+        setAuthError(
+          "Un compte existe déjà avec cette adresse e-mail. Connectez-vous ou utilisez “Mot de passe oublié” si besoin."
+        );
+        setLoginEmail(email);
+        setMode("login");
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password: regPassword,

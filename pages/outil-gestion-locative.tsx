@@ -284,6 +284,14 @@ export default function OutilGestionLocativePage() {
                   >
                     {authReady && isLoggedIn ? "Aller à l’outil bailleur →" : "Créer un compte gratuit →"}
                   </Link>
+                  {!authReady || isLoggedIn ? null : (
+                    <Link
+                      href="/mon-compte?mode=login&redirect=/espace-bailleur"
+                      className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white sm:w-auto"
+                    >
+                      Se connecter →
+                    </Link>
+                  )}
                   <Link
                     href="/gestion-locative-lmnp"
                     className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white sm:w-auto"
@@ -435,6 +443,14 @@ export default function OutilGestionLocativePage() {
                   >
                     {authReady && isLoggedIn ? "Aller à l’outil bailleur" : "Créer un compte gratuit"}
                   </Link>
+                  {!authReady || isLoggedIn ? null : (
+                    <Link
+                      href="/mon-compte?mode=login&redirect=/espace-bailleur"
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                    >
+                      Se connecter
+                    </Link>
+                  )}
                 </div>
               </div>
             </section>
