@@ -661,6 +661,42 @@ export function SectionQuittances({
     }
   };
 
+  const markManualDeliveredForRow = async (row: any) => {
+    const receipt = row.receipt;
+    if (!receipt?.id) {
+      setErr("Génère d’abord le PDF avant de clôturer cette quittance.");
+      return;
+    }
+    if (!row.pdfReady) {
+      setErr("Le PDF doit être généré avant de marquer la quittance comme remise.");
+      return;
+    }
+    if (!confirm("Confirmer que tu as remis ou envoyé cette quittance au locataire manuellement ?")) return;
+
+    setErr(null);
+    setOk(null);
+
+    try {
+      setLoading(true);
+      const headers = await authJsonHeaders();
+      const resp = await fetch("/api/receipts/mark-manual-delivered", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ userId, receiptId: receipt.id }),
+      });
+
+      const { raw, json } = await safeJson(resp);
+      throwApiError(resp, raw, json, "Erreur clôture manuelle quittance.");
+
+      setOk("Quittance clôturée ✅ Remise manuelle confirmée.");
+      await onRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Erreur clôture manuelle quittance.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const sendPaymentReminderForRow = async (row: any) => {
     const reason = row?.pay?.reminderReason;
     if (!reason) {
@@ -936,7 +972,7 @@ export function SectionQuittances({
         <Kpi label={view === "todo" ? "À traiter" : "Reçus (période)"} value={dashboard.total} sub={view === "todo" ? "workflows ouverts" : "toutes lignes du mois"} />
         <Kpi label="Payés" value={dashboard.paidCount} sub="source de vérité paiement" />
         <Kpi label="PDF prêts" value={dashboard.pdfReady} sub="après paiement" />
-        <Kpi label="Envoyées" value={dashboard.sent} sub={canUseReceiptAutomation ? "email envoyé" : "premium"} />
+        <Kpi label="Clôturées" value={dashboard.sent} sub={canUseReceiptAutomation ? "email envoyé" : "remise manuelle"} />
         <Kpi
           label="Retards"
           value={<span className={dashboard.late > 0 ? "text-red-700" : ""}>{dashboard.late}</span>}
@@ -1071,16 +1107,20 @@ export function SectionQuittances({
                         ) : !row.sent ? (
                           <button
                             type="button"
-                            disabled={loading || !canUseReceiptAutomation}
-                            onClick={() => sendReceiptForRow(row)}
+                            disabled={loading}
+                            onClick={() => (canUseReceiptAutomation ? sendReceiptForRow(row) : markManualDeliveredForRow(row))}
                             className={cx(
                               "rounded-full px-4 py-2 text-xs font-semibold text-white",
-                              canUseReceiptAutomation ? "bg-sky-700 hover:bg-sky-600" : "bg-slate-400",
-                              (loading || !canUseReceiptAutomation) && "opacity-60"
+                              canUseReceiptAutomation ? "bg-sky-700 hover:bg-sky-600" : "bg-emerald-700 hover:bg-emerald-600",
+                              loading && "opacity-60"
                             )}
-                            title={canUseReceiptAutomation ? "Envoie la quittance au locataire." : "Envoi email réservé aux abonnements payants."}
+                            title={
+                              canUseReceiptAutomation
+                                ? "Envoie la quittance au locataire par email."
+                                : "Confirme que tu as remis ou envoyé le PDF au locataire manuellement."
+                            }
                           >
-                            {canUseReceiptAutomation ? "Envoyer" : "Envoi premium"}
+                            {canUseReceiptAutomation ? "Envoyer" : "Quittance remise"}
                           </button>
                         ) : (
                           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-xs font-semibold text-emerald-800">
@@ -1124,7 +1164,9 @@ export function SectionQuittances({
                       </div>
                     ) : pdfReady && !row.sent ? (
                       <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-                        PDF prêt : vérifie puis envoie au locataire.
+                        {canUseReceiptAutomation
+                          ? "PDF prêt : vérifie puis envoie au locataire."
+                          : "PDF prêt : remets-le au locataire, puis clique sur “Quittance remise” pour clôturer la tâche."}
                       </div>
                     ) : null}
                   </div>
@@ -1134,10 +1176,10 @@ export function SectionQuittances({
           )}
         </Card>
 
-        <Card title="Envoyées (période)" right={<span className="text-sm text-slate-500">{sentThisMonth.length}</span>}>
+        <Card title="Clôturées (période)" right={<span className="text-sm text-slate-500">{sentThisMonth.length}</span>}>
           {sentThisMonth.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
-              Aucune quittance envoyée sur cette période.
+              Aucune quittance clôturée sur cette période.
             </div>
           ) : (
             <div className="space-y-2">
