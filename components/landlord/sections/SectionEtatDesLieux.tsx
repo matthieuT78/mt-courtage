@@ -463,6 +463,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const isLocked = selectedReport?.status === "signed" || selectedReport?.status === "archived";
   const hasPdf = !!selectedReport?.pdf_url;
+  const primaryReportActionLabel = selectedReport
+    ? selectedReport.status === "ready" || hasPdf
+      ? "Finaliser l’EDL"
+      : "Reprendre la saisie"
+    : "Créer l’état des lieux";
   const counters = (selectedReport?.counters_json && typeof selectedReport.counters_json === "object" ? selectedReport.counters_json : {}) as Record<string, any>;
 
   // ✅ Scroll preserve (wizard) + anti “retour en haut”
@@ -1199,7 +1204,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     return Math.round(((idx + 1) / wizardStepsMeta.length) * 100);
   }, [wizardStep, wizardStepsMeta]);
 
-  const openWizard = (reportId: string) => {
+  const openWizard = (reportId: string, preferredStep?: WizardStep) => {
     if (isLocked) {
       setErr("Document verrouillé : l’assistant est désactivé.");
       return;
@@ -1207,7 +1212,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     setWizardReportId(reportId);
     setWizardOpen(true);
 
-    if (rooms.length > 0) {
+    if (preferredStep) {
+      setWizardStep(preferredStep);
+      setWizardRoomIndex(0);
+    } else if (rooms.length > 0) {
       setWizardStep("rooms");
       setWizardRoomIndex(0);
     } else {
@@ -1668,6 +1676,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
             {/* Body */}
             <div ref={wizardScrollRef} className="flex-1 overflow-y-auto p-4 pb-28 sm:p-5 sm:pb-5" style={{ overflowAnchor: "none" }}>
+              {err ? <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
+              {ok ? <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
+
               {/* STEP: PLAN */}
               {wizardStep === "plan" ? (
                 <div className="grid gap-5 lg:grid-cols-[1fr,420px]">
@@ -2362,7 +2373,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       onClick={finalizeToReady}
                       className="min-h-[44px] rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs"
                     >
-                      Finaliser & générer le PDF
+                      {loading ? "Génération en cours..." : "Finaliser & générer le PDF"}
                     </button>
                   )}
                 </div>
@@ -2452,14 +2463,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               </select>
 
               <div className="mt-4 grid gap-2">
-                <button
-                  type="button"
-                  disabled={!selectedLeaseId || loading}
-                  onClick={() => createReport("entry")}
-                  className="inline-flex min-h-[46px] items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
-                >
-                  Créer l’état des lieux d’entrée
-                </button>
+                {!selectedReportId ? (
+                  <button
+                    type="button"
+                    disabled={!selectedLeaseId || loading}
+                    onClick={() => createReport("entry")}
+                    className="inline-flex min-h-[46px] items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    Créer l’état des lieux d’entrée
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   disabled={!selectedLeaseId || loading}
@@ -2472,10 +2485,13 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                   <button
                     type="button"
                     disabled={loading || isLocked}
-                    onClick={() => selectedReportId && openWizard(selectedReportId)}
-                    className="inline-flex min-h-[46px] items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-slate-50 disabled:opacity-50"
+                    onClick={() => {
+                      if (!selectedReportId) return;
+                      openWizard(selectedReportId, selectedReport?.status === "ready" || hasPdf ? "finalize" : undefined);
+                    }}
+                    className="order-first inline-flex min-h-[46px] items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
                   >
-                    Continuer sur téléphone
+                    {primaryReportActionLabel}
                   </button>
                 ) : null}
               </div>
@@ -2597,7 +2613,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                   <button
                     type="button"
                     disabled={loading || !selectedReportId || isLocked}
-                    onClick={() => selectedReportId && openWizard(selectedReportId)}
+                    onClick={() =>
+                      selectedReportId && openWizard(selectedReportId, selectedReport?.status === "ready" || hasPdf ? "finalize" : undefined)
+                    }
                     className={cx(
                       "col-span-2 inline-flex min-h-[48px] items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 sm:col-span-1 sm:min-h-0 sm:rounded-full sm:text-xs",
                       isLocked
@@ -2606,7 +2624,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     )}
                     title={isLocked ? "EDL signé/archivé : modification désactivée" : "Ouvrir l’assistant"}
                   >
-                    Ouvrir l’assistant
+                    {primaryReportActionLabel}
                   </button>
                 </div>
               </div>
