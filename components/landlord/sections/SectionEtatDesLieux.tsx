@@ -493,6 +493,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const isLocked = selectedReport?.status === "signed" || selectedReport?.status === "archived";
   const hasPdf = !!selectedReport?.pdf_url;
+  const entryReport = useMemo(() => reports.find((r) => r.report_type === "entry") || null, [reports]);
+  const exitReport = useMemo(() => reports.find((r) => r.report_type === "exit") || null, [reports]);
   const primaryReportActionLabel = selectedReport
     ? selectedReport.status === "ready" || hasPdf
       ? "Finaliser l’EDL"
@@ -688,9 +690,13 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       const exists = reports.find((r) => r.report_type === type);
       if (exists) {
         setSelectedReportId(exists.id);
-        setOk(`${reportTypeLabel(type)} déjà existant — ouverture ✅`);
         await loadReportDetails(exists.id);
-        openWizard(exists.id);
+        if (exists.status === "signed" || exists.status === "archived") {
+          setOk(`${reportTypeLabel(type)} déjà signé : sélectionné en lecture.`);
+        } else {
+          setOk(`${reportTypeLabel(type)} déjà existant — reprise de la saisie ✅`);
+          openWizard(exists.id, exists.status === "ready" || exists.pdf_url ? "finalize" : undefined);
+        }
         return;
       }
 
@@ -2599,37 +2605,49 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               </select>
 
               <div className="mt-4 grid gap-2">
-                {!selectedReportId ? (
-                  <button
-                    type="button"
-                    disabled={!selectedLeaseId || loading}
-                    onClick={() => createReport("entry")}
-                    className="inline-flex min-h-[46px] items-center justify-center rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    Créer l’état des lieux d’entrée
-                  </button>
-                ) : null}
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Actions disponibles</p>
                 <button
                   type="button"
-                  disabled={!selectedLeaseId || loading}
-                  onClick={() => createReport("exit")}
-                  className="inline-flex min-h-[46px] items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={!selectedLeaseId || loading || entryReport?.status === "signed" || entryReport?.status === "archived"}
+                  onClick={() => createReport("entry")}
+                  className={cx(
+                    "inline-flex min-h-[46px] items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold disabled:opacity-50",
+                    entryReport
+                      ? "border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+                      : "bg-slate-950 text-white hover:bg-slate-800"
+                  )}
+                  title={
+                    entryReport?.status === "signed" || entryReport?.status === "archived"
+                      ? "L’état des lieux d’entrée est signé : il est verrouillé."
+                      : entryReport
+                      ? "Reprendre l’état des lieux d’entrée."
+                      : "Créer l’état des lieux d’entrée."
+                  }
                 >
-                  Créer la sortie depuis l’entrée
+                  {entryReport ? "Reprendre l’entrée" : "Créer l’entrée"}
                 </button>
-                {selectedReportId ? (
-                  <button
-                    type="button"
-                    disabled={loading || isLocked}
-                    onClick={() => {
-                      if (!selectedReportId) return;
-                      openWizard(selectedReportId, selectedReport?.status === "ready" || hasPdf ? "finalize" : undefined);
-                    }}
-                    className="order-first inline-flex min-h-[46px] items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50"
-                  >
-                    {primaryReportActionLabel}
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  disabled={!selectedLeaseId || loading || !entryReport || exitReport?.status === "signed" || exitReport?.status === "archived"}
+                  onClick={() => createReport("exit")}
+                  className={cx(
+                    "inline-flex min-h-[46px] items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold disabled:opacity-50",
+                    exitReport
+                      ? "border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
+                      : "border border-slate-300 bg-white text-slate-950 hover:bg-slate-50"
+                  )}
+                  title={
+                    !entryReport
+                      ? "Crée d’abord l’état des lieux d’entrée."
+                      : exitReport?.status === "signed" || exitReport?.status === "archived"
+                      ? "L’état des lieux de sortie est signé : il est verrouillé."
+                      : exitReport
+                      ? "Reprendre l’état des lieux de sortie."
+                      : "Créer la sortie en copiant les pièces de l’entrée."
+                  }
+                >
+                  {exitReport ? "Reprendre la sortie" : "Créer la sortie depuis l’entrée"}
+                </button>
               </div>
             </div>
           </div>
@@ -2732,7 +2750,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     )}
                     title={isLocked ? "EDL signé/archivé : modification désactivée" : "Ouvrir l’assistant"}
                   >
-                    {primaryReportActionLabel}
+                    {isLocked ? "Document verrouillé" : primaryReportActionLabel}
                   </button>
                 </div>
               </div>
@@ -2751,41 +2769,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       <div className="grid gap-4 lg:grid-cols-[420px,1fr]" style={{ overflowAnchor: "none" }}>
         {/* LEFT */}
         <aside className="flex flex-col gap-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Changer de bail</p>
-            <select
-              value={selectedLeaseId}
-              onChange={(e) => setSelectedLeaseId(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">— Sélectionner un bail —</option>
-              {safeLeases.map((l: any) => (
-                <option key={l.id} value={l.id}>
-                  {leaseLabel(l)}
-                </option>
-              ))}
-            </select>
-
-            <div className="flex flex-wrap gap-2 pt-2">
-              <button
-                type="button"
-                disabled={!selectedLeaseId || loading}
-                onClick={() => createReport("entry")}
-                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                + Créer EDL d’entrée
-              </button>
-              <button
-                type="button"
-                disabled={!selectedLeaseId || loading}
-                onClick={() => createReport("exit")}
-                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
-              >
-                + Créer EDL de sortie (copie entrée)
-              </button>
-            </div>
-          </div>
-
           <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">2) États des lieux</p>
 
@@ -2799,6 +2782,12 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                   const active = r.id === selectedReportId;
                   const title = reportTypeLabel(r.report_type);
                   const st = statusUi(r.status);
+                  const actionLabel =
+                    r.status === "signed" || r.status === "archived"
+                      ? "Lecture"
+                      : r.status === "ready" || r.pdf_url
+                      ? "Finaliser"
+                      : "Saisir";
                   return (
                     <button
                       key={r.id}
@@ -2820,7 +2809,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         </div>
 
                         <span className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800">
-                          {active ? "Ouvert" : "Ouvrir →"}
+                          {active ? "Sélectionné" : `${actionLabel} →`}
                         </span>
                       </div>
                     </button>
