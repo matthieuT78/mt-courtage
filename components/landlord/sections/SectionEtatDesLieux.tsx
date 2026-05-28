@@ -490,6 +490,12 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const selectedLeaseNiceLabel = selectedLease ? leaseLabel(selectedLease as any) : "—";
   const reportLabel = selectedReport ? reportTypeLabel(selectedReport.report_type) : "—";
+  const reportTypeTone =
+    selectedReport?.report_type === "exit"
+      ? "border-amber-200 bg-amber-50 text-amber-950"
+      : selectedReport?.report_type === "entry"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+      : "border-slate-200 bg-slate-50 text-slate-800";
 
   const isLocked = selectedReport?.status === "signed" || selectedReport?.status === "archived";
   const hasPdf = !!selectedReport?.pdf_url;
@@ -2669,12 +2675,17 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Résumé</p>
-                <p className="text-sm sm:text-base font-semibold text-slate-900 truncate">
+                <div className={cx("mt-2 inline-flex rounded-2xl border px-4 py-3", reportTypeTone)}>
+                  <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] opacity-75">Document sélectionné</p>
+                    <p className="mt-1 text-base font-extrabold sm:text-lg">{reportLabel}</p>
+                  </div>
+                </div>
+                <p className="mt-2 text-sm sm:text-base font-semibold text-slate-900 truncate">
                   {selectedLeaseId ? selectedLeaseNiceLabel : "Sélectionne un bail pour démarrer"}
                 </p>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge tone="slate">{reportLabel}</Badge>
                   {selectedReport ? <Badge tone={statusUi(selectedReport.status).tone}>Statut : {statusUi(selectedReport.status).label}</Badge> : null}
                   {isLocked ? <Badge tone="red">Verrouillé</Badge> : <Badge tone="slate">Modifiable</Badge>}
                   {hasPdf ? <Badge tone="emerald">PDF disponible</Badge> : <Badge tone="slate">PDF non disponible</Badge>}
