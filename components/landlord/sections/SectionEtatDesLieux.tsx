@@ -2514,34 +2514,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="flex items-start gap-3">
-          <MapPinIcon className="mt-0.5 h-5 w-5 shrink-0 text-slate-700" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900">Checklist terrain</p>
-            <p className="mt-1 text-xs text-slate-600">À garder sous les yeux pendant la visite, surtout sur téléphone.</p>
-          </div>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-          {fieldChecklist.map((item) => (
-            <div
-              key={item.label}
-              className={cx(
-                "rounded-xl border px-3 py-2 text-xs font-semibold",
-                item.done ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-slate-200 bg-slate-50 text-slate-700"
-              )}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircleIcon className={cx("h-4 w-4", item.done ? "text-emerald-700" : "text-slate-400")} aria-hidden="true" />
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <RepairsGuideCard />
-
       {/* zone messages : réserve la place => évite layout shift (scroll jump) */}
       <div className="min-h-[44px] space-y-2" style={{ overflowAnchor: "none" }}>
         {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
@@ -2656,7 +2628,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       {selectedLeaseId ? (
       <div className="grid gap-4 lg:grid-cols-[420px,1fr]" style={{ overflowAnchor: "none" }}>
         {/* LEFT */}
-        <aside className="space-y-3">
+        <aside className="flex flex-col gap-3">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Changer de bail</p>
             <select
@@ -2737,7 +2709,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
           </div>
 
           {selectedReport ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+            <div className="order-first rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Infos</p>
 
               {isLocked ? (
@@ -2905,6 +2877,34 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         </section>
       </div>
       ) : null}
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex items-start gap-3">
+          <MapPinIcon className="mt-0.5 h-5 w-5 shrink-0 text-slate-700" aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-slate-900">Checklist terrain</p>
+            <p className="mt-1 text-xs text-slate-600">À garder sous les yeux pendant la visite, surtout sur téléphone.</p>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+          {fieldChecklist.map((item) => (
+            <div
+              key={item.label}
+              className={cx(
+                "rounded-xl border px-3 py-2 text-xs font-semibold",
+                item.done ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-slate-200 bg-slate-50 text-slate-700"
+              )}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <CheckCircleIcon className={cx("h-4 w-4", item.done ? "text-emerald-700" : "text-slate-400")} aria-hidden="true" />
+                {item.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <RepairsGuideCard />
 
       {ViewModal()}
       {WizardOverlay()}
