@@ -294,24 +294,24 @@ export function useLandlordDashboard() {
   }, [properties.length, activeLeases]);
 
   const healthScore = useMemo(() => {
-    // Score progressif : un compte vide ne doit pas être considéré comme "parfait".
+    // Score de gestion mensuelle : le dossier donne un socle, mais les actions du mois portent l'essentiel.
     let score = 0;
     const activeLeaseCount = activeLeases.length;
 
-    if (properties.length > 0) score += 15;
-    if (tenants.length > 0) score += 10;
-    if (activeLeaseCount > 0) score += 15;
+    if (properties.length > 0) score += 6;
+    if (tenants.length > 0) score += 5;
+    if (activeLeaseCount > 0) score += 9;
 
-    score += Math.round((occupancyRate / 100) * 20);
+    score += Math.round((occupancyRate / 100) * 10);
 
     if (monthlyExpected > 0) {
       const collectionRatio = Math.min(Math.max(monthlyPaid / monthlyExpected, 0), 1);
-      score += Math.round(collectionRatio * 20);
+      score += Math.round(collectionRatio * 40);
     }
 
     if (activeLeaseCount > 0) {
-      score += Math.max(0, 10 - Math.min(lateCount * 5, 10));
-      score += Math.round(Math.min(receiptsThisMonth.length / activeLeaseCount, 1) * 10);
+      score += Math.max(0, 5 - Math.min(lateCount * 5, 5));
+      score += Math.round(Math.min(receiptsThisMonth.length / activeLeaseCount, 1) * 25);
     }
 
     return Math.max(0, Math.min(100, score));
