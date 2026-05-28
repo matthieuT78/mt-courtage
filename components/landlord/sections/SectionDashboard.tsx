@@ -279,14 +279,45 @@ export function SectionDashboard({
   const accountingMonths = useMemo(() => {
     const now = new Date();
     const base = new Date(now.getFullYear(), now.getMonth(), 1);
-    return Array.from({ length: 6 }, (_, index) => monthKey(addMonths(base, index - 5)));
-  }, []);
+    const defaultMonths = Array.from({ length: 6 }, (_, index) => monthKey(addMonths(base, index - 5)));
+    const activeMonthKeys = new Set<string>();
+    const scopedTransactions = transactions.filter((tx) => !accountingPropertyId || (tx.property_id || "") === accountingPropertyId);
+
+    if (scopedTransactions.length > 0) {
+      for (const tx of scopedTransactions) {
+        const d = normalizeDate(tx.occurred_at);
+        if (!d) continue;
+        const amount = Number(tx.amount || 0);
+        if (amount > 0) activeMonthKeys.add(monthKey(d));
+      }
+    } else {
+      for (const payment of payments) {
+        if (accountingPropertyId) {
+          const lease = activeLeases.find((l) => l.id === payment.lease_id);
+          if ((lease?.property_id || "") !== accountingPropertyId) continue;
+        }
+        const d = normalizeDate(payment.period_start);
+        if (!d || !payment.paid_at || Number(payment.total_amount || 0) <= 0) continue;
+        activeMonthKeys.add(monthKey(d));
+      }
+    }
+
+    const activeMonths = Array.from(activeMonthKeys).sort();
+    if (activeMonths.length === 1) {
+      const first = normalizeDate(`${activeMonths[0]}-01`);
+      if (first) return Array.from({ length: 6 }, (_, index) => monthKey(addMonths(first, index)));
+    }
+
+    return defaultMonths;
+  }, [accountingPropertyId, activeLeases, payments, transactions]);
 
   const accountingSeries = useMemo(() => {
     const byMonth = new Map(accountingMonths.map((key) => [key, { key, income: 0, expense: 0 }]));
+    let scopedTransactionCount = 0;
 
     for (const tx of transactions) {
       if (accountingPropertyId && (tx.property_id || "") !== accountingPropertyId) continue;
+      scopedTransactionCount += 1;
       const d = normalizeDate(tx.occurred_at);
       if (!d) continue;
       const key = monthKey(d);
@@ -296,8 +327,8 @@ export function SectionDashboard({
       else row.expense += Number(tx.amount || 0);
     }
 
-    if (transactions.length === 0) {
-      for (const payment of currentMonthPayments) {
+    if (scopedTransactionCount === 0) {
+      for (const payment of payments) {
         if (accountingPropertyId) {
           const lease = activeLeases.find((l) => l.id === payment.lease_id);
           if ((lease?.property_id || "") !== accountingPropertyId) continue;
@@ -310,7 +341,7 @@ export function SectionDashboard({
     }
 
     return Array.from(byMonth.values());
-  }, [accountingMonths, accountingPropertyId, activeLeases, currentMonthPayments, transactions]);
+  }, [accountingMonths, accountingPropertyId, activeLeases, payments, transactions]);
 
   const accountingTotals = useMemo(() => {
     const income = accountingSeries.reduce((sum, row) => sum + row.income, 0);
