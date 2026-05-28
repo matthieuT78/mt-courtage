@@ -321,6 +321,20 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
     };
 
     load();
+
+    const channel = (supabase as any)
+      .channel(`performance-live-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "property_finance", filter: `user_id=eq.${userId}` }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions", filter: `user_id=eq.${userId}` }, load)
+      .subscribe();
+
+    const handleFocus = () => load();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      supabase.removeChannel(channel);
+    };
   }, [userId]);
 
   const leaseById = useMemo(() => {
@@ -423,15 +437,37 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
     const renegociationPotential = sum(
       propertyRows.map((row) => (row.loanRate != null && row.loanRate >= 3.5 ? row.loanMonthly * 0.06 : 0))
     );
+    const rowsWithLoanRate = propertyRows.filter((row) => row.loanRate != null);
+    const rowsMissingLoanRate = propertyRows.filter((row) => row.loanRate == null && row.loanMonthly > 0);
+    const rowsWithHighLoanRate = propertyRows.filter((row) => row.loanRate != null && row.loanRate >= 3.5);
+    const rowsWithRateButNoMonthly = propertyRows.filter((row) => row.loanRate != null && row.loanMonthly <= 0);
+    const renegociationLabel =
+      renegociationPotential > 0
+        ? `+${money(renegociationPotential)}`
+        : rowsWithLoanRate.length > 0
+        ? `${rowsWithLoanRate.length}/${propertyRows.length} taux renseigné${rowsWithLoanRate.length > 1 ? "s" : ""}`
+        : "À renseigner";
+    const renegociationSub =
+      renegociationPotential > 0
+        ? "gain mensuel indicatif à étudier"
+        : rowsMissingLoanRate.length > 0
+        ? "taux crédit à compléter sur les biens financés"
+        : rowsWithRateButNoMonthly.length > 0
+        ? "mensualité crédit à compléter pour estimer le gain"
+        : rowsWithHighLoanRate.length > 0
+        ? "taux renseigné, gain estimé à préciser"
+        : rowsWithLoanRate.length > 0
+        ? "taux renseigné, pas d’alerte de renégociation"
+        : "taux crédit à renseigner";
     const monthlyModulationPotential = sum(propertyRows.map((row) => (row.cashflow < 0 && row.loanRemainingMonths && row.loanRemainingMonths > 84 ? row.loanMonthly * 0.08 : 0)));
     const vacancyCostMonthly = sum(propertyRows.map((row) => (row.expected > 0 ? (row.expected / 30) * row.vacancyDays12m : 0))) / 12;
     const fiscalCandidates = propertyRows.filter((row) => row.taxRegime === "lmnp_micro" && row.recurring + row.expense > row.expected * 0.35 && row.expected > 0).length;
     return [
       {
         label: "Renégociation de taux",
-        valueLabel: renegociationPotential > 0 ? `+${money(renegociationPotential)}` : "À renseigner",
-        sub: renegociationPotential > 0 ? "gain mensuel indicatif à étudier" : "taux crédit à renseigner",
-        tone: "text-emerald-700",
+        valueLabel: renegociationLabel,
+        sub: renegociationSub,
+        tone: rowsMissingLoanRate.length > 0 ? "text-amber-700" : "text-emerald-700",
       },
       {
         label: "Moduler les mensualités",
