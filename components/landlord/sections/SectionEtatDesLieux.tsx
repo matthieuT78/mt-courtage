@@ -1509,13 +1509,13 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       return;
     }
     if (!selectedReport?.performed_at) {
-      setErr("Renseigne la date et l’heure de la visite dans le bloc “Infos” avant de générer le PDF.");
+      setErr("Renseigne la date et l’heure dans la dernière étape “Finaliser” avant de générer le PDF.");
       return;
     }
     const finalPlace = (selectedReport.performed_place || "").trim() || defaultReportPlace;
     if (!finalPlace) {
       setErr(
-        "Renseigne le champ “Lieu” dans le bloc “Infos” avant de générer le PDF. Il s’agit de l’adresse où la visite est réalisée, par exemple : 12 rue Victor Hugo, 75000 Paris."
+        "Renseigne le champ “Lieu de signature / visite” dans la dernière étape “Finaliser”. C’est l’adresse où l’état des lieux est réalisé, par exemple : 12 rue Victor Hugo, 75000 Paris."
       );
       return;
     }
@@ -2337,6 +2337,92 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         <Badge tone="slate">{items.length} élément(s)</Badge>
                       </div>
 
+                      {selectedReport ? (
+                        <div className="mt-4 space-y-4">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] font-semibold text-slate-700">Date et heure de la visite</label>
+                              <input
+                                type="datetime-local"
+                                disabled={isLocked}
+                                value={selectedReport.performed_at ? new Date(selectedReport.performed_at).toISOString().slice(0, 16) : ""}
+                                onChange={(e) => {
+                                  const iso = e.target.value ? new Date(e.target.value).toISOString() : null;
+                                  updateReport({ performed_at: iso });
+                                }}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] font-semibold text-slate-700">Lieu de signature / visite</label>
+                              <input
+                                disabled={isLocked}
+                                value={selectedReport.performed_place || ""}
+                                onChange={(e) => updateReport({ performed_place: e.target.value })}
+                                placeholder={defaultReportPlace || "Ex : 12 rue Victor Hugo, 75000 Paris"}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                            <p className="text-xs font-semibold text-slate-900">Compteurs</p>
+                            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                              {[
+                                ["electricity", "Électricité"],
+                                ["water", "Eau"],
+                                ["gas", "Gaz"],
+                              ].map(([key, label]) => (
+                                <div key={key} className="space-y-1">
+                                  <label className="text-[0.7rem] text-slate-700">{label}</label>
+                                  <input
+                                    disabled={isLocked}
+                                    value={String(counters[key] || "")}
+                                    onChange={(e) => updateCounterField(key, e.target.value)}
+                                    placeholder="Index / relevé"
+                                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                            <p className="text-xs font-semibold text-slate-900">Remise des accès</p>
+                            <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                              {[
+                                ["keys", "Clés"],
+                                ["badges", "Badges"],
+                                ["remotes", "Télécommandes"],
+                              ].map(([key, label]) => (
+                                <div key={key} className="space-y-1">
+                                  <label className="text-[0.7rem] text-slate-700">{label}</label>
+                                  <input
+                                    disabled={isLocked}
+                                    value={String(counters[key] || "")}
+                                    onChange={(e) => updateCounterField(key, e.target.value)}
+                                    placeholder="Ex : 2 jeux"
+                                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[0.7rem] font-semibold text-slate-700">Notes générales à faire apparaître au PDF</label>
+                            <textarea
+                              rows={3}
+                              disabled={isLocked}
+                              value={selectedReport.general_notes || ""}
+                              onChange={(e) => updateReport({ general_notes: e.target.value })}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+
                       <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <p className="text-xs font-semibold text-slate-900">Après signature</p>
                         <p className="mt-1 text-xs text-slate-700">
@@ -2708,103 +2794,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
             )}
           </div>
 
-          {selectedReport ? (
-            <div className="order-first rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Infos</p>
-
-              {isLocked ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  Cet état des lieux est <span className="font-semibold">verrouillé</span> (signé/archivé).
-                </div>
-              ) : null}
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <label className="text-[0.7rem] text-slate-700">Date / heure</label>
-                  <input
-                    type="datetime-local"
-                    disabled={isLocked}
-                    value={selectedReport.performed_at ? new Date(selectedReport.performed_at).toISOString().slice(0, 16) : ""}
-                    onChange={(e) => {
-                      const iso = e.target.value ? new Date(e.target.value).toISOString() : null;
-                      updateReport({ performed_at: iso });
-                    }}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[0.7rem] text-slate-700">Lieu de la visite</label>
-                  <input
-                    disabled={isLocked}
-                    value={selectedReport.performed_place || ""}
-                    onChange={(e) => updateReport({ performed_place: e.target.value })}
-                    placeholder={defaultReportPlace || "Ex : 12 rue Victor Hugo, 75000 Paris"}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
-                  />
-                  <p className="text-[0.7rem] text-slate-500">Adresse où l’état des lieux est réalisé. Par défaut, l’adresse du bien est utilisée.</p>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[0.7rem] text-slate-700">Notes générales</label>
-                <textarea
-                  rows={3}
-                  disabled={isLocked}
-                  value={selectedReport.general_notes || ""}
-                  onChange={(e) => updateReport({ general_notes: e.target.value })}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
-                />
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-3">
-                <div>
-                  <p className="text-xs font-semibold text-slate-900">Compteurs et clés</p>
-                  <p className="mt-1 text-[0.72rem] text-slate-600">
-                    Ces informations apparaissent dans le PDF et facilitent la remise des lieux.
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {[
-                    ["electricity", "Compteur électricité"],
-                    ["water", "Compteur eau"],
-                    ["gas", "Compteur gaz"],
-                  ].map(([key, label]) => (
-                    <div key={key} className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">{label}</label>
-                      <input
-                        disabled={isLocked}
-                        value={String(counters[key] || "")}
-                        onChange={(e) => updateCounterField(key, e.target.value)}
-                        placeholder="Index / relevé"
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {[
-                    ["keys", "Clés"],
-                    ["badges", "Badges"],
-                    ["remotes", "Télécommandes"],
-                  ].map(([key, label]) => (
-                    <div key={key} className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">{label}</label>
-                      <input
-                        disabled={isLocked}
-                        value={String(counters[key] || "")}
-                        onChange={(e) => updateCounterField(key, e.target.value)}
-                        placeholder="Ex : 2 jeux"
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
         </aside>
 
         {/* RIGHT */}
