@@ -568,8 +568,23 @@ export function SectionQuittances({
       const { raw, json } = await safeJson(resp);
       throwApiError(resp, raw, json, "Erreur confirmation paiement.");
 
-      setOk("Paiement confirmé ✅ Tu peux maintenant générer la quittance.");
+      const genResp = await fetch("/api/receipts/generate", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          userId,
+          leaseId: row.lease.id,
+          periodStart: row.periodStart,
+          periodEnd: row.periodEnd,
+        }),
+      });
+
+      const generated = await safeJson(genResp);
+      throwApiError(genResp, generated.raw, generated.json, "Paiement confirmé, mais la génération de la quittance a échoué.");
+
+      setOk("Paiement confirmé ✅ Quittance générée automatiquement.");
       await onRefresh();
+      if (generated.json?.receipt_id) setSelectedReceiptId(generated.json.receipt_id);
     } catch (e: any) {
       setErr(e?.message || "Erreur confirmation paiement.");
     } finally {

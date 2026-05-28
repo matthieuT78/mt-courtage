@@ -2,6 +2,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs";
 import path from "path";
+import chromium from "@sparticuz/chromium";
+import puppeteerCore from "puppeteer-core";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 
@@ -368,18 +370,20 @@ async function renderPdfFromHtml(html: string) {
   }
 
   // ✅ Linux serverless => puppeteer-core + @sparticuz/chromium
-  const chromiumModRaw: any = requireServerModule("@sparticuz/chromium");
-  const puppeteerCoreRaw: any = requireServerModule("puppeteer-core");
-  const chromiumMod = chromiumModRaw.default || chromiumModRaw;
-  const puppeteerCore = puppeteerCoreRaw.default || puppeteerCoreRaw;
-
-  const executablePath = await chromiumMod.executablePath();
+  const executablePath = await chromium.executablePath();
 
   const browser = await puppeteerCore.launch({
-    args: chromiumMod.args,
-    defaultViewport: chromiumMod.defaultViewport,
+    args: puppeteerCore.defaultArgs({ args: chromium.args, headless: "shell" }),
+    defaultViewport: {
+      deviceScaleFactor: 1,
+      hasTouch: false,
+      height: 1080,
+      isLandscape: false,
+      isMobile: false,
+      width: 794,
+    },
     executablePath,
-    headless: chromiumMod.headless,
+    headless: "shell",
   });
 
   try {
