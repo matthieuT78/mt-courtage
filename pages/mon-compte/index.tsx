@@ -37,6 +37,15 @@ function isEmailLike(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function authRedirectUrl(redirectPath: string) {
+  if (typeof window === "undefined") return undefined;
+  const url = new URL("/mon-compte", window.location.origin);
+  url.searchParams.set("mode", "login");
+  const safePath = safeRedirect(redirectPath);
+  if (safePath !== "/") url.searchParams.set("redirect", safePath);
+  return url.toString();
+}
+
 async function checkEmailAlreadyExists(email: string) {
   const response = await fetch("/api/auth/check-email", {
     method: "POST",
@@ -220,6 +229,7 @@ export default function MonCompteIndexPage() {
         email,
         password: regPassword,
         options: {
+          emailRedirectTo: authRedirectUrl(redirectPath),
           data: {
             full_name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
             first_name: firstName.trim(),

@@ -1,6 +1,8 @@
 // components/landlord/DashboardShell.tsx
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { ArrowUpRightIcon, CheckCircleIcon, LockClosedIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { SidebarNav, LandlordSectionKey } from "./SidebarNav";
 
 import { SectionDashboard } from "./sections/SectionDashboard";
@@ -17,6 +19,64 @@ import { SectionSimulateursBailleur } from "./sections/SectionSimulateursBailleu
 import { usePermissions } from "../PermissionProvider";
 import { planAllowsLandlord, planAllowsPerformance } from "../../lib/permissions";
 
+type LockedSectionConfig = {
+  eyebrow: string;
+  title: string;
+  desc: string;
+  requiredPlan: "Starter" | "Essentiel";
+  href: string;
+  cta: string;
+  features: string[];
+};
+
+function LockedPremiumSection({ config }: { config: LockedSectionConfig }) {
+  return (
+    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="h-1.5 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+      <div className="grid gap-0 lg:grid-cols-[1fr,340px]">
+        <div className="p-6 sm:p-7">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#635bff]/20 bg-[#635bff]/5 px-3 py-1 text-xs font-semibold text-[#4f46e5]">
+            <LockClosedIcon className="h-4 w-4" aria-hidden="true" />
+            {config.eyebrow}
+          </div>
+
+          <h2 className="mt-4 max-w-2xl text-2xl font-semibold leading-tight text-slate-950">{config.title}</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{config.desc}</p>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {config.features.map((feature) => (
+              <div key={feature} className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+                <p className="text-sm leading-5 text-slate-700">{feature}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <aside className="border-t border-slate-200 bg-[#f6f9fc] p-6 lg:border-l lg:border-t-0">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
+              <SparklesIcon className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <p className="mt-4 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Plan requis</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{config.requiredPlan}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Votre compte gratuit reste disponible pour le tableau de bord, biens, locataires, baux, quittances manuelles et finance de base.
+            </p>
+            <Link
+              href={config.href}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              {config.cta}
+              <ArrowUpRightIcon className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
 export function DashboardShell(props: any) {
   const router = useRouter();
   const { loading: permissionsLoading, plan, maxActiveProperties } = usePermissions();
@@ -26,6 +86,7 @@ export function DashboardShell(props: any) {
   const userEmail: string | undefined = props?.user?.email;
 
   const properties = Array.isArray(props?.properties) ? props.properties : [];
+  const propertyFinance = Array.isArray(props?.propertyFinance) ? props.propertyFinance : [];
   const tenants = Array.isArray(props?.tenants) ? props.tenants : [];
   const leases = Array.isArray(props?.leases) ? props.leases : [];
   const payments = Array.isArray(props?.payments) ? props.payments : [];
@@ -112,32 +173,49 @@ export function DashboardShell(props: any) {
   }, [router.query.tab]);
 
   const onChangeTab = (k: LandlordSectionKey) => {
-    if (k === "simulateurs" && !permissionsLoading && !canUsePaidLandlordTools) {
-      router.push("/mon-compte/abonnement?source=simulateurs-bailleur");
-      return;
-    }
-    if (k === "performance" && !permissionsLoading && !canUsePerformance) {
-      router.push("/mon-compte/abonnement?source=performance");
-      return;
-    }
-    if (k === "declaration" && !permissionsLoading && !canUsePerformance) {
-      router.push("/mon-compte/abonnement?source=declaration");
-      return;
-    }
     setActive(k);
   };
 
-  useEffect(() => {
-    if (active === "simulateurs" && !permissionsLoading && !canUsePaidLandlordTools) {
-      router.push("/mon-compte/abonnement?source=simulateurs-bailleur");
+  const lockedSection = useMemo<LockedSectionConfig | null>(() => {
+    if (permissionsLoading) return null;
+    if (active === "simulateurs" && !canUsePaidLandlordTools) {
+      return {
+        eyebrow: "Fonctionnalité Starter",
+        title: "Simulateurs bailleur réservés au plan Starter",
+        desc:
+          "Ces simulateurs aident à arbitrer les décisions de gestion : LMNP, location meublée, révision IRL et louer ou vendre. Ils complètent la gestion gratuite avec des calculs orientés décision.",
+        requiredPlan: "Starter",
+        href: "/mon-compte/abonnement?source=simulateurs-bailleur",
+        cta: "Upgrade vers Starter",
+        features: ["Simulateurs LMNP et arbitrages meublé / nu", "Révision de loyer IRL", "Aide à la décision louer ou vendre", "Jusqu’à 3 logements actifs"],
+      };
     }
-    if (active === "performance" && !permissionsLoading && !canUsePerformance) {
-      router.push("/mon-compte/abonnement?source=performance");
+    if (active === "performance" && !canUsePerformance) {
+      return {
+        eyebrow: "Fonctionnalité Essentiel",
+        title: "Pilotage performance réservé au plan Essentiel",
+        desc:
+          "La section Performance transforme vos données de loyers, charges et crédit en lecture de rentabilité par logement, cash-flow et plan d’action priorisé.",
+        requiredPlan: "Essentiel",
+        href: "/mon-compte/abonnement?source=performance",
+        cta: "Upgrade vers Essentiel",
+        features: ["Rentabilité et cash-flow par logement", "Analyse des charges et du crédit", "Actions prioritaires pour améliorer la gestion", "Jusqu’à 10 logements actifs"],
+      };
     }
-    if (active === "declaration" && !permissionsLoading && !canUsePerformance) {
-      router.push("/mon-compte/abonnement?source=declaration");
+    if (active === "declaration" && !canUsePerformance) {
+      return {
+        eyebrow: "Fonctionnalité Essentiel",
+        title: "Aide à la déclaration réservée au plan Essentiel",
+        desc:
+          "Cette section prépare un dossier exploitable : import Finance, comparaison micro/réel, checklist de justificatifs et export pour votre comptable.",
+        requiredPlan: "Essentiel",
+        href: "/mon-compte/abonnement?source=declaration",
+        cta: "Upgrade vers Essentiel",
+        features: ["Import des recettes et charges depuis Finance", "Comparaison indicative micro / réel", "Checklist justificatifs", "Export de synthèse"],
+      };
     }
-  }, [active, canUsePaidLandlordTools, canUsePerformance, permissionsLoading, router]);
+    return null;
+  }, [active, canUsePaidLandlordTools, canUsePerformance, permissionsLoading]);
 
   const content = useMemo(() => {
     if (!userId) {
@@ -148,6 +226,8 @@ export function DashboardShell(props: any) {
       );
     }
 
+    if (lockedSection) return <LockedPremiumSection config={lockedSection} />;
+
     switch (active) {
       case "dashboard":
         return (
@@ -155,6 +235,8 @@ export function DashboardShell(props: any) {
             userId={userId}
             onGo={setActive}
             propertiesCount={properties.length}
+            properties={properties}
+            propertyFinance={propertyFinance}
             tenantsCount={tenants.length}
             leasesCount={leases.length}
             monthRange={monthRange}
@@ -244,9 +326,11 @@ export function DashboardShell(props: any) {
   }, [
     active,
     plan,
+    lockedSection,
     userId,
     userEmail,
     properties,
+    propertyFinance,
     tenants,
     leases,
     payments,

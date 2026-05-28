@@ -1,6 +1,8 @@
 // components/landlord/sections/SectionBaux.tsx
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import {
+  ArrowUpRightIcon,
   ArrowPathIcon,
   ArrowRightIcon,
   CheckCircleIcon,
@@ -358,6 +360,21 @@ function ActionButton({
   );
 }
 
+function StarterUpgradeLink({ className = "" }: { className?: string }) {
+  return (
+    <Link
+      href="/mon-compte/abonnement?source=quittance-auto"
+      className={cx(
+        "inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800",
+        className
+      )}
+    >
+      Upgrade vers Starter
+      <ArrowUpRightIcon className="h-4 w-4" aria-hidden="true" />
+    </Link>
+  );
+}
+
 function InfoPill({ tone, children }: { tone: "slate" | "sky" | "emerald" | "amber" | "red"; children: React.ReactNode }) {
   const cls =
     tone === "sky"
@@ -691,6 +708,30 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
     return rest;
   };
 
+  const authJsonHeaders = async () => {
+    if (!supabase) throw new Error("Supabase non initialisé.");
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Session expirée. Reconnecte-toi.");
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+  };
+
+  const readApiResponse = async (resp: Response) => {
+    const raw = await resp.text();
+    let json: any = null;
+    try {
+      json = raw ? JSON.parse(raw) : null;
+    } catch {
+      json = null;
+    }
+    if (!resp.ok) throw new Error(json?.error || raw || `Erreur serveur ${resp.status}.`);
+    return json || {};
+  };
+
   /* ======================================================
      FORM (CREATE / EDIT)
   ====================================================== */
@@ -956,15 +997,14 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
         );
         setExpandedId(editingId);
       } else {
-        const { data, error } = await supabase.from("leases").insert(payload).select("id").single();
-        let leaseId = (data as any)?.id;
-        if (error) {
-          if (!isMissingRenewalSchema(error)) throw error;
-          const fallback = await supabase.from("leases").insert(withoutRenewalColumns(payload)).select("id").single();
-          if (fallback.error) throw fallback.error;
-          leaseId = (fallback.data as any)?.id;
-          renewalSchemaSkipped = true;
-        }
+        const resp = await fetch("/api/landlord/leases", {
+          method: "POST",
+          headers: await authJsonHeaders(),
+          body: JSON.stringify({ userId, payload }),
+        });
+        const created = await readApiResponse(resp);
+        const leaseId = created?.id;
+        renewalSchemaSkipped = !!created?.renewalSchemaSkipped;
         setOk(
           renewalSchemaSkipped
             ? "Bail créé ✅ Applique la migration Supabase pour enregistrer le type de bail et la reconduction tacite."
@@ -1290,31 +1330,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
             <p className="text-sm font-semibold text-slate-900">{mode === "edit" ? "Modifier le bail" : "Assistant bail"}</p>
             <p className="text-xs text-slate-500">4 étapes : bail, loyer, quittances, suivi. Les options techniques sont rangées en avancé.</p>
           </div>
-
-          <div className="flex flex-wrap gap-2">
-            <ActionButton
-              icon={CheckCircleIcon}
-              tone="success"
-              disabled={loading}
-              onClick={(e) => {
-                stop(e);
-                saveLease();
-              }}
-            >
-              {loading ? "Enregistrement…" : mode === "edit" ? "Mettre à jour" : "Créer"}
-            </ActionButton>
-
-            <ActionButton
-              icon={XMarkIcon}
-              onClick={(e) => {
-                stop(e);
-                cancelEdit();
-                setExpandedId(null);
-              }}
-            >
-              Annuler
-            </ActionButton>
-          </div>
         </div>
 
         <div className="grid gap-2 md:grid-cols-4">
@@ -1593,12 +1608,17 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
         </div>
 
         {!canUseReceiptAutomation ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-            <p className="font-semibold">Quittances en gratuit : mode manuel</p>
-            <p className="mt-1 text-amber-950/85">
-              Tu peux marquer un loyer payé, générer le PDF et consulter l’archive. Les emails bailleur, relances, génération automatique et envoi
-              au locataire font partie de l’abonnement payant.
-            </p>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="font-semibold">Quittances auto disponibles avec Starter</p>
+                <p className="mt-1 text-amber-950/85">
+                  En gratuit, vous gardez le mode manuel : confirmer le paiement, générer le PDF et consulter l’archive. Le plan Starter débloque
+                  les emails bailleur, relances, génération automatique et envoi au locataire.
+                </p>
+              </div>
+              <StarterUpgradeLink className="shrink-0 self-start lg:self-center" />
+            </div>
           </div>
         ) : null}
 
@@ -1616,7 +1636,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
           <div className="grid gap-2 sm:grid-cols-2">
             <WorkflowChoice
               title="Automatique validé"
-              description="Email bailleur, puis PDF et envoi après confirmation du paiement."
+              description={
+                canUseReceiptAutomation
+                  ? "Email bailleur, puis PDF et envoi après confirmation du paiement."
+                  : "Disponible avec Starter ou Essentiel."
+              }
               icon={ShieldCheckIcon}
               tone="emerald"
               selected={form.auto_quittance_enabled && form.auto_reminder_enabled}
@@ -1633,6 +1657,17 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
               onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false }))}
             />
           </div>
+
+          {!canUseReceiptAutomation ? (
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-slate-600">
+                  Le plan Starter suffit pour activer les quittances automatiques. Le plan Essentiel les inclut aussi, avec Performance et Déclaration.
+                </p>
+                <StarterUpgradeLink className="shrink-0" />
+              </div>
+            </div>
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
@@ -1710,6 +1745,39 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
             </div>
           </div>
         </details>
+
+        <div className="sticky bottom-3 z-10 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-slate-600">
+              {mode === "edit" ? "Enregistrez les modifications du bail." : "Une fois les informations renseignées, créez le bail ici."}
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              <ActionButton
+                icon={CheckCircleIcon}
+                tone="success"
+                disabled={loading}
+                onClick={(e) => {
+                  stop(e);
+                  saveLease();
+                }}
+              >
+                {loading ? "Enregistrement…" : mode === "edit" ? "Mettre à jour" : "Créer"}
+              </ActionButton>
+
+              <ActionButton
+                icon={XMarkIcon}
+                onClick={(e) => {
+                  stop(e);
+                  cancelEdit();
+                  setExpandedId(null);
+                }}
+              >
+                Annuler
+              </ActionButton>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };

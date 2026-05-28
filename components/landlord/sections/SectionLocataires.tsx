@@ -237,6 +237,20 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
   const [createForm, setCreateForm] = useState(emptyForm);
   const [editForms, setEditForms] = useState<Record<string, typeof emptyForm>>({});
 
+  const formFromTenant = (t: Tenant) => {
+    const fromCols = { first_name: (t.first_name || "").trim(), last_name: (t.last_name || "").trim() };
+    const fromFull = splitFullName(t.full_name);
+
+    return {
+      first_name: fromCols.first_name || fromFull.first,
+      last_name: fromCols.last_name || fromFull.last,
+      email: t.email || "",
+      phone: t.phone || "",
+      notes: t.notes || "",
+      archived_reason: t.archived_reason || "",
+    };
+  };
+
   // hydrate edit form quand on expand un tenant
   useEffect(() => {
     setErr(null);
@@ -249,23 +263,12 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
     setEditForms((prev) => {
       if (prev[expandedId]) return prev;
 
-      const fromCols = { first_name: (t.first_name || "").trim(), last_name: (t.last_name || "").trim() };
-      const fromFull = splitFullName(t.full_name);
-
       return {
         ...prev,
-        [expandedId]: {
-          first_name: fromCols.first_name || fromFull.first,
-          last_name: fromCols.last_name || fromFull.last,
-          email: t.email || "",
-          phone: t.phone || "",
-          notes: t.notes || "",
-          archived_reason: t.archived_reason || "",
-        },
+        [expandedId]: formFromTenant(t),
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandedId]);
+  }, [expandedId, safeTenants]);
 
   /* ======================================================
      CRUD
@@ -309,14 +312,21 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
         setOk("Locataire mis à jour ✅");
       } else {
         const res = await withTimeout(
-          Promise.resolve(supabase.from("tenants").insert(payload).select("id").single())
+          Promise.resolve(supabase.from("tenants").insert(payload).select("*").single())
         );
         // @ts-ignore
         if ((res as any)?.error) throw (res as any).error;
 
-        const newId = (res as any)?.data?.id ?? null;
+        const createdTenant = ((res as any)?.data ?? null) as Tenant | null;
+        const newId = createdTenant?.id ?? null;
 
         setOk("Locataire créé ✅");
+        if (createdTenant?.id) {
+          setEditForms((prev) => ({
+            ...prev,
+            [createdTenant.id]: formFromTenant(createdTenant),
+          }));
+        }
         setCreateForm(emptyForm);
         setExpandedId(newId || null);
       }

@@ -1,7 +1,7 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
-import type { Lease, Property, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
+import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -33,6 +33,25 @@ const monthLabel = (key: string) => {
   return new Date(year, month - 1, 1).toLocaleDateString("fr-FR", { month: "short" });
 };
 const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+const hasPositiveAmount = (value?: number | null) => Number(value || 0) > 0;
+
+function hasFinanceSetup(finance?: PropertyFinance | null) {
+  if (!finance) return false;
+  if (!hasPositiveAmount(finance.purchase_price)) return false;
+
+  return [
+    finance.loan_monthly,
+    finance.loan_insurance_monthly,
+    finance.loan_rate_percent,
+    finance.property_tax_yearly,
+    finance.pno_insurance_monthly,
+    finance.copro_charges_monthly,
+    finance.cfe_yearly,
+    finance.fixed_charges_monthly,
+    finance.bank_fees_monthly,
+    finance.maintenance_monthly,
+  ].some(hasPositiveAmount);
+}
 
 function paymentStatusForLease(lease: Lease, payment?: RentPayment | null) {
   const expectedRent = Number(lease.rent_amount || 0);
@@ -78,6 +97,8 @@ export function SectionDashboard({
   receipts,
   propertyById,
   tenantById,
+  properties,
+  propertyFinance,
   propertiesCount,
   tenantsCount,
   leasesCount,
@@ -97,6 +118,8 @@ export function SectionDashboard({
   receipts: RentReceipt[];
   propertyById: Map<string, Property>;
   tenantById: Map<string, Tenant>;
+  properties: Property[];
+  propertyFinance: PropertyFinance[];
   propertiesCount: number;
   tenantsCount: number;
   leasesCount: number;
@@ -155,23 +178,29 @@ export function SectionDashboard({
     const hasProperty = propertiesCount > 0;
     const hasTenant = tenantsCount > 0;
     const hasLease = leasesCount > 0;
+    const financeByProperty = new Map((propertyFinance || []).map((row) => [row.property_id, row]));
+    const financeConfigured =
+      hasProperty && (properties || []).every((property) => hasFinanceSetup(financeByProperty.get(property.id)));
 
     const steps = [
       { key: "biens" as LandlordSectionKey, label: "Créer un bien", done: hasProperty },
       { key: "locataires" as LandlordSectionKey, label: "Créer un locataire", done: hasTenant },
       { key: "baux" as LandlordSectionKey, label: "Créer un bail", done: hasLease },
+      { key: "finance" as LandlordSectionKey, label: "Configurer la finance", done: financeConfigured },
     ];
 
     const doneCount = steps.filter((step) => step.done).length;
     const percent = Math.round((doneCount / steps.length) * 100);
-    const next = !hasProperty ? steps[0] : !hasTenant ? steps[1] : !hasLease ? steps[2] : null;
+    const next = !hasProperty ? steps[0] : !hasTenant ? steps[1] : !hasLease ? steps[2] : !financeConfigured ? steps[3] : null;
 
     const headline =
       percent === 100
         ? "Mise en route terminée"
-        : percent >= 66
+        : next?.key === "finance"
+        ? "Dernière étape : fiabiliser les calculs"
+        : percent >= 50
         ? "Plus qu’une étape avant votre premier workflow complet"
-        : percent >= 33
+        : percent >= 25
         ? "Bien joué, on continue"
         : "Démarrons en 2 minutes";
 
@@ -182,11 +211,13 @@ export function SectionDashboard({
         ? "Commencez par créer un bien : adresse, libellé et informations utiles."
         : next?.key === "locataires"
         ? "Ajoutez le locataire : nom, email, téléphone et notes utiles."
-        : "Créez le bail : il relie le bien, le locataire, le loyer et les quittances.";
+        : next?.key === "baux"
+        ? "Créez le bail : il relie le bien, le locataire, le loyer et les quittances."
+        : "Complétez les données Finance du bien : prix d’achat, crédit, assurance, taxe foncière, copropriété et régime fiscal.";
 
     const cta = next ? { key: next.key, label: next.label } : null;
     return { steps, doneCount, percent, next, headline, sub, cta };
-  }, [propertiesCount, tenantsCount, leasesCount]);
+  }, [properties, propertiesCount, propertyFinance, tenantsCount, leasesCount]);
 
   const shouldHideOnboarding = useMemo(() => {
     if (!doneAtISO) return false;
@@ -363,6 +394,21 @@ export function SectionDashboard({
       target?: LandlordSectionKey;
       cta?: string;
     }> = [];
+    const onboardingIncomplete = onboarding.percent < 100;
+
+    if (onboardingIncomplete && onboarding.next) {
+      actions.push({
+        tone: "indigo",
+        title: "Terminer la mise en route",
+        desc: onboarding.sub,
+        details: [
+          `${onboarding.doneCount}/${onboarding.steps.length} étapes terminées`,
+          `Prochaine étape : ${onboarding.next.label}`,
+        ],
+        target: onboarding.next.key,
+        cta: onboarding.next.label,
+      });
+    }
 
     if (lateCount > 0) {
       const lateDetails = leaseCards
@@ -441,6 +487,7 @@ export function SectionDashboard({
     for (const alert of alerts) {
       const target = actionTarget(alert.action);
       if (!target) continue;
+      if (onboardingIncomplete && (target === "biens" || target === "locataires" || target === "baux")) continue;
       if (actions.some((action) => action.target === target && action.title === alert.title)) continue;
       actions.push({
         tone: alert.tone === "red" ? "red" : alert.tone === "amber" ? "amber" : "emerald",
@@ -470,36 +517,46 @@ export function SectionDashboard({
     lateCount,
     leaseCards,
     monthlyExpected,
+    onboarding.doneCount,
+    onboarding.next,
+    onboarding.percent,
+    onboarding.steps.length,
+    onboarding.sub,
     rentsToCollect,
     ratio,
     remainingToCollect,
   ]);
 
   const healthDetails = useMemo(() => {
+    const hasActiveLease = activeLeases.length > 0;
     const rows = [
       {
         label: "Encaissement",
-        value: monthlyExpected > 0 ? `${ratio}%` : "Sans loyer",
-        tone: ratio >= 95 || monthlyExpected === 0 ? "emerald" : ratio >= 70 ? "amber" : "red",
+        value: monthlyExpected > 0 ? `${ratio}%` : "À configurer",
+        tone: monthlyExpected === 0 ? "amber" : ratio >= 95 ? "emerald" : ratio >= 70 ? "amber" : "red",
         desc:
           monthlyExpected === 0
-            ? "Aucun loyer attendu ce mois-ci."
+            ? "Créez un bail actif pour générer les loyers attendus."
             : remainingToCollect > 0
             ? `${formatEuro(remainingToCollect)} reste à confirmer dans Quittances.`
             : "Tous les loyers attendus sont confirmés.",
-        target: remainingToCollect > 0 ? ("quittances" as LandlordSectionKey) : null,
+        target: monthlyExpected === 0 ? ("baux" as LandlordSectionKey) : remainingToCollect > 0 ? ("quittances" as LandlordSectionKey) : null,
       },
       {
         label: "Retards",
         value: lateCount > 0 ? `${lateCount}` : "0",
-        tone: lateCount > 0 ? "red" : "emerald",
-        desc: lateCount > 0 ? "Traitez les paiements échus non confirmés." : "Aucun loyer échu en retard.",
+        tone: !hasActiveLease ? "amber" : lateCount > 0 ? "red" : "emerald",
+        desc: !hasActiveLease
+          ? "Aucun bail actif à suivre pour le moment."
+          : lateCount > 0
+          ? "Traitez les paiements échus non confirmés."
+          : "Aucun loyer échu en retard.",
         target: lateCount > 0 ? ("quittances" as LandlordSectionKey) : null,
       },
       {
         label: "Quittances",
         value: activeLeases.length > 0 ? `${receiptCoverage}%` : "À créer",
-        tone: receiptCoverage >= 100 || activeLeases.length === 0 ? "emerald" : receiptCoverage >= 50 ? "amber" : "red",
+        tone: activeLeases.length === 0 ? "amber" : receiptCoverage >= 100 ? "emerald" : receiptCoverage >= 50 ? "amber" : "red",
         desc:
           activeLeases.length === 0
             ? "Créez un bail actif pour démarrer le workflow."
@@ -561,10 +618,10 @@ export function SectionDashboard({
             <div className="h-2 overflow-hidden rounded-full bg-slate-200">
               <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${onboarding.percent}%` }} />
             </div>
-            <p className="mt-2 text-xs text-slate-600">{onboarding.doneCount}/3 étapes terminées</p>
+            <p className="mt-2 text-xs text-slate-600">{onboarding.doneCount}/{onboarding.steps.length} étapes terminées</p>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {onboarding.steps.map((step) => (
               <button
                 key={step.key}
@@ -574,10 +631,16 @@ export function SectionDashboard({
                   "rounded-xl border px-3 py-3 text-left transition " +
                   (step.done ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50 hover:bg-slate-100")
                 }
-              >
+                >
                 <p className="text-sm font-semibold text-slate-900">{step.done ? "Fait" : "À faire"} · {step.label}</p>
                 <p className="mt-0.5 text-[0.8rem] text-slate-600">
-                  {step.key === "biens" ? "Adresse, infos, statut" : step.key === "locataires" ? "Nom, email, contact" : "Bien, locataire et loyer"}
+                  {step.key === "biens"
+                    ? "Adresse, infos, statut"
+                    : step.key === "locataires"
+                    ? "Nom, email, contact"
+                    : step.key === "baux"
+                    ? "Bien, locataire et loyer"
+                    : "Prix, crédit et charges"}
                 </p>
               </button>
             ))}
@@ -603,7 +666,7 @@ export function SectionDashboard({
           <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]"
-              style={{ width: `${Math.max(8, Math.min(100, healthScore))}%` }}
+              style={{ width: `${healthScore > 0 ? Math.max(8, Math.min(100, healthScore)) : 0}%` }}
             />
           </div>
         </div>

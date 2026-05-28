@@ -29,6 +29,31 @@ export type Property = {
   updated_at: string;
 };
 
+export type PropertyFinance = {
+  property_id: string;
+  user_id: string;
+  purchase_price: number | null;
+  notary_fees?: number | null;
+  agency_fees?: number | null;
+  works?: number | null;
+  down_payment?: number | null;
+  loan_monthly?: number | null;
+  loan_insurance_monthly?: number | null;
+  loan_rate_percent?: number | null;
+  loan_remaining_months?: number | null;
+  tax_regime?: string | null;
+  fixed_charges_monthly?: number | null;
+  property_tax_yearly?: number | null;
+  pno_insurance_monthly?: number | null;
+  copro_charges_monthly?: number | null;
+  cfe_yearly?: number | null;
+  loan_interest_monthly?: number | null;
+  bank_fees_monthly?: number | null;
+  maintenance_monthly?: number | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type Tenant = {
   id: string;
   user_id: string;

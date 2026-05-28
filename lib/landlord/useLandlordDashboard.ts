@@ -6,6 +6,7 @@ import type {
   SimpleUser,
   LandlordSettings,
   Property,
+  PropertyFinance,
   Tenant,
   Lease,
   RentPayment,
@@ -32,6 +33,7 @@ export function useLandlordDashboard() {
 
   const [landlord, setLandlord] = useState<LandlordSettings | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [propertyFinance, setPropertyFinance] = useState<PropertyFinance[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [leases, setLeases] = useState<Lease[]>([]);
   const [payments, setPayments] = useState<RentPayment[]>([]);
@@ -138,9 +140,28 @@ export function useLandlordDashboard() {
       if (lErr) throw lErr;
 
       const leasesArr: Lease[] = ((lData as any) ?? []) as Lease[];
-      setProperties(((pData as any) ?? []) as Property[]);
+      const propertiesArr: Property[] = ((pData as any) ?? []) as Property[];
+      setProperties(propertiesArr);
       setTenants(((tData as any) ?? []) as Tenant[]);
       setLeases(leasesArr);
+
+      if (propertiesArr.length === 0) {
+        setPropertyFinance([]);
+      } else {
+        const { data: financeData, error: financeErr } = await supabase
+          .from("property_finance")
+          .select(
+            "property_id,user_id,purchase_price,notary_fees,agency_fees,works,down_payment,loan_monthly,loan_insurance_monthly,loan_rate_percent,loan_remaining_months,tax_regime,fixed_charges_monthly,property_tax_yearly,pno_insurance_monthly,copro_charges_monthly,cfe_yearly,loan_interest_monthly,bank_fees_monthly,maintenance_monthly,created_at,updated_at"
+          )
+          .eq("user_id", user.id);
+
+        if (financeErr) {
+          console.warn("Impossible de charger la configuration financière des biens.", financeErr);
+          setPropertyFinance([]);
+        } else {
+          setPropertyFinance(((financeData as any) ?? []) as PropertyFinance[]);
+        }
+      }
 
       const leaseIds = leasesArr.map((x) => x.id);
 
@@ -273,19 +294,34 @@ export function useLandlordDashboard() {
   }, [properties.length, activeLeases]);
 
   const healthScore = useMemo(() => {
-    // simple score “pro” : encaissement + retards + quittances
-    let score = 100;
+    // Score progressif : un compte vide ne doit pas être considéré comme "parfait".
+    let score = 0;
+    const activeLeaseCount = activeLeases.length;
+
+    if (properties.length > 0) score += 15;
+    if (tenants.length > 0) score += 10;
+    if (activeLeaseCount > 0) score += 15;
+
+    score += Math.round((occupancyRate / 100) * 20);
+
     if (monthlyExpected > 0) {
-      const ratio = monthlyPaid / monthlyExpected;
-      score -= Math.round((1 - Math.min(Math.max(ratio, 0), 1)) * 40);
+      const collectionRatio = Math.min(Math.max(monthlyPaid / monthlyExpected, 0), 1);
+      score += Math.round(collectionRatio * 20);
     }
-    score -= Math.min(lateCount * 10, 30);
-    if (activeLeases.length > 0 && receiptsThisMonth.length === 0) score -= 10;
+
+    if (activeLeaseCount > 0) {
+      score += Math.max(0, 10 - Math.min(lateCount * 5, 10));
+      score += Math.round(Math.min(receiptsThisMonth.length / activeLeaseCount, 1) * 10);
+    }
+
     return Math.max(0, Math.min(100, score));
   }, [
+    properties.length,
+    tenants.length,
     monthlyExpected,
     monthlyPaid,
     lateCount,
+    occupancyRate,
     activeLeases.length,
     receiptsThisMonth.length,
   ]);
@@ -380,6 +416,7 @@ export function useLandlordDashboard() {
 
     landlord,
     properties,
+    propertyFinance,
     tenants,
     leases,
     payments,

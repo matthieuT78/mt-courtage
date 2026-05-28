@@ -70,6 +70,7 @@ export default function AppHeader() {
     { href: "/#faq", label: "FAQ" },
     { href: "mailto:contact@lokt.fr", label: "Contact", external: true },
   ];
+  const navLinks = authReady && isLoggedIn ? v1Links.filter((link) => link.href !== "/outil-gestion-locative") : v1Links;
 
   const isActive = (href: string) => {
     if (href.startsWith("/#")) return false;
@@ -102,7 +103,7 @@ export default function AppHeader() {
 
             {/* Minimal links */}
             <nav className="flex items-center gap-1.5">
-              {v1Links.map((l) =>
+              {navLinks.map((l) =>
                 l.external ? (
                   <a
                     key={l.label}
@@ -139,7 +140,7 @@ export default function AppHeader() {
                     href="/espace-bailleur"
                     className={`inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-[0.8rem] font-semibold shadow-sm ${brandBg} ${brandText} ${brandHover}`}
                   >
-                    Outil bailleur
+                    Espace bailleur
                   </Link>
                 </>
               ) : (
