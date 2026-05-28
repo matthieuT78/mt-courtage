@@ -433,6 +433,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     return `${(p as any)?.label || "Logement"} — ${(t as any)?.full_name || "Locataire"}`;
   };
 
+  const propertyPlaceLabel = (p?: Property | null) =>
+    [p?.address_line1, p?.address_line2, [p?.postal_code, p?.city].filter(Boolean).join(" ")]
+      .filter((part) => String(part || "").trim())
+      .join(", ");
+
   const safeRefresh = async () => {
     try {
       await onRefresh?.();
@@ -457,6 +462,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const selectedReport = useMemo(() => reports.find((r) => r.id === selectedReportId) || null, [reports, selectedReportId]);
   const selectedLease = useMemo(() => safeLeases.find((l: any) => l.id === selectedLeaseId) || null, [safeLeases, selectedLeaseId]);
+  const selectedProperty = selectedLease ? propertyById.get((selectedLease as any).property_id) || null : null;
+  const defaultReportPlace = propertyPlaceLabel(selectedProperty);
 
   const selectedLeaseNiceLabel = selectedLease ? leaseLabel(selectedLease as any) : "—";
   const reportLabel = selectedReport ? reportTypeLabel(selectedReport.report_type) : "—";
@@ -679,7 +686,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
           report_type: type,
           status: "draft",
           performed_at: new Date().toISOString(),
-          performed_place: "",
+          performed_place: defaultReportPlace,
           counters_json: null,
           general_notes: "",
           pdf_url: null,
@@ -1502,11 +1509,14 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       return;
     }
     if (!selectedReport?.performed_at) {
-      setErr("Ajoute la date et l’heure de l’état des lieux avant de finaliser.");
+      setErr("Renseigne la date et l’heure de la visite dans le bloc “Infos” avant de générer le PDF.");
       return;
     }
-    if (!(selectedReport.performed_place || "").trim()) {
-      setErr("Ajoute le lieu de l’état des lieux avant de finaliser.");
+    const finalPlace = (selectedReport.performed_place || "").trim() || defaultReportPlace;
+    if (!finalPlace) {
+      setErr(
+        "Renseigne le champ “Lieu” dans le bloc “Infos” avant de générer le PDF. Il s’agit de l’adresse où la visite est réalisée, par exemple : 12 rue Victor Hugo, 75000 Paris."
+      );
       return;
     }
     if (!rooms.length) {
@@ -1526,7 +1536,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
     try {
       // 1) status ready
-      const { error } = await supabase.from("inventory_reports").update({ status: "ready" }).eq("id", selectedReportId).eq("user_id", userId);
+      const { error } = await supabase
+        .from("inventory_reports")
+        .update({ status: "ready", performed_place: finalPlace })
+        .eq("id", selectedReportId)
+        .eq("user_id", userId);
       if (error) throw error;
 
       // 2) génération via API existante
@@ -2748,13 +2762,15 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[0.7rem] text-slate-700">Lieu</label>
+                  <label className="text-[0.7rem] text-slate-700">Lieu de la visite</label>
                   <input
                     disabled={isLocked}
                     value={selectedReport.performed_place || ""}
                     onChange={(e) => updateReport({ performed_place: e.target.value })}
+                    placeholder={defaultReportPlace || "Ex : 12 rue Victor Hugo, 75000 Paris"}
                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
                   />
+                  <p className="text-[0.7rem] text-slate-500">Adresse où l’état des lieux est réalisé. Par défaut, l’adresse du bien est utilisée.</p>
                 </div>
               </div>
 
