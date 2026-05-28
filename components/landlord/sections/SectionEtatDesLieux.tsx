@@ -2872,8 +2872,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       </div>
       ) : null}
 
-      <ViewModal />
-      <WizardOverlay />
+      {ViewModal()}
+      {WizardOverlay()}
     </div>
   );
 }
