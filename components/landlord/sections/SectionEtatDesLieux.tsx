@@ -721,16 +721,18 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       return;
     }
 
+    const reportId = selectedReportId;
+    const previousReport = selectedReport;
+
     setErr(null);
     setOk(null);
+    setReports((prev) => prev.map((r) => (r.id === reportId ? ({ ...r, ...patch } as any) : r)));
 
     try {
-      const { error } = await supabase.from("inventory_reports").update(patch).eq("id", selectedReportId).eq("user_id", userId);
+      const { error } = await supabase.from("inventory_reports").update(patch).eq("id", reportId).eq("user_id", userId);
       if (error) throw error;
-
-      setReports((prev) => prev.map((r) => (r.id === selectedReportId ? ({ ...r, ...patch } as any) : r)));
-      setOk("Enregistré ✅");
     } catch (e: any) {
+      if (previousReport) setReports((prev) => prev.map((r) => (r.id === reportId ? previousReport : r)));
       setErr(e?.message || "Impossible d’enregistrer.");
     }
   };
@@ -850,13 +852,15 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     if (!supabase || !selectedReportId) return;
     if (isLocked) return;
 
+    const reportId = selectedReportId;
+    const previousItem = items.find((it) => it.id === itemId) || null;
+    setItems((prev) => prev.map((it) => (it.id === itemId ? ({ ...it, ...patch } as any) : it)));
+
     try {
-      const { error } = await supabase.from("inventory_items").update(patch).eq("id", itemId).eq("report_id", selectedReportId);
-      if (!error) {
-        setItems((prev) => prev.map((it) => (it.id === itemId ? ({ ...it, ...patch } as any) : it)));
-      }
+      const { error } = await supabase.from("inventory_items").update(patch).eq("id", itemId).eq("report_id", reportId);
+      if (error) throw error;
     } catch {
-      // no-op
+      if (previousItem) setItems((prev) => prev.map((it) => (it.id === itemId ? previousItem : it)));
     }
   };
 
