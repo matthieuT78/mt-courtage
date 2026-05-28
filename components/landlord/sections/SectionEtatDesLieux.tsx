@@ -83,6 +83,15 @@ async function authJsonHeaders() {
   };
 }
 
+async function safeJson(resp: Response) {
+  const raw = await resp.text();
+  let json: any = null;
+  try {
+    json = raw ? JSON.parse(raw) : null;
+  } catch {}
+  return { raw, json };
+}
+
 /* ======================================================
    HELPERS UI / LIBELLÉS UTILISATEUR
 ====================================================== */
@@ -990,10 +999,20 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     setOk(null);
 
     try {
-      const path = buildPdfPath({ reportId: selectedReportId, userId, leaseId: selectedLeaseId, kind: "signed" });
+      const headers = await authJsonHeaders();
+      const uploadUrlResp = await fetch("/api/inventory/signed-upload-url", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ userId, reportId: selectedReportId }),
+      });
+      const { raw, json } = await safeJson(uploadUrlResp);
+      if (!uploadUrlResp.ok) throw new Error(json?.error || raw || `Erreur ${uploadUrlResp.status}`);
 
-      const { error: eUp } = await supabase.storage.from(INVENTORY_BUCKET).upload(path, file, {
-        upsert: true,
+      const path = String(json?.path || buildPdfPath({ reportId: selectedReportId, userId, leaseId: selectedLeaseId, kind: "signed" }));
+      const token = String(json?.token || "");
+      if (!token) throw new Error("URL d’upload signée indisponible.");
+
+      const { error: eUp } = await supabase.storage.from(INVENTORY_BUCKET).uploadToSignedUrl(path, token, file, {
         contentType: "application/pdf",
       });
       if (eUp) throw eUp;
@@ -2305,14 +2324,15 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                             ← Pièce précédente
                           </button>
 
-                          <button
-                            type="button"
-                            disabled={wizardRoomIndex >= rooms.length - 1}
-                            onClick={() => preserveWizardScroll(() => setWizardRoomIndex((i) => Math.min(rooms.length - 1, i + 1)))}
-                            className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
-                          >
-                            Pièce suivante →
-                          </button>
+                          {wizardRoomIndex < rooms.length - 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => preserveWizardScroll(() => setWizardRoomIndex((i) => Math.min(rooms.length - 1, i + 1)))}
+                              className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                            >
+                              Pièce suivante →
+                            </button>
+                          ) : null}
                         </div>
                       </>
                     )}
