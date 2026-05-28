@@ -909,6 +909,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   // ========= Upsert property finance =========
   const upsertPropertyFinance = async (propertyId: string, patch: Partial<PropertyFinance>) => {
     if (!supabase || !userId || !propertyId) return;
+    setErr(null);
+    setOk(null);
 
     const payload = {
       property_id: propertyId,
@@ -921,6 +923,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     if (error) throw error;
 
     await loadFinance();
+    await onRefresh?.();
+    setOk("Configuration financière enregistrée ✅ Mise en route mise à jour.");
   };
 
   const periodLabel = selectedPeriod.label;
@@ -1114,20 +1118,29 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
       ) : null}
 
-      <nav className="sticky top-3 z-20 -mx-1 overflow-x-auto rounded-[1.75rem] border border-slate-200 bg-white/85 p-1.5 shadow-sm backdrop-blur">
+      <nav className="sticky top-3 z-20 -mx-1 overflow-x-auto rounded-[1.75rem] border border-indigo-100 bg-white/95 p-2 shadow-md backdrop-blur">
+        <div className="mb-2 flex items-center justify-between gap-3 px-2">
+          <p className="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-indigo-700">Navigation Finance</p>
+          <p className="hidden text-xs font-medium text-slate-500 sm:block">Cliquez pour aller directement à une partie</p>
+        </div>
         <div className="grid min-w-[760px] grid-cols-4 gap-1">
           {chapters.map((chapter) => (
             <a
               key={chapter.href}
               href={chapter.href}
-              className="group relative overflow-hidden rounded-[1.35rem] px-4 py-3 text-left transition hover:bg-slate-50"
+              className="group relative overflow-hidden rounded-[1.35rem] border border-slate-200 bg-slate-50 px-4 py-3 text-left shadow-sm transition hover:border-indigo-200 hover:bg-white hover:shadow-md"
             >
-              <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-slate-400 transition group-hover:text-[#635bff]">
-                {chapter.number}
+              <span className="flex items-center justify-between gap-3">
+                <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-indigo-500 transition group-hover:text-[#635bff]">
+                  {chapter.number}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[0.65rem] font-semibold text-slate-500 group-hover:border-indigo-200 group-hover:text-indigo-700">
+                  Aller à
+                </span>
               </span>
-              <span className="mt-1 block text-sm font-semibold text-slate-950">{chapter.label}</span>
-              <span className="mt-0.5 block truncate text-xs text-slate-500">{chapter.sub}</span>
-              <span className="absolute inset-x-4 bottom-1 h-0.5 origin-left scale-x-0 rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] transition group-hover:scale-x-100" />
+              <span className="mt-1.5 block text-sm font-extrabold text-slate-950">{chapter.label}</span>
+              <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">{chapter.sub}</span>
+              <span className="absolute inset-x-4 bottom-1 h-0.5 origin-left scale-x-100 rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
             </a>
           ))}
         </div>
@@ -2137,6 +2150,8 @@ function PropertyFinanceForm({
   existing: PropertyFinance | null;
   onSave: (propertyId: string, patch: Partial<PropertyFinance>) => Promise<void>;
 }) {
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [s, setS] = useState<PropertyFinance>({
     property_id: propertyId,
     user_id: "",
@@ -2186,26 +2201,34 @@ function PropertyFinanceForm({
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
-    await onSave(propertyId, {
-      purchase_price: s.purchase_price,
-      notary_fees: s.notary_fees,
-      agency_fees: s.agency_fees,
-      works: s.works,
-      down_payment: s.down_payment,
-      loan_monthly: s.loan_monthly,
-      loan_insurance_monthly: s.loan_insurance_monthly,
-      loan_rate_percent: s.loan_rate_percent,
-      loan_remaining_months: s.loan_remaining_months,
-      tax_regime: s.tax_regime,
-      fixed_charges_monthly: s.fixed_charges_monthly,
-      property_tax_yearly: s.property_tax_yearly,
-      pno_insurance_monthly: s.pno_insurance_monthly,
-      copro_charges_monthly: s.copro_charges_monthly,
-      cfe_yearly: s.cfe_yearly,
-      loan_interest_monthly: s.loan_interest_monthly,
-      bank_fees_monthly: s.bank_fees_monthly,
-      maintenance_monthly: s.maintenance_monthly,
-    });
+    setSaving(true);
+    setSaved(false);
+    try {
+      await onSave(propertyId, {
+        purchase_price: s.purchase_price,
+        notary_fees: s.notary_fees,
+        agency_fees: s.agency_fees,
+        works: s.works,
+        down_payment: s.down_payment,
+        loan_monthly: s.loan_monthly,
+        loan_insurance_monthly: s.loan_insurance_monthly,
+        loan_rate_percent: s.loan_rate_percent,
+        loan_remaining_months: s.loan_remaining_months,
+        tax_regime: s.tax_regime,
+        fixed_charges_monthly: s.fixed_charges_monthly,
+        property_tax_yearly: s.property_tax_yearly,
+        pno_insurance_monthly: s.pno_insurance_monthly,
+        copro_charges_monthly: s.copro_charges_monthly,
+        cfe_yearly: s.cfe_yearly,
+        loan_interest_monthly: s.loan_interest_monthly,
+        bank_fees_monthly: s.bank_fees_monthly,
+        maintenance_monthly: s.maintenance_monthly,
+      });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -2277,9 +2300,19 @@ function PropertyFinanceForm({
         <Field label="Entretien provisionné mensuel" value={s.maintenance_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, maintenance_monthly: v }))} />
       </div>
 
-      <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-        Enregistrer
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={saving}
+          className={cx(
+            "inline-flex min-h-[42px] items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-70",
+            saved ? "bg-emerald-700 hover:bg-emerald-700" : "bg-slate-900 hover:bg-slate-800"
+          )}
+        >
+          {saving ? "Enregistrement..." : saved ? "Enregistré ✓" : "Enregistrer"}
+        </button>
+        {saved ? <span className="text-sm font-semibold text-emerald-700">Configuration prise en compte.</span> : null}
+      </div>
     </form>
   );
 }
