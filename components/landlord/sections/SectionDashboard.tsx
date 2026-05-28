@@ -37,20 +37,7 @@ const hasPositiveAmount = (value?: number | null) => Number(value || 0) > 0;
 
 function hasFinanceSetup(finance?: PropertyFinance | null) {
   if (!finance) return false;
-  if (!hasPositiveAmount(finance.purchase_price)) return false;
-
-  return [
-    finance.loan_monthly,
-    finance.loan_insurance_monthly,
-    finance.loan_rate_percent,
-    finance.property_tax_yearly,
-    finance.pno_insurance_monthly,
-    finance.copro_charges_monthly,
-    finance.cfe_yearly,
-    finance.fixed_charges_monthly,
-    finance.bank_fees_monthly,
-    finance.maintenance_monthly,
-  ].some(hasPositiveAmount);
+  return hasPositiveAmount(finance.purchase_price) && hasPositiveAmount(finance.loan_rate_percent);
 }
 
 function paymentStatusForLease(lease: Lease, payment?: RentPayment | null) {
@@ -213,7 +200,7 @@ export function SectionDashboard({
         ? "Ajoutez le locataire : nom, email, téléphone et notes utiles."
         : next?.key === "baux"
         ? "Créez le bail : il relie le bien, le locataire, le loyer et les quittances."
-        : "Complétez les données Finance du bien : prix d’achat, crédit, assurance, taxe foncière, copropriété et régime fiscal.";
+        : "Complétez le socle Finance du bien : prix d’achat et taux du crédit. Les autres charges pourront être ajoutées ensuite.";
 
     const cta = next ? { key: next.key, label: next.label } : null;
     return { steps, doneCount, percent, next, headline, sub, cta };
@@ -640,7 +627,7 @@ export function SectionDashboard({
                     ? "Nom, email, contact"
                     : step.key === "baux"
                     ? "Bien, locataire et loyer"
-                    : "Prix, crédit et charges"}
+                    : "Prix et taux crédit"}
                 </p>
               </button>
             ))}

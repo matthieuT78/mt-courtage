@@ -1181,8 +1181,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
             <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">Paramètres financiers</p>
             <h3 className="text-lg font-semibold text-slate-950">Charges récurrentes et crédit par bien</h3>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-              C’est ici que vous renseignez une fois les informations utilisées par Finance et Performance : mensualité de crédit,
-              taux, durée restante, assurance PNO, copropriété, CFE, taxe foncière, frais bancaires et entretien.
+              Pour terminer la mise en route, renseignez seulement le prix d’achat et le taux du crédit. Les autres champs affinent ensuite Finance
+              et Performance : mensualité, durée restante, assurance PNO, copropriété, CFE, taxe foncière, frais bancaires et entretien.
             </p>
           </div>
           <a
@@ -1212,8 +1212,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               const monthlyTotal =
                 loanMonthly + taxesMonthly + operatingMonthly;
               const missing = [
+                !existing?.purchase_price ? "prix d’achat" : "",
+                !existing?.loan_rate_percent ? "taux crédit" : "",
+              ].filter(Boolean);
+              const optionalMissing = [
                 !existing?.loan_monthly ? "crédit" : "",
-                !existing?.loan_rate_percent ? "taux" : "",
                 !existing?.tax_regime ? "régime" : "",
               ].filter(Boolean);
 
@@ -1228,7 +1231,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-slate-950">{property.label || property.address_line1 || "Bien"}</p>
                           <p className="truncate text-xs text-slate-500">
-                            {missing.length ? `À compléter : ${missing.join(", ")}` : "Paramètres prêts pour Performance"}
+                            {missing.length
+                              ? `Mise en route : ${missing.join(", ")}`
+                              : optionalMissing.length
+                              ? `À affiner : ${optionalMissing.join(", ")}`
+                              : "Paramètres prêts pour Performance"}
                           </p>
                         </div>
                       </div>
