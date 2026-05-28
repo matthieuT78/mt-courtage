@@ -21,8 +21,9 @@ type Props = {
   onRefresh: () => Promise<void>;
 };
 
-const toMonthISO = (d: Date) => d.toISOString().slice(0, 7);
 const LOOKBACK_MONTHS = 24;
+const pad2 = (n: number) => String(n).padStart(2, "0");
+const toMonthISO = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 
 function cx(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -95,8 +96,6 @@ async function authJsonHeaders() {
 /* ======================================================
    CALENDRIER (terme à échoir / terme échu) + J+2
 ====================================================== */
-
-const pad2 = (n: number) => String(n).padStart(2, "0");
 
 // ⚠️ ISO “calendaire” en local (pas UTC drift)
 const toISODateLocal = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
