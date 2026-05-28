@@ -81,6 +81,31 @@ function throwApiError(resp: Response, raw: string, json: any, fallback: string)
   if (!resp.ok) throw new Error(apiErrorMessage(resp, raw, json, fallback));
 }
 
+function openBlankPdfWindow() {
+  const opened = window.open("about:blank", "_blank");
+  if (!opened) return null;
+  opened.document.write("<p style=\"font-family:system-ui,sans-serif;padding:24px\">Ouverture du PDF...</p>");
+  return opened;
+}
+
+function openPdfUrl(url: string, opened?: Window | null) {
+  if (opened) {
+    opened.location.href = url;
+    return;
+  }
+
+  const next = window.open(url, "_blank", "noopener,noreferrer");
+  if (!next) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+}
+
 async function authJsonHeaders() {
   if (!supabase) throw new Error("Supabase n’est pas configuré.");
   const { data, error } = await supabase.auth.getSession();
@@ -526,6 +551,8 @@ export function SectionQuittances({
       return;
     }
 
+    const pdfWindow = openBlankPdfWindow();
+
     try {
       setLoading(true);
       const headers = await authJsonHeaders();
@@ -538,9 +565,10 @@ export function SectionQuittances({
       const { raw, json } = await safeJson(resp);
       throwApiError(resp, raw, json, "Impossible d’ouvrir le PDF.");
 
-      if (json?.signedUrl) window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+      if (json?.signedUrl) openPdfUrl(json.signedUrl, pdfWindow);
       else setErr("SignedUrl manquant.");
     } catch (e: any) {
+      pdfWindow?.close();
       setErr(e?.message || "Impossible d’ouvrir le PDF.");
     } finally {
       setLoading(false);
@@ -595,6 +623,7 @@ export function SectionQuittances({
   const generatePdfForRow = async (row: any) => {
     setErr(null);
     setOk(null);
+    const pdfWindow = openBlankPdfWindow();
 
     try {
       setLoading(true);
@@ -616,8 +645,10 @@ export function SectionQuittances({
       setOk("PDF généré ✅");
       await onRefresh();
       if (json?.receipt_id) setSelectedReceiptId(json.receipt_id);
-      if (json?.signedUrl) window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+      if (json?.signedUrl) openPdfUrl(json.signedUrl, pdfWindow);
+      else pdfWindow?.close();
     } catch (e: any) {
+      pdfWindow?.close();
       setErr(e?.message || "Erreur génération PDF.");
     } finally {
       setLoading(false);
@@ -638,6 +669,7 @@ export function SectionQuittances({
 
     setErr(null);
     setOk(null);
+    const pdfWindow = openBlankPdfWindow();
 
     try {
       setLoading(true);
@@ -653,8 +685,10 @@ export function SectionQuittances({
 
       setOk("Quittance envoyée ✅");
       await onRefresh();
-      if (json?.signedUrl) window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+      if (json?.signedUrl) openPdfUrl(json.signedUrl, pdfWindow);
+      else pdfWindow?.close();
     } catch (e: any) {
+      pdfWindow?.close();
       setErr(e?.message || "Erreur envoi quittance.");
     } finally {
       setLoading(false);
@@ -797,6 +831,7 @@ export function SectionQuittances({
       setErr("Le renvoi par email est réservé aux abonnements payants. Le PDF reste consultable et régénérable en gratuit.");
       return;
     }
+    const pdfWindow = openBlankPdfWindow();
 
     try {
       setLoading(true);
@@ -813,8 +848,10 @@ export function SectionQuittances({
       setOk("Quittance renvoyée ✅ (sans impact Finance).");
       await onRefresh();
 
-      if (json?.signedUrl) window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+      if (json?.signedUrl) openPdfUrl(json.signedUrl, pdfWindow);
+      else pdfWindow?.close();
     } catch (e: any) {
+      pdfWindow?.close();
       setErr(e?.message || "Erreur renvoi quittance.");
     } finally {
       setLoading(false);
@@ -825,6 +862,7 @@ export function SectionQuittances({
   const regeneratePdfNoFinance = async (receipt: any) => {
     setErr(null);
     setOk(null);
+    const pdfWindow = openBlankPdfWindow();
 
     try {
       setLoading(true);
@@ -846,8 +884,10 @@ export function SectionQuittances({
       setOk("PDF régénéré ✅");
       await onRefresh();
 
-      if (json?.signedUrl) window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+      if (json?.signedUrl) openPdfUrl(json.signedUrl, pdfWindow);
+      else pdfWindow?.close();
     } catch (e: any) {
+      pdfWindow?.close();
       setErr(e?.message || "Erreur régénération PDF.");
     } finally {
       setLoading(false);

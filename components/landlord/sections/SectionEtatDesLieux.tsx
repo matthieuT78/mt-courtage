@@ -404,9 +404,14 @@ function parseInventoryPdfUrl(pdfUrl?: string | null) {
   return { bucket, path };
 }
 
-function openPdfUrl(url: string) {
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
-  if (!opened) {
+function openPdfUrl(url: string, opened?: Window | null) {
+  if (opened) {
+    opened.location.href = url;
+    return;
+  }
+
+  const next = window.open(url, "_blank", "noopener,noreferrer");
+  if (!next) {
     const link = document.createElement("a");
     link.href = url;
     link.target = "_blank";
@@ -415,6 +420,15 @@ function openPdfUrl(url: string) {
     link.click();
     link.remove();
   }
+}
+
+function openBlankPdfWindow() {
+  const opened = window.open("about:blank", "_blank");
+  if (!opened) {
+    return null;
+  }
+  opened.document.write("<p style=\"font-family:system-ui,sans-serif;padding:24px\">Ouverture du PDF...</p>");
+  return opened;
 }
 // =========================
 // BLOCK 2/4
@@ -933,6 +947,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       return;
     }
 
+    const pdfWindow = openBlankPdfWindow();
     setLoading(true);
     setErr(null);
     setOk(null);
@@ -950,7 +965,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       } catch {}
 
       if (r.ok && json?.signedUrl) {
-        openPdfUrl(json.signedUrl);
+        openPdfUrl(json.signedUrl, pdfWindow);
         setOk("PDF ouvert ✅");
         return;
       }
@@ -963,10 +978,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       if (eSigned) throw eSigned;
       if (!signed?.signedUrl) throw new Error("Impossible de signer l’URL du PDF.");
 
-      openPdfUrl(signed.signedUrl);
+      openPdfUrl(signed.signedUrl, pdfWindow);
 
       setOk("PDF ouvert ✅");
     } catch (e: any) {
+      pdfWindow?.close();
       setErr(e?.message || "Impossible d’ouvrir le PDF.");
     } finally {
       setLoading(false);
@@ -2661,9 +2677,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     disabled={loading || !selectedReportId || !hasPdf}
                     onClick={openPdf}
                     className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs"
-                    title={!hasPdf ? "Le PDF sera créé lors de la finalisation." : "Ouvrir le PDF"}
+                    title={!hasPdf ? "Le PDF sera créé lors de la finalisation." : selectedReport?.status === "signed" ? "Ouvrir le PDF signé" : "Ouvrir le PDF"}
                   >
-                    Ouvrir le PDF
+                    {selectedReport?.status === "signed" ? "Ouvrir PDF signé" : "Ouvrir le PDF"}
                   </button>
 
                   {/* Upload PDF signé */}
