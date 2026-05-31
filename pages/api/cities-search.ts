@@ -52,6 +52,7 @@ async function searchGeoApi(params: { postalCode?: string; name?: string }) {
     const codeInsee: string = item.code;
 
     for (const cp of codesPostaux) {
+      if (params.postalCode && cp !== params.postalCode) continue;
       result.push({
         name: nom,
         postalCode: cp,

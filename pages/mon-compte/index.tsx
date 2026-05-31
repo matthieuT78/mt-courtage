@@ -6,6 +6,7 @@ import Link from "next/link";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
 import AccountLayout from "../../components/account/AccountLayout";
+import PostalCodeCityFields from "../../components/forms/PostalCodeCityFields";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuthUser } from "../../hooks/useAuthUser";
 import { useProfile } from "../../hooks/useProfile";
@@ -649,35 +650,13 @@ export default function MonCompteIndexPage() {
                       />
                     </div>
 
-                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                      <div className="space-y-1">
-                        <label htmlFor="reg_postal" className="text-xs text-slate-700">
-                        Code postal *
-                        </label>
-                        <input
-                          id="reg_postal"
-                          name="postal_code"
-                          autoComplete="postal-code"
-                          value={postalCode}
-                          onChange={(e) => setPostalCode(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-1 sm:col-span-2">
-                        <label htmlFor="reg_city" className="text-xs text-slate-700">
-                          Ville *
-                        </label>
-                        <input
-                          id="reg_city"
-                          name="city"
-                          autoComplete="address-level2"
-                          value={city}
-                          onChange={(e) => setCity(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
+                    <PostalCodeCityFields
+                      idPrefix="reg"
+                      postalCode={postalCode}
+                      city={city}
+                      onPostalCodeChange={setPostalCode}
+                      onCityChange={setCity}
+                    />
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
@@ -737,33 +716,15 @@ export default function MonCompteIndexPage() {
                           />
                         </div>
 
-                        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                          <div className="space-y-1">
-                            <label htmlFor="bill_postal" className="text-xs text-slate-700">
-                              Code postal *
-                            </label>
-                            <input
-                              id="bill_postal"
-                              name="billing_postal_code"
-                              value={billPostalCode}
-                              onChange={(e) => setBillPostalCode(e.target.value)}
-                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                            />
-                          </div>
-
-                          <div className="space-y-1 sm:col-span-2">
-                            <label htmlFor="bill_city" className="text-xs text-slate-700">
-                              Ville *
-                            </label>
-                            <input
-                              id="bill_city"
-                              name="billing_city"
-                              value={billCity}
-                              onChange={(e) => setBillCity(e.target.value)}
-                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                            />
-                          </div>
-                        </div>
+                        <PostalCodeCityFields
+                          idPrefix="bill"
+                          postalCode={billPostalCode}
+                          city={billCity}
+                          postalCodeName="billing_postal_code"
+                          cityName="billing_city"
+                          onPostalCodeChange={setBillPostalCode}
+                          onCityChange={setBillCity}
+                        />
 
                         <div className="mt-3 space-y-1">
                           <label htmlFor="bill_country" className="text-xs text-slate-700">
