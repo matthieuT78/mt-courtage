@@ -18,6 +18,7 @@ import { SectionInventaire } from "./sections/SectionInventaire";
 import { SectionDeclaration } from "./sections/SectionDeclaration";
 import { SectionSimulateursBailleur } from "./sections/SectionSimulateursBailleur";
 import { usePermissions } from "../PermissionProvider";
+import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsLandlord, planAllowsPerformance } from "../../lib/permissions";
 
 type LockedSectionConfig = {
@@ -115,6 +116,7 @@ export function DashboardShell(props: any) {
   const activePropertiesCount = properties.filter((property: any) => String(property?.status || "").toLowerCase() !== "archived").length;
   const propertyLimitLabel = maxActiveProperties >= 999999 ? "illimité" : `${maxActiveProperties} logement${maxActiveProperties > 1 ? "s" : ""}`;
   const isFreePlan = plan === "calc_full";
+  const planLabel = getBillingPlan(plan)?.name || plan;
   const canUsePaidLandlordTools = planAllowsLandlord(plan);
   const canUsePerformance = planAllowsPerformance(plan);
 
@@ -378,7 +380,7 @@ export function DashboardShell(props: any) {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                {isFreePlan ? "Offre gratuite" : `Abonnement ${plan}`}
+                {isFreePlan ? "Offre gratuite" : `Abonnement ${planLabel}`}
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-900">
                 {isFreePlan
