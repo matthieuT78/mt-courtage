@@ -19,6 +19,7 @@ const staticPagesV1 = [
   "/etats-des-lieux-documents",
   "/cautions-loyers",
   "/blog",
+  "/guides",
   "/tarifs",
   "/cgu",
   "/confidentialite",
@@ -35,6 +36,19 @@ const VALEURS = [
 
 const PRIX = Array.from({ length: 70 }, (_, i) => 100000 + i * 10000);
 
+const GUIDE_SLUGS = [
+  "checklist-mise-en-location",
+  "dpe-diagnostics-location",
+  "lmnp-checklist-location-meublee",
+  "choisir-bail-vide-meuble-mobilite",
+  "arrivee-locataire-remise-cles",
+  "loyers-quittances-charges-suivi",
+  "travaux-reparations-bailleur-locataire",
+  "revision-loyer-irl",
+  "depart-locataire-etat-des-lieux-sortie",
+  "depot-garantie-restitution-retenues",
+];
+
 // Les pages /simulateur/... sont des pages techniques/programmatique noindex.
 // On les laisse crawlables si Google les découvre, mais on ne les pousse pas dans le sitemap.
 const INCLUDE_SIMULATEUR = false;
@@ -43,6 +57,7 @@ const urls = [];
 
 // pages statiques V1
 for (const p of staticPagesV1) urls.push(`${siteUrl}${p}`);
+for (const slug of GUIDE_SLUGS) urls.push(`${siteUrl}/guides/${slug}`);
 
 if (INCLUDE_SIMULATEUR) {
   for (const r of REVENUS) urls.push(`${siteUrl}/simulateur/capacite-emprunt/${r}`);

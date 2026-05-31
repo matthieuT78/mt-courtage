@@ -1,5 +1,6 @@
 import PDFDocument from "pdfkit";
 import { supabaseAdmin } from "./supabaseAdmin";
+import { getLeaseRentPeriodFromDate } from "./rentPeriod";
 
 type Result = {
   ok: true;
@@ -165,9 +166,11 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle(),
   ]);
 
-  const rent = Number(lease.rent_amount || 0);
-  const charges = Number(lease.charges_amount || 0);
-  const total = rent + charges;
+  const rentPeriod = getLeaseRentPeriodFromDate(lease, periodStart);
+  if (!rentPeriod) throw new Error("Cette période est en dehors des dates du bail.");
+  const normalizedPeriodStart = rentPeriod.periodStart;
+  const normalizedPeriodEnd = rentPeriod.periodEnd;
+  const { rent, charges, total } = rentPeriod;
   const issueDate = todayISO();
 
   const tenantName = safeStr((tenant as any)?.full_name) || "Locataire";
@@ -186,8 +189,8 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     landlordName,
     tenantName,
     propertyAddress,
-    periodStart,
-    periodEnd,
+    periodStart: normalizedPeriodStart,
+    periodEnd: normalizedPeriodEnd,
     rent,
     charges,
     total,
@@ -199,8 +202,8 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     .from("rent_receipts")
     .select("*")
     .eq("lease_id", leaseId)
-    .eq("period_start", periodStart)
-    .eq("period_end", periodEnd)
+    .eq("period_start", normalizedPeriodStart)
+    .eq("period_end", normalizedPeriodEnd)
     .maybeSingle();
 
   if (existingReceipt.error) throw existingReceipt.error;
@@ -228,8 +231,8 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
       .insert({
         lease_id: leaseId,
         owner_user_id: userId,
-        period_start: periodStart,
-        period_end: periodEnd,
+        period_start: normalizedPeriodStart,
+        period_end: normalizedPeriodEnd,
         rent_amount: rent,
         charges_amount: charges,
         total_amount: total,
@@ -249,18 +252,18 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     .from("rent_payments")
     .select("id")
     .eq("lease_id", leaseId)
-    .eq("period_start", periodStart)
-    .eq("period_end", periodEnd)
+    .eq("period_start", normalizedPeriodStart)
+    .eq("period_end", normalizedPeriodEnd)
     .maybeSingle();
 
   const paymentPayload = {
     lease_id: leaseId,
-    period_start: periodStart,
-    period_end: periodEnd,
+    period_start: normalizedPeriodStart,
+    period_end: normalizedPeriodEnd,
     rent_amount: rent,
     charges_amount: charges,
     total_amount: total,
-    due_date: periodStart,
+    due_date: normalizedPeriodStart,
     paid_at: new Date().toISOString(),
     payment_method: lease.payment_method || null,
     source: "owner_confirm_email",
@@ -282,7 +285,7 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
 
   if (!parsedPdf) {
     pdfBuffer = await buildPdfBuffer(receipt.content_text || contentText);
-    const yyyymm = periodStart.slice(0, 7) || "quittance";
+    const yyyymm = normalizedPeriodStart.slice(0, 7) || "quittance";
     const filenamePart = `quittance-${yyyymm}.pdf`;
     const storagePath = `${userId}/${leaseId}/${receipt.id}/${filenamePart}`;
     const up = await supabaseAdmin.storage.from(BUCKET).upload(storagePath, pdfBuffer, {

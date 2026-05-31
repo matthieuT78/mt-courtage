@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { BookOpenIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
+import { GUIDE_CATEGORIES, getGuidesByCategory } from "../lib/guides";
 
 /**
  * ✅ LOKT V1 (landing-first)
@@ -66,6 +68,7 @@ export default function AppHeader() {
   const v1Links: NavLink[] = [
     { href: "/calculettes", label: "Calculettes" },
     { href: "/outil-gestion-locative", label: "Outil bailleur" },
+    { href: "/guides", label: "Guides" },
     { href: "/tarifs", label: "Tarifs" },
     { href: "/#faq", label: "FAQ" },
     { href: "mailto:contact@lokt.fr", label: "Contact", external: true },
@@ -87,7 +90,7 @@ export default function AppHeader() {
   if (LOKT_V1_LANDING) {
     return (
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto max-w-6xl px-4 py-3">
+        <div className="mx-auto max-w-7xl px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             {/* Brand */}
             <Link href="/" className="flex items-center gap-3">
@@ -104,6 +107,41 @@ export default function AppHeader() {
             {/* Minimal links */}
             <nav className="flex items-center gap-1.5">
               {navLinks.map((l) =>
+                l.href === "/guides" ? (
+                  <div key={l.label} className="group relative hidden md:block">
+                    <Link
+                      href={l.href}
+                      className={
+                        "inline-flex items-center gap-1 rounded-full px-3 py-2 text-[0.8rem] font-semibold transition " +
+                        (isActive(l.href) ? `${brandBg} ${brandText} ${brandHover}` : "text-slate-700 hover:bg-slate-100")
+                      }
+                    >
+                      {l.label}
+                      <ChevronDownIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
+                    <div className="invisible absolute left-1/2 top-full z-50 w-[680px] -translate-x-1/2 pt-3 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                      <div className="grid grid-cols-2 gap-x-5 gap-y-4 border border-slate-200 bg-white p-4 shadow-xl">
+                        {GUIDE_CATEGORIES.map((category) => (
+                          <div key={category.key}>
+                            <Link href={`/guides#${category.key}`} className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-indigo-700 hover:underline">
+                              {category.label}
+                            </Link>
+                            <div className="mt-2 space-y-1">
+                              {getGuidesByCategory(category.key).map((guide) => (
+                                <Link key={guide.slug} href={`/guides/${guide.slug}`} className="block py-0.5 text-xs font-semibold leading-4 text-slate-700 hover:text-indigo-700">
+                                  {guide.shortTitle}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        <Link href="/guides" className="col-span-2 border-t border-slate-200 pt-3 text-xs font-bold text-slate-950 hover:text-indigo-700">
+                          Voir tous les guides →
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ) :
                 l.external ? (
                   <a
                     key={l.label}
@@ -127,6 +165,15 @@ export default function AppHeader() {
                   </Link>
                 )
               )}
+
+              <Link
+                href="/guides"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 md:hidden"
+                title="Guides du bailleur"
+                aria-label="Guides du bailleur"
+              >
+                <BookOpenIcon className="h-5 w-5" />
+              </Link>
 
               {authReady && isLoggedIn ? (
                 <>

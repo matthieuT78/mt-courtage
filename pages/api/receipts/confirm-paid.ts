@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { confirmLeasePaymentAndSendReceipt } from "../../../lib/receiptWorkflow";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
 
 type OwnerAction = "full" | "partial" | "charges_missing" | "unpaid";
 
@@ -173,8 +174,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (error) return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "error", reason: error }));
 
     const lease = await loadLease(row);
-    const rent = Number(lease.rent_amount || 0);
-    const charges = Number(lease.charges_amount || 0);
+    const rentPeriod = getLeaseRentPeriodFromDate(lease, row.period_start);
+    if (!rentPeriod) throw new Error("Cette période est en dehors des dates du bail.");
+    const rent = rentPeriod.rent;
+    const charges = rentPeriod.charges;
     const period = String(row.period_start).slice(0, 7);
 
     if (action === "partial" && req.method !== "POST") {

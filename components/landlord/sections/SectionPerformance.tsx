@@ -19,6 +19,7 @@ import {
   Tooltip,
 } from "chart.js";
 import { supabase } from "../../../lib/supabaseClient";
+import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
 import { SectionTitle, formatEuro } from "../UiBits";
 
@@ -355,7 +356,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         const expected = sum(
           activeLeases
             .filter((lease) => lease.property_id === id)
-            .map((lease) => Number(lease.rent_amount || 0) + Number(lease.charges_amount || 0))
+            .map((lease) => Number(getLeaseRentPeriod(lease, currentMonth)?.total || 0))
         );
         const received = sum(
           safePayments

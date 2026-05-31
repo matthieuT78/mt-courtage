@@ -6,6 +6,7 @@ import chromium from "@sparticuz/chromium";
 import puppeteerCore from "puppeteer-core";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
+import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
 
 type Json = Record<string, any>;
 
@@ -411,7 +412,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const auth = await requireApiUser(req, { allowInternal: true });
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
-    const { userId, leaseId, periodStart, periodEnd, contentText } = (req.body || {}) as {
+    const { userId, leaseId, periodStart: requestedPeriodStart, periodEnd: requestedPeriodEnd, contentText } = (req.body || {}) as {
       userId?: string;
       leaseId?: string;
       periodStart?: string;
@@ -422,7 +423,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!userId) return res.status(400).json({ error: "userId requis." });
     const userCheck = requireMatchingUser(auth, String(userId));
     if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
-    if (!leaseId || !periodStart || !periodEnd) {
+    if (!leaseId || !requestedPeriodStart || !requestedPeriodEnd) {
       return res.status(400).json({ error: "leaseId + periodStart + periodEnd requis." });
     }
 
@@ -449,9 +450,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const prf = await supabaseAdmin.from("profiles").select("*").eq("id", userId).maybeSingle();
     const profile: any = prf.data || null;
 
-    const rentAmount = Number(lease.rent_amount || 0);
-    const chargesAmount = Number(lease.charges_amount || 0);
-    const totalAmount = rentAmount + chargesAmount;
+    const rentPeriod = getLeaseRentPeriodFromDate(lease, requestedPeriodStart);
+    if (!rentPeriod) return res.status(400).json({ error: "Cette période est en dehors des dates du bail." });
+    const periodStart = rentPeriod.periodStart;
+    const periodEnd = rentPeriod.periodEnd;
+    const rentAmount = rentPeriod.rent;
+    const chargesAmount = rentPeriod.charges;
+    const totalAmount = rentPeriod.total;
 
     let receipt: any = null;
     const existing = await supabaseAdmin
@@ -468,6 +473,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const upd = await supabaseAdmin
         .from("rent_receipts")
         .update({
+          rent_amount: rentAmount,
+          charges_amount: chargesAmount,
+          total_amount: totalAmount,
           content_text: typeof contentText === "string" ? contentText : existing.data.content_text,
           edited_at: typeof contentText === "string" ? new Date().toISOString() : existing.data.edited_at,
           issue_date: issueDateISO,

@@ -12,6 +12,7 @@ import type {
   RentPayment,
   RentReceipt,
 } from "./types";
+import { getLeaseRentPeriod } from "../rentPeriod";
 
 const fmtISO = (d: Date) => d.toISOString().slice(0, 10);
 const getMonthRange = (base = new Date()) => {
@@ -254,11 +255,10 @@ export function useLandlordDashboard() {
   const monthlyExpected = useMemo(
     () =>
       activeLeases.reduce(
-        (sum, l) =>
-          sum + Number(l.rent_amount || 0) + Number(l.charges_amount || 0),
+        (sum, l) => sum + Number(getLeaseRentPeriod(l, monthRange.startISO.slice(0, 7))?.total || 0),
         0
       ),
-    [activeLeases]
+    [activeLeases, monthRange.startISO]
   );
 
   const monthlyPaid = useMemo(

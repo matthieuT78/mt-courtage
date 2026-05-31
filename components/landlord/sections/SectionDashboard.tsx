@@ -4,6 +4,7 @@ import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
 import { supabase } from "../../../lib/supabaseClient";
+import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 
 type DashboardAlert = {
   tone: "emerald" | "amber" | "red";
@@ -40,10 +41,11 @@ function hasFinanceSetup(finance?: PropertyFinance | null) {
   return hasPositiveAmount(finance.purchase_price) && hasPositiveAmount(finance.loan_rate_percent);
 }
 
-function paymentStatusForLease(lease: Lease, payment?: RentPayment | null) {
-  const expectedRent = Number(lease.rent_amount || 0);
-  const expectedCharges = Number(lease.charges_amount || 0);
-  const expectedTotal = expectedRent + expectedCharges;
+function paymentStatusForLease(lease: Lease, yyyymm: string, payment?: RentPayment | null) {
+  const rentPeriod = getLeaseRentPeriod(lease, yyyymm);
+  const expectedRent = Number(rentPeriod?.rent || 0);
+  const expectedCharges = Number(rentPeriod?.charges || 0);
+  const expectedTotal = Number(rentPeriod?.total || 0);
   const paidTotal = Number(payment?.total_amount || 0);
   const paidCharges = Number(payment?.charges_amount || 0);
 
@@ -378,16 +380,18 @@ export function SectionDashboard({
   const leaseCards = useMemo(() => {
     const now = new Date();
     const in90Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 90);
+    const currentMonth = monthRange.startISO.slice(0, 7);
 
     return activeLeases.map((lease) => {
       const property = propertyById.get(lease.property_id);
       const tenant = tenantById.get(lease.tenant_id);
       const payment = currentMonthPayments.find((p) => p.lease_id === lease.id);
       const receipt = currentMonthReceipts.find((r) => r.lease_id === lease.id);
-      const total = Number(lease.rent_amount || 0) + Number(lease.charges_amount || 0);
+      const rentPeriod = getLeaseRentPeriod(lease, currentMonth);
+      const total = Number(rentPeriod?.total || 0);
       const endDate = normalizeDate(lease.end_date);
       const leaseEndingSoon = !!endDate && endDate <= in90Days;
-      const paymentState = paymentStatusForLease(lease, payment);
+      const paymentState = paymentStatusForLease(lease, currentMonth, payment);
       const paymentStatus =
         paymentState.label !== "À suivre"
           ? paymentState.label
@@ -408,7 +412,7 @@ export function SectionDashboard({
         endDate,
       };
     });
-  }, [activeLeases, currentMonthPayments, currentMonthReceipts, propertyById, tenantById]);
+  }, [activeLeases, currentMonthPayments, currentMonthReceipts, monthRange.startISO, propertyById, tenantById]);
 
   const rentsToCollect = useMemo(
     () =>

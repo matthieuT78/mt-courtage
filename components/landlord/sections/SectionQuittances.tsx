@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, fmtDate } from "../UiBits";
 import type { RentReceipt, Lease, Property, Tenant, LandlordSettings } from "../../../lib/landlord/types";
+import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { usePermissions } from "../../PermissionProvider";
 
 type AnyPayment = Record<string, any>;
@@ -241,7 +242,7 @@ function payLabel(status: PaymentStatus) {
   return "Inconnu";
 }
 
-function paymentAnalysis(lease: Lease, payment: AnyPayment | null): {
+function paymentAnalysis(lease: Lease, payment: AnyPayment | null, yyyymm: string): {
   status: PaymentStatus;
   expectedRent: number;
   expectedCharges: number;
@@ -252,9 +253,10 @@ function paymentAnalysis(lease: Lease, payment: AnyPayment | null): {
   missingAmount: number;
   reminderReason: "unpaid" | "partial" | "charges_missing" | null;
 } {
-  const expectedRent = Number((lease as any)?.rent_amount || 0);
-  const expectedCharges = Number((lease as any)?.charges_amount || 0);
-  const expectedTotal = expectedRent + expectedCharges;
+  const period = getLeaseRentPeriod(lease, yyyymm);
+  const expectedRent = Number(period?.rent || 0);
+  const expectedCharges = Number(period?.charges || 0);
+  const expectedTotal = Number(period?.total || 0);
   const receivedRent = Number(payment?.rent_amount || 0);
   const receivedCharges = Number(payment?.charges_amount || 0);
   const receivedTotal = Number(payment?.total_amount || 0);
@@ -412,14 +414,15 @@ export function SectionQuittances({
   }, [safeReceipts, month]);
 
   const buildRowsForMonth = (yyyymm: string) => {
-    const { start, end } = monthStartEnd(yyyymm);
     return safeLeases
       .filter((lease) => isLeaseExpectedForMonth(lease, yyyymm))
       .map((lease) => {
+        const period = getLeaseRentPeriod(lease, yyyymm);
+        if (!period) return null;
         const key = periodKey(lease.id, yyyymm);
         const receipt = receiptByPeriod.get(key) || null;
         const payment = paymentByPeriod.get(key) || null;
-        const pay = paymentAnalysis(lease, payment);
+        const pay = paymentAnalysis(lease, payment, yyyymm);
         const payStatus = pay.status;
         const receiptStatus = String(receipt?.status || "").toLowerCase();
         const pdfReady = !!receipt?.pdf_url && (receiptStatus === "generated" || receiptStatus === "sent");
@@ -440,10 +443,14 @@ export function SectionQuittances({
           sent,
           sched,
           isLate,
-          periodStart: toISODateLocal(start),
-          periodEnd: toISODateLocal(end),
+          periodStart: period.periodStart,
+          periodEnd: period.periodEnd,
+          prorated: period.prorated,
+          billedDays: period.billedDays,
+          daysInMonth: period.daysInMonth,
         };
       })
+      .filter(Boolean)
       .sort((a, b) => {
         if (a.isLate !== b.isLate) return a.isLate ? -1 : 1;
         if (a.sent !== b.sent) return a.sent ? 1 : -1;
@@ -1064,6 +1071,11 @@ export function SectionQuittances({
                         <p className="text-xs text-slate-600">
                           Période : {fmtDate(row.periodStart)} → {fmtDate(row.periodEnd)}
                           {view === "todo" ? <span className="font-semibold text-slate-900"> ({row.month})</span> : null}
+                          {row.prorated ? (
+                            <span className="ml-2 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[0.68rem] font-semibold text-indigo-800">
+                              Prorata automatique · {row.billedDays}/{row.daysInMonth} jours
+                            </span>
+                          ) : null}
                         </p>
 
                         <p className="mt-1 text-xs text-slate-500">

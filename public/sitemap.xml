@@ -2,98 +2,110 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://lokt.fr/</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/outil-gestion-locative</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.95</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/gestion-locative-lmnp</loc>
-    <lastmod>2026-05-26T00:00:00.000Z</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.92</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/calculettes</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/tarifs</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/capacite</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/pret-relais</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/investissement</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://lokt.fr/parc-immobilier</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/plus-value-vente-immobiliere</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/parc-immobilier</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/gestion-locative-lmnp</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/outil-gestion-locative</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/quittances-loyer</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/etats-des-lieux-documents</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/cautions-loyers</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.65</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/blog</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.65</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/tarifs</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/cgu</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
   <url>
     <loc>https://lokt.fr/confidentialite</loc>
-    <lastmod>2026-05-25T20:30:00.000Z</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides/checklist-mise-en-location</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides/dpe-diagnostics-location</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides/lmnp-checklist-location-meublee</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides/choisir-bail-vide-meuble-mobilite</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides/arrivee-locataire-remise-cles</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides/loyers-quittances-charges-suivi</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides/travaux-reparations-bailleur-locataire</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides/revision-loyer-irl</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides/depart-locataire-etat-des-lieux-sortie</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
+  </url>
+  <url>
+    <loc>https://lokt.fr/guides/depot-garantie-restitution-retenues</loc>
+    <lastmod>2026-05-31T13:54:53.450Z</lastmod>
   </url>
 </urlset>

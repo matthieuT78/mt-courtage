@@ -3,14 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
-
-function yyyymmToPeriod(yyyymm: string) {
-  const [y, m] = yyyymm.split("-").map(Number);
-  const start = new Date(Date.UTC(y, m - 1, 1));
-  const end = new Date(Date.UTC(y, m, 0));
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  return { periodStart: iso(start), periodEnd: iso(end) };
-}
+import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 
 function clampPaymentDay(year: number, month1to12: number, day: number) {
   // dernier jour du mois
@@ -54,7 +47,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const y = now.getUTCFullYear();
     const m = now.getUTCMonth() + 1;
     const yyyymm = `${y}-${String(m).padStart(2, "0")}`;
-    const { periodStart, periodEnd } = yyyymmToPeriod(yyyymm);
     const today = new Date().toISOString().slice(0, 10);
 
     // 2) charger leases actifs (adapte le filtre si tu as un champ status)
@@ -74,6 +66,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const paymentDay = Number(lease.payment_day || lease.paymentDay || 1); // adapte si besoin
+      const rentPeriod = getLeaseRentPeriod(lease, yyyymm);
+      if (!rentPeriod) {
+        skipped++;
+        continue;
+      }
+      const { periodStart, periodEnd } = rentPeriod;
       const dd = clampPaymentDay(y, m, paymentDay);
 
       const due = `${y}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;

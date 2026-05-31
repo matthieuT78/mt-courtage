@@ -3,6 +3,7 @@ import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
 
 type ReminderReason = "unpaid" | "partial" | "charges_missing";
 
@@ -87,9 +88,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .join(", ") ||
       "le logement";
 
-    const rent = Number(lease.rent_amount || 0);
-    const charges = Number(lease.charges_amount || 0);
-    const expectedTotal = rent + charges;
+    const rentPeriod = getLeaseRentPeriodFromDate(lease, periodStart);
+    if (!rentPeriod) return res.status(400).json({ error: "Cette période est en dehors des dates du bail." });
+    const { rent, charges, total: expectedTotal } = rentPeriod;
     const receivedRent = Number((payment as any)?.rent_amount || 0);
     const receivedCharges = Number((payment as any)?.charges_amount || 0);
     const receivedTotal = Number((payment as any)?.total_amount || 0);

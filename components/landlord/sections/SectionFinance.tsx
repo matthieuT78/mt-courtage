@@ -21,6 +21,7 @@ import {
   Tooltip,
 } from "chart.js";
 import { supabase } from "../../../lib/supabaseClient";
+import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { SectionTitle, formatEuro } from "../UiBits";
 import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
 
@@ -574,7 +575,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               const e = normalizeDate((l as any).end_date);
               return !!s && s <= mEnd && (!e || e >= mStart);
             })
-            .map((l) => Number((l as any).rent_amount || 0) + Number((l as any).charges_amount || 0))
+            .map((l) => Number(getLeaseRentPeriod(l, monthKey(mStart))?.total || 0))
         );
       })
     );

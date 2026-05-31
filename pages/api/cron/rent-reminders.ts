@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 import { buildRentReminderOwnerEmail } from "../../../lib/rentReminderEmail";
+import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 
 type Json = Record<string, any>;
 
@@ -63,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 1) baux éligibles
     const { data: leases, error } = await supabaseAdmin
       .from("leases")
-      .select("id,user_id,property_id,tenant_id,rent_amount,charges_amount,payment_day,timezone,auto_reminder_enabled,reminder_email,last_auto_sent_period,status")
+      .select("id,user_id,property_id,tenant_id,start_date,end_date,rent_amount,charges_amount,payment_day,timezone,auto_reminder_enabled,reminder_email,last_auto_sent_period,status")
       .eq("auto_reminder_enabled", true)
       .neq("status", "draft");
 
@@ -100,7 +101,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const to = l.reminder_email; // email propriétaire pour confirmation
       if (!to) { skipped++; continue; }
 
-      const { periodStart, periodEnd } = monthStartEnd(period);
+      const rentPeriod = getLeaseRentPeriod(l, period);
+      if (!rentPeriod) { skipped++; continue; }
+      const { periodStart, periodEnd } = rentPeriod;
 
       // 2) créer token one-shot
       const token = crypto.randomBytes(24).toString("hex");
@@ -136,8 +139,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         period,
         propertyLabel: (property as any)?.label || (property as any)?.address_line1 || (property as any)?.city || null,
         tenantName: (tenant as any)?.full_name || null,
-        expectedRent: (l as any).rent_amount,
-        expectedCharges: (l as any).charges_amount,
+        expectedRent: rentPeriod.rent,
+        expectedCharges: rentPeriod.charges,
         fullUrl,
         partialUrl,
         unpaidUrl,

@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import PDFDocument from "pdfkit";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
+import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 
 /* ------------------------------------------------------------------ */
 /* Utils                                                              */
@@ -147,9 +148,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // 1) période cible (selon payment_type)
       const { start: periodStart, end: periodEnd } = periodForCron(now, paymentType);
-      const periodStartISO = toISODateLocal(periodStart);
-      const periodEndISO = toISODateLocal(periodEnd);
       const yyyyMM = toYYYYMMFromDate(periodStart);
+      const rentPeriod = getLeaseRentPeriod(lease, yyyyMM);
+      if (!rentPeriod) {
+        skipped++;
+        continue;
+      }
+      const periodStartISO = rentPeriod.periodStart;
+      const periodEndISO = rentPeriod.periodEnd;
 
       // 2) due date pour cette période
       const dueDate = dueDateForPeriod(periodStart, rawPaymentDay, paymentType);
@@ -179,9 +185,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       /* ---- generate receipt ---- */
-      const rent = Number((lease as any).rent_amount || 0);
-      const charges = Number((lease as any).charges_amount || 0);
-      const total = rent + charges;
+      const { rent, charges, total } = rentPeriod;
 
       // Template V1 non éditable (simple, clair)
       const contentText = `

@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
+import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
 
 type Json = Record<string, any>;
 
@@ -31,17 +32,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const lease: any = leaseRes.data;
     if (lease.user_id !== userId) return res.status(403).json({ error: "Accès refusé." });
 
-    const rent = Number(lease.rent_amount || 0);
-    const charges = Number(lease.charges_amount || 0);
-    const total = rent + charges;
+    const rentPeriod = getLeaseRentPeriodFromDate(lease, periodStart);
+    if (!rentPeriod) return res.status(400).json({ error: "Cette période est en dehors des dates du bail." });
+    const { rent, charges, total } = rentPeriod;
+    const normalizedPeriodStart = rentPeriod.periodStart;
+    const normalizedPeriodEnd = rentPeriod.periodEnd;
 
     // upsert payment by (lease_id, period_start, period_end)
     const existing = await supabaseAdmin
       .from("rent_payments")
       .select("id")
       .eq("lease_id", leaseId)
-      .eq("period_start", periodStart)
-      .eq("period_end", periodEnd)
+      .eq("period_start", normalizedPeriodStart)
+      .eq("period_end", normalizedPeriodEnd)
       .maybeSingle();
 
     const now = paidAt || new Date().toISOString();
@@ -68,12 +71,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       .from("rent_payments")
       .insert({
         lease_id: leaseId,
-        period_start: periodStart,
-        period_end: periodEnd,
+        period_start: normalizedPeriodStart,
+        period_end: normalizedPeriodEnd,
         rent_amount: rent,
         charges_amount: charges,
         total_amount: total,
-        due_date: periodStart,
+        due_date: normalizedPeriodStart,
         paid_at: now,
         payment_method: lease.payment_method || null,
         source: "manual_confirm",
