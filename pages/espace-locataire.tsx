@@ -110,6 +110,10 @@ export default function EspaceLocatairePage() {
     return () => window.clearInterval(timer);
   }, [active, loadMessages, thread?.id]);
 
+  useEffect(() => {
+    if (router.query.tab === "messagerie") setActive("messagerie");
+  }, [router.query.tab]);
+
   const openDocument = async (kind: "receipt" | "inventory", documentId: string) => {
     const pdfWindow = openBlankWindow();
     setErr(null);

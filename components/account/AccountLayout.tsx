@@ -82,7 +82,7 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
   return (
     <div className="min-h-screen bg-slate-100">
       <Head>
-        <title>{pageTitle} | lokt.fr</title>
+        <title>{`${pageTitle} | lokt.fr`}</title>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
 

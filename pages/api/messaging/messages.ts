@@ -1,7 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireApiUser } from "../../../lib/apiAuth";
+import { notifyNewTenantMessage } from "../../../lib/messagingNotification";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireThreadParticipant } from "../../../lib/tenantPortal";
+
+function requestBaseUrl(req: NextApiRequest) {
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+  const protocol = String(req.headers["x-forwarded-proto"] || "http").split(",")[0].trim();
+  return host ? `${protocol}://${host}` : null;
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -50,7 +57,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (error) throw error;
 
       await supabaseAdmin.from("tenant_message_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
-      return res.status(201).json({ message: data });
+
+      let notification: Awaited<ReturnType<typeof notifyNewTenantMessage>>;
+      try {
+        notification = await notifyNewTenantMessage({
+          landlordUserId: participant.thread.landlord_user_id,
+          tenantId: participant.thread.tenant_id,
+          leaseId: participant.thread.lease_id,
+          senderRole: participant.role,
+          body,
+          requestBaseUrl: requestBaseUrl(req),
+        });
+      } catch (notificationError: any) {
+        console.error("[api/messaging/messages] notification error:", notificationError);
+        notification = { ok: false, skipped: false, error: notificationError?.message || "Notification email impossible." };
+      }
+
+      return res.status(201).json({ message: data, notification });
     }
 
     res.setHeader("Allow", "GET, POST");

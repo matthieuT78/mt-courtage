@@ -409,7 +409,7 @@ export default function MonCompteIndexPage() {
     ) : (
     <div className="min-h-screen bg-slate-100">
       <Head>
-        <title>{mode === "register" ? "Inscription" : "Connexion"} | lokt.fr</title>
+          <title>{`${mode === "register" ? "Inscription" : "Connexion"} | lokt.fr`}</title>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
       <AppHeader />
