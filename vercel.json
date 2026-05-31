@@ -3,10 +3,6 @@
     {
       "path": "/api/cron/receipts-generate",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/landlord-alerts",
-      "schedule": "30 9 * * *"
     }
   ]
 }

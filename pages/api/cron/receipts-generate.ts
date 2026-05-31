@@ -4,6 +4,7 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import PDFDocument from "pdfkit";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
+import { hasValidCronSecret } from "../../../lib/cronAuth";
 
 /* ------------------------------------------------------------------ */
 /* Utils                                                              */
@@ -107,14 +108,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const force = String(req.query.force || "") === "1";
 
-    // Recommandé: exiger un secret en prod
-    // Ici: comme tu voulais, on le requiert au moins en force
-    if (force) {
-      const secret = process.env.CRON_SECRET;
-      const header = req.headers["x-cron-secret"];
-      if (secret && header !== secret) {
-        return res.status(401).json({ error: "Unauthorized (cron secret)" });
-      }
+    if (!hasValidCronSecret(req)) {
+      return res.status(401).json({ error: "Unauthorized (cron secret)" });
     }
 
     // Exécute uniquement à 09:00 Paris si pas force

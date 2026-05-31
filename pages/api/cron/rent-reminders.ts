@@ -5,6 +5,7 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 import { buildRentReminderOwnerEmail } from "../../../lib/rentReminderEmail";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
+import { hasValidCronSecret } from "../../../lib/cronAuth";
 
 type Json = Record<string, any>;
 
@@ -54,8 +55,7 @@ async function sendEmailViaResend(params: { to: string; subject: string; html: s
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Json>) {
   try {
     // Sécurité simple : un secret pour éviter que n’importe qui ping l’endpoint
-    const secret = process.env.CRON_SECRET;
-    if (secret && req.headers["x-cron-secret"] !== secret) {
+    if (!hasValidCronSecret(req)) {
       return res.status(401).json({ error: "unauthorized" });
     }
 

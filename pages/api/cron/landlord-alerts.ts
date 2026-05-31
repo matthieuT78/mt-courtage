@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
+import { hasValidCronSecret } from "../../../lib/cronAuth";
 
 type AlertTone = "red" | "amber" | "slate";
 
@@ -161,8 +162,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(405).json({ error: "Method not allowed" });
     }
 
-    const secret = process.env.CRON_SECRET;
-    if (secret && req.headers["x-cron-secret"] !== secret) {
+    if (!hasValidCronSecret(req)) {
       return res.status(401).json({ error: "Unauthorized" });
     }
     if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin non configuré." });

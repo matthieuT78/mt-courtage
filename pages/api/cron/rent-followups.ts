@@ -1,164 +1,160 @@
-// pages/api/cron/rent-followups.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import crypto from "crypto";
-import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { buildRentReminderOwnerEmail } from "../../../lib/rentReminderEmail";
+import { hasValidCronSecret } from "../../../lib/cronAuth";
+import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
+import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
-import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
+import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
-function clampPaymentDay(year: number, month1to12: number, day: number) {
-  // dernier jour du mois
-  const last = new Date(Date.UTC(year, month1to12, 0)).getUTCDate();
-  return Math.max(1, Math.min(last, day));
+const FOLLOWUP_DAY = 1;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function appUrl() {
+  return (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
 }
 
-function addDaysUTC(isoDate: string, days: number) {
-  const d = new Date(isoDate + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
+function safeStr(v: unknown) {
+  return String(v ?? "").trim();
 }
 
-async function sendEmailToOwner(params: { to: string; subject: string; html: string }) {
-  // Tu peux réutiliser ta fonction Resend ici (comme dans /api/receipts/send)
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM;
-  if (!apiKey || !from) return { ok: false, error: "RESEND non configuré" };
-
-  const r = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to: params.to, subject: params.subject, html: params.html }),
-  });
-
-  const raw = await r.text();
-  if (!r.ok) return { ok: false, error: raw };
-  return { ok: true };
+async function alreadySent(tokenId: string) {
+  const { data, error } = await supabaseAdmin!
+    .from("rent_reminder_followup_sends")
+    .select("id")
+    .eq("token_id", tokenId)
+    .eq("followup_day", FOLLOWUP_DAY)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // 1) sécurité cron
-    const secret = req.headers["x-cron-secret"];
-    if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+    if (req.method !== "GET" && req.method !== "POST") {
+      res.setHeader("Allow", "GET, POST");
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+
+    if (!hasValidCronSecret(req)) {
       return res.status(401).json({ error: "Unauthorized" });
     }
-    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin not configured" });
+    if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin non configuré." });
+
+    const baseUrl = appUrl();
+    if (!baseUrl) return res.status(500).json({ error: "APP_URL ou NEXT_PUBLIC_SITE_URL manquant." });
 
     const now = new Date();
-    const y = now.getUTCFullYear();
-    const m = now.getUTCMonth() + 1;
-    const yyyymm = `${y}-${String(m).padStart(2, "0")}`;
-    const today = new Date().toISOString().slice(0, 10);
+    const threshold = new Date(now.getTime() - FOLLOWUP_DAY * DAY_MS);
+    const { data: tokens, error } = await supabaseAdmin
+      .from("receipt_confirm_tokens")
+      .select("*")
+      .is("used_at", null)
+      .gt("expires_at", now.toISOString())
+      .lte("created_at", threshold.toISOString());
 
-    // 2) charger leases actifs (adapte le filtre si tu as un champ status)
-    const leasesRes = await supabaseAdmin.from("leases").select("*");
-    if (leasesRes.error) return res.status(500).json({ error: leasesRes.error.message });
-    const leases = leasesRes.data || [];
+    if (error) throw error;
 
     let sent = 0;
     let skipped = 0;
+    const results: any[] = [];
 
-    for (const lease of leases) {
-      const userId = lease.user_id;
-      const canUseAutomation = await userCanUseReceiptAutomation(String(userId || ""));
-      if (!canUseAutomation) {
+    for (const token of tokens || []) {
+      try {
+        if (await alreadySent(token.id)) {
+          skipped++;
+          continue;
+        }
+
+        const { data: lease, error: leaseError } = await supabaseAdmin
+          .from("leases")
+          .select("*")
+          .eq("id", token.lease_id)
+          .maybeSingle();
+        if (leaseError) throw leaseError;
+        if (!lease || String(lease.user_id) !== String(token.user_id) || !lease.auto_reminder_enabled) {
+          skipped++;
+          continue;
+        }
+
+        if (!(await userCanUseReceiptAutomation(String(token.user_id || "")))) {
+          skipped++;
+          continue;
+        }
+
+        const rentPeriod = getLeaseRentPeriodFromDate(lease, token.period_start);
+        if (!rentPeriod) {
+          skipped++;
+          continue;
+        }
+
+        const { data: payment, error: paymentError } = await supabaseAdmin
+          .from("rent_payments")
+          .select("total_amount,paid_at")
+          .eq("lease_id", token.lease_id)
+          .eq("period_start", token.period_start)
+          .eq("period_end", token.period_end)
+          .maybeSingle();
+        if (paymentError) throw paymentError;
+        if (payment?.paid_at && Number(payment.total_amount || 0) >= rentPeriod.total) {
+          skipped++;
+          continue;
+        }
+
+        const ownerEmail = safeStr(lease.reminder_email);
+        if (!ownerEmail) {
+          skipped++;
+          continue;
+        }
+
+        const [{ data: property }, { data: tenant }] = await Promise.all([
+          lease.property_id
+            ? supabaseAdmin.from("properties").select("label,address_line1,city").eq("id", lease.property_id).maybeSingle()
+            : Promise.resolve({ data: null }),
+          lease.tenant_id
+            ? supabaseAdmin.from("tenants").select("full_name").eq("id", lease.tenant_id).maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
+
+        const tokenValue = encodeURIComponent(token.token);
+        const email = buildRentReminderOwnerEmail({
+          baseUrl,
+          period: String(token.period_start).slice(0, 7),
+          propertyLabel: (property as any)?.label || (property as any)?.address_line1 || (property as any)?.city || null,
+          tenantName: (tenant as any)?.full_name || null,
+          expectedRent: rentPeriod.rent,
+          expectedCharges: rentPeriod.charges,
+          fullUrl: `${baseUrl}/api/receipts/confirm-paid?token=${tokenValue}&action=full`,
+          partialUrl: `${baseUrl}/api/receipts/confirm-paid?token=${tokenValue}&action=partial`,
+          unpaidUrl: `${baseUrl}/api/receipts/confirm-paid?token=${tokenValue}&action=unpaid`,
+          isFollowup: true,
+        });
+
+        const mail = await sendEmailViaResend({
+          to: ownerEmail,
+          subject: email.subject,
+          html: email.html,
+          text: email.text,
+        });
+        if (!mail.ok) throw new Error(mail.error);
+
+        const { error: insertError } = await supabaseAdmin.from("rent_reminder_followup_sends").insert({
+          token_id: token.id,
+          user_id: token.user_id,
+          followup_day: FOLLOWUP_DAY,
+        });
+        if (insertError) throw insertError;
+
+        sent++;
+        results.push({ tokenId: token.id, leaseId: token.lease_id, sent: true });
+      } catch (e: any) {
         skipped++;
-        continue;
+        results.push({ tokenId: token.id, leaseId: token.lease_id, sent: false, error: e?.message || String(e) });
       }
-
-      const paymentDay = Number(lease.payment_day || lease.paymentDay || 1); // adapte si besoin
-      const rentPeriod = getLeaseRentPeriod(lease, yyyymm);
-      if (!rentPeriod) {
-        skipped++;
-        continue;
-      }
-      const { periodStart, periodEnd } = rentPeriod;
-      const dd = clampPaymentDay(y, m, paymentDay);
-
-      const due = `${y}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
-      const remindDate = addDaysUTC(due, 2);
-      if (today !== remindDate) {
-        skipped++;
-        continue;
-      }
-
-      // 3) si quittance déjà envoyée ce mois → skip
-      const rr = await supabaseAdmin
-        .from("rent_receipts")
-        .select("id,status")
-        .eq("lease_id", lease.id)
-        .eq("period_start", periodStart)
-        .eq("period_end", periodEnd)
-        .maybeSingle();
-
-      if (rr.data && rr.data.status === "sent") {
-        skipped++;
-        continue;
-      }
-
-      // 4) email proprio (on prend user email depuis auth/users si possible, sinon depuis landlord settings)
-      // -> simplest: stocker userEmail dans landlord_settings (recommandé)
-      const landlordRes = await supabaseAdmin
-        .from("landlord_settings")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      const ownerEmail =
-        landlordRes.data?.email || landlordRes.data?.notification_email || null;
-
-      if (!ownerEmail) {
-        skipped++;
-        continue;
-      }
-
-      // 5) créer token action
-      const token = crypto.randomBytes(24).toString("hex");
-      const ins = await supabaseAdmin.from("receipt_actions").insert({
-        user_id: userId,
-        lease_id: lease.id,
-        period_start: periodStart,
-        period_end: periodEnd,
-        token,
-        action: "confirm_paid",
-        status: "pending",
-      });
-
-      if (ins.error) {
-        // si token unique collision, skip
-        skipped++;
-        continue;
-      }
-
-      const baseUrl = process.env.APP_BASE_URL || "https://ton-domaine.vercel.app";
-      const yesUrl = `${baseUrl}/api/receipts/confirm?token=${token}&action=yes`;
-      const noUrl = `${baseUrl}/api/receipts/confirm?token=${token}&action=no`;
-
-      const subject = `Loyer ${yyyymm} : payé ?`;
-      const html = `
-        <div style="font-family:ui-sans-serif,system-ui;line-height:1.5">
-          <p>Bonjour,</p>
-          <p>Le loyer prévu le <b>${due}</b> (bail ${lease.id}) n'a pas encore été confirmé.</p>
-          <p>Est-il payé ?</p>
-          <p>
-            <a href="${yesUrl}" style="display:inline-block;padding:10px 14px;background:#111;color:#fff;border-radius:999px;text-decoration:none;margin-right:8px">
-              ✅ Oui, générer & envoyer la quittance
-            </a>
-            <a href="${noUrl}" style="display:inline-block;padding:10px 14px;border:1px solid #ddd;color:#111;border-radius:999px;text-decoration:none">
-              ❌ Non
-            </a>
-          </p>
-          <p style="color:#666;font-size:12px">Lien valable 7 jours.</p>
-        </div>
-      `;
-
-      const email = await sendEmailToOwner({ to: ownerEmail, subject, html });
-      if (email.ok) sent++;
-      else skipped++;
     }
 
-    return res.status(200).json({ ok: true, yyyymm, sent, skipped });
+    return res.status(200).json({ ok: true, followupDay: FOLLOWUP_DAY, sent, skipped, results });
   } catch (e: any) {
     console.error("[cron/rent-followups] error:", e);
-    return res.status(500).json({ error: e?.message || "Internal error" });
+    return res.status(500).json({ error: e?.message || "Erreur interne" });
   }
 }

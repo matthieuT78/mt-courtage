@@ -9,6 +9,7 @@ type RentReminderEmailParams = {
   partialUrl: string;
   unpaidUrl: string;
   isTest?: boolean;
+  isFollowup?: boolean;
 };
 
 function esc(v: unknown) {
@@ -41,12 +42,12 @@ export function buildRentReminderOwnerEmail(params: RentReminderEmailParams) {
   const propertyLabel = params.propertyLabel || "Logement";
   const tenantName = params.tenantName || "Locataire";
 
-  const subject = `${params.isTest ? "[TEST] " : ""}Validation du paiement du loyer - ${periodLabel} | lokt.fr`;
+  const subject = `${params.isTest ? "[TEST] " : ""}${params.isFollowup ? "Rappel - " : ""}Validation du paiement du loyer - ${periodLabel} | lokt.fr`;
 
   const text = `
 Bonjour,
 
-Le paiement du loyer de ${periodLabel} doit être validé avant de générer une quittance.
+${params.isFollowup ? "Nous attendons toujours votre réponse concernant le paiement" : "Le paiement"} du loyer de ${periodLabel} doit être validé avant de générer une quittance.
 
 Logement : ${propertyLabel}
 Locataire : ${tenantName}
@@ -72,10 +73,10 @@ lokt.fr
           Validation paiement
         </p>
         <h1 style="margin:8px 0 0;font-size:24px;line-height:1.25;color:#0f172a;">
-          Le loyer de ${esc(periodLabel)} a-t-il été reçu ?
+          ${params.isFollowup ? "Rappel : " : ""}le loyer de ${esc(periodLabel)} a-t-il été reçu ?
         </h1>
         <p style="margin:10px 0 0;font-size:14px;line-height:1.55;color:#475569;">
-          Confirmez le statut du paiement avant toute génération de quittance. Une quittance vaut reçu : elle ne doit être créée qu'après paiement complet.
+          ${params.isFollowup ? "Nous n'avons pas encore reçu votre réponse. " : ""}Confirmez le statut du paiement avant toute génération de quittance. Une quittance vaut reçu : elle ne doit être créée qu'après paiement complet.
         </p>
       </div>
 

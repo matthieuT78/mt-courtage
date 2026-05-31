@@ -21,8 +21,10 @@ Le système évite les oublis métier :
 ## Fichiers concernés
 
 - Cron principal : `pages/api/cron/landlord-alerts.ts`
-- Configuration Vercel Cron : `vercel.json`
+- Configuration Vercel Cron pour la génération de quittances : `vercel.json`
+- Synchronisation cron-job.org : `scripts/configure-cron-job-org.mjs`
 - Table anti-spam : `supabase/migrations/20260520_landlord_alert_sends.sql`
+- Table anti-doublon pour les relances de validation : `supabase/migrations/20260531170000_rent_reminder_followup_sends.sql`
 - Envoi email Resend : `lib/mailer/resend.ts`
 
 ## Fonctionnement
@@ -43,6 +45,8 @@ Un propriétaire ne reçoit qu'un email d'alerte par jour grâce à la table :
 ```sql
 landlord_alert_sends
 ```
+
+cron-job.org déclenche également `/api/cron/rent-followups` une fois par jour. Si le propriétaire n'a cliqué sur aucune réponse dans le mail de validation du paiement après 24 heures, il reçoit une relance unique avec les mêmes actions. La table `rent_reminder_followup_sends` bloque les doublons.
 
 ## Alertes envoyées
 
@@ -114,18 +118,41 @@ SUPABASE_URL
 https://lokt.fr
 ```
 
-## Configuration Vercel
+Pour synchroniser cron-job.org depuis le poste local sans exposer la clé dans Git, ajouter également dans `.env.local` :
 
-Le cron est déclaré dans `vercel.json` :
+```bash
+CRON_JOB_ORG_API_KEY=...
+```
+
+## Répartition des tâches planifiées
+
+Vercel conserve uniquement la génération de quittances :
 
 ```json
 {
-  "path": "/api/cron/landlord-alerts",
-  "schedule": "30 9 * * *"
+  "path": "/api/cron/receipts-generate",
+  "schedule": "0 9 * * *"
 }
 ```
 
-Il s'exécute tous les jours à 09:30 UTC côté Vercel.
+cron-job.org gère les automatisations complémentaires :
+
+- `lokt - alertes bailleur quotidiennes` à `09:30` heure de Paris ;
+- `lokt - relance validation loyer J+1` à `09:15` heure de Paris.
+
+La configuration cron-job.org est créée ou mise à jour automatiquement via :
+
+```bash
+npm run cron:sync
+```
+
+Le script utilise l'API REST cron-job.org. Il transmet `CRON_SECRET` via l'authentification HTTP Basic de chaque tâche. Le secret ne figure donc pas dans les URLs ni dans les logs d'accès. Les endpoints acceptent aussi l'en-tête `Authorization: Bearer ...` envoyé nativement par Vercel Cron et l'en-tête HTTP `x-cron-secret`.
+
+Par sécurité, une synchronisation simple crée ou met à jour les tâches en mode inactif. Après déploiement de l'application, les activer avec :
+
+```bash
+npm run cron:sync -- --enable
+```
 
 ## Migration Supabase
 
@@ -133,6 +160,7 @@ Avant activation en production, appliquer la migration :
 
 ```sql
 supabase/migrations/20260520_landlord_alert_sends.sql
+supabase/migrations/20260531170000_rent_reminder_followup_sends.sql
 ```
 
 Cette table sert à éviter qu'un utilisateur reçoive plusieurs emails d'alerte le même jour.
