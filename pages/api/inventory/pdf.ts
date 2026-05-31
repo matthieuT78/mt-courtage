@@ -114,6 +114,41 @@ function requireServerModule(moduleName: string): any {
   return (eval("require") as NodeRequire)(moduleName);
 }
 
+async function optimizeObservationImagesForPdf(page: any) {
+  await page.evaluate(async () => {
+    const images = Array.from(document.querySelectorAll<HTMLImageElement>(".photos img"));
+    await Promise.all(
+      images.map(async (image) => {
+        try {
+          if (!image.complete) {
+            await new Promise<void>((resolve) => {
+              image.addEventListener("load", () => resolve(), { once: true });
+              image.addEventListener("error", () => resolve(), { once: true });
+            });
+          }
+          if (!image.naturalWidth || !image.naturalHeight) return;
+
+          const maxSide = 1100;
+          const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+          const width = Math.max(1, Math.round(image.naturalWidth * scale));
+          const height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(image, 0, 0, width, height);
+          image.src = canvas.toDataURL("image/jpeg", 0.62);
+        } catch {
+          // Le fichier compressé à l'upload reste utilisable si le navigateur ne peut pas le retraiter.
+        }
+      })
+    );
+  });
+}
+
 /**
  * ✅ Render HTML -> PDF
  * même logique que quittance (full puppeteer en local, sparticuz en linux)
@@ -135,6 +170,7 @@ async function renderPdfFromHtml(html: string) {
     try {
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: "networkidle0" });
+      await optimizeObservationImagesForPdf(page);
 
       const pdf = await page.pdf({
         format: "A4",
@@ -169,6 +205,7 @@ async function renderPdfFromHtml(html: string) {
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
+    await optimizeObservationImagesForPdf(page);
 
     const pdf = await page.pdf({
       format: "A4",
@@ -343,11 +380,11 @@ function buildHtmlPremiumEDL(params: {
               const important = (typeof it.severity === "number" && it.severity >= 3) || String(it.condition) === "mauvais" || hasDefects;
 
               const photosHtml = (it.photos || [])
-                .slice(0, important ? 1 : 3)
+                .slice(0, 3)
                 .map(
                   (p) =>
                     `<div class="${p.important ? "photoHero" : "photoThumb"}">
-                      <img src="${p.signedUrl}" alt="photo" />
+                      <img src="${p.signedUrl}" crossorigin="anonymous" alt="photo" />
                     </div>`
                 )
                 .join("");
@@ -436,11 +473,11 @@ function buildHtmlPremiumEDL(params: {
                   const important = (typeof it.severity === "number" && it.severity >= 3) || String(it.condition) === "mauvais" || hasDefects;
 
                   const photosHtml = (it.photos || [])
-                    .slice(0, important ? 1 : 3)
+                    .slice(0, 3)
                     .map(
                       (p) =>
                         `<div class="${p.important ? "photoHero" : "photoThumb"}">
-                          <img src="${p.signedUrl}" alt="photo" />
+                          <img src="${p.signedUrl}" crossorigin="anonymous" alt="photo" />
                         </div>`
                     )
                     .join("");
@@ -934,7 +971,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
                 const important =
                   (typeof it.severity === "number" && it.severity >= 3) || String(it.condition) === "mauvais" || Boolean(defects);
 
-                const photos = (photosByItem.get(String(it.id)) || []).slice(0, important ? 1 : 3);
+                const photos = (photosByItem.get(String(it.id)) || []).slice(0, 3);
 
                 const signedPhotos: Array<{ signedUrl: string; important: boolean }> = [];
                 for (const p of photos) {
@@ -942,7 +979,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
                   const storagePath = safeStr(p.storage_path);
                   if (!storagePath) continue;
                   const url = await signedPhotoUrl(bucket, storagePath);
-                  if (url) signedPhotos.push({ signedUrl: url, important });
+                  if (url) signedPhotos.push({ signedUrl: url, important: important && signedPhotos.length === 0 });
                 }
 
                 return {
@@ -985,7 +1022,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             const important =
               (typeof it.severity === "number" && it.severity >= 3) || String(it.condition) === "mauvais" || Boolean(defects);
 
-            const photos = (photosByItem.get(String(it.id)) || []).slice(0, important ? 1 : 3);
+            const photos = (photosByItem.get(String(it.id)) || []).slice(0, 3);
 
             const signedPhotos: Array<{ signedUrl: string; important: boolean }> = [];
             for (const p of photos) {
@@ -993,7 +1030,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               const storagePath = safeStr(p.storage_path);
               if (!storagePath) continue;
               const url = await signedPhotoUrl(bucket, storagePath);
-              if (url) signedPhotos.push({ signedUrl: url, important });
+              if (url) signedPhotos.push({ signedUrl: url, important: important && signedPhotos.length === 0 });
             }
 
             return {

@@ -11,7 +11,9 @@ import {
   DocumentArrowUpIcon,
   ExclamationTriangleIcon,
   MapPinIcon,
+  PhotoIcon,
   PencilSquareIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
@@ -61,6 +63,19 @@ type InventoryItem = {
   recommended_action: string | null;
   estimated_cost: number | null;
   severity: number | null;
+};
+
+type InventoryPhoto = {
+  id: string;
+  user_id: string;
+  report_id: string;
+  item_id: string;
+  storage_bucket: string;
+  storage_path: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: string;
+  preview_url?: string | null;
 };
 
 type Props = {
@@ -393,6 +408,50 @@ const SUGGESTED_PRESETS: Array<{ name: string; key: RoomPresetKey }> = [
 ];
 
 const INVENTORY_BUCKET = "inventory-pdfs";
+const INVENTORY_PHOTOS_BUCKET = "inventory-photos";
+const MAX_RAW_PHOTO_BYTES = 8 * 1024 * 1024;
+const MAX_STORED_PHOTO_BYTES = 900 * 1024;
+const MAX_PHOTOS_PER_ITEM = 3;
+
+async function compressObservationPhoto(file: File) {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    throw new Error("Format refusé : utilise une image JPEG, PNG ou WebP.");
+  }
+  if (file.size > MAX_RAW_PHOTO_BYTES) {
+    throw new Error("Photo trop volumineuse : 8 Mo maximum avant compression.");
+  }
+
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Cette image ne peut pas être lue."));
+      img.src = objectUrl;
+    });
+
+    const maxSide = 1600;
+    const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+    const width = Math.max(1, Math.round(image.naturalWidth * scale));
+    const height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Compression de l’image impossible.");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(image, 0, 0, width, height);
+
+    for (const quality of [0.76, 0.68, 0.58, 0.48]) {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+      if (blob && blob.size <= MAX_STORED_PHOTO_BYTES) return blob;
+    }
+    throw new Error("La photo reste trop volumineuse après compression. Choisis une image plus légère.");
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
 
 function parseInventoryPdfUrl(pdfUrl?: string | null) {
   const raw = String(pdfUrl || "").trim();
@@ -480,6 +539,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const [rooms, setRooms] = useState<InventoryRoom[]>([]);
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [photos, setPhotos] = useState<InventoryPhoto[]>([]);
+  const [photoBusyItemId, setPhotoBusyItemId] = useState<string | null>(null);
+  const [photoFeedback, setPhotoFeedback] = useState<Record<string, { tone: "error" | "success"; message: string }>>({});
 
   const [search, setSearch] = useState("");
 
@@ -548,6 +610,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       if (!sorted.length) {
         setRooms([]);
         setItems([]);
+        setPhotos([]);
       }
     } catch (e: any) {
       setErr(e?.message || "Impossible de charger les états des lieux.");
@@ -564,16 +627,26 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     setOk(null);
 
     try {
-      const [{ data: rRooms, error: eRooms }, { data: rItems, error: eItems }] = await Promise.all([
+      const [{ data: rRooms, error: eRooms }, { data: rItems, error: eItems }, { data: rPhotos, error: ePhotos }] = await Promise.all([
         supabase.from("inventory_rooms").select("*").eq("report_id", reportId).order("sort_order", { ascending: true }),
         supabase.from("inventory_items").select("*").eq("report_id", reportId).order("created_at", { ascending: true }),
+        supabase.from("inventory_photos").select("*").eq("report_id", reportId).order("created_at", { ascending: true }),
       ]);
 
       if (eRooms) throw eRooms;
       if (eItems) throw eItems;
+      if (ePhotos) throw ePhotos;
 
       setRooms((rRooms || []) as any);
       setItems((rItems || []) as any);
+      const nextPhotos = ((rPhotos || []) as InventoryPhoto[]) || [];
+      const withPreview = await Promise.all(
+        nextPhotos.map(async (photo) => {
+          const { data } = await supabase.storage.from(photo.storage_bucket || INVENTORY_PHOTOS_BUCKET).createSignedUrl(photo.storage_path, 60 * 60);
+          return { ...photo, preview_url: data?.signedUrl || null };
+        })
+      );
+      setPhotos(withPreview);
     } catch (e: any) {
       setErr(e?.message || "Impossible de charger le détail de l’état des lieux.");
     } finally {
@@ -587,12 +660,14 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       setSelectedReportId(null);
       setRooms([]);
       setItems([]);
+      setPhotos([]);
       loadReportsForLease(selectedLeaseId);
     } else {
       setReports([]);
       setSelectedReportId(null);
       setRooms([]);
       setItems([]);
+      setPhotos([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLeaseId, userId]);
@@ -926,6 +1001,13 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     setOk(null);
 
     try {
+      const itemPhotos = photos.filter((photo) => photo.item_id === itemId);
+      if (itemPhotos.length) {
+        const { error: deletePhotosError } = await supabase.storage
+          .from(INVENTORY_PHOTOS_BUCKET)
+          .remove(itemPhotos.map((photo) => photo.storage_path));
+        if (deletePhotosError) throw deletePhotosError;
+      }
       const { error } = await supabase.from("inventory_items").delete().eq("id", itemId).eq("report_id", selectedReportId);
       if (error) throw error;
 
@@ -935,6 +1017,89 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       setErr(e?.message || "Impossible de supprimer cet élément.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const uploadItemPhoto = async (itemId: string, file: File) => {
+    if (!supabase || !userId || !selectedReportId) return;
+    if (isLocked) {
+      setPhotoFeedback((prev) => ({ ...prev, [itemId]: { tone: "error", message: "Ce document est verrouillé : les photos ne peuvent plus être modifiées." } }));
+      return;
+    }
+
+    const currentPhotos = photos.filter((photo) => photo.item_id === itemId);
+    if (currentPhotos.length >= MAX_PHOTOS_PER_ITEM) {
+      setPhotoFeedback((prev) => ({ ...prev, [itemId]: { tone: "error", message: `Maximum ${MAX_PHOTOS_PER_ITEM} photos par observation.` } }));
+      return;
+    }
+
+    setPhotoBusyItemId(itemId);
+    setPhotoFeedback((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+
+    let storagePath: string | null = null;
+    try {
+      const compressed = await compressObservationPhoto(file);
+      storagePath = `${userId}/${selectedReportId}/${itemId}/${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from(INVENTORY_PHOTOS_BUCKET).upload(storagePath, compressed, {
+        cacheControl: "3600",
+        contentType: "image/jpeg",
+        upsert: false,
+      });
+      if (uploadError) throw uploadError;
+
+      const { error: insertError } = await supabase.from("inventory_photos").insert({
+        user_id: userId,
+        report_id: selectedReportId,
+        item_id: itemId,
+        storage_bucket: INVENTORY_PHOTOS_BUCKET,
+        storage_path: storagePath,
+        mime_type: "image/jpeg",
+        size_bytes: compressed.size,
+      });
+      if (insertError) throw insertError;
+
+      await loadReportDetails(selectedReportId);
+      setPhotoFeedback((prev) => ({ ...prev, [itemId]: { tone: "success", message: "Photo ajoutée à l’observation." } }));
+    } catch (e: any) {
+      if (storagePath) await supabase.storage.from(INVENTORY_PHOTOS_BUCKET).remove([storagePath]);
+      setPhotoFeedback((prev) => ({ ...prev, [itemId]: { tone: "error", message: e?.message || "Impossible d’ajouter la photo." } }));
+    } finally {
+      setPhotoBusyItemId(null);
+    }
+  };
+
+  const deleteItemPhoto = async (photo: InventoryPhoto) => {
+    if (!supabase || !selectedReportId) return;
+    if (isLocked) {
+      setPhotoFeedback((prev) => ({
+        ...prev,
+        [photo.item_id]: { tone: "error", message: "Ce document est verrouillé : les photos ne peuvent plus être modifiées." },
+      }));
+      return;
+    }
+    if (!confirm("Supprimer cette photo de l’observation ?")) return;
+
+    setPhotoBusyItemId(photo.item_id);
+    setPhotoFeedback((prev) => {
+      const next = { ...prev };
+      delete next[photo.item_id];
+      return next;
+    });
+    try {
+      const { error: deleteFileError } = await supabase.storage.from(photo.storage_bucket || INVENTORY_PHOTOS_BUCKET).remove([photo.storage_path]);
+      if (deleteFileError) throw deleteFileError;
+      const { error: deleteRowError } = await supabase.from("inventory_photos").delete().eq("id", photo.id).eq("user_id", userId);
+      if (deleteRowError) throw deleteRowError;
+      await loadReportDetails(selectedReportId);
+      setPhotoFeedback((prev) => ({ ...prev, [photo.item_id]: { tone: "success", message: "Photo supprimée." } }));
+    } catch (e: any) {
+      setPhotoFeedback((prev) => ({ ...prev, [photo.item_id]: { tone: "error", message: e?.message || "Impossible de supprimer la photo." } }));
+    } finally {
+      setPhotoBusyItemId(null);
     }
   };
   // =========================
@@ -1079,6 +1244,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     }
     return m;
   }, [items]);
+
+  const photosByItemId = useMemo(() => {
+    const m = new Map<string, InventoryPhoto[]>();
+    for (const photo of photos) {
+      const arr = m.get(photo.item_id) || [];
+      arr.push(photo);
+      m.set(photo.item_id, arr);
+    }
+    return m;
+  }, [photos]);
 
   const roomsWithItems = useMemo(() => {
     return rooms.map((r) => ({ room: r, items: itemsByRoomId.get(r.id) || [] }));
@@ -2335,6 +2510,74 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                                       className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                                       placeholder="tache, fissure, trou..."
                                     />
+                                  </div>
+
+                                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <div>
+                                        <p className="text-xs font-semibold text-slate-900">Photos de l’observation</p>
+                                        <p className="mt-1 text-[0.7rem] leading-4 text-slate-600">
+                                          Jusqu’à {MAX_PHOTOS_PER_ITEM} photos. Elles sont compressées avant l’envoi et intégrées au PDF.
+                                        </p>
+                                      </div>
+                                      <Badge tone="slate">{(photosByItemId.get(it.id) || []).length}/{MAX_PHOTOS_PER_ITEM}</Badge>
+                                    </div>
+
+                                    {photoFeedback[it.id] ? (
+                                      <div
+                                        className={cx(
+                                          "mt-3 rounded-lg border px-3 py-2 text-xs font-semibold",
+                                          photoFeedback[it.id].tone === "error"
+                                            ? "border-red-200 bg-red-50 text-red-700"
+                                            : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                                        )}
+                                      >
+                                        {photoFeedback[it.id].message}
+                                      </div>
+                                    ) : null}
+
+                                    {(photosByItemId.get(it.id) || []).length ? (
+                                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                        {(photosByItemId.get(it.id) || []).map((photo) => (
+                                          <div key={photo.id} className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                                            {photo.preview_url ? (
+                                              <img src={photo.preview_url} alt="Observation" className="aspect-[4/3] w-full object-cover" />
+                                            ) : (
+                                              <div className="flex aspect-[4/3] items-center justify-center text-xs text-slate-500">Aperçu indisponible</div>
+                                            )}
+                                            <button
+                                              type="button"
+                                              onClick={() => void deleteItemPhoto(photo)}
+                                              disabled={isLocked || photoBusyItemId === it.id}
+                                              className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/95 text-red-700 shadow-sm hover:bg-red-50 disabled:opacity-50"
+                                              title="Supprimer la photo"
+                                              aria-label="Supprimer la photo"
+                                            >
+                                              <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : null}
+
+                                    {!isLocked && (photosByItemId.get(it.id) || []).length < MAX_PHOTOS_PER_ITEM ? (
+                                      <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50">
+                                        <PhotoIcon className="h-4 w-4" aria-hidden="true" />
+                                        {photoBusyItemId === it.id ? "Compression et envoi..." : "Ajouter une photo"}
+                                        <input
+                                          type="file"
+                                          accept="image/jpeg,image/png,image/webp"
+                                          capture="environment"
+                                          disabled={photoBusyItemId === it.id}
+                                          className="sr-only"
+                                          onChange={(e) => {
+                                            const file = e.currentTarget.files?.[0];
+                                            e.currentTarget.value = "";
+                                            if (file) void uploadItemPhoto(it.id, file);
+                                          }}
+                                        />
+                                      </label>
+                                    ) : null}
                                   </div>
                                 </div>
                               ))}
