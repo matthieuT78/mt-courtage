@@ -113,6 +113,28 @@ function appUrl() {
   return (process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
 }
 
+function daysSince(today: Date, value?: string | null) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return null;
+  return Math.max(0, daysBetween(new Date(date.getFullYear(), date.getMonth(), date.getDate()), today));
+}
+
+function recurringScheduleKey(prefix: string, daysElapsed: number, firstDays: number[], repeatEveryDays?: number) {
+  if (firstDays.includes(daysElapsed)) return `${prefix}:day-${daysElapsed}`;
+  const repeatFrom = firstDays[firstDays.length - 1];
+  if (repeatEveryDays && daysElapsed > repeatFrom && daysElapsed % repeatEveryDays === 0) {
+    return `${prefix}:day-${daysElapsed}`;
+  }
+  return null;
+}
+
+function weeklyScheduleKey(prefix: string, today: Date) {
+  const monday = new Date(today);
+  const day = monday.getDay() || 7;
+  monday.setDate(monday.getDate() - day + 1);
+  return `${prefix}:week-${toISODate(monday)}`;
+}
+
 async function ownerEmailForUser(userId: string, leases: LeaseRow[]) {
   const leaseEmail = leases.map((l) => String(l.reminder_email || "").trim()).find(Boolean);
   if (leaseEmail) return leaseEmail;
@@ -121,53 +143,43 @@ async function ownerEmailForUser(userId: string, leases: LeaseRow[]) {
   return userRes?.data?.user?.email || null;
 }
 
-function renderEmail(alerts: AlertItem[]) {
+function renderEmail(alert: AlertItem) {
   const baseUrl = appUrl();
-  const rows = alerts
-    .map((a) => {
-      const color = a.tone === "red" ? "#b91c1c" : a.tone === "amber" ? "#92400e" : "#334155";
-      const bg = a.tone === "red" ? "#fef2f2" : a.tone === "amber" ? "#fffbeb" : "#f8fafc";
-      return `
-        <tr>
-          <td style="padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:${bg}">
-            <p style="margin:0 0 4px;font-weight:700;color:${color}">${a.title}</p>
-            <p style="margin:0 0 10px;color:#334155;font-size:14px;line-height:1.45">${a.detail}</p>
-            <a href="${baseUrl}${a.href}" style="font-size:13px;color:#0f172a;font-weight:700">Ouvrir dans lokt.fr</a>
-          </td>
-        </tr>
-        <tr><td style="height:8px"></td></tr>
-      `;
-    })
-    .join("");
+  const color = alert.tone === "red" ? "#b91c1c" : alert.tone === "amber" ? "#92400e" : "#334155";
+  const bg = alert.tone === "red" ? "#fef2f2" : alert.tone === "amber" ? "#fffbeb" : "#f8fafc";
 
   return `
     <div style="font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.5;color:#0f172a">
       <p>Bonjour,</p>
-      <p>Voici les alertes importantes détectées dans votre espace bailleur.</p>
-      <table role="presentation" style="width:100%;border-collapse:separate;border-spacing:0">${rows}</table>
+      <p>Une action nécessite votre attention dans votre espace bailleur.</p>
+      <div style="padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:${bg}">
+        <p style="margin:0 0 4px;font-weight:700;color:${color}">${alert.title}</p>
+        <p style="margin:0 0 10px;color:#334155;font-size:14px;line-height:1.45">${alert.detail}</p>
+        <a href="${baseUrl}${alert.href}" style="font-size:13px;color:#0f172a;font-weight:700">Traiter cette action sur lokt.fr</a>
+      </div>
       <p style="margin-top:16px;font-size:12px;color:#64748b">
-        Email automatique envoyé une fois par jour maximum. Les alertes disparaissent quand les actions sont traitées.
+        Cet email automatique suit l'échéancier métier de cette alerte. Il disparaît dès que l'action est traitée.
       </p>
     </div>
   `;
 }
 
-async function alreadySentToday(userId: string, digestDate: string) {
+async function alreadySent(userId: string, alertKey: string) {
   const { data, error } = await supabaseAdmin!
-    .from("landlord_alert_sends")
+    .from("landlord_alert_notification_sends")
     .select("id")
     .eq("user_id", userId)
-    .eq("digest_date", digestDate)
+    .eq("alert_key", alertKey)
     .maybeSingle();
   if (error) throw error;
   return !!data;
 }
 
-async function markSent(userId: string, digestDate: string, alertCount: number) {
-  const { error } = await supabaseAdmin!.from("landlord_alert_sends").insert({
+async function markSent(userId: string, alert: AlertItem) {
+  const { error } = await supabaseAdmin!.from("landlord_alert_notification_sends").insert({
     user_id: userId,
-    digest_date: digestDate,
-    alert_count: alertCount,
+    alert_key: alert.key,
+    preference_key: alert.preferenceKey,
     sent_at: new Date().toISOString(),
   });
   if (error) throw error;
@@ -188,7 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const force = String(req.query.force || "") === "1";
     const dryRun = String(req.query.dryRun || "") === "1";
     const today = todayParis();
-    const digestDate = toISODate(today);
+    const runDate = toISODate(today);
     const baseUrl = appUrl();
     if (!baseUrl && !dryRun) return res.status(500).json({ error: "NEXT_PUBLIC_SITE_URL ou APP_URL manquant." });
 
@@ -253,12 +265,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const userPreferences = preferencesByUserId.get(userId) || normalizeLandlordAlertPreferences();
       const userPlan = await getServerUserPlan(userId);
       if (!userPreferences.digest_enabled) {
-        results.push({ userId, skipped: "digest_disabled" });
-        continue;
-      }
-
-      if (!force && (await alreadySentToday(userId, digestDate))) {
-        results.push({ userId, skipped: "already_sent_today" });
+        results.push({ userId, skipped: "alert_emails_disabled" });
         continue;
       }
 
@@ -281,17 +288,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const daysToDue = daysBetween(today, dueDate);
 
           if (!paid && daysToDue < 0) {
+            const scheduleKey = recurringScheduleKey(`late:${lease.id}:${period.start}`, Math.abs(daysToDue), [1, 3, 7], 7);
+            if (scheduleKey) {
+              alerts.push({
+                key: scheduleKey,
+                preferenceKey: "late_payment",
+                tone: "red",
+                title: `Retard de paiement - ${labels.property}`,
+                detail: `${labels.tenant} n'est pas marqué payé pour la période ${period.start} au ${period.end}. Échéance dépassée depuis ${Math.abs(daysToDue)} jour(s).`,
+                href: "/espace-bailleur",
+              });
+            }
+          } else if (!paid && [3, 1, 0].includes(daysToDue)) {
             alerts.push({
-              key: `late:${lease.id}:${period.start}`,
-              preferenceKey: "late_payment",
-              tone: "red",
-              title: `Retard de paiement - ${labels.property}`,
-              detail: `${labels.tenant} n'est pas marqué payé pour la période ${period.start} au ${period.end}. Échéance dépassée depuis ${Math.abs(daysToDue)} jour(s).`,
-              href: "/espace-bailleur",
-            });
-          } else if (!paid && daysToDue >= 0 && daysToDue <= 3) {
-            alerts.push({
-              key: `due-soon:${lease.id}:${period.start}`,
+              key: `due-soon:${lease.id}:${period.start}:day-${daysToDue}`,
               preferenceKey: "due_soon",
               tone: "amber",
               title: `Loyer bientôt exigible - ${labels.property}`,
@@ -301,14 +311,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           if (paid && (!receipt?.pdf_url || !receipt?.sent_at)) {
-            alerts.push({
-              key: `receipt:${lease.id}:${period.start}`,
-              preferenceKey: "receipt_to_finalize",
-              tone: "amber",
-              title: `Quittance à finaliser - ${labels.property}`,
-              detail: `Le paiement de ${labels.tenant} est confirmé, mais la quittance n'est pas encore générée et envoyée.`,
-              href: "/espace-bailleur",
-            });
+            const daysAfterPayment = daysSince(today, payment?.paid_at);
+            const scheduleKey =
+              daysAfterPayment === null
+                ? weeklyScheduleKey(`receipt:${lease.id}:${period.start}`, today)
+                : recurringScheduleKey(`receipt:${lease.id}:${period.start}`, daysAfterPayment, [1, 3, 7], 7);
+            if (scheduleKey) {
+              alerts.push({
+                key: scheduleKey,
+                preferenceKey: "receipt_to_finalize",
+                tone: "amber",
+                title: `Quittance à finaliser - ${labels.property}`,
+                detail: `Le paiement de ${labels.tenant} est confirmé, mais la quittance n'est pas encore générée et envoyée.`,
+                href: "/espace-bailleur",
+              });
+            }
           }
 
           if (leaseStart && leaseStart <= today) {
@@ -328,7 +345,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           if (!lease.tenant_receipt_email && !tenantsById.get(lease.tenant_id)?.email) {
             alerts.push({
-              key: `tenant-email:${lease.id}`,
+              key: weeklyScheduleKey(`tenant-email:${lease.id}`, today),
               preferenceKey: "tenant_email_missing",
               tone: "amber",
               title: `Email locataire manquant - ${labels.property}`,
@@ -337,29 +354,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
           }
 
-          if (!hasEntryEdl && leaseStart && daysBetween(today, leaseStart) <= 7) {
-            alerts.push({
-              key: `entry-edl:${lease.id}`,
-              preferenceKey: "entry_inventory_missing",
-              tone: "amber",
-              title: `État des lieux d'entrée manquant - ${labels.property}`,
-              detail: `Aucun EDL d'entrée n'est rattaché au bail de ${labels.tenant}.`,
-              href: "/espace-bailleur",
-            });
+          if (!hasEntryEdl && leaseStart) {
+            const daysToStart = daysBetween(today, leaseStart);
+            const scheduleKey = [7, 1, -1, -7].includes(daysToStart) ? `entry-edl:${lease.id}:day-${daysToStart}` : null;
+            if (scheduleKey) {
+              alerts.push({
+                key: scheduleKey,
+                preferenceKey: "entry_inventory_missing",
+                tone: "amber",
+                title: `État des lieux d'entrée manquant - ${labels.property}`,
+                detail: `Aucun EDL d'entrée n'est rattaché au bail de ${labels.tenant}.`,
+                href: "/espace-bailleur",
+              });
+            }
           }
 
           if (leaseEnd) {
             const daysToEnd = daysBetween(today, leaseEnd);
             if (daysToEnd < 0) {
-              alerts.push({
-                key: `expired-active:${lease.id}`,
-                preferenceKey: "expired_active_lease",
-                tone: "red",
-                title: `Bail expiré encore actif - ${labels.property}`,
-                detail: `La date de fin du bail de ${labels.tenant} est dépassée. Clôturez le bail ou corrigez la date.`,
-                href: "/espace-bailleur",
-              });
-            } else if ([60, 30, 7].some((d) => daysToEnd <= d && daysToEnd > d - 7)) {
+              const scheduleKey = recurringScheduleKey(`expired-active:${lease.id}`, Math.abs(daysToEnd), [1, 7], 7);
+              if (scheduleKey) {
+                alerts.push({
+                  key: scheduleKey,
+                  preferenceKey: "expired_active_lease",
+                  tone: "red",
+                  title: `Bail expiré encore actif - ${labels.property}`,
+                  detail: `La date de fin du bail de ${labels.tenant} est dépassée. Clôturez le bail ou corrigez la date.`,
+                  href: "/espace-bailleur",
+                });
+              }
+            } else if ([60, 30, 7].includes(daysToEnd)) {
               alerts.push({
                 key: `lease-end:${lease.id}:${daysToEnd}`,
                 preferenceKey: "lease_end",
@@ -370,21 +394,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               });
             }
 
-            if (daysToEnd <= 30 && (!exitEdl || !["ready", "signed", "archived"].includes(String(exitEdl.status || "").toLowerCase()))) {
-              alerts.push({
-                key: `exit-edl:${lease.id}`,
-                preferenceKey: "exit_inventory_to_prepare",
-                tone: "amber",
-                title: `État des lieux de sortie à préparer - ${labels.property}`,
-                detail: `Le bail de ${labels.tenant} se termine bientôt ou est terminé. L'EDL de sortie n'est pas finalisé.`,
-                href: "/espace-bailleur",
-              });
+            if (!exitEdl || !["ready", "signed", "archived"].includes(String(exitEdl.status || "").toLowerCase())) {
+              const scheduleKey = [30, 7, 1, -1, -7].includes(daysToEnd) ? `exit-edl:${lease.id}:day-${daysToEnd}` : null;
+              if (scheduleKey) {
+                alerts.push({
+                  key: scheduleKey,
+                  preferenceKey: "exit_inventory_to_prepare",
+                  tone: "amber",
+                  title: `État des lieux de sortie à préparer - ${labels.property}`,
+                  detail: `Le bail de ${labels.tenant} se termine bientôt ou est terminé. L'EDL de sortie n'est pas finalisé.`,
+                  href: "/espace-bailleur",
+                });
+              }
             }
           }
 
           if (!lease.reminder_email) {
             alerts.push({
-              key: `owner-email:${lease.id}`,
+              key: weeklyScheduleKey(`owner-email:${lease.id}`, today),
               preferenceKey: "owner_email_missing",
               tone: "slate",
               title: `Email bailleur manquant - ${labels.property}`,
@@ -401,7 +428,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .filter((alert) => userPreferences[alert.preferenceKey] && planAllowsLandlordAlert(userPlan, alert.preferenceKey))
             .map((a) => [a.key, a])
         ).values()
-      ).slice(0, 12);
+      ).slice(0, 24);
       if (uniqueAlerts.length === 0) {
         results.push({ userId, skipped: "no_alerts" });
         continue;
@@ -418,24 +445,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
 
-      const mail = await sendEmailViaResend({
-        to,
-        subject: `lokt.fr - ${uniqueAlerts.length} alerte(s) bailleur à traiter`,
-        html: renderEmail(uniqueAlerts),
-      });
-
-      if (!mail.ok) {
-        results.push({ userId, to, sent: false, error: mail.error, alerts: uniqueAlerts.length });
-        continue;
+      const sent: string[] = [];
+      const skipped: string[] = [];
+      const failed: { key: string; error: string }[] = [];
+      for (const alert of uniqueAlerts) {
+        if (!force && (await alreadySent(userId, alert.key))) {
+          skipped.push(alert.key);
+          continue;
+        }
+        const mail = await sendEmailViaResend({
+          to,
+          subject: `lokt.fr - ${alert.title}`,
+          html: renderEmail(alert),
+        });
+        if (!mail.ok) {
+          failed.push({ key: alert.key, error: mail.error });
+          continue;
+        }
+        await markSent(userId, alert);
+        sent.push(alert.key);
       }
-
-      await markSent(userId, digestDate, uniqueAlerts.length);
-      results.push({ userId, to, sent: true, alerts: uniqueAlerts.length });
+      results.push({ userId, to, sent, skipped, failed });
     }
 
     return res.status(200).json({
       ok: true,
-      digestDate,
+      runDate,
       dryRun,
       results,
     });

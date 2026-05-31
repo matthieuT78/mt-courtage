@@ -30,7 +30,8 @@ if (!cronSecret) throw new Error("CRON_SECRET manquante dans .env.local.");
 
 const jobs = [
   {
-    title: "lokt - alertes bailleur quotidiennes",
+    title: "lokt - contrôle des alertes bailleur",
+    legacyTitles: ["lokt - alertes bailleur quotidiennes"],
     url: `${siteUrl}/api/cron/landlord-alerts`,
     hours: [9],
     minutes: [30],
@@ -93,7 +94,7 @@ const existing = await request(API_URL);
 const existingByTitle = new Map((existing.jobs || []).map((job) => [job.title, job]));
 
 for (const job of jobs) {
-  const current = existingByTitle.get(job.title);
+  const current = existingByTitle.get(job.title) || job.legacyTitles?.map((title) => existingByTitle.get(title)).find(Boolean);
   const action = current ? "update" : "create";
   if (dryRun) {
     console.log(`[dry-run] ${action} ${job.title} -> ${job.url} (${job.hours[0]}:${String(job.minutes[0]).padStart(2, "0")}, Europe/Paris, ${enableJobs ? "actif" : "inactif"})`);

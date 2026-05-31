@@ -4,7 +4,7 @@ Cette documentation résume le système d'alertes email de l'espace bailleur lok
 
 ## Objectif
 
-Envoyer au propriétaire un email quotidien lorsqu'une action importante est à traiter dans son espace bailleur.
+Envoyer au propriétaire un email unitaire lorsqu'une action importante est à traiter dans son espace bailleur.
 
 Le système évite les oublis métier :
 
@@ -24,7 +24,8 @@ Le système évite les oublis métier :
 - Cron principal : `pages/api/cron/landlord-alerts.ts`
 - Configuration Vercel Cron pour la génération de quittances : `vercel.json`
 - Synchronisation cron-job.org : `scripts/configure-cron-job-org.mjs`
-- Table anti-spam : `supabase/migrations/20260520_landlord_alert_sends.sql`
+- Ancienne table anti-spam du digest : `supabase/migrations/20260520_landlord_alert_sends.sql`
+- Table anti-doublon par notification : `supabase/migrations/20260531203000_landlord_alert_notification_sends.sql`
 - Table anti-doublon pour les relances de validation : `supabase/migrations/20260531170000_rent_reminder_followup_sends.sql`
 - Préférences pilotables par le bailleur : `supabase/migrations/20260531183000_landlord_alert_preferences.sql`
 - Envoi email Resend : `lib/mailer/resend.ts`
@@ -40,15 +41,15 @@ Le cron `/api/cron/landlord-alerts` analyse les données bailleur :
 - `rent_receipts`
 - `inventory_reports`
 
-Il regroupe les alertes par utilisateur, puis envoie un seul email digest par propriétaire.
+Il détecte les alertes par utilisateur, puis envoie un email distinct pour chaque action arrivée à un jalon métier.
 
-Un propriétaire ne reçoit qu'un email d'alerte par jour grâce à la table :
+Une même occurrence métier n'est envoyée qu'une seule fois grâce à la table :
 
 ```sql
-landlord_alert_sends
+landlord_alert_notification_sends
 ```
 
-Depuis l'onglet `Alertes` de l'espace bailleur, chaque utilisateur peut suspendre le récapitulatif quotidien ou choisir précisément les alertes à conserver. Les comptes sans préférence enregistrée gardent toutes les alertes actives par défaut.
+Depuis l'onglet `Alertes` de l'espace bailleur, chaque utilisateur peut suspendre tous les emails métier ou choisir précisément les alertes à conserver. Les comptes sans préférence enregistrée gardent toutes les alertes actives par défaut.
 
 Le plan gratuit conserve quatre alertes essentielles : loyer en retard, quittance à finaliser, email locataire manquant et email bailleur manquant. Starter et Essentiel débloquent toutes les alertes préventives et métier, notamment les échéances à venir, la révision annuelle du loyer, la fin de bail et les états des lieux.
 
@@ -58,15 +59,15 @@ cron-job.org déclenche également `/api/cron/rent-followups` une fois par jour.
 
 ### Retard de paiement
 
-Déclenchée si le loyer de la période courante n'est pas marqué payé et que la date d'échéance est dépassée.
+Déclenchée si le loyer de la période courante n'est pas marqué payé et que la date d'échéance est dépassée : `J+1`, `J+3`, `J+7`, puis chaque semaine jusqu'à régularisation.
 
 ### Loyer bientôt exigible
 
-Déclenchée si le loyer arrive à échéance dans les 3 prochains jours.
+Déclenchée à `J-3`, `J-1` et le jour de l'échéance si le paiement n'est pas encore confirmé.
 
 ### Quittance à finaliser
 
-Déclenchée si le paiement est confirmé mais que la quittance n'a pas encore de PDF ou n'a pas été envoyée.
+Déclenchée si le paiement est confirmé mais que la quittance n'a pas encore de PDF ou n'a pas été envoyée : `J+1`, `J+3`, `J+7`, puis chaque semaine.
 
 ### Révision annuelle du loyer à préparer
 
@@ -78,21 +79,21 @@ Déclenchée si la date de fin du bail approche.
 
 Seuils actuels :
 
-- environ 60 jours avant ;
-- environ 30 jours avant ;
-- environ 7 jours avant.
+- `J-60` ;
+- `J-30` ;
+- `J-7`.
 
 ### Bail expiré encore actif
 
-Déclenchée si la date de fin est dépassée mais que le bail n'est pas clôturé.
+Déclenchée si la date de fin est dépassée mais que le bail n'est pas clôturé : `J+1`, `J+7`, puis chaque semaine.
 
 ### État des lieux d'entrée manquant
 
-Déclenchée si aucun état des lieux d'entrée n'est rattaché au bail.
+Déclenchée si aucun état des lieux d'entrée n'est rattaché au bail : `J-7` et `J-1` pour préparer le rendez-vous, puis `J+1` et `J+7` si le document manque encore. Les emails s'arrêtent ensuite, mais l'action reste visible dans l'outil.
 
 ### État des lieux de sortie à préparer
 
-Déclenchée si le bail arrive à échéance ou est terminé, mais que l'état des lieux de sortie n'est pas finalisé.
+Déclenchée si le bail arrive à échéance ou est terminé, mais que l'état des lieux de sortie n'est pas finalisé : `J-30`, `J-7` et `J-1` pour organiser la sortie, puis `J+1` et `J+7` si elle reste à finaliser. Les emails s'arrêtent ensuite, mais l'action reste visible dans l'outil.
 
 Un état des lieux de sortie est considéré finalisé si son statut est :
 
@@ -102,11 +103,11 @@ Un état des lieux de sortie est considéré finalisé si son statut est :
 
 ### Email locataire manquant
 
-Déclenchée si aucun email locataire n'est disponible pour envoyer les quittances.
+Déclenchée une fois par semaine si aucun email locataire n'est disponible pour envoyer les quittances.
 
 ### Email bailleur manquant
 
-Déclenchée si aucun email de notification bailleur n'est configuré sur le bail.
+Déclenchée une fois par semaine si aucun email de notification bailleur n'est configuré sur le bail.
 
 ## Pré-requis environnement
 
@@ -147,7 +148,7 @@ Vercel conserve uniquement la génération de quittances :
 
 cron-job.org gère les automatisations complémentaires :
 
-- `lokt - alertes bailleur quotidiennes` à `09:30` heure de Paris ;
+- `lokt - contrôle des alertes bailleur` à `09:30` heure de Paris ;
 - `lokt - relance validation loyer J+1` à `09:15` heure de Paris.
 
 La configuration cron-job.org est créée ou mise à jour automatiquement via :
@@ -172,9 +173,10 @@ Avant activation en production, appliquer la migration :
 supabase/migrations/20260520_landlord_alert_sends.sql
 supabase/migrations/20260531170000_rent_reminder_followup_sends.sql
 supabase/migrations/20260531183000_landlord_alert_preferences.sql
+supabase/migrations/20260531203000_landlord_alert_notification_sends.sql
 ```
 
-Cette table sert à éviter qu'un utilisateur reçoive plusieurs emails d'alerte le même jour.
+La dernière table sert à éviter qu'une même occurrence d'alerte soit envoyée deux fois. L'ancienne table `landlord_alert_sends` est conservée pour l'historique mais n'est plus utilisée par le moteur.
 
 ## Tester en local
 
@@ -203,7 +205,7 @@ Le cron renvoie un JSON avec les utilisateurs traités :
 ```json
 {
   "ok": true,
-  "digestDate": "2026-05-20",
+  "runDate": "2026-05-20",
   "dryRun": true,
   "results": []
 }
@@ -211,8 +213,9 @@ Le cron renvoie un JSON avec les utilisateurs traités :
 
 Chaque résultat peut indiquer :
 
-- `sent: true` : email envoyé ;
-- `skipped: "already_sent_today"` : déjà envoyé aujourd'hui ;
+- `sent: []` : clés des notifications envoyées ;
+- `skipped: []` : clés des notifications déjà envoyées ;
+- `failed: []` : notifications dont l'envoi a échoué ;
 - `skipped: "no_alerts"` : aucune alerte ;
 - `skipped: "no_owner_email"` : impossible de trouver l'email propriétaire.
 
