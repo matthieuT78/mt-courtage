@@ -69,6 +69,10 @@ function PlanCard({
         </p>
       </div>
 
+      <p className="inline-flex w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-800">
+        Sans engagement
+      </p>
+
       <p className="mt-4 text-sm leading-6 text-slate-600">{plan.description}</p>
 
       {isComingSoon ? (
@@ -276,12 +280,16 @@ export default function TarifsPage() {
                 <p className="text-2xl font-semibold leading-tight text-slate-950">0 €</p>
                 <p className="mt-1 text-xs text-slate-600">1 logement actif inclus</p>
               </div>
+              <p className="inline-flex w-fit rounded-full border border-emerald-200 bg-white/70 px-2.5 py-1 text-[0.7rem] font-semibold text-emerald-800">
+                Sans engagement
+              </p>
               <ul className="mt-4 flex-1 space-y-2 text-sm text-slate-700">
                 <li>✓ Bien, bail et locataire</li>
                 <li>✓ Quittances manuelles et PDF</li>
                 <li>✓ États des lieux et inventaire</li>
                 <li>✓ Finance simple</li>
-                <li className="text-slate-500">Automatisations email non incluses</li>
+                <li>✓ 4 alertes essentielles par email</li>
+                <li className="text-slate-500">Quittances et relances automatiques non incluses</li>
                 <li className="text-slate-500">Aide déclaration premium non incluse</li>
               </ul>
               <Link
@@ -303,6 +311,50 @@ export default function TarifsPage() {
             ))}
           </section>
 
+          <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[1.75rem]">
+            <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Comparatif détaillé</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-950">Ce que chaque abonnement débloque réellement</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Tous les plans sont sans engagement. Starter automatise le quotidien ; Essentiel ajoute le pilotage financier avancé.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-[760px] w-full border-collapse text-left text-sm">
+                <thead>
+                  <tr className="bg-[#f6f9fc] text-slate-900">
+                    <th className="px-4 py-3 font-semibold sm:px-5">Fonctionnalité</th>
+                    <th className="px-4 py-3 font-semibold">Gratuit</th>
+                    <th className="px-4 py-3 font-semibold">Starter</th>
+                    <th className="px-4 py-3 font-semibold">Essentiel</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 text-slate-700">
+                  {[
+                    ["Logements actifs", "1", "Jusqu’à 3", "Jusqu’à 10"],
+                    ["Biens, locataires et baux", "Inclus", "Inclus", "Inclus"],
+                    ["Quittances PDF manuelles", "Inclus", "Inclus", "Inclus"],
+                    ["États des lieux et inventaire", "Inclus", "Inclus", "Inclus"],
+                    ["Finance simple", "Inclus", "Inclus", "Inclus"],
+                    ["Alertes essentielles", "4 alertes", "Toutes les alertes", "Toutes les alertes"],
+                    ["Alertes IRL, fin de bail et EDL", "Non inclus", "Inclus", "Inclus"],
+                    ["Validation loyer par email", "Non inclus", "Inclus", "Inclus"],
+                    ["Relance bailleur automatique à J+1", "Non inclus", "Inclus", "Inclus"],
+                    ["Envoi automatique des quittances", "Non inclus", "Inclus", "Inclus"],
+                    ["Simulateurs bailleur", "Non inclus", "Inclus", "Inclus"],
+                    ["Performance et cash-flow par bien", "Non inclus", "Non inclus", "Inclus"],
+                    ["Aide à la déclaration et exports avancés", "Non inclus", "Non inclus", "Inclus"],
+                  ].map(([feature, free, starter, essential]) => (
+                    <tr key={feature}>
+                      <td className="px-4 py-3 font-medium text-slate-900 sm:px-5">{feature}</td>
+                      <td className="px-4 py-3">{free}</td>
+                      <td className="px-4 py-3">{starter}</td>
+                      <td className="px-4 py-3">{essential}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
           {checkoutError ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{checkoutError}</div>
           ) : null}
@@ -311,13 +363,13 @@ export default function TarifsPage() {
             <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Gratuit = gestion manuelle</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Un propriétaire peut tester un vrai usage : créer son logement, rattacher un bail, générer une quittance PDF et garder ses archives.
+                Un propriétaire peut tester un vrai usage : créer son logement, rattacher un bail, générer une quittance PDF, garder ses archives et recevoir quatre alertes essentielles.
               </p>
             </div>
             <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Starter = automatisation</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Le propriétaire paie quand lokt.fr enlève les tâches répétitives : validation paiement, génération PDF, envoi email et rappels.
+                Le propriétaire paie quand lokt.fr enlève les tâches répétitives : validation paiement, génération PDF, envoi email, relances et alertes métier avancées.
               </p>
             </div>
             <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">

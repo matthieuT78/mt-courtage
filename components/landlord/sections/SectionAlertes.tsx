@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   BellAlertIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   HomeModernIcon,
   InformationCircleIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import {
@@ -12,10 +14,12 @@ import {
   normalizeLandlordAlertPreferences,
   type LandlordAlertPreferenceKey,
   type LandlordAlertPreferences,
+  planAllowsLandlordAlert,
 } from "../../../lib/landlordAlertPreferences";
+import type { Plan } from "../../../lib/permissions";
 import { Pill, SectionTitle } from "../UiBits";
 
-type Props = { userId: string };
+type Props = { userId: string; plan: Plan };
 
 type AlertConfig = {
   key: LandlordAlertPreferenceKey;
@@ -56,7 +60,7 @@ function Toggle({ checked, disabled, label, onChange }: { checked: boolean; disa
   );
 }
 
-export function SectionAlertes({ userId }: Props) {
+export function SectionAlertes({ userId, plan }: Props) {
   const [preferences, setPreferences] = useState<LandlordAlertPreferences>(DEFAULT_LANDLORD_ALERT_PREFERENCES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -77,7 +81,10 @@ export function SectionAlertes({ userId }: Props) {
     void load();
   }, [load]);
 
-  const activeCount = useMemo(() => ALERTS.filter((alert) => preferences[alert.key]).length, [preferences]);
+  const activeCount = useMemo(
+    () => ALERTS.filter((alert) => preferences[alert.key] && planAllowsLandlordAlert(plan, alert.key)).length,
+    [plan, preferences]
+  );
 
   const save = async (next: LandlordAlertPreferences) => {
     if (!supabase) return;
@@ -148,12 +155,23 @@ export function SectionAlertes({ userId }: Props) {
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-semibold text-slate-900">{alert.title}</p>
                     <Pill tone={alert.level === "Prioritaire" ? "red" : alert.level === "Prévention" ? "amber" : "slate"}>{alert.level}</Pill>
+                    {!planAllowsLandlordAlert(plan, alert.key) ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[#635bff]/20 bg-[#635bff]/5 px-2 py-0.5 text-[0.65rem] font-semibold text-[#4f46e5]">
+                        <LockClosedIcon className="h-3 w-3" aria-hidden="true" />
+                        Starter
+                      </span>
+                    ) : null}
                   </div>
                   <p className="mt-1 text-xs leading-5 text-slate-600">{alert.desc}</p>
+                  {!planAllowsLandlordAlert(plan, alert.key) ? (
+                    <Link href="/mon-compte/abonnement?source=alertes" className="mt-1 inline-flex text-xs font-semibold text-[#4f46e5] hover:underline">
+                      Débloquer avec Starter
+                    </Link>
+                  ) : null}
                 </div>
                 <Toggle
-                  checked={preferences[alert.key]}
-                  disabled={loading || saving}
+                  checked={preferences[alert.key] && planAllowsLandlordAlert(plan, alert.key)}
+                  disabled={loading || saving || !planAllowsLandlordAlert(plan, alert.key)}
                   label={`Activer ou désactiver : ${alert.title}`}
                   onChange={() => void save({ ...preferences, [alert.key]: !preferences[alert.key] })}
                 />

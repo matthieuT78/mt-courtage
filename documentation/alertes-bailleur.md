@@ -50,6 +50,8 @@ landlord_alert_sends
 
 Depuis l'onglet `Alertes` de l'espace bailleur, chaque utilisateur peut suspendre le récapitulatif quotidien ou choisir précisément les alertes à conserver. Les comptes sans préférence enregistrée gardent toutes les alertes actives par défaut.
 
+Le plan gratuit conserve quatre alertes essentielles : loyer en retard, quittance à finaliser, email locataire manquant et email bailleur manquant. Starter et Essentiel débloquent toutes les alertes préventives et métier, notamment les échéances à venir, la révision annuelle du loyer, la fin de bail et les états des lieux.
+
 cron-job.org déclenche également `/api/cron/rent-followups` une fois par jour. Si le propriétaire n'a cliqué sur aucune réponse dans le mail de validation du paiement après 24 heures, il reçoit une relance unique avec les mêmes actions. La table `rent_reminder_followup_sends` bloque les doublons.
 
 ## Alertes envoyées

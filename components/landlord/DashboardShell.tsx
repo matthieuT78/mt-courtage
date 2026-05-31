@@ -312,7 +312,7 @@ export function DashboardShell(props: any) {
         return <SectionMessagerie initialTenantId={messagingTenantId} onTenantSelected={() => setMessagingTenantId(null)} />;
 
       case "alertes":
-        return <SectionAlertes userId={userId} />;
+        return <SectionAlertes userId={userId} plan={plan} />;
 
       case "finance":
         return (

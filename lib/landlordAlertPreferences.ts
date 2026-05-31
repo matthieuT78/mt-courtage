@@ -17,6 +17,21 @@ export type LandlordAlertPreferences = Record<LandlordAlertPreferenceKey, boolea
   digest_enabled: boolean;
 };
 
+export const FREE_LANDLORD_ALERT_KEYS: LandlordAlertPreferenceKey[] = [
+  "late_payment",
+  "receipt_to_finalize",
+  "tenant_email_missing",
+  "owner_email_missing",
+];
+
+export function planAllowsAllLandlordAlerts(plan: Plan) {
+  return plan === "landlord_5" || plan === "landlord_15" || plan === "landlord_unlimited";
+}
+
+export function planAllowsLandlordAlert(plan: Plan, key: LandlordAlertPreferenceKey) {
+  return planAllowsAllLandlordAlerts(plan) || FREE_LANDLORD_ALERT_KEYS.includes(key);
+}
+
 export const DEFAULT_LANDLORD_ALERT_PREFERENCES: LandlordAlertPreferences = {
   digest_enabled: true,
   late_payment: true,
@@ -39,3 +54,4 @@ export function normalizeLandlordAlertPreferences(row?: Record<string, unknown> 
     ])
   ) as LandlordAlertPreferences;
 }
+import type { Plan } from "./permissions";

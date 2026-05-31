@@ -4,9 +4,11 @@ import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
 import {
   normalizeLandlordAlertPreferences,
+  planAllowsLandlordAlert,
   type LandlordAlertPreferenceKey,
   type LandlordAlertPreferences,
 } from "../../../lib/landlordAlertPreferences";
+import { getServerUserPlan } from "../../../lib/serverPermissions";
 
 type AlertTone = "red" | "amber" | "slate";
 
@@ -249,6 +251,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     for (const [userId, userLeaseList] of userLeases.entries()) {
       const userPreferences = preferencesByUserId.get(userId) || normalizeLandlordAlertPreferences();
+      const userPlan = await getServerUserPlan(userId);
       if (!userPreferences.digest_enabled) {
         results.push({ userId, skipped: "digest_disabled" });
         continue;
@@ -392,7 +395,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      const uniqueAlerts = Array.from(new Map(alerts.filter((alert) => userPreferences[alert.preferenceKey]).map((a) => [a.key, a])).values()).slice(0, 12);
+      const uniqueAlerts = Array.from(
+        new Map(
+          alerts
+            .filter((alert) => userPreferences[alert.preferenceKey] && planAllowsLandlordAlert(userPlan, alert.preferenceKey))
+            .map((a) => [a.key, a])
+        ).values()
+      ).slice(0, 12);
       if (uniqueAlerts.length === 0) {
         results.push({ userId, skipped: "no_alerts" });
         continue;
