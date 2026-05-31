@@ -9,6 +9,7 @@ import { SectionDashboard } from "./sections/SectionDashboard";
 import { SectionBiens } from "./sections/SectionBiens";
 import { SectionLocataires } from "./sections/SectionLocataires";
 import { SectionBaux } from "./sections/SectionBaux";
+import { SectionMessagerie } from "./sections/SectionMessagerie";
 import { SectionQuittances } from "./sections/SectionQuittances";
 import { SectionFinance } from "./sections/SectionFinance";
 import { SectionPerformance } from "./sections/SectionPerformance";
@@ -81,6 +82,7 @@ export function DashboardShell(props: any) {
   const router = useRouter();
   const { loading: permissionsLoading, plan, maxActiveProperties } = usePermissions();
   const [active, setActive] = useState<LandlordSectionKey>("dashboard");
+  const [messagingTenantId, setMessagingTenantId] = useState<string | null>(null);
 
   const userId: string = props?.user?.id || "";
   const userEmail: string | undefined = props?.user?.email;
@@ -161,6 +163,7 @@ export function DashboardShell(props: any) {
       "biens",
       "locataires",
       "baux",
+      "messagerie",
       "quittances",
       "finance",
       "performance",
@@ -259,7 +262,19 @@ export function DashboardShell(props: any) {
         return <SectionBiens userId={userId} properties={properties} photos={photos} onRefresh={refresh} />;
 
       case "locataires":
-        return <SectionLocataires userId={userId} tenants={tenants} leases={leases} properties={properties} onRefresh={refresh} />;
+        return (
+          <SectionLocataires
+            userId={userId}
+            tenants={tenants}
+            leases={leases}
+            properties={properties}
+            onRefresh={refresh}
+            onContactTenant={(tenantId) => {
+              setMessagingTenantId(tenantId);
+              setActive("messagerie");
+            }}
+          />
+        );
 
       case "baux":
         return (
@@ -288,6 +303,9 @@ export function DashboardShell(props: any) {
             onRefresh={refresh}
           />
         );
+
+      case "messagerie":
+        return <SectionMessagerie initialTenantId={messagingTenantId} onTenantSelected={() => setMessagingTenantId(null)} />;
 
       case "finance":
         return (
@@ -325,6 +343,7 @@ export function DashboardShell(props: any) {
     }
   }, [
     active,
+    messagingTenantId,
     plan,
     lockedSection,
     userId,

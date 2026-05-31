@@ -63,6 +63,7 @@ type Props = {
   leases?: Lease[];
   properties?: PropertyLite[];
   onRefresh: () => Promise<void>;
+  onContactTenant?: (tenantId: string) => void;
 };
 
 const fmt = (v?: string | null) => (v ? v : "—");
@@ -136,7 +137,7 @@ function isArchived(t: Tenant) {
 
 const CREATE_ID = "__create__";
 
-export function SectionLocataires({ userId, tenants, leases, properties, onRefresh }: Props) {
+export function SectionLocataires({ userId, tenants, leases, properties, onRefresh, onContactTenant }: Props) {
   const safeTenants = Array.isArray(tenants) ? tenants : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safeProperties = Array.isArray(properties) ? properties : [];
@@ -833,6 +834,14 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
+                        onClick={() => onContactTenant?.(t.id)}
+                        className="rounded-full bg-slate-950 px-3 py-1.5 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
+                      >
+                        Contacter
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => {
                           copyToClipboard(t.email || "");
                           setOk(t.email ? "Email copié ✅" : "Aucun email.");
@@ -1134,6 +1143,14 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2 items-center">
+                      <button
+                        type="button"
+                        onClick={() => onContactTenant?.(t.id)}
+                        className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
+                      >
+                        Contacter
+                      </button>
+
                       <button
                         type="button"
                         disabled={loading}

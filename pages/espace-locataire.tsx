@@ -1,0 +1,320 @@
+import React, { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import {
+  ArrowDownTrayIcon,
+  ChatBubbleLeftRightIcon,
+  DocumentTextIcon,
+  HomeModernIcon,
+  PaperAirplaneIcon,
+} from "@heroicons/react/24/outline";
+import AppHeader from "../components/AppHeader";
+import { supabase } from "../lib/supabaseClient";
+
+type PortalTab = "accueil" | "quittances" | "documents" | "messagerie";
+type PortalData = Record<string, any>;
+
+async function authHeaders() {
+  if (!supabase) throw new Error("Supabase non initialisé.");
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Session expirée. Reconnectez-vous.");
+  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+}
+function displayTenant(tenant?: any) {
+  return tenant?.full_name || [tenant?.first_name, tenant?.last_name].filter(Boolean).join(" ") || "Locataire";
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("fr-FR");
+}
+
+function formatMoney(value?: number | null) {
+  return Number(value || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+}
+
+function openBlankWindow() {
+  return window.open("", "_blank", "noopener,noreferrer");
+}
+
+export default function EspaceLocatairePage() {
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<PortalData | null>(null);
+  const [active, setActive] = useState<PortalTab>("accueil");
+  const [messages, setMessages] = useState<any[]>([]);
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const thread = data?.threads?.[0] || null;
+  const tenant = data?.tenants?.[0] || null;
+  const propertyById = useMemo(() => new Map((data?.properties || []).map((row: any) => [row.id, row])), [data?.properties]);
+  const leaseById = useMemo(() => new Map((data?.leases || []).map((row: any) => [row.id, row])), [data?.leases]);
+  const activeLease = data?.leases?.[0] || null;
+  const property: any = activeLease ? propertyById.get(activeLease.property_id) || null : null;
+
+  const loadPortal = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const response = await fetch("/api/tenant-portal/data", { headers: await authHeaders() });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json?.error || "Chargement de l’espace locataire impossible.");
+      setData(json);
+    } catch (e: any) {
+      setErr(e?.message || "Chargement de l’espace locataire impossible.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadMessages = useCallback(async () => {
+    if (!thread?.id) return;
+    try {
+      const response = await fetch(`/api/messaging/messages?threadId=${encodeURIComponent(thread.id)}`, { headers: await authHeaders() });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json?.error || "Chargement des messages impossible.");
+      setMessages(json?.messages || []);
+    } catch (e: any) {
+      setErr(e?.message || "Chargement des messages impossible.");
+    }
+  }, [thread?.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!supabase) return;
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        router.replace(`/mon-compte?mode=login&redirect=${encodeURIComponent("/espace-locataire")}`);
+        return;
+      }
+      if (mounted) {
+        setChecking(false);
+        await loadPortal();
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [loadPortal, router]);
+
+  useEffect(() => {
+    if (active !== "messagerie" || !thread?.id) return;
+    loadMessages();
+    const timer = window.setInterval(loadMessages, 12000);
+    return () => window.clearInterval(timer);
+  }, [active, loadMessages, thread?.id]);
+
+  const openDocument = async (kind: "receipt" | "inventory", documentId: string) => {
+    const pdfWindow = openBlankWindow();
+    setErr(null);
+    try {
+      const response = await fetch("/api/tenant-portal/document-url", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({ kind, documentId }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json?.signedUrl) throw new Error(json?.error || "Ouverture du document impossible.");
+      if (pdfWindow) pdfWindow.location.href = json.signedUrl;
+      else window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      pdfWindow?.close();
+      setErr(e?.message || "Ouverture du document impossible.");
+    }
+  };
+
+  const sendMessage = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!thread?.id || !body.trim()) return;
+    setSending(true);
+    setErr(null);
+    try {
+      const response = await fetch("/api/messaging/messages", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({ threadId: thread.id, body }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json?.error || "Envoi impossible.");
+      setBody("");
+      await loadMessages();
+    } catch (e: any) {
+      setErr(e?.message || "Envoi impossible.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (checking) return null;
+
+  const tabs: Array<{ key: PortalTab; label: string; icon: React.ReactNode }> = [
+    { key: "accueil", label: "Accueil", icon: <HomeModernIcon className="h-4 w-4" /> },
+    { key: "quittances", label: "Quittances", icon: <DocumentTextIcon className="h-4 w-4" /> },
+    { key: "documents", label: "Documents", icon: <ArrowDownTrayIcon className="h-4 w-4" /> },
+    { key: "messagerie", label: "Messagerie", icon: <ChatBubbleLeftRightIcon className="h-4 w-4" /> },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#f6f9fc]">
+      <Head>
+        <title>Espace locataire | lokt.fr</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Head>
+      <AppHeader />
+
+      <main className="mx-auto max-w-7xl px-4 py-6">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="h-1.5 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+          <div className="p-5">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-indigo-700">Espace locataire</p>
+            <h1 className="mt-1 text-2xl font-semibold text-slate-950">Bonjour {displayTenant(tenant)}</h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Retrouvez vos documents locatifs et échangez directement avec votre bailleur.
+            </p>
+          </div>
+        </div>
+
+        {err ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
+        {loading ? <div className="mt-4 text-sm text-slate-500">Chargement de votre espace...</div> : null}
+
+        {!loading && data ? (
+          <div className="mt-4 grid gap-4 lg:grid-cols-[230px,1fr]">
+            <nav className="h-max rounded-3xl border border-slate-200 bg-white p-2 shadow-sm">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActive(tab.key)}
+                  className={`flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold transition ${
+                    active === tab.key ? "bg-slate-950 text-white" : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {tab.icon}
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+
+            <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+              {active === "accueil" ? (
+                <div>
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Votre location</p>
+                  <h2 className="mt-1 text-xl font-semibold text-slate-950">{property?.label || property?.address_line1 || "Logement"}</h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {[property?.address_line1, property?.postal_code, property?.city].filter(Boolean).join(", ") || "Adresse non renseignée"}
+                  </p>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <Stat label="Début du bail" value={formatDate(activeLease?.start_date)} />
+                    <Stat label="Quittances disponibles" value={String(data.receipts?.length || 0)} />
+                    <Stat label="Documents EDL" value={String(data.inventoryReports?.length || 0)} />
+                  </div>
+                </div>
+              ) : null}
+
+              {active === "quittances" ? (
+                <DocumentList
+                  title="Vos quittances"
+                  empty="Aucune quittance PDF disponible pour le moment."
+                  rows={(data.receipts || []).map((receipt: any) => ({
+                    id: receipt.id,
+                    title: `Quittance - ${formatDate(receipt.period_start)}`,
+                    subtitle: `${formatMoney(receipt.total_amount)} · période du ${formatDate(receipt.period_start)} au ${formatDate(receipt.period_end)}`,
+                  }))}
+                  onOpen={(id) => openDocument("receipt", id)}
+                />
+              ) : null}
+
+              {active === "documents" ? (
+                <DocumentList
+                  title="États des lieux"
+                  empty="Aucun état des lieux PDF disponible pour le moment."
+                  rows={(data.inventoryReports || []).map((report: any) => ({
+                    id: report.id,
+                    title: report.report_type === "exit" ? "État des lieux de sortie" : "État des lieux d’entrée",
+                    subtitle: `${formatDate(report.performed_at)} · ${report.status || "document"}`,
+                  }))}
+                  onOpen={(id) => openDocument("inventory", id)}
+                />
+              ) : null}
+
+              {active === "messagerie" ? (
+                <div className="flex min-h-[540px] flex-col">
+                  <div>
+                    <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-indigo-700">Messagerie</p>
+                    <h2 className="mt-1 text-xl font-semibold text-slate-950">Échanger avec votre bailleur</h2>
+                  </div>
+                  <div className="mt-4 flex-1 space-y-3 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    {messages.length === 0 ? <p className="text-sm text-slate-500">Aucun message pour le moment.</p> : null}
+                    {messages.map((message) => (
+                      <div key={message.id} className={`flex ${message.sender_role === "tenant" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${message.sender_role === "tenant" ? "bg-slate-950 text-white" : "border border-slate-200 bg-white text-slate-800"}`}>
+                          <p className="whitespace-pre-wrap">{message.body}</p>
+                          <p className="mt-1 text-[0.65rem] opacity-60">{formatDate(message.created_at)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <form onSubmit={sendMessage} className="mt-3 flex gap-2">
+                    <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={2} placeholder="Écrire un message..." className="flex-1 resize-none rounded-xl border border-slate-300 px-3 py-2 text-sm" />
+                    <button type="submit" disabled={sending || !body.trim()} className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-slate-950 text-white disabled:opacity-50" title="Envoyer">
+                      <PaperAirplaneIcon className="h-5 w-5" />
+                    </button>
+                  </form>
+                </div>
+              ) : null}
+            </section>
+          </div>
+        ) : null}
+      </main>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function DocumentList({
+  title,
+  empty,
+  rows,
+  onOpen,
+}: {
+  title: string;
+  empty: string;
+  rows: Array<{ id: string; title: string; subtitle: string }>;
+  onOpen: (id: string) => void;
+}) {
+  return (
+    <div>
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-indigo-700">Documents</p>
+      <h2 className="mt-1 text-xl font-semibold text-slate-950">{title}</h2>
+      <div className="mt-4 space-y-2">
+        {rows.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">{empty}</div> : null}
+        {rows.map((row) => (
+          <div key={row.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-950">{row.title}</p>
+              <p className="mt-1 text-xs text-slate-500">{row.subtitle}</p>
+            </div>
+            <button type="button" onClick={() => onOpen(row.id)} className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              Ouvrir le PDF
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

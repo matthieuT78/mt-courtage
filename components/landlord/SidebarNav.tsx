@@ -6,6 +6,7 @@ export type LandlordSectionKey =
   | "locataires"
   | "biens"
   | "baux"
+  | "messagerie"
   | "etat_des_lieux"
   | "quittances"
   | "finance"
@@ -52,6 +53,7 @@ export function SidebarNav({
     { key: "locataires", label: "Locataires", icon: "👤" },
     { key: "biens", label: "Biens", icon: "🏠" },
     { key: "baux", label: "Baux", icon: "📄" },
+    { key: "messagerie", label: "Messagerie", icon: "💬" },
     { key: "etat_des_lieux", label: "État des lieux", icon: "📝" },
     { key: "quittances", label: "Quittances", icon: "🧾" },
     { key: "finance", label: "Finance", icon: "📊" },
