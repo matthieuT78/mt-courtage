@@ -43,16 +43,10 @@ function hasFinanceSetup(finance?: PropertyFinance | null) {
 
 function paymentStatusForLease(lease: Lease, yyyymm: string, payment?: RentPayment | null) {
   const rentPeriod = getLeaseRentPeriod(lease, yyyymm);
-  const expectedRent = Number(rentPeriod?.rent || 0);
-  const expectedCharges = Number(rentPeriod?.charges || 0);
   const expectedTotal = Number(rentPeriod?.total || 0);
   const paidTotal = Number(payment?.total_amount || 0);
-  const paidCharges = Number(payment?.charges_amount || 0);
 
   if (!payment?.paid_at) return { label: "À suivre", missing: expectedTotal, incomplete: false };
-  if (expectedCharges > 0 && paidTotal >= expectedRent && paidCharges < expectedCharges) {
-    return { label: "Charges manquantes", missing: Math.max(0, expectedCharges - paidCharges), incomplete: true };
-  }
   if (paidTotal + 0.01 < expectedTotal) {
     return { label: "Paiement incomplet", missing: Math.max(0, expectedTotal - paidTotal), incomplete: true };
   }
@@ -427,7 +421,7 @@ export function SectionDashboard({
   );
 
   const incompletePayments = useMemo(
-    () => leaseCards.filter((card) => card.paymentStatus === "Paiement incomplet" || card.paymentStatus === "Charges manquantes"),
+    () => leaseCards.filter((card) => card.paymentStatus === "Paiement incomplet"),
     [leaseCards]
   );
 

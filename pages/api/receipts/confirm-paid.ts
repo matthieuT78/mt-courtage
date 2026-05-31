@@ -3,7 +3,7 @@ import { confirmLeasePaymentAndSendReceipt } from "../../../lib/receiptWorkflow"
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
 
-type OwnerAction = "full" | "partial" | "charges_missing" | "unpaid";
+type OwnerAction = "full" | "partial" | "unpaid";
 
 function safeStr(v: unknown) {
   return String(v ?? "").trim();
@@ -164,7 +164,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const token = safeStr(req.method === "POST" ? req.body?.token : req.query.token);
     const rawAction = safeStr(req.method === "POST" ? req.body?.action : req.query.action).toLowerCase();
     const action: OwnerAction =
-      rawAction === "partial" || rawAction === "charges_missing" || rawAction === "unpaid" || rawAction === "full"
+      rawAction === "partial" || rawAction === "unpaid" || rawAction === "full"
         ? rawAction
         : "full";
 
@@ -200,29 +200,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           month: period,
           receipt: result.receiptId,
           email: result.email.ok ? "sent" : "not_sent",
-        })
-      );
-    }
-
-    if (action === "charges_missing") {
-      await upsertPaymentAndFinance({
-        row,
-        lease,
-        rentReceived: rent,
-        chargesReceived: 0,
-        source: "owner_charges_missing_email",
-        label: "Loyer reçu - charges manquantes",
-        notes: `Charges manquantes pour ${period}. Quittance bloquée jusqu'au règlement complet.`,
-      });
-      await markTokenUsed(row.id);
-      return res.redirect(
-        302,
-        redirectToBailleur(req, {
-          tab: "quittances",
-          rentResult: "partial",
-          reason: "charges_missing",
-          month: period,
-          amount: rent,
         })
       );
     }

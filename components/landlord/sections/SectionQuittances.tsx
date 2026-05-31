@@ -1,5 +1,5 @@
 // components/landlord/sections/SectionQuittances.tsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, fmtDate } from "../UiBits";
 import type { RentReceipt, Lease, Property, Tenant, LandlordSettings } from "../../../lib/landlord/types";
@@ -7,6 +7,16 @@ import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { usePermissions } from "../../PermissionProvider";
 
 type AnyPayment = Record<string, any>;
+type ReminderChannelSetting = "email" | "messaging" | "both";
+type ReminderSetting = { lease_id: string; auto_enabled: boolean; default_channel: ReminderChannelSetting };
+type ReminderDraft = {
+  row: any;
+  body: string;
+  channels: Array<"email" | "messaging">;
+  emailAvailable: boolean;
+  messagingAvailable: boolean;
+  history: any[];
+};
 
 type Props = {
   userId: string;
@@ -225,11 +235,11 @@ function paymentTypeLabel(v?: string | null) {
   return t === "terme_echu" ? "Fin de période (terme échu)" : "Début de période (terme à échoir)";
 }
 
-type PaymentStatus = "paid" | "partial" | "charges_missing" | "pending" | "unknown";
+type PaymentStatus = "paid" | "partial" | "pending" | "unknown";
 
 function pillTonePay(status: PaymentStatus) {
   if (status === "paid") return "bg-emerald-100 text-emerald-900 border-emerald-200";
-  if (status === "partial" || status === "charges_missing") return "bg-orange-100 text-orange-900 border-orange-200";
+  if (status === "partial") return "bg-orange-100 text-orange-900 border-orange-200";
   if (status === "pending") return "bg-amber-100 text-amber-900 border-amber-200";
   return "bg-slate-100 text-slate-800 border-slate-200";
 }
@@ -237,7 +247,6 @@ function pillTonePay(status: PaymentStatus) {
 function payLabel(status: PaymentStatus) {
   if (status === "paid") return "Payé";
   if (status === "partial") return "Paiement incomplet";
-  if (status === "charges_missing") return "Charges manquantes";
   if (status === "pending") return "À payer";
   return "Inconnu";
 }
@@ -251,7 +260,7 @@ function paymentAnalysis(lease: Lease, payment: AnyPayment | null, yyyymm: strin
   receivedCharges: number;
   receivedTotal: number;
   missingAmount: number;
-  reminderReason: "unpaid" | "partial" | "charges_missing" | null;
+  reminderReason: "unpaid" | "partial" | null;
 } {
   const period = getLeaseRentPeriod(lease, yyyymm);
   const expectedRent = Number(period?.rent || 0);
@@ -267,9 +276,6 @@ function paymentAnalysis(lease: Lease, payment: AnyPayment | null, yyyymm: strin
   }
 
   const missingAmount = Math.max(0, expectedTotal - receivedTotal);
-  if (expectedCharges > 0 && receivedTotal >= expectedRent && receivedCharges < expectedCharges) {
-    return { status: "charges_missing", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount: Math.max(0, expectedCharges - receivedCharges), reminderReason: "charges_missing" };
-  }
   if (receivedTotal + 0.01 < expectedTotal) {
     return { status: "partial", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount, reminderReason: "partial" };
   }
@@ -368,6 +374,8 @@ export function SectionQuittances({
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [reminderSettings, setReminderSettings] = useState<Map<string, ReminderSetting>>(new Map());
+  const [reminderDraft, setReminderDraft] = useState<ReminderDraft | null>(null);
 
   const selectedReceipt = useMemo(
     () => safeReceipts.find((r: any) => r.id === selectedReceiptId) || null,
@@ -378,6 +386,48 @@ export function SectionQuittances({
     const p = propsById.get((lease as any).property_id);
     const t = tenantsById.get((lease as any).tenant_id);
     return `${p?.label || "Bien"} — ${t?.full_name || "Locataire"}`;
+  };
+
+  const loadReminderSettings = async () => {
+    if (!canUseReceiptAutomation) return;
+    const headers = await authJsonHeaders();
+    const resp = await fetch(`/api/payments/reminder-settings?userId=${encodeURIComponent(userId)}`, { headers });
+    const { raw, json } = await safeJson(resp);
+    throwApiError(resp, raw, json, "Erreur chargement paramètres de relance.");
+    setReminderSettings(new Map((json?.settings || []).map((setting: ReminderSetting) => [String(setting.lease_id), setting])));
+  };
+
+  useEffect(() => {
+    loadReminderSettings().catch((error) => setErr(error?.message || "Erreur chargement paramètres de relance."));
+  }, [userId, canUseReceiptAutomation]);
+
+  const saveReminderSetting = async (leaseId: string, patch: Partial<ReminderSetting>) => {
+    const current = reminderSettings.get(leaseId);
+    setErr(null);
+    setOk(null);
+    try {
+      setLoading(true);
+      const headers = await authJsonHeaders();
+      const resp = await fetch("/api/payments/reminder-settings", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          userId,
+          leaseId,
+          autoEnabled: patch.auto_enabled ?? current?.auto_enabled ?? false,
+          defaultChannel: patch.default_channel ?? current?.default_channel ?? "both",
+        }),
+      });
+      const { raw, json } = await safeJson(resp);
+      throwApiError(resp, raw, json, "Erreur sauvegarde paramètres de relance.");
+      const setting = json.setting as ReminderSetting;
+      setReminderSettings((previous) => new Map(previous).set(leaseId, setting));
+      setOk("Paramètres de relance enregistrés ✅");
+    } catch (error: any) {
+      setErr(error?.message || "Erreur sauvegarde paramètres de relance.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const paymentByPeriod = useMemo(() => {
@@ -751,16 +801,6 @@ export function SectionQuittances({
       return;
     }
 
-    const missing = Number(row?.pay?.missingAmount || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
-    const label =
-      reason === "charges_missing"
-        ? `charges manquantes (${missing})`
-        : reason === "partial"
-        ? `paiement incomplet (${missing} restant)`
-        : `loyer non reçu (${missing})`;
-
-    if (!confirm(`Envoyer une relance au locataire pour ${label} ?`)) return;
-
     setErr(null);
     setOk(null);
 
@@ -776,16 +816,65 @@ export function SectionQuittances({
           periodStart: row.periodStart,
           periodEnd: row.periodEnd,
           reason,
+          action: "preview",
         }),
       });
 
       const { raw, json } = await safeJson(resp);
-      throwApiError(resp, raw, json, "Erreur envoi relance.");
-
-      setOk("Relance envoyée au locataire ✅");
-      await onRefresh();
+      throwApiError(resp, raw, json, "Erreur préparation relance.");
+      const setting = reminderSettings.get(String(row.lease.id));
+      const preferred = setting?.default_channel || "both";
+      const channels = [
+        ...(preferred !== "messaging" && json.emailAvailable ? ["email" as const] : []),
+        ...(preferred !== "email" && json.messagingAvailable ? ["messaging" as const] : []),
+      ];
+      setReminderDraft({
+        row,
+        body: String(json.body || ""),
+        channels: channels.length ? channels : json.emailAvailable ? ["email"] : json.messagingAvailable ? ["messaging"] : [],
+        emailAvailable: !!json.emailAvailable,
+        messagingAvailable: !!json.messagingAvailable,
+        history: json.history || [],
+      });
     } catch (e: any) {
-      setErr(e?.message || "Erreur envoi relance.");
+      setErr(e?.message || "Erreur préparation relance.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitPaymentReminder = async () => {
+    if (!reminderDraft) return;
+    if (!reminderDraft.channels.length) {
+      setErr("Choisis au moins un canal disponible.");
+      return;
+    }
+    try {
+      setLoading(true);
+      setErr(null);
+      setOk(null);
+      const headers = await authJsonHeaders();
+      const row = reminderDraft.row;
+      const resp = await fetch("/api/payments/reminder", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          userId,
+          leaseId: row.lease.id,
+          periodStart: row.periodStart,
+          periodEnd: row.periodEnd,
+          reason: row.pay.reminderReason,
+          channels: reminderDraft.channels,
+          body: reminderDraft.body,
+        }),
+      });
+      const { raw, json } = await safeJson(resp);
+      throwApiError(resp, raw, json, "Erreur envoi relance.");
+      setReminderDraft(null);
+      setOk(json?.status === "partial" ? "Relance envoyée sur le canal disponible. Vérifie le canal en erreur." : "Relance amiable envoyée au locataire ✅");
+      await onRefresh();
+    } catch (error: any) {
+      setErr(error?.message || "Erreur envoi relance.");
     } finally {
       setLoading(false);
     }
@@ -936,6 +1025,54 @@ export function SectionQuittances({
             bailleur et automatisations sont disponibles avec un abonnement payant.
           </p>
         </div>
+      ) : null}
+
+      {canUseReceiptAutomation && safeLeases.length > 0 ? (
+        <details className="rounded-2xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer list-none px-4 py-3">
+            <p className="text-sm font-semibold text-slate-900">Relances amiables locataire</p>
+            <p className="mt-1 text-xs text-slate-600">Choisis le canal par défaut et active, bail par bail, une relance automatique unique à J+3.</p>
+          </summary>
+          <div className="border-t border-slate-200 px-4 py-3 space-y-3">
+            <p className="text-xs text-slate-600">
+              La relance automatique est désactivée par défaut. Elle reste factuelle et ne remplace jamais une mise en demeure.
+            </p>
+            {safeLeases.filter((lease: any) => String(lease.status || "").toLowerCase() !== "draft").map((lease: any) => {
+              const setting = reminderSettings.get(String(lease.id));
+              return (
+                <div key={lease.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{leaseLabel(lease)}</p>
+                    <p className="text-xs text-slate-600">Une seule relance automatique par période si le paiement reste incomplet à J+3.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <select
+                      value={setting?.default_channel || "both"}
+                      disabled={loading}
+                      onChange={(event) => saveReminderSetting(String(lease.id), { default_channel: event.target.value as ReminderChannelSetting })}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
+                      aria-label={`Canal de relance pour ${leaseLabel(lease)}`}
+                    >
+                      <option value="both">Email + messagerie</option>
+                      <option value="email">Email</option>
+                      <option value="messaging">Messagerie lokt</option>
+                    </select>
+                    <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-800">
+                      <input
+                        type="checkbox"
+                        checked={!!setting?.auto_enabled}
+                        disabled={loading}
+                        onChange={(event) => saveReminderSetting(String(lease.id), { auto_enabled: event.target.checked })}
+                        className="h-4 w-4 rounded border-slate-300"
+                      />
+                      Auto J+3
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </details>
       ) : null}
 
       {/* Messages */}
@@ -1110,7 +1247,7 @@ export function SectionQuittances({
                             </span>
                           )}
 
-                          {row.payStatus === "partial" || row.payStatus === "charges_missing" ? (
+                          {row.payStatus === "partial" ? (
                             <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[0.7rem] font-semibold text-orange-900">
                               Reste {Number(row.pay.missingAmount || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
                             </span>
@@ -1128,7 +1265,7 @@ export function SectionQuittances({
                               className={cx("rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800", loading && "opacity-60")}
                               title="Confirme le paiement complet reçu pour cette période."
                             >
-                              {row.payStatus === "partial" || row.payStatus === "charges_missing" ? "Solde reçu" : "Confirmer payé"}
+                              {row.payStatus === "partial" ? "Solde reçu" : "Confirmer payé"}
                             </button>
                             <button
                               type="button"
@@ -1204,9 +1341,7 @@ export function SectionQuittances({
 
                     {row.payStatus !== "paid" ? (
                       <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                        {row.payStatus === "charges_missing"
-                          ? "Charges manquantes : la quittance attend le règlement complet loyer + charges."
-                          : row.payStatus === "partial"
+                        {row.payStatus === "partial"
                           ? "Paiement incomplet : la quittance attend le solde avant génération."
                           : "Quittance non générable avant paiement confirmé."}
                       </div>
@@ -1452,6 +1587,78 @@ export function SectionQuittances({
           )}
         </div>
       </div>
+
+      {reminderDraft ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" role="dialog" aria-modal="true" aria-label="Préparer la relance locataire">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
+            <div className="border-b border-slate-200 px-5 py-4">
+              <p className="text-base font-semibold text-slate-900">Préparer une relance amiable</p>
+              <p className="mt-1 text-xs text-slate-600">Relis le texte et choisis les canaux. Aucun envoi ne part avant ta validation.</p>
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="flex flex-wrap gap-3">
+                {[
+                  ["email", "Email", reminderDraft.emailAvailable],
+                  ["messaging", "Messagerie lokt", reminderDraft.messagingAvailable],
+                ].map(([value, label, available]) => (
+                  <label key={String(value)} className={cx("inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold", available ? "border-slate-300 bg-white text-slate-800" : "border-slate-200 bg-slate-100 text-slate-400")}>
+                    <input
+                      type="checkbox"
+                      disabled={!available || loading}
+                      checked={reminderDraft.channels.includes(value as "email" | "messaging")}
+                      onChange={(event) =>
+                        setReminderDraft((draft) =>
+                          draft
+                            ? {
+                                ...draft,
+                                channels: event.target.checked
+                                  ? [...draft.channels, value as "email" | "messaging"]
+                                  : draft.channels.filter((channel) => channel !== value),
+                              }
+                            : draft
+                        )
+                      }
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              {!reminderDraft.messagingAvailable ? <p className="text-xs text-amber-700">La messagerie lokt sera disponible après activation de l’espace locataire.</p> : null}
+              <div>
+                <label className="text-xs font-semibold text-slate-700" htmlFor="payment-reminder-body">Message envoyé</label>
+                <textarea
+                  id="payment-reminder-body"
+                  value={reminderDraft.body}
+                  disabled={loading}
+                  onChange={(event) => setReminderDraft((draft) => (draft ? { ...draft, body: event.target.value } : draft))}
+                  rows={14}
+                  className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm leading-6 text-slate-800"
+                />
+              </div>
+              {reminderDraft.history.length > 0 ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold text-slate-900">Historique de cette période</p>
+                  <div className="mt-2 space-y-1">
+                    {reminderDraft.history.map((entry) => (
+                      <p key={entry.id} className="text-xs text-slate-600">
+                        {fmtDateTimeFR(entry.sent_at)} · {(entry.channels || []).join(" + ")} · {Number(entry.missing_amount || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {entry.trigger_type === "automatic" ? "automatique" : "manuelle"}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
+              <button type="button" disabled={loading} onClick={() => setReminderDraft(null)} className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50">
+                Annuler
+              </button>
+              <button type="button" disabled={loading || !reminderDraft.channels.length} onClick={submitPaymentReminder} className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+                {loading ? "Envoi…" : "Envoyer la relance"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

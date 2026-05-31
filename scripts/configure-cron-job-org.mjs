@@ -30,6 +30,12 @@ if (!cronSecret) throw new Error("CRON_SECRET manquante dans .env.local.");
 
 const jobs = [
   {
+    title: "lokt - validation mensuelle des loyers",
+    url: `${siteUrl}/api/cron/rent-reminders`,
+    hours: [9],
+    minutes: [0],
+  },
+  {
     title: "lokt - contrôle des alertes bailleur",
     legacyTitles: ["lokt - alertes bailleur quotidiennes"],
     url: `${siteUrl}/api/cron/landlord-alerts`,
@@ -41,6 +47,12 @@ const jobs = [
     url: `${siteUrl}/api/cron/rent-followups`,
     hours: [9],
     minutes: [15],
+  },
+  {
+    title: "lokt - relance amiable locataire J+3",
+    url: `${siteUrl}/api/cron/tenant-payment-reminders`,
+    hours: [9],
+    minutes: [20],
   },
 ];
 
