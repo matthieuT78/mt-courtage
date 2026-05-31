@@ -57,6 +57,16 @@ function NavItem({
 
 export default function AccountLayout({ userEmail, active, onLogout, children }: Props) {
   const [loggingOut, setLoggingOut] = useState(false);
+  const pageTitle =
+    active === "overview"
+      ? "Mon compte"
+      : active === "profile"
+      ? "Profil"
+      : active === "securite"
+      ? "Sécurité"
+      : active === "abonnement"
+      ? "Abonnement"
+      : "Projets";
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -72,6 +82,7 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
   return (
     <div className="min-h-screen bg-slate-100">
       <Head>
+        <title>{pageTitle} | lokt.fr</title>
         <meta name="robots" content="noindex, nofollow" />
       </Head>
 

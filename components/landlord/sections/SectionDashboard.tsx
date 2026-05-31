@@ -162,29 +162,46 @@ export function SectionDashboard({
   }, [storageKey]);
 
   const onboarding = useMemo(() => {
-    const hasProperty = propertiesCount > 0;
-    const hasTenant = tenantsCount > 0;
-    const hasLease = leasesCount > 0;
+    const managedProperties = (properties || []).filter(
+      (property) => String((property as any)?.status || "").toLowerCase() !== "archived"
+    );
+    const managedTenants = Array.from(tenantById.values()).filter((tenant) => !(tenant as any)?.archived_at);
+    const workflowLeases = (activeLeases || []).filter(
+      (lease) => String(lease.status || "active").toLowerCase() === "active"
+    );
+    const leasedPropertyIds = new Set(workflowLeases.map((lease) => lease.property_id));
+    const leasedTenantIds = new Set(workflowLeases.map((lease) => lease.tenant_id));
+    const propertiesWithoutLease = managedProperties.filter((property) => !leasedPropertyIds.has(property.id));
+    const tenantsWithoutLease = managedTenants.filter((tenant) => !leasedTenantIds.has(tenant.id));
+
+    const hasProperty = managedProperties.length > 0;
+    const hasTenant = managedTenants.length > 0;
+    const hasLease = workflowLeases.length > 0;
+    const leaseWorkflowReady = hasLease && propertiesWithoutLease.length === 0 && tenantsWithoutLease.length === 0;
     const financeByProperty = new Map((propertyFinance || []).map((row) => [row.property_id, row]));
     const financeConfigured =
-      hasProperty && (properties || []).every((property) => hasFinanceSetup(financeByProperty.get(property.id)));
+      hasProperty && managedProperties.every((property) => hasFinanceSetup(financeByProperty.get(property.id)));
+    const leaseStepLabel =
+      propertiesWithoutLease.length > 0 || tenantsWithoutLease.length > 0 ? "Créer le nouveau bail" : "Créer un bail";
 
     const steps = [
       { key: "biens" as LandlordSectionKey, label: "Créer un bien", done: hasProperty },
       { key: "locataires" as LandlordSectionKey, label: "Créer un locataire", done: hasTenant },
-      { key: "baux" as LandlordSectionKey, label: "Créer un bail", done: hasLease },
+      { key: "baux" as LandlordSectionKey, label: leaseStepLabel, done: leaseWorkflowReady },
       { key: "finance" as LandlordSectionKey, label: "Configurer la finance", done: financeConfigured },
     ];
 
     const doneCount = steps.filter((step) => step.done).length;
     const percent = Math.round((doneCount / steps.length) * 100);
-    const next = !hasProperty ? steps[0] : !hasTenant ? steps[1] : !hasLease ? steps[2] : !financeConfigured ? steps[3] : null;
+    const next = !hasProperty ? steps[0] : !hasTenant ? steps[1] : !leaseWorkflowReady ? steps[2] : !financeConfigured ? steps[3] : null;
 
     const headline =
       percent === 100
         ? "Mise en route terminée"
         : next?.key === "finance"
         ? "Dernière étape : fiabiliser les calculs"
+        : next?.key === "baux" && hasLease
+        ? "Nouveau dossier à rattacher"
         : percent >= 50
         ? "Plus qu’une étape avant votre premier workflow complet"
         : percent >= 25
@@ -199,20 +216,27 @@ export function SectionDashboard({
         : next?.key === "locataires"
         ? "Ajoutez le locataire : nom, email, téléphone et notes utiles."
         : next?.key === "baux"
-        ? "Créez le bail : il relie le bien, le locataire, le loyer et les quittances."
+        ? propertiesWithoutLease.length > 0 && tenantsWithoutLease.length > 0
+          ? `Créez un bail pour rattacher ${propertiesWithoutLease.length} bien${propertiesWithoutLease.length > 1 ? "s" : ""} et ${tenantsWithoutLease.length} locataire${tenantsWithoutLease.length > 1 ? "s" : ""} encore sans bail.`
+          : propertiesWithoutLease.length > 0
+          ? `Créez un bail pour ${propertiesWithoutLease.length > 1 ? "les nouveaux biens" : "le nouveau bien"} encore sans locataire.`
+          : tenantsWithoutLease.length > 0
+          ? `Créez un bail pour ${tenantsWithoutLease.length > 1 ? "les nouveaux locataires" : "le nouveau locataire"} encore sans logement rattaché.`
+          : "Créez le bail : il relie le bien, le locataire, le loyer et les quittances."
         : "Complétez le socle Finance du bien : prix d’achat et taux du crédit. Les autres charges pourront être ajoutées ensuite.";
 
     const cta = next ? { key: next.key, label: next.label } : null;
     return { steps, doneCount, percent, next, headline, sub, cta };
-  }, [properties, propertiesCount, propertyFinance, tenantsCount, leasesCount]);
+  }, [activeLeases, properties, propertyFinance, tenantById]);
 
   const shouldHideOnboarding = useMemo(() => {
+    if (onboarding.percent < 100) return false;
     if (!doneAtISO) return false;
     const t = new Date(doneAtISO).getTime();
     if (!Number.isFinite(t)) return false;
     const days = (Date.now() - t) / (1000 * 60 * 60 * 24);
     return days >= HIDE_AFTER_DAYS;
-  }, [doneAtISO]);
+  }, [doneAtISO, onboarding.percent]);
 
   useEffect(() => {
     const previous = prevPercentRef.current;

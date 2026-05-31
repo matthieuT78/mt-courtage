@@ -1,6 +1,7 @@
 // pages/mon-compte/index.tsx
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import Head from "next/head";
 import Link from "next/link";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
@@ -407,6 +408,10 @@ export default function MonCompteIndexPage() {
       renderConnectedOverview()
     ) : (
     <div className="min-h-screen bg-slate-100">
+      <Head>
+        <title>{mode === "register" ? "Inscription" : "Connexion"} | lokt.fr</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Head>
       <AppHeader />
       <div className="h-1 w-full bg-gradient-to-r from-sky-600 via-sky-500 to-cyan-400" />
 
