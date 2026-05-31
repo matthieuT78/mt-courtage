@@ -11,6 +11,7 @@ Le système évite les oublis métier :
 - loyer en retard ;
 - loyer bientôt exigible ;
 - quittance à générer ou envoyer ;
+- révision annuelle du loyer à préparer ;
 - bail bientôt à échéance ;
 - bail expiré mais encore actif ;
 - état des lieux d'entrée manquant ;
@@ -25,6 +26,7 @@ Le système évite les oublis métier :
 - Synchronisation cron-job.org : `scripts/configure-cron-job-org.mjs`
 - Table anti-spam : `supabase/migrations/20260520_landlord_alert_sends.sql`
 - Table anti-doublon pour les relances de validation : `supabase/migrations/20260531170000_rent_reminder_followup_sends.sql`
+- Préférences pilotables par le bailleur : `supabase/migrations/20260531183000_landlord_alert_preferences.sql`
 - Envoi email Resend : `lib/mailer/resend.ts`
 
 ## Fonctionnement
@@ -46,6 +48,8 @@ Un propriétaire ne reçoit qu'un email d'alerte par jour grâce à la table :
 landlord_alert_sends
 ```
 
+Depuis l'onglet `Alertes` de l'espace bailleur, chaque utilisateur peut suspendre le récapitulatif quotidien ou choisir précisément les alertes à conserver. Les comptes sans préférence enregistrée gardent toutes les alertes actives par défaut.
+
 cron-job.org déclenche également `/api/cron/rent-followups` une fois par jour. Si le propriétaire n'a cliqué sur aucune réponse dans le mail de validation du paiement après 24 heures, il reçoit une relance unique avec les mêmes actions. La table `rent_reminder_followup_sends` bloque les doublons.
 
 ## Alertes envoyées
@@ -61,6 +65,10 @@ Déclenchée si le loyer arrive à échéance dans les 3 prochains jours.
 ### Quittance à finaliser
 
 Déclenchée si le paiement est confirmé mais que la quittance n'a pas encore de PDF ou n'a pas été envoyée.
+
+### Révision annuelle du loyer à préparer
+
+Déclenchée un mois puis deux semaines avant la date anniversaire du bail. Elle demande au bailleur de vérifier la clause de révision, le DPE et l'IRL applicable avant toute démarche. Elle ne présente jamais la hausse comme automatique.
 
 ### Bail bientôt à échéance
 
@@ -161,6 +169,7 @@ Avant activation en production, appliquer la migration :
 ```sql
 supabase/migrations/20260520_landlord_alert_sends.sql
 supabase/migrations/20260531170000_rent_reminder_followup_sends.sql
+supabase/migrations/20260531183000_landlord_alert_preferences.sql
 ```
 
 Cette table sert à éviter qu'un utilisateur reçoive plusieurs emails d'alerte le même jour.

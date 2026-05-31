@@ -2,11 +2,17 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
+import {
+  normalizeLandlordAlertPreferences,
+  type LandlordAlertPreferenceKey,
+  type LandlordAlertPreferences,
+} from "../../../lib/landlordAlertPreferences";
 
 type AlertTone = "red" | "amber" | "slate";
 
 type AlertItem = {
   key: string;
+  preferenceKey: LandlordAlertPreferenceKey;
   tone: AlertTone;
   title: string;
   detail: string;
@@ -41,6 +47,16 @@ function parseISODate(v?: string | null) {
   const [y, m, d] = v.split("-").map(Number);
   if (!y || !m || !d) return null;
   return new Date(y, m - 1, d);
+}
+
+function nextLeaseAnniversary(startDate: Date, today: Date) {
+  const anniversaryForYear = (year: number) => {
+    const month = startDate.getMonth();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(startDate.getDate(), lastDay));
+  };
+  const anniversary = anniversaryForYear(today.getFullYear());
+  return anniversary >= today ? anniversary : anniversaryForYear(today.getFullYear() + 1);
 }
 
 function monthRangeFor(date: Date) {
@@ -181,6 +197,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { data: payments, error: paymentsError },
       { data: receipts, error: receiptsError },
       { data: reports, error: reportsError },
+      { data: preferences, error: preferencesError },
     ] = await Promise.all([
       supabaseAdmin.from("leases").select("*"),
       supabaseAdmin.from("properties").select("id,user_id,label,address_line1,status"),
@@ -188,6 +205,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       supabaseAdmin.from("rent_payments").select("id,lease_id,period_start,period_end,paid_at,total_amount"),
       supabaseAdmin.from("rent_receipts").select("id,lease_id,period_start,period_end,pdf_url,sent_at,status"),
       supabaseAdmin.from("inventory_reports").select("id,user_id,lease_id,report_type,status,performed_at"),
+      supabaseAdmin.from("landlord_alert_preferences").select("*"),
     ]);
 
     if (leasesError) throw leasesError;
@@ -196,11 +214,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (paymentsError) throw paymentsError;
     if (receiptsError) throw receiptsError;
     if (reportsError) throw reportsError;
+    if (preferencesError) throw preferencesError;
 
     const leasesList = (leases || []) as LeaseRow[];
     const propertiesById = new Map((properties || []).map((p: any) => [p.id, p]));
     const tenantsById = new Map((tenants || []).map((t: any) => [t.id, t]));
     const reportsByLease = new Map<string, any[]>();
+    const preferencesByUserId = new Map<string, LandlordAlertPreferences>(
+      (preferences || []).map((preference: any) => [preference.user_id, normalizeLandlordAlertPreferences(preference)])
+    );
     for (const report of reports || []) {
       if (!reportsByLease.has((report as any).lease_id)) reportsByLease.set((report as any).lease_id, []);
       reportsByLease.get((report as any).lease_id)!.push(report);
@@ -226,6 +248,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const results: any[] = [];
 
     for (const [userId, userLeaseList] of userLeases.entries()) {
+      const userPreferences = preferencesByUserId.get(userId) || normalizeLandlordAlertPreferences();
+      if (!userPreferences.digest_enabled) {
+        results.push({ userId, skipped: "digest_disabled" });
+        continue;
+      }
+
       if (!force && (await alreadySentToday(userId, digestDate))) {
         results.push({ userId, skipped: "already_sent_today" });
         continue;
@@ -252,6 +280,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (!paid && daysToDue < 0) {
             alerts.push({
               key: `late:${lease.id}:${period.start}`,
+              preferenceKey: "late_payment",
               tone: "red",
               title: `Retard de paiement - ${labels.property}`,
               detail: `${labels.tenant} n'est pas marqué payé pour la période ${period.start} au ${period.end}. Échéance dépassée depuis ${Math.abs(daysToDue)} jour(s).`,
@@ -260,6 +289,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           } else if (!paid && daysToDue >= 0 && daysToDue <= 3) {
             alerts.push({
               key: `due-soon:${lease.id}:${period.start}`,
+              preferenceKey: "due_soon",
               tone: "amber",
               title: `Loyer bientôt exigible - ${labels.property}`,
               detail: `${labels.tenant} doit régler le loyer dans ${daysToDue} jour(s).`,
@@ -270,6 +300,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (paid && (!receipt?.pdf_url || !receipt?.sent_at)) {
             alerts.push({
               key: `receipt:${lease.id}:${period.start}`,
+              preferenceKey: "receipt_to_finalize",
               tone: "amber",
               title: `Quittance à finaliser - ${labels.property}`,
               detail: `Le paiement de ${labels.tenant} est confirmé, mais la quittance n'est pas encore générée et envoyée.`,
@@ -277,9 +308,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
           }
 
+          if (leaseStart && leaseStart <= today) {
+            const anniversary = nextLeaseAnniversary(leaseStart, today);
+            const daysToAnniversary = daysBetween(today, anniversary);
+            if (daysToAnniversary === 30 || daysToAnniversary === 14) {
+              alerts.push({
+                key: `rent-revision:${lease.id}:${toISODate(anniversary)}:${daysToAnniversary}`,
+                preferenceKey: "rent_revision_due",
+                tone: "slate",
+                title: `Révision annuelle du loyer à préparer - ${labels.property}`,
+                detail: `Le bail de ${labels.tenant} atteint sa date anniversaire dans ${daysToAnniversary} jours. Vérifiez la clause de révision, le DPE et l'IRL applicable avant toute demande au locataire. La hausse n'est pas automatique.`,
+                href: "/guides/revision-loyer-irl",
+              });
+            }
+          }
+
           if (!lease.tenant_receipt_email && !tenantsById.get(lease.tenant_id)?.email) {
             alerts.push({
               key: `tenant-email:${lease.id}`,
+              preferenceKey: "tenant_email_missing",
               tone: "amber",
               title: `Email locataire manquant - ${labels.property}`,
               detail: `Ajoutez un email pour ${labels.tenant} afin d'envoyer les quittances automatiquement.`,
@@ -290,6 +337,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (!hasEntryEdl && leaseStart && daysBetween(today, leaseStart) <= 7) {
             alerts.push({
               key: `entry-edl:${lease.id}`,
+              preferenceKey: "entry_inventory_missing",
               tone: "amber",
               title: `État des lieux d'entrée manquant - ${labels.property}`,
               detail: `Aucun EDL d'entrée n'est rattaché au bail de ${labels.tenant}.`,
@@ -302,6 +350,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (daysToEnd < 0) {
               alerts.push({
                 key: `expired-active:${lease.id}`,
+                preferenceKey: "expired_active_lease",
                 tone: "red",
                 title: `Bail expiré encore actif - ${labels.property}`,
                 detail: `La date de fin du bail de ${labels.tenant} est dépassée. Clôturez le bail ou corrigez la date.`,
@@ -310,6 +359,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } else if ([60, 30, 7].some((d) => daysToEnd <= d && daysToEnd > d - 7)) {
               alerts.push({
                 key: `lease-end:${lease.id}:${daysToEnd}`,
+                preferenceKey: "lease_end",
                 tone: "amber",
                 title: `Bail bientôt à échéance - ${labels.property}`,
                 detail: `Le bail de ${labels.tenant} arrive à échéance dans ${daysToEnd} jour(s). Préparez renouvellement, congé ou sortie.`,
@@ -320,6 +370,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (daysToEnd <= 30 && (!exitEdl || !["ready", "signed", "archived"].includes(String(exitEdl.status || "").toLowerCase()))) {
               alerts.push({
                 key: `exit-edl:${lease.id}`,
+                preferenceKey: "exit_inventory_to_prepare",
                 tone: "amber",
                 title: `État des lieux de sortie à préparer - ${labels.property}`,
                 detail: `Le bail de ${labels.tenant} se termine bientôt ou est terminé. L'EDL de sortie n'est pas finalisé.`,
@@ -331,6 +382,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (!lease.reminder_email) {
             alerts.push({
               key: `owner-email:${lease.id}`,
+              preferenceKey: "owner_email_missing",
               tone: "slate",
               title: `Email bailleur manquant - ${labels.property}`,
               detail: "Ajoutez un email de notification pour recevoir les validations de paiement et alertes automatiques.",
@@ -340,7 +392,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      const uniqueAlerts = Array.from(new Map(alerts.map((a) => [a.key, a])).values()).slice(0, 12);
+      const uniqueAlerts = Array.from(new Map(alerts.filter((alert) => userPreferences[alert.preferenceKey]).map((a) => [a.key, a])).values()).slice(0, 12);
       if (uniqueAlerts.length === 0) {
         results.push({ userId, skipped: "no_alerts" });
         continue;

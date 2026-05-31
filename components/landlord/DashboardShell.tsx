@@ -10,6 +10,7 @@ import { SectionBiens } from "./sections/SectionBiens";
 import { SectionLocataires } from "./sections/SectionLocataires";
 import { SectionBaux } from "./sections/SectionBaux";
 import { SectionMessagerie } from "./sections/SectionMessagerie";
+import { SectionAlertes } from "./sections/SectionAlertes";
 import { SectionQuittances } from "./sections/SectionQuittances";
 import { SectionFinance } from "./sections/SectionFinance";
 import { SectionPerformance } from "./sections/SectionPerformance";
@@ -166,6 +167,7 @@ export function DashboardShell(props: any) {
       "locataires",
       "baux",
       "messagerie",
+      "alertes",
       "quittances",
       "finance",
       "performance",
@@ -308,6 +310,9 @@ export function DashboardShell(props: any) {
 
       case "messagerie":
         return <SectionMessagerie initialTenantId={messagingTenantId} onTenantSelected={() => setMessagingTenantId(null)} />;
+
+      case "alertes":
+        return <SectionAlertes userId={userId} />;
 
       case "finance":
         return (
