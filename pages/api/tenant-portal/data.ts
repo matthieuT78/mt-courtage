@@ -62,9 +62,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       leaseIds.length
         ? supabaseAdmin
             .from("lease_contract_documents")
-            .select("id,lease_id,contract_kind,status,signed_pdf_url,signed_at")
+            .select("id,lease_id,contract_kind,status,document_source,signed_pdf_url,external_pdf_url,original_file_name,signed_at")
             .in("lease_id", leaseIds)
-            .not("signed_pdf_url", "is", null)
             .order("signed_at", { ascending: false })
         : Promise.resolve({ data: [], error: null }),
       propertyIds.length
@@ -108,7 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       properties: properties || [],
       receipts: receipts || [],
       inventoryReports: reports || [],
-      leaseContracts: contracts || [],
+      leaseContracts: (contracts || []).filter((contract: any) => contract.signed_pdf_url || contract.external_pdf_url),
       dpes: dpes || [],
       threads,
     });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentArrowUpIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentArrowUpIcon, DocumentTextIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabaseClient";
 
 type Props = { userId: string; leaseId: string; onClose: () => void };
@@ -28,6 +28,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [document, setDocument] = useState<any>(null);
+  const [sourceMode, setSourceMode] = useState<"choose" | "generated" | "external">("choose");
   const [kind, setKind] = useState("furnished_primary");
   const [form, setForm] = useState<Record<string, any>>({});
   const set = (key: string, value: any) => setForm((current) => ({ ...current, [key]: value }));
@@ -43,6 +44,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         const profile = data.profile || {};
         const landlord = data.landlord || {};
         setDocument(existing || null);
+        setSourceMode(existing?.document_source === "external" ? "external" : existing ? "generated" : "choose");
         setKind(existing?.contract_kind || lease.lease_kind || "furnished_primary");
         setForm({
           landlord_name: landlord.display_name || profile.full_name || "",
@@ -126,15 +128,100 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
     try {
       setLoading(true); setErr(null);
       const saved = document?.id ? document : await save();
-      const signed = await api("/api/lease-contracts/signed-upload-url", { userId, documentId: saved.id });
+      const signed = await api("/api/lease-contracts/signed-upload-url", { userId, documentId: saved.id, uploadType: "signed", sizeBytes: file.size });
       const { error } = await supabase!.storage.from(signed.bucket).uploadToSignedUrl(signed.path, signed.token, file, { contentType: "application/pdf" });
       if (error) throw error;
       const result = await api("/api/lease-contracts", { action: "confirmSigned", userId, leaseId, signedPdfUrl: `${signed.bucket}:${signed.path}` });
       setDocument(result.document);
     } catch (error: any) { setErr(error?.message || "Import impossible."); } finally { setLoading(false); }
   };
+  const uploadExternal = async (file?: File) => {
+    if (!file || file.type !== "application/pdf") return setErr("Sélectionne ton bail au format PDF.");
+    try {
+      setLoading(true); setErr(null);
+      const saved = document?.id ? document : await save();
+      const signed = await api("/api/lease-contracts/signed-upload-url", { userId, documentId: saved.id, uploadType: "external", sizeBytes: file.size });
+      const { error } = await supabase!.storage.from(signed.bucket).uploadToSignedUrl(signed.path, signed.token, file, { contentType: "application/pdf" });
+      if (error) throw error;
+      const result = await api("/api/lease-contracts", {
+        action: "confirmExternal",
+        userId,
+        leaseId,
+        externalPdfUrl: `${signed.bucket}:${signed.path}`,
+        fileName: file.name,
+      });
+      setDocument(result.document);
+      setSourceMode("external");
+    } catch (error: any) { setErr(error?.message || "Import impossible."); } finally { setLoading(false); }
+  };
 
   if (loading && !Object.keys(form).length) return <Modal onClose={onClose}><p className="p-6 text-sm text-slate-600">Chargement...</p></Modal>;
+  if (sourceMode === "choose") {
+    return (
+      <Modal onClose={onClose}>
+        <div className="border-b border-slate-200 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Contrat de location</p>
+          <h2 className="mt-1 text-lg font-semibold text-slate-950">Associer le document juridique au bail Lokt</h2>
+        </div>
+        <div className="space-y-4 p-5">
+          <p className="text-sm leading-6 text-slate-700">
+            La fiche bail Lokt reste obligatoire pour suivre les loyers, charges, quittances et échéances. Choisis maintenant comment archiver le
+            contrat signé avec ton locataire.
+          </p>
+          {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Choice
+              icon={DocumentTextIcon}
+              title="Rédiger avec Lokt"
+              description="Compléter l’assistant, générer un PDF puis importer la version signée."
+              onClick={() => {
+                if (kind === "other") setKind("furnished_primary");
+                setSourceMode("generated");
+              }}
+            />
+            <Choice
+              icon={DocumentArrowUpIcon}
+              title="Importer mon propre bail"
+              description="Archiver ton modèle existant. Aucun PDF Lokt ne sera généré."
+              onClick={() => setSourceMode("external")}
+            />
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+  if (sourceMode === "external") {
+    return (
+      <Modal onClose={onClose}>
+        <div className="border-b border-slate-200 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Contrat de location</p>
+          <h2 className="mt-1 text-lg font-semibold text-slate-950">Bail externe associé à la fiche Lokt</h2>
+        </div>
+        <div className="space-y-4 p-5">
+          <p className="text-sm leading-6 text-slate-700">
+            Lokt utilise toujours la fiche bail pour gérer la location. Le fichier ci-dessous est ton contrat juridique : aucun autre PDF ne sera
+            généré par Lokt dans ce parcours.
+          </p>
+          {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
+          {document?.external_pdf_url ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-sm font-semibold text-emerald-950">Bail importé et archivé</p>
+              <p className="mt-1 text-xs text-emerald-800">{document.original_file_name || "bail-importé.pdf"}</p>
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">Aucun bail externe importé pour le moment.</p>
+          )}
+        </div>
+        <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
+          <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
+          <div className="flex flex-wrap gap-2">
+            {document?.external_pdf_url ? <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le bail importé</button> : null}
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white"><DocumentArrowUpIcon className="h-4 w-4"/>{loading ? "Import..." : document?.external_pdf_url ? "Remplacer le PDF" : "Importer mon bail"}<input type="file" accept="application/pdf" className="hidden" disabled={loading} onChange={(event) => uploadExternal(event.target.files?.[0])}/></label>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
   return (
     <Modal onClose={onClose}>
       <div className="border-b border-slate-200 px-5 py-4">
@@ -154,6 +241,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
       <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
         <button type="button" disabled={!step || loading} onClick={() => setStep(step - 1)} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Précédent</button>
         <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
           {document?.pdf_url ? <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>{document.signed_pdf_url ? "Ouvrir le bail signé" : "Ouvrir le PDF"}</button> : null}
           {document?.pdf_url ? <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><DocumentArrowUpIcon className="h-4 w-4"/>Importer signé<input type="file" accept="application/pdf" className="hidden" onChange={(event) => uploadSigned(event.target.files?.[0])}/></label> : null}
           {step < 6 ? <button type="button" onClick={() => setStep(step + 1)} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white">Suivant<ArrowRightIcon className="h-4 w-4"/></button> : <button type="button" disabled={loading} onClick={generate} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white">{loading ? "Génération..." : "Finaliser et générer le PDF"}</button>}
@@ -167,3 +255,4 @@ function Modal({ children, onClose }: any) { return <div className="fixed inset-
 function Fields({ form, set, names }: any) { return <div className="grid gap-3 sm:grid-cols-2">{names.map(([key,title,type="text"]: any[]) => <label key={key} className={label}>{title}<input type={type} value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)} className={input}/></label>)}</div>; }
 function Checks({ form, set, names }: any) { return <div className="mb-4 grid gap-2 sm:grid-cols-2">{names.map(([key,title]: any[]) => <label key={key} className="inline-flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={!!form[key]} onChange={(e) => set(key,e.target.checked)}/>{title}</label>)}</div>; }
 function StepType({ kind, setKind }: any) { return <div className="grid gap-2 sm:grid-cols-2">{[["empty_primary","Location vide"],["furnished_primary","Meublé résidence principale"],["furnished_student","Meublé étudiant 9 mois"],["mobility","Bail mobilité"]].map(([value,title]) => <button key={value} type="button" onClick={() => setKind(value)} className={`rounded-xl border p-4 text-left text-sm font-semibold ${kind === value ? "border-slate-900 bg-slate-100" : "border-slate-200"}`}>{title}</button>)}</div>; }
+function Choice({ icon: Icon, title, description, onClick }: any) { return <button type="button" onClick={onClick} className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-slate-400 hover:bg-slate-50"><Icon className="h-6 w-6 text-slate-700"/><span className="mt-3 block text-sm font-semibold text-slate-950">{title}</span><span className="mt-1 block text-xs leading-5 text-slate-600">{description}</span></button>; }

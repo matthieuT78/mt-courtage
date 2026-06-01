@@ -1110,7 +1110,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
                     setContractLeaseId(l.id);
                   }}
                 >
-                  Rédiger le contrat
+                  Contrat juridique
                 </ActionButton>
 
                 <ActionButton

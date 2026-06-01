@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
     const { data: document } = await supabaseAdmin.from("lease_contract_documents").select("*").eq("id", String(req.query.documentId || "")).eq("user_id", userId).maybeSingle();
     if (!document) return res.status(404).json({ error: "Contrat introuvable." });
-    const parsed = parseStoredLeaseContractUrl(document.signed_pdf_url || document.pdf_url);
+    const parsed = parseStoredLeaseContractUrl(document.signed_pdf_url || document.external_pdf_url || document.pdf_url);
     if (!parsed) return res.status(409).json({ error: "PDF indisponible." });
     const { data, error } = await supabaseAdmin.storage.from(parsed.bucket).createSignedUrl(parsed.path, 600);
     if (error || !data?.signedUrl) throw error || new Error("Ouverture impossible.");

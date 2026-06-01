@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { isLeaseContractKind } from "../../../lib/leaseContract";
+import { getUserStorageUsage } from "../../../lib/storageQuota";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 async function loadContext(userId: string, leaseId: string) {
@@ -23,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin non configuré." });
     const auth = await requireApiUser(req);
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
-    const { userId, leaseId, action, formData, contractKind, signedPdfUrl } = req.body || {};
+    const { userId, leaseId, action, formData, contractKind, signedPdfUrl, externalPdfUrl, fileName } = req.body || {};
     const userCheck = requireMatchingUser(auth, String(userId || ""));
     if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
     if (!leaseId) return res.status(400).json({ error: "leaseId requis." });
@@ -41,11 +42,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (error) throw error;
       return res.status(200).json({ ok: true, document: data });
     }
+    if (action === "confirmExternal") {
+      if (!context.document?.id || !externalPdfUrl) return res.status(400).json({ error: "Document et PDF importé requis." });
+      const expectedPrefix = `lease-contract-pdfs:${userId}/${leaseId}/${context.document.id}.external.pdf`;
+      if (externalPdfUrl !== expectedPrefix) return res.status(400).json({ error: "Référence du bail importé invalide." });
+      const usage = await getUserStorageUsage(String(userId));
+      if (usage.usedBytes > usage.quotaBytes) {
+        await supabaseAdmin.storage.from("lease-contract-pdfs").remove([`${userId}/${leaseId}/${context.document.id}.external.pdf`]);
+        return res.status(409).json({ error: "Quota dépassé : le fichier n’a pas été conservé." });
+      }
+      const { data, error } = await supabaseAdmin
+        .from("lease_contract_documents")
+        .update({
+          document_source: "external",
+          external_pdf_url: externalPdfUrl,
+          original_file_name: String(fileName || "bail-importé.pdf").slice(0, 180),
+          pdf_url: null,
+          signed_pdf_url: null,
+          generated_at: null,
+          status: "signed",
+          signed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", context.document.id)
+        .eq("user_id", userId)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return res.status(200).json({ ok: true, document: data });
+    }
     if (action !== "save" || !isLeaseContractKind(contractKind)) return res.status(400).json({ error: "Action ou type de bail invalide." });
     const payload = {
       user_id: String(userId),
       lease_id: String(leaseId),
       contract_kind: contractKind,
+      document_source: "generated",
+      external_pdf_url: null,
+      original_file_name: null,
       form_data: formData || {},
       updated_at: new Date().toISOString(),
     };

@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const table = kind === "receipt" ? "rent_receipts" : kind === "inventory" ? "inventory_reports" : "lease_contract_documents";
-    const pdfColumn = kind === "lease_contract" ? "signed_pdf_url" : "pdf_url";
+    const pdfColumn = kind === "lease_contract" ? "signed_pdf_url,external_pdf_url" : "pdf_url";
     const { data: document, error } = await supabaseAdmin
       .from(table)
       .select(`id,lease_id,${pdfColumn},status`)
@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .in("lease_id", leaseIds)
       .single();
     if (error || !document) return res.status(404).json({ error: "Document introuvable." });
-    const pdfUrl = (document as any)[pdfColumn];
+    const pdfUrl = kind === "lease_contract" ? (document as any).signed_pdf_url || (document as any).external_pdf_url : (document as any).pdf_url;
     if (!pdfUrl) return res.status(409).json({ error: "PDF indisponible." });
 
     const parsed = parseStoredPdfUrl(pdfUrl);

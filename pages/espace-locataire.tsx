@@ -242,7 +242,7 @@ export default function EspaceLocatairePage() {
                     rows={(data.leaseContracts || []).map((contract: any) => ({
                       id: contract.id,
                       title: "Bail signé",
-                      subtitle: `${formatDate(contract.signed_at)} · ${contract.contract_kind || "contrat de location"}`,
+                      subtitle: `${formatDate(contract.signed_at)} · ${contract.document_source === "external" ? "document transmis par le bailleur" : contract.contract_kind || "contrat de location"}`,
                     }))}
                     onOpen={(id) => openDocument("lease_contract", id)}
                   />
