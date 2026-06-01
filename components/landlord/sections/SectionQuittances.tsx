@@ -205,10 +205,10 @@ function scheduleForPeriod(yyyymmPeriod: string, lease: any) {
   const dueDay = clampDayInMonth(dueYear, dueMonth0, paymentDayRaw);
   const dueDate = new Date(dueYear, dueMonth0, dueDay);
 
-  const generateAt = new Date(dueDate);
-  generateAt.setDate(generateAt.getDate() + 2);
+  const controlAt = new Date(dueDate);
+  controlAt.setDate(controlAt.getDate() + 2);
 
-  return { periodStart, periodEnd, dueDate, generateAt, paymentType };
+  return { periodStart, periodEnd, dueDate, controlAt, paymentType };
 }
 
 function pillToneReceipt(status: string) {
@@ -478,7 +478,7 @@ export function SectionQuittances({
         const pdfReady = !!receipt?.pdf_url && (receiptStatus === "generated" || receiptStatus === "sent");
         const sent = receiptStatus === "sent" || !!receipt?.sent_at;
         const sched = scheduleForPeriod(yyyymm, lease);
-        const isLate = payStatus !== "paid" && Date.now() > sched.generateAt.getTime();
+        const isLate = payStatus !== "paid" && Date.now() > sched.controlAt.getTime();
 
         return {
           key,
@@ -1220,7 +1220,7 @@ export function SectionQuittances({
                           <span className="text-slate-400">•</span>{" "}
                           <span className="text-slate-600">{paymentTypeLabel((lease as any).payment_type)}</span>{" "}
                           <span className="text-slate-400">•</span> Contrôle J+2 :{" "}
-                          <span className="font-semibold">{toISODateLocal(row.sched.generateAt)}</span>
+                          <span className="font-semibold">{toISODateLocal(row.sched.controlAt)}</span>
                         </p>
 
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -1335,7 +1335,7 @@ export function SectionQuittances({
 
                     {row.isLate ? (
                       <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                        Retard : après <span className="font-semibold">{toISODateLocal(row.sched.generateAt)}</span>, le mois n’est toujours pas réglé complètement.
+                        Retard : après <span className="font-semibold">{toISODateLocal(row.sched.controlAt)}</span>, le mois n’est toujours pas réglé complètement.
                       </div>
                     ) : null}
 

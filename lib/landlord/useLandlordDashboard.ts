@@ -226,9 +226,10 @@ export function useLandlordDashboard() {
   const activeLeases = useMemo(() => {
     const now = new Date();
     return (leases || []).filter((l) => {
+      const status = String(l.status || "").toLowerCase();
       const startOk = l.start_date ? new Date(l.start_date) <= now : false;
       const notEnded = !l.end_date || new Date(l.end_date) >= now;
-      if ((l.status || "").toLowerCase() === "active") return true;
+      if (status === "ended" || status === "archived" || status === "draft") return false;
       return startOk && notEnded;
     });
   }, [leases]);

@@ -35,6 +35,8 @@ type InventoryReport = {
   counters_json: any | null;
   general_notes: string | null;
   pdf_url: string | null;
+  document_source?: "generated" | "external" | null;
+  original_file_name?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -158,6 +160,38 @@ const reportTypeLabel = (t?: InventoryReport["report_type"] | null) => {
   return "État des lieux";
 };
 
+const workflowUi = (report?: InventoryReport | null) => {
+  if (!report) {
+    return {
+      label: "À créer",
+      desc: "Choisis un parcours : saisie dans lokt.fr ou import d’un PDF externe.",
+      tone: "slate" as const,
+    };
+  }
+  if (report.status === "signed" || report.status === "archived") {
+    return {
+      label: "Terminé",
+      desc:
+        report.document_source === "external"
+          ? "PDF externe archivé. Aucune autre action n’est attendue."
+          : "PDF signé archivé. Aucune autre action n’est attendue.",
+      tone: "emerald" as const,
+    };
+  }
+  if (report.status === "ready" || report.pdf_url) {
+    return {
+      label: "À signer",
+      desc: "Le PDF est prêt. Importe la version signée pour terminer.",
+      tone: "amber" as const,
+    };
+  }
+  return {
+    label: "En cours",
+    desc: "Reprends la saisie pour compléter puis générer le PDF.",
+    tone: "slate" as const,
+  };
+};
+
 const sortReportsEntryFirst = (list: InventoryReport[]) => {
   const prio = (t: InventoryReport["report_type"]) => (t === "entry" ? 0 : 1);
   return [...list].sort((a, b) => {
@@ -205,26 +239,25 @@ function NoticeTop() {
       <div className="flex items-start gap-3">
         <ClipboardDocumentCheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#635bff]" aria-hidden="true" />
         <div>
-          <p className="text-sm font-semibold text-slate-950">Parcours sur place</p>
+          <p className="text-sm font-semibold text-slate-950">Deux parcours possibles</p>
           <p className="mt-1 text-sm text-slate-600">
-            Dans le logement, avance pièce par pièce : ajoute les pièces, marque une pièce sans anomalie avec{" "}
-            <span className="font-semibold">“Pièce OK”</span>, note uniquement les défauts utiles, puis finalise le PDF à faire signer.
+            Réalise l’état des lieux avec l’assistant lokt.fr ou importe directement le PDF finalisé remis par une agence ou un prestataire.
           </p>
         </div>
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-slate-950">1. Préparer</p>
-          <p className="mt-1 text-xs text-slate-600">Choisir le bail, créer l’entrée ou la sortie, vérifier date et lieu.</p>
+          <p className="text-xs font-semibold text-slate-950">1. Choisir</p>
+          <p className="mt-1 text-xs text-slate-600">Sélectionner le bail, puis saisir dans lokt.fr ou importer un PDF externe.</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-slate-950">2. Relever</p>
-          <p className="mt-1 text-xs text-slate-600">Pièces, état, anomalies, compteurs, clés, badges et observations.</p>
+          <p className="text-xs font-semibold text-slate-950">2. Finaliser</p>
+          <p className="mt-1 text-xs text-slate-600">Avec l’assistant : pièces, anomalies, compteurs, clés et observations.</p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-slate-950">3. Signer</p>
-          <p className="mt-1 text-xs text-slate-600">Générer le PDF, le faire signer, puis importer le PDF signé pour verrouiller.</p>
+          <p className="text-xs font-semibold text-slate-950">3. Archiver</p>
+          <p className="mt-1 text-xs text-slate-600">Importer le PDF signé ou le PDF finalisé par l’agence pour verrouiller le document.</p>
         </div>
       </div>
 
@@ -409,6 +442,7 @@ const SUGGESTED_PRESETS: Array<{ name: string; key: RoomPresetKey }> = [
 
 const INVENTORY_BUCKET = "inventory-pdfs";
 const INVENTORY_PHOTOS_BUCKET = "inventory-photos";
+const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_RAW_PHOTO_BYTES = 8 * 1024 * 1024;
 const MAX_STORED_PHOTO_BYTES = 900 * 1024;
 const MAX_PHOTOS_PER_ITEM = 3;
@@ -561,6 +595,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const isLocked = selectedReport?.status === "signed" || selectedReport?.status === "archived";
   const hasPdf = !!selectedReport?.pdf_url;
+  const isExternalReport = selectedReport?.document_source === "external";
+  const selectedWorkflow = workflowUi(selectedReport);
   const entryReport = useMemo(() => reports.find((r) => r.report_type === "entry") || null, [reports]);
   const exitReport = useMemo(() => reports.find((r) => r.report_type === "exit") || null, [reports]);
   const primaryReportActionLabel = selectedReport
@@ -583,6 +619,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   // input file upload PDF signé
   const signedFileInputRef = useRef<HTMLInputElement | null>(null);
+  const externalEntryFileInputRef = useRef<HTMLInputElement | null>(null);
+  const externalExitFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const makeTempId = () => `tmp_${Math.random().toString(16).slice(2)}_${Date.now()}`;
 
@@ -1186,6 +1224,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       setErr("Fichier invalide : PDF uniquement.");
       return;
     }
+    if (file.size > MAX_PDF_BYTES) {
+      setErr("PDF trop volumineux : 10 Mo maximum.");
+      return;
+    }
 
     setLoading(true);
     setErr(null);
@@ -1196,7 +1238,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       const uploadUrlResp = await fetch("/api/inventory/signed-upload-url", {
         method: "POST",
         headers,
-        body: JSON.stringify({ userId, reportId: selectedReportId }),
+        body: JSON.stringify({ userId, reportId: selectedReportId, kind: "signed", sizeBytes: file.size }),
       });
       const { raw, json } = await safeJson(uploadUrlResp);
       if (!uploadUrlResp.ok) throw new Error(json?.error || raw || `Erreur ${uploadUrlResp.status}`);
@@ -1213,7 +1255,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       // On pointe pdf_url sur le PDF signé et on verrouille en “signed”
       const { error: eUpd } = await supabase
         .from("inventory_reports")
-        .update({ pdf_url: `${INVENTORY_BUCKET}:${path}`, status: "signed" })
+        .update({ pdf_url: `${INVENTORY_BUCKET}:${path}`, status: "signed", document_source: "generated", original_file_name: file.name })
         .eq("id", selectedReportId)
         .eq("user_id", userId);
       if (eUpd) throw eUpd;
@@ -1227,6 +1269,98 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     } finally {
       setLoading(false);
       if (signedFileInputRef.current) signedFileInputRef.current.value = "";
+    }
+  };
+
+  const uploadExternalPdf = async (type: "entry" | "exit", file: File) => {
+    if (!supabase || !userId || !selectedLeaseId) return;
+    if (file.type !== "application/pdf") {
+      setErr("Fichier invalide : importe un PDF.");
+      return;
+    }
+    if (file.size > MAX_PDF_BYTES) {
+      setErr("PDF trop volumineux : 10 Mo maximum.");
+      return;
+    }
+
+    const existing = reports.find((report) => report.report_type === type) || null;
+    if (existing?.status === "signed" || existing?.status === "archived") {
+      setErr(`${reportTypeLabel(type)} déjà verrouillé : remplace-le uniquement après archivage administratif hors lokt.fr.`);
+      return;
+    }
+    if (existing && !window.confirm(`${reportTypeLabel(type)} existe déjà. Remplacer son parcours lokt.fr par le PDF externe finalisé ?`)) {
+      return;
+    }
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      let reportId = existing?.id || "";
+      if (!reportId) {
+        const { data, error } = await supabase
+          .from("inventory_reports")
+          .insert({
+            user_id: userId,
+            lease_id: selectedLeaseId,
+            report_type: type,
+            status: "draft",
+            performed_at: new Date().toISOString(),
+            performed_place: defaultReportPlace,
+            counters_json: null,
+            general_notes: "",
+            pdf_url: null,
+            document_source: "external",
+            original_file_name: file.name,
+          })
+          .select("id")
+          .single();
+        if (error || !data?.id) throw error || new Error("Création de la fiche état des lieux impossible.");
+        reportId = String(data.id);
+      }
+
+      const headers = await authJsonHeaders();
+      const uploadUrlResp = await fetch("/api/inventory/signed-upload-url", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ userId, reportId, kind: "external", sizeBytes: file.size }),
+      });
+      const { raw, json } = await safeJson(uploadUrlResp);
+      if (!uploadUrlResp.ok) throw new Error(json?.error || raw || `Erreur ${uploadUrlResp.status}`);
+
+      const path = String(json?.path || "");
+      const token = String(json?.token || "");
+      if (!path || !token) throw new Error("URL d’upload signée indisponible.");
+
+      const { error: uploadError } = await supabase.storage.from(INVENTORY_BUCKET).uploadToSignedUrl(path, token, file, {
+        contentType: "application/pdf",
+      });
+      if (uploadError) throw uploadError;
+
+      const { error: updateError } = await supabase
+        .from("inventory_reports")
+        .update({
+          pdf_url: `${INVENTORY_BUCKET}:${path}`,
+          status: "signed",
+          document_source: "external",
+          original_file_name: file.name,
+        })
+        .eq("id", reportId)
+        .eq("user_id", userId);
+      if (updateError) throw updateError;
+
+      await loadReportsForLease(selectedLeaseId);
+      setSelectedReportId(reportId);
+      await loadReportDetails(reportId);
+      await safeRefresh();
+      setOk(`${reportTypeLabel(type)} externe importé et archivé ✅`);
+    } catch (e: any) {
+      setErr(e?.message || "Impossible d’importer le PDF externe.");
+    } finally {
+      setLoading(false);
+      if (externalEntryFileInputRef.current) externalEntryFileInputRef.current.value = "";
+      if (externalExitFileInputRef.current) externalExitFileInputRef.current.value = "";
     }
   };
 
@@ -1273,10 +1407,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   );
 
   const completeness = useMemo(() => {
+    if (selectedReport?.document_source === "external" && isLocked) return 100;
     if (!rooms.length) return 0;
     const roomsOk = roomsWithItems.filter((x) => x.items.length > 0).length;
     return Math.round((roomsOk / rooms.length) * 100);
-  }, [rooms, roomsWithItems]);
+  }, [isLocked, rooms, roomsWithItems, selectedReport?.document_source]);
 
   const filteredRoomsWithItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -2785,7 +2920,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       <SectionTitle
         kicker="État des lieux"
         title="Créer, compléter, imprimer et archiver un état des lieux"
-        desc="Complète l’EDL via l’assistant, génère un PDF à imprimer, puis importe le PDF signé pour archivage."
+        desc="Crée l’état des lieux avec l’assistant lokt.fr ou archive le PDF finalisé transmis par une agence."
       />
 
       <NoticeTop />
@@ -2897,6 +3032,48 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 >
                   {exitReport ? "Reprendre la sortie" : "Créer la sortie depuis l’entrée"}
                 </button>
+
+                <div className="my-1 border-t border-slate-200" />
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">PDF réalisé à l’extérieur</p>
+                <input
+                  ref={externalEntryFileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadExternalPdf("entry", file);
+                  }}
+                />
+                <input
+                  ref={externalExitFileInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void uploadExternalPdf("exit", file);
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={!selectedLeaseId || loading || entryReport?.status === "signed" || entryReport?.status === "archived"}
+                  onClick={() => externalEntryFileInputRef.current?.click()}
+                  className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  <DocumentArrowUpIcon className="h-4 w-4" aria-hidden="true" />
+                  Importer l’entrée en PDF
+                </button>
+                <button
+                  type="button"
+                  disabled={!selectedLeaseId || loading || exitReport?.status === "signed" || exitReport?.status === "archived"}
+                  onClick={() => externalExitFileInputRef.current?.click()}
+                  className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  <DocumentArrowUpIcon className="h-4 w-4" aria-hidden="true" />
+                  Importer la sortie en PDF
+                </button>
+                <p className="text-[0.7rem] leading-4 text-slate-500">PDF finalisé uniquement, 10 Mo maximum. Le document importé est archivé et verrouillé.</p>
               </div>
             </div>
           </div>
@@ -2929,19 +3106,21 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 </p>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {selectedReport ? <Badge tone={statusUi(selectedReport.status).tone}>Statut : {statusUi(selectedReport.status).label}</Badge> : null}
-                  {isLocked ? <Badge tone="red">Verrouillé</Badge> : <Badge tone="slate">Modifiable</Badge>}
-                  {hasPdf ? <Badge tone="emerald">PDF disponible</Badge> : <Badge tone="slate">PDF non disponible</Badge>}
+                  <Badge tone={selectedWorkflow.tone}>{selectedWorkflow.label}</Badge>
+                  {isExternalReport ? <Badge tone="slate">Import agence / prestataire</Badge> : null}
                 </div>
+                <p className="mt-2 max-w-xl text-sm leading-5 text-slate-600">{selectedWorkflow.desc}</p>
               </div>
 
               <div className="flex flex-col gap-2 sm:items-end">
-                <div className="flex items-center gap-2">
-                  <Badge tone="emerald">Complétude : {completeness}%</Badge>
+                {!isLocked ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-600">Complétude {completeness}%</span>
                   <div className="h-2 w-32 rounded-full bg-slate-200 overflow-hidden">
                     <div className="h-full bg-emerald-500" style={{ width: `${completeness}%` }} />
                   </div>
-                </div>
+                  </div>
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
                   <button
@@ -2951,7 +3130,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs"
                     title={!hasPdf ? "Le PDF sera créé lors de la finalisation." : selectedReport?.status === "signed" ? "Ouvrir le PDF signé" : "Ouvrir le PDF"}
                   >
-                    {selectedReport?.status === "signed" ? "Ouvrir PDF signé" : "Ouvrir le PDF"}
+                    {isExternalReport ? "Ouvrir le PDF externe" : selectedReport?.status === "signed" ? "Ouvrir PDF signé" : "Ouvrir le PDF"}
                   </button>
 
                   {/* Upload PDF signé */}
@@ -2965,21 +3144,18 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       if (f) uploadSignedPdf(f);
                     }}
                   />
-                  <button
-                    type="button"
-                    disabled={loading || !selectedReportId || !hasPdf || selectedReport?.status === "archived"}
-                    onClick={() => signedFileInputRef.current?.click()}
-                    className={cx(
-                      "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs",
-                      selectedReport?.status === "archived"
-                        ? "border border-slate-300 bg-slate-100 text-slate-500"
-                        : "border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
-                    )}
-                    title={!hasPdf ? "Génère d’abord le PDF (finaliser)." : "Importer le PDF signé pour archiver"}
-                  >
-                    <DocumentArrowUpIcon className="h-5 w-5 sm:h-4 sm:w-4" aria-hidden="true" />
-                    Importer le PDF signé
-                  </button>
+                  {!isLocked ? (
+                    <button
+                      type="button"
+                      disabled={loading || !selectedReportId || !hasPdf}
+                      onClick={() => signedFileInputRef.current?.click()}
+                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs"
+                      title={!hasPdf ? "Génère d’abord le PDF (finaliser)." : "Importer le PDF signé pour archiver"}
+                    >
+                      <DocumentArrowUpIcon className="h-5 w-5 sm:h-4 sm:w-4" aria-hidden="true" />
+                      Importer le PDF signé
+                    </button>
+                  ) : null}
 
                   <button
                     type="button"
@@ -2990,29 +3166,28 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     Consulter (lecture)
                   </button>
 
-                  <button
-                    type="button"
-                    disabled={loading || !selectedReportId || isLocked}
-                    onClick={() =>
-                      selectedReportId && openWizard(selectedReportId, selectedReport?.status === "ready" || hasPdf ? "finalize" : undefined)
-                    }
-                    className={cx(
-                      "col-span-2 inline-flex min-h-[48px] items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 sm:col-span-1 sm:min-h-0 sm:rounded-full sm:text-xs",
-                      isLocked
-                        ? "border border-slate-300 bg-slate-100 text-slate-500"
-                        : "border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
-                    )}
-                    title={isLocked ? "EDL signé/archivé : modification désactivée" : "Ouvrir l’assistant"}
-                  >
-                    {isLocked ? "Document verrouillé" : primaryReportActionLabel}
-                  </button>
+                  {!isLocked ? (
+                    <button
+                      type="button"
+                      disabled={loading || !selectedReportId}
+                      onClick={() =>
+                        selectedReportId && openWizard(selectedReportId, selectedReport?.status === "ready" || hasPdf ? "finalize" : undefined)
+                      }
+                      className="col-span-2 inline-flex min-h-[48px] items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50 sm:col-span-1 sm:min-h-0 sm:rounded-full sm:text-xs"
+                      title="Ouvrir l’assistant"
+                    >
+                      {primaryReportActionLabel}
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
 
-            <p className="mt-3 text-xs text-slate-600">
-              Note : “EDL de sortie” reprend automatiquement les pièces + éléments de l’EDL d’entrée (si l’entrée existe).
-            </p>
+            {!isLocked ? (
+              <p className="mt-3 text-xs text-slate-600">
+                L’état des lieux de sortie reprend automatiquement les pièces et éléments de l’entrée lorsqu’elle existe.
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -3035,7 +3210,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 {reports.map((r) => {
                   const active = r.id === selectedReportId;
                   const title = reportTypeLabel(r.report_type);
-                  const st = statusUi(r.status);
                   const actionLabel =
                     r.status === "signed" || r.status === "archived"
                       ? "Lecture"
@@ -3049,7 +3223,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       onClick={() => setSelectedReportId(r.id)}
                       className={cx(
                         "w-full text-left rounded-2xl border px-3 py-3 transition",
-                        active ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+                        active ? "border-slate-400 bg-slate-100" : "border-slate-200 bg-white hover:bg-slate-50"
                       )}
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -3057,8 +3231,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                           <p className="text-sm font-semibold text-slate-900">{title}</p>
                           <p className="mt-1 text-xs text-slate-600">Créé le {new Date(r.created_at).toLocaleDateString("fr-FR")}</p>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            <Badge tone={st.tone}>Statut : {st.label}</Badge>
-                            {r.pdf_url ? <Badge tone="emerald">PDF ✅</Badge> : <Badge tone="slate">PDF —</Badge>}
+                            <Badge tone={workflowUi(r).tone}>{workflowUi(r).label}</Badge>
+                            {r.document_source === "external" ? <Badge tone="slate">PDF externe</Badge> : null}
                           </div>
                         </div>
 
@@ -3080,6 +3254,17 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
           {!selectedReportId ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-700">
               Sélectionne un bail puis ouvre un état des lieux.
+            </div>
+          ) : isExternalReport && isLocked ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Document externe archivé</p>
+              <p className="mt-2 text-base font-semibold text-slate-950">Aucune étape supplémentaire n’est attendue.</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Le PDF finalisé par l’agence ou le prestataire est conservé dans lokt.fr et disponible depuis ce dossier.
+              </p>
+              {selectedReport?.original_file_name ? (
+                <p className="mt-3 text-xs text-slate-500">Fichier : {selectedReport.original_file_name}</p>
+              ) : null}
             </div>
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
@@ -3146,7 +3331,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       </div>
       ) : null}
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+      {selectedReportId && !isExternalReport && !isLocked ? <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex items-start gap-3">
           <MapPinIcon className="mt-0.5 h-5 w-5 shrink-0 text-slate-700" aria-hidden="true" />
           <div className="min-w-0 flex-1">
@@ -3170,7 +3355,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
             </div>
           ))}
         </div>
-      </div>
+      </div> : null}
 
       <RepairsGuideCard />
 

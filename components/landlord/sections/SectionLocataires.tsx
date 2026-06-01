@@ -5,6 +5,8 @@ import { SectionTitle } from "../UiBits";
 import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
+import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 /* ======================================================
    TYPES
@@ -35,6 +37,8 @@ export type Lease = {
   status: string | null;
   auto_reminder_enabled?: boolean | null;
   auto_quittance_enabled?: boolean | null;
+  rent_amount?: number | null;
+  charges_amount?: number | null;
   created_at?: string;
 };
 
@@ -64,10 +68,25 @@ type Props = {
   properties?: PropertyLite[];
   onRefresh: () => Promise<void>;
   onContactTenant?: (tenantId: string) => void;
+  initialDepartureTenantId?: string | null;
+  onDepartureOpened?: () => void;
+  onOpenExitInventory?: () => void;
 };
 
 const fmt = (v?: string | null) => (v ? v : "—");
 const todayISO = () => new Date().toISOString().slice(0, 10);
+const formatEuro = (value: number) => value.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+
+function departureProrataSummary(lease: Lease, exitDate: string) {
+  const period = getLeaseRentPeriod({ ...lease, end_date: exitDate }, exitDate.slice(0, 7));
+  if (!period) return null;
+  return {
+    periodLabel: `${period.periodStart} → ${period.periodEnd}`,
+    detail: `${formatEuro(period.rent)} de loyer + ${formatEuro(period.charges)} de charges`,
+    total: formatEuro(period.total),
+    prorated: period.prorated,
+  };
+}
 
 /* ======================================================
    UTIL
@@ -137,7 +156,17 @@ function isArchived(t: Tenant) {
 
 const CREATE_ID = "__create__";
 
-export function SectionLocataires({ userId, tenants, leases, properties, onRefresh, onContactTenant }: Props) {
+export function SectionLocataires({
+  userId,
+  tenants,
+  leases,
+  properties,
+  onRefresh,
+  onContactTenant,
+  initialDepartureTenantId,
+  onDepartureOpened,
+  onOpenExitInventory,
+}: Props) {
   const safeTenants = Array.isArray(tenants) ? tenants : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safeProperties = Array.isArray(properties) ? properties : [];
@@ -150,6 +179,7 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [archiveWorkflow, setArchiveWorkflow] = useState<ArchiveWorkflow | null>(null);
+  const [departureStep, setDepartureStep] = useState<1 | 2 | 3>(1);
 
   const propertyById = useMemo(() => {
     const m = new Map<string, PropertyLite>();
@@ -166,7 +196,7 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
         const startOk = l.start_date ? new Date(l.start_date) <= now : false;
         const notEnded = !l.end_date || new Date(l.end_date) >= now;
 
-        if ((l.status || "").toLowerCase() === "active") return notEnded;
+        if ((l.status || "").toLowerCase() === "active") return true;
         return startOk && notEnded;
       }) || null
     );
@@ -420,7 +450,7 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
         exitReport,
         edlConfirmed: false,
       });
-      setOk("Bail actif détecté : termine le workflow de sortie avant archivage.");
+      setDepartureStep(1);
     } catch (e: any) {
       console.error("[archiveTenant] exit workflow error:", e);
       setErr(e?.message || "Impossible de préparer le workflow de sortie.");
@@ -429,8 +459,31 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
     }
   };
 
-  const createExitReportDraft = async (tenantId: string, leaseId: string) => {
-    if (!userId) return;
+  useEffect(() => {
+    if (!initialDepartureTenantId) return;
+    setExpandedId(initialDepartureTenantId);
+    archiveTenant(initialDepartureTenantId);
+    onDepartureOpened?.();
+    // Le tenantId sert de signal ponctuel envoyé par le cockpit ou la section Baux.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialDepartureTenantId]);
+
+  const saveDeparturePlan = async (tenantId: string) => {
+    if (!userId || !archiveWorkflow || archiveWorkflow.tenantId !== tenantId) return;
+
+    const activeLease = safeLeases.find((l) => l.id === archiveWorkflow.leaseId) || null;
+    if (!activeLease) {
+      setErr("Bail actif introuvable. Recharge la page puis réessaie.");
+      return;
+    }
+    if (!archiveWorkflow.exitDate) {
+      setErr("Renseigne la date effective de départ.");
+      return;
+    }
+    if (archiveWorkflow.exitDate < activeLease.start_date) {
+      setErr("La date de départ doit être postérieure au début du bail.");
+      return;
+    }
 
     setLoading(true);
     setErr(null);
@@ -438,37 +491,19 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
 
     try {
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
-
-      const existing = await getExitReportForLease(leaseId);
-      if (existing) {
-        setArchiveWorkflow((w) => (w?.tenantId === tenantId ? { ...w, exitReport: existing } : w));
-        setOk("État des lieux de sortie déjà existant.");
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("inventory_reports")
-        .insert({
-          user_id: userId,
-          lease_id: leaseId,
-          report_type: "exit",
-          status: "draft",
-          performed_at: new Date().toISOString(),
-          performed_place: "",
-          counters_json: null,
-          general_notes: "",
-          pdf_url: null,
-        })
-        .select("id,status,performed_at")
-        .single();
-
+      const { error } = await supabase
+        .from("leases")
+        .update({ end_date: archiveWorkflow.exitDate, updated_at: new Date().toISOString() })
+        .eq("id", activeLease.id)
+        .eq("user_id", userId);
       if (error) throw error;
-      setArchiveWorkflow((w) => (w?.tenantId === tenantId ? { ...w, exitReport: (data as any) ?? null } : w));
-      setOk("État des lieux de sortie créé en brouillon. Complète-le avant la remise des clés.");
+
+      setOk("Départ planifié : alertes et dernier loyer recalculés avec la date effective.");
       await safeRefresh();
+      setDepartureStep(2);
     } catch (e: any) {
-      console.error("[createExitReportDraft] error:", e);
-      setErr(e?.message || "Impossible de créer l’état des lieux de sortie.");
+      console.error("[saveDeparturePlan] error:", e);
+      setErr(e?.message || "Impossible d’enregistrer la date de départ.");
     } finally {
       setLoading(false);
     }
@@ -615,6 +650,14 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
       setLoading(false);
     }
   };
+
+  const departureTenant = archiveWorkflow ? safeTenants.find((tenant) => tenant.id === archiveWorkflow.tenantId) || null : null;
+  const departureLease = archiveWorkflow ? safeLeases.find((lease) => lease.id === archiveWorkflow.leaseId) || null : null;
+  const departureSummary =
+    archiveWorkflow && departureLease ? departureProrataSummary(departureLease, archiveWorkflow.exitDate) : null;
+  const departureEdlReady = ["ready", "signed", "archived"].includes(
+    String(archiveWorkflow?.exitReport?.status || "").toLowerCase()
+  );
 
   /* ======================================================
      UI
@@ -930,91 +973,6 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                       />
                     </div>
 
-                    {archiveWorkflow?.tenantId === t.id && activeLease ? (
-                      <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                          <div>
-                            <p className="font-semibold">Workflow de sortie locataire</p>
-                            <p className="mt-1 text-amber-900">
-                              Ce locataire a encore un bail actif. Pour l’archiver proprement, lokt.fr doit clôturer le bail,
-                              arrêter les quittances automatiques et vérifier l’état des lieux de sortie.
-                            </p>
-                          </div>
-                          {badge("amber", "Bail actif")}
-                        </div>
-
-                        <div className="mt-3 grid gap-3 md:grid-cols-2">
-                          <div className="space-y-1">
-                            <label className="text-[0.7rem] font-semibold text-amber-950">Date de sortie / fin de bail</label>
-                            <input
-                              type="date"
-                              value={archiveWorkflow.exitDate}
-                              onChange={(e) =>
-                                setArchiveWorkflow((w) => (w?.tenantId === t.id ? { ...w, exitDate: e.target.value } : w))
-                              }
-                              className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-slate-900"
-                            />
-                          </div>
-
-                          <div className="rounded-xl border border-amber-200 bg-white px-3 py-2">
-                            <p className="text-[0.7rem] font-semibold text-amber-950">État des lieux de sortie</p>
-                            <p className="mt-1 text-sm text-slate-800">
-                              {archiveWorkflow.exitReport
-                                ? `Trouvé (${archiveWorkflow.exitReport.status || "brouillon"})`
-                                : "Aucun EDL de sortie trouvé"}
-                            </p>
-                          </div>
-                        </div>
-
-                        {!archiveWorkflow.exitReport ? (
-                          <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => createExitReportDraft(t.id, activeLease.id)}
-                            className="mt-3 rounded-full border border-amber-300 bg-white px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100 disabled:opacity-60"
-                          >
-                            Créer l’état des lieux de sortie
-                          </button>
-                        ) : null}
-
-                        {!["ready", "signed", "archived"].includes((archiveWorkflow.exitReport?.status || "").toLowerCase()) ? (
-                          <label className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs text-slate-800">
-                            <input
-                              type="checkbox"
-                              checked={archiveWorkflow.edlConfirmed}
-                              onChange={(e) =>
-                                setArchiveWorkflow((w) => (w?.tenantId === t.id ? { ...w, edlConfirmed: e.target.checked } : w))
-                              }
-                              className="mt-0.5"
-                            />
-                            <span>
-                              Je confirme que l’état des lieux de sortie a été réalisé, ou que je souhaite clôturer le bail
-                              maintenant et finaliser le document séparément.
-                            </span>
-                          </label>
-                        ) : null}
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => completeExitAndArchive(t.id)}
-                            className="rounded-full bg-amber-900 px-5 py-2 text-xs font-semibold text-white hover:bg-amber-800 disabled:opacity-60"
-                          >
-                            Clôturer le bail et archiver
-                          </button>
-                          <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => setArchiveWorkflow(null)}
-                            className="rounded-full border border-amber-300 bg-white px-5 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100 disabled:opacity-60"
-                          >
-                            Annuler
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
                     <div className="mt-3 flex flex-wrap gap-2 items-center">
                       <button
                         type="button"
@@ -1025,14 +983,16 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
                         {loading ? "Enregistrement…" : "Mettre à jour"}
                       </button>
 
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => archiveTenant(t.id)}
-                        className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
-                      >
-                        {activeLease ? "Préparer la sortie" : "Archiver"}
-                      </button>
+                      {archiveWorkflow?.tenantId !== t.id ? (
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => archiveTenant(t.id)}
+                          className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          {activeLease ? "Gérer le départ" : "Archiver"}
+                        </button>
+                      ) : null}
 
                       {!hasLease ? (
                         <button
@@ -1180,6 +1140,164 @@ export function SectionLocataires({ userId, tenants, leases, properties, onRefre
           )}
         </ExpandableSection>
       </div>
+
+      {archiveWorkflow && departureTenant && departureLease ? (
+        <div
+          className="fixed inset-0 z-[210] flex items-end justify-center bg-slate-950/45 p-3 backdrop-blur-sm sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Gérer le départ de ${displayName(departureTenant)}`}
+        >
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-5 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    Départ locataire · étape {departureStep}/3
+                  </p>
+                  <h3 className="mt-1 text-lg font-semibold text-slate-950">Départ de {displayName(departureTenant)}</h3>
+                </div>
+                <button
+                  type="button"
+                  title="Fermer"
+                  aria-label="Fermer"
+                  onClick={() => setArchiveWorkflow(null)}
+                  className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {["Date de départ", "État des lieux", "Clôture"].map((label, index) => (
+                  <div key={label}>
+                    <div className={cx("h-1 rounded-full", departureStep >= index + 1 ? "bg-slate-950" : "bg-slate-200")} />
+                    <p className={cx("mt-1 text-[0.68rem] font-semibold", departureStep === index + 1 ? "text-slate-900" : "text-slate-500")}>
+                      {label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-5">
+              {departureStep === 1 ? (
+                <>
+                  <h4 className="text-base font-semibold text-slate-950">Quand le locataire quitte-t-il le logement ?</h4>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Cette date adapte le dernier loyer, les charges et les alertes de sortie.
+                  </p>
+                  <label className="mt-4 block text-xs font-semibold text-slate-700">Date effective de départ</label>
+                  <input
+                    type="date"
+                    value={archiveWorkflow.exitDate}
+                    onChange={(e) => setArchiveWorkflow((workflow) => (workflow ? { ...workflow, exitDate: e.target.value } : workflow))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900"
+                  />
+                  {departureSummary ? (
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Dernier mois recalculé</p>
+                      <p className="mt-1 text-xl font-semibold text-slate-950">{departureSummary.total}</p>
+                      <p className="mt-1 text-sm text-slate-600">{departureSummary.detail}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Période {departureSummary.periodLabel}{departureSummary.prorated ? " · prorata automatique" : ""}
+                      </p>
+                    </div>
+                  ) : null}
+                  <div className="mt-5 flex justify-end">
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => saveDeparturePlan(departureTenant.id)}
+                      className="rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {loading ? "Enregistrement…" : "Continuer"}
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
+              {departureStep === 2 ? (
+                <>
+                  <h4 className="text-base font-semibold text-slate-950">État des lieux de sortie</h4>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Prépare le document dans lokt.fr ou importe le PDF transmis par l’agence. Tu pourras reprendre cet assistant ensuite.
+                  </p>
+                  <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold text-slate-900">
+                      {departureEdlReady
+                        ? "État des lieux finalisé"
+                        : archiveWorkflow.exitReport
+                        ? `Document ${archiveWorkflow.exitReport.status || "en cours"}`
+                        : "Aucun état des lieux de sortie rattaché"}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      {departureEdlReady ? "Le document est prêt pour clôturer le bail." : "La sortie peut rester planifiée pendant la préparation du document."}
+                    </p>
+                  </div>
+                  <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                    <button type="button" onClick={() => setDepartureStep(1)} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
+                      Précédent
+                    </button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setArchiveWorkflow(null);
+                          onOpenExitInventory?.();
+                        }}
+                        className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                      >
+                        Ouvrir les états des lieux
+                      </button>
+                      <button type="button" onClick={() => setDepartureStep(3)} className="rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                        Continuer
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+
+              {departureStep === 3 ? (
+                <>
+                  <h4 className="text-base font-semibold text-slate-950">Clôturer le dossier locatif</h4>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Le bail sera terminé, les automatisations seront arrêtées et le locataire sera archivé.
+                  </p>
+                  <div className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    <p><span className="font-semibold text-slate-950">Départ :</span> {archiveWorkflow.exitDate}</p>
+                    <p><span className="font-semibold text-slate-950">Dernier mois :</span> {departureSummary?.total || "—"}</p>
+                    <p><span className="font-semibold text-slate-950">État des lieux :</span> {departureEdlReady ? "finalisé" : "à finaliser séparément"}</p>
+                  </div>
+                  {!departureEdlReady ? (
+                    <label className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-950">
+                      <input
+                        type="checkbox"
+                        checked={archiveWorkflow.edlConfirmed}
+                        onChange={(e) => setArchiveWorkflow((workflow) => (workflow ? { ...workflow, edlConfirmed: e.target.checked } : workflow))}
+                        className="mt-0.5"
+                      />
+                      <span>Je souhaite clôturer maintenant et finaliser l’état des lieux de sortie séparément.</span>
+                    </label>
+                  ) : null}
+                  <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                    <button type="button" onClick={() => setDepartureStep(2)} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
+                      Précédent
+                    </button>
+                    <button
+                      type="button"
+                      disabled={loading || (!departureEdlReady && !archiveWorkflow.edlConfirmed)}
+                      onClick={() => completeExitAndArchive(departureTenant.id)}
+                      className="rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {loading ? "Clôture…" : "Clôturer le bail"}
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

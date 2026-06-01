@@ -9,6 +9,7 @@ import {
   type LandlordAlertPreferences,
 } from "../../../lib/landlordAlertPreferences";
 import { getServerUserPlan } from "../../../lib/serverPermissions";
+import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 
 type AlertTone = "red" | "amber" | "slate";
 
@@ -61,12 +62,6 @@ function nextLeaseAnniversary(startDate: Date, today: Date) {
   return anniversary >= today ? anniversary : anniversaryForYear(today.getFullYear() + 1);
 }
 
-function monthRangeFor(date: Date) {
-  const start = new Date(date.getFullYear(), date.getMonth(), 1);
-  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-  return { start: toISODate(start), end: toISODate(end) };
-}
-
 function clampDay(year: number, month0: number, rawDay: any) {
   const last = new Date(year, month0 + 1, 0).getDate();
   const day = Math.max(1, Math.min(31, Number(rawDay || 1) || 1));
@@ -76,19 +71,22 @@ function clampDay(year: number, month0: number, rawDay: any) {
 function dueDateForCurrentPeriod(today: Date, lease: LeaseRow) {
   const paymentType = String(lease.payment_type || "terme_a_echoir").toLowerCase();
   const day = Number(lease.payment_day || 1) || 1;
+  const periodDate = paymentType === "terme_echu" ? new Date(today.getFullYear(), today.getMonth() - 1, 1) : today;
+  const periodKey = `${periodDate.getFullYear()}-${pad2(periodDate.getMonth() + 1)}`;
+  const rentPeriod = getLeaseRentPeriod(lease, periodKey);
+  if (!rentPeriod) return null;
 
   if (paymentType === "terme_echu") {
-    const prevPeriod = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const dueDay = clampDay(today.getFullYear(), today.getMonth(), day);
     return {
-      period: monthRangeFor(prevPeriod),
+      period: { start: rentPeriod.periodStart, end: rentPeriod.periodEnd },
       dueDate: new Date(today.getFullYear(), today.getMonth(), dueDay),
     };
   }
 
   const dueDay = clampDay(today.getFullYear(), today.getMonth(), day);
   return {
-    period: monthRangeFor(today),
+    period: { start: rentPeriod.periodStart, end: rentPeriod.periodEnd },
     dueDate: new Date(today.getFullYear(), today.getMonth(), dueDay),
   };
 }
@@ -275,13 +273,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const labels = labelForLease(lease, propertiesById, tenantsById);
         const active = isActiveLease(lease, today);
         const leaseReports = reportsByLease.get(lease.id) || [];
-        const hasEntryEdl = leaseReports.some((r) => r.report_type === "entry");
+        const entryEdl = leaseReports.find((r) => r.report_type === "entry");
+        const hasPreparedEntryEdl =
+          !!entryEdl && ["ready", "signed", "archived"].includes(String(entryEdl.status || "").toLowerCase());
         const exitEdl = leaseReports.find((r) => r.report_type === "exit");
         const leaseEnd = parseISODate(lease.end_date);
         const leaseStart = parseISODate(lease.start_date);
 
         if (active) {
-          const { period, dueDate } = dueDateForCurrentPeriod(today, lease);
+          const schedule = dueDateForCurrentPeriod(today, lease);
+          if (!schedule) continue;
+          const { period, dueDate } = schedule;
           const payment = paymentsByLeasePeriod.get(`${lease.id}:${period.start}:${period.end}`);
           const receipt = receiptsByLeasePeriod.get(`${lease.id}:${period.start}:${period.end}`);
           const paid = !!payment?.paid_at;
@@ -354,7 +356,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
           }
 
-          if (!hasEntryEdl && leaseStart) {
+          if (!hasPreparedEntryEdl && leaseStart) {
             const daysToStart = daysBetween(today, leaseStart);
             const scheduleKey = [7, 1, -1, -7].includes(daysToStart) ? `entry-edl:${lease.id}:day-${daysToStart}` : null;
             if (scheduleKey) {
@@ -369,46 +371,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
 
-          if (leaseEnd) {
-            const daysToEnd = daysBetween(today, leaseEnd);
-            if (daysToEnd < 0) {
-              const scheduleKey = recurringScheduleKey(`expired-active:${lease.id}`, Math.abs(daysToEnd), [1, 7], 7);
-              if (scheduleKey) {
-                alerts.push({
-                  key: scheduleKey,
-                  preferenceKey: "expired_active_lease",
-                  tone: "red",
-                  title: `Bail expiré encore actif - ${labels.property}`,
-                  detail: `La date de fin du bail de ${labels.tenant} est dépassée. Clôturez le bail ou corrigez la date.`,
-                  href: "/espace-bailleur",
-                });
-              }
-            } else if ([60, 30, 7].includes(daysToEnd)) {
-              alerts.push({
-                key: `lease-end:${lease.id}:${daysToEnd}`,
-                preferenceKey: "lease_end",
-                tone: "amber",
-                title: `Bail bientôt à échéance - ${labels.property}`,
-                detail: `Le bail de ${labels.tenant} arrive à échéance dans ${daysToEnd} jour(s). Préparez renouvellement, congé ou sortie.`,
-                href: "/espace-bailleur",
-              });
-            }
-
-            if (!exitEdl || !["ready", "signed", "archived"].includes(String(exitEdl.status || "").toLowerCase())) {
-              const scheduleKey = [30, 7, 1, -1, -7].includes(daysToEnd) ? `exit-edl:${lease.id}:day-${daysToEnd}` : null;
-              if (scheduleKey) {
-                alerts.push({
-                  key: scheduleKey,
-                  preferenceKey: "exit_inventory_to_prepare",
-                  tone: "amber",
-                  title: `État des lieux de sortie à préparer - ${labels.property}`,
-                  detail: `Le bail de ${labels.tenant} se termine bientôt ou est terminé. L'EDL de sortie n'est pas finalisé.`,
-                  href: "/espace-bailleur",
-                });
-              }
-            }
-          }
-
           if (!lease.reminder_email) {
             alerts.push({
               key: weeklyScheduleKey(`owner-email:${lease.id}`, today),
@@ -418,6 +380,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               detail: "Ajoutez un email de notification pour recevoir les validations de paiement et alertes automatiques.",
               href: "/espace-bailleur",
             });
+          }
+        }
+
+        if (leaseEnd) {
+          const daysToEnd = daysBetween(today, leaseEnd);
+          const leaseStatus = String(lease.status || "").toLowerCase();
+
+          if (leaseStatus === "active" && daysToEnd < 0) {
+            const scheduleKey = recurringScheduleKey(`expired-active:${lease.id}`, Math.abs(daysToEnd), [1, 7], 7);
+            if (scheduleKey) {
+              alerts.push({
+                key: scheduleKey,
+                preferenceKey: "expired_active_lease",
+                tone: "red",
+                title: `Bail expiré encore actif - ${labels.property}`,
+                detail: `La date de fin du bail de ${labels.tenant} est dépassée. Clôturez le bail ou corrigez la date.`,
+                href: "/espace-bailleur?tab=locataires",
+              });
+            }
+          } else if (active && [60, 30, 7].includes(daysToEnd)) {
+            alerts.push({
+              key: `lease-end:${lease.id}:${daysToEnd}`,
+              preferenceKey: "lease_end",
+              tone: "amber",
+              title: `Bail bientôt à échéance - ${labels.property}`,
+              detail: `Le bail de ${labels.tenant} arrive à échéance dans ${daysToEnd} jour(s). Préparez renouvellement, congé ou sortie.`,
+              href: "/espace-bailleur?tab=locataires",
+            });
+          }
+
+          if (
+            ["active", "ended"].includes(leaseStatus) &&
+            (!exitEdl || !["ready", "signed", "archived"].includes(String(exitEdl.status || "").toLowerCase()))
+          ) {
+            const scheduleKey = [30, 7, 1, -1, -7].includes(daysToEnd) ? `exit-edl:${lease.id}:day-${daysToEnd}` : null;
+            if (scheduleKey) {
+              alerts.push({
+                key: scheduleKey,
+                preferenceKey: "exit_inventory_to_prepare",
+                tone: "amber",
+                title: `État des lieux de sortie à préparer - ${labels.property}`,
+                detail: `Le bail de ${labels.tenant} se termine bientôt ou est terminé. L'EDL de sortie n'est pas finalisé.`,
+                href: "/espace-bailleur?tab=locataires",
+              });
+            }
           }
         }
       }

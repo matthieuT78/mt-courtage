@@ -22,7 +22,6 @@ Le système évite les oublis métier :
 ## Fichiers concernés
 
 - Cron principal : `pages/api/cron/landlord-alerts.ts`
-- Configuration Vercel Cron pour la génération de quittances : `vercel.json`
 - Synchronisation cron-job.org : `scripts/configure-cron-job-org.mjs`
 - Ancienne table anti-spam du digest : `supabase/migrations/20260520_landlord_alert_sends.sql`
 - Table anti-doublon par notification : `supabase/migrations/20260531203000_landlord_alert_notification_sends.sql`
@@ -137,19 +136,16 @@ CRON_JOB_ORG_API_KEY=...
 
 ## Répartition des tâches planifiées
 
-Vercel conserve uniquement la génération de quittances :
+cron-job.org gère les automatisations :
 
-```json
-{
-  "path": "/api/cron/receipts-generate",
-  "schedule": "0 9 * * *"
-}
-```
-
-cron-job.org gère les automatisations complémentaires :
-
+- `lokt - validation mensuelle des loyers` à `09:00` heure de Paris ;
 - `lokt - contrôle des alertes bailleur` à `09:30` heure de Paris ;
 - `lokt - relance validation loyer J+1` à `09:15` heure de Paris.
+- `lokt - relance amiable locataire J+3` à `09:20` heure de Paris.
+
+La validation mensuelle envoie un email de contrôle au bailleur à J+2 après
+l’échéance. La quittance PDF est générée, archivée et envoyée au locataire
+uniquement après confirmation du paiement.
 
 La configuration cron-job.org est créée ou mise à jour automatiquement via :
 

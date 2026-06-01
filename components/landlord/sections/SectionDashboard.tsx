@@ -88,6 +88,7 @@ export function SectionDashboard({
   tenantsCount,
   leasesCount,
   onGo,
+  onPrepareDeparture,
   userId,
 }: {
   monthRange: { startISO: string; endISO: string };
@@ -109,6 +110,7 @@ export function SectionDashboard({
   tenantsCount: number;
   leasesCount: number;
   onGo: (k: LandlordSectionKey) => void;
+  onPrepareDeparture?: (tenantId: string) => void;
   userId?: string;
 }) {
   const ratio = monthlyExpected > 0 ? clampPct((monthlyPaid / monthlyExpected) * 100) : 0;
@@ -543,8 +545,8 @@ export function SectionDashboard({
         details: endingSoonCards
           .slice(0, 3)
           .map((card) => `${card.propertyLabel} · ${card.tenantName} · fin ${fmtDate(card.lease.end_date)}`),
-        target: "baux",
-        cta: "Ouvrir les baux",
+        target: "locataires",
+        cta: "Préparer les départs",
       });
     }
 
@@ -977,15 +979,16 @@ export function SectionDashboard({
           </div>
         ) : (
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-            <div className="grid grid-cols-[1.3fr,0.8fr,0.8fr,0.8fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600">
+            <div className="grid grid-cols-[1.3fr,0.8fr,0.8fr,0.8fr,auto] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600">
               <span>Bien / locataire</span>
               <span>Paiement</span>
               <span>Quittance</span>
               <span className="text-right">Mensuel</span>
+              <span className="sr-only">Actions</span>
             </div>
             <div className="divide-y divide-slate-100 bg-white">
               {leaseCards.slice(0, 8).map((card) => (
-                <div key={card.lease.id} className="grid grid-cols-[1.3fr,0.8fr,0.8fr,0.8fr] gap-3 px-4 py-3 text-sm">
+                <div key={card.lease.id} className="grid grid-cols-[1.3fr,0.8fr,0.8fr,0.8fr,auto] items-center gap-3 px-4 py-3 text-sm">
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-slate-900">{card.propertyLabel}</p>
                     <p className="truncate text-xs text-slate-600">{card.tenantName}</p>
@@ -1004,6 +1007,13 @@ export function SectionDashboard({
                     </Pill>
                   </div>
                   <p className="text-right font-semibold text-slate-900">{formatEuro(card.total)}</p>
+                  <button
+                    type="button"
+                    onClick={() => onPrepareDeparture?.(card.lease.tenant_id)}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                  >
+                    Départ
+                  </button>
                 </div>
               ))}
             </div>

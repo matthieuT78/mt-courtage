@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   ArrowUpRightIcon,
   ArrowPathIcon,
-  ArrowRightIcon,
   CheckCircleIcon,
   DocumentTextIcon,
   HandRaisedIcon,
@@ -74,7 +73,7 @@ type Props = {
   properties?: PropertyLite[];
   tenants?: TenantLite[];
   onRefresh: () => Promise<void>;
-  onGoToQuittances?: () => void; // ✅ NEW (Option A UX)
+  onPrepareDeparture?: (tenantId: string) => void;
 };
 
 /* ======================================================
@@ -464,76 +463,13 @@ const parisNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "
 const fmtFR = (d: Date) =>
   d.toLocaleDateString("fr-FR", { year: "numeric", month: "short", day: "2-digit", timeZone: "Europe/Paris" });
 
-const yyyymmFR = (d: Date) =>
-  d.toLocaleDateString("fr-FR", { year: "numeric", month: "long", timeZone: "Europe/Paris" });
-
-const monthStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
-const monthEnd = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
-
-const lastDayOfMonth = (y: number, m0: number) => new Date(y, m0 + 1, 0).getDate();
-const clampDay = (y: number, m0: number, day: number) => Math.min(Math.max(1, day), lastDayOfMonth(y, m0));
-
-type ReceiptSchedule = {
-  periodStart: Date;
-  periodEnd: Date;
-  dueDate: Date;
-  generateAt: Date;
-  label: string; // ex: "décembre 2025"
-};
-
-function nextReceiptScheduleForLease(
-  lease: { payment_day?: number | null; payment_type?: string | null },
-  now = parisNow()
-): ReceiptSchedule {
-  const paymentDayRaw = Number(lease.payment_day || 1);
-  const pType = (lease.payment_type || "terme_a_echoir").toLowerCase();
-
-  for (let add = -1; add <= 3; add++) {
-    const base = new Date(now.getFullYear(), now.getMonth() + add, 1);
-
-    if (pType === "terme_a_echoir") {
-      const ps = monthStart(base);
-      const pe = monthEnd(base);
-      const day = clampDay(ps.getFullYear(), ps.getMonth(), paymentDayRaw);
-      const due = new Date(ps.getFullYear(), ps.getMonth(), day);
-
-      const gen = new Date(due);
-      gen.setDate(gen.getDate() + 2);
-
-      if (gen.getTime() >= now.getTime())
-        return { periodStart: ps, periodEnd: pe, dueDate: due, generateAt: gen, label: yyyymmFR(ps) };
-    } else {
-      const ps = monthStart(base);
-      const pe = monthEnd(base);
-
-      const nextMonth = new Date(ps.getFullYear(), ps.getMonth() + 1, 1);
-      const day = clampDay(nextMonth.getFullYear(), nextMonth.getMonth(), paymentDayRaw);
-      const due = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day);
-
-      const gen = new Date(due);
-      gen.setDate(gen.getDate() + 2);
-
-      if (gen.getTime() >= now.getTime())
-        return { periodStart: ps, periodEnd: pe, dueDate: due, generateAt: gen, label: yyyymmFR(ps) };
-    }
-  }
-
-  const ps = monthStart(now);
-  const pe = monthEnd(now);
-  const day = clampDay(now.getFullYear(), now.getMonth(), paymentDayRaw);
-  const due = new Date(now.getFullYear(), now.getMonth(), day);
-  const gen = new Date(due);
-  gen.setDate(gen.getDate() + 2);
-  return { periodStart: ps, periodEnd: pe, dueDate: due, generateAt: gen, label: yyyymmFR(ps) };
-}
-
 /* ======================================================
    COMPONENT
 ====================================================== */
 
 type Mode = "idle" | "create" | "edit";
 
-export function SectionBaux({ userId, userEmail, leases, properties, tenants, onRefresh, onGoToQuittances }: Props) {
+export function SectionBaux({ userId, userEmail, leases, properties, tenants, onRefresh, onPrepareDeparture }: Props) {
   const { canUseLandlord } = usePermissions();
   const canUseReceiptAutomation = canUseLandlord;
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -630,7 +566,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
   };
 
   const workflowInfo = (lease: Partial<Lease>, tenant?: TenantLite | null) => {
-    const sched = nextReceiptScheduleForLease(lease);
     const receiptEmail = String(lease.tenant_receipt_email || "").trim() || getTenantEmail(tenant);
     const ownerEmail = String(lease.reminder_email || "").trim() || String(userEmail || "").trim();
     const auto = canUseReceiptAutomation && !!lease.auto_quittance_enabled;
@@ -664,7 +599,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
       : "";
 
     return {
-      sched,
       receiptEmail,
       ownerEmail,
       auto,
@@ -843,36 +777,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
 
     const { error: fallbackError } = await supabase.from("leases").update(withoutRenewalColumns(payload)).eq("id", leaseId).eq("user_id", userId);
     if (fallbackError) throw fallbackError;
-  };
-
-  const quickEndLease = async (lease: Lease) => {
-    if (!userId) return;
-    const meta = leaseLine(lease);
-    if (
-      !confirm(
-        `Clôturer ce bail dans lokt.fr :\n${meta.propertyLabel} • ${meta.tenantName}\n\nAvant de confirmer, vérifiez idéalement :\n- état des lieux de sortie réalisé ou planifié\n- dépôt de garantie à traiter\n- dernière quittance / dernier paiement contrôlé\n\n→ Statut: terminé\n→ Date de fin: ${
-          lease.end_date || todayISO()
-        }\n\nConfirmer ?`
-      )
-    )
-      return;
-
-    setLoading(true);
-    setErr(null);
-    setOk(null);
-
-    try {
-      await patchLease(lease.id, {
-        status: "ended",
-        end_date: lease.end_date || todayISO(),
-      });
-      setOk("Bail terminé ✅");
-      await safeRefresh();
-    } catch (e: any) {
-      setErr(e?.message || "Impossible de mettre fin au bail.");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const quickToggleQuittance = async (lease: Lease) => {
@@ -1065,7 +969,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
     const p = propertyById.get(l.property_id);
     const t = tenantById.get(l.tenant_id);
     const flow = workflowInfo(l, t);
-    const sched = flow.sched;
     const renewal = leaseRenewalInfo(l);
 
     return (
@@ -1124,17 +1027,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
                   {l.auto_quittance_enabled ? "Désactiver auto" : canUseReceiptAutomation ? "Activer auto" : "Auto premium"}
                 </ActionButton>
 
-                <ActionButton
-                  icon={ArrowRightIcon}
-                  disabled={loading}
-                  onClick={(e) => {
-                    stop(e);
-                    onGoToQuittances?.();
-                  }}
-                >
-                  Quittances
-                </ActionButton>
-
                 {isActiveLease(l) ? (
                   <ActionButton
                     icon={CheckCircleIcon}
@@ -1142,10 +1034,10 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
                     disabled={loading}
                     onClick={(e) => {
                       stop(e);
-                      quickEndLease(l);
+                      onPrepareDeparture?.(l.tenant_id);
                     }}
                   >
-                    Mettre fin
+                    Gérer le départ
                   </ActionButton>
                 ) : null}
 
@@ -1210,18 +1102,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Planning quittance</p>
-            <p className="mt-1 text-sm text-slate-800">
-              Échéance estimée : <span className="font-semibold">{fmtFR(sched.dueDate)}</span>{" "}
-              <span className="text-slate-500">({paymentTypeShort(l.payment_type)})</span>
-            </p>
-            <p className="mt-1 text-sm text-slate-800">
-              Génération PDF (J+2) : <span className="font-semibold">{fmtFR(sched.generateAt)}</span>{" "}
-              <span className="text-slate-500">• période {sched.label}</span>
-            </p>
-            <p className="mt-1 text-xs text-slate-500">Règle : génération automatique à J+2 après l’échéance.</p>
-          </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -1269,28 +1149,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
             {badge(flow.tone as any, flow.label)}
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-4">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[0.7rem] font-semibold text-slate-500">1. Échéance</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{fmtFR(sched.dueDate)}</p>
-              <p className="text-xs text-slate-600">{paymentTypeLabel(l.payment_type)}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[0.7rem] font-semibold text-slate-500">2. Contrôle J+2</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{fmtFR(sched.generateAt)}</p>
-              <p className="text-xs text-slate-600">{relativeDateLabel(sched.generateAt)}</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[0.7rem] font-semibold text-slate-500">3. Paiement</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{flow.auto ? "Validation bailleur" : "Manuel"}</p>
-              <p className="text-xs text-slate-600">La quittance vaut reçu après paiement.</p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[0.7rem] font-semibold text-slate-500">4. PDF & envoi</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{flow.auto ? "Préparé automatiquement" : "Manuel"}</p>
-              <p className="text-xs text-slate-600">Archivage dans Quittances.</p>
-            </div>
-          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-600">
+            {flow.auto
+              ? "Après confirmation du paiement par le bailleur, la quittance PDF est générée, archivée puis envoyée au locataire."
+              : "Le paiement et la quittance sont traités manuellement depuis l’onglet Quittances."}
+          </p>
 
           {flow.blockers.length || flow.warnings.length ? (
             <div className={cx("mt-3 rounded-xl border px-3 py-2 text-xs", workflowNoticeClass(flow.tone))}>
@@ -1323,7 +1186,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
       reminder_email: ownerEmail,
     };
     const flow = workflowInfo(fakeLease as any, selectedTenant);
-    const sched = flow.sched;
     const renewal = leaseRenewalInfo(fakeLease as any);
     const leaseRule = getLeaseKindRule(form.lease_kind);
     const enableAutoWorkflow = () => {
@@ -1585,7 +1447,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Aperçu métier</p>
               <p className="mt-1 text-sm font-semibold text-slate-900">{flow.modeLabel}</p>
               <p className="mt-1 text-xs text-slate-600">
-                Période {sched.label} • échéance {fmtFR(sched.dueDate)} • contrôle {fmtFR(sched.generateAt)} ({relativeDateLabel(sched.generateAt)})
+                {flow.auto
+                  ? "Après validation du paiement, le PDF est généré, archivé et envoyé au locataire."
+                  : "Le paiement et la quittance restent traités manuellement."}
               </p>
             </div>
             {badge(flow.tone as any, flow.label)}
@@ -1685,18 +1549,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <label className="text-[0.7rem] text-slate-700">Jour de contrôle paiement (1–31)</label>
-              <input
-                type="number"
-                min={1}
-                max={31}
-                value={form.reminder_day_of_month}
-                onChange={(e) => setForm((s) => ({ ...s, reminder_day_of_month: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="space-y-1">
               <label className="text-[0.7rem] text-slate-700">Email bailleur notification</label>
               <input
                 type="email"
@@ -1706,7 +1558,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
               />
             </div>
 
-            <div className="space-y-1 sm:col-span-2">
+            <div className="space-y-1">
               <label className="text-[0.7rem] text-slate-700">Email destinataire quittance</label>
               <input
                 type="email"
@@ -1847,16 +1699,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
             </p>
           </div>
 
-          {onGoToQuittances ? (
-            <button
-              type="button"
-              onClick={onGoToQuittances}
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white shadow-sm hover:bg-slate-800"
-            >
-              <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
-              Aller aux quittances
-            </button>
-          ) : null}
         </div>
       </div>
 
@@ -1943,7 +1785,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
               {filtered.actifs.map((l) => {
                 const meta = leaseLine(l);
                 const open = expandedId === l.id;
-                const sched = nextReceiptScheduleForLease(l);
 
                 return (
                   <ExpandableRow
@@ -1971,7 +1812,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
                           {badge("slate", `${formatEuro(meta.total)}`)}
                           {badge("slate", meta.pay)}
                           {badge(meta.renewal.tone, meta.renewal.status)}
-                          {canUseReceiptAutomation && l.auto_quittance_enabled ? badge("slate", `Prochaine: ${fmtFR(sched.generateAt)}`) : null}
                         </div>
                       </div>
                     }

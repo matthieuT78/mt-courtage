@@ -85,6 +85,7 @@ export function DashboardShell(props: any) {
   const { loading: permissionsLoading, plan, maxActiveProperties } = usePermissions();
   const [active, setActive] = useState<LandlordSectionKey>("dashboard");
   const [messagingTenantId, setMessagingTenantId] = useState<string | null>(null);
+  const [departureTenantId, setDepartureTenantId] = useState<string | null>(null);
 
   const userId: string = props?.user?.id || "";
   const userEmail: string | undefined = props?.user?.email;
@@ -259,6 +260,10 @@ export function DashboardShell(props: any) {
             receipts={receipts}
             propertyById={propertyById}
             tenantById={tenantById}
+            onPrepareDeparture={(tenantId) => {
+              setDepartureTenantId(tenantId);
+              setActive("locataires");
+            }}
           />
         );
 
@@ -273,6 +278,9 @@ export function DashboardShell(props: any) {
             leases={leases}
             properties={properties}
             onRefresh={refresh}
+            initialDepartureTenantId={departureTenantId}
+            onDepartureOpened={() => setDepartureTenantId(null)}
+            onOpenExitInventory={() => setActive("etat_des_lieux")}
             onContactTenant={(tenantId) => {
               setMessagingTenantId(tenantId);
               setActive("messagerie");
@@ -289,7 +297,10 @@ export function DashboardShell(props: any) {
             properties={properties}
             tenants={tenants}
             onRefresh={refresh}
-            onGoToQuittances={() => setActive("quittances")}
+            onPrepareDeparture={(tenantId) => {
+              setDepartureTenantId(tenantId);
+              setActive("locataires");
+            }}
           />
         );
 
@@ -350,6 +361,7 @@ export function DashboardShell(props: any) {
     }
   }, [
     active,
+    departureTenantId,
     messagingTenantId,
     plan,
     lockedSection,
