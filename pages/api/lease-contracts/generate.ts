@@ -8,6 +8,45 @@ const text = (value: unknown, fallback = "Non renseigné") => String(value ?? ""
 const euro = (value: unknown) => Number(value || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 const yesNo = (value: unknown) => (value ? "Oui" : "Non");
 const line = (values: unknown[]) => values.map((value) => String(value || "").trim()).filter(Boolean).join(", ");
+const fiscalIdRequired = (country: unknown) => !["GP", "MQ", "GF", "RE", "YT"].includes(String(country || "FR").toUpperCase());
+const propertyAddress = (data: any) =>
+  line([data.property_address_line1, data.property_address_line2, data.property_postal_code, data.property_city, data.property_country]) ||
+  data.property_address;
+
+function missingRequiredFields(payload: any) {
+  const d = payload.form_data || {};
+  const required = [
+    "landlord_name",
+    "landlord_address",
+    "tenant_name",
+    "property_address_line1",
+    "property_postal_code",
+    "property_city",
+    "housing_type",
+    "legal_regime",
+    "building_period",
+    "surface_m2",
+    "main_rooms",
+    "heating_method",
+    "hot_water_method",
+    ...(fiscalIdRequired(d.property_country) ? ["fiscal_property_id"] : []),
+    "destination",
+    "ict_equipment",
+    "start_date",
+    "end_date",
+    ...(payload.contract_kind === "mobility" ? ["mobility_reason"] : []),
+    "rent_amount",
+    "charges_amount",
+    ...(payload.contract_kind === "mobility" ? [] : ["deposit_amount"]),
+    "payment_method",
+    "payment_day",
+    ...(d.rent_revision_enabled ? ["irl_reference"] : []),
+    ...(d.rent_controlled_area ? ["reference_rent_increased"] : []),
+    "signature_place",
+    "signature_date",
+  ];
+  return required.filter((key) => String(d[key] ?? "").trim() === "");
+}
 
 function makePdf(payload: any) {
   return new Promise<Buffer>((resolve) => {
@@ -36,14 +75,18 @@ function makePdf(payload: any) {
     row("Adresse e-mail du locataire", d.tenant_email);
 
     heading("2. Objet du contrat et logement");
-    row("Adresse du logement", d.property_address);
+    row("Adresse du logement", propertyAddress(d));
     row("Type d’habitat", d.housing_type);
+    row("Régime juridique de l’immeuble", d.legal_regime);
     row("Identifiant fiscal du logement", d.fiscal_property_id);
     row("Période de construction", d.building_period);
     row("Surface habitable", d.surface_m2 ? `${d.surface_m2} m²` : "");
     row("Nombre de pièces principales", d.main_rooms);
     row("Mode de chauffage", d.heating_method);
     row("Production d’eau chaude", d.hot_water_method);
+    row("Destination des locaux", d.destination);
+    row("Équipements d’accès aux technologies de l’information et de la communication", d.ict_equipment);
+    row("Autres parties du logement", d.other_parts);
     row("Équipements privatifs", d.private_equipment);
     row("Parties et équipements communs", d.common_equipment);
     row("Destination", "Usage d’habitation à titre de résidence principale");
@@ -86,6 +129,12 @@ function makePdf(payload: any) {
     row("Honoraires imputés au locataire", d.tenant_agency_fees ? euro(d.tenant_agency_fees) : "Aucun");
     row("Honoraires d’état des lieux imputés au locataire", d.tenant_inventory_fees ? euro(d.tenant_inventory_fees) : "Aucun");
     row("Clause résolutoire et assurances", "Application des dispositions légales en vigueur");
+    doc.text(
+      "Le contrat prévoit sa résiliation de plein droit dans les conditions légales applicables en cas de défaut de paiement du loyer ou des charges, de non-versement du dépôt de garantie, de défaut d’assurance des risques locatifs ou de troubles de voisinage constatés par une décision de justice passée en force de chose jugée."
+    );
+    doc.moveDown(0.35).text(
+      "Le logement doit respecter les exigences de performance énergétique applicables aux logements décents prévues par la législation en vigueur."
+    );
     row("Clauses particulières", d.special_terms);
 
     heading("6. Annexes à remettre avec le contrat");
@@ -98,7 +147,7 @@ function makePdf(payload: any) {
       ["Attestation d’assurance habitation à remettre par le locataire", d.annex_insurance],
     ];
     for (const [label, checked, applicable = true] of annexes) {
-      if (applicable) doc.text(`${checked ? "☒" : "☐"} ${label}`);
+      if (applicable) doc.text(`${checked ? "[x]" : "[ ]"} ${label}`);
     }
 
     heading("7. Signature");
@@ -124,6 +173,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
     const { data: document } = await supabaseAdmin.from("lease_contract_documents").select("*").eq("id", documentId).eq("user_id", userId).maybeSingle();
     if (!document) return res.status(404).json({ error: "Contrat introuvable." });
+    const missing = missingRequiredFields(document);
+    if (missing.length) return res.status(400).json({ error: `Contrat incomplet : ${missing.join(", ")}.` });
     const pdf = await makePdf(document);
     const path = contractPdfPath(String(userId), document.lease_id, document.id);
     const { error: uploadError } = await supabaseAdmin.storage.from(LEASE_CONTRACT_BUCKET).upload(path, pdf, { contentType: "application/pdf", upsert: true });

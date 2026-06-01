@@ -76,6 +76,7 @@ export type Lease = {
   charges_amount: number | null;
   deposit_amount: number | null;
   payment_day: number | null;
+  payment_type?: string | null;
   payment_method: string | null;
   lease_kind?: string | null;
   auto_renewal_enabled?: boolean | null;

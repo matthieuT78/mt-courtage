@@ -5,6 +5,7 @@ import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant
 import type { LandlordSectionKey } from "../SidebarNav";
 import { supabase } from "../../../lib/supabaseClient";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
+import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 
 type DashboardAlert = {
   tone: "emerald" | "amber" | "red";
@@ -21,7 +22,8 @@ type TransactionRow = {
   property_id?: string | null;
 };
 
-const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+const pad2 = (value: number) => String(value).padStart(2, "0");
+const toISODate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 const addMonths = (d: Date, delta: number) => new Date(d.getFullYear(), d.getMonth() + delta, 1);
 const normalizeDate = (value?: string | null) => {
@@ -118,7 +120,15 @@ export function SectionDashboard({
       ),
     [payments, monthRange]
   );
-  const currentMonthReceipts = Array.isArray(receipts) ? receipts : [];
+  const currentMonthReceipts = useMemo(
+    () =>
+      (Array.isArray(receipts) ? receipts : []).filter(
+        (receipt) =>
+          String(receipt.period_start || "") >= monthRange.startISO &&
+          String(receipt.period_start || "") <= monthRange.endISO
+      ),
+    [receipts, monthRange]
+  );
   const receiptCoverage = activeLeases.length > 0 ? clampPct((currentMonthReceipts.length / activeLeases.length) * 100) : 0;
 
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
@@ -373,6 +383,7 @@ export function SectionDashboard({
 
   const leaseCards = useMemo(() => {
     const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const in90Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 90);
     const currentMonth = monthRange.startISO.slice(0, 7);
 
@@ -386,12 +397,15 @@ export function SectionDashboard({
       const endDate = normalizeDate(lease.end_date);
       const leaseEndingSoon = !!endDate && endDate <= in90Days;
       const paymentState = paymentStatusForLease(lease, currentMonth, payment);
+      const dueDate = getLeasePaymentDueDate(lease, currentMonth);
       const paymentStatus =
         paymentState.label !== "À suivre"
           ? paymentState.label
-          : payment?.due_date && normalizeDate(payment.due_date)! < now
+          : dueDate && dueDate > today
+          ? "À venir"
+          : dueDate && dueDate < today
           ? "En retard"
-          : "À suivre";
+          : "À confirmer";
 
       return {
         lease,
@@ -401,6 +415,7 @@ export function SectionDashboard({
         paymentStatus,
         missingAmount: paymentState.missing,
         incompletePayment: paymentState.incomplete,
+        dueDate,
         hasReceipt: !!receipt,
         leaseEndingSoon,
         endDate,
@@ -411,7 +426,7 @@ export function SectionDashboard({
   const rentsToCollect = useMemo(
     () =>
       leaseCards
-        .filter((card) => card.paymentStatus !== "Encaissé")
+        .filter((card) => card.paymentStatus !== "Encaissé" && card.paymentStatus !== "À venir")
         .sort((a, b) => {
           if (a.paymentStatus === "En retard" && b.paymentStatus !== "En retard") return -1;
           if (a.paymentStatus !== "En retard" && b.paymentStatus === "En retard") return 1;
@@ -419,6 +434,14 @@ export function SectionDashboard({
         }),
     [leaseCards]
   );
+
+  const upcomingRents = useMemo(() => leaseCards.filter((card) => card.paymentStatus === "À venir"), [leaseCards]);
+  const upcomingTotal = useMemo(() => upcomingRents.reduce((sum, card) => sum + card.total, 0), [upcomingRents]);
+  const hasOnlyUpcomingRents = upcomingRents.length > 0 && rentsToCollect.length === 0;
+  const nextDueDate = useMemo(() => {
+    const timestamps = upcomingRents.map((card) => card.dueDate?.getTime()).filter((value): value is number => Number.isFinite(value));
+    return timestamps.length > 0 ? new Date(Math.min(...timestamps)) : null;
+  }, [upcomingRents]);
 
   const incompletePayments = useMemo(
     () => leaseCards.filter((card) => card.paymentStatus === "Paiement incomplet"),
@@ -479,31 +502,32 @@ export function SectionDashboard({
       });
     }
 
-    if (monthlyExpected > 0 && remainingToCollect > 0 && lateCount === 0) {
+    if (monthlyExpected > 0 && remainingToCollect > 0 && lateCount === 0 && rentsToCollect.length > 0) {
       const pendingDetails = rentsToCollect
         .slice(0, 3)
         .map((card) => `${card.propertyLabel} · ${card.tenantName} · ${formatEuro(card.total)} à confirmer`);
+      const hasAutomaticReminder = rentsToCollect.some((card) => !!card.lease.auto_reminder_enabled);
 
       actions.push({
         tone: ratio >= 70 ? "amber" : "red",
         title: `${formatEuro(remainingToCollect)} reste à encaisser`,
-        desc: `Encaissement à ${ratio}%. Vérifiez les loyers du mois non confirmés avant de considérer le mois comme complet.`,
+        desc: hasAutomaticReminder
+          ? `Encaissement à ${ratio}%. Les rappels email activés suivent le calendrier de chaque bail. Vous pouvez aussi confirmer les loyers depuis Quittances.`
+          : `Encaissement à ${ratio}%. Aucun rappel email automatique n’est activé pour ces baux : confirmez manuellement les loyers depuis Quittances.`,
         details: pendingDetails.length ? pendingDetails : ["Contrôlez les paiements du mois et marquez les loyers reçus."],
         target: "quittances",
         cta: "Confirmer les loyers",
       });
     }
 
-    if (activeLeases.length > 0 && currentMonthReceipts.length < activeLeases.length) {
-      const missingReceiptDetails = leaseCards
-        .filter((card) => !card.hasReceipt)
-        .slice(0, 3)
-        .map((card) => `${card.propertyLabel} · ${card.tenantName}`);
+    const missingReceiptCards = leaseCards.filter((card) => card.paymentStatus === "Encaissé" && !card.hasReceipt);
+    if (missingReceiptCards.length > 0) {
+      const missingReceiptDetails = missingReceiptCards.slice(0, 3).map((card) => `${card.propertyLabel} · ${card.tenantName}`);
 
       actions.push({
         tone: "amber",
         title: "Quittances du mois à finaliser",
-        desc: `${currentMonthReceipts.length}/${activeLeases.length} quittance${activeLeases.length > 1 ? "s" : ""} générée${currentMonthReceipts.length > 1 ? "s" : ""}.`,
+        desc: `${missingReceiptCards.length} quittance${missingReceiptCards.length > 1 ? "s" : ""} à générer après confirmation du paiement.`,
         details: missingReceiptDetails,
         target: "quittances",
         cta: "Gérer les quittances",
@@ -572,15 +596,17 @@ export function SectionDashboard({
     const rows = [
       {
         label: "Encaissement",
-        value: monthlyExpected > 0 ? `${ratio}%` : "À configurer",
-        tone: monthlyExpected === 0 ? "amber" : ratio >= 95 ? "emerald" : ratio >= 70 ? "amber" : "red",
+        value: monthlyExpected === 0 ? "À configurer" : hasOnlyUpcomingRents ? "À venir" : `${ratio}%`,
+        tone: monthlyExpected === 0 ? "amber" : hasOnlyUpcomingRents ? "emerald" : ratio >= 95 ? "emerald" : ratio >= 70 ? "amber" : "red",
         desc:
           monthlyExpected === 0
             ? "Créez un bail actif pour générer les loyers attendus."
+            : hasOnlyUpcomingRents
+            ? `${formatEuro(upcomingTotal)} attendu${nextDueDate ? ` le ${fmtDate(toISODate(nextDueDate))}` : " prochainement"}. Aucune confirmation n’est requise aujourd’hui.`
             : remainingToCollect > 0
             ? `${formatEuro(remainingToCollect)} reste à confirmer dans Quittances.`
             : "Tous les loyers attendus sont confirmés.",
-        target: monthlyExpected === 0 ? ("baux" as LandlordSectionKey) : remainingToCollect > 0 ? ("quittances" as LandlordSectionKey) : null,
+        target: monthlyExpected === 0 ? ("baux" as LandlordSectionKey) : !hasOnlyUpcomingRents && remainingToCollect > 0 ? ("quittances" as LandlordSectionKey) : null,
       },
       {
         label: "Retards",
@@ -595,15 +621,17 @@ export function SectionDashboard({
       },
       {
         label: "Quittances",
-        value: activeLeases.length > 0 ? `${receiptCoverage}%` : "À créer",
-        tone: activeLeases.length === 0 ? "amber" : receiptCoverage >= 100 ? "emerald" : receiptCoverage >= 50 ? "amber" : "red",
+        value: activeLeases.length === 0 ? "À créer" : hasOnlyUpcomingRents ? "À venir" : `${receiptCoverage}%`,
+        tone: activeLeases.length === 0 ? "amber" : hasOnlyUpcomingRents ? "emerald" : receiptCoverage >= 100 ? "emerald" : receiptCoverage >= 50 ? "amber" : "red",
         desc:
           activeLeases.length === 0
             ? "Créez un bail actif pour démarrer le workflow."
+            : hasOnlyUpcomingRents
+            ? "La quittance sera à générer après confirmation du paiement."
             : receiptCoverage < 100
             ? "Certaines quittances du mois ne sont pas encore prêtes."
             : "Les quittances du mois sont prêtes.",
-        target: activeLeases.length === 0 ? ("baux" as LandlordSectionKey) : receiptCoverage < 100 ? ("quittances" as LandlordSectionKey) : null,
+        target: activeLeases.length === 0 ? ("baux" as LandlordSectionKey) : !hasOnlyUpcomingRents && receiptCoverage < 100 ? ("quittances" as LandlordSectionKey) : null,
       },
       {
         label: "Occupation",
@@ -614,7 +642,7 @@ export function SectionDashboard({
       },
     ] as const;
     return rows;
-  }, [activeLeases.length, lateCount, monthlyExpected, occupancyRate, ratio, receiptCoverage, remainingToCollect]);
+  }, [activeLeases.length, hasOnlyUpcomingRents, lateCount, monthlyExpected, nextDueDate, occupancyRate, ratio, receiptCoverage, remainingToCollect, upcomingTotal]);
 
   const toneFromPercent = (percent: number) =>
     (percent >= 100 ? "emerald" : percent >= 66 ? "indigo" : percent >= 33 ? "amber" : "slate");
@@ -794,8 +822,12 @@ export function SectionDashboard({
           desc="La lecture opérationnelle du mois : ce qui est prévu, reçu, restant et documenté."
           right={
             <div className="flex flex-wrap gap-2">
-              <Pill tone={ratio >= 95 ? "emerald" : ratio >= 70 ? "amber" : "red"}>Encaissement {ratio}%</Pill>
-              <Pill tone={receiptCoverage >= 100 ? "emerald" : receiptCoverage >= 50 ? "amber" : "red"}>Quittances {receiptCoverage}%</Pill>
+              <Pill tone={hasOnlyUpcomingRents ? "emerald" : ratio >= 95 ? "emerald" : ratio >= 70 ? "amber" : "red"}>
+                Encaissement {hasOnlyUpcomingRents ? "à venir" : `${ratio}%`}
+              </Pill>
+              <Pill tone={hasOnlyUpcomingRents ? "emerald" : receiptCoverage >= 100 ? "emerald" : receiptCoverage >= 50 ? "amber" : "red"}>
+                Quittances {hasOnlyUpcomingRents ? "après paiement" : `${receiptCoverage}%`}
+              </Pill>
             </div>
           }
         />
@@ -803,7 +835,12 @@ export function SectionDashboard({
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <KpiCard title="Attendu" value={formatEuro(monthlyExpected)} hint="Loyers + charges des baux actifs" />
           <KpiCard title="Encaissé" value={formatEuro(monthlyPaid)} hint={`${ratio}% du mois`} tone={ratio >= 95 ? "emerald" : "slate"} />
-          <KpiCard title="Reste à encaisser" value={formatEuro(remainingToCollect)} hint={remainingToCollect > 0 ? "À suivre" : "Tout est encaissé"} tone={remainingToCollect > 0 ? "amber" : "emerald"} />
+          <KpiCard
+            title="Reste à encaisser"
+            value={formatEuro(remainingToCollect)}
+            hint={upcomingTotal > 0 && rentsToCollect.length === 0 ? `${formatEuro(upcomingTotal)} attendu prochainement` : remainingToCollect > 0 ? "À suivre" : "Tout est encaissé"}
+            tone={rentsToCollect.length > 0 ? "amber" : "emerald"}
+          />
           <KpiCard title="Retards" value={String(lateCount)} hint={lateCount > 0 ? "Action requise" : "Aucun retard"} tone={lateCount > 0 ? "red" : "emerald"} />
           <KpiCard title="Dépôts" value={formatEuro(depositTotal)} hint="Baux actifs" tone="indigo" />
         </div>
@@ -829,7 +866,9 @@ export function SectionDashboard({
 
           {rentsToCollect.length === 0 ? (
             <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-900">
-              Tous les loyers attendus du mois sont confirmés.
+              {upcomingRents.length > 0
+                ? `Aucune action aujourd’hui. Prochaine échéance : ${fmtDate(toISODate(upcomingRents[0].dueDate!))}.`
+                : "Tous les loyers attendus du mois sont confirmés."}
             </div>
           ) : (
             <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -960,7 +999,9 @@ export function SectionDashboard({
                     </Pill>
                   </div>
                   <div>
-                    <Pill tone={card.hasReceipt ? "emerald" : "amber"}>{card.hasReceipt ? "Prête" : "À générer"}</Pill>
+                    <Pill tone={card.hasReceipt ? "emerald" : card.paymentStatus === "Encaissé" ? "amber" : "slate"}>
+                      {card.hasReceipt ? "Prête" : card.paymentStatus === "Encaissé" ? "À générer" : "Après paiement"}
+                    </Pill>
                   </div>
                   <p className="text-right font-semibold text-slate-900">{formatEuro(card.total)}</p>
                 </div>

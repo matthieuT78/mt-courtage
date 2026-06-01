@@ -13,8 +13,10 @@ import type {
   RentReceipt,
 } from "./types";
 import { getLeaseRentPeriod } from "../rentPeriod";
+import { getLeasePaymentDueDate } from "../rentSchedule";
 
-const fmtISO = (d: Date) => d.toISOString().slice(0, 10);
+const pad2 = (value: number) => String(value).padStart(2, "0");
+const fmtISO = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const getMonthRange = (base = new Date()) => {
   const y = base.getFullYear();
   const m = base.getMonth();
@@ -271,11 +273,58 @@ export function useLandlordDashboard() {
   );
 
   const lateCount = useMemo(() => {
-    const now = new Date();
-    return paymentsThisMonth.filter(
-      (p) => !p.paid_at && p.due_date && new Date(p.due_date) < now
-    ).length;
-  }, [paymentsThisMonth]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentMonth = monthRange.startISO.slice(0, 7);
+    return activeLeases.filter((lease) => {
+      const dueDate = getLeasePaymentDueDate(lease, currentMonth);
+      if (!dueDate || dueDate >= today) return false;
+      const expected = Number(getLeaseRentPeriod(lease, currentMonth)?.total || 0);
+      const payment = paymentsThisMonth.find((row) => row.lease_id === lease.id);
+      return !payment?.paid_at || Number(payment.total_amount || 0) + 0.01 < expected;
+    }).length;
+  }, [activeLeases, monthRange.startISO, paymentsThisMonth]);
+
+  const monthlyDueExpected = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentMonth = monthRange.startISO.slice(0, 7);
+    return activeLeases.reduce((sum, lease) => {
+      const dueDate = getLeasePaymentDueDate(lease, currentMonth);
+      return dueDate && dueDate <= today ? sum + Number(getLeaseRentPeriod(lease, currentMonth)?.total || 0) : sum;
+    }, 0);
+  }, [activeLeases, monthRange.startISO]);
+
+  const monthlyDuePaid = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentMonth = monthRange.startISO.slice(0, 7);
+    return activeLeases.reduce((sum, lease) => {
+      const dueDate = getLeasePaymentDueDate(lease, currentMonth);
+      if (!dueDate || dueDate > today) return sum;
+      const payment = paymentsThisMonth.find((row) => row.lease_id === lease.id);
+      return sum + (payment?.paid_at ? Number(payment.total_amount || 0) : 0);
+    }, 0);
+  }, [activeLeases, monthRange.startISO, paymentsThisMonth]);
+
+  const receiptExpectedCount = useMemo(() => {
+    const currentMonth = monthRange.startISO.slice(0, 7);
+    return activeLeases.filter((lease) => {
+      const expected = Number(getLeaseRentPeriod(lease, currentMonth)?.total || 0);
+      const payment = paymentsThisMonth.find((row) => row.lease_id === lease.id);
+      return !!payment?.paid_at && Number(payment.total_amount || 0) + 0.01 >= expected;
+    }).length;
+  }, [activeLeases, monthRange.startISO, paymentsThisMonth]);
+
+  const missingReceiptsAfterPaymentCount = useMemo(() => {
+    const receiptLeaseIds = new Set(receiptsThisMonth.map((receipt) => receipt.lease_id));
+    return activeLeases.filter((lease) => {
+      if (receiptLeaseIds.has(lease.id)) return false;
+      const payment = paymentsThisMonth.find((row) => row.lease_id === lease.id);
+      const expected = Number(getLeaseRentPeriod(lease, monthRange.startISO.slice(0, 7))?.total || 0);
+      return !!payment?.paid_at && Number(payment.total_amount || 0) + 0.01 >= expected;
+    }).length;
+  }, [activeLeases, monthRange.startISO, paymentsThisMonth, receiptsThisMonth]);
 
   const depositTotal = useMemo(
     () =>
@@ -304,26 +353,26 @@ export function useLandlordDashboard() {
 
     score += Math.round((occupancyRate / 100) * 10);
 
-    if (monthlyExpected > 0) {
-      const collectionRatio = Math.min(Math.max(monthlyPaid / monthlyExpected, 0), 1);
-      score += Math.round(collectionRatio * 40);
-    }
+    const collectionRatio = monthlyDueExpected > 0 ? Math.min(Math.max(monthlyDuePaid / monthlyDueExpected, 0), 1) : 1;
+    score += Math.round(collectionRatio * 40);
 
     if (activeLeaseCount > 0) {
       score += Math.max(0, 5 - Math.min(lateCount * 5, 5));
-      score += Math.round(Math.min(receiptsThisMonth.length / activeLeaseCount, 1) * 25);
+      const receiptRatio = receiptExpectedCount > 0 ? Math.min(receiptsThisMonth.length / receiptExpectedCount, 1) : 1;
+      score += Math.round(receiptRatio * 25);
     }
 
     return Math.max(0, Math.min(100, score));
   }, [
     properties.length,
     tenants.length,
-    monthlyExpected,
-    monthlyPaid,
+    monthlyDueExpected,
+    monthlyDuePaid,
     lateCount,
     occupancyRate,
     activeLeases.length,
     receiptsThisMonth.length,
+    receiptExpectedCount,
   ]);
 
   // --- Alerts
@@ -370,11 +419,11 @@ export function useLandlordDashboard() {
         action: "Voir les quittances",
       });
 
-    if (activeLeases.length > 0 && receiptsThisMonth.length === 0)
+    if (missingReceiptsAfterPaymentCount > 0)
       a.push({
         tone: "amber",
         title: "Quittances non générées ce mois-ci",
-        desc: "Générez les quittances et envoyez-les au locataire.",
+        desc: "Le paiement est confirmé : générez maintenant la quittance et transmettez-la au locataire.",
         action: "Gérer les quittances",
       });
 
@@ -399,6 +448,7 @@ export function useLandlordDashboard() {
     tenants.length,
     activeLeases.length,
     lateCount,
+    missingReceiptsAfterPaymentCount,
     receiptsThisMonth.length,
     overLimit,
   ]);

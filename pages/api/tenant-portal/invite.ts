@@ -3,6 +3,19 @@ import { requireApiUser } from "../../../lib/apiAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { getOrCreateTenantThread } from "../../../lib/tenantPortal";
 
+function tenantPortalRedirectUrl(req: NextApiRequest) {
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0].trim();
+  const host = forwardedHost || String(req.headers.host || "").trim();
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+  const protocol = forwardedProto || (host.includes("localhost") ? "http" : "https");
+  const requestOrigin = host ? `${protocol}://${host}` : "";
+  const configured = String(process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
+  const configuredIsLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
+  const requestIsPublic = requestOrigin && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(requestOrigin);
+  const origin = requestIsPublic && configuredIsLocal ? requestOrigin : configured || requestOrigin || "https://lokt.fr";
+  return `${origin.replace(/\/$/, "")}/espace-locataire`;
+}
+
 async function findUserByEmail(email: string) {
   if (!supabaseAdmin) return null;
   for (let page = 1; page <= 20; page++) {
@@ -38,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let tenantUser = await findUserByEmail(email);
     let invitationSent = false;
     if (!tenantUser) {
-      const redirectTo = `${String(process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_URL || "https://lokt.fr").replace(/\/$/, "")}/espace-locataire`;
+      const redirectTo = tenantPortalRedirectUrl(req);
       const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         redirectTo,
         data: {
