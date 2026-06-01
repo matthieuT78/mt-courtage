@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "sitemap": "node scripts/generate-sitemap.mjs",
-    "cron:sync": "node scripts/configure-cron-job-org.mjs"
+    "cron:sync": "node scripts/configure-cron-job-org.mjs",
+    "auth:sync-emails": "node scripts/configure-supabase-auth-emails.mjs"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
