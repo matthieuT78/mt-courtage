@@ -37,6 +37,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { data: properties, error: propertiesError },
       { data: receipts, error: receiptsError },
       { data: reports, error: reportsError },
+      { data: contracts, error: contractsError },
+      { data: dpes, error: dpesError },
     ] = await Promise.all([
       propertyIds.length
         ? supabaseAdmin.from("properties").select("id,label,address_line1,address_line2,postal_code,city,country").in("id", propertyIds)
@@ -57,10 +59,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .not("pdf_url", "is", null)
             .order("created_at", { ascending: false })
         : Promise.resolve({ data: [], error: null }),
+      leaseIds.length
+        ? supabaseAdmin
+            .from("lease_contract_documents")
+            .select("id,lease_id,contract_kind,status,signed_pdf_url,signed_at")
+            .in("lease_id", leaseIds)
+            .not("signed_pdf_url", "is", null)
+            .order("signed_at", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      propertyIds.length
+        ? supabaseAdmin
+            .from("property_dpe_documents")
+            .select("id,property_id,file_name,size_bytes,created_at")
+            .in("property_id", propertyIds)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
     ]);
     if (propertiesError) throw propertiesError;
     if (receiptsError) throw receiptsError;
     if (reportsError) throw reportsError;
+    if (contractsError) throw contractsError;
+    if (dpesError) throw dpesError;
 
     const threads = [];
     for (const access of accesses) {
@@ -89,6 +108,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       properties: properties || [],
       receipts: receipts || [],
       inventoryReports: reports || [],
+      leaseContracts: contracts || [],
+      dpes: dpes || [],
       threads,
     });
   } catch (e: any) {

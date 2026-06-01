@@ -4,14 +4,10 @@ Allow: /
 # Espaces privés ou techniques
 Disallow: /admin
 Disallow: /admin/
-Disallow: /mon-compte
-Disallow: /mon-compte/
-Disallow: /espace-bailleur
-Disallow: /espace-bailleur/
-Disallow: /auth
 Disallow: /api/
-Disallow: /projets
-Disallow: /test-quittance
+
+# Les pages privées HTML restent crawlables afin que Google lise leur balise noindex.
+# Elles ne sont pas proposées dans le sitemap.
 
 # Les pages /simulateur/... restent crawlables pour que Google voie le noindex,
 # mais elles ne sont plus poussées dans le sitemap.

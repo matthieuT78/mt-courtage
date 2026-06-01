@@ -114,7 +114,7 @@ export default function EspaceLocatairePage() {
     if (router.query.tab === "messagerie") setActive("messagerie");
   }, [router.query.tab]);
 
-  const openDocument = async (kind: "receipt" | "inventory", documentId: string) => {
+  const openDocument = async (kind: "receipt" | "inventory" | "lease_contract" | "dpe", documentId: string) => {
     const pdfWindow = openBlankWindow();
     setErr(null);
     try {
@@ -216,7 +216,7 @@ export default function EspaceLocatairePage() {
                   <div className="mt-5 grid gap-3 sm:grid-cols-3">
                     <Stat label="Début du bail" value={formatDate(activeLease?.start_date)} />
                     <Stat label="Quittances disponibles" value={String(data.receipts?.length || 0)} />
-                    <Stat label="Documents EDL" value={String(data.inventoryReports?.length || 0)} />
+                    <Stat label="Documents" value={String((data.inventoryReports?.length || 0) + (data.leaseContracts?.length || 0) + (data.dpes?.length || 0))} />
                   </div>
                 </div>
               ) : null}
@@ -235,16 +235,38 @@ export default function EspaceLocatairePage() {
               ) : null}
 
               {active === "documents" ? (
-                <DocumentList
-                  title="États des lieux"
-                  empty="Aucun état des lieux PDF disponible pour le moment."
-                  rows={(data.inventoryReports || []).map((report: any) => ({
-                    id: report.id,
-                    title: report.report_type === "exit" ? "État des lieux de sortie" : "État des lieux d’entrée",
-                    subtitle: `${formatDate(report.performed_at)} · ${report.status || "document"}`,
-                  }))}
-                  onOpen={(id) => openDocument("inventory", id)}
-                />
+                <div className="space-y-7">
+                  <DocumentList
+                    title="Contrat de location"
+                    empty="Aucun bail signé disponible pour le moment."
+                    rows={(data.leaseContracts || []).map((contract: any) => ({
+                      id: contract.id,
+                      title: "Bail signé",
+                      subtitle: `${formatDate(contract.signed_at)} · ${contract.contract_kind || "contrat de location"}`,
+                    }))}
+                    onOpen={(id) => openDocument("lease_contract", id)}
+                  />
+                  <DocumentList
+                    title="Diagnostics énergétiques"
+                    empty="Aucun DPE disponible pour le moment."
+                    rows={(data.dpes || []).map((dpe: any) => ({
+                      id: dpe.id,
+                      title: "Diagnostic de performance énergétique",
+                      subtitle: `${dpe.file_name} · ${formatDate(dpe.created_at)}`,
+                    }))}
+                    onOpen={(id) => openDocument("dpe", id)}
+                  />
+                  <DocumentList
+                    title="États des lieux"
+                    empty="Aucun état des lieux PDF disponible pour le moment."
+                    rows={(data.inventoryReports || []).map((report: any) => ({
+                      id: report.id,
+                      title: report.report_type === "exit" ? "État des lieux de sortie" : "État des lieux d’entrée",
+                      subtitle: `${formatDate(report.performed_at)} · ${report.status || "document"}`,
+                    }))}
+                    onOpen={(id) => openDocument("inventory", id)}
+                  />
+                </div>
               ) : null}
 
               {active === "messagerie" ? (

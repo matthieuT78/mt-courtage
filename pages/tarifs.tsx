@@ -287,6 +287,7 @@ export default function TarifsPage() {
                 <li>✓ Bien, bail et locataire</li>
                 <li>✓ Quittances manuelles et PDF</li>
                 <li>✓ États des lieux et inventaire</li>
+                <li>✓ 50 Mo de stockage documentaire sécurisé</li>
                 <li>✓ Finance simple</li>
                 <li>✓ 4 alertes essentielles par email</li>
                 <li className="text-slate-500">Quittances et relances automatiques non incluses</li>
@@ -333,6 +334,7 @@ export default function TarifsPage() {
                     ["Biens, locataires et baux", "Inclus", "Inclus", "Inclus"],
                     ["Quittances PDF manuelles", "Inclus", "Inclus", "Inclus"],
                     ["États des lieux et inventaire", "Inclus", "Inclus", "Inclus"],
+                    ["Stockage documentaire sécurisé", "50 Mo", "500 Mo", "2 Go"],
                     ["Finance simple", "Inclus", "Inclus", "Inclus"],
                     ["Alertes essentielles", "4 alertes", "Toutes les alertes", "Toutes les alertes"],
                     ["Alertes IRL, fin de bail et EDL", "Non inclus", "Inclus", "Inclus"],

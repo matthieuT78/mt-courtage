@@ -7,6 +7,7 @@ import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, pluralFR } from "../ui/uiHelpers";
 import { usePermissions } from "../../PermissionProvider";
+import { PropertyDpePanel } from "../PropertyDpePanel";
 
 type Props = {
   userId: string;
@@ -399,6 +400,8 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
             onChange={(e) => setForm((s) => ({ ...s, ghg_class: e.target.value }))}
           />
         </div>
+
+        {propertyId ? <PropertyDpePanel propertyId={propertyId} propertyLabel={form.label} /> : null}
 
         {/* Photos */}
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">

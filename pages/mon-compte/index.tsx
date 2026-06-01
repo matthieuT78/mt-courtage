@@ -7,6 +7,7 @@ import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
 import AccountLayout from "../../components/account/AccountLayout";
 import PostalCodeCityFields from "../../components/forms/PostalCodeCityFields";
+import { StorageUsagePanel } from "../../components/account/StorageUsagePanel";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuthUser } from "../../hooks/useAuthUser";
 import { useProfile } from "../../hooks/useProfile";
@@ -399,6 +400,7 @@ export default function MonCompteIndexPage() {
               </div>
             </div>
           </section>
+          <StorageUsagePanel />
         </div>
       </AccountLayout>
     );

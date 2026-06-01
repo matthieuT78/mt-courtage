@@ -178,7 +178,7 @@ export default function AppHeader() {
               {authReady && isLoggedIn ? (
                 <>
                   <Link
-                    href="/mon-compte/profil"
+                    href="/mon-compte"
                     className="hidden rounded-full border border-slate-200 bg-white px-3 py-2 text-[0.8rem] font-semibold text-slate-700 hover:bg-slate-50 sm:inline-flex"
                   >
                     Mon compte

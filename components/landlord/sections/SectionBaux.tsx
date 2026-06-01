@@ -6,6 +6,7 @@ import {
   ArrowPathIcon,
   ArrowRightIcon,
   CheckCircleIcon,
+  DocumentTextIcon,
   HandRaisedIcon,
   PencilSquareIcon,
   PlusIcon,
@@ -20,6 +21,7 @@ import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { usePermissions } from "../../PermissionProvider";
+import { LeaseContractWizard } from "../LeaseContractWizard";
 
 /* ======================================================
    TYPES
@@ -558,6 +560,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [contractLeaseId, setContractLeaseId] = useState<string | null>(null);
 
   // Search
   const [q, setQ] = useState("");
@@ -1097,6 +1100,17 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
                   }}
                 >
                   Modifier
+                </ActionButton>
+
+                <ActionButton
+                  icon={DocumentTextIcon}
+                  disabled={loading}
+                  onClick={(e) => {
+                    stop(e);
+                    setContractLeaseId(l.id);
+                  }}
+                >
+                  Rédiger le contrat
                 </ActionButton>
 
                 <ActionButton
@@ -1810,6 +1824,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
   ====================================================== */
 
   return (
+    <>
+    {contractLeaseId ? <LeaseContractWizard userId={userId} leaseId={contractLeaseId} onClose={() => setContractLeaseId(null)} /> : null}
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
       <SectionTitle
         kicker="Baux"
@@ -2031,5 +2047,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
         </ExpandableSection>
       </div>
     </div>
+    </>
   );
 }

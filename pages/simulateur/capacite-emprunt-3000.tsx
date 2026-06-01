@@ -84,8 +84,8 @@ export default function Capacite3000() {
               Essayez aussi :
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
-              <li><Link href="/simulateur/capacite-emprunt-2000" className="underline">Capacité avec 2 000 €</Link></li>
-              <li><Link href="/simulateur/capacite-emprunt-4000" className="underline">Capacité avec 4 000 €</Link></li>
+              <li><Link href="/simulateur/capacite-emprunt/2000" className="underline">Capacité avec 2 000 €</Link></li>
+              <li><Link href="/simulateur/capacite-emprunt/4000" className="underline">Capacité avec 4 000 €</Link></li>
               <li><Link href="/capacite" className="underline">Simulateur complet</Link></li>
             </ul>
           </section>
