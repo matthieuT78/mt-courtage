@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
+import { removeTrackedPartialPaymentTransactions } from "../../../lib/rentPaymentFinance";
 
 type Json = Record<string, any>;
 
@@ -64,6 +65,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .eq("id", existing.data.id);
 
       if (upd.error) return res.status(500).json({ error: upd.error.message });
+      await removeTrackedPartialPaymentTransactions({
+        leaseId,
+        periodStart: normalizedPeriodStart,
+        periodEnd: normalizedPeriodEnd,
+      });
       return res.status(200).json({ ok: true, payment_id: existing.data.id });
     }
 
@@ -85,6 +91,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       .single();
 
     if (ins.error || !ins.data) return res.status(500).json({ error: ins.error?.message || "Insert rent_payments échoué" });
+    await removeTrackedPartialPaymentTransactions({
+      leaseId,
+      periodStart: normalizedPeriodStart,
+      periodEnd: normalizedPeriodEnd,
+    });
     return res.status(200).json({ ok: true, payment_id: ins.data.id });
   } catch (e: any) {
     console.error("[api/payments/confirm] error:", e);

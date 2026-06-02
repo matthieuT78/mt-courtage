@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
+import { removeTrackedPartialPaymentTransactions } from "../../../lib/rentPaymentFinance";
 
 type Json = Record<string, any>;
 
@@ -249,6 +250,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
       paymentId = insPay.data.id;
     }
+
+    await removeTrackedPartialPaymentTransactions({
+      leaseId: receipt.lease_id,
+      periodStart: receipt.period_start,
+      periodEnd: receipt.period_end,
+    });
 
     // 5) Upsert transaction rent (Finance)
     const occurredAt = String(receipt.period_end || receipt.period_start || "").slice(0, 10);

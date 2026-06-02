@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { confirmLeasePaymentAndSendReceipt } from "../../../lib/receiptWorkflow";
+import { removeTrackedPartialPaymentTransactions } from "../../../lib/rentPaymentFinance";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
 
@@ -107,6 +108,12 @@ async function upsertPaymentAndFinance(params: {
     if (ins.error || !ins.data) throw new Error(ins.error?.message || "Création paiement échouée.");
   }
 
+  await removeTrackedPartialPaymentTransactions({
+    leaseId: params.row.lease_id,
+    periodStart: params.row.period_start,
+    periodEnd: params.row.period_end,
+  });
+
   if (totalReceived > 0) {
     const tx = await supabaseAdmin.from("transactions").insert({
       user_id: params.row.user_id,
@@ -119,7 +126,7 @@ async function upsertPaymentAndFinance(params: {
       category: "rent",
       label: params.label,
       amount: totalReceived,
-      notes: params.notes,
+      notes: `[lokt:partial-payment:${params.row.period_start}:${params.row.period_end}] ${params.notes}`,
       updated_at: now,
     } as any);
     if (tx.error) throw tx.error;
@@ -228,6 +235,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       );
     }
 
+    await upsertPaymentAndFinance({
+      row,
+      lease,
+      rentReceived: 0,
+      chargesReceived: 0,
+      source: "owner_unpaid_email",
+      label: "Paiement partiel loyer",
+      notes: `Paiement déclaré non reçu pour ${period}.`,
+    });
     await markTokenUsed(row.id);
     return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "unpaid", month: period }));
   } catch (e: any) {

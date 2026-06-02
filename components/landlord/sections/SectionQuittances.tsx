@@ -261,6 +261,7 @@ function paymentAnalysis(lease: Lease, payment: AnyPayment | null, yyyymm: strin
   receivedTotal: number;
   missingAmount: number;
   reminderReason: "unpaid" | "partial" | null;
+  ownerConfirmedUnpaid: boolean;
 } {
   const period = getLeaseRentPeriod(lease, yyyymm);
   const expectedRent = Number(period?.rent || 0);
@@ -270,17 +271,18 @@ function paymentAnalysis(lease: Lease, payment: AnyPayment | null, yyyymm: strin
   const receivedCharges = Number(payment?.charges_amount || 0);
   const receivedTotal = Number(payment?.total_amount || 0);
   const paid = payment ? isPaymentPaid(payment) : false;
+  const ownerConfirmedUnpaid = String(payment?.source || "") === "owner_unpaid_email";
 
   if (!payment || !paid) {
-    return { status: "pending", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount: expectedTotal, reminderReason: "unpaid" };
+    return { status: "pending", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount: expectedTotal, reminderReason: "unpaid", ownerConfirmedUnpaid };
   }
 
   const missingAmount = Math.max(0, expectedTotal - receivedTotal);
   if (receivedTotal + 0.01 < expectedTotal) {
-    return { status: "partial", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount, reminderReason: "partial" };
+    return { status: "partial", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount, reminderReason: "partial", ownerConfirmedUnpaid };
   }
 
-  return { status: "paid", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount: 0, reminderReason: null };
+  return { status: "paid", expectedRent, expectedCharges, expectedTotal, receivedRent, receivedCharges, receivedTotal, missingAmount: 0, reminderReason: null, ownerConfirmedUnpaid };
 }
 
 function Card({
@@ -1252,6 +1254,12 @@ export function SectionQuittances({
                               Reste {Number(row.pay.missingAmount || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
                             </span>
                           ) : null}
+
+                          {row.pay.ownerConfirmedUnpaid ? (
+                            <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.7rem] font-semibold text-red-800">
+                              Non reçu confirmé
+                            </span>
+                          ) : null}
                         </div>
                       </div>
 
@@ -1343,6 +1351,8 @@ export function SectionQuittances({
                       <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                         {row.payStatus === "partial"
                           ? "Paiement incomplet : la quittance attend le solde avant génération."
+                          : row.pay.ownerConfirmedUnpaid
+                          ? "Paiement déclaré non reçu : relance le locataire si nécessaire. Si le virement arrive ensuite, clique sur “Confirmer payé”."
                           : "Quittance non générable avant paiement confirmé."}
                       </div>
                     ) : row.payStatus === "paid" && !pdfReady ? (

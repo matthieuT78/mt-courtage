@@ -1,6 +1,7 @@
 import PDFDocument from "pdfkit";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { getLeaseRentPeriodFromDate } from "./rentPeriod";
+import { removeTrackedPartialPaymentTransactions } from "./rentPaymentFinance";
 
 type Result = {
   ok: true;
@@ -349,6 +350,12 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
       `,
     });
   }
+
+  await removeTrackedPartialPaymentTransactions({
+    leaseId,
+    periodStart: normalizedPeriodStart,
+    periodEnd: normalizedPeriodEnd,
+  });
 
   await supabaseAdmin.from("transactions").upsert(
     [

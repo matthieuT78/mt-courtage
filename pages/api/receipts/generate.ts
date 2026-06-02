@@ -458,6 +458,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const chargesAmount = rentPeriod.charges;
     const totalAmount = rentPeriod.total;
 
+    const { data: payment, error: paymentError } = await supabaseAdmin
+      .from("rent_payments")
+      .select("paid_at,total_amount")
+      .eq("lease_id", leaseId)
+      .eq("period_start", periodStart)
+      .eq("period_end", periodEnd)
+      .maybeSingle();
+    if (paymentError) return res.status(500).json({ error: paymentError.message });
+    if (!payment?.paid_at || Number(payment.total_amount || 0) + 0.01 < totalAmount) {
+      return res.status(409).json({
+        error: "Quittance indisponible : confirme d’abord le paiement complet du loyer et des charges.",
+      });
+    }
+
     let receipt: any = null;
     const existing = await supabaseAdmin
       .from("rent_receipts")

@@ -404,8 +404,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const uniqueReceipts = Array.from(byId.values());
     if (uniqueReceipts.length === 0) return;
 
+    const paymentsByPeriod = new Map(
+      safePayments.map((payment) => [
+        `${payment.lease_id}:${payment.period_start}:${payment.period_end}`,
+        payment,
+      ])
+    );
+
     const payload = uniqueReceipts.map((r) => {
       const lease = safeLeases.find((l) => (l as any).id === r.lease_id);
+      const payment = paymentsByPeriod.get(`${r.lease_id}:${r.period_start}:${r.period_end}`);
+      const fullyPaid = !!payment?.paid_at && Number(payment.total_amount || 0) + 0.01 >= Number(r.total_amount || 0);
       const occurred_at =
         (r.period_end ? String(r.period_end).slice(0, 10) : String(r.created_at).slice(0, 10)) ||
         new Date().toISOString().slice(0, 10);
@@ -417,7 +426,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         receipt_id: r.id,
         occurred_at,
         direction: "in" as const,
-        status: "expected" as const,
+        status: fullyPaid ? ("received" as const) : ("expected" as const),
         category: "rent",
         label: "Loyer (quittance)",
         amount: Number(r.total_amount || 0),
@@ -429,7 +438,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     // ⚠️ utilise l'index unique existant (user_id, receipt_id) WHERE receipt_id IS NOT NULL
     const { error } = await supabase.from("transactions").upsert(payload, { onConflict: "user_id,receipt_id" });
     if (error) throw error;
-  }, [safeLeases, safeReceipts, userId]);
+  }, [safeLeases, safePayments, safeReceipts, userId]);
 
   const loadFinance = useCallback(async (options?: { silent?: boolean }) => {
     if (!supabase || !userId) return;
