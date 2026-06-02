@@ -164,10 +164,11 @@ export default function GestionLocativeLmnpPage() {
       <AppHeader />
 
       <main className="flex-1">
-        <section className="relative overflow-hidden px-4 pb-10 pt-10 sm:pb-20 sm:pt-16">
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[700px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:h-[520px]" />
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[700px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)] sm:h-[520px]" />
-          <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
+        <section className="lokt-public-hero relative overflow-hidden px-4 pb-10 pt-8 sm:pb-20 sm:pt-16">
+          <div aria-hidden className="lokt-public-hero-band lokt-public-hero-flow absolute -left-[8%] top-[-8%] w-[116%] -skew-y-6 origin-top-left" />
+          <div aria-hidden className="lokt-public-hero-band absolute inset-x-0 top-0 -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.48)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.34)_100%)]" />
+          <div aria-hidden className="lokt-public-hero-band absolute left-0 top-0 w-full bg-gradient-to-r from-[#635bff]/55 via-[#00b8e8]/20 to-transparent lg:w-[68%]" />
+          <div aria-hidden className="lokt-public-hero-band lokt-public-hero-sheen pointer-events-none absolute -left-1/4 top-[-8%] w-[150%] -skew-y-6 bg-[linear-gradient(112deg,transparent_18%,rgba(255,255,255,.34)_42%,rgba(255,215,120,.3)_55%,transparent_76%)]" />
 
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">

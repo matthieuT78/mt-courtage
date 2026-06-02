@@ -452,6 +452,25 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    const items = Array.from(document.querySelectorAll<HTMLElement>("[data-scroll-reveal]"));
+    if (!items.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.16, rootMargin: "0px 0px -8% 0px" }
+    );
+
+    items.forEach((item) => observer.observe(item));
+    return () => observer.disconnect();
+  }, []);
+
   const isLoggedIn = !!user;
   const displayName = useMemo(() => firstNameFromUser(user), [user]);
 
@@ -595,13 +614,14 @@ export default function Home() {
               opacity: 1 !important;
             }
 
-            .lokt-hero-flow {
+            .lokt-public-hero-flow {
               animation: none !important;
             }
 
-            .lokt-hero-sweep {
+            .lokt-public-hero-sheen {
               animation: none !important;
             }
+
           }
 
           @keyframes fadeUp {
@@ -613,39 +633,6 @@ export default function Home() {
               opacity: 1;
               transform: translate3d(0, 0, 0);
             }
-          }
-
-          @keyframes heroFlow {
-            0%,
-            100% {
-              background-position: 0% 50%;
-              transform: translate3d(-3%, -2%, 0) scale(1.08);
-            }
-            50% {
-              background-position: 100% 50%;
-              transform: translate3d(3%, 2%, 0) scale(1.16);
-            }
-          }
-
-          .lokt-hero-flow {
-            background-size: 180% 180%;
-            animation: heroFlow 12s ease-in-out infinite;
-            will-change: transform, background-position;
-          }
-
-          @keyframes heroSweep {
-            0%,
-            100% {
-              transform: translate3d(-18%, 0, 0);
-            }
-            50% {
-              transform: translate3d(18%, 0, 0);
-            }
-          }
-
-          .lokt-hero-sweep {
-            animation: heroSweep 9s ease-in-out infinite;
-            will-change: transform;
           }
 
           .anim-fadeUp {
@@ -675,6 +662,7 @@ export default function Home() {
           .d-6 {
             animation-delay: 480ms;
           }
+
         `}</style>
       </Head>
 
@@ -683,11 +671,11 @@ export default function Home() {
       <ToolPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} />
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
-        <section className="relative overflow-hidden px-4 pb-10 pt-10 sm:pb-24 sm:pt-20">
-          <div aria-hidden className="lokt-hero-flow absolute -left-[8%] top-[-8%] h-[740px] w-[116%] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:h-[620px]" />
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[680px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)] sm:h-[560px]" />
-          <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
-          <div aria-hidden className="lokt-hero-sweep pointer-events-none absolute -left-1/4 top-[-8%] h-[720px] w-[150%] -skew-y-6 bg-[linear-gradient(112deg,transparent_22%,rgba(255,255,255,.28)_42%,rgba(255,215,120,.26)_54%,transparent_72%)] sm:h-[620px]" />
+        <section className="lokt-public-hero relative overflow-hidden px-4 pb-10 pt-8 sm:pb-20 sm:pt-16">
+          <div aria-hidden className="lokt-public-hero-band lokt-public-hero-flow absolute -left-[8%] top-[-8%] w-[116%] -skew-y-6 origin-top-left" />
+          <div aria-hidden className="lokt-public-hero-band absolute inset-x-0 top-0 -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.48)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.34)_100%)]" />
+          <div aria-hidden className="lokt-public-hero-band absolute left-0 top-0 w-full bg-gradient-to-r from-[#635bff]/55 via-[#00b8e8]/20 to-transparent lg:w-[68%]" />
+          <div aria-hidden className="lokt-public-hero-band lokt-public-hero-sheen pointer-events-none absolute -left-1/4 top-[-8%] w-[150%] -skew-y-6 bg-[linear-gradient(112deg,transparent_18%,rgba(255,255,255,.34)_42%,rgba(255,215,120,.3)_55%,transparent_76%)]" />
 
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.92fr,1.08fr] lg:items-center">
@@ -827,7 +815,7 @@ export default function Home() {
 
         <section className="border-b border-slate-200 bg-white px-4 py-14 sm:py-24">
           <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr,1px,1fr] lg:gap-14">
-            <article>
+            <article data-scroll-reveal>
               <Sticker kind="bailleur" className="h-12 w-12 sm:h-14 sm:w-14" />
               <p className="mt-5 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Outil bailleur</p>
               <h2 className="mt-2 max-w-md font-semibold leading-tight text-slate-950">
@@ -857,7 +845,7 @@ export default function Home() {
 
             <div className="hidden bg-slate-200 lg:block" />
 
-            <article>
+            <article data-scroll-reveal>
               <Sticker kind="calc" className="h-12 w-12 sm:h-14 sm:w-14" />
               <p className="mt-5 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-600">Projet immobilier</p>
               <h2 className="mt-2 max-w-md font-semibold leading-tight text-slate-950">
@@ -881,7 +869,7 @@ export default function Home() {
 
         <section className="bg-slate-950 px-4 py-14 text-white sm:py-20">
           <div className="mx-auto max-w-6xl">
-            <div className="max-w-2xl">
+            <div data-scroll-reveal className="max-w-2xl">
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-300">Workflow bailleur</p>
               <h2 className="mt-3 max-w-3xl font-semibold leading-tight">
                 <span className="block text-3xl text-white sm:text-4xl">Une location suit un fil.</span>
@@ -898,7 +886,7 @@ export default function Home() {
                 ["02", "Encaisser", "Paiement reçu, incomplet ou absent : chaque situation garde une action claire."],
                 ["03", "Archiver", "Quittances, finance et historique restent accessibles au bon endroit."],
               ].map(([step, titleStep, textStep]) => (
-                <div key={step} className="border-l border-cyan-300/50 pl-5">
+                <div key={step} data-scroll-reveal className="border-l border-cyan-300/50 pl-5">
                   <p className="text-4xl font-semibold leading-none text-cyan-300/80">{step}</p>
                   <h3 className="mt-5 text-xl font-semibold text-white">{titleStep}</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-300">{textStep}</p>
@@ -910,7 +898,7 @@ export default function Home() {
 
         <section className="border-b border-slate-200 bg-white px-4 py-14 sm:py-24">
           <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr,420px] lg:items-center">
-            <div>
+            <div data-scroll-reveal>
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Tarifs</p>
               <h2 className="mt-3 max-w-2xl font-semibold leading-tight text-slate-950">
                 <span className="block text-3xl sm:text-4xl">Gratuit pour commencer.</span>
@@ -925,7 +913,7 @@ export default function Home() {
                 La déduction éventuelle dépend de votre régime fiscal et doit être vérifiée avec votre expert-comptable.
               </p>
             </div>
-            <div className="border-y border-slate-200">
+            <div data-scroll-reveal className="border-y border-slate-200">
               {[
                 ["Gratuit", "1 logement actif · gestion manuelle", "0 €"],
                 ["Starter", "Automatisation quittances · jusqu’à 3 logements", "4,90 € / mois"],
@@ -947,7 +935,7 @@ export default function Home() {
         </section>
 
         <section className="bg-[#edf7f8] px-4 py-12 sm:py-16">
-          <div className="mx-auto max-w-6xl">
+          <div data-scroll-reveal className="mx-auto max-w-6xl">
             <h2 className="max-w-3xl font-semibold leading-tight text-slate-950">
               <span className="block text-[1.75rem] sm:text-3xl">Gestion locative gratuite.</span>
               <span className="mt-1 block text-xl text-teal-700 sm:text-2xl">Simulateurs immobiliers pour décider plus tôt.</span>
