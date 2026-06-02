@@ -1,5 +1,6 @@
 // components/ParcImmobilierWizard.tsx
 import { useMemo, useState } from "react";
+import { BuildingOffice2Icon, ChartBarIcon, SparklesIcon } from "@heroicons/react/24/outline";
 
 function formatEuro(val: number) {
   if (!Number.isFinite(val)) return "-";
@@ -888,9 +889,33 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
 
   return (
     <div className="space-y-4">
+      <section className="relative z-10 overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white shadow-xl shadow-slate-900/5 sm:p-6">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#635bff] via-[#007ba7] to-[#00a97b] opacity-95" />
+        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,.18),transparent_42%,rgba(255,184,0,.2))]" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/70">Cockpit patrimoine</p>
+            <h2 className="mt-2 text-xl font-semibold">Consolidez vos biens dans une seule lecture.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/80">
+              Renseignez votre parc, puis comparez cash-flow, dette et rendement avec une grille commune.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/25 bg-white/15">
+              <BuildingOffice2Icon className="h-6 w-6" />
+            </span>
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/25 bg-white/15">
+              <ChartBarIcon className="h-6 w-6" />
+            </span>
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/25 bg-white/15">
+              <SparklesIcon className="h-6 w-6" />
+            </span>
+          </div>
+        </div>
+      </section>
       <section className="grid gap-4 lg:grid-cols-2">
         {/* Formulaire biens */}
-        <div className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+        <div className="calculator-premium-form space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-900/5 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-indigo-600 mb-1">Calculette</p>

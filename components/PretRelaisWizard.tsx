@@ -1,7 +1,15 @@
 // components/PretRelaisWizard.tsx
 import { useEffect, useMemo, useState } from "react";
+import {
+  AdjustmentsHorizontalIcon,
+  BanknotesIcon,
+  CreditCardIcon,
+  HomeModernIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import LeadGate from "./LeadGate";
+import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
 
 const PRET_RELAIS_STORAGE_KEY = "pret_relais_simulation_v2";
 
@@ -188,6 +196,13 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   const goPrev = () => setStep((s) => Math.max(s - 1, 1));
 
   const STEP_LABELS = ["Votre projet", "Votre profil", "Vos revenus", "Charges & crédits", "Paramètres du prêt"];
+  const progressSteps = [
+    { label: STEP_LABELS[0], icon: HomeModernIcon },
+    { label: STEP_LABELS[1], icon: UserGroupIcon },
+    { label: STEP_LABELS[2], icon: BanknotesIcon },
+    { label: STEP_LABELS[3], icon: CreditCardIcon },
+    { label: STEP_LABELS[4], icon: AdjustmentsHorizontalIcon },
+  ];
 
   // ---------------------------
   // Inputs — Projet
@@ -834,11 +849,6 @@ async function sendPretRelaisEmail(email: string) {
       return;
     }
 
-    if (!consentLokt) {
-      setUnlockMsg("Pour recevoir le rapport, merci d’accepter l’utilisation de vos données pour cette simulation.");
-      return;
-    }
-
     setUnlocking(true);
     try {
       await capturePretRelaisViaRpc();
@@ -909,57 +919,13 @@ const renderAnalysisBlocks = (text: string) => {
   return (
     <div className="space-y-6">
       {/* Wizard */}
-      <section className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-6 space-y-4 sm:space-y-5">
-        {/* Stepper */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="-mx-1 flex-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:px-0 sm:pb-0">
-            <div className="flex items-center gap-2 min-w-max">
-              {STEP_LABELS.map((label, index) => {
-                const num = index + 1;
-                const active = step === num;
-                const done = step > num;
-
-                return (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => goToStep(num)}
-                    className={
-                      "flex items-center gap-2 rounded-full px-2 py-1 transition " +
-                      (active
-                        ? "bg-slate-900 text-white"
-                        : done
-                        ? "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200")
-                    }
-                    aria-current={active ? "step" : undefined}
-                  >
-                    <span
-                      className={
-                        "flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] font-semibold " +
-                        (active
-                          ? "bg-white/15 text-white"
-                          : done
-                          ? "bg-emerald-500 text-white"
-                          : "bg-slate-200 text-slate-700")
-                      }
-                    >
-                      {num}
-                    </span>
-                    <span className={"text-[0.75rem] whitespace-nowrap " + (active ? "font-semibold" : "")}>
-                      {label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <p className="text-[0.7rem] text-slate-500 whitespace-nowrap">
-            Étape {step} / {TOTAL_STEPS}
-          </p>
-        </div>
-
+      <CalculatorWizardShell
+        steps={progressSteps}
+        currentIndex={step - 1}
+        onStepClick={(index) => goToStep(index + 1)}
+        title="Préparez votre achat avant la vente."
+      >
+        <div className="calculator-premium-form space-y-5">
         {/* Contenu */}
         <div className="space-y-3 rounded-[1.1rem] border border-slate-100 bg-slate-50/70 p-3 sm:rounded-xl sm:p-4">
           {/* --- (identique à ton UI : steps 1..5) --- */}
@@ -1363,7 +1329,8 @@ const renderAnalysisBlocks = (text: string) => {
             </button>
           )}
         </div>
-      </section>
+        </div>
+      </CalculatorWizardShell>
 
       {/* Résultats */}
       <section id="resultats-pret-relais" className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">

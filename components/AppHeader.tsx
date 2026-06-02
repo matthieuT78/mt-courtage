@@ -2,7 +2,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { BookOpenIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowTrendingUpIcon,
+  BanknotesIcon,
+  BookOpenIcon,
+  BuildingOffice2Icon,
+  CalculatorIcon,
+  ChartBarIcon,
+  ChevronDownIcon,
+  HomeModernIcon,
+} from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import { GUIDE_CATEGORIES, getGuidesByCategory } from "../lib/guides";
 
@@ -18,6 +27,14 @@ type NavLink = {
   label: string;
   external?: boolean;
 };
+
+const CALCULATOR_LINKS = [
+  { href: "/capacite", label: "Capacité d'emprunt", description: "Déterminer votre budget d'achat", icon: BanknotesIcon },
+  { href: "/pret-relais", label: "Prêt relais", description: "Acheter avant d'avoir vendu", icon: HomeModernIcon },
+  { href: "/investissement", label: "Rentabilité locative", description: "Comparer rendement et cash-flow", icon: ArrowTrendingUpIcon },
+  { href: "/plus-value-vente-immobiliere", label: "Plus-value immobilière", description: "Estimer votre cash net vendeur", icon: ChartBarIcon },
+  { href: "/parc-immobilier", label: "Parc immobilier", description: "Consolider vos biens locatifs", icon: BuildingOffice2Icon },
+];
 
 export default function AppHeader() {
   const router = useRouter();
@@ -107,7 +124,44 @@ export default function AppHeader() {
             {/* Minimal links */}
             <nav className="flex items-center gap-1.5">
               {navLinks.map((l) =>
-                l.href === "/guides" ? (
+                l.href === "/calculettes" ? (
+                  <div key={l.label} className="group relative hidden md:block">
+                    <Link
+                      href={l.href}
+                      className={
+                        "inline-flex items-center gap-1 rounded-full px-3 py-2 text-[0.8rem] font-semibold transition " +
+                        (isActive(l.href) ? `${brandBg} ${brandText} ${brandHover}` : "text-slate-700 hover:bg-slate-100")
+                      }
+                    >
+                      {l.label}
+                      <ChevronDownIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
+                    <div className="invisible absolute left-1/2 top-full z-50 w-[520px] -translate-x-1/2 pt-3 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                      <div className="border border-slate-200 bg-white p-3 shadow-xl">
+                        <div className="grid gap-1">
+                          {CALCULATOR_LINKS.map((calculator) => {
+                            const Icon = calculator.icon;
+                            return (
+                              <Link key={calculator.href} href={calculator.href} className="group/item flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-slate-50">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-50 via-cyan-50 to-emerald-50 text-indigo-700">
+                                  <Icon className="h-5 w-5" />
+                                </span>
+                                <span>
+                                  <span className="block text-xs font-bold text-slate-900 group-hover/item:text-indigo-700">{calculator.label}</span>
+                                  <span className="mt-0.5 block text-[0.7rem] text-slate-500">{calculator.description}</span>
+                                </span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                        <Link href="/calculettes" className="mt-2 flex items-center gap-2 border-t border-slate-200 px-3 pt-3 text-xs font-bold text-slate-950 hover:text-indigo-700">
+                          <CalculatorIcon className="h-4 w-4" />
+                          Voir toutes les calculettes →
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ) : l.href === "/guides" ? (
                   <div key={l.label} className="group relative hidden md:block">
                     <Link
                       href={l.href}
@@ -165,6 +219,15 @@ export default function AppHeader() {
                   </Link>
                 )
               )}
+
+              <Link
+                href="/calculettes"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 md:hidden"
+                title="Calculettes immobilières"
+                aria-label="Calculettes immobilières"
+              >
+                <CalculatorIcon className="h-5 w-5" />
+              </Link>
 
               <Link
                 href="/guides"

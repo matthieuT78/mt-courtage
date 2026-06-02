@@ -6,8 +6,6 @@ export default function LeadGate({
   subtitle = "Score, points de vigilance et plan d’action clair à conserver.",
   email,
   setEmail,
-  consent,
-  setConsent,
   contactConsent,
   setContactConsent,
   unlocking,
@@ -15,9 +13,6 @@ export default function LeadGate({
   onUnlock,
   theme = "cyan-emerald",
 
-  // Optional: send-by-email option
-  sendByEmail,
-  setSendByEmail,
   sendingEmail,
   sendEmailMsg,
 }: {
@@ -25,8 +20,8 @@ export default function LeadGate({
   subtitle?: string;
   email: string;
   setEmail: (v: string) => void;
-  consent: boolean;
-  setConsent: (v: boolean) => void;
+  consent?: boolean;
+  setConsent?: (v: boolean) => void;
   contactConsent?: boolean;
   setContactConsent?: (v: boolean) => void;
   unlocking: boolean;
@@ -44,13 +39,11 @@ export default function LeadGate({
     return e.length > 3 && e.includes("@");
   }, [email]);
 
-  const canClick = emailOk && consent && !unlocking;
+  const canClick = emailOk && !unlocking;
 
   const haloA = theme === "cyan-amber" ? "bg-amber-400" : "bg-emerald-400";
   const haloB = "bg-cyan-500";
 
-  const showEmailOption =
-    typeof sendByEmail === "boolean" && typeof setSendByEmail === "function";
   const showContactConsent =
     typeof contactConsent === "boolean" && typeof setContactConsent === "function";
 
@@ -81,88 +74,9 @@ export default function LeadGate({
               className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
             />
             <p className="text-[0.7rem] text-slate-300">
-              Utilisé pour vous envoyer le rapport, retrouver votre simulation et améliorer le service.
+              Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}
+              <a href="/confidentialite" className="underline hover:text-white">En savoir plus sur vos données personnelles</a>.
             </p>
-          </div>
-
-          {/* Option email (mise en avant) */}
-          {showEmailOption && (
-            <div
-              className="rounded-lg bg-white/10 border border-white/15 p-3 cursor-pointer"
-              onClick={() => setSendByEmail(!sendByEmail)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setSendByEmail(!sendByEmail);
-                }
-              }}
-            >
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={!!sendByEmail}
-                  onChange={(e) => setSendByEmail(e.target.checked)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="mt-1 h-4 w-4 accent-cyan-400"
-                />
-                <div className="text-[0.75rem] text-slate-100 leading-relaxed">
-                  <p className="font-semibold">
-                    Recevoir le rapport complet par email
-                  </p>
-                  <p className="text-[0.7rem] text-slate-300 mt-1">
-                    Score, synthèse, points de vigilance et plan d’action.
-                  </p>
-                </div>
-              </div>
-
-              {sendingEmail && (
-                <p className="mt-2 text-[0.7rem] text-slate-300">
-                  Envoi de l’email…
-                </p>
-              )}
-
-              {sendEmailMsg && (
-                <p className="mt-2 text-[0.7rem] text-slate-200">
-                  {sendEmailMsg}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Consentement (FIXÉ) */}
-          <div
-            className="rounded-lg bg-white/5 border border-white/10 p-3 cursor-pointer"
-            onClick={() => setConsent(!consent)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                setConsent(!consent);
-              }
-            }}
-          >
-            <div className="flex items-start gap-3">
-              <input
-                id="lokt-consent"
-                type="checkbox"
-                checked={consent}
-                onChange={(e) => setConsent(e.target.checked)}
-                onClick={(e) => e.stopPropagation()}
-                className="mt-1 h-4 w-4 accent-cyan-400"
-              />
-              <label
-                htmlFor="lokt-consent"
-                className="text-[0.75rem] text-slate-200 leading-relaxed cursor-pointer"
-              >
-                <span className="font-semibold">J’accepte</span> que mes données
-                soient utilisées pour m’envoyer mon rapport, retrouver ma
-                simulation et améliorer lokt.fr.
-                <span className="block mt-2 text-[0.7rem] text-slate-300">
-                  Aucune revente de données. Aucun démarchage partenaire sans accord séparé.
-                </span>
-              </label>
-            </div>
           </div>
 
           {showContactConsent ? (
@@ -212,14 +126,12 @@ export default function LeadGate({
           {unlockMsg && (
             <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>
           )}
+          {sendingEmail ? <p className="text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
+          {sendEmailMsg ? <p className="text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
 
           {!emailOk ? (
             <p className="text-[0.7rem] text-slate-300">
               Astuce : renseignez un email valide pour activer le bouton.
-            </p>
-          ) : !consent ? (
-            <p className="text-[0.7rem] text-slate-300">
-              Astuce : cochez le consentement pour activer le bouton.
             </p>
           ) : null}
         </div>

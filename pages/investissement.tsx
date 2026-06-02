@@ -5,6 +5,7 @@ import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import InvestissementWizard from "../components/InvestissementWizard";
+import CalculatorHero from "../components/calculators/CalculatorHero";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
 
@@ -208,59 +209,20 @@ export default function InvestissementPage() {
 
       <AppHeader />
 
-      <main className="flex-1 px-3 py-5 sm:px-4 sm:py-8">
-        <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
-          {/* Header de la page */}
-          <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
-            <div className="h-1.5 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-            <div className="space-y-3 p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-[#635bff]">
-                CALCULETTE RENTABILITÉ LOCATIVE
-              </p>
-
-              <span className="hidden sm:inline-flex items-center rounded-full border border-slate-200 bg-[#f6f9fc] px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
-                lokt.fr
-              </span>
-            </div>
-
-            <h1 className="text-[1.35rem] font-semibold leading-tight text-slate-900 sm:text-2xl">
-              {isLoggedIn && displayName
-                ? `Bonjour ${displayName}, calculez votre cash-flow et votre rendement.`
-                : "Calculer la rentabilité locative (cash-flow & rendement)"}
-            </h1>
-
-            <p className="max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-xs">
-              Parcours guidé : coût total (achat + frais + travaux), revenus (longue durée / Airbnb), charges et gestion,
-              puis financement. Résultat structuré pour analyser la rentabilité réelle et comparer des scénarios.
-            </p>
-
-            {/* Maillage interne discret */}
-            <div className="pt-1 flex flex-wrap gap-2">
-              <Link href="/" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Accueil →
-              </Link>
-              <Link href="/capacite" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Capacité d’emprunt →
-              </Link>
-              <Link href="/pret-relais" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Prêt relais →
-              </Link>
-              <Link
-                href="/plus-value-vente-immobiliere"
-                className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]"
-              >
-                Plus-value immobilière →
-              </Link>
-              <Link
-                href="/parc-immobilier"
-                className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]"
-              >
-                Parc immobilier →
-              </Link>
-            </div>
-            </div>
-          </section>
+      <main className="flex-1">
+        <CalculatorHero
+          eyebrow="Calculette rentabilité locative lokt.fr"
+          title={isLoggedIn && displayName ? `${displayName}, mesurez la vraie performance de votre projet.` : "Votre investissement locatif tient-il vraiment la route ?"}
+          description="Projetez le coût total, les loyers, les charges et le financement pour comparer rendement et cash-flow avec des hypothèses réalistes."
+          links={[
+            { href: "/", label: "Accueil" },
+            { href: "/capacite", label: "Capacité d'emprunt" },
+            { href: "/pret-relais", label: "Prêt relais" },
+            { href: "/plus-value-vente-immobiliere", label: "Plus-value immobilière" },
+            { href: "/parc-immobilier", label: "Parc immobilier" },
+          ]}
+        />
+        <div className="mx-auto -mt-12 max-w-6xl space-y-5 px-3 pb-8 sm:-mt-16 sm:space-y-6 sm:px-4 sm:pb-12">
 
           {/* Calculette */}
           <InvestissementWizard showSaveButton={isLoggedIn} />

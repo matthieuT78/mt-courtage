@@ -1,6 +1,13 @@
 // components/PlusValueWizard.tsx
 import { useEffect, useMemo, useState } from "react";
+import {
+  BanknotesIcon,
+  BuildingOffice2Icon,
+  CreditCardIcon,
+  ScaleIcon,
+} from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
+import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
 import {
   safeEmail,
   loadLeadEmail,
@@ -338,6 +345,15 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   const TOTAL_STEPS = 4;
   const [maxStepReached, setMaxStepReached] = useState<number>(1);
   const stepLabels = useMemo(() => ["La vente", "L’achat", "Le crédit", "Fiscalité"], []);
+  const progressSteps = useMemo(
+    () => [
+      { label: stepLabels[0], icon: BanknotesIcon },
+      { label: stepLabels[1], icon: BuildingOffice2Icon },
+      { label: stepLabels[2], icon: CreditCardIcon },
+      { label: stepLabels[3], icon: ScaleIcon },
+    ],
+    [stepLabels]
+  );
   useEffect(() => setMaxStepReached((m) => Math.max(m, step)), [step]);
 
   const goNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
@@ -401,13 +417,12 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   /* ======================== Gate (par calculette) ======================== */
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [leadEmail, setLeadEmail] = useState<string>("");
-  const [consentLokt, setConsentLokt] = useState<boolean>(false);
   const [consentContact, setConsentContact] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
 
   // Email (optionnel)
-  const [sendByEmail, setSendByEmail] = useState<boolean>(true);
+  const [sendByEmail] = useState<boolean>(true);
   const [sendingEmail, setSendingEmail] = useState<boolean>(false);
   const [sendEmailMsg, setSendEmailMsg] = useState<string | null>(null);
 
@@ -417,7 +432,6 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
     if (isLoggedIn) {
       setUnlocked(true);
-      setConsentLokt(true);
       if (sessionEmail && !leadEmail) setLeadEmail(sessionEmail);
       return;
     }
@@ -443,7 +457,6 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
     if (isLoggedIn) {
       setUnlocked(true);
-      setConsentLokt(true);
       return;
     }
 
@@ -455,7 +468,6 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
     const ok = isUnlockedForEmail("plus-value-vente-immobiliere", e);
     setUnlocked(ok);
-    if (ok) setConsentLokt(true);
   }, [leadEmail, isLoggedIn]);
 
   const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
@@ -842,11 +854,6 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       return false;
     }
 
-    if (!consentLokt) {
-      setUnlockMsg("Pour recevoir le rapport, merci d’accepter l’utilisation de vos données pour cette simulation.");
-      return false;
-    }
-
     setUnlocking(true);
     try {
       await captureLeadViaRpc({ email, computed: result! });
@@ -1004,59 +1011,14 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   return (
     <div className="space-y-6">
       {/* Wizard */}
-      <section className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-6 space-y-4 sm:space-y-5">
-        {/* Stepper */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="-mx-1 flex-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:px-0 sm:pb-0">
-            <div className="flex items-center gap-2 whitespace-nowrap pr-2">
-              {stepLabels.map((label, index) => {
-                const num = index + 1;
-                const active = step === num;
-                const done = step > num;
-                const clickable = num <= maxStepReached;
-
-                return (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => goToStep(num)}
-                    disabled={!clickable}
-                    className={
-                      "inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 transition border " +
-                      (active
-                        ? "bg-slate-900 text-white border-slate-900"
-                        : done
-                        ? "bg-emerald-50 text-slate-900 border-emerald-200 hover:bg-emerald-100"
-                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50") +
-                      (clickable ? "" : " opacity-60 cursor-not-allowed")
-                    }
-                    aria-label={`Aller à l’étape ${num} : ${label}`}
-                    title={label}
-                  >
-                    <span
-                      className={
-                        "flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] font-semibold " +
-                        (active
-                          ? "bg-white text-slate-900"
-                          : done
-                          ? "bg-emerald-500 text-white"
-                          : "bg-slate-200 text-slate-700")
-                      }
-                    >
-                      {num}
-                    </span>
-                    <span className={"text-[0.72rem] " + (active ? "font-semibold" : "")}>{label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <p className="text-[0.7rem] text-slate-500 shrink-0">
-            Étape {step} / {TOTAL_STEPS}
-          </p>
-        </div>
-
+      <CalculatorWizardShell
+          steps={progressSteps}
+          currentIndex={step - 1}
+          onStepClick={(index) => goToStep(index + 1)}
+          canAccessStep={(index) => index + 1 <= maxStepReached}
+          title="Estimez le produit réel de votre vente."
+        >
+        <div className="calculator-premium-form space-y-5">
         {/* Contenu */}
         <div className="space-y-3 rounded-[1.1rem] border border-slate-100 bg-slate-50/70 p-3 sm:rounded-xl sm:p-4">
           {/* === Step 1 === */}
@@ -1604,7 +1566,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
             </button>
           )}
         </div>
-      </section>
+        </div>
+      </CalculatorWizardShell>
 
       {/* ======================== Résultats ======================== */}
       <section
@@ -1752,47 +1715,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white sm:rounded-lg sm:py-2 sm:text-sm placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
                       />
                       <p className="text-[0.7rem] text-slate-300">
-                        Utilisé pour vous envoyer le rapport, retrouver votre simulation et améliorer le service.
-                      </p>
-                    </div>
-
-                    {/* Option email */}
-                    <div className="rounded-lg bg-white/5 border border-white/10 p-3">
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={sendByEmail}
-                          onChange={(e) => setSendByEmail(e.target.checked)}
-                          className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-                        />
-                        <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                          <span className="font-semibold">Recevoir le rapport complet par email</span>
-                          <span className="block text-[0.7rem] text-slate-300 mt-1">
-                            Synthèse, cash net, points de vigilance et plan d’action.
-                          </span>
-                        </span>
-                      </label>
-
-                      {sendingEmail ? <p className="mt-2 text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
-                      {sendEmailMsg ? <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
-                    </div>
-
-                    {/* Consentement */}
-                    <div className="rounded-lg bg-white/5 border border-white/10 p-3">
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={consentLokt}
-                          onChange={(e) => setConsentLokt(e.target.checked)}
-                          className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-                        />
-                        <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                          <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour m’envoyer mon rapport,
-                          retrouver ma simulation et améliorer lokt.fr.
-                        </span>
-                      </label>
-                      <p className="mt-2 text-[0.7rem] text-slate-300">
-                        Aucune revente de données. Aucun démarchage partenaire sans accord séparé.
+                        Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}
+                        <a href="/confidentialite" className="underline hover:text-white">En savoir plus sur vos données personnelles</a>.
                       </p>
                     </div>
 
@@ -1828,6 +1752,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     >
                       {unlocking ? "Préparation..." : "Recevoir mon rapport"}
                     </button>
+                    {sendingEmail ? <p className="text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
+                    {sendEmailMsg ? <p className="text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
 
                     {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
                   </div>

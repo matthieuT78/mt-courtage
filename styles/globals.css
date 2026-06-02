@@ -6,3 +6,19 @@ body {
   @apply bg-slate-100 text-slate-900;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
+.calculator-premium-form input:not([type="checkbox"]):not([type="radio"]),
+.calculator-premium-form select,
+.calculator-premium-form textarea {
+  @apply min-h-12 rounded-xl border-slate-200 bg-white px-4 py-3 text-base text-slate-900 shadow-sm transition;
+}
+
+.calculator-premium-form input:not([type="checkbox"]):not([type="radio"]):focus,
+.calculator-premium-form select:focus,
+.calculator-premium-form textarea:focus {
+  @apply border-cyan-400 outline-none ring-4 ring-cyan-100;
+}
+
+.calculator-premium-form label {
+  @apply text-sm font-semibold leading-tight text-slate-700;
+}

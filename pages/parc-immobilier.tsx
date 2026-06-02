@@ -5,6 +5,7 @@ import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import ParcImmobilierWizard from "../components/ParcImmobilierWizard";
+import CalculatorHero from "../components/calculators/CalculatorHero";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
 
@@ -213,51 +214,19 @@ export default function ParcImmobilierPage() {
 
       <AppHeader />
 
-      <main className="flex-1 px-3 py-5 sm:px-4 sm:py-8">
-        <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
-          {/* Header de la page */}
-          <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
-            <div className="h-1.5 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-            <div className="space-y-3 p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-[#635bff]">
-                CALCULETTE PARC IMMOBILIER
-              </p>
-
-              <span className="hidden sm:inline-flex items-center rounded-full border border-slate-200 bg-[#f6f9fc] px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
-                lokt.fr
-              </span>
-            </div>
-
-            <h1 className="text-[1.35rem] font-semibold leading-tight text-slate-900 sm:text-2xl">
-              {displayName
-                ? `Bonjour ${displayName}, analysez votre parc immobilier.`
-                : "Analysez votre parc immobilier (multi-biens)."}
-            </h1>
-
-            <p className="max-w-3xl text-sm leading-relaxed text-slate-600 sm:text-xs">
-              Ajoutez 1 à 20 biens locatifs et obtenez une synthèse globale : valeur du parc, encours, cash-flow,
-              rendements, graphiques. Activez la version avancée pour intégrer vacance/gestion/impôts et afficher les
-              indicateurs DSCR/LTV.
-            </p>
-
-            {/* Maillage interne discret */}
-            <div className="pt-1 flex flex-wrap gap-2">
-              <Link href="/" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Accueil →
-              </Link>
-              <Link href="/capacite" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Capacité d’emprunt →
-              </Link>
-              <Link href="/pret-relais" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Prêt relais →
-              </Link>
-              <Link href="/investissement" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Rentabilité locative →
-              </Link>
-            </div>
-            </div>
-          </section>
+      <main className="flex-1">
+        <CalculatorHero
+          eyebrow="Calculette parc immobilier lokt.fr"
+          title={displayName ? `${displayName}, prenez de la hauteur sur votre patrimoine.` : "Pilotez votre parc immobilier avec une vue consolidée."}
+          description="Ajoutez vos biens locatifs et visualisez valeur, encours, cash-flow, rendement et ratios de solidité dans une lecture commune."
+          links={[
+            { href: "/", label: "Accueil" },
+            { href: "/capacite", label: "Capacité d'emprunt" },
+            { href: "/pret-relais", label: "Prêt relais" },
+            { href: "/investissement", label: "Rentabilité locative" },
+          ]}
+        />
+        <div className="mx-auto -mt-12 max-w-6xl space-y-5 px-3 pb-8 sm:-mt-16 sm:space-y-6 sm:px-4 sm:pb-12">
 
           {/* Wizard */}
           <ParcImmobilierWizard />

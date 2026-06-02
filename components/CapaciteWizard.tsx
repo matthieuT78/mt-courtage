@@ -1,5 +1,16 @@
 // components/CapaciteWizard.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type SVGProps } from "react";
+import {
+  AdjustmentsHorizontalIcon,
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  BanknotesIcon,
+  CheckIcon,
+  CreditCardIcon,
+  HomeModernIcon,
+  SparklesIcon,
+  UserGroupIcon,
+} from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import {
   buildCapaciteEmailHtml,
@@ -712,22 +723,62 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     if (t <= maxStepReached) setStep(t);
   };
 
-  const stepLabels = useMemo(
-    () => ["Votre projet", "Votre profil", "Vos revenus", "Charges & crédits", "Paramètres du prêt"],
+  const wizardSteps = useMemo<
+    Array<{
+      label: string;
+      shortLabel: string;
+      description: string;
+      icon: ComponentType<SVGProps<SVGSVGElement>>;
+    }>
+  >(
+    () => [
+      {
+        label: "Votre projet immobilier",
+        shortLabel: "Projet",
+        description: "Posons le cadre de votre recherche et votre apport.",
+        icon: HomeModernIcon,
+      },
+      {
+        label: "Votre profil emprunteur",
+        shortLabel: "Profil",
+        description: "Votre foyer et votre situation professionnelle.",
+        icon: UserGroupIcon,
+      },
+      {
+        label: "Vos revenus mensuels",
+        shortLabel: "Revenus",
+        description: "Les ressources régulières retenues pour l'estimation.",
+        icon: BanknotesIcon,
+      },
+      {
+        label: "Vos charges et crédits",
+        shortLabel: "Charges",
+        description: "Ce qui pèse déjà sur votre budget chaque mois.",
+        icon: CreditCardIcon,
+      },
+      {
+        label: "Les paramètres du prêt",
+        shortLabel: "Prêt",
+        description: "Ajustez les hypothèses puis obtenez votre estimation.",
+        icon: AdjustmentsHorizontalIcon,
+      },
+    ],
     []
   );
+  const activeStepMeta = wizardSteps[step - 1];
+  const ActiveStepIcon = activeStepMeta.icon;
 
   /* ======================== Common input styles ======================== */
   const inputBase =
-    "w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm " +
-    "focus:outline-none focus:ring-1 focus:ring-emerald-500";
+    "w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm transition " +
+    "placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-100";
   const inputSmall =
-    "w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm " +
-    "focus:outline-none focus:ring-1 focus:ring-emerald-500";
+    "w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 shadow-sm transition " +
+    "placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-100";
   const selectBase =
-    "w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm " +
-    "focus:outline-none focus:ring-1 focus:ring-emerald-500";
-  const labelBase = "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
+    "w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm transition " +
+    "focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-100";
+  const labelBase = "flex min-h-[1.5rem] items-center gap-1 text-sm font-semibold leading-tight text-slate-700";
 
   /* ======================== Step 1: Votre projet ======================== */
   const [projectDepartment, setProjectDepartment] = useState<string>("");
@@ -1435,11 +1486,6 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       return;
     }
 
-    if (!consentLokt) {
-      setUnlockMsg("Pour recevoir le rapport, merci d’accepter l’utilisation de vos données pour cette simulation.");
-      return;
-    }
-
     // ✅ FIX: réutilise computedAll si dispo, sinon recalcule
     const computed = computedAll ?? computeAll();
     if (!computedAll) setComputedAll(computed);
@@ -1551,12 +1597,40 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
   return (
     <div className="space-y-6">
       {/* Wizard */}
-      <section className="rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-6 space-y-4 sm:space-y-5">
-        {/* Stepper */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="-mx-1 flex-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:px-0 sm:pb-0">
-            <div className="flex items-center gap-2 whitespace-nowrap pr-2">
-              {stepLabels.map((label, index) => {
+      <section className="relative z-10 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
+        <div className="grid lg:grid-cols-[19rem_minmax(0,1fr)]">
+          {/* Progression */}
+          <aside className="relative overflow-hidden bg-slate-950 px-5 py-5 text-white sm:px-6 lg:min-h-[39rem] lg:py-7">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#635bff] via-[#007ba7] to-[#00a97b] opacity-95" />
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,.2),transparent_38%,rgba(255,184,0,.22))]" />
+            <div className="relative">
+              <div className="flex items-center justify-between gap-4 lg:block">
+                <div>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/70">
+                    Simulation guidée
+                  </p>
+                  <p className="mt-2 text-xl font-semibold leading-tight text-white">
+                    Votre capacité en quelques étapes.
+                  </p>
+                </div>
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/15 backdrop-blur lg:mt-5">
+                  <SparklesIcon className="h-6 w-6" />
+                </span>
+              </div>
+
+              <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/20">
+                <div
+                  className="h-full rounded-full bg-white transition-all duration-500"
+                  style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs font-medium text-white/75">
+                Étape {step} sur {TOTAL_STEPS}
+              </p>
+
+              <div className="-mx-1 mt-5 overflow-x-auto px-1 pb-1 lg:mx-0 lg:overflow-visible lg:px-0">
+                <div className="flex min-w-max gap-2 lg:min-w-0 lg:flex-col">
+                  {wizardSteps.map(({ label, shortLabel, icon: StepIcon }, index) => {
                 const num = index + 1;
                 const active = step === num;
                 const done = step > num;
@@ -1569,49 +1643,71 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                     onClick={() => goToStep(num)}
                     disabled={!clickable}
                     className={
-                      "inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 transition border " +
+                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition lg:w-full " +
                       (active
-                        ? "bg-slate-900 text-white border-slate-900"
+                        ? "border-white/70 bg-white text-slate-950 shadow-lg"
                         : done
-                        ? "bg-emerald-50 text-slate-900 border-emerald-200 hover:bg-emerald-100"
-                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50") +
-                      (clickable ? "" : " opacity-60 cursor-not-allowed")
+                        ? "border-white/25 bg-white/15 text-white hover:bg-white/20"
+                        : "border-white/10 bg-white/5 text-white/60") +
+                      (clickable ? "" : " cursor-not-allowed opacity-70")
                     }
                     aria-label={`Aller à l’étape ${num} : ${label}`}
                     title={label}
                   >
                     <span
                       className={
-                        "flex h-6 w-6 items-center justify-center rounded-full text-[0.7rem] font-semibold " +
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg " +
                         (active
-                          ? "bg-white text-slate-900"
+                          ? "bg-slate-950 text-white"
                           : done
-                          ? "bg-emerald-500 text-white"
-                          : "bg-slate-200 text-slate-700")
+                          ? "bg-white/20 text-white"
+                          : "bg-white/10 text-white/70")
                       }
                     >
-                      {num}
+                      {done ? <CheckIcon className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
                     </span>
-                    <span className={"text-[0.72rem] " + (active ? "font-semibold" : "")}>
-                      {label}
+                    <span className="min-w-0">
+                      <span className="block text-[0.66rem] font-semibold uppercase tracking-[0.14em] opacity-70">
+                        0{num}
+                      </span>
+                      <span className={"block text-sm " + (active ? "font-semibold" : "font-medium")}>
+                        <span className="lg:hidden">{shortLabel}</span>
+                        <span className="hidden lg:inline">{label}</span>
+                      </span>
                     </span>
                   </button>
                 );
               })}
+                </div>
+              </div>
+
+              <p className="mt-6 hidden text-xs leading-5 text-white/70 lg:block">
+                Les hypothèses restent ajustables jusqu&apos;au calcul final.
+              </p>
             </div>
-          </div>
+          </aside>
 
-          <p className="text-[0.7rem] text-slate-500 shrink-0">
-            Étape {step} / {TOTAL_STEPS}
-          </p>
-        </div>
+          <div className="flex min-h-[39rem] flex-col bg-white p-5 sm:p-8">
+            <header className="border-b border-slate-100 pb-5">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-50 via-cyan-50 to-emerald-50 text-[#3f37c9]">
+                <ActiveStepIcon className="h-6 w-6" />
+              </span>
+              <p className="mt-4 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">
+                Étape 0{step}
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold leading-tight text-slate-950">
+                {activeStepMeta.label}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                {activeStepMeta.description}
+              </p>
+            </header>
 
-        {/* Contenu */}
-        <div className="space-y-3 rounded-[1.1rem] border border-slate-100 bg-slate-50/70 p-3 sm:rounded-xl sm:p-4">
+            {/* Contenu */}
+            <div className="flex-1 space-y-5 py-6">
           {step === 1 ? (
             <>
-              <h2 className="text-sm font-semibold text-slate-900">Votre projet</h2>
-              <p className="text-[0.75rem] text-slate-600">
+              <p className="max-w-2xl text-sm leading-6 text-slate-600">
                 Ces informations servent à adapter les frais, le budget et la lecture bancaire de votre projet.
               </p>
 
@@ -1695,8 +1791,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
           {step === 2 ? (
             <>
-              <h2 className="text-sm font-semibold text-slate-900">Votre profil</h2>
-              <p className="text-[0.75rem] text-slate-600">
+              <p className="max-w-2xl text-sm leading-6 text-slate-600">
                 Profil, foyer et âge influencent la durée possible, le reste à vivre et la solidité du dossier.
               </p>
 
@@ -1763,8 +1858,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
           {step === 3 ? (
             <>
-              <h2 className="text-sm font-semibold text-slate-900">Vos revenus</h2>
-              <p className="text-[0.75rem] text-slate-600">
+              <p className="max-w-2xl text-sm leading-6 text-slate-600">
                 Indiquez les revenus nets mensuels du foyer. Les loyers locatifs liés à des crédits existants se renseignent à l'étape suivante.
               </p>
 
@@ -1780,8 +1874,8 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                       setRevenusError(null);
                     }}
                     className={
-                      "w-full min-w-0 rounded-xl border bg-white px-3 py-3 text-base text-slate-900 focus:outline-none focus:ring-1 sm:rounded-lg sm:py-2 sm:text-sm " +
-                      (revenusError ? "border-red-400 focus:ring-red-500" : "border-slate-300 focus:ring-emerald-500")
+                      "w-full min-w-0 rounded-xl border bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm transition focus:outline-none focus:ring-4 " +
+                      (revenusError ? "border-red-400 focus:ring-red-100" : "border-slate-200 focus:border-cyan-400 focus:ring-cyan-100")
                     }
                     aria-invalid={!!revenusError}
                   />
@@ -1807,8 +1901,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
           {step === 4 ? (
             <>
-              <h2 className="text-sm font-semibold text-slate-900">Charges & crédits</h2>
-              <p className="text-[0.75rem] text-slate-600">
+              <p className="max-w-2xl text-sm leading-6 text-slate-600">
                 Ajoutez vos charges récurrentes et vos crédits en cours. Pour un crédit immobilier locatif, indiquez aussi le loyer perçu.
               </p>
 
@@ -1888,8 +1981,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
           {step === 5 ? (
             <>
-              <h2 className="text-sm font-semibold text-slate-900">Paramètres du prêt</h2>
-              <p className="text-[0.75rem] text-slate-600">
+              <p className="max-w-2xl text-sm leading-6 text-slate-600">
                 Ajustez les hypothèses de calcul. Par défaut, la capacité est estimée avec une cible bancaire de 35 %.
               </p>
 
@@ -1934,14 +2026,15 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         </div>
 
         {/* Navigation */}
-        <div className="grid grid-cols-2 gap-2 pt-1 sm:flex sm:items-center sm:justify-between">
+            <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-5 sm:flex sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={goPrev}
             disabled={step === 1}
-            className="min-h-11 rounded-full border border-slate-200 bg-white px-4 text-[0.8rem] font-semibold text-slate-600 hover:text-slate-900 disabled:cursor-default disabled:opacity-40 sm:min-h-0 sm:border-0 sm:bg-transparent sm:px-0 sm:text-[0.75rem]"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-default disabled:opacity-0"
           >
-            ← Précédent
+            <ArrowLeftIcon className="h-4 w-4" />
+            Précédent
           </button>
 
           {step < TOTAL_STEPS ? (
@@ -1959,9 +2052,10 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                 setMaxStepReached((m) => Math.max(m, Math.min(step + 1, TOTAL_STEPS)));
                 goNext();
               }}
-              className="min-h-11 rounded-full bg-slate-900 px-4 py-2 text-[0.8rem] font-semibold text-white hover:bg-slate-800"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-slate-950 px-6 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:bg-slate-800"
             >
-              Suivant →
+              Continuer
+              <ArrowRightIcon className="h-4 w-4" />
             </button>
           ) : (
             <button
@@ -1970,11 +2064,14 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                 setMaxStepReached(TOTAL_STEPS);
                 await handleCalculCapacite();
               }}
-              className="min-h-11 rounded-full bg-gradient-to-r from-emerald-500 to-sky-500 px-4 py-2 text-[0.8rem] font-semibold text-white shadow-lg hover:shadow-2xl active:scale-[0.99]"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#00a97b] to-[#008db8] px-6 text-sm font-semibold text-white shadow-lg shadow-cyan-600/20 transition hover:shadow-xl active:scale-[0.99]"
             >
               Calculer ma capacité d&apos;emprunt
+              <ArrowRightIcon className="h-4 w-4" />
             </button>
           )}
+            </div>
+          </div>
         </div>
       </section>
 

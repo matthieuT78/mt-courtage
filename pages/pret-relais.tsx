@@ -5,6 +5,7 @@ import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import PretRelaisWizard from "../components/PretRelaisWizard";
+import CalculatorHero from "../components/calculators/CalculatorHero";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
 
@@ -220,57 +221,19 @@ export default function PretRelaisPage() {
 
       <AppHeader />
 
-      <main className="flex-1 px-3 py-5 sm:px-4 sm:py-8">
-        <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
-          {/* Header */}
-          <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
-            <div className="h-1.5 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-            <div className="space-y-3 p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-[#635bff]">
-                CALCULETTE PRÊT RELAIS
-              </p>
-
-              <span className="hidden sm:inline-flex items-center rounded-full border border-slate-200 bg-[#f6f9fc] px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
-                lokt.fr
-              </span>
-            </div>
-
-            {/* ✅ H1 “mot-clé exact” */}
-            <h1 className="text-[1.35rem] font-semibold leading-tight text-slate-900 sm:text-2xl">
-              {isLoggedIn && displayName
-                ? `Bonjour ${displayName} — Simulateur de prêt relais : estimez votre budget avant de vendre.`
-                : "Simulateur de prêt relais — estimez votre budget avant de vendre."}
-            </h1>
-
-            {/* ✅ Intro enrichie + variante sans accent */}
-            <p className="max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-xs">
-              Ce <strong>simulateur de prêt relais</strong>
-              vous aide à estimer le <strong>montant du relais</strong>, votre <strong>nouveau prêt possible</strong> et le{" "}
-              <strong>budget d’achat total</strong>. Parcours guidé : valeur du bien actuel, capital restant dû, décote,
-              apport, puis paramètres du futur prêt.
-            </p>
-
-            {/* Maillage interne discret (comme capacité) */}
-            <div className="pt-1 flex flex-wrap gap-2">
-              <Link href="/" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Accueil →
-              </Link>
-              <Link href="/capacite" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Capacité d’emprunt →
-              </Link>
-              <Link href="/investissement" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Rentabilité locative →
-              </Link>
-              <Link
-                href="/parc-immobilier"
-                className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]"
-              >
-                Parc immobilier →
-              </Link>
-            </div>
-            </div>
-          </section>
+      <main className="flex-1">
+        <CalculatorHero
+          eyebrow="Calculette prêt relais lokt.fr"
+          title={isLoggedIn && displayName ? `${displayName}, préparez votre achat avant la vente.` : "Achetez avant de vendre avec un scénario clair."}
+          description="Estimez le montant du relais, le nouveau prêt possible et votre budget d'achat total à partir de la valeur de votre bien actuel."
+          links={[
+            { href: "/", label: "Accueil" },
+            { href: "/capacite", label: "Capacité d'emprunt" },
+            { href: "/investissement", label: "Rentabilité locative" },
+            { href: "/parc-immobilier", label: "Parc immobilier" },
+          ]}
+        />
+        <div className="mx-auto -mt-12 max-w-6xl space-y-5 px-3 pb-8 sm:-mt-16 sm:space-y-6 sm:px-4 sm:pb-12">
 
           {/* Calculette */}
           <PretRelaisWizard showSaveButton={isLoggedIn} />

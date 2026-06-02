@@ -399,11 +399,6 @@ const PretRelaisPage: NextPage = () => {
       return;
     }
 
-    if (!consentLokt) {
-      setUnlockMsg("Merci de cocher la case de consentement pour débloquer l’analyse.");
-      return;
-    }
-
     const computed = computeAll();
     if (!computed.resume) {
       setUnlockMsg("Impossible de débloquer : corrige tes champs et relance le calcul.");
@@ -906,18 +901,10 @@ const PretRelaisPage: NextPage = () => {
                           />
                         </div>
 
-                        <label className="sm:col-span-2 flex items-start gap-2 text-[0.75rem] text-slate-200">
-                          <input
-                            type="checkbox"
-                            checked={consentLokt}
-                            onChange={(e) => setConsentLokt(e.target.checked)}
-                            className="mt-1"
-                          />
-                          <span>
-                            J’accepte que mes données soient utilisées pour m’envoyer mon analyse
-                            et améliorer les services lokt.fr.
-                          </span>
-                        </label>
+                        <p className="sm:col-span-2 text-[0.7rem] text-slate-300">
+                          Vos coordonnées servent à envoyer votre analyse et à retrouver votre simulation.{" "}
+                          <a href="/confidentialite" className="underline hover:text-white">En savoir plus sur vos données personnelles</a>.
+                        </p>
 
                         <div className="sm:col-span-2 flex items-end">
                           <button

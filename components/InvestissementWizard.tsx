@@ -1,9 +1,17 @@
 // components/InvestissementWizard.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import {
+  BanknotesIcon,
+  BuildingOffice2Icon,
+  ChartBarIcon,
+  CreditCardIcon,
+  ReceiptPercentIcon,
+} from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import { usePermissions } from "./PermissionProvider";
 import ListingAnalysisSection from "./investissement/ListingAnalysisSection";
+import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
 
 import {
   Chart as ChartJS,
@@ -208,6 +216,13 @@ export default function InvestissementWizard({
   const steps: StepKey[] = ["couts", "revenus", "charges", "credit", "resultats"];
   const [step, setStep] = useState<StepKey>("couts");
   const stepIndex = steps.indexOf(step);
+  const progressSteps = [
+    { label: "Projet", icon: BuildingOffice2Icon },
+    { label: "Revenus", icon: BanknotesIcon },
+    { label: "Charges", icon: ReceiptPercentIcon },
+    { label: "Financement", icon: CreditCardIcon },
+    { label: "Résultats", icon: ChartBarIcon },
+  ];
 
   const goNext = () => setStep(steps[clamp(stepIndex + 1, 0, steps.length - 1)]);
   const goPrev = () => setStep(steps[clamp(stepIndex - 1, 0, steps.length - 1)]);
@@ -282,11 +297,10 @@ export default function InvestissementWizard({
   /* ======================== Gate states ======================== */
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [leadEmail, setLeadEmail] = useState<string>("");
-  const [consentLokt, setConsentLokt] = useState<boolean>(false);
   const [consentContact, setConsentContact] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
-  const [sendByEmail, setSendByEmail] = useState<boolean>(true);
+  const [sendByEmail] = useState<boolean>(true);
   const [sendingEmail, setSendingEmail] = useState<boolean>(false);
   const [sendEmailMsg, setSendEmailMsg] = useState<string | null>(null);
 
@@ -300,7 +314,6 @@ export default function InvestissementWizard({
       const ok = !!data?.consent;
       if (email && ok) {
         setLeadEmail((prev) => (prev ? prev : email));
-        setConsentLokt(true);
         setUnlocked(true);
       }
     } catch {
@@ -576,7 +589,7 @@ export default function InvestissementWizard({
       user: { user_id: sessionUserId || null, email: sessionEmail || null },
         consent: {
         consent_contact: consentContact,
-        consent_analysis: !!consentLokt,
+        consent_analysis: true,
       },
         
     };
@@ -873,7 +886,7 @@ export default function InvestissementWizard({
     // auto-capture si déjà consenti
     const email = (leadEmail || "").trim().toLowerCase();
     const hasValidEmail = email && email.includes("@");
-    if (!isLoggedIn && consentLokt && unlocked && hasValidEmail) {
+    if (!isLoggedIn && unlocked && hasValidEmail) {
       try {
         await captureLeadViaRpc({
           email,
@@ -1024,11 +1037,6 @@ export default function InvestissementWizard({
       return;
     }
 
-    if (!consentLokt) {
-      setUnlockMsg("Pour recevoir le rapport, merci d’accepter l’utilisation de vos données pour cette simulation.");
-      return;
-    }
-
     setUnlocking(true);
     try {
       try {
@@ -1088,7 +1096,7 @@ export default function InvestissementWizard({
   }
 
 const canClickUnlock =
-  hasSimulation && leadEmailValid && consentLokt && !unlocking && !sendingEmail;
+  hasSimulation && leadEmailValid && !unlocking && !sendingEmail;
   
   /* ======================== UI helpers ======================== */
   const primaryNavButtonClass =
@@ -1164,11 +1172,16 @@ const canClickUnlock =
   /* ======================== Render ======================== */
   return (
     <div className="space-y-6">
-     
+      <CalculatorWizardShell
+        steps={progressSteps}
+        currentIndex={stepIndex}
+        onStepClick={(index) => setStep(steps[index])}
+        title="Analysez votre investissement sans angle mort."
+      >
 
       {/* STEP: Coûts */}
       {step === "couts" && (
-        <section className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+        <section className="calculator-premium-form space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 1</p>
@@ -1341,7 +1354,7 @@ const canClickUnlock =
 
       {/* STEP: Revenus */}
       {step === "revenus" && (
-        <section className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+        <section className="calculator-premium-form space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 2</p>
@@ -1446,7 +1459,7 @@ const canClickUnlock =
 
       {/* STEP: Charges */}
       {step === "charges" && (
-        <section className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+        <section className="calculator-premium-form space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 3</p>
@@ -1516,7 +1529,7 @@ const canClickUnlock =
 
       {/* STEP: Crédit */}
       {step === "credit" && (
-        <section className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+        <section className="calculator-premium-form space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 4</p>
@@ -1597,7 +1610,7 @@ const canClickUnlock =
       {step === "resultats" && (
         <section
           ref={resultSectionRef}
-          className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5"
+          className="calculator-premium-form space-y-4"
         >
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1821,46 +1834,10 @@ const canClickUnlock =
                                 placeholder="ex: prenom.nom@gmail.com"
                                 className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white sm:rounded-lg sm:py-2 sm:text-sm placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
                               />
-                            </div>
-                              {/* ✅ Recevoir par email */}
-                          <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
-                            <label className="flex items-start gap-3 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={sendByEmail}
-                                onChange={(e) => setSendByEmail(e.target.checked)}
-                                className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-                              />
-                              <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                                <span className="font-semibold">Recevoir le rapport complet par email</span>
-                                <span className="block text-[0.7rem] text-slate-300 mt-1">
-                                  Score, synthèse, points de vigilance et plan d’action.
-                                </span>
-                              </span>
-                            </label>
-
-                            {sendingEmail ? (
-                              <p className="mt-2 text-[0.7rem] text-slate-300">Envoi de l’email…</p>
-                            ) : null}
-
-                            {sendEmailMsg ? (
-                              <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p>
-                            ) : null}
-                          </div>
-                            <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
-                              <label className="flex items-start gap-3 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={consentLokt}
-                                  onChange={(e) => setConsentLokt(e.target.checked)}
-                                  className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-                                />
-                                <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                                  <span className="font-semibold">J’accepte</span> que mes données soient utilisées pour
-                                  m’envoyer mon rapport, retrouver ma simulation et améliorer lokt.fr.
-                                </span>
-                              </label>
-                              <p className="mt-2 text-[0.7rem] text-slate-300">Aucune revente de données. Aucun démarchage partenaire sans accord séparé.</p>
+                              <p className="text-[0.7rem] text-slate-300">
+                                Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}
+                                <a href="/confidentialite" className="underline hover:text-white">En savoir plus sur vos données personnelles</a>.
+                              </p>
                             </div>
 
                             <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
@@ -1891,6 +1868,8 @@ const canClickUnlock =
                           </div>
 
                           {unlockMsg && <p className="mt-3 text-[0.75rem] text-slate-200">{unlockMsg}</p>}
+                          {sendingEmail ? <p className="mt-3 text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
+                          {sendEmailMsg ? <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
 
                         </div>
                       </div>
@@ -1910,6 +1889,7 @@ const canClickUnlock =
           )}
         </section>
       )}
+      </CalculatorWizardShell>
     </div>
   );
 }

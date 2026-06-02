@@ -221,76 +221,57 @@ export default function CapaciteEmpruntPage() {
 
       <AppHeader />
 
-      <main className="flex-1 px-3 py-5 sm:px-4 sm:py-8">
-        <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
-          {/* Header */}
-          <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
-            <div className="h-1.5 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-            <div className="space-y-3 p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-3">
-              <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-[#635bff]">
-                CALCULETTE CAPACITÉ D&apos;EMPRUNT
-              </p>
-
-              <span className="hidden sm:inline-flex items-center rounded-full border border-slate-200 bg-[#f6f9fc] px-3 py-1 text-[0.7rem] font-semibold text-slate-700">
-                lokt.fr
-              </span>
-            </div>
-
-            {/* ✅ H1 plus “requête” */}
-            <h1 className="text-[1.35rem] font-semibold leading-tight text-slate-900 sm:text-2xl">
-              {isLoggedIn && displayName
-                ? `Bonjour ${displayName}, calculez votre capacité d’emprunt.`
-                : "Calculer ma capacité d’emprunt immobilier"}
-            </h1>
-
-            <p className="max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-xs">
-              Estimez combien vous pouvez emprunter selon vos revenus, charges, durée et taux. Résultat clair :
-              mensualité → capital → budget d’achat (apport + frais).
+      <main className="flex-1">
+        <section className="relative overflow-hidden px-4 pb-20 pt-10 text-white sm:pb-28 sm:pt-14">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#635bff] via-[#00a8d4] to-[#00c895]" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,.22)_0%,transparent_42%),linear-gradient(72deg,transparent_58%,rgba(255,184,0,.38)_100%)]" />
+          <div className="relative mx-auto max-w-6xl">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-white/80">
+              Calculette immobilière lokt.fr
             </p>
-
-            {/* Maillage interne discret */}
-            <div className="pt-1 flex flex-wrap gap-2">
-              <Link href="/" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Accueil →
-              </Link>
-              <Link href="/pret-relais" className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]">
-                Prêt relais →
-              </Link>
-              <Link
-                href="/investissement"
-                className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]"
-              >
-                Rentabilité locative →
-              </Link>
-              <Link
-                href="/plus-value-vente-immobiliere"
-                className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]"
-              >
-                Plus-value immobilière →
-              </Link>
-              <Link
-                href="/parc-immobilier"
-                className="text-xs font-semibold underline decoration-[#635bff]/30 text-[#3f37c9]"
-              >
-                Parc immobilier →
-              </Link>
+            <h1 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight sm:text-5xl">
+              {isLoggedIn && displayName
+                ? `${displayName}, trouvez le budget juste pour votre projet.`
+                : "Combien pouvez-vous emprunter pour votre projet immobilier ?"}
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/85 sm:text-base sm:leading-7">
+              Revenus, charges, apport et durée : obtenez une estimation structurée de votre mensualité et de votre
+              budget d&apos;achat.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-white/90">
+              <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 backdrop-blur">Gratuit</span>
+              <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 backdrop-blur">Sans engagement</span>
+              <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 backdrop-blur">Résultat immédiat</span>
             </div>
-            </div>
-          </section>
+          </div>
+        </section>
 
+        <div className="mx-auto -mt-12 max-w-6xl space-y-5 px-3 pb-8 sm:-mt-16 sm:space-y-6 sm:px-4 sm:pb-12">
           {/* Calculette */}
           <CapaciteWizard showSaveButton={isLoggedIn} />
 
           {/* ✅ Micro bloc confiance (UX + SEO) */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
-            <h2 className="text-sm font-semibold text-slate-900">Pourquoi utiliser ce simulateur de capacité d’emprunt ?</h2>
-            <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
-              <li>Connaître votre budget réaliste avant de chercher un bien.</li>
-              <li>Comparer rapidement plusieurs scénarios (durée, taux, apport).</li>
-              <li>Préparer un dossier clair pour la banque (lecture structurée).</li>
-            </ul>
+          <section className="grid gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-sm sm:grid-cols-3">
+            {[
+              ["01", "Cadrez votre recherche", "Un budget réaliste avant les visites."],
+              ["02", "Comparez vos scénarios", "Durée, taux et apport restent ajustables."],
+              ["03", "Préparez la suite", "Une lecture structurée pour avancer sereinement."],
+            ].map(([num, heading, text]) => (
+              <div key={num} className="bg-white p-5">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">{num}</p>
+                <h2 className="mt-2 text-sm font-semibold text-slate-950">{heading}</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-600">{text}</p>
+              </div>
+            ))}
           </section>
+
+          <nav aria-label="Autres calculettes" className="flex flex-wrap gap-x-4 gap-y-2 px-1 text-xs font-semibold text-[#3f37c9]">
+            <Link href="/">Accueil</Link>
+            <Link href="/pret-relais">Prêt relais</Link>
+            <Link href="/investissement">Rentabilité locative</Link>
+            <Link href="/plus-value-vente-immobiliere">Plus-value immobilière</Link>
+            <Link href="/parc-immobilier">Parc immobilier</Link>
+          </nav>
 
           {/* Bloc SEO principal */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
