@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ArrowUpRightIcon, CheckCircleIcon, LockClosedIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { ArrowUpRightIcon, Bars3Icon, CheckCircleIcon, LockClosedIcon, SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { SidebarNav, LandlordSectionKey } from "./SidebarNav";
 
 import { SectionDashboard } from "./sections/SectionDashboard";
@@ -86,6 +86,7 @@ export function DashboardShell(props: any) {
   const [active, setActive] = useState<LandlordSectionKey>("dashboard");
   const [messagingTenantId, setMessagingTenantId] = useState<string | null>(null);
   const [departureTenantId, setDepartureTenantId] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const userId: string = props?.user?.id || "";
   const userEmail: string | undefined = props?.user?.email;
@@ -182,7 +183,22 @@ export function DashboardShell(props: any) {
 
   const onChangeTab = (k: LandlordSectionKey) => {
     setActive(k);
+    setMobileMenuOpen(false);
   };
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileMenuOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mobileMenuOpen]);
 
   const lockedSection = useMemo<LockedSectionConfig | null>(() => {
     if (permissionsLoading) return null;
@@ -390,6 +406,60 @@ export function DashboardShell(props: any) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
+      <div className="sticky top-3 z-30 mb-3 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(true)}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 shadow-md shadow-slate-900/10"
+          aria-label="Ouvrir le menu de l’espace bailleur"
+          aria-expanded={mobileMenuOpen}
+          aria-controls="landlord-mobile-menu"
+        >
+          <Bars3Icon className="h-6 w-6" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div
+        className={
+          "fixed inset-0 z-50 lg:hidden " +
+          (mobileMenuOpen ? "pointer-events-auto" : "pointer-events-none")
+        }
+        aria-hidden={!mobileMenuOpen}
+      >
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(false)}
+          className={
+            "absolute inset-0 bg-slate-950/35 transition-opacity duration-300 " +
+            (mobileMenuOpen ? "opacity-100" : "opacity-0")
+          }
+          aria-label="Fermer le menu"
+          tabIndex={mobileMenuOpen ? 0 : -1}
+        />
+        <div
+          id="landlord-mobile-menu"
+          className={
+            "absolute inset-y-0 left-0 w-[min(88vw,320px)] overflow-y-auto bg-white p-3 shadow-2xl transition-transform duration-300 ease-out " +
+            (mobileMenuOpen ? "translate-x-0" : "-translate-x-full")
+          }
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation de l’espace bailleur"
+        >
+          <div className="mb-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+              aria-label="Fermer le menu"
+            >
+              <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+          <SidebarNav active={active} onChange={onChangeTab} healthScore={healthScore} overLimit={overLimit} />
+        </div>
+      </div>
+
       {!permissionsLoading ? (
         <div className="mb-4 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
           <div className="h-1 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
@@ -448,7 +518,7 @@ export function DashboardShell(props: any) {
         </div>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        <SidebarNav active={active} onChange={onChangeTab} healthScore={healthScore} overLimit={overLimit} />
+        <SidebarNav active={active} onChange={onChangeTab} healthScore={healthScore} overLimit={overLimit} className="hidden lg:block" />
         <section className="min-w-0 space-y-4">{content}</section>
       </div>
     </div>

@@ -28,11 +28,13 @@ export function SidebarNav({
   active,
   onChange,
   healthScore,
+  className = "",
 }: {
   active: LandlordSectionKey;
   onChange: (k: LandlordSectionKey) => void;
   healthScore: number;
   overLimit: boolean;
+  className?: string;
 }) {
   // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]";
@@ -85,7 +87,7 @@ export function SidebarNav({
   };
 
   return (
-    <aside className="w-full lg:w-[280px] lg:sticky lg:top-4 h-max">
+    <aside className={`h-max w-full lg:w-[280px] lg:sticky lg:top-4 ${className}`}>
       <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur">
         {/* Header sidebar */}
         <div className="px-2 pt-1 pb-3">
