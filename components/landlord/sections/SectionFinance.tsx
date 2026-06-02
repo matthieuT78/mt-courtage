@@ -1128,29 +1128,29 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
       ) : null}
 
-      <nav className="sticky top-3 z-20 -mx-1 overflow-x-auto rounded-[1.75rem] border border-indigo-100 bg-white/95 p-2 shadow-md backdrop-blur">
+      <nav className="sticky top-3 z-20 -mx-1 rounded-[1.5rem] border border-indigo-100 bg-white/95 p-2 shadow-md backdrop-blur sm:rounded-[1.75rem]">
         <div className="mb-2 flex items-center justify-between gap-3 px-2">
           <p className="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-indigo-700">Navigation Finance</p>
           <p className="hidden text-xs font-medium text-slate-500 sm:block">Cliquez pour aller directement à une partie</p>
         </div>
-        <div className="grid min-w-[760px] grid-cols-4 gap-1">
+        <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
           {chapters.map((chapter) => (
             <a
               key={chapter.href}
               href={chapter.href}
-              className="group relative overflow-hidden rounded-[1.35rem] border border-slate-200 bg-slate-50 px-4 py-3 text-left shadow-sm transition hover:border-indigo-200 hover:bg-white hover:shadow-md"
+              className="group relative min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left shadow-sm transition hover:border-indigo-200 hover:bg-white hover:shadow-md sm:rounded-[1.35rem] sm:px-4 sm:py-3"
             >
               <span className="flex items-center justify-between gap-3">
                 <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-indigo-500 transition group-hover:text-[#635bff]">
                   {chapter.number}
                 </span>
-                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[0.65rem] font-semibold text-slate-500 group-hover:border-indigo-200 group-hover:text-indigo-700">
+                <span className="hidden rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[0.65rem] font-semibold text-slate-500 group-hover:border-indigo-200 group-hover:text-indigo-700 sm:inline-flex">
                   Aller à
                 </span>
               </span>
-              <span className="mt-1.5 block text-sm font-extrabold text-slate-950">{chapter.label}</span>
-              <span className="mt-0.5 block truncate text-xs font-medium text-slate-500">{chapter.sub}</span>
-              <span className="absolute inset-x-4 bottom-1 h-0.5 origin-left scale-x-100 rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+              <span className="mt-1 block text-sm font-extrabold text-slate-950 sm:mt-1.5">{chapter.label}</span>
+              <span className="mt-0.5 block truncate text-[0.68rem] font-medium text-slate-500 sm:text-xs">{chapter.sub}</span>
+              <span className="absolute inset-x-3 bottom-1 h-0.5 origin-left scale-x-100 rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:inset-x-4" />
             </a>
           ))}
         </div>
@@ -1245,8 +1245,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
               return (
                 <details key={property.id} className="group overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm open:bg-white">
-                  <summary className="cursor-pointer list-none px-4 py-3">
-                    <div className="grid items-center gap-3 lg:grid-cols-[minmax(180px,1fr)_110px_110px_110px_150px_150px_96px]">
+                  <summary className="cursor-pointer list-none px-3 py-3 sm:px-4">
+                    <div className="space-y-3 lg:grid lg:grid-cols-[minmax(180px,1fr)_110px_110px_110px_150px_150px_96px] lg:items-center lg:gap-3 lg:space-y-0">
                       <div className="flex min-w-0 items-center gap-3">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-sm font-semibold text-slate-900 ring-1 ring-slate-200">
                           {(property.label || property.address_line1 || "B").slice(0, 1).toUpperCase()}
@@ -1263,16 +1263,18 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                         </div>
                       </div>
 
-                      <LineMetric label="Total" value={formatEuro(monthlyTotal)} strong />
-                      <LineMetric label="Crédit" value={formatEuro(loanMonthly)} />
-                      <LineMetric label="Taxes" value={formatEuro(taxesMonthly)} />
-                      <LineMetric
-                        label="Taux"
-                        value={existing?.loan_rate_percent ? `${Number(existing.loan_rate_percent).toLocaleString("fr-FR")} %` : "—"}
-                      />
-                      <LineMetric label="Régime" value={existing?.tax_regime ? taxRegimeLabel(existing.tax_regime) : "—"} />
+                      <div className="grid grid-cols-3 gap-x-3 gap-y-2 border-t border-slate-200 pt-3 sm:grid-cols-5 lg:contents lg:border-0 lg:pt-0">
+                        <LineMetric label="Total" value={formatEuro(monthlyTotal)} strong />
+                        <LineMetric label="Crédit" value={formatEuro(loanMonthly)} />
+                        <LineMetric label="Taxes" value={formatEuro(taxesMonthly)} />
+                        <LineMetric
+                          label="Taux"
+                          value={existing?.loan_rate_percent ? `${Number(existing.loan_rate_percent).toLocaleString("fr-FR")} %` : "—"}
+                        />
+                        <LineMetric label="Régime" value={existing?.tax_regime ? taxRegimeLabel(existing.tax_regime) : "—"} />
+                      </div>
 
-                      <span className="inline-flex items-center justify-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 group-open:hidden">
+                      <span className="inline-flex items-center justify-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 group-open:hidden lg:inline-flex">
                         Modifier
                       </span>
                     </div>
