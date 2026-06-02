@@ -176,8 +176,9 @@ export default function GestionLocativeLmnpPage() {
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Location meublée et LMNP
                 </div>
-                <h1 className="mt-5 max-w-3xl text-[2.55rem] font-semibold leading-[0.99] tracking-tight text-white sm:mt-6 sm:text-6xl">
-                  Gérer un meublé LMNP sans tableur dispersé.
+                <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-white sm:mt-6">
+                  <span className="block text-[2.55rem] sm:text-6xl">Gérer un meublé LMNP.</span>
+                  <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Sans tableur dispersé.</span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
                   La page cas d’usage pour les propriétaires en location meublée : inventaire, loyers, quittances, état des lieux, finance et préparation de déclaration autour d’un logement LMNP.
@@ -289,8 +290,15 @@ export default function GestionLocativeLmnpPage() {
           </div>
         </section>
 
-        <section className="px-4 pb-10 sm:pb-16">
+        <section className="px-4 pb-10 pt-12 sm:pb-16 sm:pt-20">
           <div className="mx-auto max-w-6xl space-y-6">
+            <div className="max-w-3xl pb-3">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Location meublée</p>
+              <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+                <span className="block text-3xl sm:text-4xl">Les preuves au bon endroit.</span>
+                <span className="mt-1 block text-2xl text-cyan-600 sm:text-3xl">Le pilotage sans surcharge.</span>
+              </h2>
+            </div>
             <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {features.map((feature) => (
                 <FeatureCard key={feature.title} feature={feature} />
@@ -301,7 +309,10 @@ export default function GestionLocativeLmnpPage() {
               <div className="grid gap-0 lg:grid-cols-[0.82fr,1.18fr]">
                 <div className="p-5 sm:p-8">
                   <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Pourquoi LMNP</p>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Cette page répond au cas LMNP. L’outil reste utilisable plus largement.</h2>
+                  <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+                    <span className="block text-2xl sm:text-3xl">Pensé pour le cas LMNP.</span>
+                    <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">Utile bien au-delà.</span>
+                  </h2>
                   <p className="mt-4 text-sm leading-6 text-slate-600">
                     La page outil gestion locative présente le produit global. Cette page se concentre sur les recherches liées à la location meublée et au LMNP : mobilier, inventaire, justificatifs, recettes, charges et documents à conserver.
                   </p>

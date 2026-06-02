@@ -594,6 +594,14 @@ export default function Home() {
               transform: none !important;
               opacity: 1 !important;
             }
+
+            .lokt-hero-flow {
+              animation: none !important;
+            }
+
+            .lokt-hero-sweep {
+              animation: none !important;
+            }
           }
 
           @keyframes fadeUp {
@@ -605,6 +613,39 @@ export default function Home() {
               opacity: 1;
               transform: translate3d(0, 0, 0);
             }
+          }
+
+          @keyframes heroFlow {
+            0%,
+            100% {
+              background-position: 0% 50%;
+              transform: translate3d(-3%, -2%, 0) scale(1.08);
+            }
+            50% {
+              background-position: 100% 50%;
+              transform: translate3d(3%, 2%, 0) scale(1.16);
+            }
+          }
+
+          .lokt-hero-flow {
+            background-size: 180% 180%;
+            animation: heroFlow 12s ease-in-out infinite;
+            will-change: transform, background-position;
+          }
+
+          @keyframes heroSweep {
+            0%,
+            100% {
+              transform: translate3d(-18%, 0, 0);
+            }
+            50% {
+              transform: translate3d(18%, 0, 0);
+            }
+          }
+
+          .lokt-hero-sweep {
+            animation: heroSweep 9s ease-in-out infinite;
+            will-change: transform;
           }
 
           .anim-fadeUp {
@@ -643,9 +684,10 @@ export default function Home() {
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
         <section className="relative overflow-hidden px-4 pb-10 pt-10 sm:pb-24 sm:pt-20">
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[680px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:h-[560px]" />
+          <div aria-hidden className="lokt-hero-flow absolute -left-[8%] top-[-8%] h-[740px] w-[116%] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:h-[620px]" />
           <div aria-hidden className="absolute inset-x-0 top-0 h-[680px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)] sm:h-[560px]" />
           <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
+          <div aria-hidden className="lokt-hero-sweep pointer-events-none absolute -left-1/4 top-[-8%] h-[720px] w-[150%] -skew-y-6 bg-[linear-gradient(112deg,transparent_22%,rgba(255,255,255,.28)_42%,rgba(255,215,120,.26)_54%,transparent_72%)] sm:h-[620px]" />
 
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.92fr,1.08fr] lg:items-center">
@@ -783,174 +825,189 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="px-4 py-8 sm:py-16">
-          <div className="mx-auto max-w-6xl space-y-6">
-            <div className="grid gap-5 lg:grid-cols-2">
-              <article className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
-                <Sticker kind="bailleur" className="h-12 w-12 sm:h-14 sm:w-14" />
-                <p className="mt-4 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff] sm:mt-5">Outil bailleur</p>
-                <h2 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-slate-950 sm:text-2xl">Gérer un bien en location</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Bail, locataire, loyers, quittances PDF, relances, état des lieux, inventaire, finance et alertes restent reliés au bon logement.
-                </p>
-                <div className="mt-5 grid gap-3 sm:mt-6 sm:flex sm:flex-wrap">
-                  {isLoggedIn ? (
-                    <Link href="/espace-bailleur" className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-                      Accéder à l’espace bailleur →
-                    </Link>
-                  ) : (
-                    <>
-                      <Link href="/mon-compte?mode=register&redirect=/espace-bailleur" className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-                        Créer mon espace bailleur gratuit →
-                      </Link>
-                      <Link href="/mon-compte?mode=login&redirect=/espace-bailleur" className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50">
-                        J’ai déjà un compte
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </article>
-
-              <article className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
-                <Sticker kind="calc" className="h-12 w-12 sm:h-14 sm:w-14" />
-                <p className="mt-4 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-600 sm:mt-5">Projet immobilier</p>
-                <h2 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-slate-950 sm:text-2xl">Combien puis-je emprunter ?</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Calculez une mensualité réaliste, votre capacité d’emprunt et le budget d’achat possible avant de visiter ou de négocier.
-                </p>
-                <div className="mt-5 grid gap-3 sm:mt-6 sm:flex sm:flex-wrap">
-                  <button type="button" onClick={() => setPickerOpen(true)} className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#635bff] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#524bd8]">
-                    Choisir une simulation →
-                  </button>
-                  <Link href="/calculettes" className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50">
-                    Voir les calculettes
+        <section className="border-b border-slate-200 bg-white px-4 py-14 sm:py-24">
+          <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr,1px,1fr] lg:gap-14">
+            <article>
+              <Sticker kind="bailleur" className="h-12 w-12 sm:h-14 sm:w-14" />
+              <p className="mt-5 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Outil bailleur</p>
+              <h2 className="mt-2 max-w-md font-semibold leading-tight text-slate-950">
+                <span className="block text-[1.75rem] sm:text-4xl">Gérer un bien.</span>
+                <span className="mt-1 block text-xl text-[#635bff] sm:text-3xl">Sans multiplier les fichiers.</span>
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">
+                Bail, locataire, loyers, quittances PDF, relances, état des lieux, inventaire, finance et alertes restent reliés au bon logement.
+              </p>
+              <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
+                {isLoggedIn ? (
+                  <Link href="/espace-bailleur" className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                    Accéder à l’espace bailleur →
                   </Link>
-                </div>
-              </article>
+                ) : (
+                  <>
+                    <Link href="/mon-compte?mode=register&redirect=/espace-bailleur" className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                      Créer mon espace bailleur gratuit →
+                    </Link>
+                    <Link href="/mon-compte?mode=login&redirect=/espace-bailleur" className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+                      J’ai déjà un compte
+                    </Link>
+                  </>
+                )}
+              </div>
+            </article>
+
+            <div className="hidden bg-slate-200 lg:block" />
+
+            <article>
+              <Sticker kind="calc" className="h-12 w-12 sm:h-14 sm:w-14" />
+              <p className="mt-5 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-600">Projet immobilier</p>
+              <h2 className="mt-2 max-w-md font-semibold leading-tight text-slate-950">
+                <span className="block text-[1.75rem] sm:text-4xl">Décider sereinement.</span>
+                <span className="mt-1 block text-xl text-cyan-600 sm:text-3xl">Avec les bons ordres de grandeur.</span>
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-slate-600">
+                Capacité d’emprunt, prêt relais, rentabilité ou plus-value : posez des hypothèses claires avant de visiter, négocier ou vendre.
+              </p>
+              <div className="mt-6 grid gap-3 sm:flex sm:flex-wrap">
+                <button type="button" onClick={() => setPickerOpen(true)} className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#635bff] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#524bd8]">
+                  Choisir une simulation →
+                </button>
+                <Link href="/calculettes" className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+                  Voir les calculettes
+                </Link>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section className="bg-slate-950 px-4 py-14 text-white sm:py-20">
+          <div className="mx-auto max-w-6xl">
+            <div className="max-w-2xl">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-300">Workflow bailleur</p>
+              <h2 className="mt-3 max-w-3xl font-semibold leading-tight">
+                <span className="block text-3xl text-white sm:text-4xl">Une location suit un fil.</span>
+                <span className="mt-1 block text-2xl text-cyan-300 sm:text-3xl">L’outil aussi.</span>
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-slate-300">
+                lokt.fr suit le cycle réel du propriétaire : structurer le logement, contrôler les encaissements et conserver les documents utiles.
+              </p>
             </div>
 
-            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
-              <div className="grid gap-0 lg:grid-cols-[0.9fr,1.1fr]">
-                <div className="p-5 sm:p-8">
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Workflow</p>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Un système lisible pour ne rien oublier.</h2>
-                  <p className="mt-4 text-sm leading-6 text-slate-600">
-                    lokt.fr suit le cycle réel d’un propriétaire : créer le logement, rattacher un bail, encaisser le loyer,
-                    générer la quittance, suivre la finance et garder les preuves.
-                  </p>
+            <div className="mt-10 grid gap-8 sm:grid-cols-3">
+              {[
+                ["01", "Structurer", "Bien, bail, locataire et montants sont liés dès le départ."],
+                ["02", "Encaisser", "Paiement reçu, incomplet ou absent : chaque situation garde une action claire."],
+                ["03", "Archiver", "Quittances, finance et historique restent accessibles au bon endroit."],
+              ].map(([step, titleStep, textStep]) => (
+                <div key={step} className="border-l border-cyan-300/50 pl-5">
+                  <p className="text-4xl font-semibold leading-none text-cyan-300/80">{step}</p>
+                  <h3 className="mt-5 text-xl font-semibold text-white">{titleStep}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">{textStep}</p>
                 </div>
-                <div className="grid gap-3 bg-slate-50 p-4 sm:grid-cols-3 sm:p-8">
-                  {[
-                    ["01", "Structurer", "Bien, bail, locataire, montants."],
-                    ["02", "Encaisser", "Paiement reçu, incomplet ou absent."],
-                    ["03", "Archiver", "Quittances, finance, historique."],
-                  ].map(([step, titleStep, textStep]) => (
-                    <div key={step} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">{step}</p>
-                      <h3 className="mt-3 text-lg font-semibold text-slate-950">{titleStep}</h3>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{textStep}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
+              ))}
+            </div>
+          </div>
+        </section>
 
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
-              <div className="grid gap-8 lg:grid-cols-[1fr,420px] lg:items-center">
-                <div>
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Tarifs</p>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
-                    Gratuit pour commencer, payant quand l’automatisation remplace du travail manuel.
-                  </h2>
-                  <p className="mt-4 text-sm leading-6 text-slate-600">
-                    Un logement actif gratuit. Starter ajoute les automatismes utiles. Essentiel ajoute le pilotage,
-                    les exports et l’aide à la déclaration.
-                  </p>
-                  <p className="mt-3 text-xs leading-5 text-slate-500">
-                    Pour un bailleur LMNP, Pinel ou investisseur locatif, l’abonnement peut s’analyser comme un outil de gestion du bien.
-                    La déduction éventuelle dépend de votre régime fiscal et doit être vérifiée avec votre expert-comptable.
-                  </p>
-                </div>
-                <div className="grid gap-3">
-                  {[
-                    ["Gratuit", "1 logement actif · gestion manuelle", "0 €"],
-                    ["Starter", "Automatisation quittances · jusqu’à 3 logements", "4,90 € / mois"],
-                    ["Essentiel", "Finance, exports & déclaration · jusqu’à 10 logements", "9,90 € / mois"],
-                  ].map(([plan, desc, price]) => (
-                    <div key={plan} className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-950">{plan}</p>
-                        <p className="mt-1 text-xs text-slate-500">{desc}</p>
-                      </div>
-                      <p className="text-sm font-semibold text-slate-900 sm:shrink-0">{price}</p>
-                    </div>
-                  ))}
-                  <Link href="/tarifs" className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-                    Voir les tarifs →
-                  </Link>
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 text-slate-950 shadow-sm sm:rounded-[2rem] sm:p-8">
-              <h2 className="text-[1.45rem] font-semibold tracking-tight sm:text-2xl">Gestion locative gratuite et simulateurs immobiliers</h2>
-              <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">
-                lokt.fr regroupe un outil de gestion locative gratuit pour propriétaires bailleurs et des simulateurs immobiliers gratuits.
-                L’espace bailleur permet de suivre un logement, un bail, un locataire, les loyers, les quittances, les états des lieux,
-                l’inventaire et la finance. Il est particulièrement utile en location meublée / LMNP, avec inventaire, suivi des recettes et préparation des informations de déclaration.
-                Les calculettes servent à préparer les décisions.
+        <section className="border-b border-slate-200 bg-white px-4 py-14 sm:py-24">
+          <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1fr,420px] lg:items-center">
+            <div>
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Tarifs</p>
+              <h2 className="mt-3 max-w-2xl font-semibold leading-tight text-slate-950">
+                <span className="block text-3xl sm:text-4xl">Gratuit pour commencer.</span>
+                <span className="mt-1 block text-2xl text-[#635bff] sm:text-3xl">Payant quand l’automatisation fait gagner du temps.</span>
+              </h2>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-600">
+                Un logement actif gratuit. Starter ajoute les automatismes utiles. Essentiel ajoute le pilotage,
+                les exports et l’aide à la déclaration.
               </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {[
-                  ["/gestion-locative-lmnp", "Gestion locative LMNP"],
-                  ["/outil-gestion-locative", "Outil de gestion locative gratuit"],
-                  ["/quittances-loyer", "Quittance de loyer"],
-                  ["/etats-des-lieux-documents", "État des lieux"],
-                  ["/capacite", "Capacité d’emprunt"],
-                  ["/investissement", "Rentabilité locative"],
-                  ["/pret-relais", "Prêt relais"],
-                  ["/parc-immobilier", "Parc immobilier"],
-                ].map(([href, label]) => (
-                  <Link key={href} href={href} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                    {label} →
-                  </Link>
-                ))}
-              </div>
-            </section>
+              <p className="mt-3 max-w-2xl text-xs leading-5 text-slate-500">
+                Pour un bailleur LMNP, Pinel ou investisseur locatif, l’abonnement peut s’analyser comme un outil de gestion du bien.
+                La déduction éventuelle dépend de votre régime fiscal et doit être vérifiée avec votre expert-comptable.
+              </p>
+            </div>
+            <div className="border-y border-slate-200">
+              {[
+                ["Gratuit", "1 logement actif · gestion manuelle", "0 €"],
+                ["Starter", "Automatisation quittances · jusqu’à 3 logements", "4,90 € / mois"],
+                ["Essentiel", "Finance, exports & déclaration · jusqu’à 10 logements", "9,90 € / mois"],
+              ].map(([plan, desc, price]) => (
+                <div key={plan} className="grid gap-1 border-b border-slate-200 py-4 last:border-b-0 sm:grid-cols-[1fr,auto] sm:items-center sm:gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-950">{plan}</p>
+                    <p className="mt-1 text-xs text-slate-500">{desc}</p>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-900 sm:shrink-0">{price}</p>
+                </div>
+              ))}
+              <Link href="/tarifs" className="mb-1 mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                Voir les tarifs →
+              </Link>
+            </div>
+          </div>
+        </section>
 
-            <section id="faq" className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 sm:rounded-[2rem] sm:p-8">
-              <div>
-                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">FAQ</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Questions fréquentes</h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-                  Des réponses rapides sur l’espace bailleur, les quittances, les simulateurs et la gestion des données.
-                </p>
-              </div>
+        <section className="bg-[#edf7f8] px-4 py-12 sm:py-16">
+          <div className="mx-auto max-w-6xl">
+            <h2 className="max-w-3xl font-semibold leading-tight text-slate-950">
+              <span className="block text-[1.75rem] sm:text-3xl">Gestion locative gratuite.</span>
+              <span className="mt-1 block text-xl text-teal-700 sm:text-2xl">Simulateurs immobiliers pour décider plus tôt.</span>
+            </h2>
+            <p className="mt-4 max-w-4xl text-sm leading-7 text-slate-600">
+              lokt.fr regroupe un outil de gestion locative gratuit pour propriétaires bailleurs et des simulateurs immobiliers gratuits.
+              L’espace bailleur permet de suivre un logement, un bail, un locataire, les loyers, les quittances, les états des lieux,
+              l’inventaire et la finance. Il est particulièrement utile en location meublée / LMNP, avec inventaire, suivi des recettes et préparation des informations de déclaration.
+              Les calculettes servent à préparer les décisions.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-3">
+              {[
+                ["/gestion-locative-lmnp", "Gestion locative LMNP"],
+                ["/outil-gestion-locative", "Outil de gestion locative gratuit"],
+                ["/quittances-loyer", "Quittance de loyer"],
+                ["/etats-des-lieux-documents", "État des lieux"],
+                ["/capacite", "Capacité d’emprunt"],
+                ["/investissement", "Rentabilité locative"],
+                ["/pret-relais", "Prêt relais"],
+                ["/parc-immobilier", "Parc immobilier"],
+              ].map(([href, label]) => (
+                <Link key={href} href={href} className="text-xs font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-950">
+                  {label} →
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
 
-              <div className="mt-6 grid gap-3">
-                {faqData.map((f) => (
-                  <FaqItem
-                    key={f.q}
-                    q={f.q}
-                    a={
-                      <>
-                        {String(f.a).includes("contact@lokt.fr") ? (
-                          <>
-                            {String(f.a).split("contact@lokt.fr")[0]}
-                            <a className="underline" href="mailto:contact@lokt.fr">
-                              contact@lokt.fr
-                            </a>
-                            {String(f.a).split("contact@lokt.fr")[1] ?? ""}
-                          </>
-                        ) : (
-                          f.a
-                        )}
-                      </>
-                    }
-                  />
-                ))}
-              </div>
-            </section>
+        <section id="faq" className="bg-slate-100 px-4 py-14 sm:py-20">
+          <div className="mx-auto max-w-4xl">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">FAQ</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">Questions fréquentes</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+              Des réponses rapides sur l’espace bailleur, les quittances, les simulateurs et la gestion des données.
+            </p>
+
+            <div className="mt-7 grid gap-3">
+              {faqData.map((f) => (
+                <FaqItem
+                  key={f.q}
+                  q={f.q}
+                  a={
+                    <>
+                      {String(f.a).includes("contact@lokt.fr") ? (
+                        <>
+                          {String(f.a).split("contact@lokt.fr")[0]}
+                          <a className="underline" href="mailto:contact@lokt.fr">
+                            contact@lokt.fr
+                          </a>
+                          {String(f.a).split("contact@lokt.fr")[1] ?? ""}
+                        </>
+                      ) : (
+                        f.a
+                      )}
+                    </>
+                  }
+                />
+              ))}
+            </div>
           </div>
         </section>
       </main>

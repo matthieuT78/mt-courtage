@@ -236,8 +236,9 @@ export default function TarifsPage() {
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Tarifs espace bailleur
                 </div>
-                <h1 className="mt-5 max-w-3xl text-[2.55rem] font-semibold leading-[0.99] tracking-tight text-white sm:mt-6 sm:text-6xl">
-                  Gratuit pour gérer. Payant quand lokt.fr automatise.
+                <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-white sm:mt-6">
+                  <span className="block text-[2.55rem] sm:text-6xl">Gratuit pour gérer.</span>
+                  <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Payant quand lokt.fr automatise.</span>
                 </h1>
                 <p className="mt-5 max-w-3xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
                   Un logement actif gratuit pour démarrer. Les offres payantes ajoutent les quittances automatiques, les alertes, le pilotage financier et l’aide à la déclaration.
@@ -267,8 +268,15 @@ export default function TarifsPage() {
           </div>
         </section>
 
-        <section className="-mt-6 px-4 pb-10 sm:-mt-10 sm:pb-16">
+        <section className="px-4 pb-10 pt-8 sm:pb-16 sm:pt-14">
           <div className="relative mx-auto max-w-6xl space-y-6">
+          <div className="max-w-3xl pb-2">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Choisir simplement</p>
+            <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+              <span className="block text-3xl sm:text-4xl">Un abonnement lisible.</span>
+              <span className="mt-1 block text-2xl text-cyan-600 sm:text-3xl">Le bon niveau quand il devient utile.</span>
+            </h2>
+          </div>
 
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <article className="flex h-full flex-col rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-[1.75rem] sm:p-5">
@@ -315,7 +323,10 @@ export default function TarifsPage() {
           <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[1.75rem]">
             <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Comparatif détaillé</p>
-              <h2 className="mt-1 text-lg font-semibold text-slate-950">Ce que chaque abonnement débloque réellement</h2>
+              <h2 className="mt-1 font-semibold leading-tight text-slate-950">
+                <span className="block text-xl">Ce que chaque abonnement débloque.</span>
+                <span className="mt-1 block text-lg text-[#635bff]">Réellement.</span>
+              </h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">Tous les plans sont sans engagement. Starter automatise le quotidien ; Essentiel ajoute le pilotage financier avancé.</p>
             </div>
             <div className="overflow-x-auto">

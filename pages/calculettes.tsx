@@ -325,8 +325,18 @@ export default function CalculettesPage() {
                   <SparklesIcon className="h-4 w-4 text-[#635bff]" />
                   Simulateurs immobiliers gratuits
                 </div>
-                <h1 className="mt-5 max-w-3xl text-[2.55rem] font-semibold leading-[0.99] tracking-tight text-white sm:mt-6 sm:text-6xl">
-                  {displayName ? `Bonjour ${displayName}, simulez votre projet.` : "Simuler avant d’acheter, vendre ou investir."}
+                <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-white sm:mt-6">
+                  {displayName ? (
+                    <>
+                      <span className="block text-[2.55rem] sm:text-6xl">Bonjour {displayName}.</span>
+                      <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Simulez votre projet.</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="block text-[2.55rem] sm:text-6xl">Simuler avant d’acheter.</span>
+                      <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Vendre ou investir.</span>
+                    </>
+                  )}
                 </h1>
                 <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
                   Capacité d’emprunt, rentabilité, achat-revente, parc immobilier et plus-value : des résultats lisibles pour prendre une décision sans tableur.
@@ -410,8 +420,15 @@ export default function CalculettesPage() {
           </div>
         </section>
 
-        <section className="px-4 py-8 sm:py-16">
+        <section className="px-4 py-12 sm:py-20">
           <div className="mx-auto max-w-6xl space-y-6">
+            <div className="max-w-3xl pb-3">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Choisir son angle</p>
+              <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+                <span className="block text-3xl sm:text-4xl">Une décision immobilière.</span>
+                <span className="mt-1 block text-2xl text-cyan-600 sm:text-3xl">La bonne calculette au bon moment.</span>
+              </h2>
+            </div>
             <section className="grid gap-4 sm:grid-cols-2">
               {tools.map((tool) => {
                 const Icon = tool.icon;
@@ -454,7 +471,10 @@ export default function CalculettesPage() {
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="grid gap-6 lg:grid-cols-[1fr,360px] lg:items-center">
                 <div>
-                  <p className="text-sm font-semibold text-slate-950">Après la simulation : l’espace bailleur</p>
+                  <p className="font-semibold leading-tight text-slate-950">
+                    <span className="block text-2xl">Après la simulation.</span>
+                    <span className="mt-1 block text-xl text-[#635bff]">L’espace bailleur prend la suite.</span>
+                  </p>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                     Le premier logement actif est gratuit. Vous gérez manuellement le bail, le locataire, les quittances PDF, l’état des lieux,
                     l’inventaire et la finance simple. Les abonnements ajoutent l’automatisation des quittances, les emails, les rappels et l’aide à la déclaration.

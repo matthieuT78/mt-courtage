@@ -271,8 +271,9 @@ export default function OutilGestionLocativePage() {
                   <HomeModernIcon className="h-4 w-4 text-[#635bff]" />
                   Gratuit pour un logement actif
                 </div>
-                <h1 className="mt-5 max-w-3xl text-[2.55rem] font-semibold leading-[0.99] tracking-tight text-white sm:mt-6 sm:text-6xl">
-                  Un espace bailleur simple, clair, prêt à piloter.
+                <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-white sm:mt-6">
+                  <span className="block text-[2.55rem] sm:text-6xl">Un espace bailleur simple.</span>
+                  <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Clair, prêt à piloter.</span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
                   La page produit générale pour gérer une location nue, meublée ou LMNP : baux, loyers, quittances, états des lieux, inventaire, finance et alertes.
@@ -372,8 +373,15 @@ export default function OutilGestionLocativePage() {
           </div>
         </section>
 
-        <section className="px-4 py-8 sm:py-16">
+        <section className="px-4 py-12 sm:py-20">
           <div className="mx-auto max-w-6xl space-y-6">
+            <div className="max-w-3xl pb-3">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Tout relier</p>
+              <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+                <span className="block text-3xl sm:text-4xl">Un logement bien suivi.</span>
+                <span className="mt-1 block text-2xl text-cyan-600 sm:text-3xl">Sans multiplier les outils.</span>
+              </h2>
+            </div>
             <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <article className="flex h-full flex-col rounded-[1.75rem] border border-[#635bff]/20 bg-white p-5 shadow-sm">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f6f9fc] text-[#635bff] ring-1 ring-slate-200">
@@ -396,7 +404,10 @@ export default function OutilGestionLocativePage() {
               <div className="grid gap-0 lg:grid-cols-[0.8fr,1.2fr]">
                 <div className="p-5 sm:p-8">
                   <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Workflow bailleur</p>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Un parcours guidé, pas une pile de formulaires.</h2>
+                  <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+                    <span className="block text-2xl sm:text-3xl">Un parcours guidé.</span>
+                    <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">Pas une pile de formulaires.</span>
+                  </h2>
                   <p className="mt-4 text-sm leading-6 text-slate-600">
                     Chaque étape produit quelque chose d’utile pour le propriétaire : un logement exploitable, un bail suivi, puis des actions visibles dans le cockpit.
                   </p>
