@@ -136,9 +136,7 @@ create trigger protect_profile_privileged_fields
 update public.profiles
 set is_admin = true
 where lower(email) in (
-  'arnaud.bellaigue@gmail.com',
-  'nihel.zarrad@gmail.com',
-  'pdelorme@kpler.com'
+  'matthieu.turbier@gmail.com'
 );
 
 notify pgrst, 'reload schema';

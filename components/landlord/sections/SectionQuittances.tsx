@@ -517,9 +517,17 @@ export function SectionQuittances({
   }, [safeLeases, month, receiptByPeriod, paymentByPeriod]);
 
   const todoRows = useMemo(() => {
+    const rowRequiresActionNow = (row: any) => {
+      if (row.sent) return false;
+      if (row.payStatus === "paid") return true;
+      if (row.payStatus === "partial") return true;
+      if (row.pay?.ownerConfirmedUnpaid) return true;
+      return row.isLate;
+    };
+
     return recentMonths()
       .flatMap((yyyymm) => buildRowsForMonth(yyyymm))
-      .filter((row) => !row.sent)
+      .filter(rowRequiresActionNow)
       .sort((a, b) => {
         if (a.isLate !== b.isLate) return a.isLate ? -1 : 1;
         if (a.payStatus !== b.payStatus) return a.payStatus === "pending" ? -1 : 1;

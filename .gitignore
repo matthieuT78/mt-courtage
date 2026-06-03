@@ -134,7 +134,15 @@ lib/blog.ts
 ###############################################
 pages/test-quittance.tsx
 pages/admin/
+!pages/admin/
+pages/admin/*
+!pages/admin/leads.tsx
 pages/api/admin/
+!pages/api/admin/
+pages/api/admin/*
+!pages/api/admin/leads/
+!pages/api/admin/leads/**
+!pages/api/admin/users.ts
 
 ###############################################
 # FAVICON WORK FILES (ne pas ignorer les vrais)
