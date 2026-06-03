@@ -11,6 +11,7 @@ import {
   ChartBarIcon,
   ChevronDownIcon,
   HomeModernIcon,
+  UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import { GUIDE_CATEGORIES, getGuidesByCategory } from "../lib/guides";
@@ -231,7 +232,7 @@ export default function AppHeader() {
 
               <Link
                 href="/guides"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 md:hidden"
+                className="hidden h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 min-[460px]:inline-flex md:hidden"
                 title="Guides du bailleur"
                 aria-label="Guides du bailleur"
               >
@@ -242,6 +243,14 @@ export default function AppHeader() {
                 <>
                   <Link
                     href="/mon-compte"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:hidden"
+                    title="Mon compte"
+                    aria-label="Mon compte"
+                  >
+                    <UserCircleIcon className="h-5 w-5" />
+                  </Link>
+                  <Link
+                    href="/mon-compte"
                     className="hidden rounded-full border border-slate-200 bg-white px-3 py-2 text-[0.8rem] font-semibold text-slate-700 hover:bg-slate-50 sm:inline-flex"
                   >
                     Mon compte
@@ -250,11 +259,20 @@ export default function AppHeader() {
                     href="/espace-bailleur"
                     className={`inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-[0.8rem] font-semibold shadow-sm ${brandBg} ${brandText} ${brandHover}`}
                   >
-                    Espace bailleur
+                    <span className="sm:hidden">Espace</span>
+                    <span className="hidden sm:inline">Espace bailleur</span>
                   </Link>
                 </>
               ) : (
                 <>
+                  <Link
+                    href="/mon-compte?mode=login&redirect=/espace-bailleur"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:hidden"
+                    title="Se connecter"
+                    aria-label="Se connecter"
+                  >
+                    <UserCircleIcon className="h-5 w-5" />
+                  </Link>
                   <Link
                     href="/mon-compte?mode=login&redirect=/espace-bailleur"
                     className="hidden min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[0.8rem] font-semibold text-slate-800 hover:bg-slate-50 sm:inline-flex"
@@ -265,7 +283,8 @@ export default function AppHeader() {
                     href="/mon-compte?mode=register&redirect=/espace-bailleur"
                     className={`inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-[0.8rem] font-semibold shadow-sm ${brandBg} ${brandText} ${brandHover}`}
                   >
-                    Créer un compte gratuit
+                    <span className="sm:hidden">Créer</span>
+                    <span className="hidden sm:inline">Créer un compte gratuit</span>
                   </Link>
                 </>
               )}
