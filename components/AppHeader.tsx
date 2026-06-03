@@ -115,7 +115,7 @@ export default function AppHeader() {
               <img
                 src="/LOKT_LOGO.jpg"
                 alt="lokt.fr"
-                className="h-10 md:h-11 w-auto object-contain"
+                className="h-7 w-auto object-contain sm:h-10 md:h-11"
               />
               <span className="hidden sm:inline text-xs font-semibold tracking-wide text-slate-600">
                 Simuler • Décider • Optimiser
@@ -223,7 +223,7 @@ export default function AppHeader() {
 
               <Link
                 href="/calculettes"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 md:hidden"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:h-10 sm:w-10 md:hidden"
                 title="Calculettes immobilières"
                 aria-label="Calculettes immobilières"
               >
@@ -232,7 +232,7 @@ export default function AppHeader() {
 
               <Link
                 href="/guides"
-                className="hidden h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 min-[460px]:inline-flex md:hidden"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:h-10 sm:w-10 md:hidden"
                 title="Guides du bailleur"
                 aria-label="Guides du bailleur"
               >
@@ -243,7 +243,7 @@ export default function AppHeader() {
                 <>
                   <Link
                     href="/mon-compte"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:hidden"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:hidden"
                     title="Mon compte"
                     aria-label="Mon compte"
                   >
@@ -257,9 +257,12 @@ export default function AppHeader() {
                   </Link>
                   <Link
                     href="/espace-bailleur"
-                    className={`inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-[0.8rem] font-semibold shadow-sm ${brandBg} ${brandText} ${brandHover}`}
+                    className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-[0.76rem] font-semibold shadow-sm sm:min-h-10 sm:gap-1.5 sm:px-3 sm:text-[0.8rem] ${brandBg} ${brandText} ${brandHover}`}
+                    title="Espace bailleur"
+                    aria-label="Espace bailleur"
                   >
-                    <span className="sm:hidden">Espace</span>
+                    <BuildingOffice2Icon className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                    <span className="sm:hidden">Bailleur</span>
                     <span className="hidden sm:inline">Espace bailleur</span>
                   </Link>
                 </>
@@ -267,7 +270,7 @@ export default function AppHeader() {
                 <>
                   <Link
                     href="/mon-compte?mode=login&redirect=/espace-bailleur"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:hidden"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:hidden"
                     title="Se connecter"
                     aria-label="Se connecter"
                   >
@@ -281,9 +284,12 @@ export default function AppHeader() {
                   </Link>
                   <Link
                     href="/mon-compte?mode=register&redirect=/espace-bailleur"
-                    className={`inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-[0.8rem] font-semibold shadow-sm ${brandBg} ${brandText} ${brandHover}`}
+                    className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-[0.76rem] font-semibold shadow-sm sm:min-h-10 sm:gap-1.5 sm:px-3 sm:text-[0.8rem] ${brandBg} ${brandText} ${brandHover}`}
+                    title="Créer un compte bailleur"
+                    aria-label="Créer un compte bailleur"
                   >
-                    <span className="sm:hidden">Créer</span>
+                    <BuildingOffice2Icon className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                    <span className="sm:hidden">Bailleur</span>
                     <span className="hidden sm:inline">Créer un compte gratuit</span>
                   </Link>
                 </>
