@@ -15,12 +15,18 @@ const staticPagesV1 = [
   "/parc-immobilier",
   "/gestion-locative-lmnp",
   "/outil-gestion-locative",
-  "/quittances-loyer",
   "/etats-des-lieux-documents",
   "/cautions-loyers",
   "/blog",
   "/guides",
   "/tarifs",
+  "/a-propos",
+  "/modele-quittance-loyer-pdf",
+  "/gestion-locative-proprietaire-particulier",
+  "/suivi-loyers-impayes",
+  "/inventaire-location-meublee",
+  "/revision-loyer-irl",
+  "/depot-garantie-location-meublee",
   "/cgu",
   "/confidentialite",
 ];
@@ -42,9 +48,7 @@ const GUIDE_SLUGS = [
   "lmnp-checklist-location-meublee",
   "choisir-bail-vide-meuble-mobilite",
   "arrivee-locataire-remise-cles",
-  "loyers-quittances-charges-suivi",
   "travaux-reparations-bailleur-locataire",
-  "revision-loyer-irl",
   "depart-locataire-etat-des-lieux-sortie",
   "depot-garantie-restitution-retenues",
 ];
@@ -65,13 +69,13 @@ if (INCLUDE_SIMULATEUR) {
   for (const p of PRIX) urls.push(`${siteUrl}/simulateur/investissement/${p}`);
 }
 
-const now = new Date().toISOString();
+const lastmod = "2026-06-06T00:00:00.000Z";
 
 const xml =
   `<?xml version="1.0" encoding="UTF-8"?>\n` +
   `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
   urls
-    .map((u) => `  <url>\n    <loc>${u}</loc>\n    <lastmod>${now}</lastmod>\n  </url>`)
+    .map((u) => `  <url>\n    <loc>${u}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`)
     .join("\n") +
   `\n</urlset>\n`;
 

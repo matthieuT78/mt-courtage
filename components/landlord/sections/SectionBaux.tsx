@@ -2,9 +2,11 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  ArrowDownTrayIcon,
   ArrowUpRightIcon,
   ArrowPathIcon,
   CheckCircleIcon,
+  ChevronDownIcon,
   DocumentTextIcon,
   HandRaisedIcon,
   PencilSquareIcon,
@@ -21,6 +23,7 @@ import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { usePermissions } from "../../PermissionProvider";
 import { LeaseContractWizard } from "../LeaseContractWizard";
+import type { RentPayment, RentReceipt } from "../../../lib/landlord/types";
 
 /* ======================================================
    TYPES
@@ -72,6 +75,8 @@ type Props = {
   leases?: Lease[];
   properties?: PropertyLite[];
   tenants?: TenantLite[];
+  payments?: RentPayment[];
+  receipts?: RentReceipt[];
   onRefresh: () => Promise<void>;
   onPrepareDeparture?: (tenantId: string) => void;
 };
@@ -463,18 +468,167 @@ const parisNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "
 const fmtFR = (d: Date) =>
   d.toLocaleDateString("fr-FR", { year: "numeric", month: "short", day: "2-digit", timeZone: "Europe/Paris" });
 
+type LeaseHistoryEvent = {
+  id: string;
+  date: Date;
+  tone: "emerald" | "amber" | "red" | "sky" | "slate";
+  title: string;
+  detail: string;
+};
+
+function csvCell(value: unknown) {
+  const raw = value == null ? "" : String(value);
+  return `"${raw.replace(/"/g, '""')}"`;
+}
+
+function slugPart(value: unknown) {
+  return String(value || "bail")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase()
+    .slice(0, 60) || "bail";
+}
+
+function exportLeaseHistoryCsv(params: {
+  lease: Lease;
+  property?: PropertyLite | null;
+  tenant?: TenantLite | null;
+  history: LeaseHistoryEvent[];
+}) {
+  const { lease, property, tenant, history } = params;
+  const headers = ["Date", "Date ISO", "Type", "Détail", "Statut", "Bien", "Ville", "Locataire", "Email locataire", "Bail ID"];
+  const rows = history.map((event) => [
+    fmtFR(event.date),
+    event.date.toISOString().slice(0, 10),
+    event.title,
+    event.detail,
+    event.tone,
+    property?.label || "",
+    property?.city || "",
+    tenant?.full_name || "",
+    tenant?.email || "",
+    lease.id,
+  ]);
+  const csv = ["sep=;", headers.map(csvCell).join(";"), ...rows.map((row) => row.map(csvCell).join(";"))].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `historique-bail-${slugPart(property?.label || tenant?.full_name || lease.id)}-${todayISO()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function amountLabel(value?: number | null) {
+  return value == null ? "" : ` • ${formatEuro(value)}`;
+}
+
+function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: RentReceipt[], now = parisNow()) {
+  const events: LeaseHistoryEvent[] = [];
+  const createdAt = parseISODateLocal(lease.created_at);
+  const startAt = parseISODateLocal(lease.start_date);
+  const endAt = parseISODateLocal(lease.end_date);
+
+  if (createdAt) {
+    events.push({
+      id: `${lease.id}:created`,
+      date: createdAt,
+      tone: "sky",
+      title: "Bail enregistré",
+      detail: "La fiche bail a été créée dans lokt.fr.",
+    });
+  }
+  if (startAt) {
+    events.push({
+      id: `${lease.id}:start`,
+      date: startAt,
+      tone: "emerald",
+      title: "Début de bail",
+      detail: "Entrée du locataire et démarrage du suivi locatif.",
+    });
+  }
+  if (endAt) {
+    const ended = isEndedLease(lease) || endAt.getTime() <= now.getTime();
+    events.push({
+      id: `${lease.id}:end`,
+      date: endAt,
+      tone: ended ? "amber" : "slate",
+      title: ended ? "Fin de bail" : "Fin de bail prévue",
+      detail: ended ? "Le bail est clôturé ou arrivé à son terme." : "Échéance à anticiper pour préparer la sortie ou le renouvellement.",
+    });
+  }
+
+  for (const payment of payments.filter((payment) => payment.lease_id === lease.id)) {
+    const due = parseISODateLocal(payment.due_date || payment.period_end);
+    const paid = parseISODateLocal(payment.paid_at);
+    const period = [payment.period_start, payment.period_end].filter(Boolean).join(" → ");
+    if (paid) {
+      const dueEnd = due ? new Date(due.getFullYear(), due.getMonth(), due.getDate(), 23, 59, 59) : null;
+      const late = !!dueEnd && paid.getTime() > dueEnd.getTime();
+      events.push({
+        id: `${payment.id}:paid`,
+        date: paid,
+        tone: late ? "amber" : "emerald",
+        title: late ? "Paiement en retard" : "Paiement à l’heure",
+        detail: `${period || "Période inconnue"}${amountLabel(payment.total_amount)}${due ? ` • Échéance ${fmtFR(due)}` : ""}`,
+      });
+    } else if (due) {
+      const late = due.getTime() < now.getTime();
+      events.push({
+        id: `${payment.id}:due`,
+        date: due,
+        tone: late ? "red" : "slate",
+        title: late ? "Paiement à relancer" : "Paiement attendu",
+        detail: `${period || "Période inconnue"}${amountLabel(payment.total_amount)}`,
+      });
+    }
+  }
+
+  for (const receipt of receipts.filter((receipt) => receipt.lease_id === lease.id)) {
+    const issued = parseISODateLocal(receipt.issued_at || receipt.issue_date || receipt.created_at);
+    const sent = parseISODateLocal(receipt.sent_at);
+    const period = [receipt.period_start, receipt.period_end].filter(Boolean).join(" → ");
+    if (issued) {
+      events.push({
+        id: `${receipt.id}:issued`,
+        date: issued,
+        tone: receipt.pdf_url ? "emerald" : "slate",
+        title: receipt.pdf_url ? "Quittance générée" : "Quittance préparée",
+        detail: `${period || "Période inconnue"}${amountLabel(receipt.total_amount)}`,
+      });
+    }
+    if (sent) {
+      events.push({
+        id: `${receipt.id}:sent`,
+        date: sent,
+        tone: "emerald",
+        title: "Quittance envoyée",
+        detail: receipt.sent_to_tenant_email ? `Envoyée à ${receipt.sent_to_tenant_email}` : "Envoi au locataire enregistré.",
+      });
+    }
+  }
+
+  return events.sort((a, b) => b.date.getTime() - a.date.getTime());
+}
+
 /* ======================================================
    COMPONENT
 ====================================================== */
 
 type Mode = "idle" | "create" | "edit";
 
-export function SectionBaux({ userId, userEmail, leases, properties, tenants, onRefresh, onPrepareDeparture }: Props) {
+export function SectionBaux({ userId, userEmail, leases, properties, tenants, payments, receipts, onRefresh, onPrepareDeparture }: Props) {
   const { canUseLandlord } = usePermissions();
   const canUseReceiptAutomation = canUseLandlord;
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safeProps = Array.isArray(properties) ? properties : [];
   const safeTenants = Array.isArray(tenants) ? tenants : [];
+  const safePayments = Array.isArray(payments) ? payments : [];
+  const safeReceipts = Array.isArray(receipts) ? receipts : [];
 
   const propertyById = useMemo(() => {
     const m = new Map<string, PropertyLite>();
@@ -497,6 +651,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [contractLeaseId, setContractLeaseId] = useState<string | null>(null);
+  const [historyOpenByLease, setHistoryOpenByLease] = useState<Record<string, boolean>>({});
 
   // Search
   const [q, setQ] = useState("");
@@ -970,6 +1125,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
     const t = tenantById.get(l.tenant_id);
     const flow = workflowInfo(l, t);
     const renewal = leaseRenewalInfo(l);
+    const history = buildLeaseHistory(l, safePayments, safeReceipts);
+    const historyOpen = !!historyOpenByLease[l.id];
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
@@ -1163,6 +1320,70 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, on
               ))}
               {flow.noticeAdvice ? <p className="mt-2 font-medium">{flow.noticeAdvice}</p> : null}
             </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Historique du bail</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">Paiements, quittances et jalons du bail</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {badge("slate", pluralFR(history.length, "événement"))}
+              <button
+                type="button"
+                onClick={(e) => {
+                  stop(e);
+                  exportLeaseHistoryCsv({ lease: l, property: p, tenant: t, history });
+                }}
+                disabled={!history.length}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Exporter tout l’historique du bail au format CSV compatible Excel"
+              >
+                <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
+                Export Excel
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  stop(e);
+                  setHistoryOpenByLease((prev) => ({ ...prev, [l.id]: !prev[l.id] }));
+                }}
+                aria-expanded={historyOpen}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                {historyOpen ? "Masquer" : "Afficher"}
+                <ChevronDownIcon className={cx("h-4 w-4 transition-transform", historyOpen && "rotate-180")} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          {historyOpen ? (
+            <>
+              <p className="mt-3 text-xs text-slate-600">
+                Les demandes de travaux et relances détaillées pourront rejoindre ce journal dès qu’elles seront enregistrées comme événements.
+              </p>
+
+              {history.length ? (
+                <div className="mt-4 space-y-2">
+                  {history.slice(0, 12).map((event) => (
+                    <div key={event.id} className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:grid-cols-[8rem_1fr]">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-700">{fmtFR(event.date)}</p>
+                        <div className="mt-1">{badge(event.tone, event.title)}</div>
+                      </div>
+                      <p className="text-sm leading-5 text-slate-700">{event.detail}</p>
+                    </div>
+                  ))}
+                  {history.length > 12 ? <p className="text-xs text-slate-500">+ {history.length - 12} événement(s) plus ancien(s).</p> : null}
+                </div>
+              ) : (
+                <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
+                  Aucun paiement ou quittance rattaché à ce bail pour le moment.
+                </div>
+              )}
+            </>
           ) : null}
         </div>
       </div>

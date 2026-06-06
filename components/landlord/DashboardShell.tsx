@@ -284,7 +284,7 @@ export function DashboardShell(props: any) {
         );
 
       case "biens":
-        return <SectionBiens userId={userId} properties={properties} photos={photos} onRefresh={refresh} />;
+        return <SectionBiens userId={userId} properties={properties} leases={leases} tenants={tenants} photos={photos} onRefresh={refresh} />;
 
       case "locataires":
         return (
@@ -312,6 +312,8 @@ export function DashboardShell(props: any) {
             leases={leases}
             properties={properties}
             tenants={tenants}
+            payments={payments}
+            receipts={receipts}
             onRefresh={refresh}
             onPrepareDeparture={(tenantId) => {
               setDepartureTenantId(tenantId);

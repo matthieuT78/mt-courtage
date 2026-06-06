@@ -950,7 +950,7 @@ export default function Home() {
               {[
                 ["/gestion-locative-lmnp", "Gestion locative LMNP"],
                 ["/outil-gestion-locative", "Outil de gestion locative gratuit"],
-                ["/quittances-loyer", "Quittance de loyer"],
+                ["/modele-quittance-loyer-pdf", "Quittance de loyer"],
                 ["/etats-des-lieux-documents", "État des lieux"],
                 ["/capacite", "Capacité d’emprunt"],
                 ["/investissement", "Rentabilité locative"],

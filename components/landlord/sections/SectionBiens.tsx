@@ -1,17 +1,27 @@
 // components/landlord/sections/SectionBiens.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  ArrowTrendingUpIcon,
+  ChartBarIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  HomeModernIcon,
+  UsersIcon,
+} from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
-import { badge, pluralFR } from "../ui/uiHelpers";
+import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { usePermissions } from "../../PermissionProvider";
 import { PropertyDpePanel } from "../PropertyDpePanel";
 
 type Props = {
   userId: string;
   properties?: any[];
+  leases?: any[];
+  tenants?: any[];
   photos?: any[];
   onRefresh: () => Promise<void>;
 };
@@ -44,9 +54,115 @@ function isArchived(p: any) {
   return (p?.status || "").toLowerCase() === "archived";
 }
 
-export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
+const normalizeDate = (value?: string | null) => {
+  if (!value) return null;
+  const date = new Date(String(value).slice(0, 10) + "T00:00:00");
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const daysBetween = (start: Date, end: Date) => Math.max(0, Math.ceil((end.getTime() - start.getTime()) / 86400000));
+
+const pct = (value: number) => {
+  if (!Number.isFinite(value)) return "—";
+  return `${value.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %`;
+};
+
+function durationLabel(days: number | null | undefined) {
+  if (days == null || !Number.isFinite(days) || days < 0) return "—";
+  if (days < 31) return `${days} j`;
+  const months = Math.floor(days / 30.44);
+  if (months < 12) return `${months} mois`;
+  const years = Math.floor(months / 12);
+  const restMonths = months % 12;
+  return restMonths ? `${years} an${years > 1 ? "s" : ""} ${restMonths} mois` : `${years} an${years > 1 ? "s" : ""}`;
+}
+
+function isLeaseUsable(lease: any) {
+  const status = String(lease?.status || "").toLowerCase();
+  return status !== "draft" && status !== "archived";
+}
+
+function isLeaseCurrent(lease: any, now: Date) {
+  if (String(lease?.status || "").toLowerCase() !== "active") return false;
+  const start = normalizeDate(lease?.start_date);
+  const end = normalizeDate(lease?.end_date);
+  if (!start || start.getTime() > now.getTime()) return false;
+  return !end || end.getTime() >= now.getTime();
+}
+
+function occupancyDaysForWindow(leases: any[], windowStart: Date, windowEnd: Date) {
+  const intervals = leases
+    .filter(isLeaseUsable)
+    .map((lease) => {
+      const start = normalizeDate(lease?.start_date);
+      const rawEnd = normalizeDate(lease?.end_date);
+      if (!start) return null;
+      const end = rawEnd ? addDays(rawEnd, 1) : windowEnd;
+      const clippedStart = new Date(Math.max(start.getTime(), windowStart.getTime()));
+      const clippedEnd = new Date(Math.min(end.getTime(), windowEnd.getTime()));
+      return clippedEnd.getTime() > clippedStart.getTime() ? { start: clippedStart, end: clippedEnd } : null;
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => a.start.getTime() - b.start.getTime()) as Array<{ start: Date; end: Date }>;
+
+  const merged: Array<{ start: Date; end: Date }> = [];
+  for (const interval of intervals) {
+    const last = merged[merged.length - 1];
+    if (!last || interval.start.getTime() > last.end.getTime()) {
+      merged.push({ ...interval });
+    } else if (interval.end.getTime() > last.end.getTime()) {
+      last.end = interval.end;
+    }
+  }
+  return merged.reduce((total, interval) => total + daysBetween(interval.start, interval.end), 0);
+}
+
+function clampPercent(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+}
+
+function occupancyTone(value: number) {
+  if (value >= 95) return "emerald" as const;
+  if (value >= 80) return "sky" as const;
+  if (value >= 60) return "amber" as const;
+  return "red" as const;
+}
+
+function occupancyLabel(value: number) {
+  if (value >= 95) return "Très stable";
+  if (value >= 80) return "Sous contrôle";
+  if (value >= 60) return "À surveiller";
+  return "Vacance forte";
+}
+
+function toneClasses(tone: "emerald" | "sky" | "amber" | "red" | "slate") {
+  if (tone === "emerald") return { text: "text-emerald-700", bg: "bg-emerald-500", soft: "bg-emerald-50", border: "border-emerald-200" };
+  if (tone === "sky") return { text: "text-sky-700", bg: "bg-sky-500", soft: "bg-sky-50", border: "border-sky-200" };
+  if (tone === "amber") return { text: "text-amber-700", bg: "bg-amber-500", soft: "bg-amber-50", border: "border-amber-200" };
+  if (tone === "red") return { text: "text-red-700", bg: "bg-red-500", soft: "bg-red-50", border: "border-red-200" };
+  return { text: "text-slate-700", bg: "bg-slate-500", soft: "bg-slate-50", border: "border-slate-200" };
+}
+
+function rowSignal(row: { currentLease: any; vacancyDays12m: number; turnover12m: number; occupancyRate12m: number }) {
+  if (!row.currentLease) return { tone: "red" as const, label: "Vacant", detail: "Remettre en location ou compléter le bail en cours." };
+  if (row.turnover12m >= 2) return { tone: "amber" as const, label: "Turnover élevé", detail: "Vérifier loyer, qualité du logement ou profil locataire." };
+  if (row.vacancyDays12m >= 30) return { tone: "amber" as const, label: "Vacance notable", detail: "Revoir délai de relocation et attractivité." };
+  if (row.occupancyRate12m >= 95) return { tone: "emerald" as const, label: "Stable", detail: "Occupation solide sur 12 mois." };
+  return { tone: "sky" as const, label: "Correct", detail: "Suivi normal du bien." };
+}
+
+export function SectionBiens({ userId, properties, leases, tenants, photos, onRefresh }: Props) {
   const { loading: permissionsLoading, maxActiveProperties } = usePermissions();
   const safeProperties = Array.isArray(properties) ? properties : [];
+  const safeLeases = Array.isArray(leases) ? leases : [];
+  const safeTenants = Array.isArray(tenants) ? tenants : [];
   const safePhotos = Array.isArray(photos) ? photos : [];
 
   const [expandedId, setExpandedId] = useState<string | null>(null); // "__create__" ou propertyId
@@ -70,6 +186,68 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
     const ar = safeProperties.filter((p) => isArchived(p));
     return { actifs: a, archives: ar };
   }, [safeProperties]);
+
+  const tenantById = useMemo(() => {
+    const m = new Map<string, any>();
+    for (const tenant of safeTenants) {
+      if (tenant?.id) m.set(tenant.id, tenant);
+    }
+    return m;
+  }, [safeTenants]);
+
+  const parcStats = useMemo(() => {
+    const now = new Date();
+    const windowEnd = addDays(new Date(now.getFullYear(), now.getMonth(), now.getDate()), 1);
+    const windowStart = addDays(windowEnd, -365);
+    const windowDays = Math.max(1, daysBetween(windowStart, windowEnd));
+
+    const rows = actifs.map((property) => {
+      const propertyLeases = safeLeases.filter((lease) => lease?.property_id === property?.id);
+      const currentLease =
+        propertyLeases
+          .filter((lease) => isLeaseCurrent(lease, now))
+          .sort((a, b) => (normalizeDate(b?.start_date)?.getTime() || 0) - (normalizeDate(a?.start_date)?.getTime() || 0))[0] || null;
+      const currentTenant = currentLease ? tenantById.get(currentLease.tenant_id) : null;
+      const occupiedDays12m = occupancyDaysForWindow(propertyLeases, windowStart, windowEnd);
+      const vacancyDays12m = Math.max(0, windowDays - occupiedDays12m);
+      const turnover12m = propertyLeases.filter((lease) => {
+        const start = normalizeDate(lease?.start_date);
+        return start && start.getTime() >= windowStart.getTime() && start.getTime() < windowEnd.getTime() && isLeaseUsable(lease);
+      }).length;
+      const currentStart = normalizeDate(currentLease?.start_date);
+      const currentTenantDays = currentStart ? daysBetween(currentStart, now) : null;
+
+      return {
+        property,
+        currentLease,
+        currentTenant,
+        currentTenantDays,
+        occupiedDays12m,
+        vacancyDays12m,
+        occupancyRate12m: (occupiedDays12m / windowDays) * 100,
+        turnover12m,
+      };
+    });
+
+    const totalWindowDays = Math.max(1, windowDays * Math.max(1, rows.length));
+    const totalOccupiedDays = rows.reduce((sum, row) => sum + row.occupiedDays12m, 0);
+    const occupiedNow = rows.filter((row) => row.currentLease).length;
+    const currentDurations = rows.map((row) => row.currentTenantDays).filter((days): days is number => days != null);
+    const averageCurrentTenantDays = currentDurations.length
+      ? Math.round(currentDurations.reduce((sum, days) => sum + days, 0) / currentDurations.length)
+      : null;
+
+    return {
+      rows,
+      occupiedNow,
+      averageCurrentTenantDays,
+      occupancyRate12m: rows.length ? (totalOccupiedDays / totalWindowDays) * 100 : 0,
+      averageVacancyDays12m: rows.length ? Math.round(rows.reduce((sum, row) => sum + row.vacancyDays12m, 0) / rows.length) : 0,
+      turnover12m: rows.reduce((sum, row) => sum + row.turnover12m, 0),
+      vacantNow: rows.filter((row) => !row.currentLease).length,
+      attentionCount: rows.filter((row) => !row.currentLease || row.turnover12m >= 2 || row.vacancyDays12m >= 30).length,
+    };
+  }, [actifs, safeLeases, tenantById]);
   const activePropertyCount = actifs.length;
   const activePropertyLimit = permissionsLoading ? FREE_PROPERTY_LIMIT : Math.max(maxActiveProperties, FREE_PROPERTY_LIMIT);
   const hasFreeLimit = activePropertyLimit === FREE_PROPERTY_LIMIT;
@@ -473,6 +651,171 @@ export function SectionBiens({ userId, properties, photos, onRefresh }: Props) {
       {ok ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div>
       ) : null}
+
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 bg-slate-950 px-4 py-4 text-white sm:px-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
+                  <ChartBarIcon className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <p className="text-sm font-semibold">Pilotage occupation</p>
+                <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[0.7rem] font-semibold text-white/90">
+                  12 derniers mois
+                </span>
+              </div>
+              <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-300">
+                Lecture rapide du remplissage, de la vacance et de la stabilité locative de votre parc actif.
+              </p>
+            </div>
+
+            <div className="min-w-[14rem]">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Remplissage global</p>
+                  <p className="mt-1 text-3xl font-bold tabular-nums">{pct(parcStats.occupancyRate12m)}</p>
+                </div>
+                {badge(occupancyTone(parcStats.occupancyRate12m), occupancyLabel(parcStats.occupancyRate12m))}
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className={cx("h-full rounded-full", toneClasses(occupancyTone(parcStats.occupancyRate12m)).bg)}
+                  style={{ width: `${clampPercent(parcStats.occupancyRate12m)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid border-b border-slate-200 bg-slate-50 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              icon: HomeModernIcon,
+              label: "Biens occupés",
+              value: `${parcStats.occupiedNow}/${actifs.length || 0}`,
+              detail: parcStats.vacantNow ? `${parcStats.vacantNow} vacant${parcStats.vacantNow > 1 ? "s" : ""}` : "parc entièrement occupé",
+              tone: parcStats.vacantNow ? ("amber" as const) : ("emerald" as const),
+            },
+            {
+              icon: ArrowTrendingUpIcon,
+              label: "Turnover",
+              value: String(parcStats.turnover12m),
+              detail: `entrée${parcStats.turnover12m > 1 ? "s" : ""} locataire / 12 mois`,
+              tone: parcStats.turnover12m >= 2 ? ("amber" as const) : ("sky" as const),
+            },
+            {
+              icon: ClockIcon,
+              label: "Ancienneté",
+              value: durationLabel(parcStats.averageCurrentTenantDays),
+              detail: "locataire actuel moyen",
+              tone: "slate" as const,
+            },
+            {
+              icon: ExclamationTriangleIcon,
+              label: "Points d’attention",
+              value: String(parcStats.attentionCount),
+              detail: "vacance, turnover ou bail manquant",
+              tone: parcStats.attentionCount ? ("amber" as const) : ("emerald" as const),
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            const tone = toneClasses(item.tone);
+            return (
+              <div key={item.label} className="border-b border-slate-200 px-4 py-4 last:border-b-0 sm:border-r sm:last:border-r-0 lg:border-b-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">{item.label}</p>
+                    <p className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{item.value}</p>
+                    <p className="mt-1 text-xs text-slate-600">{item.detail}</p>
+                  </div>
+                  <span className={cx("inline-flex h-9 w-9 items-center justify-center rounded-lg border", tone.soft, tone.border, tone.text)}>
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {parcStats.rows.length ? (
+          <div className="p-4 sm:p-5">
+            <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-950">Lecture par bien</p>
+                <p className="text-xs text-slate-600">{parcStats.averageVacancyDays12m} jour(s) de vacance moyenne par logement actif.</p>
+              </div>
+              <div className="hidden items-center gap-3 text-[0.7rem] font-semibold text-slate-500 sm:flex">
+                <span>Remplissage</span>
+                <span>Stabilité</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {parcStats.rows.map((row) => {
+                const signal = rowSignal(row);
+                const occupancy = clampPercent(row.occupancyRate12m);
+                const occupancyClasses = toneClasses(occupancyTone(row.occupancyRate12m));
+                const signalClasses = toneClasses(signal.tone);
+
+                return (
+                  <div key={row.property.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
+                    <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1.4fr_auto] lg:items-center">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                            <HomeModernIcon className="h-4 w-4" aria-hidden="true" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-950">{row.property.label || "Bien"}</p>
+                            <p className="truncate text-xs text-slate-500">{row.property.city || row.property.address_line1 || "Adresse à compléter"}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                          <UsersIcon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                          <span className="truncate">{row.currentTenant?.full_name || "Vacant"}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {row.currentLease ? `Présent depuis ${durationLabel(row.currentTenantDays)} (${row.currentLease.start_date})` : `${row.vacancyDays12m} j vacants sur 12 mois`}
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-semibold text-slate-600">{pct(row.occupancyRate12m)}</p>
+                          <p className="text-xs text-slate-500">{row.vacancyDays12m} j vides</p>
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div className={cx("h-full rounded-full", occupancyClasses.bg)} style={{ width: `${occupancy}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                        <span className={cx("inline-flex rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold", signalClasses.soft, signalClasses.border, signalClasses.text)}>
+                          {signal.label}
+                        </span>
+                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[0.7rem] font-semibold text-slate-700">
+                          {row.turnover12m} turnover
+                        </span>
+                      </div>
+                    </div>
+                    <p className="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500">{signal.detail}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 sm:p-5">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
+              Ajoute un bien et un bail pour obtenir les statistiques d’occupation.
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="grid gap-4">
         {/* ✅ LIGNE CRÉER (pas de section) */}

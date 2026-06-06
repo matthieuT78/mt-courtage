@@ -340,7 +340,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 tone: "slate",
                 title: `Révision annuelle du loyer à préparer - ${labels.property}`,
                 detail: `Le bail de ${labels.tenant} atteint sa date anniversaire dans ${daysToAnniversary} jours. Vérifiez la clause de révision, le DPE et l'IRL applicable avant toute demande au locataire. La hausse n'est pas automatique.`,
-                href: "/guides/revision-loyer-irl",
+                href: "/revision-loyer-irl",
               });
             }
           }

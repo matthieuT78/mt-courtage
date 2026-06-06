@@ -6,6 +6,12 @@ export default function AppFooter() {
       <p>© {new Date().getFullYear()} lokt.fr</p>
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        <Link href="/a-propos" className="underline hover:text-slate-700">
+          À propos
+        </Link>
+        <Link href="/guides" className="underline hover:text-slate-700">
+          Ressources bailleurs
+        </Link>
         <Link href="/cgu" className="underline hover:text-slate-700">
           CGU / CGV
         </Link>

@@ -63,8 +63,22 @@ export const GUIDES: GuideArticle[] = [
           "Distinguez clairement le loyer hors charges, les provisions ou le forfait de charges et le dépôt de garantie. Cette séparation rend le bail lisible et évite les ambiguïtés lors des régularisations.",
         ],
       },
+      {
+        title: "5. Préparer la gestion après la signature",
+        paragraphs: [
+          "Une erreur fréquente consiste à préparer la mise en location comme un événement isolé. En pratique, le bail va générer des actions récurrentes : encaisser le loyer, traiter les retards, produire les quittances, suivre les charges, conserver les travaux et anticiper le départ.",
+          "Avant même la première visite, définissez votre organisation : où seront conservés les documents, qui reçoit les alertes, comment vous vérifiez les paiements et quel canal vous utilisez pour les échanges importants avec le locataire.",
+        ],
+        bullets: [
+          "Créer un dossier par logement.",
+          "Préparer le suivi du loyer et des charges.",
+          "Noter les futures échéances : assurance, diagnostics, IRL, régularisation.",
+          "Prévoir un modèle de quittance et de reçu partiel.",
+          "Centraliser les factures et justificatifs dès le premier jour.",
+        ],
+      },
     ],
-    checklist: ["Logement décent et assurable", "DPE et diagnostics valides", "Type de bail choisi", "Loyer et charges vérifiés", "Bail et annexes préparés", "État des lieux d’entrée planifié", "Dossier locataire vérifié"],
+    checklist: ["Logement décent et assurable", "DPE et diagnostics valides", "Type de bail choisi", "Loyer et charges vérifiés", "Bail et annexes préparés", "État des lieux d’entrée planifié", "Dossier locataire vérifié", "Suivi mensuel préparé"],
     sources: [
       { label: "Service-Public : obligations du propriétaire bailleur", href: "https://www.service-public.fr/particuliers/vosdroits/N31059" },
       { label: "ANIL : diagnostics obligatoires", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/diagnostics/" },
@@ -107,8 +121,21 @@ export const GUIDES: GuideArticle[] = [
           "Archivez le dossier remis avec le bail et ajoutez un rappel avant l’échéance de chaque diagnostic. Pour un portefeuille de plusieurs biens, cette discipline évite de découvrir une expiration au moment d’un changement de locataire.",
         ],
       },
+      {
+        title: "Quand un diagnostic révèle un risque",
+        paragraphs: [
+          "Un diagnostic n’est pas seulement un fichier à annexer. S’il révèle une installation ancienne, une performance énergétique faible ou une information qui peut peser sur la location, le bailleur doit décider avant la signature : travaux, information renforcée, report de la mise en location ou arbitrage financier.",
+          "Le bon réflexe consiste à conserver le diagnostic, la décision prise, les devis éventuels et la date de transmission au locataire. Cette traçabilité permet de montrer que le dossier a été traité sérieusement.",
+        ],
+        bullets: [
+          "Lire les conclusions, pas seulement la date de validité.",
+          "Identifier les travaux urgents ou bloquants.",
+          "Créer un rappel d’expiration.",
+          "Conserver la preuve de remise au locataire.",
+        ],
+      },
     ],
-    checklist: ["DPE valide contrôlé", "Ancienneté des installations vérifiée", "État des risques actualisé", "DDT annexé au bail", "Copies archivées par logement", "Rappels d’expiration créés"],
+    checklist: ["DPE valide contrôlé", "Ancienneté des installations vérifiée", "État des risques actualisé", "DDT annexé au bail", "Copies archivées par logement", "Conclusions sensibles lues", "Rappels d’expiration créés"],
     sources: [
       { label: "Service-Public : diagnostics à fournir en location", href: "https://www.service-public.fr/particuliers/vosdroits/F33463" },
       { label: "ANIL : dossier de diagnostic technique", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/diagnostics/" },
@@ -144,8 +171,22 @@ export const GUIDES: GuideArticle[] = [
         ],
         note: "La fiscalité évolue. Revérifiez les seuils et règles de l’année concernée sur impots.gouv.fr avant toute déclaration.",
       },
+      {
+        title: "Organiser les preuves utiles au LMNP",
+        paragraphs: [
+          "Le LMNP se gère mieux lorsque les informations sont classées dès le départ : inventaire, factures de mobilier, quittances, charges, intérêts d’emprunt, assurance, taxe foncière, copropriété et travaux. Même si un expert-comptable intervient, il aura besoin d’un dossier propre.",
+          "Séparez les documents relation locative des documents financiers. Une quittance prouve un paiement ; une facture de mobilier ou de travaux alimente plutôt le dossier de gestion et la préparation comptable.",
+        ],
+        bullets: [
+          "Inventaire signé et photos.",
+          "Factures de mobilier conservées.",
+          "Recettes et charges classées par année.",
+          "Justificatifs exportables pour la déclaration.",
+          "Équipements remplacés tracés dans le temps.",
+        ],
+      },
     ],
-    checklist: ["Mobilier obligatoire présent", "Inventaire détaillé préparé", "Bail meublé adapté", "Début d’activité déclaré dans les délais", "SIRET archivé", "Micro-BIC et réel comparés", "CFE vérifiée"],
+    checklist: ["Mobilier obligatoire présent", "Inventaire détaillé préparé", "Bail meublé adapté", "Début d’activité déclaré dans les délais", "SIRET archivé", "Micro-BIC et réel comparés", "Factures classées", "CFE vérifiée"],
     sources: [
       { label: "Impots.gouv.fr : location meublée", href: "https://www.impots.gouv.fr/particulier/location-meublee" },
       { label: "Impots.gouv.fr : déclarer un début d’activité et obtenir un SIRET", href: "https://www.impots.gouv.fr/particulier/questions/si-je-mets-en-location-un-meuble-dois-je-minscrire-au-greffe-du-tribunal-de" },
@@ -176,6 +217,18 @@ export const GUIDES: GuideArticle[] = [
       {
         title: "Décider sans improviser",
         bullets: ["Identifier l’usage réel du logement.", "Vérifier le profil et l’éligibilité du locataire.", "Comparer durée, dépôt de garantie et traitement des charges.", "Préparer le bon modèle de contrat et ses annexes.", "Ne pas confondre location meublée longue durée et meublé de tourisme."],
+      },
+      {
+        title: "Comparer les impacts de gestion",
+        paragraphs: [
+          "Le choix du bail ne change pas seulement la durée du contrat. Il modifie aussi la manière de gérer le dépôt de garantie, les charges, l’inventaire, le préavis, les justificatifs à conserver et parfois les obligations fiscales.",
+          "Avant de choisir, projetez la vie réelle du bail : fréquence de rotation probable, équipement à maintenir, profil de locataire, budget de remise en état et temps disponible pour gérer les entrées et sorties.",
+        ],
+        bullets: [
+          "Location vide : plus stable, moins d’équipement à suivre.",
+          "Location meublée : plus de preuves à conserver, inventaire indispensable.",
+          "Bail mobilité : usage temporaire encadré, à réserver aux situations éligibles.",
+        ],
       },
     ],
     sources: [
@@ -208,43 +261,25 @@ export const GUIDES: GuideArticle[] = [
         title: "Après la remise des clés",
         paragraphs: ["Remettez un exemplaire signé au locataire et archivez le vôtre avec le bail. Créez vos rappels de gestion : date de paiement, révision éventuelle du loyer, régularisation des charges, échéances d’assurance et diagnostics."],
       },
-    ],
-    checklist: ["Bail signé", "Annexes remises", "Assurance vérifiée", "État des lieux détaillé signé", "Compteurs relevés", "Clés et badges comptés", "Inventaire meublé signé", "Rappels de gestion créés"],
-    sources: [
-      { label: "ANIL : état des lieux d’entrée et de sortie", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/location-vide/etat-des-lieux/" },
-      { label: "Service-Public : obligations du propriétaire bailleur", href: "https://www.service-public.fr/particuliers/vosdroits/N31059" },
-    ],
-  },
-  {
-    slug: "loyers-quittances-charges-suivi",
-    category: "gestion",
-    title: "Loyers, quittances et charges : organiser un suivi locatif propre",
-    shortTitle: "Loyers, quittances et charges",
-    description: "Mettre en place une routine mensuelle fiable et préparer la régularisation des charges.",
-    updatedAt: "2026-05-31",
-    intro:
-      "Une gestion locative fiable repose sur une routine simple : rapprocher le paiement attendu du paiement reçu, traiter rapidement les écarts et archiver les documents. Cette discipline devient précieuse au premier impayé ou lors du départ du locataire.",
-    sections: [
       {
-        title: "La routine mensuelle",
-        bullets: ["Vérifier le loyer et les charges attendus.", "Confirmer l’encaissement réel sur le compte bancaire.", "Distinguer paiement complet, partiel et absence de paiement.", "Émettre la quittance lorsque les conditions sont réunies.", "Archiver les échanges et justificatifs."],
-      },
-      {
-        title: "Quittance et reçu",
-        paragraphs: ["La quittance atteste le paiement complet du loyer et des charges pour une période donnée. Ne la confondez pas avec un simple reçu lorsque le règlement est partiel. Conservez l’historique par bail et par mois."],
-      },
-      {
-        title: "Charges récupérables",
+        title: "Installer une relation claire dès le départ",
         paragraphs: [
-          "Les charges récupérables sont des dépenses initialement payées par le bailleur mais pouvant être remboursées par le locataire dans le cadre prévu. Pour un logement vide avec provisions, elles font l’objet d’une régularisation annuelle comparant les provisions versées aux dépenses réelles justifiées.",
-          "Pour un meublé, le bail peut prévoir un forfait ou des provisions avec régularisation. Un forfait ne fonctionne pas comme une avance : il ne donne pas lieu à une régularisation ultérieure.",
+          "La remise des clés donne le ton de la relation locative. Expliquez où envoyer une demande, comment signaler un problème technique, quand le loyer est attendu et dans quelles conditions une quittance sera produite.",
+          "Cette clarté évite beaucoup de tensions : le locataire sait quoi faire, le bailleur garde une trace, et les échanges importants ne se perdent pas dans plusieurs canaux.",
+        ],
+        bullets: [
+          "Canal de contact principal identifié.",
+          "Date de paiement rappelée.",
+          "Processus quittance expliqué.",
+          "Signalement travaux documenté.",
+          "Dossier locataire à jour dès l’entrée.",
         ],
       },
     ],
-    checklist: ["Encaissements rapprochés chaque mois", "Paiements partiels isolés", "Quittances archivées", "Charges récupérables distinguées", "Justificatifs conservés", "Régularisation annuelle planifiée"],
+    checklist: ["Bail signé", "Annexes remises", "Assurance vérifiée", "État des lieux détaillé signé", "Compteurs relevés", "Clés et badges comptés", "Inventaire meublé signé", "Canal de contact clarifié", "Rappels de gestion créés"],
     sources: [
-      { label: "Service-Public : paiement du loyer", href: "https://www.service-public.fr/particuliers/vosdroits/F1214" },
-      { label: "Service-Public : charges locatives récupérables", href: "https://www.service-public.fr/particuliers/vosdroits/F947" },
+      { label: "ANIL : état des lieux d’entrée et de sortie", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/location-vide/etat-des-lieux/" },
+      { label: "Service-Public : obligations du propriétaire bailleur", href: "https://www.service-public.fr/particuliers/vosdroits/N31059" },
     ],
   },
   {
@@ -270,37 +305,25 @@ export const GUIDES: GuideArticle[] = [
         bullets: ["Demander une description et des photos.", "Qualifier l’urgence et les risques.", "Conserver les échanges dans un canal traçable.", "Faire intervenir un professionnel si la cause n’est pas évidente.", "Archiver devis, facture et conclusion technique.", "Mettre à jour l’historique du logement."],
         note: "Pour un cas litigieux ou coûteux, prenez conseil auprès de votre ADIL ou d’un professionnel du droit.",
       },
+      {
+        title: "Décider vite sans oublier la preuve",
+        paragraphs: [
+          "Un incident technique appelle souvent une action rapide, mais la rapidité ne doit pas effacer la preuve. Notez la date du signalement, la qualification du problème, la décision prise et les documents associés.",
+          "Lorsque la responsabilité n’est pas claire, évitez de conclure trop vite. Une fuite, une panne ou une casse peut relever de l’entretien courant, de la vétusté, d’un défaut d’équipement ou d’une mauvaise utilisation. La facture ou le rapport d’intervention aide à trancher.",
+        ],
+        bullets: [
+          "Date du signalement.",
+          "Niveau d’urgence.",
+          "Responsabilité à qualifier.",
+          "Intervention et conclusion conservées.",
+          "Impact éventuel sur le dépôt de garantie documenté.",
+        ],
+      },
     ],
     sources: [
       { label: "Service-Public : réparations locatives", href: "https://www.service-public.fr/particuliers/vosdroits/F31697" },
       { label: "Service-Public : travaux à la charge du bailleur", href: "https://www.service-public.fr/particuliers/vosdroits/F31699" },
     ],
-  },
-  {
-    slug: "revision-loyer-irl",
-    category: "gestion",
-    title: "Révision du loyer : appliquer l’IRL sans improviser",
-    shortTitle: "Révision du loyer et IRL",
-    description: "Vérifier la clause, la date et l’indice avant de calculer une révision annuelle.",
-    updatedAt: "2026-05-31",
-    intro:
-      "Une hausse de loyer ne se décide pas au jugé. La révision annuelle doit être prévue par le bail et calculée selon les règles applicables. Les restrictions liées à la performance énergétique du logement doivent également être vérifiées.",
-    sections: [
-      {
-        title: "Commencer par lire le bail",
-        paragraphs: ["Vérifiez l’existence d’une clause de révision, la date prévue et l’indice de référence retenu. Sans clause adaptée, n’appliquez pas mécaniquement une hausse annuelle."],
-      },
-      {
-        title: "Calculer et documenter",
-        paragraphs: ["Conservez le loyer avant révision, l’indice de référence de départ, le nouvel indice, la date d’effet et le calcul détaillé. Informez le locataire de façon claire et archivez le message avec le bail."],
-      },
-      {
-        title: "Contrôler les restrictions",
-        paragraphs: ["Avant toute révision, vérifiez la situation énergétique du logement et les règles locales applicables. Les logements situés dans certaines zones ou présentant certaines performances peuvent être soumis à des restrictions particulières."],
-      },
-    ],
-    checklist: ["Clause de révision relue", "Date d’effet vérifiée", "Indice applicable contrôlé", "DPE et restrictions vérifiés", "Calcul archivé", "Information envoyée au locataire"],
-    sources: [{ label: "Service-Public : paiement et révision du loyer", href: "https://www.service-public.fr/particuliers/vosdroits/F1214" }],
   },
   {
     slug: "depart-locataire-etat-des-lieux-sortie",
@@ -328,8 +351,22 @@ export const GUIDES: GuideArticle[] = [
         title: "Préparer la remise en location",
         paragraphs: ["Après la sortie, planifiez les réparations, vérifiez les diagnostics et mettez à jour l’annonce. Si le logement a évolué, actualisez son inventaire et ses informations financières avant d’accueillir un nouveau locataire."],
       },
+      {
+        title: "Clôturer le bail sans mélanger les sujets",
+        paragraphs: [
+          "La clôture du bail doit séparer les sujets : dernier loyer, charges, dépôt de garantie, réparations, clés et documents. Mélanger ces éléments dans un seul échange augmente le risque de désaccord.",
+          "Préparez un récapitulatif simple : date de fin, loyer dû, paiements reçus, état des lieux de sortie, clés restituées, retenues éventuelles et date de restitution du solde.",
+        ],
+        bullets: [
+          "Dernier loyer calculé.",
+          "Solde locatif vérifié.",
+          "Dépôt de garantie traité séparément.",
+          "Retenues justifiées.",
+          "Bail archivé comme clôturé.",
+        ],
+      },
     ],
-    checklist: ["Congé archivé", "Préavis vérifié", "Dernier loyer calculé", "État des lieux d’entrée ressorti", "Sortie réalisée logement vidé", "Clés et compteurs relevés", "Retenues justifiées", "Remise en location planifiée"],
+    checklist: ["Congé archivé", "Préavis vérifié", "Dernier loyer calculé", "État des lieux d’entrée ressorti", "Sortie réalisée logement vidé", "Clés et compteurs relevés", "Retenues justifiées", "Dépôt traité séparément", "Remise en location planifiée"],
     sources: [
       { label: "Service-Public : congé donné par le locataire", href: "https://www.service-public.fr/particuliers/vosdroits/F1168" },
       { label: "ANIL : état des lieux", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/location-vide/etat-des-lieux/" },
@@ -358,8 +395,22 @@ export const GUIDES: GuideArticle[] = [
         paragraphs: ["Conservez les pièces qui expliquent chaque retenue : états des lieux, photographies, factures, devis et échanges. Adressez au locataire un décompte lisible et archivez le règlement final avec le dossier du bail."],
         note: "Les délais de restitution et les conditions de retenue dépendent de la situation. Vérifiez la fiche officielle avant de clôturer le dossier.",
       },
+      {
+        title: "Éviter les retenues fragiles",
+        paragraphs: [
+          "Une retenue fragile est une retenue que le bailleur ne sait pas expliquer simplement. Si vous ne pouvez pas relier le montant à un écart précis, une dette identifiée ou un justificatif, la décision doit être revue.",
+          "Distinguez aussi le coût de remise à neuf et le coût imputable au locataire. Le temps, l’usage normal et la vétusté ne se facturent pas comme une dégradation récente.",
+        ],
+        bullets: [
+          "Écart précis entre entrée et sortie.",
+          "Dette locative chiffrée.",
+          "Justificatif conservé.",
+          "Vétusté prise en compte.",
+          "Décompte final compréhensible.",
+        ],
+      },
     ],
-    checklist: ["Montant conforme au type de bail", "Versement tracé", "Entrée et sortie comparées", "Vétusté distinguée des dégradations", "Retenues documentées", "Décompte transmis", "Clôture archivée"],
+    checklist: ["Montant conforme au type de bail", "Versement tracé", "Entrée et sortie comparées", "Vétusté distinguée des dégradations", "Retenues documentées", "Décompte transmis", "Solde restitué", "Clôture archivée"],
     sources: [{ label: "Service-Public : dépôt de garantie", href: "https://www.service-public.fr/particuliers/vosdroits/F31269" }],
   },
 ];
