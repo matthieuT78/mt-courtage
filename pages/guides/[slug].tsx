@@ -48,7 +48,7 @@ export default function GuideArticlePage({ guide }: Props) {
           }}
         />
       </Head>
-      <AppHeader />
+      <AppHeader staticMode />
 
       <main>
         <section className="border-b border-slate-200 bg-white px-4 py-6 sm:py-8">

@@ -4,6 +4,9 @@ import path from "path";
 // ⚠️ adapte si besoin
 const siteUrl = "https://lokt.fr";
 
+const seoLandingSource = fs.readFileSync(path.join(process.cwd(), "lib/seoLandingPages.ts"), "utf8");
+const seoLandingPages = Array.from(seoLandingSource.matchAll(/slug:\s*"([^"]+)"/g), (match) => `/${match[1]}`);
+
 // Pages SEO publiques V1 (marketing + calculettes)
 const staticPagesV1 = [
   "/",
@@ -21,14 +24,9 @@ const staticPagesV1 = [
   "/guides",
   "/tarifs",
   "/a-propos",
-  "/modele-quittance-loyer-pdf",
-  "/gestion-locative-proprietaire-particulier",
-  "/suivi-loyers-impayes",
-  "/inventaire-location-meublee",
-  "/revision-loyer-irl",
-  "/depot-garantie-location-meublee",
   "/cgu",
   "/confidentialite",
+  ...seoLandingPages,
 ];
 
 // Pages simulateur générées, mais non poussées dans le sitemap.
@@ -69,7 +67,7 @@ if (INCLUDE_SIMULATEUR) {
   for (const p of PRIX) urls.push(`${siteUrl}/simulateur/investissement/${p}`);
 }
 
-const lastmod = "2026-06-06T00:00:00.000Z";
+const lastmod = new Date().toISOString();
 
 const xml =
   `<?xml version="1.0" encoding="UTF-8"?>\n` +

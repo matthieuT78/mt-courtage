@@ -69,6 +69,44 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
     },
     {
       "@context": "https://schema.org",
+      "@type": "Article",
+      headline: page.h1,
+      name: page.title,
+      description: page.description,
+      url: pageUrl,
+      datePublished: page.updatedAt,
+      dateModified: page.updatedAt,
+      author: { "@type": "Organization", name: "lokt.fr" },
+      publisher: { "@type": "Organization", name: "lokt.fr", url: siteUrl },
+      mainEntityOfPage: pageUrl,
+      articleSection: page.eyebrow,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "lokt.fr",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: `${siteUrl}/outil-gestion-locative`,
+      description: "Espace bailleur pour suivre baux, loyers, quittances, documents, alertes et dossiers locatifs.",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+      provider: { "@type": "Organization", name: "lokt.fr", url: siteUrl },
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      name: page.h1,
+      description: page.description,
+      totalTime: "PT10M",
+      step: page.sections.slice(0, 6).map((section, index) => ({
+        "@type": "HowToStep",
+        position: index + 1,
+        name: section.title.replace(/^\d+\.\s*/, ""),
+        text: section.body.join(" "),
+      })),
+    },
+    {
+      "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Accueil", item: siteUrl },
@@ -109,7 +147,7 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
         ))}
       </Head>
 
-      <AppHeader />
+      <AppHeader staticMode />
 
       <main>
         <section className="border-b border-slate-200 bg-white px-4 py-6 sm:py-8">
@@ -243,7 +281,7 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
 
             <aside className="h-max space-y-4 lg:sticky lg:top-24">
               <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Maillage interne</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Ressources liées</p>
                 <div className="mt-4 space-y-3">
                   {page.links.map((link) => (
                     link.href.startsWith("http") ? (

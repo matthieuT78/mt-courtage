@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
-import { supabase } from "../lib/supabaseClient";
 import { PAID_BILLING_PLANS } from "../lib/billingPlans";
 
 type Billing = "monthly" | "yearly";
@@ -140,65 +139,9 @@ export default function TarifsPage() {
     ],
   };
   const [billing, setBilling] = useState<Billing>("monthly");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
-
-    (async () => {
-      try {
-        const { data } = supabase ? await supabase.auth.getSession() : { data: { session: null } as any };
-        if (!mounted) return;
-        setIsLoggedIn(!!data.session?.user?.id);
-      } finally {
-        if (mounted) setChecking(false);
-      }
-    })();
-
-    const sub =
-      supabase?.auth.onAuthStateChange((_event, session) => {
-        if (!mounted) return;
-        setIsLoggedIn(!!session?.user?.id);
-        setChecking(false);
-      }) ?? { data: { subscription: { unsubscribe: () => {} } } };
-
-    return () => {
-      mounted = false;
-      sub.data.subscription.unsubscribe();
-    };
-  }, []);
-
-  const startCheckout = async (planId: string) => {
-    setCheckoutError(null);
-
-    if (!isLoggedIn) {
-      router.push(`/mon-compte?mode=register&redirect=${encodeURIComponent(`/tarifs?plan=${planId}`)}`);
-      return;
-    }
-
-    setCheckoutLoading(planId);
-    try {
-      if (!supabase) throw new Error("Authentification indisponible.");
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) throw new Error("Merci de vous reconnecter avant de souscrire.");
-
-      const resp = await fetch("/api/billing/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan: planId, billing }),
-      });
-      const payload = await resp.json();
-      if (!resp.ok) throw new Error(payload?.error || "Impossible de démarrer le paiement.");
-      if (!payload?.url) throw new Error("URL Stripe manquante.");
-      window.location.href = payload.url;
-    } catch (error: any) {
-      setCheckoutError(error?.message || "Impossible de démarrer le paiement.");
-      setCheckoutLoading(null);
-    }
+  const startCheckout = (planId: string) => {
+    router.push(`/mon-compte?mode=register&redirect=${encodeURIComponent(`/tarifs?plan=${planId}`)}`);
   };
 
   return (
@@ -223,7 +166,7 @@ export default function TarifsPage() {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd) }} />
       </Head>
 
-      <AppHeader />
+      <AppHeader staticMode />
       <main className="flex-1">
         <section className="relative overflow-hidden px-4 pb-10 pt-10 sm:pb-20 sm:pt-16">
           <div aria-hidden className="absolute inset-x-0 top-0 h-[560px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:h-[430px]" />
@@ -302,10 +245,10 @@ export default function TarifsPage() {
                 <li className="text-slate-500">Aide déclaration premium non incluse</li>
               </ul>
               <Link
-                href={isLoggedIn ? "/espace-bailleur" : "/mon-compte?mode=register&redirect=/espace-bailleur"}
+                href="/mon-compte?mode=register&redirect=/espace-bailleur"
                 className="mt-5 inline-flex min-h-9 w-full items-center justify-center whitespace-nowrap rounded-full bg-emerald-700 px-3 py-2 text-[0.8rem] font-semibold text-white hover:bg-emerald-600"
               >
-                {isLoggedIn ? "Accéder à mon espace" : "Créer espace gratuit"}
+                Créer espace gratuit
               </Link>
             </article>
 
@@ -314,7 +257,7 @@ export default function TarifsPage() {
                 key={plan.id}
                 plan={plan}
                 billing={billing}
-                loading={checkoutLoading === plan.id}
+                loading={false}
                 onCheckout={startCheckout}
               />
             ))}
@@ -367,10 +310,6 @@ export default function TarifsPage() {
               </table>
             </div>
           </section>
-
-          {checkoutError ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{checkoutError}</div>
-          ) : null}
 
           <section className="grid gap-4 lg:grid-cols-3">
             <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
@@ -460,7 +399,7 @@ export default function TarifsPage() {
           </section>
 
           <p className="text-xs text-slate-500">
-            {checking ? "Vérification de la session…" : isLoggedIn ? "Vous êtes connecté." : "Aucune carte bancaire demandée pour le plan gratuit."}
+            Aucune carte bancaire demandée pour le plan gratuit.
           </p>
           </div>
         </section>

@@ -161,7 +161,7 @@ export default function GestionLocativeLmnpPage() {
         ))}
       </Head>
 
-      <AppHeader />
+      <AppHeader staticMode />
 
       <main className="flex-1">
         <section className="lokt-public-hero relative overflow-hidden px-4 pb-10 pt-8 sm:pb-20 sm:pt-16">

@@ -1,5 +1,6 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { BellIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
@@ -13,6 +14,8 @@ type DashboardAlert = {
   desc: string;
   action?: string;
 };
+
+type AlertSnoozeState = Record<string, { ignored?: boolean; until?: string }>;
 
 type TransactionRow = {
   id: string;
@@ -66,6 +69,25 @@ function actionTarget(action?: string): LandlordSectionKey | null {
   if (a.includes("état") || a.includes("etat")) return "etat_des_lieux";
   if (a.includes("finance")) return "finance";
   return null;
+}
+
+function priorityActionId(input: { title: string; target?: LandlordSectionKey | null; cta?: string; desc?: string }) {
+  return [input.target || "info", input.cta || "", input.title, input.desc || ""]
+    .join("|")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 140);
+}
+
+function isSnoozeActive(entry?: { ignored?: boolean; until?: string } | null) {
+  if (!entry) return false;
+  if (entry.ignored) return true;
+  if (!entry.until) return false;
+  const until = new Date(entry.until).getTime();
+  return Number.isFinite(until) && until > Date.now();
 }
 
 export function SectionDashboard({
@@ -137,6 +159,40 @@ export function SectionDashboard({
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
   const [accountingPropertyId, setAccountingPropertyId] = useState<string>("");
+  const [alertSnoozes, setAlertSnoozes] = useState<AlertSnoozeState>({});
+
+  const alertSnoozeStorageKey = useMemo(() => {
+    const u = (userId || "").trim();
+    return `lokt:dashboard-alert-snoozes:${u || "anon"}`;
+  }, [userId]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(alertSnoozeStorageKey);
+      setAlertSnoozes(raw ? JSON.parse(raw) : {});
+    } catch {
+      setAlertSnoozes({});
+    }
+  }, [alertSnoozeStorageKey]);
+
+  const saveAlertSnoozes = (next: AlertSnoozeState) => {
+    setAlertSnoozes(next);
+    try {
+      window.localStorage.setItem(alertSnoozeStorageKey, JSON.stringify(next));
+    } catch {
+      // Le masquage reste en mémoire si localStorage est indisponible.
+    }
+  };
+
+  const snoozePriorityAction = (id: string, mode: "tomorrow" | "forever") => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const next = {
+      ...alertSnoozes,
+      [id]: mode === "forever" ? { ignored: true } : { until: tomorrow.toISOString() },
+    };
+    saveAlertSnoozes(next);
+  };
 
   const propertyOptions = useMemo(
     () =>
@@ -452,12 +508,14 @@ export function SectionDashboard({
 
   const priorityActions = useMemo(() => {
     const actions: Array<{
+      id?: string;
       tone: "red" | "amber" | "emerald" | "indigo";
       title: string;
       desc: string;
       details?: string[];
       target?: LandlordSectionKey;
       cta?: string;
+      snoozable?: boolean;
     }> = [];
     const onboardingIncomplete = onboarding.percent < 100;
 
@@ -564,19 +622,29 @@ export function SectionDashboard({
       });
     }
 
-    if (actions.length === 0) {
+    const visibleActions = actions
+      .map((action) => ({ ...action, id: action.id || priorityActionId(action) }))
+      .filter((action) => !isSnoozeActive(alertSnoozes[action.id]));
+
+    if (visibleActions.length === 0) {
       actions.push({
+        id: "no-urgent-action",
         tone: "emerald",
-        title: "Rien d’urgent aujourd’hui",
-        desc: "Le mois est propre. Surveillez simplement les encaissements et les charges.",
+        title: actions.length > 0 ? "Alertes mises de côté" : "Rien d’urgent aujourd’hui",
+        desc: actions.length > 0
+          ? "Vous avez masqué les actions en cours. Elles restent accessibles dans leurs sections et reviendront après snooze si nécessaire."
+          : "Le mois est propre. Surveillez simplement les encaissements et les charges.",
         target: "finance",
         cta: "Voir la finance",
+        snoozable: false,
       });
+      return actions.slice(-1);
     }
 
-    return actions.slice(0, 5);
+    return visibleActions.slice(0, 5);
   }, [
     activeLeases.length,
+    alertSnoozes,
     alerts,
     currentMonthReceipts.length,
     incompletePayments,
@@ -758,28 +826,53 @@ export function SectionDashboard({
                 }
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-950">{action.title}</p>
                     <p className="mt-1 text-sm text-slate-700">{action.desc}</p>
                     {action.details?.length ? (
-                      <div className="mt-3 space-y-1">
+                      <div className="mt-3 grid gap-2 sm:max-w-md sm:grid-cols-2">
                         {action.details.map((detail) => (
-                          <p key={detail} className="rounded-xl border border-white/70 bg-white/70 px-3 py-1.5 text-xs font-semibold text-slate-800">
+                          <p key={detail} className="rounded-xl border border-white/70 bg-white/60 px-3 py-2 text-xs font-semibold leading-snug text-slate-800">
                             {detail}
                           </p>
                         ))}
                       </div>
                     ) : null}
                   </div>
-                  {action.target ? (
-                    <button
-                      type="button"
-                      onClick={() => onGo(action.target!)}
-                      className="inline-flex shrink-0 items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                    >
-                      {action.cta || "Ouvrir"}
-                    </button>
-                  ) : null}
+                  <div className="flex shrink-0 flex-col gap-2 sm:min-w-[18rem] sm:items-stretch">
+                    {action.target ? (
+                      <button
+                        type="button"
+                        onClick={() => onGo(action.target!)}
+                        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                      >
+                        {action.cta || "Ouvrir"}
+                      </button>
+                    ) : null}
+                    {action.snoozable !== false ? (
+                      <div className="rounded-2xl border border-white/70 bg-white/55 p-2 shadow-sm">
+                        <p className="px-1 pb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Gestion de l’alerte</p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => action.id && snoozePriorityAction(action.id, "tomorrow")}
+                            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          >
+                            <BellIcon className="h-4 w-4" aria-hidden="true" />
+                            <span>Me rappeler demain</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => action.id && snoozePriorityAction(action.id, "forever")}
+                            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-200"
+                          >
+                            <NoSymbolIcon className="h-4 w-4" aria-hidden="true" />
+                            <span>Ignorer pour toujours</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             ))}

@@ -18,7 +18,7 @@ export default function GuidesIndexPage() {
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href="https://lokt.fr/guides" />
       </Head>
-      <AppHeader />
+      <AppHeader staticMode />
 
       <main>
         <section className="border-b border-slate-200 bg-white px-4 py-8 sm:py-12">

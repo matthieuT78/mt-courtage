@@ -1,6 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
-import { useEffect, useState, type ComponentType, type SVGProps } from "react";
+import { type ComponentType, type SVGProps } from "react";
 import {
   ArchiveBoxIcon,
   BellAlertIcon,
@@ -15,7 +15,6 @@ import {
 } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
-import { supabase } from "../lib/supabaseClient";
 
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/outil-gestion-locative`;
@@ -91,49 +90,6 @@ function IncludedLine({ icon: Icon, title, text }: Feature) {
 }
 
 export default function OutilGestionLocativePage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [authReady, setAuthReady] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const init = async () => {
-      try {
-        if (!supabase) {
-          if (mounted) setAuthReady(true);
-          return;
-        }
-
-        const { data } = await supabase.auth.getSession();
-        if (!mounted) return;
-        setIsLoggedIn(!!data.session?.user?.id);
-        setAuthReady(true);
-
-        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-          if (!mounted) return;
-          setIsLoggedIn(!!session?.user?.id);
-          setAuthReady(true);
-        });
-
-        return () => sub.subscription.unsubscribe();
-      } catch {
-        if (!mounted) return;
-        setIsLoggedIn(false);
-        setAuthReady(true);
-      }
-    };
-
-    let unsubscribe: (() => void) | undefined;
-    init().then((cleanup) => {
-      unsubscribe = cleanup;
-    });
-
-    return () => {
-      mounted = false;
-      unsubscribe?.();
-    };
-  }, []);
-
   const faq = [
     {
       q: "L’outil de gestion locative est-il vraiment gratuit ?",
@@ -256,7 +212,7 @@ export default function OutilGestionLocativePage() {
         ))}
       </Head>
 
-      <AppHeader />
+      <AppHeader staticMode />
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
         <section className="lokt-public-hero relative overflow-hidden px-4 pb-10 pt-8 sm:pb-20 sm:pt-16">
@@ -281,19 +237,17 @@ export default function OutilGestionLocativePage() {
                 </p>
                 <div className="mt-6 grid gap-3 sm:mt-7 sm:flex sm:flex-wrap">
                   <Link
-                    href={authReady && isLoggedIn ? "/espace-bailleur" : "/mon-compte?mode=register&redirect=/espace-bailleur"}
+                    href="/mon-compte?mode=register&redirect=/espace-bailleur"
                     className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800 sm:w-auto"
                   >
-                    {authReady && isLoggedIn ? "Aller à l’outil bailleur →" : "Créer un compte gratuit →"}
+                    Créer un compte gratuit →
                   </Link>
-                  {!authReady || isLoggedIn ? null : (
-                    <Link
-                      href="/mon-compte?mode=login&redirect=/espace-bailleur"
-                      className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white sm:w-auto"
-                    >
-                      Se connecter →
-                    </Link>
-                  )}
+                  <Link
+                    href="/mon-compte?mode=login&redirect=/espace-bailleur"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white sm:w-auto"
+                  >
+                    Se connecter →
+                  </Link>
                   <Link
                     href="/gestion-locative-lmnp"
                     className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white sm:w-auto"
@@ -450,19 +404,17 @@ export default function OutilGestionLocativePage() {
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
                   <Link
-                    href={authReady && isLoggedIn ? "/espace-bailleur" : "/mon-compte?mode=register&redirect=/espace-bailleur"}
+                    href="/mon-compte?mode=register&redirect=/espace-bailleur"
                     className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
                   >
-                    {authReady && isLoggedIn ? "Aller à l’outil bailleur" : "Créer un compte gratuit"}
+                    Créer un compte gratuit
                   </Link>
-                  {!authReady || isLoggedIn ? null : (
-                    <Link
-                      href="/mon-compte?mode=login&redirect=/espace-bailleur"
-                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-                    >
-                      Se connecter
-                    </Link>
-                  )}
+                  <Link
+                    href="/mon-compte?mode=login&redirect=/espace-bailleur"
+                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+                  >
+                    Se connecter
+                  </Link>
                 </div>
               </div>
             </section>

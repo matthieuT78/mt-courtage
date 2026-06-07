@@ -37,12 +37,18 @@ const CALCULATOR_LINKS = [
   { href: "/parc-immobilier", label: "Parc immobilier", description: "Consolider vos biens locatifs", icon: BuildingOffice2Icon },
 ];
 
-export default function AppHeader() {
+export default function AppHeader({ staticMode = false }: { staticMode?: boolean }) {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
+    if (staticMode) {
+      setIsLoggedIn(false);
+      setAuthReady(true);
+      return;
+    }
+
     let mounted = true;
     let unsubscribe: (() => void) | null = null;
 
@@ -77,7 +83,7 @@ export default function AppHeader() {
       mounted = false;
       unsubscribe?.();
     };
-  }, []);
+  }, [staticMode]);
 
   // ✅ Toggle simple : V1 landing
   const LOKT_V1_LANDING = true;

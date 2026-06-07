@@ -25,7 +25,7 @@ export default function ConfidentialitePage() {
         <link rel="canonical" href="https://lokt.fr/confidentialite" />
       </Head>
 
-      <AppHeader />
+      <AppHeader staticMode />
 
       <main className="flex-1 px-4 py-10">
         <div className="mx-auto max-w-4xl space-y-6">
