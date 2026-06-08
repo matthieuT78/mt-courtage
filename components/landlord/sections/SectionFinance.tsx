@@ -265,6 +265,8 @@ const CATEGORIES: Array<{ value: string; label: string; dir?: TxDirection }> = [
   { value: "insurance", label: "Assurance (PNO/GLI…)", dir: "out" },
   { value: "tax", label: "Taxe foncière", dir: "out" },
   { value: "utilities", label: "Eau/élec/internet (si à ta charge)", dir: "out" },
+  { value: "charges_recovered", label: "Charges récupérées / refacturées", dir: "in" },
+  { value: "regularization", label: "Régularisation de charges", dir: undefined },
   { value: "loan", label: "Crédit (mensualité)", dir: "out" },
   { value: "other", label: "Autre", dir: undefined },
 ];

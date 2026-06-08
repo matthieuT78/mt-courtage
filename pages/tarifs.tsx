@@ -120,7 +120,7 @@ export default function TarifsPage() {
   const router = useRouter();
   const title = "Tarifs gestion locative propriétaire bailleur | lokt.fr";
   const description =
-    "Comparez les offres lokt.fr : gestion locative gratuite pour un logement actif, puis automatisation des quittances, finance, déclaration et alertes.";
+    "Comparez les offres lokt.fr : gestion locative gratuite pour un logement actif, Starter pour automatiser les quittances, Essentiel pour le pilotage et les outils bailleur.";
   const pageUrl = "https://lokt.fr/tarifs";
   const ogImage = "https://lokt.fr/lokt-logo.jpg";
   const pricingJsonLd = {
@@ -184,7 +184,7 @@ export default function TarifsPage() {
                   <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Payant quand lokt.fr automatise.</span>
                 </h1>
                 <p className="mt-5 max-w-3xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
-                  Un logement actif gratuit pour démarrer. Les offres payantes ajoutent les quittances automatiques, les alertes, le pilotage financier et l’aide à la déclaration.
+                  Un logement actif gratuit pour démarrer. Starter automatise les quittances et les alertes. Essentiel ajoute le pilotage financier, l’aide à la déclaration et la boîte à outils bailleur.
                 </p>
               </div>
 
@@ -270,7 +270,9 @@ export default function TarifsPage() {
                 <span className="block text-xl">Ce que chaque abonnement débloque.</span>
                 <span className="mt-1 block text-lg text-[#635bff]">Réellement.</span>
               </h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600">Tous les plans sont sans engagement. Starter automatise le quotidien ; Essentiel ajoute le pilotage financier avancé.</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Tous les plans sont sans engagement. Starter automatise le quotidien ; Essentiel ajoute le pilotage financier et les outils métier.
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-[760px] w-full border-collapse text-left text-sm">
@@ -295,7 +297,9 @@ export default function TarifsPage() {
                     ["Validation loyer par email", "Non inclus", "Inclus", "Inclus"],
                     ["Relance bailleur automatique à J+1", "Non inclus", "Inclus", "Inclus"],
                     ["Envoi automatique des quittances", "Non inclus", "Inclus", "Inclus"],
-                    ["Simulateurs bailleur", "Non inclus", "Inclus", "Inclus"],
+                    ["Boîte à outils bailleur", "Non inclus", "Non inclus", "Inclus"],
+                    ["Répartition eau, charges, TEOM et régularisation", "Non inclus", "Non inclus", "Inclus"],
+                    ["Simulateurs bailleur", "Non inclus", "Non inclus", "Inclus"],
                     ["Performance et cash-flow par bien", "Non inclus", "Non inclus", "Inclus"],
                     ["Aide à la déclaration et exports avancés", "Non inclus", "Non inclus", "Inclus"],
                   ].map(([feature, free, starter, essential]) => (
@@ -327,7 +331,7 @@ export default function TarifsPage() {
             <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Essentiel = pilotage</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Le palier supérieur ajoute la vision investisseur : rentabilité, exports finance, aide à la déclaration et plans d’action.
+                Le palier supérieur ajoute la vision investisseur et les outils métier : rentabilité, exports finance, aide à la déclaration, répartitions d’eau, charges, TEOM, régularisation et simulateurs bailleur.
               </p>
             </div>
           </section>

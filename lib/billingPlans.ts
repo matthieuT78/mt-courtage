@@ -34,7 +34,6 @@ export const PAID_BILLING_PLANS: PaidBillingPlan[] = [
       "Validation du paiement par email avant génération",
       "Toutes les alertes métier : échéances, IRL, baux et états des lieux",
       "Relance bailleur à J+1 en l’absence de réponse",
-      "Simulateurs bailleur : LMNP, IRL et arbitrages",
       "500 Mo de stockage documentaire sécurisé",
     ],
     recommended: true,
@@ -53,6 +52,8 @@ export const PAID_BILLING_PLANS: PaidBillingPlan[] = [
     audience: "Pilotage & déclaration",
     features: [
       "Tout le plan Starter",
+      "Boîte à outils bailleur : eau, charges, TEOM et régularisation",
+      "Simulateurs bailleur : LMNP, IRL et arbitrages",
       "Performance et rentabilité par logement",
       "Cash-flow, charges, crédit et plan d’action",
       "Aide à la déclaration premium",

@@ -34,6 +34,10 @@ export function planAllowsPerformance(plan: Plan) {
   return plan === "landlord_15" || plan === "landlord_unlimited";
 }
 
+export function planAllowsTools(plan: Plan) {
+  return planAllowsPerformance(plan);
+}
+
 export function planAllowsReceiptAutomation(plan: Plan) {
   return planAllowsLandlord(plan);
 }

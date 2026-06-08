@@ -17,10 +17,10 @@ import { SectionPerformance } from "./sections/SectionPerformance";
 import { SectionEtatDesLieux } from "./sections/SectionEtatDesLieux";
 import { SectionInventaire } from "./sections/SectionInventaire";
 import { SectionDeclaration } from "./sections/SectionDeclaration";
-import { SectionSimulateursBailleur } from "./sections/SectionSimulateursBailleur";
+import { SectionOutils } from "./sections/SectionOutils";
 import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
-import { planAllowsLandlord, planAllowsPerformance } from "../../lib/permissions";
+import { planAllowsPerformance, planAllowsTools } from "../../lib/permissions";
 
 type LockedSectionConfig = {
   eyebrow: string;
@@ -120,8 +120,8 @@ export function DashboardShell(props: any) {
   const propertyLimitLabel = maxActiveProperties >= 999999 ? "illimité" : `${maxActiveProperties} logement${maxActiveProperties > 1 ? "s" : ""}`;
   const isFreePlan = plan === "calc_full";
   const planLabel = getBillingPlan(plan)?.name || plan;
-  const canUsePaidLandlordTools = planAllowsLandlord(plan);
   const canUsePerformance = planAllowsPerformance(plan);
+  const canUseTools = planAllowsTools(plan);
 
   const rentFeedback = useMemo(() => {
     const result = typeof router.query.rentResult === "string" ? router.query.rentResult : "";
@@ -163,6 +163,10 @@ export function DashboardShell(props: any) {
 
   useEffect(() => {
     const tab = typeof router.query.tab === "string" ? router.query.tab : "";
+    if (tab === "simulateurs") {
+      setActive("outils");
+      return;
+    }
     const validTabs: LandlordSectionKey[] = [
       "dashboard",
       "biens",
@@ -173,7 +177,7 @@ export function DashboardShell(props: any) {
       "quittances",
       "finance",
       "performance",
-      "simulateurs",
+      "outils",
       "etat_des_lieux",
       "inventaire",
       "declaration",
@@ -202,18 +206,6 @@ export function DashboardShell(props: any) {
 
   const lockedSection = useMemo<LockedSectionConfig | null>(() => {
     if (permissionsLoading) return null;
-    if (active === "simulateurs" && !canUsePaidLandlordTools) {
-      return {
-        eyebrow: "Fonctionnalité Starter",
-        title: "Simulateurs bailleur réservés au plan Starter",
-        desc:
-          "Ces simulateurs aident à arbitrer les décisions de gestion : LMNP, location meublée, révision IRL et louer ou vendre. Ils complètent la gestion gratuite avec des calculs orientés décision.",
-        requiredPlan: "Starter",
-        href: "/mon-compte/abonnement?source=simulateurs-bailleur",
-        cta: "Upgrade vers Starter",
-        features: ["Simulateurs LMNP et arbitrages meublé / nu", "Révision de loyer IRL", "Aide à la décision louer ou vendre", "Jusqu’à 3 logements actifs"],
-      };
-    }
     if (active === "performance" && !canUsePerformance) {
       return {
         eyebrow: "Fonctionnalité Essentiel",
@@ -238,8 +230,20 @@ export function DashboardShell(props: any) {
         features: ["Import des recettes et charges depuis Finance", "Comparaison indicative micro / réel", "Checklist justificatifs", "Export de synthèse"],
       };
     }
+    if (active === "outils" && !canUseTools) {
+      return {
+        eyebrow: "Fonctionnalité Essentiel",
+        title: "Boîte à outils bailleur réservée au plan Essentiel",
+        desc:
+          "Les outils avancés traitent les cas métier qui demandent de l’historique, des justificatifs et des calculs de répartition : eau, charges, TEOM, régularisation et simulateurs bailleur.",
+        requiredPlan: "Essentiel",
+        href: "/mon-compte/abonnement?source=outils",
+        cta: "Upgrade vers Essentiel",
+        features: ["Répartition de facture d’eau au prorata des relevés", "Répartition des charges par tantièmes", "TEOM et régularisation locative", "Simulateurs bailleur intégrés"],
+      };
+    }
     return null;
-  }, [active, canUsePaidLandlordTools, canUsePerformance, permissionsLoading]);
+  }, [active, canUsePerformance, canUseTools, permissionsLoading]);
 
   const content = useMemo(() => {
     if (!userId) {
@@ -358,8 +362,8 @@ export function DashboardShell(props: any) {
       case "performance":
         return <SectionPerformance userId={userId} leases={leases} payments={payments} propertyById={propertyById} />;
 
-      case "simulateurs":
-        return <SectionSimulateursBailleur plan={plan} />;
+      case "outils":
+        return <SectionOutils userId={userId} properties={properties} leases={leases} plan={plan} onRefresh={refresh} />;
 
       case "etat_des_lieux":
         return <SectionEtatDesLieux userId={userId} leases={leases} properties={properties} tenants={tenants} onRefresh={refresh} />;
