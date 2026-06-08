@@ -160,6 +160,7 @@ export function SectionDashboard({
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
   const [accountingPropertyId, setAccountingPropertyId] = useState<string>("");
   const [alertSnoozes, setAlertSnoozes] = useState<AlertSnoozeState>({});
+  const [openAlertMenuId, setOpenAlertMenuId] = useState<string | null>(null);
 
   const alertSnoozeStorageKey = useMemo(() => {
     const u = (userId || "").trim();
@@ -192,6 +193,7 @@ export function SectionDashboard({
       [id]: mode === "forever" ? { ignored: true } : { until: tomorrow.toISOString() },
     };
     saveAlertSnoozes(next);
+    setOpenAlertMenuId(null);
   };
 
   const propertyOptions = useMemo(
@@ -787,11 +789,11 @@ export function SectionDashboard({
       ) : null}
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 bg-white px-5 py-5">
+        <div className="border-b border-slate-100 bg-white px-5 py-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Cockpit bailleur</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-950">Ce qui mérite votre attention aujourd’hui</h2>
+              <h2 className="mt-1 text-lg font-semibold text-slate-950">Ce qui mérite votre attention aujourd’hui</h2>
               <p className="mt-1 max-w-3xl text-sm text-slate-600">
                 Période : {fmtDate(monthRange.startISO)} → {fmtDate(monthRange.endISO)} · loyers, quittances, retards et performance.
               </p>
@@ -801,7 +803,7 @@ export function SectionDashboard({
               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Occupation {occupancyRate}%</span>
             </div>
           </div>
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
             <div
               className="h-full rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]"
               style={{ width: `${healthScore > 0 ? Math.max(8, Math.min(100, healthScore)) : 0}%` }}
@@ -809,71 +811,95 @@ export function SectionDashboard({
           </div>
         </div>
 
-        <div className="grid gap-4 bg-[#f6f9fc] p-5 lg:grid-cols-[1fr,0.85fr]">
-          <div className="space-y-3">
+        <div className="grid gap-4 bg-[#f6f9fc] p-4 lg:grid-cols-[1fr,0.85fr]">
+          <div className="space-y-2">
             {priorityActions.map((action, index) => (
               <div
                 key={`${action.title}-${index}`}
-                className={
-                  "rounded-2xl border px-4 py-3 " +
-                  (action.tone === "red"
-                    ? "border-red-200 bg-red-50"
-                    : action.tone === "amber"
-                    ? "border-amber-200 bg-amber-50"
-                    : action.tone === "indigo"
-                    ? "border-indigo-200 bg-indigo-50"
-                    : "border-emerald-200 bg-emerald-50")
-                }
+                className="group relative overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-950">{action.title}</p>
-                    <p className="mt-1 text-sm text-slate-700">{action.desc}</p>
-                    {action.details?.length ? (
-                      <div className="mt-3 grid gap-2 sm:max-w-md sm:grid-cols-2">
-                        {action.details.map((detail) => (
-                          <p key={detail} className="rounded-xl border border-white/70 bg-white/60 px-3 py-2 text-xs font-semibold leading-snug text-slate-800">
-                            {detail}
-                          </p>
-                        ))}
+                <button
+                  type="button"
+                  onClick={() => action.target && onGo(action.target)}
+                  disabled={!action.target}
+                  className={
+                    "block w-full rounded-2xl px-3 py-3 text-left " +
+                    (action.target ? "cursor-pointer" : "cursor-default")
+                  }
+                >
+                  <div className="flex min-w-0 items-start gap-3 pr-0 md:pr-24">
+                    <span
+                      className={
+                        "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
+                        (action.tone === "red"
+                          ? "bg-red-50 text-red-700"
+                          : action.tone === "amber"
+                          ? "bg-amber-50 text-amber-700"
+                          : action.tone === "indigo"
+                          ? "bg-[#635bff]/10 text-[#4f46e5]"
+                          : "bg-emerald-50 text-emerald-700")
+                      }
+                    >
+                      !
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="text-[0.62rem] font-semibold uppercase tracking-[0.13em] text-slate-500">Alerte</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300" />
+                        <p className="text-sm font-semibold tracking-tight text-slate-950">{action.title}</p>
                       </div>
+                      <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600">{action.desc}</p>
+                      {action.details?.length ? (
+                        <p className="mt-1.5 truncate text-xs font-semibold text-slate-500">{action.details.join(" · ")}</p>
+                      ) : null}
+                    </div>
+                    {action.cta ? (
+                      <span className="hidden shrink-0 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white md:inline-flex">
+                        {action.cta}
+                      </span>
                     ) : null}
                   </div>
-                  <div className="flex shrink-0 flex-col gap-2 sm:min-w-[18rem] sm:items-stretch">
-                    {action.target ? (
+                </button>
+                {action.snoozable !== false && action.id ? (
+                  <div className="absolute right-3 top-1/2 z-20 -translate-y-1/2">
+                    <div className="relative">
                       <button
                         type="button"
-                        onClick={() => onGo(action.target!)}
-                        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                        onClick={() => setOpenAlertMenuId(openAlertMenuId === action.id ? null : action.id)}
+                        className="inline-flex min-h-8 items-center justify-center rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 opacity-100 shadow-sm transition hover:border-red-300 hover:bg-red-100 md:opacity-0 md:group-hover:opacity-100"
+                        aria-expanded={openAlertMenuId === action.id}
                       >
-                        {action.cta || "Ouvrir"}
+                        Masquer
                       </button>
-                    ) : null}
-                    {action.snoozable !== false ? (
-                      <div className="rounded-2xl border border-white/70 bg-white/55 p-2 shadow-sm">
-                        <p className="px-1 pb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Gestion de l’alerte</p>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          <button
-                            type="button"
-                            onClick={() => action.id && snoozePriorityAction(action.id, "tomorrow")}
-                            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-semibold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                          >
-                            <BellIcon className="h-4 w-4" aria-hidden="true" />
-                            <span>Me rappeler demain</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => action.id && snoozePriorityAction(action.id, "forever")}
-                            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus:outline-none focus:ring-2 focus:ring-red-200"
-                          >
-                            <NoSymbolIcon className="h-4 w-4" aria-hidden="true" />
-                            <span>Ignorer pour toujours</span>
-                          </button>
+                      {openAlertMenuId === action.id ? (
+                        <div className="absolute right-0 top-10 z-20 w-full min-w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] lg:w-72">
+                          <div className="px-2 pb-2 pt-1">
+                            <p className="text-sm font-semibold text-slate-950">Masquer cette alerte</p>
+                            <p className="mt-0.5 text-xs leading-5 text-slate-500">Choisissez si elle doit revenir demain ou disparaître de ce cockpit.</p>
+                          </div>
+                          <div className="grid gap-1">
+                            <button
+                              type="button"
+                              onClick={() => snoozePriorityAction(action.id!, "tomorrow")}
+                              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-[#635bff]/5 hover:text-[#4f46e5]"
+                            >
+                              <BellIcon className="h-4 w-4 text-[#635bff]" aria-hidden="true" />
+                              Me le rappeler demain
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => snoozePriorityAction(action.id!, "forever")}
+                              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-red-50 hover:text-red-700"
+                            >
+                              <NoSymbolIcon className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                              Ignorer définitivement
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ) : null}
+                      ) : null}
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             ))}
           </div>
