@@ -80,6 +80,7 @@ export default function MonCompteAbonnementPage() {
   const [billing, setBilling] = useState<Billing>("monthly");
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [autoCheckoutStarted, setAutoCheckoutStarted] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
@@ -160,6 +161,20 @@ export default function MonCompteAbonnementPage() {
       setCheckoutLoading(null);
     }
   };
+
+  useEffect(() => {
+    if (!router.isReady || checking || !isLoggedIn || autoCheckoutStarted) return;
+    const requestedPlan = typeof router.query.plan === "string" ? router.query.plan : "";
+    const requestedBilling = router.query.billing === "yearly" ? "yearly" : router.query.billing === "monthly" ? "monthly" : billing;
+    const planExists = PAID_BILLING_PLANS.some((item) => item.id === requestedPlan && item.monthlyPrice != null);
+    if (!requestedPlan || !planExists) return;
+    if (requestedBilling !== billing) {
+      setBilling(requestedBilling);
+      return;
+    }
+    setAutoCheckoutStarted(true);
+    startCheckout(requestedPlan);
+  }, [autoCheckoutStarted, billing, checking, isLoggedIn, router.isReady, router.query.billing, router.query.plan]);
 
   const openCustomerPortal = async () => {
     setCheckoutError(null);

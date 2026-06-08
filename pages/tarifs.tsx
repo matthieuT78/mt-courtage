@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import { PAID_BILLING_PLANS } from "../lib/billingPlans";
+import { supabase } from "../lib/supabaseClient";
 
 type Billing = "monthly" | "yearly";
 
@@ -139,9 +140,41 @@ export default function TarifsPage() {
     ],
   };
   const [billing, setBilling] = useState<Billing>("monthly");
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const startCheckout = (planId: string) => {
-    router.push(`/mon-compte?mode=register&redirect=${encodeURIComponent(`/tarifs?plan=${planId}`)}`);
+  const startCheckout = async (planId: string) => {
+    setCheckoutError(null);
+    setCheckoutLoading(planId);
+
+    try {
+      if (!supabase) throw new Error("Authentification indisponible.");
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+
+      if (!token) {
+        const redirect = `/mon-compte/abonnement?plan=${encodeURIComponent(planId)}&billing=${billing}`;
+        router.push(`/mon-compte?mode=register&redirect=${encodeURIComponent(redirect)}`);
+        return;
+      }
+
+      const resp = await fetch("/api/billing/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan: planId, billing }),
+      });
+      const payload = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(payload?.error || "Impossible de démarrer le paiement.");
+      if (!payload?.url) throw new Error("URL de paiement Stripe manquante.");
+
+      window.location.href = payload.url;
+    } catch (error: any) {
+      setCheckoutError(error?.message || "Impossible de démarrer le paiement.");
+      setCheckoutLoading(null);
+    }
   };
 
   return (
@@ -257,11 +290,17 @@ export default function TarifsPage() {
                 key={plan.id}
                 plan={plan}
                 billing={billing}
-                loading={false}
+                loading={checkoutLoading === plan.id}
                 onCheckout={startCheckout}
               />
             ))}
           </section>
+
+          {checkoutError ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {checkoutError}
+            </div>
+          ) : null}
 
           <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[1.75rem]">
             <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
