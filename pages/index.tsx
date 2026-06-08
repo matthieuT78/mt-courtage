@@ -305,12 +305,14 @@ function StatPill({
 
 function FaqItem({ q, a }: { q: string; a: ReactNode }) {
   return (
-    <details className="group rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-      <summary className="cursor-pointer list-none font-semibold text-slate-950 flex items-center justify-between">
-        <span className="pr-6">{q}</span>
-        <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
+    <details className="group rounded-2xl border border-slate-200 bg-white/95 px-5 py-4 shadow-sm transition hover:border-slate-300 hover:shadow-md">
+      <summary className="flex cursor-pointer list-none items-start justify-between gap-4 font-semibold text-slate-950">
+        <span className="leading-snug">{q}</span>
+        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition group-open:rotate-45 group-open:bg-slate-950 group-open:text-white">
+          +
+        </span>
       </summary>
-      <div className="mt-3 text-sm text-slate-600 leading-relaxed">{a}</div>
+      <div className="mt-3 border-t border-slate-100 pt-3 text-sm leading-6 text-slate-600">{a}</div>
     </details>
   );
 }
@@ -487,44 +489,52 @@ export default function Home() {
   const faqData = useMemo(
     () => [
       {
-        q: "À quoi sert l’espace bailleur lokt.fr ?",
-        a: "L’espace bailleur aide un propriétaire à centraliser sa gestion locative : bien, bail, locataire, loyers, quittances, états des lieux, inventaire, finance et alertes importantes.",
+        q: "À quoi sert vraiment l’espace bailleur lokt.fr ?",
+        a: "L’espace bailleur sert à garder une vision claire de votre location : biens, locataires, baux, loyers, quittances, documents, inventaire, état des lieux et points à traiter. L’objectif n’est pas de multiplier les écrans, mais de savoir quoi faire, quand le faire, et de conserver une trace propre des actions importantes.",
       },
       {
-        q: "Est-ce que lokt.fr est gratuit ?",
-        a: "Oui. Vous pouvez gérer gratuitement un premier logement actif et utiliser les simulateurs immobiliers. Aucune carte bancaire n’est demandée pour démarrer.",
+        q: "Est-ce que lokt.fr est gratuit pour démarrer ?",
+        a: "Oui. Vous pouvez commencer sans carte bancaire, utiliser les simulateurs et gérer un premier logement actif. Les offres payantes servent à ouvrir plus de capacité, plus d’outils et des fonctions avancées pour les bailleurs qui veulent structurer davantage leur gestion.",
       },
       {
-        q: "Puis-je générer des quittances de loyer avec lokt.fr ?",
-        a: "Oui. L’outil permet de suivre les paiements, générer des quittances PDF, les archiver et préparer un workflow d’envoi au locataire depuis l’espace bailleur.",
+        q: "Puis-je gérer uniquement les quittances, sans utiliser tout le reste ?",
+        a: "Oui. Un propriétaire peut très bien utiliser lokt.fr seulement pour suivre les paiements et produire ses quittances. Les autres modules restent disponibles si vous en avez besoin, mais l’outil est pensé pour éviter les alertes inutiles lorsque votre workflow est plus simple.",
       },
       {
-        q: "L’outil remplace-t-il un contrat de location signé ?",
-        a: "Non. lokt.fr sert à gérer et suivre la location au quotidien. Le contrat de location reste un document juridique distinct, signé par les parties avec les annexes nécessaires.",
+        q: "Quand une quittance de loyer doit-elle être générée ?",
+        a: "Une quittance se remet au locataire lorsque le loyer et les charges dus pour la période ont été payés. Si le paiement n’est que partiel, on parle plutôt de reçu. Dans lokt.fr, la logique consiste donc à confirmer le paiement avant de produire une quittance propre et archivée.",
       },
       {
         q: "Est-ce adapté à un propriétaire avec un seul bien ?",
-        a: "Oui. La logique produit est pensée pour être utile dès le premier logement : bail, locataire, quittances, état des lieux, inventaire et suivi financier simple.",
+        a: "Oui. C’est même un cas d’usage important : un seul bien peut déjà impliquer un bail, un dépôt de garantie, un état des lieux, des quittances, des relances, des travaux et des documents à conserver. lokt.fr aide à ne pas tout gérer dans des emails, des fichiers éparpillés ou un tableur oublié.",
+      },
+      {
+        q: "L’outil remplace-t-il un bail ou un conseil juridique ?",
+        a: "Non. lokt.fr est un outil de gestion, de suivi et d’aide à la décision. Un bail reste un document juridique signé entre les parties, avec les annexes nécessaires. Pour une situation litigieuse, complexe ou sensible, il faut se rapprocher d’un professionnel compétent.",
       },
       {
         q: "Quels simulateurs immobiliers sont disponibles ?",
-        a: "lokt.fr propose des simulateurs pour la capacité d’emprunt, le prêt relais, la rentabilité locative, la plus-value immobilière et l’analyse d’un parc immobilier.",
+        a: "Vous pouvez estimer une capacité d’emprunt, analyser une rentabilité locative, simuler un prêt relais, calculer une plus-value immobilière et suivre une vision consolidée d’un parc. Ces simulateurs servent à comparer des scénarios avant d’agir, pas seulement à obtenir un chiffre isolé.",
       },
       {
-        q: "Les résultats des simulateurs sont-ils fiables ?",
-        a: "Les résultats sont indicatifs. Ils reposent sur les hypothèses saisies et servent à comparer des scénarios de manière cohérente, pas à fournir une promesse bancaire ou fiscale.",
+        q: "Les résultats des simulateurs sont-ils contractuels ?",
+        a: "Non. Les résultats sont indicatifs et dépendent des hypothèses saisies : revenus, charges, taux, loyers, fiscalité, prix d’achat ou de revente. Ils permettent de cadrer une réflexion et d’éviter les angles morts, mais ne remplacent pas une offre bancaire, un calcul notarial ou un avis fiscal personnalisé.",
       },
       {
-        q: "Dois-je créer un compte ?",
-        a: "Les simulateurs peuvent être utilisés librement. Un compte est nécessaire pour accéder à l’espace bailleur et retrouver votre gestion locative.",
+        q: "Dois-je créer un compte pour utiliser le site ?",
+        a: "Les simulateurs publics peuvent être utilisés librement. Un compte devient nécessaire dès que vous voulez sauvegarder une gestion locative, retrouver vos biens, suivre des baux, archiver des documents ou revenir sur vos informations dans le temps.",
       },
       {
-        q: "Que faites-vous de mes données ?",
-        a: "Les données saisies servent à faire fonctionner le service et à retrouver vos informations. Aucune donnée personnelle n’est vendue à des tiers.",
+        q: "Comment sont traitées mes données ?",
+        a: "Les données saisies servent à faire fonctionner le service et à vous permettre de retrouver votre gestion. Elles ne sont pas vendues à des tiers. Pour un bailleur, ces informations sont sensibles par nature : identité du locataire, documents, loyers, paiements et historique doivent rester organisés et protégés.",
       },
       {
-        q: "Comment vous contacter ?",
-        a: "Vous pouvez nous écrire à contact@lokt.fr. Nous répondons manuellement.",
+        q: "Puis-je utiliser lokt.fr pour un logement meublé, un LMNP ou une location nue ?",
+        a: "Oui. Les workflows de suivi locatif restent utiles dans ces cas : bail, quittances, inventaire, état des lieux, documents et suivi des paiements. Certaines règles métier diffèrent selon le type de location ; les pages guides permettent de préciser les points importants avant de traiter un cas particulier.",
+      },
+      {
+        q: "Comment vous contacter si mon cas n’entre pas dans les écrans prévus ?",
+        a: "Vous pouvez nous écrire à contact@lokt.fr. Les retours terrain sont utiles, notamment lorsqu’un bailleur gère un cas hybride : un seul module utilisé, plusieurs lots, un locataire sortant, une régularisation ou un historique à reconstituer.",
       },
     ],
     []
@@ -966,14 +976,26 @@ export default function Home() {
         </section>
 
         <section id="faq" className="bg-slate-100 px-4 py-14 sm:py-20">
-          <div className="mx-auto max-w-4xl">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">FAQ</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">Questions fréquentes</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-              Des réponses rapides sur l’espace bailleur, les quittances, les simulateurs et la gestion des données.
-            </p>
+          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.8fr,1.2fr] lg:items-start">
+            <div className="lg:sticky lg:top-24">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">FAQ</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">Questions fréquentes</h2>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">
+                Une FAQ utile pour comprendre comment utiliser lokt.fr au quotidien : démarrer simplement, produire des quittances, suivre un bail, utiliser les simulateurs et savoir ce que l’outil ne remplace pas.
+              </p>
+              <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-semibold text-slate-950">À retenir</p>
+                <div className="mt-4 grid gap-3 text-sm leading-6 text-slate-600">
+                  <p>lokt.fr peut être utilisé module par module : quittance seule, bail + quittance, état des lieux, simulateurs ou suivi complet.</p>
+                  <p>Les simulateurs donnent une base de décision, tandis que l’espace bailleur sert à suivre les actions et documents dans le temps.</p>
+                </div>
+                <Link href="/guides" className="mt-4 inline-flex text-sm font-semibold text-slate-950 underline decoration-slate-300 underline-offset-4 hover:decoration-slate-900">
+                  Voir les guides bailleurs →
+                </Link>
+              </div>
+            </div>
 
-            <div className="mt-7 grid gap-3">
+            <div className="grid gap-3">
               {faqData.map((f) => (
                 <FaqItem
                   key={f.q}

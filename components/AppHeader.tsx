@@ -41,14 +41,9 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  void staticMode;
 
   useEffect(() => {
-    if (staticMode) {
-      setIsLoggedIn(false);
-      setAuthReady(true);
-      return;
-    }
-
     let mounted = true;
     let unsubscribe: (() => void) | null = null;
 
@@ -83,7 +78,7 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
       mounted = false;
       unsubscribe?.();
     };
-  }, [staticMode]);
+  }, []);
 
   // ✅ Toggle simple : V1 landing
   const LOKT_V1_LANDING = true;
@@ -97,7 +92,7 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
     { href: "/#faq", label: "FAQ" },
     { href: "mailto:contact@lokt.fr", label: "Contact", external: true },
   ];
-  const navLinks = authReady && isLoggedIn ? v1Links.filter((link) => link.href !== "/outil-gestion-locative") : v1Links;
+  const navLinks = authReady && !isLoggedIn ? v1Links : v1Links.filter((link) => link.href !== "/outil-gestion-locative");
 
   const isActive = (href: string) => {
     if (href.startsWith("/#")) return false;
@@ -245,7 +240,12 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                 <BookOpenIcon className="h-5 w-5" />
               </Link>
 
-              {authReady && isLoggedIn ? (
+              {!authReady ? (
+                <>
+                  <span className="hidden h-10 w-28 rounded-full bg-slate-100 sm:inline-flex" aria-hidden="true" />
+                  <span className="h-9 w-9 rounded-full bg-slate-100 sm:hidden" aria-hidden="true" />
+                </>
+              ) : isLoggedIn ? (
                 <>
                   <Link
                     href="/mon-compte"
