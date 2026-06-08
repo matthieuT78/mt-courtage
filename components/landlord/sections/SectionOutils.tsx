@@ -1261,10 +1261,11 @@ export function SectionOutils({
   const globalCurrentValue = num(globalCurrentReading);
   const globalConsumption = Math.max(0, globalCurrentValue - globalPreviousValue);
   const principalResidualConsumption = allocationMethod === "principal_residual" ? Math.max(0, globalConsumption - totalConsumption) : 0;
+  const manualAllocationLines = selectedLines.map((line) => ({ ...line, readingSource: "manual" as const }));
   const allocationLines =
     allocationMethod === "principal_residual" && globalConsumption > 0
       ? [
-          ...selectedLines,
+          ...manualAllocationLines,
           {
             id: "principal_residual",
             siteUnitId: null,
@@ -1282,7 +1283,7 @@ export function SectionOutils({
             readingSource: "principal_residual" as const,
           },
         ]
-      : selectedLines.map((line) => ({ ...line, readingSource: "manual" as const }));
+      : manualAllocationLines;
   const allocatedConsumption = allocationLines.reduce((sum, line) => sum + line.consumption, 0);
   const consumptionDelta = globalConsumption - allocatedConsumption;
   const consumptionTolerance = 1;
