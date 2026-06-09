@@ -16,6 +16,7 @@ import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { usePermissions } from "../../PermissionProvider";
 import { PropertyDpePanel } from "../PropertyDpePanel";
+import PostalCodeCityFields from "../../forms/PostalCodeCityFields";
 
 type Props = {
   userId: string;
@@ -520,25 +521,24 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
           onChange={(e) => setForm((s) => ({ ...s, address_line1: e.target.value }))}
         />
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Code postal"
-            value={form.postal_code}
-            onChange={(e) => setForm((s) => ({ ...s, postal_code: e.target.value }))}
+        <div className="mt-3 grid gap-3 lg:grid-cols-[1fr,180px]">
+          <PostalCodeCityFields
+            idPrefix={`property_${propertyId || "new"}`}
+            postalCode={form.postal_code}
+            city={form.city}
+            onPostalCodeChange={(value) => setForm((s) => ({ ...s, postal_code: value }))}
+            onCityChange={(value) => setForm((s) => ({ ...s, city: value }))}
+            className="grid gap-3 sm:grid-cols-3"
           />
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Ville"
-            value={form.city}
-            onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))}
-          />
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Surface (m²)"
-            value={form.surface_m2}
-            onChange={(e) => setForm((s) => ({ ...s, surface_m2: e.target.value }))}
-          />
+          <label className="space-y-1">
+            <span className="text-xs text-slate-700">Surface</span>
+            <input
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              placeholder="Surface (m²)"
+              value={form.surface_m2}
+              onChange={(e) => setForm((s) => ({ ...s, surface_m2: e.target.value }))}
+            />
+          </label>
         </div>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2">

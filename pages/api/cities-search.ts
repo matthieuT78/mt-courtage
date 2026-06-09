@@ -32,12 +32,20 @@ function uniqueCities(cities: CitySuggestion[]) {
   return result;
 }
 
-async function searchGeoApi(params: { postalCode?: string; name?: string }) {
+function departmentFromPostalPrefix(prefix: string) {
+  if (/^97[1-8]/.test(prefix)) return prefix.slice(0, 3);
+  if (/^98[4-9]/.test(prefix)) return prefix.slice(0, 3);
+  if (/^20/.test(prefix)) return prefix.slice(0, 2);
+  return prefix.slice(0, 2);
+}
+
+async function searchGeoApi(params: { postalCode?: string; postalPrefix?: string; name?: string }) {
   const url = new URL("https://geo.api.gouv.fr/communes");
   if (params.postalCode) url.searchParams.set("codePostal", params.postalCode);
+  if (params.postalPrefix && !params.postalCode) url.searchParams.set("codeDepartement", departmentFromPostalPrefix(params.postalPrefix));
   if (params.name) url.searchParams.set("nom", params.name);
   url.searchParams.set("fields", "nom,codesPostaux,code,population");
-  url.searchParams.set("limit", "10");
+  url.searchParams.set("limit", params.postalPrefix && !params.postalCode ? "100" : "10");
   url.searchParams.set("boost", "population");
 
   const resp = await fetch(url.toString());
@@ -53,6 +61,7 @@ async function searchGeoApi(params: { postalCode?: string; name?: string }) {
 
     for (const cp of codesPostaux) {
       if (params.postalCode && cp !== params.postalCode) continue;
+      if (params.postalPrefix && !cp.startsWith(params.postalPrefix)) continue;
       result.push({
         name: nom,
         postalCode: cp,
@@ -76,11 +85,13 @@ export default async function handler(
 
   try {
     const normalized = normalizeSearch(q);
-    const postalCode = normalized.match(/\b\d{5}\b/)?.[0] || (/^\d{4}$/.test(normalized) ? `0${normalized}` : null);
+    const postalCode = normalized.match(/\b\d{5}\b/)?.[0] || null;
+    const postalPrefix = /^\d{2,4}$/.test(normalized) ? normalized : null;
     const name = normalizeSearch(normalized.replace(/\b\d{4,5}\b/g, ""));
 
     const searches: Array<Promise<CitySuggestion[]>> = [];
     if (postalCode) searches.push(searchGeoApi({ postalCode }));
+    if (!postalCode && postalPrefix) searches.push(searchGeoApi({ postalPrefix }));
     if (name.length >= 2) searches.push(searchGeoApi({ name }));
     if (!postalCode && !name && normalized.length >= 2) searches.push(searchGeoApi({ name: normalized }));
 
