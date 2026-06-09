@@ -4,15 +4,25 @@ import { supabase } from "../lib/supabaseClient";
 
 export type Profile = {
   id: string;
+  email?: string | null;
+  civility?: string | null;
   first_name: string | null;
   last_name: string | null;
   full_name: string | null;
   phone: string | null;
+  birth_date?: string | null;
   address_line1: string | null;
   address_line2: string | null;
   postal_code: string | null;
   city: string | null;
   country: string | null;
+  billing_same_as_main?: boolean | null;
+  billing_address_line1?: string | null;
+  billing_address_line2?: string | null;
+  billing_postal_code?: string | null;
+  billing_city?: string | null;
+  billing_country?: string | null;
+  marketing_opt_in?: boolean | null;
   updated_at?: string | null;
 };
 

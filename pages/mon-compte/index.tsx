@@ -165,6 +165,7 @@ export default function MonCompteIndexPage() {
 
     const payload: any = {
       id: userId,
+      email: normalizeEmail(regEmail) || null,
       civility: civility || null,
       first_name: firstName.trim() || null,
       last_name: lastName.trim() || null,
