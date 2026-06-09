@@ -18,7 +18,6 @@ const staticPagesV1 = [
   "/parc-immobilier",
   "/gestion-locative-lmnp",
   "/outil-gestion-locative",
-  "/outils-proprietaire",
   "/etats-des-lieux-documents",
   "/cautions-loyers",
   "/blog",
