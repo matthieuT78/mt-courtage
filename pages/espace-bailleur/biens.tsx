@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import AppHeader from "../../components/AppHeader";
+import PostalCodeCityFields from "../../components/forms/PostalCodeCityFields";
 import { supabase } from "../../lib/supabaseClient";
 
 type SimpleUser = { id: string; email?: string };
@@ -355,7 +356,7 @@ export default function EspaceBailleurBiensPage() {
                   />
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-3">
                   <div className="space-y-1">
                     <label className="text-[0.7rem] text-slate-700">Adresse (ligne 2)</label>
                     <input
@@ -364,25 +365,18 @@ export default function EspaceBailleurBiensPage() {
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">Code postal</label>
-                    <input
-                      value={form.postal_code}
-                      onChange={(e) => setForm((s) => ({ ...s, postal_code: e.target.value }))}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
+
+                  <PostalCodeCityFields
+                    idPrefix={`property_page_${selectedId || "new"}`}
+                    postalCode={form.postal_code}
+                    city={form.city}
+                    onPostalCodeChange={(value) => setForm((s) => ({ ...s, postal_code: value }))}
+                    onCityChange={(value) => setForm((s) => ({ ...s, city: value }))}
+                    className="grid gap-3 sm:grid-cols-2"
+                  />
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label className="text-[0.7rem] text-slate-700">Ville</label>
-                    <input
-                      value={form.city}
-                      onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                  </div>
                   <div className="space-y-1">
                     <label className="text-[0.7rem] text-slate-700">Pays</label>
                     <input
