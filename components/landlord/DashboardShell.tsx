@@ -80,185 +80,10 @@ function LockedPremiumSection({ config }: { config: LockedSectionConfig }) {
   );
 }
 
-function GuidedBailleurHome({
-  propertiesCount,
-  tenantsCount,
-  leasesCount,
-  activeLeasesCount,
-  healthScore,
-  monthlyExpected,
-  monthlyPaid,
-  lateCount,
-  onGo,
-  onShowDashboard,
-}: {
-  propertiesCount: number;
-  tenantsCount: number;
-  leasesCount: number;
-  activeLeasesCount: number;
-  healthScore: number;
-  monthlyExpected: number;
-  monthlyPaid: number;
-  lateCount: number;
-  onGo: (key: LandlordSectionKey) => void;
-  onShowDashboard: () => void;
-}) {
-  const money = (value: number) =>
-    Number(value || 0).toLocaleString("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-      maximumFractionDigits: 0,
-    });
-
-  const recommended =
-    propertiesCount === 0
-      ? "Commencez par ajouter le logement que vous louez."
-      : tenantsCount === 0
-      ? "Ajoutez le locataire pour relier bail, paiements et quittances."
-      : leasesCount === 0
-      ? "Créez le bail pour activer le suivi des loyers."
-      : lateCount > 0
-      ? "Traitez les retards avant de générer les quittances."
-      : "Votre base est prête : suivez le paiement du mois.";
-
-  const primaryActions: Array<{
-    title: string;
-    desc: string;
-    cta: string;
-    target: LandlordSectionKey;
-    accent: string;
-    badge?: string;
-  }> = [
-    {
-      title: "Mettre un logement en location",
-      desc: "Ajoutez le bien, son adresse et les informations qui serviront au bail, aux documents et au suivi.",
-      cta: propertiesCount ? "Gérer mes biens" : "Ajouter mon premier bien",
-      target: "biens",
-      accent: "from-[#635bff] to-[#00d4ff]",
-      badge: propertiesCount ? `${propertiesCount} bien${propertiesCount > 1 ? "s" : ""}` : "Première étape",
-    },
-    {
-      title: "Ajouter un locataire",
-      desc: "Centralisez identité, coordonnées, dépôt de garantie, échanges et documents du locataire.",
-      cta: tenantsCount ? "Voir les locataires" : "Ajouter un locataire",
-      target: "locataires",
-      accent: "from-[#00d4ff] to-[#00e5a8]",
-      badge: tenantsCount ? `${tenantsCount} locataire${tenantsCount > 1 ? "s" : ""}` : "À faire",
-    },
-    {
-      title: "Créer ou suivre un bail",
-      desc: "Reliez un bien et un locataire pour activer loyers, quittances, relances et historique.",
-      cta: leasesCount ? "Ouvrir les baux" : "Créer un bail",
-      target: "baux",
-      accent: "from-indigo-500 to-cyan-400",
-      badge: activeLeasesCount ? `${activeLeasesCount} bail${activeLeasesCount > 1 ? "s" : ""} actif${activeLeasesCount > 1 ? "s" : ""}` : "Workflow",
-    },
-  ];
-
-  const secondaryActions: Array<{
-    title: string;
-    desc: string;
-    target: LandlordSectionKey;
-  }> = [
-    { title: "Encaisser et quittancer", desc: "Confirmer un paiement, générer une quittance ou traiter un retard.", target: "quittances" },
-    { title: "Suivre la finance", desc: "Voir recettes, dépenses, charges et solde par logement.", target: "finance" },
-    { title: "Faire un état des lieux", desc: "Préparer entrée, sortie, photos et signatures.", target: "etat_des_lieux" },
-    { title: "Utiliser les outils", desc: "Eau, charges, TEOM, régularisation et simulateurs bailleur.", target: "outils" },
-  ];
-
-  return (
-    <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-      <div className="relative overflow-hidden bg-slate-950 px-5 py-6 text-white sm:px-7 sm:py-8">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(99,91,255,0.55),transparent_34%),radial-gradient(circle_at_82%_10%,rgba(0,212,255,0.38),transparent_32%),linear-gradient(135deg,rgba(0,229,168,0.14),transparent_45%)]" />
-        <div className="relative grid gap-6 lg:grid-cols-[1fr,340px] lg:items-end">
-          <div>
-            <p className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-100">
-              Mode guidé
-            </p>
-            <h1 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-              Que voulez-vous faire avec votre location ?
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-200">
-              Choisissez une action. lokt.fr vous emmène au bon endroit : logement, locataire, bail, quittance, finance ou outils.
-            </p>
-          </div>
-          <div className="rounded-3xl border border-white/15 bg-white/10 p-4 backdrop-blur">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-100">Recommandé</p>
-            <p className="mt-2 text-sm leading-6 text-white">{recommended}</p>
-            <button
-              type="button"
-              onClick={onShowDashboard}
-              className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-slate-100"
-            >
-              Voir le tableau complet
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-5 sm:p-7">
-        <div className="grid gap-4 lg:grid-cols-3">
-          {primaryActions.map((action) => (
-            <button
-              key={action.title}
-              type="button"
-              onClick={() => onGo(action.target)}
-              className="group min-h-[250px] overflow-hidden rounded-[1.65rem] border border-slate-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-200/70"
-            >
-              <div className={`h-1.5 bg-gradient-to-r ${action.accent}`} />
-              <div className="flex h-full flex-col p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[0.68rem] font-semibold text-slate-600">
-                    {action.badge}
-                  </span>
-                  <span className="text-xl text-slate-300 transition group-hover:translate-x-1 group-hover:text-slate-900">→</span>
-                </div>
-                <h2 className="mt-8 text-2xl font-semibold leading-tight text-slate-950">{action.title}</h2>
-                <p className="mt-3 flex-1 text-sm leading-7 text-slate-600">{action.desc}</p>
-                <span className="mt-6 inline-flex text-sm font-semibold text-slate-950">{action.cta}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr,1fr,1fr,1fr]">
-          {secondaryActions.map((action) => (
-            <button
-              key={action.title}
-              type="button"
-              onClick={() => onGo(action.target)}
-              className="rounded-[1.35rem] border border-slate-200 bg-[#f6f9fc] px-4 py-4 text-left transition hover:border-[#635bff]/30 hover:bg-white hover:shadow-sm"
-            >
-              <p className="text-sm font-semibold text-slate-950">{action.title}</p>
-              <p className="mt-2 text-xs leading-5 text-slate-600">{action.desc}</p>
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-5 grid gap-3 rounded-[1.55rem] border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3">
-          <div>
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Score</p>
-            <p className="mt-1 text-xl font-semibold text-slate-950">{healthScore}/100</p>
-          </div>
-          <div>
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Loyers attendus</p>
-            <p className="mt-1 text-xl font-semibold text-slate-950">{money(monthlyExpected)}</p>
-          </div>
-          <div>
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Déjà encaissé</p>
-            <p className="mt-1 text-xl font-semibold text-slate-950">{money(monthlyPaid)}</p>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export function DashboardShell(props: any) {
   const router = useRouter();
   const { loading: permissionsLoading, plan, maxActiveProperties } = usePermissions();
   const [active, setActive] = useState<LandlordSectionKey>("dashboard");
-  const [guidedMode, setGuidedMode] = useState(true);
   const [messagingTenantId, setMessagingTenantId] = useState<string | null>(null);
   const [departureTenantId, setDepartureTenantId] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -339,7 +164,6 @@ export function DashboardShell(props: any) {
   useEffect(() => {
     const tab = typeof router.query.tab === "string" ? router.query.tab : "";
     if (tab === "simulateurs") {
-      setGuidedMode(false);
       setActive("outils");
       return;
     }
@@ -358,10 +182,7 @@ export function DashboardShell(props: any) {
       "inventaire",
       "declaration",
     ];
-    if (validTabs.includes(tab as LandlordSectionKey)) {
-      setGuidedMode(false);
-      setActive(tab as LandlordSectionKey);
-    }
+    if (validTabs.includes(tab as LandlordSectionKey)) setActive(tab as LandlordSectionKey);
   }, [router.query.tab]);
 
   const onChangeTab = (k: LandlordSectionKey) => {
@@ -437,25 +258,6 @@ export function DashboardShell(props: any) {
 
     switch (active) {
       case "dashboard":
-        if (guidedMode) {
-          return (
-            <GuidedBailleurHome
-              propertiesCount={properties.length}
-              tenantsCount={tenants.length}
-              leasesCount={leases.length}
-              activeLeasesCount={activeLeases.length}
-              healthScore={healthScore}
-              monthlyExpected={Number(monthlyExpected || 0)}
-              monthlyPaid={Number(monthlyPaid || 0)}
-              lateCount={Number(lateCount || 0)}
-              onGo={(key) => {
-                setGuidedMode(false);
-                setActive(key);
-              }}
-              onShowDashboard={() => setGuidedMode(false)}
-            />
-          );
-        }
         return (
           <SectionDashboard
             userId={userId}
@@ -581,7 +383,6 @@ export function DashboardShell(props: any) {
     }
   }, [
     active,
-    guidedMode,
     departureTenantId,
     messagingTenantId,
     plan,
@@ -691,14 +492,6 @@ export function DashboardShell(props: any) {
               >
                 Débloquer plusieurs logements
               </a>
-            ) : active === "dashboard" && !guidedMode ? (
-              <button
-                type="button"
-                onClick={() => setGuidedMode(true)}
-                className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-              >
-                Revenir au mode guidé
-              </button>
             ) : null}
           </div>
           </div>
