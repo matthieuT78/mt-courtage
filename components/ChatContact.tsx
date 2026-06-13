@@ -156,7 +156,7 @@ export default function ContactChat() {
     <div
       className={
         "fixed right-3 z-[90] sm:bottom-4 sm:right-4 " +
-        (isLandlordSpace ? "bottom-28 sm:bottom-4" : "bottom-3")
+        (isLandlordSpace ? "bottom-40 sm:bottom-4" : "bottom-3")
       }
     >
       {/* bouton flottant (premium) */}

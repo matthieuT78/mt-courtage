@@ -928,12 +928,12 @@ export function SectionDashboard({
           </div>
         </div>
 
-        <div className="grid gap-3 bg-[#f6f9fc] p-3 sm:gap-4 sm:p-4 lg:grid-cols-[1fr,0.85fr]">
-          <div className="space-y-2">
+        <div className="grid min-w-0 gap-3 bg-[#f6f9fc] p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(0,1fr),minmax(0,0.85fr)]">
+          <div className="min-w-0 space-y-2">
             <button
               type="button"
               onClick={() => onGo("biens")}
-              className="block w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm transition hover:border-[#635bff]/30 hover:shadow-md"
+              className="block w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm transition hover:border-[#635bff]/30 hover:shadow-md"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-start gap-3">
@@ -965,7 +965,7 @@ export function SectionDashboard({
                     </p>
                   </div>
                 </div>
-                <div className="min-w-[9rem]">
+                <div className="min-w-0 sm:min-w-[9rem]">
                   <div className="flex items-center justify-between text-[0.7rem] font-semibold text-slate-500">
                     <span>Période connue</span>
                     <span>{occupancySnapshot.rate}%</span>
@@ -997,7 +997,8 @@ export function SectionDashboard({
                     (action.target ? "cursor-pointer" : "cursor-default")
                   }
                 >
-                  <div className="flex min-w-0 items-start gap-3 pr-20 md:pr-24">
+                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:pr-20 md:pr-24">
+                    <div className="flex min-w-0 items-start gap-3">
                     <span
                       className={
                         "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
@@ -1020,8 +1021,9 @@ export function SectionDashboard({
                       </div>
                       <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600">{action.desc}</p>
                       {action.details?.length ? (
-                        <p className="mt-1.5 truncate text-xs font-semibold text-slate-500">{action.details.join(" · ")}</p>
+                        <p className="mt-1.5 break-words text-xs font-semibold text-slate-500 sm:truncate">{action.details.join(" · ")}</p>
                       ) : null}
+                    </div>
                     </div>
                     {action.cta ? (
                       <span className="hidden shrink-0 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white md:inline-flex">
@@ -1031,7 +1033,7 @@ export function SectionDashboard({
                   </div>
                 </button>
                 {action.snoozable !== false && action.id ? (
-                  <div className="absolute right-3 top-1/2 z-20 -translate-y-1/2">
+                  <div className="px-3 pb-3 sm:absolute sm:right-3 sm:top-1/2 sm:z-20 sm:-translate-y-1/2 sm:px-0 sm:pb-0">
                     <div className="relative" data-alert-snooze-menu>
                       <button
                         type="button"
@@ -1042,7 +1044,7 @@ export function SectionDashboard({
                         Masquer
                       </button>
                       {openAlertMenuId === action.id ? (
-                        <div className="absolute right-0 top-10 z-20 w-full min-w-72 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] lg:w-72">
+                        <div className="absolute right-0 top-10 z-20 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] lg:w-72">
                           <div className="px-2 pb-2 pt-1">
                             <p className="text-sm font-semibold text-slate-950">Masquer cette alerte</p>
                             <p className="mt-0.5 text-xs leading-5 text-slate-500">Choisissez si elle doit revenir demain ou disparaître de ce cockpit.</p>
@@ -1074,7 +1076,7 @@ export function SectionDashboard({
             ))}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:bg-slate-50 sm:shadow-none">
+          <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:bg-slate-50 sm:shadow-none">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-900">Score de gestion</p>
@@ -1094,8 +1096,8 @@ export function SectionDashboard({
                     (detail.target ? "hover:bg-slate-50" : "cursor-default")
                   }
                 >
-                  <span className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-slate-800">{detail.label}</span>
+                    <span className="flex min-w-0 items-center justify-between gap-3">
+                    <span className="min-w-0 text-sm font-semibold text-slate-800">{detail.label}</span>
                     <Pill tone={detail.tone as any}>{detail.value}</Pill>
                   </span>
                   <span className="mt-1 block text-xs text-slate-500">{detail.desc}</span>
@@ -1193,7 +1195,7 @@ export function SectionDashboard({
         </div>
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <SectionTitle
           kicker="Comptabilité"
           title="Revenus et dépenses sur 6 mois"
@@ -1224,8 +1226,8 @@ export function SectionDashboard({
           }
         />
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[1fr,280px]">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr),280px]">
+          <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
             <div className="flex h-64 items-end gap-3 overflow-x-auto border-b border-slate-200 pb-3">
               {accountingSeries.map((row) => {
                 const incomeHeight = Math.max(4, (row.income / maxChartValue) * 190);

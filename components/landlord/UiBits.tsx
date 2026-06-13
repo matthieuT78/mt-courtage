@@ -37,7 +37,7 @@ export function Pill({
       : "border-slate-200 bg-slate-50 text-slate-700";
 
   return (
-    <span className={"inline-flex items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold " + cls}>
+    <span className={"inline-flex min-w-0 max-w-full items-center rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold " + cls}>
       {children}
     </span>
   );
@@ -66,9 +66,9 @@ export function KpiCard({
       : "border-slate-200 bg-white";
 
   return (
-    <div className={"rounded-2xl border p-4 shadow-sm " + base}>
+    <div className={"min-w-0 rounded-2xl border p-4 shadow-sm " + base}>
       <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">{title}</p>
-      <p className="mt-1 text-lg font-semibold text-slate-900">{value}</p>
+      <p className="mt-1 break-words text-lg font-semibold text-slate-900">{value}</p>
       {hint ? <p className="mt-1 text-[0.7rem] text-slate-600">{hint}</p> : null}
     </div>
   );
@@ -86,13 +86,13 @@ export function SectionTitle({
   right?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <div>
+    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
         {kicker ? <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">{kicker}</p> : null}
         <h2 className="mt-1 text-base sm:text-lg font-semibold text-slate-900">{title}</h2>
         {desc ? <p className="mt-1 text-xs text-slate-600">{desc}</p> : null}
       </div>
-      {right ? <div className="shrink-0">{right}</div> : null}
+      {right ? <div className="min-w-0 sm:shrink-0">{right}</div> : null}
     </div>
   );
 }

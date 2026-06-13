@@ -1473,8 +1473,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           <Kpi title="Charges récurrentes" value={formatEuro(recurringPeriodTotal)} sub="Appliquées automatiquement" />
         </div>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[1fr,320px]">
-          <section className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+        <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr),320px]">
+          <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-900">Graphique comptable</p>
@@ -1500,12 +1500,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               </div>
             </div>
 
-            <div className="mt-4 h-[320px] rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="mt-4 h-[260px] min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 sm:h-[320px] sm:p-3">
               <Chart type="bar" data={accountingChartData as any} options={accountingChartOptions as any} />
             </div>
           </section>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-5">
+          <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5">
             <p className="text-sm font-semibold text-slate-900">Postes de dépenses</p>
             <p className="mt-1 text-[0.8rem] text-slate-600">Les catégories qui pèsent le plus sur la période.</p>
 
@@ -1535,8 +1535,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           </section>
         </div>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr,0.9fr]">
-        <section className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+        <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)]">
+        <section className="min-w-0 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-slate-900">Lecture propriétaire</p>
@@ -1570,7 +1570,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           ) : null}
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-5">
+        <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5">
           <p className="text-sm font-semibold text-slate-900">Plan d'action performance</p>
           <p className="mt-1 text-[0.8rem] text-slate-600">Les priorités à traiter pour fiabiliser ou améliorer vos résultats.</p>
           <div className="mt-4 space-y-2">

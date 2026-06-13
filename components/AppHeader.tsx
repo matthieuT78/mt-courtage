@@ -1,5 +1,4 @@
 // components/AppHeader.tsx
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -13,7 +12,7 @@ import {
   HomeModernIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from "../lib/supabaseClient";
+import { useAuthUser } from "../hooks/useAuthUser";
 import { GUIDE_CATEGORIES, getGuidesByCategory } from "../lib/guides";
 
 /**
@@ -39,46 +38,8 @@ const CALCULATOR_LINKS = [
 
 export default function AppHeader({ staticMode = false }: { staticMode?: boolean }) {
   const router = useRouter();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [authReady, setAuthReady] = useState(false);
+  const { checking: authChecking, isLoggedIn } = useAuthUser();
   void staticMode;
-
-  useEffect(() => {
-    let mounted = true;
-    let unsubscribe: (() => void) | null = null;
-
-    const init = async () => {
-      try {
-        if (!supabase) {
-          if (mounted) setAuthReady(true);
-          return;
-        }
-
-        const { data } = await supabase.auth.getSession();
-        if (!mounted) return;
-        setIsLoggedIn(!!data.session?.user?.id);
-        setAuthReady(true);
-
-        const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-          if (!mounted) return;
-          setIsLoggedIn(!!session?.user?.id);
-          setAuthReady(true);
-        });
-        unsubscribe = () => sub.subscription.unsubscribe();
-      } catch {
-        if (!mounted) return;
-        setIsLoggedIn(false);
-        setAuthReady(true);
-      }
-    };
-
-    init();
-
-    return () => {
-      mounted = false;
-      unsubscribe?.();
-    };
-  }, []);
 
   // ✅ Toggle simple : V1 landing
   const LOKT_V1_LANDING = true;
@@ -92,7 +53,10 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
     { href: "/#faq", label: "FAQ" },
     { href: "mailto:contact@lokt.fr", label: "Contact", external: true },
   ];
-  const navLinks = authReady && !isLoggedIn ? v1Links : v1Links.filter((link) => link.href !== "/outil-gestion-locative");
+  const navLinks =
+    authChecking || isLoggedIn
+      ? v1Links.filter((link) => link.href !== "/outil-gestion-locative")
+      : v1Links;
 
   const isActive = (href: string) => {
     if (href.startsWith("/#")) return false;
@@ -240,7 +204,7 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                 <BookOpenIcon className="h-5 w-5" />
               </Link>
 
-              {!authReady ? (
+              {authChecking ? (
                 <>
                   <span className="hidden h-10 w-28 rounded-full bg-slate-100 sm:inline-flex" aria-hidden="true" />
                   <span className="h-9 w-9 rounded-full bg-slate-100 sm:hidden" aria-hidden="true" />
