@@ -27,9 +27,20 @@ import RepairsGuideCard from "../RepairsGuideCard";
 type InventoryReport = {
   id: string;
   user_id: string;
-  lease_id: string;
+  lease_id: string | null;
   report_type: "entry" | "exit";
   status: "draft" | "ready" | "signed" | "archived";
+  attachment_status?: "attached" | "standalone";
+  property_id?: string | null;
+  tenant_id?: string | null;
+  property_label?: string | null;
+  property_address_line1?: string | null;
+  property_address_line2?: string | null;
+  property_postal_code?: string | null;
+  property_city?: string | null;
+  occupant_label?: string | null;
+  occupant_email?: string | null;
+  occupant_phone?: string | null;
   performed_at: string | null;
   performed_place: string | null;
   counters_json: any | null;
@@ -527,9 +538,9 @@ function openBlankPdfWindow() {
 // BLOCK 2/4
 // =========================
 export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRefresh }: Props) {
-  const safeLeases = Array.isArray(leases) ? leases : [];
-  const safeProps = Array.isArray(properties) ? properties : [];
-  const safeTenants = Array.isArray(tenants) ? tenants : [];
+  const safeLeases = useMemo(() => (Array.isArray(leases) ? leases : []), [leases]);
+  const safeProps = useMemo(() => (Array.isArray(properties) ? properties : []), [properties]);
+  const safeTenants = useMemo(() => (Array.isArray(tenants) ? tenants : []), [tenants]);
 
   const propertyById = useMemo(() => {
     const m = new Map<string, Property>();
@@ -542,6 +553,15 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     for (const t of safeTenants) m.set((t as any).id, t);
     return m;
   }, [safeTenants]);
+
+  const activeLeases = useMemo(
+    () =>
+      safeLeases.filter((lease: any) => {
+        const status = String(lease?.status || "").toLowerCase();
+        return status !== "archived" && status !== "ended" && status !== "draft";
+      }),
+    [safeLeases]
+  );
 
   const leaseLabel = (l: Lease) => {
     const p = propertyById.get((l as any).property_id);
@@ -569,6 +589,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   const [ok, setOk] = useState<string | null>(null);
 
   const [reports, setReports] = useState<InventoryReport[]>([]);
+  const [standaloneReports, setStandaloneReports] = useState<InventoryReport[]>([]);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   const [rooms, setRooms] = useState<InventoryRoom[]>([]);
@@ -578,13 +599,41 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   const [photoFeedback, setPhotoFeedback] = useState<Record<string, { tone: "error" | "success"; message: string }>>({});
 
   const [search, setSearch] = useState("");
+  const [creationMode, setCreationMode] = useState<"lease" | "standalone">("lease");
+  const [attachLeaseId, setAttachLeaseId] = useState("");
+  const [standaloneForm, setStandaloneForm] = useState({
+    reportType: "entry" as "entry" | "exit",
+    propertyLabel: "",
+    addressLine1: "",
+    addressLine2: "",
+    postalCode: "",
+    city: "",
+    occupantLabel: "",
+    occupantEmail: "",
+    occupantPhone: "",
+  });
 
   const selectedReport = useMemo(() => reports.find((r) => r.id === selectedReportId) || null, [reports, selectedReportId]);
-  const selectedLease = useMemo(() => safeLeases.find((l: any) => l.id === selectedLeaseId) || null, [safeLeases, selectedLeaseId]);
+  const selectedLease = useMemo(() => activeLeases.find((l: any) => l.id === selectedLeaseId) || null, [activeLeases, selectedLeaseId]);
   const selectedProperty = selectedLease ? propertyById.get((selectedLease as any).property_id) || null : null;
-  const defaultReportPlace = propertyPlaceLabel(selectedProperty);
+  const standalonePlaceLabel = selectedReport
+    ? [
+        selectedReport.property_address_line1,
+        selectedReport.property_address_line2,
+        [selectedReport.property_postal_code, selectedReport.property_city].filter(Boolean).join(" "),
+      ]
+        .filter((part) => String(part || "").trim())
+        .join(", ")
+    : "";
+  const defaultReportPlace = propertyPlaceLabel(selectedProperty) || standalonePlaceLabel;
 
   const selectedLeaseNiceLabel = selectedLease ? leaseLabel(selectedLease as any) : "—";
+  const selectedStandaloneLabel = selectedReport
+    ? `${selectedReport.property_label || selectedReport.property_address_line1 || "État des lieux libre"}${
+        selectedReport.occupant_label ? ` — ${selectedReport.occupant_label}` : ""
+      }`
+    : "—";
+  const selectedContextLabel = selectedLease ? selectedLeaseNiceLabel : selectedStandaloneLabel;
   const reportLabel = selectedReport ? reportTypeLabel(selectedReport.report_type) : "—";
   const reportTypeTone =
     selectedReport?.report_type === "exit"
@@ -657,6 +706,23 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     }
   };
 
+  const loadStandaloneReports = async () => {
+    if (!supabase || !userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("inventory_reports")
+        .select("*")
+        .eq("user_id", userId)
+        .is("lease_id", null)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setStandaloneReports(((data || []) as InventoryReport[]) || []);
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de charger les états des lieux libres.");
+    }
+  };
+
   const loadReportDetails = async (reportId: string) => {
     if (!supabase || !reportId) return;
 
@@ -693,6 +759,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   };
 
   useEffect(() => {
+    if (selectedLeaseId && !activeLeases.some((lease: any) => lease.id === selectedLeaseId)) {
+      setSelectedLeaseId("");
+      return;
+    }
+
     if (selectedLeaseId && userId) {
       setReports([]);
       setSelectedReportId(null);
@@ -700,6 +771,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       setItems([]);
       setPhotos([]);
       loadReportsForLease(selectedLeaseId);
+    } else if (selectedReportId && reports.some((report) => report.id === selectedReportId && !report.lease_id)) {
+      return;
     } else {
       setReports([]);
       setSelectedReportId(null);
@@ -708,12 +781,17 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       setPhotos([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLeaseId, userId]);
+  }, [selectedLeaseId, userId, activeLeases, selectedReportId]);
 
   useEffect(() => {
     if (selectedReportId) loadReportDetails(selectedReportId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedReportId]);
+
+  useEffect(() => {
+    void loadStandaloneReports();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   /* ======================================================
      HELPERS DB : trouver l’EDL d’entrée (fiable, pas via state)
@@ -868,6 +946,135 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       openWizard(reportId);
     } catch (e: any) {
       setErr(e?.message || "Impossible de créer l’état des lieux.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createStandaloneReport = async () => {
+    if (!supabase || !userId) return;
+
+    const propertyLabel = standaloneForm.propertyLabel.trim();
+    const addressLine1 = standaloneForm.addressLine1.trim();
+    const occupantLabel = standaloneForm.occupantLabel.trim();
+
+    if (!propertyLabel && !addressLine1) {
+      setErr("Renseigne au moins le nom du logement ou son adresse pour créer un état des lieux libre.");
+      return;
+    }
+    if (!occupantLabel) {
+      setErr("Renseigne le nom de l’occupant. Tu pourras le modifier ou rattacher le document à un bail ensuite.");
+      return;
+    }
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const payload: Partial<InventoryReport> = {
+        user_id: userId,
+        lease_id: null,
+        attachment_status: "standalone",
+        report_type: standaloneForm.reportType,
+        status: "draft",
+        performed_at: new Date().toISOString(),
+        performed_place: [addressLine1, standaloneForm.addressLine2.trim(), [standaloneForm.postalCode.trim(), standaloneForm.city.trim()].filter(Boolean).join(" ")]
+          .filter(Boolean)
+          .join(", "),
+        property_label: propertyLabel || addressLine1,
+        property_address_line1: addressLine1,
+        property_address_line2: standaloneForm.addressLine2.trim(),
+        property_postal_code: standaloneForm.postalCode.trim(),
+        property_city: standaloneForm.city.trim(),
+        occupant_label: occupantLabel,
+        occupant_email: standaloneForm.occupantEmail.trim(),
+        occupant_phone: standaloneForm.occupantPhone.trim(),
+        counters_json: null,
+        general_notes: "",
+        pdf_url: null,
+      };
+
+      const { data, error } = await supabase.from("inventory_reports").insert(payload).select("*").single();
+      if (error || !data?.id) throw error || new Error("Création impossible.");
+
+      const report = data as InventoryReport;
+      setSelectedLeaseId("");
+      setReports([report]);
+      setSelectedReportId(report.id);
+      setStandaloneForm({
+        reportType: "entry",
+        propertyLabel: "",
+        addressLine1: "",
+        addressLine2: "",
+        postalCode: "",
+        city: "",
+        occupantLabel: "",
+        occupantEmail: "",
+        occupantPhone: "",
+      });
+      await loadStandaloneReports();
+      await loadReportDetails(report.id);
+      openWizard(report.id);
+      setOk("État des lieux libre créé ✅ Tu pourras le rattacher à un bail plus tard.");
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de créer l’état des lieux libre.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openStandaloneReport = async (report: InventoryReport) => {
+    setSelectedLeaseId("");
+    setReports([report]);
+    setSelectedReportId(report.id);
+    await loadReportDetails(report.id);
+  };
+
+  const attachStandaloneReportToLease = async (reportId: string, leaseId: string) => {
+    if (!supabase || !userId || !reportId || !leaseId) return;
+    const lease = activeLeases.find((item: any) => item.id === leaseId);
+    if (!lease) {
+      setErr("Choisis un bail actif pour rattacher ce document.");
+      return;
+    }
+    const property = propertyById.get((lease as any).property_id) || null;
+    const tenant = tenantById.get((lease as any).tenant_id) || null;
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const { error } = await supabase
+        .from("inventory_reports")
+        .update({
+          lease_id: leaseId,
+          attachment_status: "attached",
+          property_id: (lease as any).property_id || null,
+          tenant_id: (lease as any).tenant_id || null,
+          property_label: (property as any)?.label || null,
+          property_address_line1: (property as any)?.address_line1 || null,
+          property_address_line2: (property as any)?.address_line2 || null,
+          property_postal_code: (property as any)?.postal_code || null,
+          property_city: (property as any)?.city || null,
+          occupant_label: (tenant as any)?.full_name || null,
+          occupant_email: (tenant as any)?.email || null,
+          occupant_phone: (tenant as any)?.phone || null,
+        })
+        .eq("id", reportId)
+        .eq("user_id", userId);
+      if (error) throw error;
+
+      setSelectedLeaseId(leaseId);
+      setAttachLeaseId("");
+      await loadStandaloneReports();
+      await loadReportsForLease(leaseId);
+      await loadReportDetails(reportId);
+      setSelectedReportId(reportId);
+      setOk("État des lieux rattaché au bail ✅");
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de rattacher l’état des lieux.");
     } finally {
       setLoading(false);
     }
@@ -1212,7 +1419,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   };
 
   const uploadSignedPdf = async (file: File) => {
-    if (!supabase || !userId || !selectedLeaseId || !selectedReportId) return;
+    if (!supabase || !userId || !selectedReportId) return;
     if (!selectedReport) return;
 
     if (selectedReport.status === "archived") {
@@ -1243,7 +1450,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       const { raw, json } = await safeJson(uploadUrlResp);
       if (!uploadUrlResp.ok) throw new Error(json?.error || raw || `Erreur ${uploadUrlResp.status}`);
 
-      const path = String(json?.path || buildPdfPath({ reportId: selectedReportId, userId, leaseId: selectedLeaseId, kind: "signed" }));
+      const fallbackLeaseKey = selectedLeaseId || selectedReport.lease_id || "standalone";
+      const path = String(json?.path || buildPdfPath({ reportId: selectedReportId, userId, leaseId: fallbackLeaseKey, kind: "signed" }));
       const token = String(json?.token || "");
       if (!token) throw new Error("URL d’upload signée indisponible.");
 
@@ -1260,7 +1468,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         .eq("user_id", userId);
       if (eUpd) throw eUpd;
 
-      await loadReportsForLease(selectedLeaseId);
+      if (selectedLeaseId) {
+        await loadReportsForLease(selectedLeaseId);
+      } else {
+        await loadStandaloneReports();
+      }
       await loadReportDetails(selectedReportId);
 
       setOk("PDF signé importé ✅ (statut : Signé)");
@@ -1273,7 +1485,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   };
 
   const uploadExternalPdf = async (type: "entry" | "exit", file: File) => {
-    if (!supabase || !userId || !selectedLeaseId) return;
+    if (!supabase || !userId) return;
+    if (!selectedLeaseId && creationMode !== "standalone") return;
     if (file.type !== "application/pdf") {
       setErr("Fichier invalide : importe un PDF.");
       return;
@@ -1303,7 +1516,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
           .from("inventory_reports")
           .insert({
             user_id: userId,
-            lease_id: selectedLeaseId,
+            lease_id: selectedLeaseId || null,
+            attachment_status: selectedLeaseId ? "attached" : "standalone",
             report_type: type,
             status: "draft",
             performed_at: new Date().toISOString(),
@@ -1350,7 +1564,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         .eq("user_id", userId);
       if (updateError) throw updateError;
 
-      await loadReportsForLease(selectedLeaseId);
+      if (selectedLeaseId) {
+        await loadReportsForLease(selectedLeaseId);
+      } else {
+        await loadStandaloneReports();
+      }
       setSelectedReportId(reportId);
       await loadReportDetails(reportId);
       await safeRefresh();
@@ -1437,7 +1655,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     return Math.round((okRooms / rooms.length) * 100);
   }, [rooms, itemsByRoomId]);
 
-  const leaseStarterCards = useMemo(() => safeLeases.slice(0, 4), [safeLeases]);
+  const leaseStarterCards = useMemo(() => activeLeases.slice(0, 4), [activeLeases]);
 
   /* ======================================================
      VIEW (lecture seule)
@@ -1860,7 +2078,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   ====================================================== */
 
   const finalizeToReady = async () => {
-    if (!selectedReportId || !userId || !selectedLeaseId) return;
+    if (!selectedReportId || !userId) return;
     if (isLocked) {
       setErr("Document verrouillé : impossible de finaliser.");
       return;
@@ -1916,7 +2134,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
       if (!rGen.ok) throw new Error(jsonGen?.error || rawGen || `Erreur ${rGen.status}`);
 
-      await loadReportsForLease(selectedLeaseId);
+      if (selectedLeaseId) {
+        await loadReportsForLease(selectedLeaseId);
+      } else {
+        await loadStandaloneReports();
+      }
       await loadReportDetails(selectedReportId);
 
       setOk("EDL finalisé ✅ PDF généré (à imprimer)");
@@ -1925,7 +2147,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       try {
         if (previousStatus !== "ready") {
           await supabase.from("inventory_reports").update({ status: previousStatus }).eq("id", selectedReportId).eq("user_id", userId);
-          if (selectedLeaseId) await loadReportsForLease(selectedLeaseId);
+          if (selectedLeaseId) {
+            await loadReportsForLease(selectedLeaseId);
+          } else {
+            await loadStandaloneReports();
+          }
         }
       } catch {
         // rollback best effort
@@ -2934,15 +3160,15 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 <BuildingOffice2Icon className="h-4 w-4" aria-hidden="true" />
                 Dossier de visite
               </div>
-              <h3 className="mt-4 text-xl font-bold text-slate-950 sm:text-2xl">Sélectionne le bail avant de commencer</h3>
+              <h3 className="mt-4 text-xl font-bold text-slate-950 sm:text-2xl">Prépare un état des lieux</h3>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
-                L’état des lieux dépend du logement et du locataire. Une fois le bail choisi, tu retrouves les états des lieux existants, les informations terrain, les compteurs et le mode téléphone.
+                Choisis un bail pour préremplir le logement et le locataire, ou crée un état des lieux libre si le bail n’est pas encore prêt.
               </p>
 
-              {selectedLeaseId ? (
+              {selectedLeaseId || selectedReportId ? (
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-white/90 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#635bff]">Bail sélectionné</p>
-                  <p className="mt-1 text-base font-semibold text-slate-950">{selectedLeaseNiceLabel}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#635bff]">{selectedLeaseId ? "Bail sélectionné" : "État des lieux libre"}</p>
+                  <p className="mt-1 text-base font-semibold text-slate-950">{selectedContextLabel}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Badge tone="slate">{reports.length} état(s) des lieux</Badge>
                     {selectedReport ? <Badge tone={statusUi(selectedReport.status).tone}>{statusUi(selectedReport.status).label}</Badge> : null}
@@ -2968,12 +3194,135 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 </div>
               ) : (
                 <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
-                  Aucun bail disponible. Crée d’abord un bail dans la section Baux pour préparer un état des lieux.
+                  {safeLeases.length
+                    ? "Aucun bail actif disponible. Les baux archivés restent dans les archives et ne sont plus proposés pour un nouvel état des lieux."
+                    : "Aucun bail disponible. Crée d’abord un bail dans la section Baux pour préparer un état des lieux."}
                 </div>
               )}
+
+              {!selectedLeaseId && standaloneReports.length ? (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">À rattacher</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {standaloneReports.slice(0, 4).map((report) => (
+                      <button
+                        key={report.id}
+                        type="button"
+                        onClick={() => openStandaloneReport(report)}
+                        className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-[#635bff]/30 hover:shadow-md"
+                      >
+                        <span className="block text-sm font-semibold text-slate-950">
+                          {report.property_label || report.property_address_line1 || "État des lieux libre"}
+                        </span>
+                        <span className="mt-1 block text-xs text-slate-600">{report.occupant_label || "Occupant à préciser"}</span>
+                        <span className="mt-2 inline-flex text-xs font-semibold text-[#635bff]">Ouvrir le dossier →</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
+              <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => setCreationMode("lease")}
+                  className={cx(
+                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    creationMode === "lease" ? "bg-white text-slate-950 shadow-sm" : "text-slate-600 hover:text-slate-950"
+                  )}
+                >
+                  Depuis un bail
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreationMode("standalone");
+                    setSelectedLeaseId("");
+                  }}
+                  className={cx(
+                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
+                    creationMode === "standalone" ? "bg-white text-slate-950 shadow-sm" : "text-slate-600 hover:text-slate-950"
+                  )}
+                >
+                  EDL libre
+                </button>
+              </div>
+
+              {creationMode === "standalone" ? (
+                <div className="mb-5 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">Créer sans bail</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">Utile avant la signature du bail ou si le bail a été fait ailleurs. Le rattachement restera possible ensuite.</p>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <select
+                      value={standaloneForm.reportType}
+                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, reportType: e.target.value as "entry" | "exit" }))}
+                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
+                    >
+                      <option value="entry">Entrée</option>
+                      <option value="exit">Sortie</option>
+                    </select>
+                    <input
+                      value={standaloneForm.propertyLabel}
+                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, propertyLabel: e.target.value }))}
+                      placeholder="Nom du logement"
+                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
+                    />
+                  </div>
+                  <input
+                    value={standaloneForm.addressLine1}
+                    onChange={(e) => setStandaloneForm((prev) => ({ ...prev, addressLine1: e.target.value }))}
+                    placeholder="Adresse"
+                    className="min-h-[44px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
+                  />
+                  <div className="grid gap-2 sm:grid-cols-[120px,1fr]">
+                    <input
+                      value={standaloneForm.postalCode}
+                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, postalCode: e.target.value }))}
+                      placeholder="Code postal"
+                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
+                    />
+                    <input
+                      value={standaloneForm.city}
+                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, city: e.target.value }))}
+                      placeholder="Ville"
+                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
+                    />
+                  </div>
+                  <input
+                    value={standaloneForm.occupantLabel}
+                    onChange={(e) => setStandaloneForm((prev) => ({ ...prev, occupantLabel: e.target.value }))}
+                    placeholder="Nom de l’occupant"
+                    className="min-h-[44px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
+                  />
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <input
+                      value={standaloneForm.occupantEmail}
+                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, occupantEmail: e.target.value }))}
+                      placeholder="Email occupant"
+                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
+                    />
+                    <input
+                      value={standaloneForm.occupantPhone}
+                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, occupantPhone: e.target.value }))}
+                      placeholder="Téléphone"
+                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={createStandaloneReport}
+                    disabled={loading}
+                    className="inline-flex min-h-[46px] w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    Créer l’état des lieux libre
+                  </button>
+                </div>
+              ) : null}
+
               <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Bail à utiliser</label>
               <select
                 value={selectedLeaseId}
@@ -2981,7 +3330,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 className="mt-2 min-h-[48px] w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-[#635bff] focus:outline-none focus:ring-4 focus:ring-[#635bff]/10"
               >
                 <option value="">Sélectionner un bail</option>
-                {safeLeases.map((l: any) => (
+                {activeLeases.map((l: any) => (
                   <option key={l.id} value={l.id}>
                     {leaseLabel(l)}
                   </option>
@@ -3087,7 +3436,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       </div>
 
       {/* Résumé / Actions */}
-      {selectedLeaseId ? (
+      {selectedReportId ? (
       <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white" style={{ overflowAnchor: "none" }}>
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-[#f6f9fc]" />
@@ -3102,10 +3451,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                   </div>
                 </div>
                 <p className="mt-2 text-sm sm:text-base font-semibold text-slate-900 truncate">
-                  {selectedLeaseId ? selectedLeaseNiceLabel : "Sélectionne un bail pour démarrer"}
+                  {selectedContextLabel}
                 </p>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {!selectedLeaseId ? <Badge tone="amber">Non rattaché</Badge> : null}
                   <Badge tone={selectedWorkflow.tone}>{selectedWorkflow.label}</Badge>
                   {isExternalReport ? <Badge tone="slate">Import agence / prestataire</Badge> : null}
                 </div>
@@ -3113,6 +3463,32 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               </div>
 
               <div className="flex flex-col gap-2 sm:items-end">
+                {!selectedLeaseId && selectedReportId && !isLocked ? (
+                  <div className="grid w-full gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:w-80">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-900">Rattacher à un bail</p>
+                    <select
+                      value={attachLeaseId}
+                      onChange={(e) => setAttachLeaseId(e.target.value)}
+                      className="min-h-[40px] rounded-xl border border-amber-200 bg-white px-3 text-sm font-semibold text-slate-900"
+                    >
+                      <option value="">Choisir un bail actif</option>
+                      {activeLeases.map((lease: any) => (
+                        <option key={lease.id} value={lease.id}>
+                          {leaseLabel(lease)}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={loading || !attachLeaseId}
+                      onClick={() => selectedReportId && attachStandaloneReportToLease(selectedReportId, attachLeaseId)}
+                      className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-amber-900 px-3 text-sm font-semibold text-white hover:bg-amber-800 disabled:opacity-50"
+                    >
+                      Rattacher ce document
+                    </button>
+                  </div>
+                ) : null}
+
                 {!isLocked ? (
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-slate-600">Complétude {completeness}%</span>
@@ -3185,7 +3561,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
             {!isLocked ? (
               <p className="mt-3 text-xs text-slate-600">
-                L’état des lieux de sortie reprend automatiquement les pièces et éléments de l’entrée lorsqu’elle existe.
+                {selectedLeaseId
+                  ? "L’état des lieux de sortie reprend automatiquement les pièces et éléments de l’entrée lorsqu’elle existe."
+                  : "Ce document est libre : il peut être finalisé tel quel ou rattaché à un bail actif plus tard."}
               </p>
             ) : null}
           </div>
@@ -3194,7 +3572,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       ) : null}
 
       {/* Contenu */}
-      {selectedLeaseId ? (
+      {selectedLeaseId || selectedReportId ? (
       <div className="grid gap-4 lg:grid-cols-[420px,1fr]" style={{ overflowAnchor: "none" }}>
         {/* LEFT */}
         <aside className="flex flex-col gap-3">
@@ -3203,7 +3581,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
             {reports.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
-                {selectedLeaseId ? "Aucun état des lieux pour ce bail." : "Choisis un bail pour afficher les états des lieux."}
+                {selectedLeaseId ? "Aucun état des lieux pour ce bail." : "Choisis un bail ou ouvre un état des lieux libre."}
               </div>
             ) : (
               <div className="space-y-2">

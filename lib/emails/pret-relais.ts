@@ -212,7 +212,7 @@ export function buildPretRelaisEmailHtml(computedAny: any) {
       <div style="padding:16px 18px;">
         <p style="margin:0 0 14px;color:#334155;font-size:13px;line-height:1.55;">
           Bonjour,<br/>
-          voici une synthèse de votre projet achat-revente. Le prêt relais est un montage sensible : vérifiez toujours les hypothèses avec votre banque avant de vous engager.
+          voici une synthèse de votre projet de prêt relais. Ce montage est sensible : vérifiez toujours les hypothèses avec votre banque avant de vous engager.
         </p>
 
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:10px;">

@@ -20,6 +20,16 @@ function formatPct(val: number) {
   );
 }
 
+function parseEditableNumber(value: string) {
+  if (value === "") return Number.NaN;
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function editableNumberValue(value: number) {
+  return Number.isNaN(value) ? "" : value;
+}
+
 type TypeCredit = "immo" | "perso" | "auto" | "conso";
 
 type ResumeCapacite = {
@@ -64,6 +74,7 @@ export function CapaciteAvancee() {
   const [resteAnneesCredits, setResteAnneesCredits] = useState<number[]>([]);
   const [tauxCredits, setTauxCredits] = useState<number[]>([]);
   const [revenusLocatifs, setRevenusLocatifs] = useState<number[]>([]);
+  const [nbCreditsInput, setNbCreditsInput] = useState("0");
 
   // Nouveau projet (taux/durée)
   const [tauxCreditCible, setTauxCreditCible] = useState(3.5);
@@ -81,8 +92,16 @@ export function CapaciteAvancee() {
   const hasResult = !!resumeCapacite;
 
   // Gestion dynamique des crédits
-  const handleNbCreditsChange = (value: number) => {
-    const n = Math.min(Math.max(value, 0), 5);
+  const handleNbCreditsChange = (raw: string) => {
+    setNbCreditsInput(raw);
+
+    if (raw.trim() === "") return;
+
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed)) return;
+
+    const n = Math.min(Math.max(parsed, 0), 5);
+    setNbCreditsInput(String(n));
     setNbCredits(n);
 
     setTypesCredits((prev) => {
@@ -374,11 +393,9 @@ export function CapaciteAvancee() {
               Revenus nets du foyer (€/mois)
             </label>
             <input
-              type="number"
-              value={revenusNetMensuels}
-              onChange={(e) =>
-                setRevenusNetMensuels(parseFloat(e.target.value) || 0)
-              }
+              inputMode="decimal"
+              value={editableNumberValue(revenusNetMensuels)}
+              onChange={(e) => setRevenusNetMensuels(parseEditableNumber(e.target.value))}
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -388,11 +405,9 @@ export function CapaciteAvancee() {
               Autres revenus (pensions, loyers, etc.) (€/mois)
             </label>
             <input
-              type="number"
-              value={autresRevenusMensuels}
-              onChange={(e) =>
-                setAutresRevenusMensuels(parseFloat(e.target.value) || 0)
-              }
+              inputMode="decimal"
+              value={editableNumberValue(autresRevenusMensuels)}
+              onChange={(e) => setAutresRevenusMensuels(parseEditableNumber(e.target.value))}
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -403,13 +418,9 @@ export function CapaciteAvancee() {
               (€/mois)
             </label>
             <input
-              type="number"
-              value={chargesMensuellesHorsCredits}
-              onChange={(e) =>
-                setChargesMensuellesHorsCredits(
-                  parseFloat(e.target.value) || 0
-                )
-              }
+              inputMode="decimal"
+              value={editableNumberValue(chargesMensuellesHorsCredits)}
+              onChange={(e) => setChargesMensuellesHorsCredits(parseEditableNumber(e.target.value))}
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -421,11 +432,9 @@ export function CapaciteAvancee() {
               <InfoBadge text="La plupart des banques travaillent autour de 33 % à 35 %, parfois plus selon le profil." />
             </label>
             <input
-              type="number"
-              value={tauxEndettementCible}
-              onChange={(e) =>
-                setTauxEndettementCible(parseFloat(e.target.value) || 0)
-              }
+              inputMode="decimal"
+              value={editableNumberValue(tauxEndettementCible)}
+              onChange={(e) => setTauxEndettementCible(parseEditableNumber(e.target.value))}
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
           </div>
@@ -437,13 +446,11 @@ export function CapaciteAvancee() {
               <InfoBadge text="Détaillez vos crédits pour une analyse proche des méthodes bancaires." />
             </label>
             <input
-              type="number"
-              value={nbCredits}
+              inputMode="numeric"
+              value={nbCreditsInput}
               min={0}
               max={5}
-              onChange={(e) =>
-                handleNbCreditsChange(parseInt(e.target.value, 10) || 0)
-              }
+              onChange={(e) => handleNbCreditsChange(e.target.value)}
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             />
 
@@ -482,12 +489,12 @@ export function CapaciteAvancee() {
                       Mensualité (€/mois)
                     </label>
                     <input
-                      type="number"
-                      value={mensualitesCredits[index] || 0}
+                      inputMode="decimal"
+                      value={editableNumberValue(mensualitesCredits[index] ?? 0)}
                       onChange={(e) =>
                         handleMensualiteChange(
                           index,
-                          parseFloat(e.target.value) || 0
+                          parseEditableNumber(e.target.value)
                         )
                       }
                       className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -501,12 +508,12 @@ export function CapaciteAvancee() {
                       Durée restante (années)
                     </label>
                     <input
-                      type="number"
-                      value={resteAnneesCredits[index] || 0}
+                      inputMode="decimal"
+                      value={editableNumberValue(resteAnneesCredits[index] ?? 0)}
                       onChange={(e) =>
                         handleResteAnneesChange(
                           index,
-                          parseFloat(e.target.value) || 0
+                          parseEditableNumber(e.target.value)
                         )
                       }
                       className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -517,12 +524,12 @@ export function CapaciteAvancee() {
                       Taux du crédit (%)
                     </label>
                     <input
-                      type="number"
-                      value={tauxCredits[index] || 0}
+                      inputMode="decimal"
+                      value={editableNumberValue(tauxCredits[index] ?? 0)}
                       onChange={(e) =>
                         handleTauxCreditChange(
                           index,
-                          parseFloat(e.target.value) || 0
+                          parseEditableNumber(e.target.value)
                         )
                       }
                       className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -534,12 +541,12 @@ export function CapaciteAvancee() {
                         Loyer associé (€/mois)
                       </label>
                       <input
-                        type="number"
-                        value={revenusLocatifs[index] || 0}
+                        inputMode="decimal"
+                        value={editableNumberValue(revenusLocatifs[index] ?? 0)}
                         onChange={(e) =>
                           handleRevenuLocatifChange(
                             index,
-                            parseFloat(e.target.value) || 0
+                            parseEditableNumber(e.target.value)
                           )
                         }
                         className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -567,10 +574,10 @@ export function CapaciteAvancee() {
                   Taux crédit (annuel, en %)
                 </label>
                 <input
-                  type="number"
-                  value={tauxCreditCible}
+                  inputMode="decimal"
+                  value={editableNumberValue(tauxCreditCible)}
                   onChange={(e) =>
-                    setTauxCreditCible(parseFloat(e.target.value) || 0)
+                    setTauxCreditCible(parseEditableNumber(e.target.value))
                   }
                   className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
@@ -580,10 +587,10 @@ export function CapaciteAvancee() {
                   Durée du crédit (années)
                 </label>
                 <input
-                  type="number"
-                  value={dureeCreditCible}
+                  inputMode="decimal"
+                  value={editableNumberValue(dureeCreditCible)}
                   onChange={(e) =>
-                    setDureeCreditCible(parseFloat(e.target.value) || 0)
+                    setDureeCreditCible(parseEditableNumber(e.target.value))
                   }
                   className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />

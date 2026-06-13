@@ -185,6 +185,25 @@ export function SectionDashboard({
     }
   };
 
+  useEffect(() => {
+    if (!openAlertMenuId) return;
+
+    const closeOnOutsideClick = (event: MouseEvent | TouchEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[data-alert-snooze-menu]")) return;
+      setOpenAlertMenuId(null);
+    };
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("touchstart", closeOnOutsideClick);
+
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("touchstart", closeOnOutsideClick);
+    };
+  }, [openAlertMenuId]);
+
   const snoozePriorityAction = (id: string, mode: "tomorrow" | "forever") => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -862,7 +881,7 @@ export function SectionDashboard({
                 </button>
                 {action.snoozable !== false && action.id ? (
                   <div className="absolute right-3 top-1/2 z-20 -translate-y-1/2">
-                    <div className="relative">
+                    <div className="relative" data-alert-snooze-menu>
                       <button
                         type="button"
                         onClick={() => setOpenAlertMenuId(openAlertMenuId === action.id ? null : action.id)}

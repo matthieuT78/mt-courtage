@@ -1,4 +1,19 @@
 import React from "react";
+import {
+  ArchiveBoxIcon,
+  BanknotesIcon,
+  BellAlertIcon,
+  ChartBarIcon,
+  ChatBubbleLeftRightIcon,
+  ClipboardDocumentCheckIcon,
+  DocumentMagnifyingGlassIcon,
+  DocumentTextIcon,
+  HomeIcon,
+  ReceiptPercentIcon,
+  Squares2X2Icon,
+  UserGroupIcon,
+  WrenchScrewdriverIcon,
+} from "@heroicons/react/24/outline";
 import { Pill } from "./UiBits";
 
 export type LandlordSectionKey =
@@ -20,7 +35,7 @@ export type LandlordSectionKey =
 type Item = {
   key: LandlordSectionKey;
   label: string;
-  icon: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   badge?: React.ReactNode;
 };
 
@@ -44,31 +59,31 @@ export function SidebarNav({
   const items: Item[] = [
     {
       key: "dashboard",
-      label: "Tableau de bord",
-      icon: "🏁",
+      label: "Accueil",
+      icon: Squares2X2Icon,
       badge: (
         <Pill tone={healthScore >= 80 ? "emerald" : healthScore >= 60 ? "amber" : "red"}>
-          Score {healthScore}
+          Santé {healthScore}
         </Pill>
       ),
     },
 
-    { key: "locataires", label: "Locataires", icon: "👤" },
-    { key: "biens", label: "Biens", icon: "🏠" },
-    { key: "baux", label: "Baux", icon: "📄" },
-    { key: "messagerie", label: "Messagerie", icon: "💬" },
-    { key: "alertes", label: "Alertes", icon: "🔔" },
-    { key: "etat_des_lieux", label: "État des lieux", icon: "📝" },
-    { key: "quittances", label: "Quittances", icon: "🧾" },
-    { key: "finance", label: "Finance", icon: "📊" },
-    { key: "performance", label: "Performance", icon: "📈" },
-    { key: "outils", label: "Outils", icon: "🧰" },
-    { key: "inventaire", label: "Inventaire", icon: "📦" },
+    { key: "locataires", label: "Locataires", icon: UserGroupIcon },
+    { key: "biens", label: "Logements", icon: HomeIcon },
+    { key: "baux", label: "Contrats", icon: DocumentTextIcon },
+    { key: "messagerie", label: "Messages", icon: ChatBubbleLeftRightIcon },
+    { key: "alertes", label: "À traiter", icon: BellAlertIcon },
+    { key: "etat_des_lieux", label: "États des lieux", icon: ClipboardDocumentCheckIcon },
+    { key: "quittances", label: "Quittances", icon: ReceiptPercentIcon },
+    { key: "finance", label: "Encaissements", icon: BanknotesIcon },
+    { key: "performance", label: "Analyse", icon: ChartBarIcon },
+    { key: "outils", label: "Boîte à outils", icon: WrenchScrewdriverIcon },
+    { key: "inventaire", label: "Inventaires", icon: ArchiveBoxIcon },
 
     {
       key: "declaration",
-      label: "Aide à la déclaration",
-      icon: "🧾",
+      label: "Déclaration",
+      icon: DocumentMagnifyingGlassIcon,
     },
   ];
 
@@ -99,13 +114,14 @@ export function SidebarNav({
           </div>
 
           <p className="mt-1 text-sm font-semibold text-slate-900">Espace bailleur</p>
-          <p className="mt-1 text-[0.75rem] text-slate-600">Tout sur une page. Navigation à gauche.</p>
+          <p className="mt-1 text-[0.75rem] leading-5 text-slate-600">Pilotez vos logements, loyers et documents.</p>
         </div>
 
         {/* Nav items */}
         <div className="mt-1 space-y-1">
           {items.map((it) => {
             const isActive = it.key === active;
+            const Icon = it.icon;
 
             return (
               <div
@@ -122,7 +138,14 @@ export function SidebarNav({
                 }
               >
                 <span className="flex items-center gap-2 min-w-0">
-                  <span className="text-base">{it.icon}</span>
+                  <span
+                    className={
+                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-xl " +
+                      (isActive ? "bg-white/15 text-white" : "bg-slate-50 text-slate-500")
+                    }
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                  </span>
                   <span className={"text-[0.85rem] font-semibold truncate " + (isActive ? "text-white" : "text-slate-900")}>
                     {it.label}
                   </span>

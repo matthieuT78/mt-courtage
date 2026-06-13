@@ -20,6 +20,16 @@ function formatPct(val: number) {
   );
 }
 
+function parseEditableNumber(value: string) {
+  if (value === "") return Number.NaN;
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function editableNumberValue(value: number) {
+  return Number.isNaN(value) ? "" : value;
+}
+
 type SimpleResult = {
   revenusPrisEnCompte: number;
   chargesMensuelles: number;
@@ -189,13 +199,9 @@ export function CapaciteSimple() {
                   Revenus nets du foyer (€/mois)
                 </label>
                 <input
-                  type="number"
-                  value={revenusNetMensuels}
-                  onChange={(e) =>
-                    setRevenusNetMensuels(
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
+                  inputMode="decimal"
+                  value={editableNumberValue(revenusNetMensuels)}
+                  onChange={(e) => setRevenusNetMensuels(parseEditableNumber(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <p className="text-[0.7rem] text-slate-500">
@@ -208,13 +214,9 @@ export function CapaciteSimple() {
                   Autres revenus (€/mois)
                 </label>
                 <input
-                  type="number"
-                  value={autresRevenusMensuels}
-                  onChange={(e) =>
-                    setAutresRevenusMensuels(
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
+                  inputMode="decimal"
+                  value={editableNumberValue(autresRevenusMensuels)}
+                  onChange={(e) => setAutresRevenusMensuels(parseEditableNumber(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <p className="text-[0.7rem] text-slate-500">
@@ -238,13 +240,9 @@ export function CapaciteSimple() {
                   Total de vos charges mensuelles (€/mois)
                 </label>
                 <input
-                  type="number"
-                  value={chargesMensuelles}
-                  onChange={(e) =>
-                    setChargesMensuelles(
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
+                  inputMode="decimal"
+                  value={editableNumberValue(chargesMensuelles)}
+                  onChange={(e) => setChargesMensuelles(parseEditableNumber(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <p className="text-[0.7rem] text-slate-500">
@@ -258,13 +256,9 @@ export function CapaciteSimple() {
                   Taux d&apos;endettement cible (%)
                 </label>
                 <input
-                  type="number"
-                  value={tauxEndettementCible}
-                  onChange={(e) =>
-                    setTauxEndettementCible(
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
+                  inputMode="decimal"
+                  value={editableNumberValue(tauxEndettementCible)}
+                  onChange={(e) => setTauxEndettementCible(parseEditableNumber(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 />
                 <p className="text-[0.7rem] text-slate-500">
@@ -287,11 +281,9 @@ export function CapaciteSimple() {
                     Taux de crédit envisagé (annuel, en %)
                   </label>
                   <input
-                    type="number"
-                    value={tauxCredit}
-                    onChange={(e) =>
-                      setTauxCredit(parseFloat(e.target.value) || 0)
-                    }
+                    inputMode="decimal"
+                    value={editableNumberValue(tauxCredit)}
+                    onChange={(e) => setTauxCredit(parseEditableNumber(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -300,11 +292,9 @@ export function CapaciteSimple() {
                     Durée du crédit (années)
                   </label>
                   <input
-                    type="number"
-                    value={dureeCredit}
-                    onChange={(e) =>
-                      setDureeCredit(parseFloat(e.target.value) || 0)
-                    }
+                    inputMode="decimal"
+                    value={editableNumberValue(dureeCredit)}
+                    onChange={(e) => setDureeCredit(parseEditableNumber(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>

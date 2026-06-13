@@ -366,7 +366,7 @@ export default function InvestissementPrixPage({ prix }: Props) {
                         href="/pret-relais"
                         className="block text-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-900"
                       >
-                        Achat-revente ? Prêt relais →
+                        Besoin d’un prêt relais ? →
                       </Link>
                     </div>
                     <p className="mt-3 text-xs text-slate-500">

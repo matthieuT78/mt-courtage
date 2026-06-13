@@ -46,6 +46,16 @@ function toInt(v: string, fallback = 0) {
   return Number.isFinite(x) ? x : fallback;
 }
 
+function parseEditableNumber(value: string) {
+  if (value === "") return Number.NaN;
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function editableNumberValue(value: number) {
+  return Number.isNaN(value) ? "" : value;
+}
+
 function InfoBadge({ text }: { text: string }) {
   return (
     <span className="relative inline-flex items-center group ml-1 align-middle">
@@ -1046,11 +1056,11 @@ const renderAnalysisBlocks = (text: string) => {
                 <div className="space-y-1">
                   <label className={labelBase}>Âge emprunteur (ans)</label>
                   <input
-                    type="number"
+                    inputMode="decimal"
                     min={18}
                     max={95}
-                    value={ageEmprunteur}
-                    onChange={(e) => setAgeEmprunteur(parseFloat(e.target.value) || 0)}
+                    value={editableNumberValue(ageEmprunteur)}
+                    onChange={(e) => setAgeEmprunteur(parseEditableNumber(e.target.value))}
                     className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -1058,11 +1068,11 @@ const renderAnalysisBlocks = (text: string) => {
                 <div className="space-y-1">
                   <label className={labelBase}>Âge co-emprunteur (optionnel)</label>
                   <input
-                    type="number"
+                    inputMode="decimal"
                     min={0}
                     max={95}
-                    value={ageCoEmprunteur}
-                    onChange={(e) => setAgeCoEmprunteur(parseFloat(e.target.value) || 0)}
+                    value={editableNumberValue(ageCoEmprunteur)}
+                    onChange={(e) => setAgeCoEmprunteur(parseEditableNumber(e.target.value))}
                     placeholder="0 = non renseigné"
                     className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
@@ -1073,11 +1083,11 @@ const renderAnalysisBlocks = (text: string) => {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700">Adultes dans le foyer</label>
                   <input
-                    type="number"
+                    inputMode="decimal"
                     min={1}
                     max={10}
-                    value={nbAdultes}
-                    onChange={(e) => setNbAdultes(parseFloat(e.target.value) || 1)}
+                    value={editableNumberValue(nbAdultes)}
+                    onChange={(e) => setNbAdultes(parseEditableNumber(e.target.value))}
                     className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -1085,11 +1095,11 @@ const renderAnalysisBlocks = (text: string) => {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700">Enfants à charge</label>
                   <input
-                    type="number"
+                    inputMode="decimal"
                     min={0}
                     max={10}
-                    value={nbEnfants}
-                    onChange={(e) => setNbEnfants(parseFloat(e.target.value) || 0)}
+                    value={editableNumberValue(nbEnfants)}
+                    onChange={(e) => setNbEnfants(parseEditableNumber(e.target.value))}
                     className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -1130,9 +1140,9 @@ const renderAnalysisBlocks = (text: string) => {
                     <InfoBadge text="C’est la part maximale de vos revenus que la banque accepte en mensualités (souvent autour de 35%)." />
                   </label>
                   <input
-                    type="number"
-                    value={tauxEndettement}
-                    onChange={(e) => setTauxEndettement(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(tauxEndettement)}
+                    onChange={(e) => setTauxEndettement(parseEditableNumber(e.target.value))}
                     className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -1154,9 +1164,9 @@ const renderAnalysisBlocks = (text: string) => {
                     <InfoBadge text="Total de vos crédits actuels (auto, conso, etc.). Cela réduit la mensualité disponible pour le nouveau projet." />
                   </label>
                   <input
-                    type="number"
-                    value={autresMensualites}
-                    onChange={(e) => setAutresMensualites(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(autresMensualites)}
+                    onChange={(e) => setAutresMensualites(parseEditableNumber(e.target.value))}
                     className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -1179,9 +1189,9 @@ const renderAnalysisBlocks = (text: string) => {
                       <InfoBadge text="Estimation du prix de vente de votre bien (approximation suffisante)." />
                     </label>
                     <input
-                      type="number"
-                      value={valeurBienActuel}
-                      onChange={(e) => setValeurBienActuel(parseFloat(e.target.value) || 0)}
+                      inputMode="decimal"
+                      value={editableNumberValue(valeurBienActuel)}
+                      onChange={(e) => setValeurBienActuel(parseEditableNumber(e.target.value))}
                       className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -1192,9 +1202,9 @@ const renderAnalysisBlocks = (text: string) => {
                       <InfoBadge text="Le montant qu’il vous reste à rembourser sur le prêt actuel (visible sur votre tableau d’amortissement)." />
                     </label>
                     <input
-                      type="number"
-                      value={crdActuel}
-                      onChange={(e) => setCrdActuel(parseFloat(e.target.value) || 0)}
+                      inputMode="decimal"
+                      value={editableNumberValue(crdActuel)}
+                      onChange={(e) => setCrdActuel(parseEditableNumber(e.target.value))}
                       className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -1205,9 +1215,9 @@ const renderAnalysisBlocks = (text: string) => {
                       <InfoBadge text="La banque ne finance généralement qu’une partie de la valeur du bien (souvent 60 à 80%)." />
                     </label>
                     <input
-                      type="number"
-                      value={pctRetenu}
-                      onChange={(e) => setPctRetenu(parseFloat(e.target.value) || 0)}
+                      inputMode="decimal"
+                      value={editableNumberValue(pctRetenu)}
+                      onChange={(e) => setPctRetenu(parseEditableNumber(e.target.value))}
                       className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -1220,9 +1230,9 @@ const renderAnalysisBlocks = (text: string) => {
                       <InfoBadge text="Taux indicatif du prêt relais. Il sert surtout à donner un ordre d’idée du coût." />
                     </label>
                     <input
-                      type="number"
-                      value={tauxRelais}
-                      onChange={(e) => setTauxRelais(parseFloat(e.target.value) || 0)}
+                      inputMode="decimal"
+                      value={editableNumberValue(tauxRelais)}
+                      onChange={(e) => setTauxRelais(parseEditableNumber(e.target.value))}
                       className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -1233,9 +1243,9 @@ const renderAnalysisBlocks = (text: string) => {
                       <InfoBadge text="L’argent que vous apportez de votre poche (épargne, donation, revente, etc.)." />
                     </label>
                     <input
-                      type="number"
-                      value={apportPerso}
-                      onChange={(e) => setApportPerso(parseFloat(e.target.value) || 0)}
+                      inputMode="decimal"
+                      value={editableNumberValue(apportPerso)}
+                      onChange={(e) => setApportPerso(parseEditableNumber(e.target.value))}
                       className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -1255,9 +1265,9 @@ const renderAnalysisBlocks = (text: string) => {
                 <div className="space-y-1">
                   <label className={labelBase}>Taux du nouveau crédit (annuel, %)</label>
                   <input
-                    type="number"
-                    value={tauxNouveau}
-                    onChange={(e) => setTauxNouveau(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(tauxNouveau)}
+                    onChange={(e) => setTauxNouveau(parseEditableNumber(e.target.value))}
                     className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -1265,9 +1275,9 @@ const renderAnalysisBlocks = (text: string) => {
                 <div className="space-y-1">
                   <label className={labelBase}>Durée du nouveau crédit (années)</label>
                   <input
-                    type="number"
-                    value={dureeNouveau}
-                    onChange={(e) => setDureeNouveau(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(dureeNouveau)}
+                    onChange={(e) => setDureeNouveau(parseEditableNumber(e.target.value))}
                     className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -1278,9 +1288,9 @@ const renderAnalysisBlocks = (text: string) => {
                     <InfoBadge text="Si vous avez un prix en tête, on le compare à votre budget max pour voir si c’est cohérent." />
                   </label>
                   <input
-                    type="number"
-                    value={prixCible}
-                    onChange={(e) => setPrixCible(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(prixCible)}
+                    onChange={(e) => setPrixCible(parseEditableNumber(e.target.value))}
                     className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>

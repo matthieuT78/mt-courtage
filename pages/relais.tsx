@@ -22,6 +22,16 @@ function formatPct(val: number) {
   );
 }
 
+function parseEditableNumber(value: string) {
+  if (value === "") return Number.NaN;
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function editableNumberValue(value: number) {
+  return Number.isNaN(value) ? "" : value;
+}
+
 function InfoBadge({ text }: { text: string }) {
   return (
     <span className="relative inline-flex items-center group ml-1 align-middle">
@@ -592,9 +602,9 @@ const PretRelaisPage: NextPage = () => {
                   Revenus nets mensuels du foyer (€)
                 </label>
                 <input
-                  type="number"
-                  value={revMensuels}
-                  onChange={(e) => setRevMensuels(parseFloat(e.target.value) || 0)}
+                  inputMode="decimal"
+                  value={editableNumberValue(revMensuels)}
+                  onChange={(e) => setRevMensuels(parseEditableNumber(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
@@ -605,9 +615,9 @@ const PretRelaisPage: NextPage = () => {
                   <InfoBadge text="Hors crédit lié au bien actuel : crédit auto, conso, autres emprunts... Cela réduit la marge disponible pour le futur prêt." />
                 </label>
                 <input
-                  type="number"
-                  value={autresMensualites}
-                  onChange={(e) => setAutresMensualites(parseFloat(e.target.value) || 0)}
+                  inputMode="decimal"
+                  value={editableNumberValue(autresMensualites)}
+                  onChange={(e) => setAutresMensualites(parseEditableNumber(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
@@ -617,9 +627,9 @@ const PretRelaisPage: NextPage = () => {
                   Taux d’endettement cible (%)
                 </label>
                 <input
-                  type="number"
-                  value={tauxEndettement}
-                  onChange={(e) => setTauxEndettement(parseFloat(e.target.value) || 0)}
+                  inputMode="decimal"
+                  value={editableNumberValue(tauxEndettement)}
+                  onChange={(e) => setTauxEndettement(parseEditableNumber(e.target.value))}
                   className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
@@ -632,9 +642,9 @@ const PretRelaisPage: NextPage = () => {
                     Valeur estimée du bien (€)
                   </label>
                   <input
-                    type="number"
-                    value={valeurBienActuel}
-                    onChange={(e) => setValeurBienActuel(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(valeurBienActuel)}
+                    onChange={(e) => setValeurBienActuel(parseEditableNumber(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -644,9 +654,9 @@ const PretRelaisPage: NextPage = () => {
                     Capital restant dû sur ce bien (€)
                   </label>
                   <input
-                    type="number"
-                    value={crdActuel}
-                    onChange={(e) => setCrdActuel(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(crdActuel)}
+                    onChange={(e) => setCrdActuel(parseEditableNumber(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -657,9 +667,9 @@ const PretRelaisPage: NextPage = () => {
                     <InfoBadge text="Les banques retiennent souvent 60–80 % de la valeur estimée, avant de déduire le capital restant dû, pour déterminer le montant du relais." />
                   </label>
                   <input
-                    type="number"
-                    value={pctRetenu}
-                    onChange={(e) => setPctRetenu(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(pctRetenu)}
+                    onChange={(e) => setPctRetenu(parseEditableNumber(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -669,9 +679,9 @@ const PretRelaisPage: NextPage = () => {
                     Taux du prêt relais (annuel, en %) – indicatif
                   </label>
                   <input
-                    type="number"
-                    value={tauxRelais}
-                    onChange={(e) => setTauxRelais(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(tauxRelais)}
+                    onChange={(e) => setTauxRelais(parseEditableNumber(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -687,9 +697,9 @@ const PretRelaisPage: NextPage = () => {
                     Apport personnel prévu (€)
                   </label>
                   <input
-                    type="number"
-                    value={apportPerso}
-                    onChange={(e) => setApportPerso(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(apportPerso)}
+                    onChange={(e) => setApportPerso(parseEditableNumber(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -700,9 +710,9 @@ const PretRelaisPage: NextPage = () => {
                       Taux du nouveau crédit (annuel, en %)
                     </label>
                     <input
-                      type="number"
-                      value={tauxNouveau}
-                      onChange={(e) => setTauxNouveau(parseFloat(e.target.value) || 0)}
+                      inputMode="decimal"
+                      value={editableNumberValue(tauxNouveau)}
+                      onChange={(e) => setTauxNouveau(parseEditableNumber(e.target.value))}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -711,9 +721,9 @@ const PretRelaisPage: NextPage = () => {
                       Durée du nouveau crédit (années)
                     </label>
                     <input
-                      type="number"
-                      value={dureeNouveau}
-                      onChange={(e) => setDureeNouveau(parseFloat(e.target.value) || 0)}
+                      inputMode="decimal"
+                      value={editableNumberValue(dureeNouveau)}
+                      onChange={(e) => setDureeNouveau(parseEditableNumber(e.target.value))}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -724,9 +734,9 @@ const PretRelaisPage: NextPage = () => {
                     Prix du bien que vous visez (optionnel, pour comparer) (€)
                   </label>
                   <input
-                    type="number"
-                    value={prixCible}
-                    onChange={(e) => setPrixCible(parseFloat(e.target.value) || 0)}
+                    inputMode="decimal"
+                    value={editableNumberValue(prixCible)}
+                    onChange={(e) => setPrixCible(parseEditableNumber(e.target.value))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>

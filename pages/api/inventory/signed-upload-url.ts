@@ -7,8 +7,8 @@ import { getUserStorageUsage } from "../../../lib/storageQuota";
 const INVENTORY_BUCKET = "inventory-pdfs";
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
-function buildPdfPath(opts: { reportId: string; userId: string; leaseId: string; kind: "signed" | "external" }) {
-  return `inventory/${opts.userId}/${opts.leaseId}/${opts.reportId}.${opts.kind}.pdf`;
+function buildPdfPath(opts: { reportId: string; userId: string; leaseId?: string | null; kind: "signed" | "external" }) {
+  return `inventory/${opts.userId}/${opts.leaseId || "standalone"}/${opts.reportId}.${opts.kind}.pdf`;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

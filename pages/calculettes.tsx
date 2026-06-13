@@ -221,7 +221,7 @@ export default function CalculettesPage() {
       },
       {
         key: "relais",
-        title: "Achat-revente",
+        title: "Prêt relais",
         desc: "Prêt relais, apport disponible, budget de rachat et marge de sécurité.",
         href: "/pret-relais",
         icon: BanknotesIcon,
@@ -340,7 +340,7 @@ export default function CalculettesPage() {
                   )}
                 </h1>
                 <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
-                  Capacité d’emprunt, rentabilité, achat-revente, parc immobilier et plus-value : des résultats lisibles pour prendre une décision sans tableur.
+                  Capacité d’emprunt, rentabilité, prêt relais, parc immobilier et plus-value : des résultats lisibles pour prendre une décision sans tableur.
                 </p>
                 <div className="mt-7 grid gap-3 sm:mt-8 sm:flex sm:flex-wrap">
                   <button

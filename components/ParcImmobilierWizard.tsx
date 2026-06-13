@@ -167,6 +167,7 @@ export default function ParcImmobilierWizard() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const [nbBiens, setNbBiens] = useState(1);
+  const [nbBiensInput, setNbBiensInput] = useState("1");
   const [biens, setBiens] = useState<Bien[]>([defaultBien(0)]);
 
   const [resumeGlobal, setResumeGlobal] = useState<ResumeGlobal | null>(null);
@@ -174,8 +175,16 @@ export default function ParcImmobilierWizard() {
 
   const hasSimulation = !!resumeGlobal;
 
-  const handleNbBiensChange = (value: number) => {
-    const n = Math.min(Math.max(value, 1), 20);
+  const handleNbBiensChange = (raw: string) => {
+    setNbBiensInput(raw);
+
+    if (raw.trim() === "") return;
+
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed)) return;
+
+    const n = Math.min(Math.max(parsed, 1), 20);
+    setNbBiensInput(String(n));
     setNbBiens(n);
 
     setBiens((prev) => {
@@ -948,11 +957,11 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                 <InfoBadge text="Incluez uniquement les biens générant des loyers (hors résidence principale)." />
               </label>
               <input
-                type="number"
+                inputMode="numeric"
                 min={1}
                 max={20}
-                value={nbBiens}
-                onChange={(e) => handleNbBiensChange(parseInt(e.target.value, 10) || 1)}
+                value={nbBiensInput}
+                onChange={(e) => handleNbBiensChange(e.target.value)}
                 className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>

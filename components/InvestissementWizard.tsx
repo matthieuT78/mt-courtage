@@ -258,6 +258,7 @@ export default function InvestissementWizard({
 
   // Lots
   const [nbApparts, setNbApparts] = useState(1);
+  const [nbAppartsInput, setNbAppartsInput] = useState("1");
   const [loyersApparts, setLoyersApparts] = useState<string[]>(["900"]);
   const [airbnbNuitees, setAirbnbNuitees] = useState<string[]>(["90"]);
   const [airbnbOccupation, setAirbnbOccupation] = useState<string[]>(["65"]);
@@ -372,8 +373,16 @@ export default function InvestissementWizard({
     if (!agenceCustom && v.trim() !== "") setFraisAgence(String(Math.round(newPrix * 0.04)));
   };
 
-  const handleNbAppartsChange = (value: number) => {
-    const n = clamp(value || 1, 1, 10);
+  const handleNbAppartsChange = (raw: string) => {
+    setNbAppartsInput(raw);
+
+    if (raw.trim() === "") return;
+
+    const parsed = parseInt(raw, 10);
+    if (!Number.isFinite(parsed)) return;
+
+    const n = clamp(parsed, 1, 10);
+    setNbAppartsInput(String(n));
     setNbApparts(n);
 
     setLoyersApparts((prev) => {
@@ -1375,11 +1384,11 @@ const canClickUnlock =
             <div className="space-y-1">
               <label className="text-xs text-slate-700">Nombre d&apos;appartements dans ce projet</label>
               <input
-                type="number"
-                value={nbApparts}
+                inputMode="numeric"
+                value={nbAppartsInput}
                 min={1}
                 max={10}
-                onChange={(e) => handleNbAppartsChange(parseInt(e.target.value, 10) || 1)}
+                onChange={(e) => handleNbAppartsChange(e.target.value)}
                 className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
               />
             </div>
@@ -1413,7 +1422,7 @@ const canClickUnlock =
                       <div className="mt-2 space-y-1">
                         <label className="text-[0.7rem] text-slate-700">Loyer mensuel envisagé (€)</label>
                         <input
-                          type="number"
+                          inputMode="decimal"
                           value={loyersApparts[idx] ?? ""}
                           onChange={(e) => handleLoyerAppartChange(idx, onlyNumberInput(e.target.value))}
                           required
@@ -1427,7 +1436,7 @@ const canClickUnlock =
                           <div className="space-y-1">
                             <label className="text-[0.7rem] text-slate-700">Prix moyen par nuit (€)</label>
                             <input
-                              type="number"
+                              inputMode="decimal"
                               value={airbnbNuitees[idx] ?? ""}
                               onChange={(e) => handleAirbnbNuiteeChange(idx, onlyNumberInput(e.target.value))}
                               required
@@ -1438,7 +1447,7 @@ const canClickUnlock =
                           <div className="space-y-1">
                             <label className="text-[0.7rem] text-slate-700">Taux d&apos;occupation (% de l&apos;année)</label>
                             <input
-                              type="number"
+                              inputMode="decimal"
                               value={airbnbOccupation[idx] ?? ""}
                               onChange={(e) => handleAirbnbOccupationChange(idx, onlyNumberInput(e.target.value))}
                               className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-1.5 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"

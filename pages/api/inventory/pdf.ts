@@ -866,32 +866,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const safePhotos = photosErr ? [] : ((photos || []) as any[]);
 
     // --- lease + property + tenant + landlord
-    const { data: lease, error: leaseErr } = await supabaseAdmin.from("leases").select("*").eq("id", report.lease_id).single();
-    if (leaseErr) return res.status(500).json({ error: `lease: ${leaseErr.message}` });
-
+    let lease: any = null;
     let property: any = null;
     let tenant: any = null;
     let landlord: any = null;
 
-    if ((lease as any)?.property_id) {
-      const r = await supabaseAdmin.from("properties").select("*").eq("id", (lease as any).property_id).maybeSingle();
-      property = r.data || null;
-    }
-    if ((lease as any)?.tenant_id) {
-      const r = await supabaseAdmin.from("tenants").select("*").eq("id", (lease as any).tenant_id).maybeSingle();
-      tenant = r.data || null;
+    if (report.lease_id) {
+      const { data: leaseData, error: leaseErr } = await supabaseAdmin.from("leases").select("*").eq("id", report.lease_id).single();
+      if (leaseErr) return res.status(500).json({ error: `lease: ${leaseErr.message}` });
+      lease = leaseData;
+
+      if (lease?.property_id) {
+        const r = await supabaseAdmin.from("properties").select("*").eq("id", lease.property_id).maybeSingle();
+        property = r.data || null;
+      }
+      if (lease?.tenant_id) {
+        const r = await supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).maybeSingle();
+        tenant = r.data || null;
+      }
     }
     const rLand = await supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle();
     landlord = rLand.data || null;
 
     const landlordName = safeStr(landlord?.display_name) || "Bailleur";
-    const tenantName = safeStr(tenant?.full_name) || "Locataire";
-    const propertyLabel = safeStr(property?.label) || "Bien";
+    const tenantName = safeStr(tenant?.full_name) || safeStr(report.occupant_label) || "Occupant";
+    const propertyLabel = safeStr(property?.label) || safeStr(report.property_label) || "Logement";
     const propertyAddress =
       [
-        safeStr(property?.address_line1),
-        safeStr(property?.address_line2),
-        [safeStr(property?.postal_code), safeStr(property?.city)].filter(Boolean).join(" "),
+        safeStr(property?.address_line1) || safeStr(report.property_address_line1),
+        safeStr(property?.address_line2) || safeStr(report.property_address_line2),
+        [safeStr(property?.postal_code) || safeStr(report.property_postal_code), safeStr(property?.city) || safeStr(report.property_city)].filter(Boolean).join(" "),
         safeStr(property?.country || "FR"),
       ]
         .filter(Boolean)
@@ -1078,7 +1082,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const datePart = toISODateLocal(new Date());
     const tenantSlug = safeFilePart(tenantName);
     const filename = `etat-des-lieux-${String(report.report_type || "entry")}-${tenantSlug}-${datePart}.pdf`;
-    const storagePath = `${userId}/${report.lease_id}/${reportId}/${filename}`;
+    const storagePath = `${userId}/${report.lease_id || "standalone"}/${reportId}/${filename}`;
 
     const up = await supabaseAdmin.storage.from("inventory-pdfs").upload(storagePath, pdfBuf, {
       contentType: "application/pdf",
