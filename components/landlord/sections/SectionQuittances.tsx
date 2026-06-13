@@ -5,6 +5,7 @@ import { SectionTitle, fmtDate } from "../UiBits";
 import type { RentReceipt, Lease, Property, Tenant, LandlordSettings } from "../../../lib/landlord/types";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { usePermissions } from "../../PermissionProvider";
+import { isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 
 type AnyPayment = Record<string, any>;
 type ReminderChannelSetting = "email" | "messaging" | "both";
@@ -365,6 +366,7 @@ export function SectionQuittances({
   const safeReceipts = Array.isArray(receipts) ? receipts : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safePayments = Array.isArray(payments) ? payments : [];
+  const activeLeases = useMemo(() => safeLeases.filter(isSelectableLeaseLike), [safeLeases]);
 
   const propsById = propertyById instanceof Map ? propertyById : new Map<string, Property>();
   const tenantsById = tenantById instanceof Map ? tenantById : new Map<string, Tenant>();
@@ -1037,7 +1039,7 @@ export function SectionQuittances({
         </div>
       ) : null}
 
-      {canUseReceiptAutomation && safeLeases.length > 0 ? (
+      {canUseReceiptAutomation && activeLeases.length > 0 ? (
         <details className="rounded-2xl border border-slate-200 bg-white">
           <summary className="cursor-pointer list-none px-4 py-3">
             <p className="text-sm font-semibold text-slate-900">Relances amiables locataire</p>
@@ -1047,7 +1049,7 @@ export function SectionQuittances({
             <p className="text-xs text-slate-600">
               La relance automatique est désactivée par défaut. Elle reste factuelle et ne remplace jamais une mise en demeure.
             </p>
-            {safeLeases.filter((lease: any) => String(lease.status || "").toLowerCase() !== "draft").map((lease: any) => {
+            {activeLeases.map((lease: any) => {
               const setting = reminderSettings.get(String(lease.id));
               return (
                 <div key={lease.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">

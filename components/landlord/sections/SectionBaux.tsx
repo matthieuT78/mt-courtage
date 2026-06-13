@@ -24,6 +24,7 @@ import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { usePermissions } from "../../PermissionProvider";
 import { LeaseContractWizard } from "../LeaseContractWizard";
 import type { RentPayment, RentReceipt } from "../../../lib/landlord/types";
+import { includeSelected, isActivePropertyLike, isActiveTenantLike } from "../../../lib/landlord/archiveFilters";
 
 /* ======================================================
    TYPES
@@ -61,12 +62,15 @@ export type PropertyLite = {
   id: string;
   label: string | null;
   city?: string | null;
+  status?: string | null;
 };
 
 export type TenantLite = {
   id: string;
   full_name: string | null;
   email: string | null;
+  status?: string | null;
+  archived_at?: string | null;
 };
 
 type Props = {
@@ -642,6 +646,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     return m;
   }, [safeTenants]);
 
+  const activeProps = useMemo(() => safeProps.filter(isActivePropertyLike), [safeProps]);
+  const activeTenants = useMemo(() => safeTenants.filter(isActiveTenantLike), [safeTenants]);
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [mode, setMode] = useState<Mode>("idle");
@@ -849,6 +856,15 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     tenant_receipt_email: "",
     timezone: "Europe/Paris",
   });
+
+  const selectableProps = useMemo(
+    () => includeSelected(activeProps, safeProps, form.property_id),
+    [activeProps, safeProps, form.property_id]
+  );
+  const selectableTenants = useMemo(
+    () => includeSelected(activeTenants, safeTenants, form.tenant_id),
+    [activeTenants, safeTenants, form.tenant_id]
+  );
 
   const resetForm = () => {
     setForm({
@@ -1458,13 +1474,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             >
               <option value="">— Sélectionner —</option>
-              {safeProps.map((p) => (
+              {selectableProps.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.label || "Bien"}
                 </option>
               ))}
             </select>
-            {safeProps.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un bien.</p> : null}
+            {activeProps.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un bien actif.</p> : null}
           </div>
 
           <div className="space-y-1">
@@ -1483,13 +1499,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             >
               <option value="">— Sélectionner —</option>
-              {safeTenants.map((t) => (
+              {selectableTenants.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.full_name || "Locataire"}
                 </option>
               ))}
             </select>
-            {safeTenants.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un locataire.</p> : null}
+            {activeTenants.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un locataire actif.</p> : null}
           </div>
         </div>
 

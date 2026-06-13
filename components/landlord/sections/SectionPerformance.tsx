@@ -22,6 +22,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
 import { SectionTitle, formatEuro } from "../UiBits";
+import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend);
 
@@ -264,6 +265,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
   const safePayments = Array.isArray(payments) ? payments : [];
 
   const [propertyId, setPropertyId] = useState("");
+  const [includeArchivedProperties, setIncludeArchivedProperties] = useState(false);
   const [tx, setTx] = useState<Transaction[]>([]);
   const [finance, setFinance] = useState<Map<string, PropertyFinance>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -276,21 +278,29 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
 
   const currentMonth = monthKey(new Date());
   const activeLeases = useMemo(
-    () =>
-      safeLeases.filter((lease) => {
-        const status = String((lease as any).status || "active").toLowerCase();
-        return status !== "draft" && status !== "archived" && status !== "terminated";
-      }),
+    () => safeLeases.filter(isSelectableLeaseLike),
     [safeLeases]
   );
 
   const propertyOptions = useMemo(() => {
-    const fromProperties = Array.from(propsById.entries()).map(([id, property]) => ({ id, label: labelForProperty(property, "Bien") }));
+    const fromProperties = Array.from(propsById.entries())
+      .filter(([, property]) => includeArchivedProperties || isActivePropertyLike(property))
+      .map(([id, property]) => ({
+        id,
+        label: labelForProperty(property, "Bien"),
+        archived: !isActivePropertyLike(property),
+      }));
     const fromLeases = activeLeases
       .filter((lease) => lease.property_id && !propsById.has(lease.property_id))
-      .map((lease) => ({ id: lease.property_id, label: "Bien" }));
+      .map((lease) => ({ id: lease.property_id, label: "Bien", archived: false }));
     return [...fromProperties, ...fromLeases].sort((a, b) => a.label.localeCompare(b.label));
-  }, [activeLeases, propsById]);
+  }, [activeLeases, includeArchivedProperties, propsById]);
+
+  useEffect(() => {
+    if (propertyId && !propertyOptions.some((property) => property.id === propertyId)) {
+      setPropertyId("");
+    }
+  }, [propertyId, propertyOptions]);
 
   useEffect(() => {
     if (!supabase || !userId) return;
@@ -665,8 +675,19 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
           desc="Une lecture financière directe : tendance, postes de charges, biens contributeurs et actions prioritaires."
         />
 
-        <div className="w-full rounded-3xl border border-slate-200 bg-slate-50 p-3 lg:w-[280px]">
-          <label className="text-xs font-semibold text-slate-600">Bien analysé</label>
+        <div className="w-full rounded-3xl border border-slate-200 bg-slate-50 p-3 lg:w-[320px]">
+          <div className="flex items-center justify-between gap-3">
+            <label className="text-xs font-semibold text-slate-600">Bien analysé</label>
+            <label className="inline-flex items-center gap-2 text-[0.68rem] font-semibold text-slate-500">
+              <input
+                type="checkbox"
+                checked={includeArchivedProperties}
+                onChange={(e) => setIncludeArchivedProperties(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-slate-300"
+              />
+              Inclure archivés
+            </label>
+          </div>
           <select
             value={propertyId}
             onChange={(e) => setPropertyId(e.target.value)}
@@ -675,7 +696,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
             <option value="">Tous les biens</option>
             {propertyOptions.map((property) => (
               <option key={property.id} value={property.id}>
-                {property.label}
+                {property.label}{property.archived ? " · archivé" : ""}
               </option>
             ))}
           </select>

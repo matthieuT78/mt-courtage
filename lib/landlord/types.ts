@@ -25,6 +25,7 @@ export type Property = {
   postal_code: string | null;
   city: string | null;
   country: string | null;
+  status?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -61,6 +62,9 @@ export type Tenant = {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  status?: string | null;
+  archived_at?: string | null;
+  archived_reason?: string | null;
   created_at: string;
   updated_at: string;
 };

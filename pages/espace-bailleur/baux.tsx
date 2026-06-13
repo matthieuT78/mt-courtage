@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import AppHeader from "../../components/AppHeader";
 import { supabase } from "../../lib/supabaseClient";
+import { includeSelected, isActivePropertyLike, isActiveTenantLike } from "../../lib/landlord/archiveFilters";
 
 type SimpleUser = { id: string; email?: string };
 
@@ -33,12 +34,15 @@ type Property = {
   id: string;
   label: string | null;
   city: string | null;
+  status?: string | null;
 };
 
 type Tenant = {
   id: string;
   full_name: string | null;
   email: string | null;
+  status?: string | null;
+  archived_at?: string | null;
 };
 
 const formatEuro = (val: number | null | undefined) => {
@@ -157,8 +161,8 @@ export default function EspaceBailleurBauxPage() {
         { data: tData, error: tErr },
       ] = await Promise.all([
         supabase.from("leases").select("*").eq("user_id", uid).order("created_at", { ascending: false }),
-        supabase.from("properties").select("id,label,city").eq("user_id", uid).order("created_at", { ascending: false }),
-        supabase.from("tenants").select("id,full_name,email").eq("user_id", uid).order("created_at", { ascending: false }),
+        supabase.from("properties").select("id,label,city,status").eq("user_id", uid).order("created_at", { ascending: false }),
+        supabase.from("tenants").select("id,full_name,email,archived_at").eq("user_id", uid).order("created_at", { ascending: false }),
       ]);
 
       if (lErr) throw lErr;
@@ -190,6 +194,17 @@ export default function EspaceBailleurBauxPage() {
     tenants.forEach((t) => m.set(t.id, t));
     return m;
   }, [tenants]);
+
+  const activeProperties = useMemo(() => properties.filter(isActivePropertyLike), [properties]);
+  const activeTenants = useMemo(() => tenants.filter(isActiveTenantLike), [tenants]);
+  const selectableProperties = useMemo(
+    () => includeSelected(activeProperties, properties, form.property_id),
+    [activeProperties, properties, form.property_id]
+  );
+  const selectableTenants = useMemo(
+    () => includeSelected(activeTenants, tenants, form.tenant_id),
+    [activeTenants, tenants, form.tenant_id]
+  );
 
   // Compteur "configurations actives" (corrigé)
   const activeLeasesCount = useMemo(() => {
@@ -525,14 +540,14 @@ export default function EspaceBailleurBauxPage() {
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     >
                       <option value="">— Sélectionner —</option>
-                      {properties.map((p) => (
+                      {selectableProperties.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.label || "Bien"} {p.city ? `(${p.city})` : ""}
                         </option>
                       ))}
                     </select>
-                    {properties.length === 0 && (
-                      <p className="text-[0.7rem] text-amber-700">Aucun bien : créez-en un dans “Biens”.</p>
+                    {activeProperties.length === 0 && (
+                      <p className="text-[0.7rem] text-amber-700">Aucun bien actif : créez-en un dans “Biens”.</p>
                     )}
                   </div>
 
@@ -544,14 +559,14 @@ export default function EspaceBailleurBauxPage() {
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     >
                       <option value="">— Sélectionner —</option>
-                      {tenants.map((t) => (
+                      {selectableTenants.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.full_name || "Locataire"} {t.email ? `(${t.email})` : ""}
                         </option>
                       ))}
                     </select>
-                    {tenants.length === 0 && (
-                      <p className="text-[0.7rem] text-amber-700">Aucun locataire : créez-en un dans “Locataires”.</p>
+                    {activeTenants.length === 0 && (
+                      <p className="text-[0.7rem] text-amber-700">Aucun locataire actif : créez-en un dans “Locataires”.</p>
                     )}
                   </div>
                 </div>

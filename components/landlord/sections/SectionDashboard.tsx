@@ -7,6 +7,7 @@ import type { LandlordSectionKey } from "../SidebarNav";
 import { supabase } from "../../../lib/supabaseClient";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
+import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
 
 type DashboardAlert = {
   tone: "emerald" | "amber" | "red";
@@ -217,7 +218,7 @@ export function SectionDashboard({
 
   const propertyOptions = useMemo(
     () =>
-      Array.from(propertyById.values()).sort((a, b) =>
+      Array.from(propertyById.values()).filter(isActivePropertyLike).sort((a, b) =>
         String(a.label || a.address_line1 || "").localeCompare(String(b.label || b.address_line1 || ""))
       ),
     [propertyById]

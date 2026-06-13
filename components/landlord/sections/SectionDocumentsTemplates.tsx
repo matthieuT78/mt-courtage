@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePermissions } from "../../PermissionProvider";
+import { isActivePropertyLike, isActiveTenantLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 
-type PropertyLite = { id: string; label?: string | null; address?: string | null; city?: string | null };
-type TenantLite = { id: string; full_name?: string | null; email?: string | null };
+type PropertyLite = { id: string; label?: string | null; address?: string | null; city?: string | null; status?: string | null };
+type TenantLite = { id: string; full_name?: string | null; email?: string | null; status?: string | null; archived_at?: string | null };
 type LeaseLite = {
   id: string;
   property_id?: string | null;
@@ -12,6 +13,7 @@ type LeaseLite = {
   charges_amount?: number | null;
   deposit_amount?: number | null;
   start_date?: string | null;
+  status?: string | null;
 };
 
 type Props = {
@@ -301,6 +303,9 @@ export function SectionDocumentsTemplates({ userEmail, properties, tenants, leas
 
   const propertyById = useMemo(() => new Map(safeProperties.map((p) => [p.id, p])), [safeProperties]);
   const tenantById = useMemo(() => new Map(safeTenants.map((t) => [t.id, t])), [safeTenants]);
+  const activeProperties = useMemo(() => safeProperties.filter(isActivePropertyLike), [safeProperties]);
+  const activeTenants = useMemo(() => safeTenants.filter(isActiveTenantLike), [safeTenants]);
+  const activeLeases = useMemo(() => safeLeases.filter(isSelectableLeaseLike), [safeLeases]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -314,9 +319,9 @@ export function SectionDocumentsTemplates({ userEmail, properties, tenants, leas
   }, [category, query]);
 
   const selected = TEMPLATES.find((template) => template.id === selectedId) || filtered[0] || TEMPLATES[0];
-  const selectedLease = safeLeases.find((lease) => lease.id === leaseId) || null;
-  const selectedProperty = selectedLease?.property_id ? propertyById.get(String(selectedLease.property_id)) || null : safeProperties[0] || null;
-  const selectedTenant = selectedLease?.tenant_id ? tenantById.get(String(selectedLease.tenant_id)) || null : safeTenants[0] || null;
+  const selectedLease = activeLeases.find((lease) => lease.id === leaseId) || null;
+  const selectedProperty = selectedLease?.property_id ? propertyById.get(String(selectedLease.property_id)) || null : activeProperties[0] || null;
+  const selectedTenant = selectedLease?.tenant_id ? tenantById.get(String(selectedLease.tenant_id)) || null : activeTenants[0] || null;
 
   const markdown = selected
     ? buildTemplateMarkdown({
@@ -443,7 +448,7 @@ export function SectionDocumentsTemplates({ userEmail, properties, tenants, leas
                     className="mt-3 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                   >
                     <option value="">Bien / locataire par défaut</option>
-                    {safeLeases.map((lease) => {
+                    {activeLeases.map((lease) => {
                       const property = lease.property_id ? propertyById.get(String(lease.property_id)) : null;
                       const tenant = lease.tenant_id ? tenantById.get(String(lease.tenant_id)) : null;
                       return (

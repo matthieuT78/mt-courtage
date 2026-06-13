@@ -18,6 +18,7 @@ import {
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
+import { isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import RepairsGuideCard from "../RepairsGuideCard";
 
 /* ======================================================
@@ -554,14 +555,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     return m;
   }, [safeTenants]);
 
-  const activeLeases = useMemo(
-    () =>
-      safeLeases.filter((lease: any) => {
-        const status = String(lease?.status || "").toLowerCase();
-        return status !== "archived" && status !== "ended" && status !== "draft";
-      }),
-    [safeLeases]
-  );
+  const activeLeases = useMemo(() => safeLeases.filter(isSelectableLeaseLike), [safeLeases]);
 
   const leaseLabel = (l: Lease) => {
     const p = propertyById.get((l as any).property_id);

@@ -24,6 +24,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { SectionTitle, formatEuro } from "../UiBits";
 import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
+import { includeSelected, isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
 
@@ -348,6 +349,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       ),
     [propsById]
   );
+  const activePropertyOptions = useMemo(() => propertyOptions.filter(isActivePropertyLike), [propertyOptions]);
 
   const leasePropertyById = useMemo(() => {
     const map = new Map<string, string>();
@@ -358,8 +360,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   }, [safeLeases]);
 
   const analysisPropertyIds = useMemo(
-    () => (analysisPropertyId ? [analysisPropertyId] : propertyOptions.map((property) => property.id)),
-    [analysisPropertyId, propertyOptions]
+    () => (analysisPropertyId ? [analysisPropertyId] : activePropertyOptions.map((property) => property.id)),
+    [analysisPropertyId, activePropertyOptions]
   );
 
   const monthlyRecurringByProperty = useMemo(() => {
@@ -392,6 +394,10 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     amount: "",
     notes: "",
   });
+  const selectableFormPropertyOptions = useMemo(
+    () => includeSelected(activePropertyOptions, propertyOptions, form.property_id),
+    [activePropertyOptions, propertyOptions, form.property_id]
+  );
 
   // ========== Sync quittances -> transactions (idempotent + dedupe payload) ==========
   const syncReceiptsToTransactions = useCallback(async () => {
@@ -1341,7 +1347,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 className="w-full min-w-[220px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
               >
                 <option value="">Tous les biens</option>
-                {propertyOptions.map((property) => (
+                {activePropertyOptions.map((property) => (
                   <option key={property.id} value={property.id}>
                     {property.label || property.address_line1 || "Bien"}
                   </option>
@@ -1728,8 +1734,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                     className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                   >
                     <option value="">Non affecté</option>
-                    {Array.from(propsById.entries()).map(([id, p]) => (
-                      <option key={id} value={id}>
+                    {selectableFormPropertyOptions.map((p) => (
+                      <option key={p.id} value={p.id}>
                         {p.label || "Bien"}
                       </option>
                     ))}

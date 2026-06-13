@@ -16,6 +16,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import type { Lease, Property } from "../../../lib/landlord/types";
+import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import type { Plan } from "../../../lib/permissions";
 import { SectionSimulateursBailleur } from "./SectionSimulateursBailleur";
 
@@ -408,9 +409,13 @@ function FinanceValidationModal({
     setError("");
   }, [draft]);
 
-  if (!draft || !form) return null;
+  const activeProperties = useMemo(() => properties.filter(isActivePropertyLike), [properties]);
+  const availableLeases = useMemo(
+    () => leases.filter((lease) => isSelectableLeaseLike(lease) && (!form?.propertyId || lease.property_id === form.propertyId)),
+    [leases, form?.propertyId]
+  );
 
-  const availableLeases = leases.filter((lease) => !form.propertyId || lease.property_id === form.propertyId);
+  if (!draft || !form) return null;
   const amount = Number(form.amount || 0);
 
   const save = async () => {
@@ -469,7 +474,7 @@ function FinanceValidationModal({
               className={toolInputClass}
             >
               <option value="">Aucun bien</option>
-              {properties.map((property) => (
+              {activeProperties.map((property) => (
                 <option key={property.id} value={property.id}>
                   {property.label || propertyAddress(property) || "Bien sans libellé"}
                 </option>
@@ -1244,6 +1249,7 @@ export function SectionOutils({
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
+  const activeProperties = useMemo(() => properties.filter(isActivePropertyLike), [properties]);
 
   const selectedLines = useMemo(
     () =>
@@ -2653,7 +2659,7 @@ export function SectionOutils({
                 <span className="text-xs font-semibold text-slate-600">Importer depuis la page Biens</span>
                 <select value={selectedPropertyId} onChange={(e) => applyProperty(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
                   <option value="">Adresse libre / non liée</option>
-                  {properties.map((property) => (
+                  {activeProperties.map((property) => (
                     <option key={property.id} value={property.id}>
                       {property.label || propertyAddress(property) || "Bien sans libellé"}
                     </option>
