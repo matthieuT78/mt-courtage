@@ -361,6 +361,10 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
     for (const row of tx) if (row.property_id) ids.add(row.property_id);
 
     return Array.from(ids)
+      .filter((id) => {
+        const property = propsById.get(id);
+        return !property || includeArchivedProperties || isActivePropertyLike(property);
+      })
       .filter((id) => !propertyId || id === propertyId)
       .map((id) => {
         const expected = sum(
@@ -409,7 +413,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         };
       })
       .sort((a, b) => b.cashflow - a.cashflow);
-  }, [activeLeases, currentMonth, finance, leaseById, propertyId, propertyOptions, propsById, safeLeases, safePayments, tx]);
+  }, [activeLeases, currentMonth, finance, includeArchivedProperties, leaseById, propertyId, propertyOptions, propsById, safeLeases, safePayments, tx]);
 
   const series = useMemo(() => {
     return months.map((date) => {
