@@ -154,8 +154,8 @@ function toneClasses(tone: "emerald" | "sky" | "amber" | "red" | "slate") {
 function rowSignal(row: { currentLease: any; vacancyDays12m: number; turnover12m: number; occupancyRate12m: number }) {
   if (!row.currentLease) return { tone: "red" as const, label: "Vacant", detail: "Remettre en location ou compléter le bail en cours." };
   if (row.turnover12m >= 2) return { tone: "amber" as const, label: "Turnover élevé", detail: "Vérifier loyer, qualité du logement ou profil locataire." };
-  if (row.vacancyDays12m >= 30) return { tone: "amber" as const, label: "Vacance notable", detail: "Revoir délai de relocation et attractivité." };
   if (row.occupancyRate12m >= 95) return { tone: "emerald" as const, label: "Stable", detail: "Occupation solide sur 12 mois." };
+  if (row.vacancyDays12m >= 30) return { tone: "amber" as const, label: "Vacance notable", detail: "Revoir délai de relocation et attractivité." };
   return { tone: "sky" as const, label: "Correct", detail: "Suivi normal du bien." };
 }
 
@@ -204,13 +204,24 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
 
     const rows = actifs.map((property) => {
       const propertyLeases = safeLeases.filter((lease) => lease?.property_id === property?.id);
+      const usableLeases = propertyLeases.filter(isLeaseUsable);
+      const firstLeaseStart =
+        usableLeases
+          .map((lease) => normalizeDate(lease?.start_date))
+          .filter((date): date is Date => Boolean(date))
+          .sort((a, b) => a.getTime() - b.getTime())[0] || null;
+      const analysisStart =
+        firstLeaseStart && firstLeaseStart.getTime() > windowStart.getTime() && firstLeaseStart.getTime() < windowEnd.getTime()
+          ? firstLeaseStart
+          : windowStart;
+      const analysisDays = Math.max(1, daysBetween(analysisStart, windowEnd));
       const currentLease =
         propertyLeases
           .filter((lease) => isLeaseCurrent(lease, now))
           .sort((a, b) => (normalizeDate(b?.start_date)?.getTime() || 0) - (normalizeDate(a?.start_date)?.getTime() || 0))[0] || null;
       const currentTenant = currentLease ? tenantById.get(currentLease.tenant_id) : null;
-      const occupiedDays12m = occupancyDaysForWindow(propertyLeases, windowStart, windowEnd);
-      const vacancyDays12m = Math.max(0, windowDays - occupiedDays12m);
+      const occupiedDays12m = occupancyDaysForWindow(propertyLeases, analysisStart, windowEnd);
+      const vacancyDays12m = Math.max(0, analysisDays - occupiedDays12m);
       const turnover12m = propertyLeases.filter((lease) => {
         const start = normalizeDate(lease?.start_date);
         return start && start.getTime() >= windowStart.getTime() && start.getTime() < windowEnd.getTime() && isLeaseUsable(lease);
@@ -223,14 +234,16 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         currentLease,
         currentTenant,
         currentTenantDays,
+        analysisDays,
+        analysisStart,
         occupiedDays12m,
         vacancyDays12m,
-        occupancyRate12m: (occupiedDays12m / windowDays) * 100,
+        occupancyRate12m: (occupiedDays12m / analysisDays) * 100,
         turnover12m,
       };
     });
 
-    const totalWindowDays = Math.max(1, windowDays * Math.max(1, rows.length));
+    const totalWindowDays = Math.max(1, rows.reduce((sum, row) => sum + row.analysisDays, 0));
     const totalOccupiedDays = rows.reduce((sum, row) => sum + row.occupiedDays12m, 0);
     const occupiedNow = rows.filter((row) => row.currentLease).length;
     const currentDurations = rows.map((row) => row.currentTenantDays).filter((days): days is number => days != null);
@@ -653,34 +666,34 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       ) : null}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-200 bg-slate-950 px-4 py-4 text-white sm:px-5">
+        <div className="border-b border-slate-100 bg-gradient-to-br from-[#6072ff] via-[#4d9cff] to-[#5bcbd5] px-4 py-4 text-white sm:px-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/18 shadow-sm backdrop-blur">
                   <ChartBarIcon className="h-4 w-4" aria-hidden="true" />
                 </span>
                 <p className="text-sm font-semibold">Pilotage occupation</p>
-                <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[0.7rem] font-semibold text-white/90">
-                  12 derniers mois
+                <span className="rounded-full border border-white/25 bg-white/18 px-2.5 py-1 text-[0.7rem] font-semibold text-white shadow-sm backdrop-blur">
+                  Période connue
                 </span>
               </div>
-              <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-300">
-                Lecture rapide du remplissage, de la vacance et de la stabilité locative de votre parc actif.
+              <p className="mt-2 max-w-2xl text-xs leading-5 text-white/88">
+                Lecture rapide du remplissage, de la vacance et de la stabilité locative sur l’historique réellement renseigné.
               </p>
             </div>
 
             <div className="min-w-[14rem]">
               <div className="flex items-end justify-between gap-3">
                 <div>
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Remplissage global</p>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/70">Remplissage global</p>
                   <p className="mt-1 text-3xl font-bold tabular-nums">{pct(parcStats.occupancyRate12m)}</p>
                 </div>
                 {badge(occupancyTone(parcStats.occupancyRate12m), occupancyLabel(parcStats.occupancyRate12m))}
               </div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/25">
                 <div
-                  className={cx("h-full rounded-full", toneClasses(occupancyTone(parcStats.occupancyRate12m)).bg)}
+                  className="h-full rounded-full bg-white"
                   style={{ width: `${clampPercent(parcStats.occupancyRate12m)}%` }}
                 />
               </div>
@@ -743,7 +756,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-950">Lecture par bien</p>
-                <p className="text-xs text-slate-600">{parcStats.averageVacancyDays12m} jour(s) de vacance moyenne par logement actif.</p>
+                <p className="text-xs text-slate-600">{parcStats.averageVacancyDays12m} jour(s) de vacance moyenne par logement actif, sur la période connue.</p>
               </div>
               <div className="hidden items-center gap-3 text-[0.7rem] font-semibold text-slate-500 sm:flex">
                 <span>Remplissage</span>
@@ -779,7 +792,9 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                           <span className="truncate">{row.currentTenant?.full_name || "Vacant"}</span>
                         </div>
                         <p className="mt-1 text-xs text-slate-500">
-                          {row.currentLease ? `Présent depuis ${durationLabel(row.currentTenantDays)} (${row.currentLease.start_date})` : `${row.vacancyDays12m} j vacants sur 12 mois`}
+                          {row.currentLease
+                            ? `Présent depuis ${durationLabel(row.currentTenantDays)} (${row.currentLease.start_date})`
+                            : `${row.vacancyDays12m} j vacants sur période connue`}
                         </p>
                       </div>
 

@@ -1,6 +1,6 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BellIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
+import { BellIcon, HomeModernIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
@@ -30,6 +30,12 @@ const pad2 = (value: number) => String(value).padStart(2, "0");
 const toISODate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 const addMonths = (d: Date, delta: number) => new Date(d.getFullYear(), d.getMonth() + delta, 1);
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+const daysBetween = (start: Date, end: Date) => Math.max(0, Math.ceil((end.getTime() - start.getTime()) / 86400000));
 const normalizeDate = (value?: string | null) => {
   if (!value) return null;
   const d = new Date(String(value).slice(0, 10) + "T00:00:00");
@@ -45,6 +51,46 @@ const hasPositiveAmount = (value?: number | null) => Number(value || 0) > 0;
 function hasFinanceSetup(finance?: PropertyFinance | null) {
   if (!finance) return false;
   return hasPositiveAmount(finance.purchase_price) && hasPositiveAmount(finance.loan_rate_percent);
+}
+
+function isLeaseUsable(lease: Lease) {
+  const status = String(lease?.status || "").toLowerCase();
+  return status !== "draft" && status !== "archived";
+}
+
+function isLeaseCurrent(lease: Lease, now: Date) {
+  if (String(lease?.status || "").toLowerCase() !== "active") return false;
+  const start = normalizeDate(lease?.start_date);
+  const end = normalizeDate(lease?.end_date);
+  if (!start || start.getTime() > now.getTime()) return false;
+  return !end || end.getTime() >= now.getTime();
+}
+
+function occupancyDaysForWindow(leases: Lease[], windowStart: Date, windowEnd: Date) {
+  const intervals = leases
+    .filter(isLeaseUsable)
+    .map((lease) => {
+      const start = normalizeDate(lease?.start_date);
+      const rawEnd = normalizeDate(lease?.end_date);
+      if (!start) return null;
+      const end = rawEnd ? addDays(rawEnd, 1) : windowEnd;
+      const clippedStart = new Date(Math.max(start.getTime(), windowStart.getTime()));
+      const clippedEnd = new Date(Math.min(end.getTime(), windowEnd.getTime()));
+      return clippedEnd.getTime() > clippedStart.getTime() ? { start: clippedStart, end: clippedEnd } : null;
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => a.start.getTime() - b.start.getTime()) as Array<{ start: Date; end: Date }>;
+
+  const merged: Array<{ start: Date; end: Date }> = [];
+  for (const interval of intervals) {
+    const last = merged[merged.length - 1];
+    if (!last || interval.start.getTime() > last.end.getTime()) {
+      merged.push({ ...interval });
+    } else if (interval.end.getTime() > last.end.getTime()) {
+      last.end = interval.end;
+    }
+  }
+  return merged.reduce((total, interval) => total + daysBetween(interval.start, interval.end), 0);
 }
 
 function paymentStatusForLease(lease: Lease, yyyymm: string, payment?: RentPayment | null) {
@@ -97,10 +143,10 @@ export function SectionDashboard({
   monthlyPaid,
   lateCount,
   depositTotal,
-  occupancyRate,
   healthScore,
   alerts,
   activeLeases,
+  leases,
   payments,
   receipts,
   propertyById,
@@ -119,10 +165,10 @@ export function SectionDashboard({
   monthlyPaid: number;
   lateCount: number;
   depositTotal: number;
-  occupancyRate: number;
   healthScore: number;
   alerts: DashboardAlert[];
   activeLeases: Lease[];
+  leases: Lease[];
   payments: RentPayment[];
   receipts: RentReceipt[];
   propertyById: Map<string, Property>;
@@ -155,6 +201,55 @@ export function SectionDashboard({
     [receipts, monthRange]
   );
   const receiptCoverage = activeLeases.length > 0 ? clampPct((currentMonthReceipts.length / activeLeases.length) * 100) : 0;
+
+  const occupancySnapshot = useMemo(() => {
+    const activeProperties = (Array.isArray(properties) ? properties : []).filter(isActivePropertyLike);
+    const allLeases = Array.isArray(leases) ? leases : [];
+    const now = new Date();
+    const windowEnd = addDays(new Date(now.getFullYear(), now.getMonth(), now.getDate()), 1);
+    const windowStart = addDays(windowEnd, -365);
+
+    const rows = activeProperties.map((property) => {
+      const propertyLeases = allLeases.filter((lease) => lease?.property_id === property?.id);
+      const usableLeases = propertyLeases.filter(isLeaseUsable);
+      const firstLeaseStart =
+        usableLeases
+          .map((lease) => normalizeDate(lease?.start_date))
+          .filter((date): date is Date => Boolean(date))
+          .sort((a, b) => a.getTime() - b.getTime())[0] || null;
+      const analysisStart =
+        firstLeaseStart && firstLeaseStart.getTime() > windowStart.getTime() && firstLeaseStart.getTime() < windowEnd.getTime()
+          ? firstLeaseStart
+          : windowStart;
+      const analysisDays = Math.max(1, daysBetween(analysisStart, windowEnd));
+      const occupiedDays = occupancyDaysForWindow(propertyLeases, analysisStart, windowEnd);
+      const currentLease = propertyLeases.some((lease) => isLeaseCurrent(lease, now));
+
+      return {
+        property,
+        currentLease,
+        analysisDays,
+        occupiedDays,
+        vacancyDays: Math.max(0, analysisDays - occupiedDays),
+        historyIsShort: analysisDays < 90,
+      };
+    });
+
+    const totalKnownDays = rows.reduce((sum, row) => sum + row.analysisDays, 0);
+    const totalOccupiedDays = rows.reduce((sum, row) => sum + row.occupiedDays, 0);
+    const rate = totalKnownDays > 0 ? Math.round((totalOccupiedDays / totalKnownDays) * 100) : 0;
+    const vacantCount = rows.filter((row) => !row.currentLease).length;
+    const occupiedCount = rows.length - vacantCount;
+    const shortHistoryCount = rows.filter((row) => row.currentLease && row.historyIsShort).length;
+
+    return {
+      total: rows.length,
+      rate,
+      occupiedCount,
+      vacantCount,
+      shortHistoryCount,
+    };
+  }, [leases, properties]);
 
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
@@ -727,14 +822,16 @@ export function SectionDashboard({
       },
       {
         label: "Occupation",
-        value: `${occupancyRate}%`,
-        tone: occupancyRate >= 80 ? "emerald" : occupancyRate >= 60 ? "amber" : "red",
-        desc: occupancyRate >= 100 ? "Tous les biens ont un bail actif." : "Vérifiez les biens sans bail actif.",
-        target: occupancyRate < 100 ? ("biens" as LandlordSectionKey) : null,
+        value: `${occupancySnapshot.rate}%`,
+        tone: occupancySnapshot.rate >= 80 ? "emerald" : occupancySnapshot.rate >= 60 ? "amber" : "red",
+        desc: occupancySnapshot.vacantCount
+          ? `${occupancySnapshot.vacantCount} logement${occupancySnapshot.vacantCount > 1 ? "s" : ""} sans bail actif.`
+          : "Tous les biens connus ont un bail actif.",
+        target: occupancySnapshot.vacantCount || occupancySnapshot.rate < 100 ? ("biens" as LandlordSectionKey) : null,
       },
     ] as const;
     return rows;
-  }, [activeLeases.length, hasOnlyUpcomingRents, lateCount, monthlyExpected, nextDueDate, occupancyRate, ratio, receiptCoverage, remainingToCollect, upcomingTotal]);
+  }, [activeLeases.length, hasOnlyUpcomingRents, lateCount, monthlyExpected, nextDueDate, occupancySnapshot, ratio, receiptCoverage, remainingToCollect, upcomingTotal]);
 
   const toneFromPercent = (percent: number) =>
     (percent >= 100 ? "emerald" : percent >= 66 ? "indigo" : percent >= 33 ? "amber" : "slate");
@@ -820,7 +917,7 @@ export function SectionDashboard({
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full border border-white/25 bg-white/18 px-3 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur">Score {healthScore}/100</span>
-              <span className="rounded-full border border-white/25 bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm backdrop-blur">Occupation {occupancyRate}%</span>
+              <span className="rounded-full border border-white/25 bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm backdrop-blur">Occupation {occupancySnapshot.rate}%</span>
             </div>
           </div>
           <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/25 sm:mt-3">
@@ -833,6 +930,59 @@ export function SectionDashboard({
 
         <div className="grid gap-3 bg-[#f6f9fc] p-3 sm:gap-4 sm:p-4 lg:grid-cols-[1fr,0.85fr]">
           <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => onGo("biens")}
+              className="block w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm transition hover:border-[#635bff]/30 hover:shadow-md"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#4f46e5]">
+                    <HomeModernIcon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-950">Occupation du parc</p>
+                      <span
+                        className={
+                          "rounded-full border px-2.5 py-0.5 text-[0.68rem] font-semibold " +
+                          (occupancySnapshot.rate >= 95
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : occupancySnapshot.rate >= 70
+                            ? "border-amber-200 bg-amber-50 text-amber-700"
+                            : "border-red-200 bg-red-50 text-red-700")
+                        }
+                      >
+                        {occupancySnapshot.rate} %
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm leading-5 text-slate-600">
+                      {occupancySnapshot.total
+                        ? `${occupancySnapshot.occupiedCount}/${occupancySnapshot.total} logement${occupancySnapshot.total > 1 ? "s" : ""} occupé${occupancySnapshot.occupiedCount > 1 ? "s" : ""}`
+                        : "Ajoutez un logement pour suivre l’occupation."}
+                      {occupancySnapshot.vacantCount ? ` · ${occupancySnapshot.vacantCount} vacant${occupancySnapshot.vacantCount > 1 ? "s" : ""}` : ""}
+                      {occupancySnapshot.shortHistoryCount ? ` · ${occupancySnapshot.shortHistoryCount} historique récent` : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="min-w-[9rem]">
+                  <div className="flex items-center justify-between text-[0.7rem] font-semibold text-slate-500">
+                    <span>Période connue</span>
+                    <span>{occupancySnapshot.rate}%</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={
+                        "h-full rounded-full " +
+                        (occupancySnapshot.rate >= 95 ? "bg-emerald-500" : occupancySnapshot.rate >= 70 ? "bg-amber-500" : "bg-red-500")
+                      }
+                      style={{ width: `${Math.max(0, Math.min(100, occupancySnapshot.rate))}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </button>
+
             {priorityActions.map((action, index) => (
               <div
                 key={`${action.title}-${index}`}

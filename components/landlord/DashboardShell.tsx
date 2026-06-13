@@ -256,7 +256,6 @@ export function DashboardShell(props: any) {
   const monthlyPaid = props?.monthlyPaid;
   const lateCount = props?.lateCount;
   const depositTotal = props?.depositTotal;
-  const occupancyRate = props?.occupancyRate;
   const alerts = props?.alerts;
   const activeLeases = Array.isArray(props?.activeLeases) ? props.activeLeases : [];
 
@@ -431,10 +430,10 @@ export function DashboardShell(props: any) {
             monthlyPaid={monthlyPaid}
             lateCount={lateCount}
             depositTotal={depositTotal}
-            occupancyRate={occupancyRate}
             healthScore={healthScore}
             alerts={alerts}
             activeLeases={activeLeases}
+            leases={leases}
             payments={payments}
             receipts={receipts}
             propertyById={propertyById}
@@ -567,7 +566,6 @@ export function DashboardShell(props: any) {
     monthlyPaid,
     lateCount,
     depositTotal,
-    occupancyRate,
     alerts,
     activeLeases,
     navOrder,
