@@ -1,36 +1,8 @@
 import React from "react";
-import {
-  ArchiveBoxIcon,
-  BanknotesIcon,
-  BellAlertIcon,
-  ChartBarIcon,
-  ChatBubbleLeftRightIcon,
-  ClipboardDocumentCheckIcon,
-  DocumentMagnifyingGlassIcon,
-  DocumentTextIcon,
-  HomeIcon,
-  ReceiptPercentIcon,
-  Squares2X2Icon,
-  UserGroupIcon,
-  WrenchScrewdriverIcon,
-} from "@heroicons/react/24/outline";
 import { Pill } from "./UiBits";
+import { getLandlordNavItems, type LandlordSectionKey } from "./navigation";
 
-export type LandlordSectionKey =
-  | "dashboard"
-  | "locataires"
-  | "biens"
-  | "baux"
-  | "messagerie"
-  | "alertes"
-  | "etat_des_lieux"
-  | "quittances"
-  | "finance"
-  | "performance"
-  | "outils"
-  | "inventaire"
-  | "documents"
-  | "declaration"; // ✅ NEW
+export type { LandlordSectionKey } from "./navigation";
 
 type Item = {
   key: LandlordSectionKey;
@@ -43,12 +15,14 @@ export function SidebarNav({
   active,
   onChange,
   healthScore,
+  navOrder,
   className = "",
 }: {
   active: LandlordSectionKey;
   onChange: (k: LandlordSectionKey) => void;
   healthScore: number;
   overLimit: boolean;
+  navOrder?: LandlordSectionKey[];
   className?: string;
 }) {
   // 🎨 Brand lokt.fr
@@ -56,36 +30,15 @@ export function SidebarNav({
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
 
-  const items: Item[] = [
-    {
-      key: "dashboard",
-      label: "Accueil",
-      icon: Squares2X2Icon,
-      badge: (
+  const items: Item[] = getLandlordNavItems(navOrder).map((item) => ({
+    ...item,
+    badge:
+      item.key === "dashboard" ? (
         <Pill tone={healthScore >= 80 ? "emerald" : healthScore >= 60 ? "amber" : "red"}>
           Santé {healthScore}
         </Pill>
-      ),
-    },
-
-    { key: "locataires", label: "Locataires", icon: UserGroupIcon },
-    { key: "biens", label: "Logements", icon: HomeIcon },
-    { key: "baux", label: "Contrats", icon: DocumentTextIcon },
-    { key: "messagerie", label: "Messages", icon: ChatBubbleLeftRightIcon },
-    { key: "alertes", label: "À traiter", icon: BellAlertIcon },
-    { key: "etat_des_lieux", label: "États des lieux", icon: ClipboardDocumentCheckIcon },
-    { key: "quittances", label: "Quittances", icon: ReceiptPercentIcon },
-    { key: "finance", label: "Encaissements", icon: BanknotesIcon },
-    { key: "performance", label: "Analyse", icon: ChartBarIcon },
-    { key: "outils", label: "Boîte à outils", icon: WrenchScrewdriverIcon },
-    { key: "inventaire", label: "Inventaires", icon: ArchiveBoxIcon },
-
-    {
-      key: "declaration",
-      label: "Déclaration",
-      icon: DocumentMagnifyingGlassIcon,
-    },
-  ];
+      ) : undefined,
+  }));
 
   const go = (e: React.SyntheticEvent, key: LandlordSectionKey) => {
     (e as any).preventDefault?.();

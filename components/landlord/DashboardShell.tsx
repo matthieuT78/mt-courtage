@@ -2,8 +2,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ArrowUpRightIcon, Bars3Icon, CheckCircleIcon, LockClosedIcon, SparklesIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowUpRightIcon,
+  CheckCircleIcon,
+  LockClosedIcon,
+  SparklesIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import { SidebarNav, LandlordSectionKey } from "./SidebarNav";
+import { supabase } from "../../lib/supabaseClient";
+import {
+  DEFAULT_LANDLORD_NAV_ORDER,
+  LANDLORD_NAV_ITEMS,
+  getLandlordNavItems,
+  normalizeLandlordNavOrder,
+} from "./navigation";
 
 import { SectionDashboard } from "./sections/SectionDashboard";
 import { SectionBiens } from "./sections/SectionBiens";
@@ -18,6 +31,7 @@ import { SectionEtatDesLieux } from "./sections/SectionEtatDesLieux";
 import { SectionInventaire } from "./sections/SectionInventaire";
 import { SectionDeclaration } from "./sections/SectionDeclaration";
 import { SectionOutils } from "./sections/SectionOutils";
+import { SectionParametres } from "./sections/SectionParametres";
 import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools } from "../../lib/permissions";
@@ -80,13 +94,145 @@ function LockedPremiumSection({ config }: { config: LockedSectionConfig }) {
   );
 }
 
+function MobileBottomNav({
+  active,
+  onChange,
+  moreOpen,
+  setMoreOpen,
+  navOrder,
+}: {
+  active: LandlordSectionKey;
+  onChange: (k: LandlordSectionKey) => void;
+  moreOpen: boolean;
+  setMoreOpen: (open: boolean) => void;
+  navOrder: LandlordSectionKey[];
+}) {
+  const orderedItems = getLandlordNavItems(navOrder);
+  const items = orderedItems.slice(0, 4);
+  const moreItems = orderedItems.slice(4);
+  const moreIsActive = moreItems.some((item) => item.key === active);
+  const go = (key: LandlordSectionKey) => {
+    setMoreOpen(false);
+    onChange(key);
+  };
+
+  return (
+    <>
+      <div
+        className={
+          "fixed inset-0 z-40 bg-slate-950/25 transition-opacity lg:hidden " +
+          (moreOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
+        }
+        onClick={() => setMoreOpen(false)}
+        aria-hidden={!moreOpen}
+      />
+      <div
+        className={
+          "fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-50 mx-auto max-w-md rounded-[1.75rem] border border-slate-200 bg-white p-3 shadow-[0_24px_70px_rgba(15,23,42,0.22)] transition-all duration-200 lg:hidden " +
+          (moreOpen ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0")
+        }
+      >
+        <div className="mb-2 flex items-center justify-between px-1">
+          <div>
+            <p className="text-sm font-semibold text-slate-950">Plus</p>
+            <p className="text-xs text-slate-500">Toutes les sections bailleur</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMoreOpen(false)}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500"
+            aria-label="Fermer"
+          >
+            <XMarkIcon className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {moreItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = item.key === active;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => go(item.key)}
+                className={
+                  "flex min-h-[78px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-2 text-center text-[0.72rem] font-semibold transition " +
+                  (isActive
+                    ? "border-[#635bff]/20 bg-[#eef2ff] text-[#4f46e5]"
+                    : "border-slate-200 bg-slate-50 text-slate-700")
+                }
+              >
+                <Icon className="h-5 w-5" aria-hidden="true" />
+              <span className="leading-tight">{item.shortLabel || item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-1.5 shadow-[0_-18px_45px_rgba(15,23,42,0.12)] backdrop-blur-xl lg:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const isActive = item.key === active;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => onChange(item.key)}
+                className={
+                  "flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[0.68rem] font-semibold transition " +
+                  (isActive
+                    ? "bg-[#eef2ff] text-[#4f46e5]"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")
+                }
+              >
+                <span
+                  className={
+                    "flex h-7 w-7 items-center justify-center rounded-xl transition " +
+                    (isActive ? "bg-gradient-to-br from-[#635bff] to-[#00b7ff] text-white shadow-sm" : "bg-transparent")
+                  }
+                >
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span className="leading-none">{item.shortLabel || item.label}</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(!moreOpen)}
+            className={
+              "flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[0.68rem] font-semibold transition " +
+              (moreIsActive || moreOpen
+                ? "bg-[#eef2ff] text-[#4f46e5]"
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")
+            }
+          >
+            <span
+              className={
+                "flex h-7 w-7 items-center justify-center rounded-xl text-lg leading-none transition " +
+                (moreIsActive || moreOpen ? "bg-gradient-to-br from-[#635bff] to-[#00b7ff] text-white shadow-sm" : "bg-transparent")
+              }
+            >
+              ···
+            </span>
+            <span className="leading-none">Plus</span>
+          </button>
+        </div>
+      </nav>
+    </>
+  );
+}
+
 export function DashboardShell(props: any) {
   const router = useRouter();
   const { loading: permissionsLoading, plan, maxActiveProperties } = usePermissions();
   const [active, setActive] = useState<LandlordSectionKey>("dashboard");
   const [messagingTenantId, setMessagingTenantId] = useState<string | null>(null);
   const [departureTenantId, setDepartureTenantId] = useState<string | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [navOrder, setNavOrder] = useState<LandlordSectionKey[]>(DEFAULT_LANDLORD_NAV_ORDER);
 
   const userId: string = props?.user?.id || "";
   const userEmail: string | undefined = props?.user?.email;
@@ -122,6 +268,47 @@ export function DashboardShell(props: any) {
   const planLabel = getBillingPlan(plan)?.name || plan;
   const canUsePerformance = planAllowsPerformance(plan);
   const canUseTools = planAllowsTools(plan);
+
+  useEffect(() => {
+    if (!userId) return;
+    let mounted = true;
+    const storageKey = `landlord_nav_order:${userId}`;
+
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored) setNavOrder(normalizeLandlordNavOrder(JSON.parse(stored)));
+    } catch {
+      // L'ordre par défaut reste disponible.
+    }
+
+    (async () => {
+      if (!supabase) return;
+      try {
+        const { data, error } = await supabase
+          .from("app_settings")
+          .select("value_json")
+          .eq("key", storageKey)
+          .maybeSingle();
+        if (error || !mounted) return;
+        const order = (data?.value_json as any)?.order;
+        if (order) {
+          const clean = normalizeLandlordNavOrder(order);
+          setNavOrder(clean);
+          try {
+            window.localStorage.setItem(storageKey, JSON.stringify(clean));
+          } catch {
+            // ignore
+          }
+        }
+      } catch {
+        // La préférence locale suffit si la table/policy n'est pas encore disponible.
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
 
   const rentFeedback = useMemo(() => {
     const result = typeof router.query.rentResult === "string" ? router.query.rentResult : "";
@@ -167,42 +354,14 @@ export function DashboardShell(props: any) {
       setActive("outils");
       return;
     }
-    const validTabs: LandlordSectionKey[] = [
-      "dashboard",
-      "biens",
-      "locataires",
-      "baux",
-      "messagerie",
-      "alertes",
-      "quittances",
-      "finance",
-      "performance",
-      "outils",
-      "etat_des_lieux",
-      "inventaire",
-      "declaration",
-    ];
+    const validTabs: LandlordSectionKey[] = [...DEFAULT_LANDLORD_NAV_ORDER];
     if (validTabs.includes(tab as LandlordSectionKey)) setActive(tab as LandlordSectionKey);
   }, [router.query.tab]);
 
   const onChangeTab = (k: LandlordSectionKey) => {
     setActive(k);
-    setMobileMenuOpen(false);
+    setMobileMoreOpen(false);
   };
-
-  useEffect(() => {
-    if (!mobileMenuOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileMenuOpen(false);
-    };
-    document.body.style.overflow = "hidden";
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [mobileMenuOpen]);
 
   const lockedSection = useMemo<LockedSectionConfig | null>(() => {
     if (permissionsLoading) return null;
@@ -374,6 +533,9 @@ export function DashboardShell(props: any) {
       case "declaration":
         return <SectionDeclaration userId={userId} properties={properties} />;
 
+      case "parametres":
+        return <SectionParametres userId={userId} navOrder={navOrder} onNavOrderChange={setNavOrder} />;
+
       default:
         return (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
@@ -408,66 +570,29 @@ export function DashboardShell(props: any) {
     occupancyRate,
     alerts,
     activeLeases,
+    navOrder,
   ]);
 
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-6">
-      <div className="sticky top-3 z-30 mb-3 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(true)}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 shadow-md shadow-slate-900/10"
-          aria-label="Ouvrir le menu de l’espace bailleur"
-          aria-expanded={mobileMenuOpen}
-          aria-controls="landlord-mobile-menu"
-        >
-          <Bars3Icon className="h-6 w-6" aria-hidden="true" />
-        </button>
-      </div>
+  const activeLabel = LANDLORD_NAV_ITEMS[active]?.label || "Espace bailleur";
 
-      <div
-        className={
-          "fixed inset-0 z-50 lg:hidden " +
-          (mobileMenuOpen ? "pointer-events-auto" : "pointer-events-none")
-        }
-        aria-hidden={!mobileMenuOpen}
-      >
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(false)}
-          className={
-            "absolute inset-0 bg-slate-950/35 transition-opacity duration-300 " +
-            (mobileMenuOpen ? "opacity-100" : "opacity-0")
-          }
-          aria-label="Fermer le menu"
-          tabIndex={mobileMenuOpen ? 0 : -1}
-        />
-        <div
-          id="landlord-mobile-menu"
-          className={
-            "absolute inset-y-0 left-0 w-[min(88vw,320px)] overflow-y-auto bg-white p-3 shadow-2xl transition-transform duration-300 ease-out " +
-            (mobileMenuOpen ? "translate-x-0" : "-translate-x-full")
-          }
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation de l’espace bailleur"
-        >
-          <div className="mb-2 flex justify-end">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(false)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
-              aria-label="Fermer le menu"
-            >
-              <XMarkIcon className="h-5 w-5" aria-hidden="true" />
-            </button>
+  return (
+    <div className="mx-auto max-w-7xl px-3 pb-24 pt-4 sm:px-4 sm:py-6 lg:pb-6">
+      <div className="sticky top-0 z-30 mb-3 -mx-3 border-b border-slate-200 bg-white/90 px-3 py-2 backdrop-blur-xl lg:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[0.68rem] font-semibold lowercase tracking-[0.2em] text-slate-500">lokt.fr</p>
+            <p className="truncate text-base font-semibold text-slate-950">{activeLabel}</p>
           </div>
-          <SidebarNav active={active} onChange={onChangeTab} healthScore={healthScore} overLimit={overLimit} />
+          <div className="flex items-center gap-2">
+            <span className="rounded-full border border-[#635bff]/20 bg-[#635bff]/5 px-2.5 py-1 text-[0.68rem] font-semibold text-[#4f46e5]">
+              Santé {healthScore}
+            </span>
+          </div>
         </div>
       </div>
 
       {!permissionsLoading ? (
-        <div className="mb-4 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+        <div className="mb-4 hidden overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm sm:block">
           <div className="h-1 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
           <div className="p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -524,9 +649,23 @@ export function DashboardShell(props: any) {
         </div>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        <SidebarNav active={active} onChange={onChangeTab} healthScore={healthScore} overLimit={overLimit} className="hidden lg:block" />
+        <SidebarNav
+          active={active}
+          onChange={onChangeTab}
+          healthScore={healthScore}
+          overLimit={overLimit}
+          navOrder={navOrder}
+          className="hidden lg:block"
+        />
         <section className="min-w-0 space-y-4">{content}</section>
       </div>
+      <MobileBottomNav
+        active={active}
+        onChange={onChangeTab}
+        moreOpen={mobileMoreOpen}
+        setMoreOpen={setMobileMoreOpen}
+        navOrder={navOrder}
+      />
     </div>
   );
 }

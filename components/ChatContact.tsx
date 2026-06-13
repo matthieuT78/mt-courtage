@@ -50,6 +50,7 @@ export default function ContactChat() {
     if (p.includes("capacite") || p.includes("investissement") || p.includes("pret-relais") || p.includes("plus-value") || p.includes("parc-immobilier")) return "simulation immobilière";
     return "utilisation de lokt.fr";
   }, [page]);
+  const isLandlordSpace = page.startsWith("/espace-bailleur");
 
   const buildTemplate = (cat: Cat) => {
     if (cat === "problem") {
@@ -152,7 +153,12 @@ export default function ContactChat() {
   };
 
   return (
-    <div className="fixed bottom-3 right-3 z-[90] sm:bottom-4 sm:right-4">
+    <div
+      className={
+        "fixed right-3 z-[90] sm:bottom-4 sm:right-4 " +
+        (isLandlordSpace ? "bottom-28 sm:bottom-4" : "bottom-3")
+      }
+    >
       {/* bouton flottant (premium) */}
       {!open ? (
         <button
