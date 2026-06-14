@@ -15,7 +15,10 @@ import { planAllowsPerformance } from "../../../lib/permissions";
 
 type Regime = "lmnp_micro" | "lmnp_reel" | "nu_micro" | "nu_reel" | "pinel";
 type LocationKind = "meuble_longue" | "meuble_saisonnier";
-type DeclarationStep = "prepare" | "verify" | "export";
+type DeclarationStep = "diagnostic" | "prepare" | "verify" | "export";
+type FurnishedAnswer = "unknown" | "yes" | "no";
+type ExpenseProfile = "low" | "high";
+type AccountingProfile = "solo" | "accountant";
 
 type Stored = {
   id: string;
@@ -33,6 +36,19 @@ type Transaction = {
   label: string | null;
   amount: number;
   notes: string | null;
+};
+
+type ImportTotals = {
+  rows: Transaction[];
+  grossRent: number;
+  otherIncome: number;
+  propertyTax: number;
+  insurance: number;
+  copro: number;
+  repairs: number;
+  managementFees: number;
+  utilities: number;
+  otherExpenses: number;
 };
 
 type Props = {
@@ -91,6 +107,25 @@ function Field({ label, value, onChange }: { label: string; value: number; onCha
   );
 }
 
+const REGIME_LABELS: Record<Regime, string> = {
+  lmnp_micro: "LMNP · Micro-BIC",
+  lmnp_reel: "LMNP · Réel",
+  nu_micro: "Location nue · Micro-foncier",
+  nu_reel: "Location nue · Réel",
+  pinel: "Pinel",
+};
+
+function regimeLabel(regime: Regime) {
+  return REGIME_LABELS[regime] || regime;
+}
+
+function statusToneClass(tone: "emerald" | "amber" | "red" | "slate") {
+  if (tone === "emerald") return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  if (tone === "amber") return "border-amber-200 bg-amber-50 text-amber-900";
+  if (tone === "red") return "border-red-200 bg-red-50 text-red-800";
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
 export function SectionDeclaration({ userId, properties }: Props) {
   const { loading: permissionsLoading, plan } = usePermissions();
   const isPremium = planAllowsPerformance(plan);
@@ -111,6 +146,9 @@ export function SectionDeclaration({ userId, properties }: Props) {
   const [regime, setRegime] = useState<Regime>("lmnp_micro");
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("all");
   const [locationKind, setLocationKind] = useState<LocationKind>("meuble_longue");
+  const [furnishedAnswer, setFurnishedAnswer] = useState<FurnishedAnswer>("unknown");
+  const [expenseProfile, setExpenseProfile] = useState<ExpenseProfile>("low");
+  const [accountingProfile, setAccountingProfile] = useState<AccountingProfile>("solo");
 
   const [grossRent, setGrossRent] = useState(0);
   const [chargesRecovered, setChargesRecovered] = useState(0);
@@ -134,7 +172,8 @@ export function SectionDeclaration({ userId, properties }: Props) {
   const [err, setErr] = useState<string | null>(null);
   const [rowId, setRowId] = useState<string | null>(null);
   const [financeRows, setFinanceRows] = useState<Transaction[]>([]);
-  const [activeStep, setActiveStep] = useState<DeclarationStep>("prepare");
+  const [importPreview, setImportPreview] = useState<ImportTotals | null>(null);
+  const [activeStep, setActiveStep] = useState<DeclarationStep>("diagnostic");
 
   const isLmnp = regime.startsWith("lmnp");
   const isNu = regime.startsWith("nu");
@@ -156,6 +195,24 @@ export function SectionDeclaration({ userId, properties }: Props) {
     : realNuBase < microFoncierBase
     ? "Le réel foncier semble plus favorable à vérifier."
     : "Le micro-foncier semble suffisant à ce stade.";
+
+  const suggestedRegime: Regime =
+    furnishedAnswer === "yes"
+      ? expenseProfile === "high" || accountingProfile === "accountant"
+        ? "lmnp_reel"
+        : "lmnp_micro"
+      : furnishedAnswer === "no"
+      ? expenseProfile === "high" || accountingProfile === "accountant"
+        ? "nu_reel"
+        : "nu_micro"
+      : regime;
+
+  const suggestedReason =
+    furnishedAnswer === "unknown"
+      ? "Répondez aux questions pour obtenir une orientation de départ."
+      : expenseProfile === "high"
+      ? "Vos charges, travaux ou intérêts semblent importants : le réel mérite d’être étudié."
+      : "Avec peu de charges à retraiter, le régime micro peut être un bon point de départ.";
 
   const selectedPropertyLabel =
     selectedPropertyId === "all" ? "Tous les biens" : propertyById.get(selectedPropertyId)?.label || "Bien sélectionné";
@@ -186,6 +243,9 @@ export function SectionDeclaration({ userId, properties }: Props) {
       setRowId((data as Stored).id);
       setSelectedPropertyId(d.selectedPropertyId || "all");
       setLocationKind((d.locationKind as LocationKind) || "meuble_longue");
+      setFurnishedAnswer((d.furnishedAnswer as FurnishedAnswer) || "unknown");
+      setExpenseProfile((d.expenseProfile as ExpenseProfile) || "low");
+      setAccountingProfile((d.accountingProfile as AccountingProfile) || "solo");
       setGrossRent(toNumber(d.grossRent));
       setChargesRecovered(toNumber(d.chargesRecovered));
       setOtherIncome(toNumber(d.otherIncome));
@@ -224,6 +284,9 @@ export function SectionDeclaration({ userId, properties }: Props) {
         data: {
           selectedPropertyId,
           locationKind,
+          furnishedAnswer,
+          expenseProfile,
+          accountingProfile,
           grossRent,
           chargesRecovered,
           otherIncome,
@@ -261,6 +324,41 @@ export function SectionDeclaration({ userId, properties }: Props) {
     }
   };
 
+  const buildImportTotals = (rows: Transaction[]): ImportTotals => {
+    const receivedIncome = rows.filter((r) => r.direction === "in" && (r.status === "received" || r.category === "rent"));
+    const paidExpenses = rows.filter((r) => r.direction === "out" && r.status === "paid");
+    const sum = (list: Transaction[]) => list.reduce((acc, r) => acc + Number(r.amount || 0), 0);
+
+    return {
+      rows,
+      grossRent: sum(receivedIncome.filter((r) => r.category === "rent")),
+      otherIncome: sum(receivedIncome.filter((r) => r.category !== "rent")),
+      propertyTax: sum(paidExpenses.filter((r) => r.category === "tax")),
+      insurance: sum(paidExpenses.filter((r) => r.category === "insurance")),
+      copro: sum(paidExpenses.filter((r) => r.category === "copro")),
+      repairs: sum(paidExpenses.filter((r) => r.category === "repairs")),
+      managementFees: sum(paidExpenses.filter((r) => r.category === "management" || r.category === "fees")),
+      utilities: sum(paidExpenses.filter((r) => r.category === "utilities")),
+      otherExpenses: sum(paidExpenses.filter((r) => !["tax", "insurance", "copro", "repairs", "management", "fees", "utilities"].includes(r.category))),
+    };
+  };
+
+  const applyImportPreview = (preview = importPreview) => {
+    if (!preview) return;
+    setFinanceRows(preview.rows);
+    setGrossRent(preview.grossRent);
+    setOtherIncome(preview.otherIncome);
+    setPropertyTax(preview.propertyTax);
+    setInsurance(preview.insurance);
+    setCopro(preview.copro);
+    setRepairs(preview.repairs);
+    setManagementFees(preview.managementFees);
+    setUtilities(preview.utilities);
+    setOtherExpenses(preview.otherExpenses);
+    setImportPreview(null);
+    setInfo(`Montants Finance appliqués ✅ (${preview.rows.length} écriture${preview.rows.length > 1 ? "s" : ""})`);
+  };
+
   const importFromFinance = async () => {
     if (!supabase || !userId || !isPremium) return;
     setLoading(true);
@@ -282,21 +380,9 @@ export function SectionDeclaration({ userId, properties }: Props) {
       if (error) throw error;
 
       const rows = ((data || []) as Transaction[]) || [];
-      setFinanceRows(rows);
-      const receivedIncome = rows.filter((r) => r.direction === "in" && (r.status === "received" || r.category === "rent"));
-      const paidExpenses = rows.filter((r) => r.direction === "out" && r.status === "paid");
-      const sum = (list: Transaction[]) => list.reduce((acc, r) => acc + Number(r.amount || 0), 0);
-
-      setGrossRent(sum(receivedIncome.filter((r) => r.category === "rent")));
-      setOtherIncome(sum(receivedIncome.filter((r) => r.category !== "rent")));
-      setPropertyTax(sum(paidExpenses.filter((r) => r.category === "tax")));
-      setInsurance(sum(paidExpenses.filter((r) => r.category === "insurance")));
-      setCopro(sum(paidExpenses.filter((r) => r.category === "copro")));
-      setRepairs(sum(paidExpenses.filter((r) => r.category === "repairs")));
-      setManagementFees(sum(paidExpenses.filter((r) => r.category === "management" || r.category === "fees")));
-      setUtilities(sum(paidExpenses.filter((r) => r.category === "utilities")));
-      setOtherExpenses(sum(paidExpenses.filter((r) => !["tax", "insurance", "copro", "repairs", "management", "fees", "utilities"].includes(r.category))));
-      setInfo(`Import Finance terminé ✅ (${rows.length} écriture${rows.length > 1 ? "s" : ""})`);
+      const preview = buildImportTotals(rows);
+      setImportPreview(preview);
+      setInfo(`Finance a trouvé ${rows.length} écriture${rows.length > 1 ? "s" : ""}. Vérifiez l’aperçu avant application.`);
     } catch (e: any) {
       setErr(e?.message || "Impossible d’importer depuis Finance.");
     } finally {
@@ -363,18 +449,37 @@ export function SectionDeclaration({ userId, properties }: Props) {
   };
 
   const steps: Array<{ key: DeclarationStep; label: string; title: string; desc: string }> = [
-    { key: "prepare", label: "1", title: "Préparer", desc: "Année, bien, régime et import Finance." },
-    { key: "verify", label: "2", title: "Vérifier", desc: "Contrôler les montants et le régime le plus cohérent." },
-    { key: "export", label: "3", title: "Exporter", desc: "Alertes, justificatifs et dossier comptable." },
+    { key: "diagnostic", label: "1", title: "Orienter", desc: "Identifier le type de location et le régime à étudier." },
+    { key: "prepare", label: "2", title: "Préparer", desc: "Année, bien, régime et import Finance." },
+    { key: "verify", label: "3", title: "Vérifier", desc: "Contrôler les montants et le régime le plus cohérent." },
+    { key: "export", label: "4", title: "Exporter", desc: "Alertes, justificatifs et dossier comptable." },
   ];
 
   const completionItems = [
+    { label: "Diagnostic réalisé", ok: furnishedAnswer !== "unknown" },
     { label: "Périmètre choisi", ok: !!year && !!regime && !!selectedPropertyId },
     { label: "Recettes renseignées", ok: receiptsTotal > 0 },
     { label: "Charges contrôlées", ok: chargesBeforeAmortization > 0 || regime.endsWith("micro") },
     { label: "Dossier sauvegardé", ok: !!rowId },
   ];
   const completionPct = Math.round((completionItems.filter((item) => item.ok).length / completionItems.length) * 100);
+
+  const propertyDossiers = useMemo(() => {
+    const selectedReady = selectedPropertyId !== "all" && receiptsTotal > 0;
+    return safeProperties.map((property) => {
+      const isSelected = property.id === selectedPropertyId;
+      const progress = isSelected ? completionPct : 0;
+      const tone = isSelected && selectedReady ? "emerald" : isSelected ? "amber" : "slate";
+      return {
+        property,
+        isSelected,
+        progress,
+        tone: tone as "emerald" | "amber" | "red" | "slate",
+        label: property.label || property.address_line1 || "Logement",
+        city: property.city || property.postal_code || "Adresse à compléter",
+      };
+    });
+  }, [safeProperties, selectedPropertyId, receiptsTotal, completionPct]);
 
   if (!permissionsLoading && !isPremium) {
     return (
@@ -417,10 +522,10 @@ export function SectionDeclaration({ userId, properties }: Props) {
             <div>
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Aide à la déclaration</p>
               <h2 className="mt-2 max-w-3xl text-3xl font-semibold leading-tight text-slate-950">
-                Préparer un dossier fiscal propre, sans se noyer dans les cases.
+                Transformer l’année locative en dossier fiscal clair.
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                lokt.fr vous guide en trois temps : importer les données, vérifier les montants, puis exporter une synthèse claire pour vous ou votre comptable.
+                lokt.fr vous aide à choisir le bon périmètre, importer les écritures Finance, vérifier les montants et préparer une synthèse exploitable pour vous ou votre comptable.
               </p>
             </div>
             <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -430,46 +535,54 @@ export function SectionDeclaration({ userId, properties }: Props) {
           </div>
         </div>
 
-        <div className="grid gap-0 xl:grid-cols-[320px,minmax(0,1fr)]">
-          <aside className="border-b border-slate-200 bg-slate-50 p-4 xl:border-b-0 xl:border-r">
-            <div className="space-y-2">
+        <div className="border-b border-slate-200 bg-white px-4 py-3 sm:px-5">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex gap-2 overflow-x-auto pb-1 xl:pb-0">
               {steps.map((step) => (
                 <button
                   key={step.key}
                   type="button"
                   onClick={() => setActiveStep(step.key)}
                   className={cx(
-                    "w-full rounded-2xl border px-4 py-3 text-left transition",
-                    activeStep === step.key ? "border-cyan-300 bg-white shadow-sm" : "border-slate-200 bg-white/70 hover:bg-white"
+                    "flex min-w-[9.5rem] items-center gap-2 rounded-2xl border px-3 py-2 text-left transition",
+                    activeStep === step.key ? "border-[#635bff]/30 bg-[#635bff]/5 shadow-sm" : "border-slate-200 bg-white hover:bg-slate-50"
                   )}
                 >
-                  <div className="flex items-start gap-3">
-                    <span className={cx("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold", activeStep === step.key ? brandBg + " " + brandText : "bg-slate-100 text-slate-700")}>
-                      {step.label}
-                    </span>
-                    <span>
-                      <span className="block text-sm font-semibold text-slate-950">{step.title}</span>
-                      <span className="mt-1 block text-xs leading-5 text-slate-500">{step.desc}</span>
-                    </span>
-                  </div>
+                  <span className={cx("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold", activeStep === step.key ? brandBg + " " + brandText : "bg-slate-100 text-slate-700")}>
+                    {step.label}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-slate-950">{step.title}</span>
+                    <span className="block truncate text-[0.72rem] text-slate-500">{step.desc}</span>
+                  </span>
                 </button>
               ))}
             </div>
 
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Avancement</p>
-              <div className="mt-3 space-y-2">
-                {completionItems.map((item) => (
-                  <div key={item.label} className="flex items-center gap-2 text-sm">
-                    <CheckCircleIcon className={cx("h-4 w-4", item.ok ? "text-emerald-500" : "text-slate-300")} />
-                    <span className={item.ok ? "text-slate-800" : "text-slate-500"}>{item.label}</span>
-                  </div>
-                ))}
+            <div className="shrink-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Avancement</p>
+                  <p className="text-sm font-semibold text-slate-950">{completionPct}% prêt</p>
+                </div>
+                <div className="flex -space-x-1">
+                  {completionItems.map((item) => (
+                    <span
+                      key={item.label}
+                      className={cx(
+                        "h-2.5 w-2.5 rounded-full ring-2 ring-slate-50",
+                        item.ok ? "bg-emerald-500" : "bg-slate-300"
+                      )}
+                      title={item.label}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </aside>
+          </div>
+        </div>
 
-          <div className="min-w-0 p-5">
+        <div className="min-w-0 p-5">
             <div className="mb-4 grid gap-3 md:grid-cols-4">
               <Stat label="Recettes" value={eur(receiptsTotal)} sub="Hors dépôt" />
               <Stat label="Charges" value={eur(chargesBeforeAmortization)} sub="Hors amort." />
@@ -479,6 +592,141 @@ export function SectionDeclaration({ userId, properties }: Props) {
 
             {err ? <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
             {info ? <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{info}</div> : null}
+
+            <section className="mb-4 rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">Dossiers par logement</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">Sélectionnez un bien pour préparer un dossier fiscal dédié. “Tous les biens” reste possible pour une vue consolidée.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPropertyId("all")}
+                  className={cx("rounded-full border px-3 py-1.5 text-xs font-semibold", selectedPropertyId === "all" ? "border-[#635bff]/30 bg-[#635bff]/5 text-[#4f46e5]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}
+                >
+                  Vue consolidée
+                </button>
+              </div>
+              <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                {propertyDossiers.slice(0, 6).map((dossier) => (
+                  <button
+                    key={dossier.property.id}
+                    type="button"
+                    onClick={() => setSelectedPropertyId(dossier.property.id)}
+                    className={cx(
+                      "rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5",
+                      dossier.isSelected ? "border-[#635bff]/35 bg-[#635bff]/5 shadow-sm" : "border-slate-200 bg-slate-50 hover:bg-white"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-950">{dossier.label}</p>
+                        <p className="mt-1 truncate text-xs text-slate-500">{dossier.city}</p>
+                      </div>
+                      <span className={cx("shrink-0 rounded-full border px-2 py-0.5 text-[0.68rem] font-semibold", statusToneClass(dossier.tone))}>
+                        {dossier.isSelected ? `${dossier.progress}%` : "À préparer"}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {activeStep === "diagnostic" ? (
+              <div className="space-y-4">
+                <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                  <div className="border-b border-slate-200 bg-gradient-to-r from-[#eef2ff] via-white to-[#ecfeff] p-5">
+                    <p className="text-sm font-semibold text-slate-950">1. Orientation de départ</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      Répondez simplement. L’objectif n’est pas de trancher juridiquement, mais d’éviter de partir dans le mauvais dossier.
+                    </p>
+                  </div>
+                  <div className="grid gap-4 p-5 lg:grid-cols-[1fr,320px]">
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Type de location</p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                          {[
+                            ["yes", "Meublé"],
+                            ["no", "Vide"],
+                            ["unknown", "Je ne sais pas"],
+                          ].map(([value, label]) => (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => setFurnishedAnswer(value as FurnishedAnswer)}
+                              className={cx("rounded-2xl border px-4 py-3 text-sm font-semibold transition", furnishedAnswer === value ? "border-[#635bff]/40 bg-[#635bff]/5 text-[#4f46e5]" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Niveau de charges</p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpenseProfile("low")}
+                            className={cx("rounded-2xl border px-4 py-3 text-left text-sm transition", expenseProfile === "low" ? "border-[#635bff]/40 bg-[#635bff]/5" : "border-slate-200 bg-white hover:bg-slate-50")}
+                          >
+                            <span className="font-semibold text-slate-950">Peu de charges</span>
+                            <span className="mt-1 block text-xs leading-5 text-slate-500">Pas ou peu de travaux, intérêts ou frais à déduire.</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setExpenseProfile("high")}
+                            className={cx("rounded-2xl border px-4 py-3 text-left text-sm transition", expenseProfile === "high" ? "border-[#635bff]/40 bg-[#635bff]/5" : "border-slate-200 bg-white hover:bg-slate-50")}
+                          >
+                            <span className="font-semibold text-slate-950">Charges importantes</span>
+                            <span className="mt-1 block text-xs leading-5 text-slate-500">Crédit, travaux, copro, assurance, gestion ou amortissement.</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Sortie attendue</p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => setAccountingProfile("solo")}
+                            className={cx("rounded-2xl border px-4 py-3 text-left text-sm transition", accountingProfile === "solo" ? "border-[#635bff]/40 bg-[#635bff]/5" : "border-slate-200 bg-white hover:bg-slate-50")}
+                          >
+                            <span className="font-semibold text-slate-950">Je veux comprendre</span>
+                            <span className="mt-1 block text-xs leading-5 text-slate-500">Synthèse lisible pour déclarer plus sereinement.</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAccountingProfile("accountant")}
+                            className={cx("rounded-2xl border px-4 py-3 text-left text-sm transition", accountingProfile === "accountant" ? "border-[#635bff]/40 bg-[#635bff]/5" : "border-slate-200 bg-white hover:bg-slate-50")}
+                          >
+                            <span className="font-semibold text-slate-950">Je transmets à un expert</span>
+                            <span className="mt-1 block text-xs leading-5 text-slate-500">Dossier détaillé avec sources et justificatifs.</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <aside className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-800">Régime à étudier</p>
+                      <p className="mt-2 text-2xl font-semibold text-emerald-950">{regimeLabel(suggestedRegime)}</p>
+                      <p className="mt-2 text-sm leading-6 text-emerald-900">{suggestedReason}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRegime(suggestedRegime);
+                          setActiveStep("prepare");
+                        }}
+                        className="mt-4 w-full rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                      >
+                        Utiliser cette orientation
+                      </button>
+                    </aside>
+                  </div>
+                </section>
+              </div>
+            ) : null}
 
             {activeStep === "prepare" ? (
               <div className="space-y-4">
@@ -515,11 +763,9 @@ export function SectionDeclaration({ userId, properties }: Props) {
                     <div>
                       <label className="text-xs font-semibold text-slate-700">Régime travaillé</label>
                       <select value={regime} onChange={(e) => setRegime(e.target.value as Regime)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                        <option value="lmnp_micro">LMNP · Micro-BIC</option>
-                        <option value="lmnp_reel">LMNP · Réel</option>
-                        <option value="nu_micro">Location nue · Micro-foncier</option>
-                        <option value="nu_reel">Location nue · Réel</option>
-                        <option value="pinel">Pinel</option>
+                        {(Object.keys(REGIME_LABELS) as Regime[]).map((key) => (
+                          <option key={key} value={key}>{regimeLabel(key)}</option>
+                        ))}
                       </select>
                     </div>
                     {isLmnp ? (
@@ -546,6 +792,33 @@ export function SectionDeclaration({ userId, properties }: Props) {
                     </div>
                   ) : null}
                 </section>
+
+                {importPreview ? (
+                  <section className="rounded-3xl border border-cyan-200 bg-cyan-50 p-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-cyan-950">Aperçu de l’import Finance</p>
+                        <p className="mt-1 text-sm leading-6 text-cyan-900">
+                          Les champs ne sont pas remplacés tant que vous ne validez pas. Vérifiez les montants détectés pour {selectedPropertyLabel}.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => setImportPreview(null)} className="rounded-full border border-cyan-300 bg-white/70 px-4 py-2 text-sm font-semibold text-cyan-950 hover:bg-white">
+                          Ignorer
+                        </button>
+                        <button type="button" onClick={() => applyImportPreview()} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                          Importer ces montants
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                      <Stat label="Loyers" value={eur(importPreview.grossRent)} sub={`${importPreview.rows.length} écriture(s)`} />
+                      <Stat label="Autres recettes" value={eur(importPreview.otherIncome)} />
+                      <Stat label="Charges classées" value={eur(importPreview.propertyTax + importPreview.insurance + importPreview.copro + importPreview.repairs + importPreview.managementFees + importPreview.utilities)} />
+                      <Stat label="À revoir" value={eur(importPreview.otherExpenses)} sub="Autres sorties" />
+                    </div>
+                  </section>
+                ) : null}
 
                 <div className="flex justify-end">
                   <button type="button" onClick={() => setActiveStep("verify")} className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800">
@@ -671,7 +944,6 @@ export function SectionDeclaration({ userId, properties }: Props) {
                 </section>
               </div>
             ) : null}
-          </div>
         </div>
       </section>
     </div>
