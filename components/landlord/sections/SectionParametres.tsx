@@ -80,9 +80,11 @@ export function SectionParametres({ userId, navOrder, onNavOrderChange }: Props)
     await persistOrder(nextOrder);
   };
 
-  const startDrag = (event: React.PointerEvent<HTMLButtonElement>, key: LandlordSectionKey) => {
+  const startDrag = (event: React.PointerEvent<HTMLElement>, key: LandlordSectionKey) => {
+    if (saving) return;
     if (event.button !== 0 && event.pointerType === "mouse") return;
     event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     setDraggingKey(key);
     draggingKeyRef.current = key;
     setFeedback(null);
@@ -143,12 +145,16 @@ export function SectionParametres({ userId, navOrder, onNavOrderChange }: Props)
             <div
               key={item.key}
               data-nav-key={item.key}
+              onPointerDown={(event) => startDrag(event, item.key)}
               className={
-                "flex touch-none select-none items-center gap-3 rounded-3xl border px-3 py-3 transition-all " +
+                "group flex touch-none select-none items-center gap-3 rounded-3xl border px-3 py-3 transition-all duration-150 " +
                 (isDragging
-                  ? "scale-[1.015] border-[#635bff]/30 bg-white shadow-[0_18px_45px_rgba(99,91,255,0.18)]"
-                  : "border-slate-200 bg-white shadow-sm")
+                  ? "scale-[1.015] cursor-grabbing border-[#635bff]/40 bg-white/80 opacity-75 shadow-[0_22px_55px_rgba(99,91,255,0.22)] ring-2 ring-[#635bff]/10"
+                  : "cursor-grab border-slate-200 bg-white shadow-sm hover:-translate-y-0.5 hover:border-[#635bff]/20 hover:shadow-md")
               }
+              role="button"
+              tabIndex={0}
+              aria-label={`Déplacer ${item.label}`}
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#4f46e5]">
                 <Icon className="h-5 w-5" aria-hidden="true" />
@@ -159,15 +165,15 @@ export function SectionParametres({ userId, navOrder, onNavOrderChange }: Props)
                   {index < 4 ? `Barre mobile · position ${index + 1}` : `Menu Plus · position ${index + 1}`}
                 </p>
               </div>
-              <button
-                type="button"
-                onPointerDown={(event) => startDrag(event, item.key)}
-                disabled={saving}
-                className="flex h-11 w-11 shrink-0 cursor-grab items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 shadow-sm active:cursor-grabbing active:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label={`Déplacer ${item.label}`}
+              <span
+                className={
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-400 shadow-sm transition " +
+                  (isDragging ? "text-[#4f46e5]" : "group-hover:text-slate-500")
+                }
+                aria-hidden="true"
               >
                 <Bars3Icon className="h-5 w-5" aria-hidden="true" />
-              </button>
+              </span>
             </div>
           );
         })}

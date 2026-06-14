@@ -28,8 +28,6 @@ export function SidebarNav({
   // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]";
   const brandText = "text-white";
-  const brandHover = "hover:opacity-95";
-
   const items: Item[] = getLandlordNavItems(navOrder).map((item) => ({
     ...item,
     badge:
@@ -55,10 +53,10 @@ export function SidebarNav({
   };
 
   return (
-    <aside className={`h-max w-full lg:w-[280px] lg:sticky lg:top-4 ${className}`}>
-      <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur">
+    <aside className={`h-max w-full lg:sticky lg:top-4 lg:w-[280px] lg:self-start ${className}`}>
+      <div className="flex rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur lg:max-h-[calc(100vh-2rem)] lg:flex-col lg:overflow-hidden">
         {/* Header sidebar */}
-        <div className="px-2 pt-1 pb-3">
+        <div className="shrink-0 px-2 pb-3 pt-1">
           <div className="flex items-center gap-2">
             <span className={`flex h-7 w-7 items-center justify-center rounded-xl ${brandBg} text-xs font-semibold text-white shadow-sm`}>
               L
@@ -71,7 +69,7 @@ export function SidebarNav({
         </div>
 
         {/* Nav items */}
-        <div className="mt-1 space-y-1">
+        <div className="mt-1 space-y-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
           {items.map((it) => {
             const isActive = it.key === active;
             const Icon = it.icon;
@@ -108,43 +106,6 @@ export function SidebarNav({
               </div>
             );
           })}
-        </div>
-
-        {/* Shortcuts */}
-        <div className="mt-3 rounded-2xl border border-slate-200 bg-[#f6f9fc] px-3 py-3">
-          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Raccourcis</p>
-
-          <div className="mt-2 flex flex-wrap gap-2">
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={(e) => go(e, "biens")}
-              onKeyDown={(e) => onKey(e, "biens")}
-              className={`cursor-pointer select-none rounded-full px-3 py-1.5 text-[0.75rem] font-semibold ${brandBg} ${brandText} ${brandHover}`}
-            >
-              + Bien
-            </div>
-
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={(e) => go(e, "locataires")}
-              onKeyDown={(e) => onKey(e, "locataires")}
-              className="cursor-pointer select-none rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              + Locataire
-            </div>
-
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={(e) => go(e, "baux")}
-              onKeyDown={(e) => onKey(e, "baux")}
-              className="cursor-pointer select-none rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              + Bail
-            </div>
-          </div>
         </div>
       </div>
     </aside>
