@@ -515,8 +515,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         .order("created_at", { ascending: false })
         .limit(2000);
 
-      if (docErr) throw docErr;
-      setTxDocuments((docData || []) as any);
+      if (docErr) {
+        const message = String(docErr.message || "").toLowerCase();
+        if (message.includes("transaction_documents") || message.includes("schema cache")) {
+          console.warn("[finance] transaction_documents indisponible:", docErr.message);
+          setTxDocuments([]);
+        } else {
+          throw docErr;
+        }
+      } else {
+        setTxDocuments((docData || []) as any);
+      }
 
       const { data: pData, error: pErr } = await supabase
         .from("property_finance")
