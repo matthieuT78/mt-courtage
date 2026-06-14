@@ -151,49 +151,86 @@ function labelForProperty(property: Property | undefined, fallback = "Bien") {
 
 function actionsFor(row: PropertyRow) {
   const actions: string[] = [];
-  if (row.loanRate == null && row.loanMonthly > 0) {
-    actions.push("Renseigner le taux du crédit pour détecter une opportunité de renégociation ou de rachat.");
+
+  if (row.activeLeaseCount === 0) {
+    if (row.recurring > 0) {
+      actions.push(
+        `Remettre le logement en exploitation : aucun bail actif ne génère de loyer, mais ${money(row.recurring)} de charges récurrentes continuent chaque mois.`
+      );
+    } else {
+      actions.push("Créer ou rattacher un bail actif : sans bail, ce bien reste à 0 € de revenu et sort du suivi quittances/encaissements.");
+    }
+    actions.push("Si ce logement n’est plus géré, l’archiver évitera de fausser les indicateurs du portefeuille.");
+    if (row.investment <= 0) {
+      actions.push("Compléter le prix d’achat et les frais seulement si le bien reste dans votre stratégie locative.");
+    }
+    return actions.slice(0, 3);
   }
-  if (row.loanRate != null && row.loanRate >= 3.5 && row.loanMonthly > 0) {
-    actions.push(`Comparer une renégociation de taux : à mensualité ${money(row.loanMonthly)}, une baisse de 0,5 à 1 point peut libérer du cashflow.`);
+
+  if (row.expected > 0 && row.received < row.expected) {
+    actions.push(
+      `Confirmer l’encaissement du loyer : ${money(row.expected - row.received)} restent à pointer sur le mois pour fiabiliser la performance.`
+    );
   }
-  if (row.loanRemainingMonths != null && row.loanRemainingMonths > 84 && row.cashflow < 0 && row.loanMonthly > 0) {
-    actions.push("Étudier une modulation/allongement de mensualité pour réduire l’effort mensuel, en vérifiant le coût total du crédit.");
+
+  if (row.cashflow < -80) {
+    const mainCost =
+      row.loanMonthly > row.expected * 0.45
+        ? `le crédit pèse ${money(row.loanMonthly)} par mois`
+        : row.recurring > row.expected * 0.55
+          ? `les charges récurrentes atteignent ${money(row.recurring)} par mois`
+          : `les dépenses du mois atteignent ${money(row.expense)}`;
+    actions.push(
+      `Arbitrer le déficit : ${money(row.expected)} de loyers face à ${money(row.recurring + row.expense)} de sorties. Priorité : ${mainCost}.`
+    );
   }
+
   if (row.taxRegime == null) {
-    actions.push("Renseigner le régime fiscal suivi pour détecter si le micro ou le réel est le plus cohérent.");
+    actions.push("Renseigner le régime fiscal du bien pour obtenir une lecture nette cohérente, pas seulement un cashflow brut.");
   }
   if (row.taxRegime === "lmnp_micro" && row.recurring + row.expense > row.expected * 0.35 && row.expected > 0) {
-    actions.push("Tester le LMNP réel : vos charges semblent assez élevées pour justifier une comparaison avec le micro-BIC.");
+    actions.push("Comparer le LMNP réel au micro-BIC : les charges semblent assez élevées pour mériter une simulation.");
   }
   if (row.vacancyDays12m >= 30) {
-    actions.push(`Vacance détectée : ${row.vacancyDays12m} jours estimés sur 12 mois. Revoir prix, annonce, délai de relocation ou état du logement.`);
+    actions.push(`Réduire la vacance : ${row.vacancyDays12m} jours estimés sur 12 mois. Revoir prix, annonce, délai de relocation ou état du logement.`);
   }
   if (row.turnover12m >= 2) {
-    actions.push(`Turnover élevé : ${row.turnover12m} entrées locataires sur 12 mois. Vérifier loyer, qualité du logement et profil locataire.`);
-  }
-  if (row.received < row.expected && row.expected > 0) {
-    actions.push(`Sécuriser l’encaissement : ${money(row.expected - row.received)} restent à confirmer sur le mois.`);
+    actions.push(`Stabiliser le locataire : ${row.turnover12m} entrées sur 12 mois. Vérifier loyer, qualité du logement et profil retenu.`);
   }
   if (row.recurring <= 0) {
-    actions.push("Renseigner les charges récurrentes dans Finance pour fiabiliser le cashflow.");
+    actions.push("Renseigner les charges récurrentes dans Finance pour éviter une rentabilité trop optimiste.");
   }
   if (row.investment <= 0) {
     actions.push("Ajouter le prix d’achat, les frais et travaux pour obtenir une rentabilité nette exploitable.");
   }
-  if (row.cashflow < -80) {
-    actions.push("Isoler les charges lourdes, vérifier le loyer de marché et prioriser un plan de réduction des coûts.");
+
+  if (row.loanRate == null && row.loanMonthly > 0) {
+    actions.push("Ajouter le taux du crédit pour savoir si une renégociation est réellement pertinente.");
+  }
+  if (row.loanRate != null && row.loanRate >= 3.5 && row.loanMonthly > 0 && row.cashflow < 0) {
+    actions.push(`Comparer une renégociation de taux : ${money(row.loanMonthly)} de mensualité pèsent sur le résultat.`);
   }
   if (row.cashflow >= -80 && row.cashflow < 150) {
-    actions.push("Le bien est proche de l’équilibre : surveiller la vacance, les charges de copropriété et les travaux à venir.");
+    actions.push("Le bien est proche de l’équilibre : surveiller charges de copropriété, travaux à venir et indexation du loyer.");
   }
   if (row.cashflow >= 150) {
-    actions.push("Bien solide : documenter les charges et conserver le niveau de suivi pour la déclaration.");
+    actions.push("Bien solide : garder les justificatifs à jour et vérifier que les écritures Finance restent complètes.");
   }
   return actions.slice(0, 3);
 }
 
 function decisionFor(row: PropertyRow) {
+  if (row.activeLeaseCount === 0) {
+    return {
+      label: "À relouer",
+      tone: "border-rose-200 bg-rose-50 text-rose-800",
+      signal: "Aucun bail actif : le bien ne produit aucun loyer dans la lecture actuelle.",
+      action:
+        row.recurring > 0
+          ? `Priorité à la remise en location ou au rattachement du bail : ${money(row.recurring)} de charges continuent chaque mois.`
+          : "Créer ou rattacher le bail actif pour réintégrer ce bien dans le suivi des revenus.",
+    };
+  }
   if (row.recurring <= 0 || row.investment <= 0) {
     return {
       label: "Fiabiliser",

@@ -14,6 +14,7 @@ import type {
 } from "./types";
 import { getLeaseRentPeriod } from "../rentPeriod";
 import { getLeasePaymentDueDate } from "../rentSchedule";
+import { isActivePropertyLike } from "./archiveFilters";
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
 const fmtISO = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -334,23 +335,35 @@ export function useLandlordDashboard() {
     [activeLeases]
   );
 
+  const activeProperties = useMemo(() => (properties || []).filter(isActivePropertyLike), [properties]);
+
+  const occupiedPropertyIds = useMemo(() => new Set(activeLeases.map((l) => l.property_id).filter(Boolean)), [activeLeases]);
+
   const occupancyRate = useMemo(() => {
-    const totalProps = (properties || []).length;
+    const totalProps = activeProperties.length;
     if (totalProps === 0) return 0;
-    const occupiedPropertyIds = new Set(activeLeases.map((l) => l.property_id));
     return Math.round((occupiedPropertyIds.size / totalProps) * 100);
-  }, [properties.length, activeLeases]);
+  }, [activeProperties.length, occupiedPropertyIds]);
+
+  const activePropertyCoverage = useMemo(() => {
+    if (activeProperties.length === 0) return 0;
+    return Math.min(Math.max(occupiedPropertyIds.size / activeProperties.length, 0), 1);
+  }, [activeProperties.length, occupiedPropertyIds]);
+
+  const vacantActivePropertyCount = useMemo(
+    () => activeProperties.filter((property) => !occupiedPropertyIds.has(property.id)).length,
+    [activeProperties, occupiedPropertyIds]
+  );
 
   const healthScore = useMemo(() => {
-    // Score de gestion mensuelle : le dossier donne un socle, mais les actions du mois portent l'essentiel.
+    // Score de gestion mensuelle : un parc partiellement loué doit peser fortement, même si les encaissements restants sont propres.
     let score = 0;
     const activeLeaseCount = activeLeases.length;
 
-    if (properties.length > 0) score += 6;
+    if (activeProperties.length > 0) score += 6;
     if (tenants.length > 0) score += 5;
-    if (activeLeaseCount > 0) score += 9;
 
-    score += Math.round((occupancyRate / 100) * 10);
+    score += Math.round(activePropertyCoverage * 20);
 
     const collectionRatio = monthlyDueExpected > 0 ? Math.min(Math.max(monthlyDuePaid / monthlyDueExpected, 0), 1) : 1;
     score += Math.round(collectionRatio * 40);
@@ -358,20 +371,23 @@ export function useLandlordDashboard() {
     if (activeLeaseCount > 0) {
       score += Math.max(0, 5 - Math.min(lateCount * 5, 5));
       const receiptRatio = receiptExpectedCount > 0 ? Math.min(receiptsThisMonth.length / receiptExpectedCount, 1) : 1;
-      score += Math.round(receiptRatio * 25);
+      score += Math.round(receiptRatio * 24);
     }
+
+    score -= Math.min(24, vacantActivePropertyCount * 10);
 
     return Math.max(0, Math.min(100, score));
   }, [
-    properties.length,
+    activeProperties.length,
     tenants.length,
     monthlyDueExpected,
     monthlyDuePaid,
     lateCount,
-    occupancyRate,
+    activePropertyCoverage,
     activeLeases.length,
     receiptsThisMonth.length,
     receiptExpectedCount,
+    vacantActivePropertyCount,
   ]);
 
   // --- Alerts
