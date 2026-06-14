@@ -96,3 +96,61 @@ export function SectionTitle({
     </div>
   );
 }
+
+export function WorkflowIntro({
+  title,
+  description,
+  steps,
+  note,
+}: {
+  title: string;
+  description: string;
+  steps: Array<{ title: string; text: string }>;
+  note?: string;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#635bff] via-[#27b7ff] to-[#00d4a4]" aria-hidden="true" />
+      <div className="relative p-4 sm:p-5">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-[#00d4a4] shadow-[0_0_0_4px_rgba(0,212,164,0.12)]" aria-hidden="true" />
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Parcours conseillé</p>
+            </div>
+            <p className="mt-2 text-base font-semibold tracking-tight text-slate-950">{title}</p>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
+          </div>
+          <span className="inline-flex w-fit shrink-0 rounded-full border border-[#635bff]/15 bg-[#635bff]/5 px-3 py-1 text-[0.7rem] font-semibold text-[#4f46e5]">
+            3 actions
+          </span>
+        </div>
+
+        <div className="mt-5 grid gap-0 overflow-hidden rounded-2xl border border-slate-200 bg-[#f8fafc] sm:grid-cols-3">
+          {steps.map((step, index) => (
+            <div
+              key={`${step.title}-${index}`}
+              className="min-w-0 border-b border-slate-200 p-3 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"
+            >
+              <div className="flex items-start gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold text-[#4f46e5] shadow-sm ring-1 ring-slate-200">
+                  {index + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-950">{step.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-600">{step.text}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {note ? (
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+            <p className="text-xs leading-5 text-slate-500">{note}</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}

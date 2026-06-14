@@ -1,7 +1,7 @@
 // components/landlord/sections/SectionQuittances.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import { SectionTitle, fmtDate } from "../UiBits";
+import { SectionTitle, WorkflowIntro, fmtDate } from "../UiBits";
 import type { RentReceipt, Lease, Property, Tenant, LandlordSettings } from "../../../lib/landlord/types";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { usePermissions } from "../../PermissionProvider";
@@ -1011,23 +1011,20 @@ export function SectionQuittances({
     <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
       <SectionTitle
         kicker="Quittances"
-        title="Quittance = reçu (après paiement)"
-        desc="En gratuit : suivi manuel, génération PDF et archive. En abonnement : rappels, emails et envoi automatique au locataire."
+        title="Encaisser, générer, remettre"
+        desc="La quittance est le reçu du locataire : elle se prépare uniquement quand le paiement du mois est confirmé."
       />
 
-      {/* Notice */}
-      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-slate-900">Règle (importante)</p>
-            <ol className="mt-2 space-y-1 text-sm text-slate-700 list-decimal pl-5">
-              <li>Une quittance atteste que le loyer/charges ont été payés.</li>
-              <li>Tant que le mois n’est pas marqué “Payé”, on ne génère pas de quittance.</li>
-              <li>Après “Payé”, tu peux générer et ouvrir le PDF. L’envoi email est réservé aux abonnements payants.</li>
-            </ol>
-          </div>
-        </div>
-      </div>
+      <WorkflowIntro
+        title="Le bon ordre pour traiter un mois"
+        description="Chaque ligne correspond à un mois de loyer. Vous confirmez d’abord l’encaissement, puis lokt.fr prépare le PDF de quittance et garde l’historique."
+        steps={[
+          { title: "Vérifier le mois", text: "Contrôlez le bien, le locataire, la période et le montant attendu." },
+          { title: "Confirmer le paiement", text: "Marquez le mois payé uniquement quand le loyer et les charges sont réellement encaissés." },
+          { title: "Remettre la quittance", text: "Générez le PDF, envoyez-le avec l’abonnement adapté ou indiquez qu’il a été remis manuellement." },
+        ]}
+        note="En gratuit, la gestion manuelle reste incluse. Les relances, emails et envois automatiques sont réservés aux abonnements payants."
+      />
 
       {!canUseReceiptAutomation ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">

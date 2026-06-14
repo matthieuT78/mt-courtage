@@ -17,7 +17,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
-import { SectionTitle } from "../UiBits";
+import { SectionTitle, WorkflowIntro } from "../UiBits";
 import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
@@ -1918,26 +1918,20 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
       <SectionTitle
         kicker="Baux"
-        title="Baux (suivi loyers & quittances)"
-        desc="Cette section configure les paramètres utilisés pour le suivi des loyers et la génération des quittances."
+        title="Créer et suivre une location"
+        desc="Le bail rassemble le logement, le locataire, le loyer et les dates qui pilotent ensuite le suivi mensuel."
       />
 
-      <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 text-sm text-sky-950">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="font-semibold">À quoi sert cette fiche bail ?</p>
-            <p className="mt-1 text-sky-950/85">
-              Elle centralise les informations utiles au suivi de la location : bien, locataire, montant du loyer, charges, date d’échéance et
-              rythme de paiement. Ces données servent ensuite à préparer le suivi des loyers, les rappels de paiement et les quittances.
-            </p>
-            <p className="mt-2 text-sky-950/85">
-              Cette fiche ne remplace pas le contrat de location signé avec le locataire. Elle sert de tableau de bord pour gérer le bail au
-              quotidien et garder un historique fiable.
-            </p>
-          </div>
-
-        </div>
-      </div>
+      <WorkflowIntro
+        title="Commencez par créer la fiche de location"
+        description="Elle ne remplace pas le contrat signé : elle sert à faire fonctionner lokt.fr au quotidien, avec les bons montants, les bonnes échéances et les bons destinataires."
+        steps={[
+          { title: "Choisir le logement et le locataire", text: "Sélectionnez uniquement les dossiers actifs concernés par cette location." },
+          { title: "Renseigner les conditions", text: "Indiquez les dates, le loyer, les charges, le dépôt et le jour d’échéance." },
+          { title: "Piloter le mois", text: "Les loyers, alertes, quittances et documents se préparent ensuite automatiquement à partir de cette fiche." },
+        ]}
+        note="Le contrat juridique peut être généré ou archivé depuis chaque bail, une fois la fiche de location prête."
+      />
 
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}

@@ -7,7 +7,6 @@ import {
   ArrowRightIcon,
   BuildingOffice2Icon,
   CheckCircleIcon,
-  ClipboardDocumentCheckIcon,
   DocumentArrowUpIcon,
   ExclamationTriangleIcon,
   MapPinIcon,
@@ -16,7 +15,7 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
-import { SectionTitle } from "../UiBits";
+import { SectionTitle, WorkflowIntro } from "../UiBits";
 import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
 import { isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import RepairsGuideCard from "../RepairsGuideCard";
@@ -238,45 +237,6 @@ function Badge({
     <span className={"inline-flex items-center rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold " + cls}>
       {children}
     </span>
-  );
-}
-
-/* ======================================================
-   NOTICE / WORKFLOW V1 (impression + upload signé)
-====================================================== */
-
-function NoticeTop() {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-[#f6f9fc] p-4 sm:p-5">
-      <div className="flex items-start gap-3">
-        <ClipboardDocumentCheckIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#635bff]" aria-hidden="true" />
-        <div>
-          <p className="text-sm font-semibold text-slate-950">Deux parcours possibles</p>
-          <p className="mt-1 text-sm text-slate-600">
-            Réalise l’état des lieux avec l’assistant lokt.fr ou importe directement le PDF finalisé remis par une agence ou un prestataire.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-slate-950">1. Choisir</p>
-          <p className="mt-1 text-xs text-slate-600">Sélectionner le bail, puis saisir dans lokt.fr ou importer un PDF externe.</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-slate-950">2. Finaliser</p>
-          <p className="mt-1 text-xs text-slate-600">Avec l’assistant : pièces, anomalies, compteurs, clés et observations.</p>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <p className="text-xs font-semibold text-slate-950">3. Archiver</p>
-          <p className="mt-1 text-xs text-slate-600">Importer le PDF signé ou le PDF finalisé par l’agence pour verrouiller le document.</p>
-        </div>
-      </div>
-
-      <p className="mt-3 text-xs text-slate-500">
-        Un état des lieux signé ou archivé est verrouillé pour préserver la valeur du document.
-      </p>
-    </div>
   );
 }
 
@@ -3139,11 +3099,20 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-5 sm:p-5" style={{ overflowAnchor: "none" }}>
       <SectionTitle
         kicker="État des lieux"
-        title="Créer, compléter, imprimer et archiver un état des lieux"
-        desc="Crée l’état des lieux avec l’assistant lokt.fr ou archive le PDF finalisé transmis par une agence."
+        title="Préparer une entrée ou une sortie"
+        desc="Choisissez le contexte, complétez la visite, puis conservez un document finalisé et verrouillé."
       />
 
-      <NoticeTop />
+      <WorkflowIntro
+        title="Deux façons de démarrer"
+        description="Vous pouvez partir d’un bail pour préremplir le logement et le locataire, ou créer un état des lieux libre si la location n’est pas encore rattachée."
+        steps={[
+          { title: "Choisir le dossier", text: "Sélectionnez un bail actif, reprenez un état des lieux existant ou créez un dossier libre." },
+          { title: "Faire la visite", text: "Renseignez pièces, équipements, compteurs, clés, photos et observations utiles." },
+          { title: "Finaliser le document", text: "Générez ou importez le PDF finalisé. Une fois signé ou archivé, il est verrouillé." },
+        ]}
+        note="Pour une sortie, lokt.fr peut repartir de l’état des lieux d’entrée afin d’éviter une double saisie."
+      />
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="relative">
