@@ -298,6 +298,41 @@ const statusLabel = (value: TxStatus) =>
 const directionLabel = (value: TxDirection) => (value === "in" ? "Recette" : "Dépense");
 const sourceLabel = (tx: Transaction) => (tx.receipt_id ? "Quittance auto" : "Manuel");
 
+type FinancePropertyRow = {
+  propertyId: string;
+  label: string;
+  income: number;
+  ledgerIncome: number;
+  expectedRent: number;
+  expense: number;
+  net: number;
+  loan: number;
+  fixed: number;
+  taxM: number;
+  lmnpRecurring: number;
+  cashflow: number;
+  invest: number;
+  yieldNet: number;
+  activeLeaseCount: number;
+  taxRegime: string | null;
+};
+
+type FinanceAction = {
+  propertyId: string;
+  label: string;
+  title: string;
+  desc: string;
+  impact: string;
+  tone: "red" | "amber" | "emerald" | "slate";
+};
+
+const actionToneClass: Record<FinanceAction["tone"], string> = {
+  red: "border-red-200 bg-red-50 text-red-950",
+  amber: "border-amber-200 bg-amber-50 text-amber-950",
+  emerald: "border-emerald-200 bg-emerald-50 text-emerald-950",
+  slate: "border-slate-200 bg-slate-50 text-slate-900",
+};
+
 const QUICK_EXPENSES = [
   { label: "Taxe foncière", category: "tax", direction: "out" as TxDirection, status: "paid" as TxStatus },
   { label: "Assurance PNO / GLI", category: "insurance", direction: "out" as TxDirection, status: "paid" as TxStatus },
@@ -943,7 +978,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   };
 
   // ========= Per property: cashflow & rendement =========
-  const perProperty = useMemo(() => {
+  const perProperty = useMemo<FinancePropertyRow[]>(() => {
     const by = new Map<string, { income: number; expense: number; net: number }>();
 
     for (const propertyId of analysisPropertyIds) {
@@ -969,6 +1004,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               .filter(([key]) => key.startsWith(`${propertyId}:`))
               .map(([, amount]) => amount)
           );
+      const activeLeaseCount = propertyId === "—"
+        ? 0
+        : safeLeases.filter((lease) => {
+            if (String((lease as any).property_id || "") !== propertyId) return false;
+            const status = String((lease as any).status || "").toLowerCase();
+            if (["draft", "archived", "ended"].includes(status)) return false;
+            const leaseStart = normalizeDate((lease as any).start_date);
+            const leaseEnd = normalizeDate((lease as any).end_date);
+            if (!leaseStart) return false;
+            return leaseStart <= selectedPeriod.end && (!leaseEnd || leaseEnd >= selectedPeriod.start);
+          }).length;
       const incomeBase = Math.max(v.income, expectedRent);
 
       const recurring = propertyId === "—" ? { loan: 0, fixed: 0, taxM: 0, total: 0 } : monthlyRecurringByProperty.get(propertyId) || { loan: 0, fixed: 0, taxM: 0, total: 0 };
@@ -1010,11 +1056,13 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         cashflow,
         invest,
         yieldNet,
+        activeLeaseCount,
+        taxRegime: fin?.tax_regime || null,
       };
     });
 
     return rows.sort((a, b) => b.cashflow - a.cashflow);
-  }, [analysisPropertyIds, expectedRentByPropertyMonth, monthlyRecurringByProperty, periodLedger.rows, propsById, pf, selectedPeriod.monthCount]);
+  }, [analysisPropertyIds, expectedRentByPropertyMonth, monthlyRecurringByProperty, periodLedger.rows, propsById, pf, safeLeases, selectedPeriod]);
 
   const attachDocumentToTransaction = async (transaction: Pick<Transaction, "id" | "property_id">, file: File) => {
     if (!supabase || !userId) return;
@@ -1140,27 +1188,88 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const weakProperties = perProperty.filter((p) => p.cashflow < 0);
   const bestProperty = perProperty[0] || null;
 
-  const globalActionPlan = useMemo(() => {
-    const actions: string[] = [];
+  const impactActions = useMemo<FinanceAction[]>(() => {
+    const actions: FinanceAction[] = [];
 
-    if (periodInfo.pending > 0) {
-      actions.push(`Relancer ou confirmer les paiements restants : ${formatEuro(periodInfo.pending)} à encaisser sur ${periodLabel}.`);
+    for (const property of perProperty) {
+      const recurringTotal = (property.loan + property.fixed + property.taxM) * selectedPeriod.monthCount;
+
+      if (property.activeLeaseCount === 0) {
+        actions.push({
+          propertyId: property.propertyId,
+          label: property.label,
+          title: "Aucun bail actif",
+          desc:
+            recurringTotal > 0
+              ? `Aucun revenu attendu sur ${periodLabel}, mais ${formatEuro(recurringTotal)} de charges récurrentes continuent de sortir. La priorité est de créer ou rattacher le bail, sinon la performance restera artificiellement négative.`
+              : `Aucun revenu attendu sur ${periodLabel}. La priorité est de créer ou rattacher le bail pour que Finance puisse lire un loyer réel.`,
+          impact: "Revenu à recréer",
+          tone: "red",
+        });
+        continue;
+      }
+
+      if (property.expectedRent > 0 && property.ledgerIncome <= 0 && property.income > 0) {
+        actions.push({
+          propertyId: property.propertyId,
+          label: property.label,
+          title: "Loyer attendu, encaissement à confirmer",
+          desc: `${formatEuro(property.expectedRent)} est attendu via le bail actif. Si le paiement est bien reçu, confirmez-le côté Quittances pour fiabiliser les revenus encaissés.`,
+          impact: `À confirmer : ${formatEuro(property.expectedRent)}`,
+          tone: "amber",
+        });
+      }
+
+      if (property.cashflow < 0) {
+        actions.push({
+          propertyId: property.propertyId,
+          label: property.label,
+          title: "Cashflow négatif",
+          desc: `Le bien sort à ${formatEuro(property.cashflow)} sur ${periodLabel}. Vérifiez d’abord les charges récurrentes, puis le crédit, l’assurance et les dépenses saisies sur la période.`,
+          impact: `Écart à absorber : ${formatEuro(Math.abs(property.cashflow))}`,
+          tone: "amber",
+        });
+      }
+
+      if (!property.taxRegime) {
+        actions.push({
+          propertyId: property.propertyId,
+          label: property.label,
+          title: "Régime fiscal manquant",
+          desc: "Le régime fiscal n’est pas renseigné. Or un bien meublé, nu, micro ou réel ne se pilote pas avec les mêmes charges ni les mêmes arbitrages.",
+          impact: "Lecture fiscale à fiabiliser",
+          tone: "slate",
+        });
+      }
+
+      if (property.invest <= 0) {
+        actions.push({
+          propertyId: property.propertyId,
+          label: property.label,
+          title: "Prix d’achat incomplet",
+          desc: "Le rendement ne peut pas être défendable sans prix d’achat, frais et travaux. Complétez ces données pour comparer ce bien aux autres.",
+          impact: "Rendement non calculable",
+          tone: "slate",
+        });
+      }
     }
-    if (weakProperties.length > 0) {
-      actions.push(`${weakProperties.length} bien(s) en cashflow négatif : traiter d'abord ${weakProperties[0].label}.`);
-    }
-    if (perProperty.some((p) => p.invest <= 0)) {
-      actions.push("Compléter les prix d'achat et frais par bien pour fiabiliser les rendements.");
-    }
-    if (periodLedger.expense === 0 && periodLedger.income > 0) {
-      actions.push("Ajouter les charges de la période pour préparer une synthèse utile à la déclaration.");
-    }
+
     if (actions.length === 0) {
-      actions.push("La période semble propre : garder le rythme de saisie et vérifier les charges récurrentes.");
+      return [
+        {
+          propertyId: "global",
+          label: "Portefeuille",
+          title: "Aucune anomalie prioritaire",
+          desc: "Les baux, charges récurrentes et paramètres principaux sont cohérents sur la période. Gardez le rythme de saisie des justificatifs et paiements.",
+          impact: "Suivi à jour",
+          tone: "emerald",
+        },
+      ];
     }
 
-    return actions.slice(0, 4);
-  }, [periodInfo.pending, periodLabel, weakProperties, perProperty, periodLedger.expense, periodLedger.income]);
+    const rank: Record<FinanceAction["tone"], number> = { red: 0, amber: 1, slate: 2, emerald: 3 };
+    return actions.sort((a, b) => rank[a.tone] - rank[b.tone]).slice(0, 6);
+  }, [perProperty, periodLabel, selectedPeriod.monthCount]);
 
   const accountingChartRows = useMemo(() => {
     const { start, end } = selectedPeriod;
@@ -1778,13 +1887,23 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </section>
 
         <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5">
-          <p className="text-sm font-semibold text-slate-900">Plan d'action performance</p>
-          <p className="mt-1 text-[0.8rem] text-slate-600">Les priorités à traiter pour fiabiliser ou améliorer vos résultats.</p>
-          <div className="mt-4 space-y-2">
-            {globalActionPlan.map((action, idx) => (
-              <div key={idx} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Action {idx + 1}</p>
-                <p className="mt-1 text-sm text-slate-800">{action}</p>
+          <p className="text-sm font-semibold text-slate-900">Actions à fort impact</p>
+          <p className="mt-1 text-[0.8rem] text-slate-600">
+            Priorités contextualisées par bien, pour éviter les conseils génériques.
+          </p>
+          <div className="mt-4 space-y-2.5">
+            {impactActions.map((action) => (
+              <div key={`${action.propertyId}-${action.title}`} className={cx("rounded-2xl border px-3 py-3", actionToneClass[action.tone])}>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] opacity-70">{action.label}</p>
+                    <p className="mt-1 text-sm font-semibold">{action.title}</p>
+                  </div>
+                  <span className="rounded-full border border-current/15 bg-white/70 px-2.5 py-1 text-[0.68rem] font-semibold">
+                    {action.impact}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-5 opacity-80">{action.desc}</p>
               </div>
             ))}
           </div>
