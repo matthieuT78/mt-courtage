@@ -42,8 +42,10 @@ export type PropertyFinance = {
   loan_insurance_monthly?: number | null;
   loan_rate_percent?: number | null;
   loan_remaining_months?: number | null;
+  loan_end_year?: number | null;
   tax_regime?: string | null;
   fixed_charges_monthly?: number | null;
+  fixed_charges_frequency?: "monthly" | "quarterly" | "yearly" | null;
   property_tax_yearly?: number | null;
   pno_insurance_monthly?: number | null;
   copro_charges_monthly?: number | null;
@@ -51,6 +53,7 @@ export type PropertyFinance = {
   loan_interest_monthly?: number | null;
   bank_fees_monthly?: number | null;
   maintenance_monthly?: number | null;
+  rental_tax_monthly?: number | null;
   created_at?: string;
   updated_at?: string;
 };

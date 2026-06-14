@@ -65,7 +65,7 @@ export const LANDLORD_NAV_ITEMS: Record<LandlordSectionKey, LandlordNavItem> = {
   baux: { key: "baux", label: "Baux", shortLabel: "Baux", icon: DocumentTextIcon },
   quittances: { key: "quittances", label: "Quittances", icon: ReceiptPercentIcon },
   finance: { key: "finance", label: "Finance", icon: BanknotesIcon },
-  performance: { key: "performance", label: "Analyse", icon: ChartBarIcon },
+  performance: { key: "performance", label: "Performance", icon: ChartBarIcon },
   outils: { key: "outils", label: "Boîte à outils", shortLabel: "Outils", icon: WrenchScrewdriverIcon },
   etat_des_lieux: { key: "etat_des_lieux", label: "États des lieux", icon: ClipboardDocumentCheckIcon },
   messagerie: { key: "messagerie", label: "Messages", icon: ChatBubbleLeftRightIcon },

@@ -153,9 +153,7 @@ export function useLandlordDashboard() {
       } else {
         const { data: financeData, error: financeErr } = await supabase
           .from("property_finance")
-          .select(
-            "property_id,user_id,purchase_price,notary_fees,agency_fees,works,down_payment,loan_monthly,loan_insurance_monthly,loan_rate_percent,loan_remaining_months,tax_regime,fixed_charges_monthly,property_tax_yearly,pno_insurance_monthly,copro_charges_monthly,cfe_yearly,loan_interest_monthly,bank_fees_monthly,maintenance_monthly,created_at,updated_at"
-          )
+          .select("*")
           .eq("user_id", user.id);
 
         if (financeErr) {

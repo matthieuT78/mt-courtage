@@ -52,8 +52,10 @@ type PropertyFinance = {
   loan_insurance_monthly: number | null;
   loan_rate_percent?: number | null;
   loan_remaining_months?: number | null;
+  loan_end_year?: number | null;
   tax_regime?: string | null;
   fixed_charges_monthly: number | null;
+  fixed_charges_frequency?: "monthly" | "quarterly" | "yearly" | null;
   property_tax_yearly: number | null;
   pno_insurance_monthly?: number | null;
   copro_charges_monthly?: number | null;
@@ -61,6 +63,7 @@ type PropertyFinance = {
   loan_interest_monthly?: number | null;
   bank_fees_monthly?: number | null;
   maintenance_monthly?: number | null;
+  rental_tax_monthly?: number | null;
 };
 
 type Props = {
@@ -101,6 +104,16 @@ function pct(value: number) {
   return `${value.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %`;
 }
 
+function remainingLoanMonths(finance: PropertyFinance | null) {
+  const endYear = Number(finance?.loan_end_year || 0);
+  if (Number.isFinite(endYear) && endYear > 0) {
+    const now = new Date();
+    return Math.max(0, (endYear - now.getFullYear()) * 12 + (12 - now.getMonth()));
+  }
+  const legacy = Number(finance?.loan_remaining_months || 0);
+  return Number.isFinite(legacy) && legacy > 0 ? legacy : null;
+}
+
 function recurringMonthly(finance: PropertyFinance | null) {
   if (!finance) return 0;
   return (
@@ -112,6 +125,7 @@ function recurringMonthly(finance: PropertyFinance | null) {
     Number(finance.loan_interest_monthly || 0) +
     Number(finance.bank_fees_monthly || 0) +
     Number(finance.maintenance_monthly || 0) +
+    Number(finance.rental_tax_monthly || 0) +
     Number(finance.property_tax_yearly || 0) / 12 +
     Number(finance.cfe_yearly || 0) / 12
   );
@@ -125,6 +139,10 @@ function investmentAmount(finance: PropertyFinance | null) {
     Number(finance.agency_fees || 0) +
     Number(finance.works || 0)
   );
+}
+
+function monthlyLeaseAmount(lease: Lease) {
+  return Number((lease as any).rent_amount || 0) + Number((lease as any).charges_amount || 0);
 }
 
 function labelForProperty(property: Property | undefined, fallback = "Bien") {
@@ -253,6 +271,7 @@ type PropertyRow = {
   loanMonthly: number;
   loanRate: number | null;
   loanRemainingMonths: number | null;
+  loanEndYear: number | null;
   taxRegime: string | null;
   vacancyDays12m: number;
   turnover12m: number;
@@ -370,7 +389,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         const expected = sum(
           activeLeases
             .filter((lease) => lease.property_id === id)
-            .map((lease) => Number(getLeaseRentPeriod(lease, currentMonth)?.total || 0))
+            .map((lease) => monthlyLeaseAmount(lease))
         );
         const received = sum(
           safePayments
@@ -405,7 +424,8 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
           netYield,
           loanMonthly,
           loanRate: fin?.loan_rate_percent == null ? null : Number(fin.loan_rate_percent),
-          loanRemainingMonths: fin?.loan_remaining_months == null ? null : Number(fin.loan_remaining_months),
+          loanRemainingMonths: remainingLoanMonths(fin),
+          loanEndYear: fin?.loan_end_year == null ? null : Number(fin.loan_end_year),
           taxRegime: fin?.tax_regime || null,
           vacancyDays12m: occupancy.vacancyDays12m,
           turnover12m: occupancy.turnover12m,
@@ -418,12 +438,26 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
   const series = useMemo(() => {
     return months.map((date) => {
       const key = monthKey(date);
+      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+      const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
       const rows = tx.filter((row) => {
         if (propertyId && row.property_id !== propertyId) return false;
         const rowDate = normalizeDate(row.occurred_at);
         return rowDate ? monthKey(rowDate) === key : false;
       });
-      const income = sum(rows.filter((row) => row.direction === "in").map((row) => Number(row.amount || 0)));
+      const expectedIncome = sum(
+        activeLeases
+          .filter((lease) => {
+            if (propertyId && lease.property_id !== propertyId) return false;
+            const leaseStart = normalizeDate((lease as any).start_date);
+            const leaseEnd = normalizeDate((lease as any).end_date);
+            if (!leaseStart) return false;
+            return leaseStart <= monthEnd && (!leaseEnd || leaseEnd >= monthStart);
+          })
+          .map((lease) => monthlyLeaseAmount(lease))
+      );
+      const ledgerIncome = sum(rows.filter((row) => row.direction === "in").map((row) => Number(row.amount || 0)));
+      const income = Math.max(expectedIncome, ledgerIncome);
       const expense = sum(rows.filter((row) => row.direction === "out").map((row) => Number(row.amount || 0)));
       const recurring = sum(propertyRows.map((row) => row.recurring));
       return {
@@ -435,7 +469,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         net: income - expense - recurring,
       };
     });
-  }, [months, propertyId, propertyRows, tx]);
+  }, [activeLeases, months, propertyId, propertyRows, tx]);
 
   const totals = useMemo(() => {
     const expected = sum(propertyRows.map((row) => row.expected));
@@ -712,7 +746,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Metric icon={<BanknotesIcon className="h-5 w-5" />} label="Cashflow estimé" value={money(totals.cashflow)} sub="après dépenses et charges récurrentes" />
         <Metric icon={<HomeModernIcon className="h-5 w-5" />} label="Loyers attendus" value={money(totals.expected)} sub="baux actifs du mois" />
-        <Metric icon={<ChartBarIcon className="h-5 w-5" />} label="Charges récurrentes" value={money(totals.recurring)} sub="crédit, PNO, copro, CFE, frais" />
+        <Metric icon={<ChartBarIcon className="h-5 w-5" />} label="Charges récurrentes" value={money(totals.recurring)} sub="crédit, PNO, copro, fiscalité, frais" />
         <Metric icon={<SparklesIcon className="h-5 w-5" />} label="À optimiser" value={String(priorityRows.length)} sub="points d’action détectés" />
       </div>
 
@@ -820,7 +854,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
                       <Stat label="Cashflow" value={money(row.cashflow)} strong={row.cashflow >= 0 ? "good" : "bad"} />
                       <Stat label="Rendement net" value={row.netYield == null ? "À compléter" : pct(row.netYield)} />
                       <Stat label="Taux crédit" value={row.loanRate == null ? "À renseigner" : `${row.loanRate.toLocaleString("fr-FR")} %`} />
-                      <Stat label="Durée crédit" value={row.loanRemainingMonths == null ? "—" : `${row.loanRemainingMonths} mois`} />
+                      <Stat label="Fin crédit" value={row.loanEndYear == null ? "—" : String(row.loanEndYear)} />
                       <Stat label="Vacance 12 mois" value={`${row.vacancyDays12m} j`} strong={row.vacancyDays12m >= 30 ? "bad" : undefined} />
                       <Stat label="Turnover 12 mois" value={String(row.turnover12m)} strong={row.turnover12m >= 2 ? "bad" : undefined} />
                     </div>

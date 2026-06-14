@@ -96,9 +96,11 @@ type PropertyFinance = {
   loan_insurance_monthly: number | null;
   loan_rate_percent?: number | null;
   loan_remaining_months?: number | null;
+  loan_end_year?: number | null;
   tax_regime?: string | null;
 
   fixed_charges_monthly: number | null;
+  fixed_charges_frequency?: "monthly" | "quarterly" | "yearly" | null;
   property_tax_yearly: number | null;
   pno_insurance_monthly?: number | null;
   copro_charges_monthly?: number | null;
@@ -106,6 +108,7 @@ type PropertyFinance = {
   loan_interest_monthly?: number | null;
   bank_fees_monthly?: number | null;
   maintenance_monthly?: number | null;
+  rental_tax_monthly?: number | null;
 
   created_at?: string;
   updated_at?: string;
@@ -309,6 +312,43 @@ function num(v: any) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function nullableNum(v: any) {
+  if (v == null || String(v).trim() === "") return null;
+  const n = num(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function hasValidDecimalDraft(value: string) {
+  return /^-?\d*(?:[,.]\d*)?$/.test(value.trim());
+}
+
+function formatInputNumber(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(Number(value))) return "";
+  return String(value).replace(".", ",");
+}
+
+function normalizeMonthlyAmount(value: number | null, frequency?: PropertyFinance["fixed_charges_frequency"]) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return null;
+  if (frequency === "quarterly") return Math.round((n / 3) * 100) / 100;
+  if (frequency === "yearly") return Math.round((n / 12) * 100) / 100;
+  return Math.round(n * 100) / 100;
+}
+
+function displayAmountFromMonthly(value: number | null | undefined, frequency?: PropertyFinance["fixed_charges_frequency"]) {
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return null;
+  if (frequency === "quarterly") return Math.round(n * 3 * 100) / 100;
+  if (frequency === "yearly") return Math.round(n * 12 * 100) / 100;
+  return Math.round(n * 100) / 100;
+}
+
+function estimatedLoanEndYear(remainingMonths?: number | null) {
+  const months = Number(remainingMonths || 0);
+  if (!Number.isFinite(months) || months <= 0) return null;
+  return new Date().getFullYear() + Math.ceil(months / 12);
+}
+
 const csvCell = (value: string | number | null | undefined) => {
   const raw = value == null ? "" : String(value);
   return `"${raw.replace(/"/g, '""')}"`;
@@ -403,7 +443,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         Number(fin?.pno_insurance_monthly || 0) +
         Number(fin?.copro_charges_monthly || 0) +
         Number(fin?.bank_fees_monthly || 0) +
-        Number(fin?.maintenance_monthly || 0);
+        Number(fin?.maintenance_monthly || 0) +
+        Number(fin?.rental_tax_monthly || 0);
       const taxM = Number(fin?.property_tax_yearly || 0) / 12;
       const cfeM = Number(fin?.cfe_yearly || 0) / 12;
       map.set(propertyId, { loan, fixed, taxM: taxM + cfeM, total: loan + fixed + taxM + cfeM });
@@ -618,6 +659,33 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       monthCount: (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth() + 1,
     };
   }, [periodMode, currentMonth, customStartMonth, customEndMonth]);
+
+  const expectedRentByPropertyMonth = useMemo(() => {
+    const map = new Map<string, number>();
+    const { start, end } = selectedPeriod;
+    const statusBlocked = new Set(["draft", "archived", "ended"]);
+
+    for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
+      const key = monthKey(cursor);
+      const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+
+      for (const lease of safeLeases) {
+        const propertyId = String((lease as any).property_id || "");
+        if (!propertyId || !analysisPropertyIds.includes(propertyId)) continue;
+
+        const leaseStart = normalizeDate((lease as any).start_date);
+        const leaseEnd = normalizeDate((lease as any).end_date);
+        if (!leaseStart) continue;
+        if (statusBlocked.has(String((lease as any).status || "").toLowerCase())) continue;
+        if (leaseStart > monthEnd || (leaseEnd && leaseEnd < cursor)) continue;
+
+        const amount = Number(getLeaseRentPeriod(lease, key)?.total || 0);
+        map.set(`${propertyId}:${key}`, (map.get(`${propertyId}:${key}`) || 0) + amount);
+      }
+    }
+
+    return map;
+  }, [analysisPropertyIds, safeLeases, selectedPeriod]);
 
   // ========= Period view (attendu vs encaissé) =========
   const periodInfo = useMemo(() => {
@@ -894,6 +962,14 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const rows = Array.from(by.entries()).map(([propertyId, v]) => {
       const p = propertyId === "—" ? null : propsById.get(propertyId);
       const fin = propertyId === "—" ? null : pf.get(propertyId) || null;
+      const expectedRent = propertyId === "—"
+        ? 0
+        : sum(
+            Array.from(expectedRentByPropertyMonth.entries())
+              .filter(([key]) => key.startsWith(`${propertyId}:`))
+              .map(([, amount]) => amount)
+          );
+      const incomeBase = Math.max(v.income, expectedRent);
 
       const recurring = propertyId === "—" ? { loan: 0, fixed: 0, taxM: 0, total: 0 } : monthlyRecurringByProperty.get(propertyId) || { loan: 0, fixed: 0, taxM: 0, total: 0 };
       const loan = recurring.loan;
@@ -904,10 +980,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         Number(fin?.copro_charges_monthly || 0) +
         Number(fin?.bank_fees_monthly || 0) +
         Number(fin?.maintenance_monthly || 0) +
+        Number(fin?.rental_tax_monthly || 0) +
         Number(fin?.property_tax_yearly || 0) / 12 +
         Number(fin?.cfe_yearly || 0) / 12;
 
-      const cashflow = v.net - recurring.total * selectedPeriod.monthCount;
+      const cashflow = incomeBase - v.expense - recurring.total * selectedPeriod.monthCount;
 
       const invest =
         Number(fin?.purchase_price || 0) +
@@ -921,9 +998,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       return {
         propertyId,
         label: p?.label || (propertyId === "—" ? "Non affecté" : "Bien"),
-        income: v.income,
+        income: incomeBase,
+        ledgerIncome: v.income,
+        expectedRent,
         expense: v.expense,
-        net: v.net,
+        net: incomeBase - v.expense,
         loan,
         fixed,
         taxM,
@@ -935,7 +1014,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     });
 
     return rows.sort((a, b) => b.cashflow - a.cashflow);
-  }, [analysisPropertyIds, monthlyRecurringByProperty, periodLedger.rows, propsById, pf, selectedPeriod.monthCount]);
+  }, [analysisPropertyIds, expectedRentByPropertyMonth, monthlyRecurringByProperty, periodLedger.rows, propsById, pf, selectedPeriod.monthCount]);
 
   const attachDocumentToTransaction = async (transaction: Pick<Transaction, "id" | "property_id">, file: File) => {
     if (!supabase || !userId) return;
@@ -1086,11 +1165,25 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const accountingChartRows = useMemo(() => {
     const { start, end } = selectedPeriod;
     const monthlyRecurring = sum(Array.from(monthlyRecurringByProperty.values()).map((row) => row.total));
-    const months: Array<{ key: string; label: string; income: number; expense: number; recurring: number; net: number }> = [];
+    const months: Array<{ key: string; label: string; income: number; ledgerIncome: number; expectedRent: number; expense: number; recurring: number; net: number }> = [];
 
     for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
       const key = monthKey(cursor);
-      months.push({ key, label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()), income: 0, expense: 0, recurring: monthlyRecurring, net: -monthlyRecurring });
+      const expectedRent = sum(
+        Array.from(expectedRentByPropertyMonth.entries())
+          .filter(([entryKey]) => entryKey.endsWith(`:${key}`))
+          .map(([, amount]) => amount)
+      );
+      months.push({
+        key,
+        label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()),
+        income: expectedRent,
+        ledgerIncome: 0,
+        expectedRent,
+        expense: 0,
+        recurring: monthlyRecurring,
+        net: expectedRent - monthlyRecurring,
+      });
     }
 
     const byKey = new Map(months.map((row) => [row.key, row]));
@@ -1099,13 +1192,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       if (!d) continue;
       const bucket = byKey.get(monthKey(d));
       if (!bucket) continue;
-      if (row.direction === "in") bucket.income += Number(row.amount || 0);
-      else bucket.expense += Number(row.amount || 0);
+      if (row.direction === "in") {
+        bucket.ledgerIncome += Number(row.amount || 0);
+        bucket.income = Math.max(bucket.expectedRent, bucket.ledgerIncome);
+      } else {
+        bucket.expense += Number(row.amount || 0);
+      }
       bucket.net = bucket.income - bucket.expense - bucket.recurring;
     }
 
     return months;
-  }, [monthlyRecurringByProperty, periodLedger.rows, selectedPeriod]);
+  }, [expectedRentByPropertyMonth, monthlyRecurringByProperty, periodLedger.rows, selectedPeriod]);
 
   const chartMax = useMemo(
     () => Math.max(1, ...accountingChartRows.flatMap((row) => [row.income, row.expense, row.recurring, Math.abs(row.net)])),
@@ -1334,12 +1431,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
 
         <div className="mt-4 space-y-2">
-          {propertyOptions.length === 0 ? (
+          {activePropertyOptions.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600 lg:col-span-2">
               Créez d’abord un bien pour renseigner ses paramètres financiers.
             </div>
           ) : (
-            propertyOptions.map((property) => {
+            activePropertyOptions.map((property) => {
               const existing = pf.get(property.id) || null;
               const loanMonthly = Number(existing?.loan_monthly || 0) + Number(existing?.loan_insurance_monthly || 0);
               const taxesMonthly = Number(existing?.property_tax_yearly || 0) / 12 + Number(existing?.cfe_yearly || 0) / 12;
@@ -1348,7 +1445,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 Number(existing?.pno_insurance_monthly || 0) +
                 Number(existing?.copro_charges_monthly || 0) +
                 Number(existing?.bank_fees_monthly || 0) +
-                Number(existing?.maintenance_monthly || 0);
+                Number(existing?.maintenance_monthly || 0) +
+                Number(existing?.rental_tax_monthly || 0);
               const monthlyTotal =
                 loanMonthly + taxesMonthly + operatingMonthly;
               const missing = [
@@ -2019,9 +2117,9 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
               >
                 <option value="">Tous les biens</option>
-                {Array.from(propsById.entries()).map(([id, p]) => (
-                  <option key={id} value={id}>
-                    {p.label || "Bien"}
+                {activePropertyOptions.map((property) => (
+                  <option key={property.id} value={property.id}>
+                    {property.label || property.address_line1 || "Bien"}
                   </option>
                 ))}
               </select>
@@ -2338,8 +2436,10 @@ function PropertyFinanceForm({
     loan_insurance_monthly: existing?.loan_insurance_monthly ?? null,
     loan_rate_percent: existing?.loan_rate_percent ?? null,
     loan_remaining_months: existing?.loan_remaining_months ?? null,
+    loan_end_year: existing?.loan_end_year ?? estimatedLoanEndYear(existing?.loan_remaining_months),
     tax_regime: existing?.tax_regime ?? null,
     fixed_charges_monthly: existing?.fixed_charges_monthly ?? null,
+    fixed_charges_frequency: existing?.fixed_charges_frequency || "monthly",
     property_tax_yearly: existing?.property_tax_yearly ?? null,
     pno_insurance_monthly: existing?.pno_insurance_monthly ?? null,
     copro_charges_monthly: existing?.copro_charges_monthly ?? null,
@@ -2347,6 +2447,7 @@ function PropertyFinanceForm({
     loan_interest_monthly: existing?.loan_interest_monthly ?? null,
     bank_fees_monthly: existing?.bank_fees_monthly ?? null,
     maintenance_monthly: existing?.maintenance_monthly ?? null,
+    rental_tax_monthly: existing?.rental_tax_monthly ?? null,
   });
 
   useEffect(() => {
@@ -2361,8 +2462,10 @@ function PropertyFinanceForm({
       loan_insurance_monthly: existing?.loan_insurance_monthly ?? null,
       loan_rate_percent: existing?.loan_rate_percent ?? null,
       loan_remaining_months: existing?.loan_remaining_months ?? null,
+      loan_end_year: existing?.loan_end_year ?? estimatedLoanEndYear(existing?.loan_remaining_months),
       tax_regime: existing?.tax_regime ?? null,
       fixed_charges_monthly: existing?.fixed_charges_monthly ?? null,
+      fixed_charges_frequency: existing?.fixed_charges_frequency || "monthly",
       property_tax_yearly: existing?.property_tax_yearly ?? null,
       pno_insurance_monthly: existing?.pno_insurance_monthly ?? null,
       copro_charges_monthly: existing?.copro_charges_monthly ?? null,
@@ -2370,6 +2473,7 @@ function PropertyFinanceForm({
       loan_interest_monthly: existing?.loan_interest_monthly ?? null,
       bank_fees_monthly: existing?.bank_fees_monthly ?? null,
       maintenance_monthly: existing?.maintenance_monthly ?? null,
+      rental_tax_monthly: existing?.rental_tax_monthly ?? null,
     }));
   }, [existing]);
 
@@ -2387,9 +2491,11 @@ function PropertyFinanceForm({
         loan_monthly: s.loan_monthly,
         loan_insurance_monthly: s.loan_insurance_monthly,
         loan_rate_percent: s.loan_rate_percent,
-        loan_remaining_months: s.loan_remaining_months,
+        loan_end_year: s.loan_end_year,
+        loan_remaining_months: null,
         tax_regime: s.tax_regime,
         fixed_charges_monthly: s.fixed_charges_monthly,
+        fixed_charges_frequency: s.fixed_charges_frequency || "monthly",
         property_tax_yearly: s.property_tax_yearly,
         pno_insurance_monthly: s.pno_insurance_monthly,
         copro_charges_monthly: s.copro_charges_monthly,
@@ -2397,6 +2503,7 @@ function PropertyFinanceForm({
         loan_interest_monthly: s.loan_interest_monthly,
         bank_fees_monthly: s.bank_fees_monthly,
         maintenance_monthly: s.maintenance_monthly,
+        rental_tax_monthly: s.rental_tax_monthly,
       });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2500);
@@ -2404,6 +2511,9 @@ function PropertyFinanceForm({
       setSaving(false);
     }
   };
+
+  const fixedChargesFrequency = s.fixed_charges_frequency || "monthly";
+  const fixedChargesDisplay = displayAmountFromMonthly(s.fixed_charges_monthly, fixedChargesFrequency);
 
   return (
     <form onSubmit={save} className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
@@ -2431,18 +2541,42 @@ function PropertyFinanceForm({
         />
         <Field label="Taux crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} />
         <Field
-          label="Durée restante (mois)"
-          value={s.loan_remaining_months ?? null}
-          onChange={(v) => setS((p) => ({ ...p, loan_remaining_months: v == null ? null : Math.round(v) }))}
+          label="Année de fin du crédit"
+          value={s.loan_end_year ?? null}
+          integer
+          placeholder="Ex. 2043"
+          onChange={(v) => setS((p) => ({ ...p, loan_end_year: v == null ? null : Math.round(v) }))}
         />
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Field
-          label="Autres charges fixes"
-          value={s.fixed_charges_monthly}
-          onChange={(v) => setS((p) => ({ ...p, fixed_charges_monthly: v }))}
-        />
+        <div className="space-y-1">
+          <label className="text-xs text-slate-600">Autres charges fixes</label>
+          <div className="grid grid-cols-[minmax(0,1fr),132px] gap-2">
+            <Field
+              label=""
+              value={fixedChargesDisplay}
+              placeholder="Montant"
+              onChange={(v) => setS((p) => ({ ...p, fixed_charges_monthly: normalizeMonthlyAmount(v, fixedChargesFrequency) }))}
+            />
+            <select
+              value={fixedChargesFrequency}
+              onChange={(e) => {
+                const nextFrequency = e.target.value as NonNullable<PropertyFinance["fixed_charges_frequency"]>;
+                setS((p) => ({
+                  ...p,
+                  fixed_charges_frequency: nextFrequency,
+                }));
+              }}
+              className="h-[38px] rounded-lg border border-slate-300 bg-white px-2 text-sm text-slate-800"
+            >
+              <option value="monthly">/ mois</option>
+              <option value="quarterly">/ trimestre</option>
+              <option value="yearly">/ an</option>
+            </select>
+          </div>
+          <p className="text-[0.68rem] leading-4 text-slate-500">Exemples : frais récurrents non classés ailleurs. La synthèse les ramène automatiquement au mois.</p>
+        </div>
         <Field
           label="Taxe foncière annuelle"
           value={s.property_tax_yearly}
@@ -2469,9 +2603,20 @@ function PropertyFinanceForm({
         <Field label="Assurance PNO / GLI mensuelle" value={s.pno_insurance_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, pno_insurance_monthly: v }))} />
         <Field label="Copropriété mensuelle" value={s.copro_charges_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, copro_charges_monthly: v }))} />
         <Field label="CFE annuelle" value={s.cfe_yearly ?? null} onChange={(v) => setS((p) => ({ ...p, cfe_yearly: v }))} />
-        <Field label="Intérêts d’emprunt mensuels" value={s.loan_interest_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, loan_interest_monthly: v }))} />
+        <Field
+          label="Intérêts d’emprunt mensuels (fiscal, facultatif)"
+          value={s.loan_interest_monthly ?? null}
+          onChange={(v) => setS((p) => ({ ...p, loan_interest_monthly: v }))}
+          hint="À renseigner depuis le tableau d’amortissement si vous préparez une déclaration au réel. Laissez vide pour le cashflow : la mensualité de crédit suffit."
+        />
         <Field label="Frais bancaires mensuels" value={s.bank_fees_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, bank_fees_monthly: v }))} />
         <Field label="Entretien provisionné mensuel" value={s.maintenance_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, maintenance_monthly: v }))} />
+        <Field
+          label="Impôts locatifs estimés mensuels"
+          value={s.rental_tax_monthly ?? null}
+          onChange={(v) => setS((p) => ({ ...p, rental_tax_monthly: v }))}
+          hint="Pour l'impôt sur les revenus locatifs et prélèvements sociaux. Ne pas y mettre la taxe foncière, qui a son champ annuel dédié."
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -2491,20 +2636,70 @@ function PropertyFinanceForm({
   );
 }
 
-function Field({ label, value, onChange }: { label: string; value: number | null; onChange: (v: number | null) => void }) {
+function Field({
+  label,
+  value,
+  onChange,
+  integer = false,
+  placeholder = "—",
+  hint,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+  integer?: boolean;
+  placeholder?: string;
+  hint?: string;
+}) {
+  const [draft, setDraft] = useState(formatInputNumber(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setDraft(formatInputNumber(value));
+  }, [focused, value]);
+
+  const commit = (raw: string) => {
+    const clean = raw.trim();
+    if (!clean) {
+      onChange(null);
+      setDraft("");
+      return;
+    }
+    const parsed = nullableNum(clean);
+    if (parsed == null) return;
+    const next = integer ? Math.round(parsed) : parsed;
+    onChange(next);
+    setDraft(formatInputNumber(next));
+  };
+
   return (
     <div className="space-y-1">
-      <label className="text-xs text-slate-600">{label}</label>
+      {label ? <label className="text-xs text-slate-600">{label}</label> : null}
       <input
-        value={value ?? ""}
+        type="text"
+        inputMode={integer ? "numeric" : "decimal"}
+        value={draft}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          commit(draft);
+        }}
         onChange={(e) => {
           const v = e.target.value;
-          if (!v) onChange(null);
-          else onChange(num(v));
+          if (!hasValidDecimalDraft(v)) return;
+          setDraft(v);
+          if (!v.trim()) {
+            onChange(null);
+            return;
+          }
+          if (/[,.]$/.test(v.trim())) return;
+          const parsed = nullableNum(v);
+          if (parsed != null) onChange(integer ? Math.round(parsed) : parsed);
         }}
         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-        placeholder="—"
+        placeholder={placeholder}
       />
+      {hint ? <p className="text-[0.68rem] leading-4 text-slate-500">{hint}</p> : null}
     </div>
   );
 }
