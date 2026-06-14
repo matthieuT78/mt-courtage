@@ -52,8 +52,8 @@ export function StorageUsagePanel() {
       <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${percent >= 90 ? "bg-red-500" : percent >= 70 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${percent}%` }} /></div>
       <p className="mt-2 text-xs text-slate-500">{percent}% utilisé · {fmt(data?.availableBytes || 0)} disponibles</p>
       {err ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{err}</p> : null}
-      <Link href="/espace-bailleur?section=biens" className="mt-4 inline-flex text-xs font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-950">
-        Gérer les documents de mes logements
+      <Link href="/espace-bailleur?tab=documents" className="mt-4 inline-flex text-xs font-semibold text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-slate-950">
+        Ouvrir le coffre documentaire
       </Link>
     </section>
   );

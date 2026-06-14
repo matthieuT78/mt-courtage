@@ -7,6 +7,8 @@ import {
   ArrowPathIcon,
   ArrowUpCircleIcon,
   BanknotesIcon,
+  DocumentArrowUpIcon,
+  PaperClipIcon,
   PlusIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -63,6 +65,21 @@ type Transaction = {
 
   created_at: string;
   updated_at: string;
+};
+
+type TransactionDocument = {
+  id: string;
+  user_id: string;
+  transaction_id: string;
+  property_id: string | null;
+  storage_bucket: string;
+  storage_path: string;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number;
+  document_kind: "invoice" | "receipt" | "quote" | "other";
+  created_at: string;
+  updated_at?: string | null;
 };
 
 type PropertyFinance = {
@@ -297,6 +314,15 @@ const csvCell = (value: string | number | null | undefined) => {
   return `"${raw.replace(/"/g, '""')}"`;
 };
 
+function safeFileName(name: string) {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+}
+
 export function SectionFinance({ userId, leases, payments, receipts, propertyById, onRefresh }: Props) {
   // 🎨 lokt.fr
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
@@ -317,6 +343,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
   // Ledger
   const [tx, setTx] = useState<Transaction[]>([]);
+  const [txDocuments, setTxDocuments] = useState<TransactionDocument[]>([]);
   const [pf, setPf] = useState<Map<string, PropertyFinance>>(new Map());
 
   const [loading, setLoading] = useState(false);
@@ -341,6 +368,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected]);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [txWizardOpen, setTxWizardOpen] = useState(false);
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
 
   const propertyOptions = useMemo(
     () =>
@@ -398,6 +427,15 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     () => includeSelected(activePropertyOptions, propertyOptions, form.property_id),
     [activePropertyOptions, propertyOptions, form.property_id]
   );
+  const txDocsByTransactionId = useMemo(() => {
+    const map = new Map<string, TransactionDocument[]>();
+    for (const doc of txDocuments) {
+      const list = map.get(doc.transaction_id) || [];
+      list.push(doc);
+      map.set(doc.transaction_id, list);
+    }
+    return map;
+  }, [txDocuments]);
 
   // ========== Sync quittances -> transactions (idempotent + dedupe payload) ==========
   const syncReceiptsToTransactions = useCallback(async () => {
@@ -469,6 +507,16 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
       if (tErr) throw tErr;
       setTx((tData || []) as any);
+
+      const { data: docData, error: docErr } = await supabase
+        .from("transaction_documents")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(2000);
+
+      if (docErr) throw docErr;
+      setTxDocuments((docData || []) as any);
 
       const { data: pData, error: pErr } = await supabase
         .from("property_finance")
@@ -880,6 +928,37 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     return rows.sort((a, b) => b.cashflow - a.cashflow);
   }, [analysisPropertyIds, monthlyRecurringByProperty, periodLedger.rows, propsById, pf, selectedPeriod.monthCount]);
 
+  const attachDocumentToTransaction = async (transaction: Pick<Transaction, "id" | "property_id">, file: File) => {
+    if (!supabase || !userId) return;
+    if (!file) return;
+    if (file.size <= 0 || file.size > 10 * 1024 * 1024) throw new Error("Le fichier doit faire moins de 10 Mo.");
+
+    const accepted = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+    if (file.type && !accepted.includes(file.type)) throw new Error("Format accepté : PDF, JPG, PNG ou WebP.");
+
+    const filename = safeFileName(file.name || "facture");
+    const path = `${userId}/${transaction.id}/${Date.now()}-${filename}`;
+    const { error: uploadError } = await supabase.storage.from("finance-documents").upload(path, file, {
+      contentType: file.type || "application/octet-stream",
+      upsert: false,
+    });
+    if (uploadError) throw uploadError;
+
+    const { error: insertError } = await supabase.from("transaction_documents").insert({
+      user_id: userId,
+      transaction_id: transaction.id,
+      property_id: transaction.property_id || null,
+      storage_bucket: "finance-documents",
+      storage_path: path,
+      file_name: file.name || filename,
+      mime_type: file.type || null,
+      size_bytes: file.size,
+      document_kind: "invoice",
+      updated_at: new Date().toISOString(),
+    });
+    if (insertError) throw insertError;
+  };
+
   // ========= CRUD: Add manual transaction =========
   const addTx = async (e: FormEvent) => {
     e.preventDefault();
@@ -908,12 +987,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase.from("transactions").insert(payload);
+      const { data: inserted, error } = await supabase.from("transactions").insert(payload).select("id,property_id").single();
       if (error) throw error;
 
-      setOk("Écriture ajoutée ✅");
+      if (invoiceFile && inserted?.id) {
+        await attachDocumentToTransaction({ id: inserted.id, property_id: inserted.property_id || null }, invoiceFile);
+      }
+
+      setOk(invoiceFile ? "Écriture ajoutée avec facture ✅" : "Écriture ajoutée ✅");
       setTxWizardOpen(false);
       setForm((s) => ({ ...s, amount: "", label: "", notes: "" }));
+      setInvoiceFile(null);
 
       await loadFinance();
       await onRefresh?.();
@@ -921,6 +1005,22 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       setErr(e?.message || "Erreur ajout écriture.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const attachDocumentFromLedger = async (transaction: Transaction, file?: File | null) => {
+    if (!file) return;
+    setUploadingDocId(transaction.id);
+    setErr(null);
+    setOk(null);
+    try {
+      await attachDocumentToTransaction(transaction, file);
+      setOk("Facture jointe à l’écriture ✅");
+      await loadFinance();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de joindre la facture.");
+    } finally {
+      setUploadingDocId(null);
     }
   };
 
@@ -1621,7 +1721,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
       {txWizardOpen ? (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
-          <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => setTxWizardOpen(false)} />
+          <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => { setTxWizardOpen(false); setInvoiceFile(null); }} />
           <form onSubmit={addTx} className="relative max-h-[92vh] w-full max-w-4xl overflow-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <div className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-5 py-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1637,7 +1737,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               </div>
             </div>
 
-            <button type="button" onClick={() => setTxWizardOpen(false)} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" aria-label="Fermer">
+            <button type="button" onClick={() => { setTxWizardOpen(false); setInvoiceFile(null); }} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" aria-label="Fermer">
               <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
@@ -1804,6 +1904,28 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                 placeholder="Optionnel : facture, période, précision comptable"
               />
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Facture / justificatif</p>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">
+                  {invoiceFile ? invoiceFile.name : "Aucun fichier joint"}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">PDF ou image, 10 Mo maximum. Le fichier apparaîtra dans Documents puis Factures.</p>
+              </div>
+              <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-white">
+                <DocumentArrowUpIcon className="h-4 w-4" />
+                {invoiceFile ? "Remplacer" : "Joindre"}
+                <input
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={(event) => setInvoiceFile(event.target.files?.[0] || null)}
+                />
+              </label>
             </div>
           </div>
 
@@ -2041,6 +2163,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 <th className="w-[22%] px-3 py-2 text-xs text-slate-600">Bien</th>
                 <th className="px-3 py-2 text-xs text-slate-600">Écriture</th>
                 <th className="w-[120px] px-3 py-2 text-xs text-slate-600">Statut</th>
+                <th className="w-[120px] px-3 py-2 text-xs text-slate-600">Pièce</th>
                 <th className="w-[130px] px-3 py-2 text-xs text-slate-600 text-right">Montant</th>
               </tr>
             </thead>
@@ -2048,7 +2171,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
             <tbody>
               {filteredMonthLedger.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-4 text-slate-500">
+                  <td colSpan={7} className="px-3 py-4 text-slate-500">
                     Aucune écriture (ou filtres trop restrictifs).
                   </td>
                 </tr>
@@ -2056,6 +2179,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 filteredMonthLedger.map((r) => {
                   const p = r.property_id ? propsById.get(r.property_id) : null;
                   const isChecked = !!selected[r.id];
+                  const docs = txDocsByTransactionId.get(r.id) || [];
 
                   return (
                     <tr key={r.id} className="border-b border-slate-100">
@@ -2079,6 +2203,27 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                         </div>
                       </td>
                       <td className="px-3 py-2 text-slate-700">{statusLabel(r.status)}</td>
+                      <td className="px-3 py-2">
+                        <label className={cx(
+                          "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
+                          docs.length ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                          uploadingDocId === r.id && "opacity-60"
+                        )}>
+                          <PaperClipIcon className="h-3.5 w-3.5" />
+                          {uploadingDocId === r.id ? "..." : docs.length ? `${docs.length} pièce${docs.length > 1 ? "s" : ""}` : "Joindre"}
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            disabled={uploadingDocId === r.id}
+                            onChange={(event) => {
+                              const file = event.target.files?.[0] || null;
+                              void attachDocumentFromLedger(r, file);
+                              event.currentTarget.value = "";
+                            }}
+                          />
+                        </label>
+                      </td>
                       <td className="px-3 py-2 text-right font-semibold text-slate-900">
                         {r.direction === "out" ? "− " : ""}
                         {formatEuro(Number(r.amount || 0))}

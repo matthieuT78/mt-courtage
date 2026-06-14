@@ -2,7 +2,7 @@ import { storageQuotaBytes } from "./permissions";
 import { getServerUserPlan } from "./serverPermissions";
 import { supabaseAdmin } from "./supabaseAdmin";
 
-const buckets = ["property-dpe-pdfs", "lease-contract-pdfs", "rent-receipts-pdfs", "inventory-pdfs", "inventory-photos"];
+const buckets = ["property-dpe-pdfs", "lease-contract-pdfs", "rent-receipts-pdfs", "inventory-pdfs", "inventory-photos", "water-tools", "finance-documents"];
 
 async function folderSize(bucket: string, prefix: string, seen: Set<string>): Promise<number> {
   if (!supabaseAdmin) throw new Error("Supabase admin non configuré.");
