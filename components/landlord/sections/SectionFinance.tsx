@@ -454,6 +454,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     [propsById]
   );
   const activePropertyOptions = useMemo(() => propertyOptions.filter(isActivePropertyLike), [propertyOptions]);
+  const activePropertyIdSet = useMemo(() => new Set(activePropertyOptions.map((property) => property.id)), [activePropertyOptions]);
 
   const leasePropertyById = useMemo(() => {
     const map = new Map<string, string>();
@@ -734,7 +735,9 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const activeLeases = safeLeases.filter((l) => {
       const s = normalizeDate((l as any).start_date);
       const e = normalizeDate((l as any).end_date);
-      if (analysisPropertyId && String((l as any).property_id || "") !== analysisPropertyId) return false;
+      const leasePropertyId = String((l as any).property_id || "");
+      if (analysisPropertyId && leasePropertyId !== analysisPropertyId) return false;
+      if (!analysisPropertyId && leasePropertyId && !activePropertyIdSet.has(leasePropertyId)) return false;
       if (!s) return false;
       const startsBeforeEnd = s.getTime() <= end.getTime();
       const notEnded = !e || e.getTime() >= start.getTime();
@@ -758,7 +761,9 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     );
 
     const periodPayments = safePayments.filter((p) => {
-      if (analysisPropertyId && (leasePropertyById.get(String((p as any).lease_id || "")) || "") !== analysisPropertyId) return false;
+      const paymentPropertyId = leasePropertyById.get(String((p as any).lease_id || "")) || "";
+      if (analysisPropertyId && paymentPropertyId !== analysisPropertyId) return false;
+      if (!analysisPropertyId && paymentPropertyId && !activePropertyIdSet.has(paymentPropertyId)) return false;
       const ps = normalizeDate((p as any).period_start);
       const pe = normalizeDate((p as any).period_end);
       if (!ps || !pe) return false;
@@ -771,7 +776,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
     const pending = Math.max(0, expected - received);
     return { expected, received, pending, activeLeases };
-  }, [analysisPropertyId, leasePropertyById, selectedPeriod, safeLeases, safePayments]);
+  }, [activePropertyIdSet, analysisPropertyId, leasePropertyById, selectedPeriod, safeLeases, safePayments]);
 
   // ========= Ledger: rows for period =========
   const periodLedger = useMemo(() => {
@@ -781,6 +786,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
     const rows = tx.filter((t) => {
       if (analysisPropertyId && (t.property_id || "") !== analysisPropertyId) return false;
+      if (!analysisPropertyId && t.property_id && !activePropertyIdSet.has(t.property_id)) return false;
       const d = normalizeDate(t.occurred_at);
       if (!d) return false;
       const ms = d.getTime();
@@ -790,7 +796,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const income = sum(rows.filter((r) => r.direction === "in").map((r) => Number(r.amount || 0)));
     const expense = sum(rows.filter((r) => r.direction === "out").map((r) => Number(r.amount || 0)));
     return { rows, income, expense, net: income - expense };
-  }, [analysisPropertyId, tx, selectedPeriod]);
+  }, [activePropertyIdSet, analysisPropertyId, tx, selectedPeriod]);
 
   // ========= Month ledger filtered (UI filters) =========
   const filteredMonthLedger = useMemo(() => {
@@ -1335,7 +1341,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         },
         {
           type: "bar" as const,
-          label: "Dépenses saisies",
+          label: "Dépenses ponctuelles",
           data: accountingChartRows.map((row) => row.expense),
           backgroundColor: "rgba(244, 63, 94, 0.78)",
           borderColor: "rgb(225, 29, 72)",
@@ -1346,7 +1352,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         },
         {
           type: "bar" as const,
-          label: "Charges récurrentes",
+          label: "Charges automatiques",
           data: accountingChartRows.map((row) => row.recurring),
           backgroundColor: "rgba(245, 158, 11, 0.7)",
           borderColor: "rgb(217, 119, 6)",
@@ -1357,7 +1363,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         },
         {
           type: "line" as const,
-          label: "Résultat après récurrent",
+          label: "Cashflow mensuel",
           data: accountingChartRows.map((row) => row.net),
           borderColor: "rgb(15, 23, 42)",
           backgroundColor: "rgba(15, 23, 42, 0.08)",
@@ -1386,6 +1392,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         tooltip: {
           callbacks: {
             label: (ctx: any) => `${ctx.dataset.label}: ${formatEuro(Number(ctx.raw || 0))}`,
+            footer: (items: any[]) => {
+              const item = items?.[0];
+              const row = accountingChartRows[item?.dataIndex ?? -1];
+              if (!row) return "";
+              return `Cashflow = ${formatEuro(row.income)} - ${formatEuro(row.expense)} - ${formatEuro(row.recurring)} = ${formatEuro(row.net)}`;
+            },
           },
         },
       },
@@ -1404,8 +1416,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         },
       },
     }),
-    [chartMax]
+    [accountingChartRows, chartMax]
   );
+
+  const accountingChartInsight = useMemo(() => {
+    if (accountingChartRows.length === 0) return null;
+    const worst = accountingChartRows.reduce((min, row) => (row.net < min.net ? row : min), accountingChartRows[0]);
+    const best = accountingChartRows.reduce((max, row) => (row.net > max.net ? row : max), accountingChartRows[0]);
+    const totalMonths = accountingChartRows.length;
+    const positiveMonths = accountingChartRows.filter((row) => row.net >= 0).length;
+    return { worst, best, totalMonths, positiveMonths };
+  }, [accountingChartRows]);
 
   const expenseBreakdown = useMemo(() => {
     const byCategory = new Map<string, number>();
@@ -1793,11 +1814,10 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm font-semibold text-slate-900">Graphique comptable</p>
+                <p className="text-sm font-semibold text-slate-900">Cashflow mensuel</p>
                 <p className="mt-1 text-[0.8rem] text-slate-600">
-                  Revenus, dépenses et résultat net sur la période analysée
+                  Lecture mois par mois des loyers, des dépenses ponctuelles et des charges automatiques
                   {analysisPropertyId ? ` · ${propsById.get(analysisPropertyId)?.label || "bien sélectionné"}` : " · tous les biens"}.
-                  Les charges récurrentes paramétrées par bien sont ajoutées automatiquement.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-[0.7rem] font-semibold">
@@ -1805,20 +1825,54 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                   Revenus {formatEuro(periodLedger.income)}
                 </span>
                 <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-800">
-                  Dépenses saisies {formatEuro(periodLedger.expense)}
+                  Dépenses ponctuelles {formatEuro(periodLedger.expense)}
                 </span>
                 <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-800">
-                  Récurrent {formatEuro(recurringPeriodTotal)}
+                  Charges auto {formatEuro(recurringPeriodTotal)}
                 </span>
                 <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-800">
-                  Net {formatEuro(periodLedger.net - recurringPeriodTotal)}
+                  Cashflow {formatEuro(periodLedger.net - recurringPeriodTotal)}
                 </span>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-2 text-xs md:grid-cols-3">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-emerald-950">
+                <span className="font-semibold">Vert</span> : loyers de la période, issus des quittances ou des baux attendus.
+              </div>
+              <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-2 text-rose-950">
+                <span className="font-semibold">Rose</span> : dépenses ajoutées dans Finance, facture par facture.
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-3 py-2 text-amber-950">
+                <span className="font-semibold">Orange</span> : charges automatiques du bien, réparties chaque mois.
               </div>
             </div>
 
             <div className="mt-4 h-[260px] min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 sm:h-[320px] sm:p-3">
               <Chart type="bar" data={accountingChartData as any} options={accountingChartOptions as any} />
             </div>
+
+            {accountingChartInsight ? (
+              <div className="mt-4 grid gap-3 text-sm md:grid-cols-[1.2fr,0.8fr]">
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-700">
+                  <p className="font-semibold text-slate-950">Formule lue par la courbe noire</p>
+                  <p className="mt-1 text-xs leading-5">
+                    Cashflow mensuel = loyers du mois - dépenses ponctuelles - charges automatiques. Les charges automatiques viennent des
+                    paramètres du bien : crédit, assurance, copropriété, impôts et frais récurrents.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Lecture rapide</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-950">
+                    {accountingChartInsight.positiveMonths}/{accountingChartInsight.totalMonths} mois positifs
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Meilleur mois : {accountingChartInsight.best.label} ({formatEuro(accountingChartInsight.best.net)}). Mois le plus tendu :{" "}
+                    {accountingChartInsight.worst.label} ({formatEuro(accountingChartInsight.worst.net)}).
+                  </p>
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5">
