@@ -34,6 +34,7 @@ type Props = {
 };
 
 const LOOKBACK_MONTHS = 24;
+const RECEIPT_SNOOZE_STORAGE_PREFIX = "lokt.receiptSnoozes";
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const toMonthISO = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 
@@ -159,6 +160,10 @@ function recentMonths(count = LOOKBACK_MONTHS, base = new Date()) {
 
 function periodKey(leaseId: string, yyyymm: string) {
   return `${leaseId}__${yyyymm}`;
+}
+
+function canSnoozeReceiptTask(row: any) {
+  return row?.payStatus === "paid" && !row?.sent;
 }
 
 function dateOnlyTime(v?: string | null) {
@@ -380,11 +385,13 @@ export function SectionQuittances({
   const [ok, setOk] = useState<string | null>(null);
   const [reminderSettings, setReminderSettings] = useState<Map<string, ReminderSetting>>(new Map());
   const [reminderDraft, setReminderDraft] = useState<ReminderDraft | null>(null);
+  const [snoozedReceiptKeys, setSnoozedReceiptKeys] = useState<Set<string>>(new Set());
 
   const selectedReceipt = useMemo(
     () => safeReceipts.find((r: any) => r.id === selectedReceiptId) || null,
     [safeReceipts, selectedReceiptId]
   );
+  const receiptSnoozeStorageKey = useMemo(() => `${RECEIPT_SNOOZE_STORAGE_PREFIX}:${userId}`, [userId]);
 
   const leaseLabel = (lease: Lease) => {
     const p = propsById.get((lease as any).property_id);
@@ -404,6 +411,41 @@ export function SectionQuittances({
   useEffect(() => {
     loadReminderSettings().catch((error) => setErr(error?.message || "Erreur chargement paramètres de relance."));
   }, [userId, canUseReceiptAutomation]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(receiptSnoozeStorageKey);
+      const values = raw ? JSON.parse(raw) : [];
+      setSnoozedReceiptKeys(new Set(Array.isArray(values) ? values.map(String) : []));
+    } catch {
+      setSnoozedReceiptKeys(new Set());
+    }
+  }, [receiptSnoozeStorageKey]);
+
+  const persistReceiptSnoozes = (next: Set<string>) => {
+    setSnoozedReceiptKeys(next);
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(receiptSnoozeStorageKey, JSON.stringify(Array.from(next)));
+    window.dispatchEvent(new Event("lokt:receipt-snoozes"));
+  };
+
+  const snoozeReceiptTask = (row: any) => {
+    if (!canSnoozeReceiptTask(row)) return;
+    const next = new Set(snoozedReceiptKeys);
+    next.add(String(row.key));
+    persistReceiptSnoozes(next);
+    setErr(null);
+    setOk("Quittance masquée de la vue À traiter. Elle reste disponible dans le mois choisi.");
+  };
+
+  const restoreReceiptTask = (row: any) => {
+    const next = new Set(snoozedReceiptKeys);
+    next.delete(String(row.key));
+    persistReceiptSnoozes(next);
+    setErr(null);
+    setOk("Quittance réactivée dans la vue À traiter.");
+  };
 
   const saveReminderSetting = async (leaseId: string, patch: Partial<ReminderSetting>) => {
     const current = reminderSettings.get(leaseId);
@@ -521,6 +563,7 @@ export function SectionQuittances({
   const todoRows = useMemo(() => {
     const rowRequiresActionNow = (row: any) => {
       if (row.sent) return false;
+      if (canSnoozeReceiptTask(row) && snoozedReceiptKeys.has(String(row.key))) return false;
       if (row.payStatus === "paid") return true;
       if (row.payStatus === "partial") return true;
       if (row.pay?.ownerConfirmedUnpaid) return true;
@@ -537,7 +580,7 @@ export function SectionQuittances({
         if (a.month !== b.month) return a.month.localeCompare(b.month);
         return leaseLabel(a.lease).localeCompare(leaseLabel(b.lease));
       });
-  }, [safeLeases, receiptByPeriod, paymentByPeriod, propsById, tenantsById]);
+  }, [safeLeases, receiptByPeriod, paymentByPeriod, propsById, tenantsById, snoozedReceiptKeys]);
 
   const visibleRows = view === "todo" ? todoRows : expectedRows;
 
@@ -1205,6 +1248,8 @@ export function SectionQuittances({
                 const t = tenantsById.get(String((lease as any).tenant_id));
                 const receiptStatus = row.receiptStatus;
                 const pdfReady = row.pdfReady;
+                const canSnooze = canSnoozeReceiptTask(row);
+                const isSnoozed = snoozedReceiptKeys.has(String(row.key));
 
                 return (
                   <div
@@ -1265,6 +1310,12 @@ export function SectionQuittances({
                           {row.pay.ownerConfirmedUnpaid ? (
                             <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.7rem] font-semibold text-red-800">
                               Non reçu confirmé
+                            </span>
+                          ) : null}
+
+                          {isSnoozed ? (
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[0.7rem] font-semibold text-slate-700">
+                              Masquée
                             </span>
                           ) : null}
                         </div>
@@ -1345,8 +1396,36 @@ export function SectionQuittances({
                         >
                           Voir PDF
                         </button>
+
+                        {canSnooze ? (
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => (isSnoozed ? restoreReceiptTask(row) : snoozeReceiptTask(row))}
+                            className={cx(
+                              "rounded-full border px-4 py-2 text-xs font-semibold transition",
+                              isSnoozed
+                                ? "border-slate-300 bg-slate-50 text-slate-700 hover:bg-white"
+                                : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
+                              loading && "opacity-60"
+                            )}
+                            title={
+                              isSnoozed
+                                ? "Réaffiche cette quittance dans les tâches à traiter."
+                                : "Masque cette quittance si tu ne souhaites pas l’envoyer au locataire."
+                            }
+                          >
+                            {isSnoozed ? "Réactiver" : "Masquer"}
+                          </button>
+                        ) : null}
                       </div>
                     </div>
+
+                    {isSnoozed ? (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                        Cette quittance est masquée de la vue À traiter. Elle reste consultable ici et peut être réactivée à tout moment.
+                      </div>
+                    ) : null}
 
                     {row.isLate ? (
                       <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">

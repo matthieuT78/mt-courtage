@@ -18,12 +18,54 @@ import { isActivePropertyLike } from "./archiveFilters";
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
 const fmtISO = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const RECEIPT_SNOOZE_STORAGE_PREFIX = "lokt.receiptSnoozes";
 const getMonthRange = (base = new Date()) => {
   const y = base.getFullYear();
   const m = base.getMonth();
   const start = new Date(y, m, 1);
   const end = new Date(y, m + 1, 0);
   return { startISO: fmtISO(start), endISO: fmtISO(end) };
+};
+const toMonthISO = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+const periodKey = (leaseId: string, yyyymm: string) => `${leaseId}__${yyyymm}`;
+const dateOnlyTime = (value?: string | null) => {
+  if (!value) return 0;
+  const d = new Date(String(value).slice(0, 10));
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+};
+const monthStartEnd = (yyyymm: string) => {
+  const [year, month] = yyyymm.split("-").map(Number);
+  return {
+    start: new Date(year, month - 1, 1),
+    end: new Date(year, month, 0),
+  };
+};
+const recentMonthKeys = (count: number, base = new Date()) =>
+  Array.from({ length: count }, (_, index) => toMonthISO(new Date(base.getFullYear(), base.getMonth() - index, 1)));
+const yyyymmFromPayment = (payment: RentPayment | any) => {
+  const period = String(payment?.period || "");
+  if (/^\d{4}-\d{2}$/.test(period)) return period;
+  const periodStart = String(payment?.period_start || "");
+  if (periodStart.length >= 7) return periodStart.slice(0, 7);
+  const paidForMonth = String(payment?.paid_for_month || "");
+  if (/^\d{4}-\d{2}$/.test(paidForMonth)) return paidForMonth;
+  const createdAt = String(payment?.created_at || "");
+  return createdAt.length >= 7 ? createdAt.slice(0, 7) : "";
+};
+const yyyymmFromReceipt = (receipt: RentReceipt | any) => String(receipt?.period_start || "").slice(0, 7);
+const isPaymentPaid = (payment?: RentPayment | any | null) => {
+  if (!payment) return false;
+  const status = String(payment?.status || "").toLowerCase();
+  return status === "paid" || status === "ok" || status === "confirmed" || !!payment?.paid_at || !!payment?.confirmed_at;
+};
+const isLeaseExpectedForMonth = (lease: Lease, yyyymm: string) => {
+  const { start, end } = monthStartEnd(yyyymm);
+  const status = String((lease as any).status || "").toLowerCase();
+  if (status === "draft" || status === "archived") return false;
+  if (status === "ended" && !lease.end_date) return false;
+  if (lease.start_date && dateOnlyTime(lease.start_date) > end.getTime()) return false;
+  if (lease.end_date && dateOnlyTime(lease.end_date) < start.getTime()) return false;
+  return status === "active" || status === "ended" || (!status && !!lease.start_date);
 };
 
 export function useLandlordDashboard() {
@@ -42,6 +84,7 @@ export function useLandlordDashboard() {
   const [leases, setLeases] = useState<Lease[]>([]);
   const [payments, setPayments] = useState<RentPayment[]>([]);
   const [receipts, setReceipts] = useState<RentReceipt[]>([]);
+  const [receiptSnoozeKeys, setReceiptSnoozeKeys] = useState<Set<string>>(new Set());
 
   // --- Auth (client side)
   useEffect(() => {
@@ -211,6 +254,36 @@ export function useLandlordDashboard() {
     refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") {
+      setReceiptSnoozeKeys(new Set());
+      return;
+    }
+
+    const storageKey = `${RECEIPT_SNOOZE_STORAGE_PREFIX}:${user.id}`;
+    const readSnoozes = () => {
+      try {
+        const raw = window.localStorage.getItem(storageKey);
+        const values = raw ? JSON.parse(raw) : [];
+        setReceiptSnoozeKeys(new Set(Array.isArray(values) ? values.map(String) : []));
+      } catch {
+        setReceiptSnoozeKeys(new Set());
+      }
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === storageKey) readSnoozes();
+    };
+
+    readSnoozes();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("lokt:receipt-snoozes", readSnoozes);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("lokt:receipt-snoozes", readSnoozes);
+    };
+  }, [user?.id]);
+
   // --- derived maps
   const propertyById = useMemo(
     () => new Map((properties || []).map((p) => [p.id, p])),
@@ -326,6 +399,64 @@ export function useLandlordDashboard() {
     }).length;
   }, [activeLeases, monthRange.startISO, paymentsThisMonth, receiptsThisMonth]);
 
+  const receiptWorkflowIssueCount = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const paymentByPeriod = new Map<string, RentPayment>();
+    for (const payment of payments || []) {
+      const leaseId = String(payment?.lease_id || "");
+      const yyyymm = yyyymmFromPayment(payment);
+      if (!leaseId || !yyyymm) continue;
+      const key = periodKey(leaseId, yyyymm);
+      const existing = paymentByPeriod.get(key);
+      const paymentDate = String((payment as any)?.updated_at || payment?.created_at || "");
+      const existingDate = String((existing as any)?.updated_at || existing?.created_at || "");
+      if (!existing || paymentDate.localeCompare(existingDate) > 0) paymentByPeriod.set(key, payment);
+    }
+
+    const receiptByPeriod = new Map<string, RentReceipt>();
+    for (const receipt of receipts || []) {
+      const leaseId = String(receipt?.lease_id || "");
+      const yyyymm = yyyymmFromReceipt(receipt);
+      if (leaseId && yyyymm) receiptByPeriod.set(periodKey(leaseId, yyyymm), receipt);
+    }
+
+    let count = 0;
+    for (const lease of activeLeases) {
+      for (const yyyymm of recentMonthKeys(6)) {
+        if (!isLeaseExpectedForMonth(lease, yyyymm)) continue;
+
+        const expected = Number(getLeaseRentPeriod(lease, yyyymm)?.total || 0);
+        if (expected <= 0) continue;
+
+        const key = periodKey(lease.id, yyyymm);
+        const payment = paymentByPeriod.get(key) || null;
+        const receipt = receiptByPeriod.get(key) || null;
+        const paid = isPaymentPaid(payment);
+        const received = Number(payment?.total_amount || 0);
+        const ownerConfirmedUnpaid = String(payment?.source || "") === "owner_unpaid_email";
+        const partial = paid && received + 0.01 < expected;
+
+        const dueDate = getLeasePaymentDueDate(lease, yyyymm);
+        const controlDate = dueDate ? new Date(dueDate) : null;
+        if (controlDate) controlDate.setDate(controlDate.getDate() + 2);
+        const late = !paid && !!controlDate && today.getTime() > controlDate.getTime();
+
+        const receiptStatus = String((receipt as any)?.status || "").toLowerCase();
+        const receiptSent = receiptStatus === "sent" || !!(receipt as any)?.sent_at;
+        const receiptReady = !!receipt?.pdf_url && (receiptStatus === "generated" || receiptStatus === "sent");
+        const paidReceiptTask = paid && received + 0.01 >= expected && !receiptSent && !receiptReady;
+        const readyNotSentTask = paid && received + 0.01 >= expected && receiptReady && !receiptSent;
+
+        if (receiptSnoozeKeys.has(key) && (paidReceiptTask || readyNotSentTask)) continue;
+        if (partial || ownerConfirmedUnpaid || late || paidReceiptTask || readyNotSentTask) count += 1;
+      }
+    }
+
+    return count;
+  }, [activeLeases, payments, receipts, receiptSnoozeKeys]);
+
   const depositTotal = useMemo(
     () =>
       activeLeases.reduce(
@@ -426,15 +557,26 @@ export function useLandlordDashboard() {
         action: "Créer un bail",
       });
 
-    if (lateCount > 0)
+    if (receiptWorkflowIssueCount > 0) {
+      a.push({
+        tone: lateCount > 0 ? "red" : "amber",
+        title: "Quittances à vérifier",
+        desc:
+          receiptWorkflowIssueCount === 1
+            ? "Une ligne de quittance demande un contrôle : paiement manquant, incomplet ou quittance non finalisée."
+            : `${receiptWorkflowIssueCount} lignes de quittance demandent un contrôle : paiements manquants, incomplets ou quittances non finalisées.`,
+        action: "Ouvrir Quittances",
+      });
+    } else if (lateCount > 0) {
       a.push({
         tone: "red",
         title: `${lateCount} retard(s) de paiement`,
         desc: "Certains loyers sont échus et non marqués payés.",
         action: "Voir les quittances",
       });
+    }
 
-    if (missingReceiptsAfterPaymentCount > 0)
+    if (receiptWorkflowIssueCount === 0 && missingReceiptsAfterPaymentCount > 0)
       a.push({
         tone: "amber",
         title: "Quittances non générées ce mois-ci",
@@ -464,6 +606,7 @@ export function useLandlordDashboard() {
     activeLeases.length,
     lateCount,
     missingReceiptsAfterPaymentCount,
+    receiptWorkflowIssueCount,
     receiptsThisMonth.length,
     overLimit,
   ]);
