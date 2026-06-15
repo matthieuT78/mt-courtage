@@ -25,7 +25,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "modele-quittance-loyer-pdf",
     title: "Modèle de quittance de loyer PDF gratuit",
-    metaTitle: "Modèle quittance de loyer PDF : exemple, règles et suivi | lokt.fr",
+    metaTitle: "Modèle quittance de loyer PDF gratuit | lokt.fr",
     description:
       "Modèle de quittance de loyer PDF pour bailleur : mentions utiles, paiement complet, reçu partiel, charges, routine mensuelle et archivage.",
     eyebrow: "Quittance de loyer",
@@ -145,7 +145,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "gestion-locative-proprietaire-particulier",
     title: "Gestion locative pour propriétaire particulier",
-    metaTitle: "Gestion locative propriétaire particulier : méthode et outil | lokt.fr",
+    metaTitle: "Gestion locative propriétaire particulier | lokt.fr",
     description:
       "Gérer soi-même une location sans agence : bail, locataire, loyer, quittance, charges, documents, travaux, départ et alertes pour propriétaire particulier.",
     eyebrow: "Propriétaire bailleur",
@@ -289,7 +289,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "suivi-loyers-impayes",
     title: "Suivi des loyers et impayés",
-    metaTitle: "Suivi loyers impayés : méthode, relances et quittances | lokt.fr",
+    metaTitle: "Suivi loyers impayés et relances | lokt.fr",
     description:
       "Mettre en place un suivi des loyers et impayés : échéances, paiements partiels, retards, relances, quittances, garant et historique bailleur.",
     eyebrow: "Loyers et relances",
@@ -399,7 +399,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "inventaire-location-meublee",
     title: "Inventaire location meublée",
-    metaTitle: "Inventaire location meublée : checklist, modèle et preuves | lokt.fr",
+    metaTitle: "Inventaire location meublée : checklist | lokt.fr",
     description:
       "Préparer l’inventaire d’une location meublée : mobilier obligatoire, état des équipements, photos, signature, état des lieux et restitution.",
     eyebrow: "Location meublée",
@@ -511,7 +511,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "revision-loyer-irl",
     title: "Révision de loyer IRL",
-    metaTitle: "Calcul révision loyer IRL : méthode pour bailleur | lokt.fr",
+    metaTitle: "Calcul révision loyer IRL pour bailleur | lokt.fr",
     description:
       "Calculer une révision annuelle de loyer avec l’IRL : clause du bail, date d’effet, formule, exemple, DPE, message au locataire et sources officielles.",
     eyebrow: "Révision du loyer",
@@ -605,7 +605,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "depot-garantie-location-meublee",
     title: "Dépôt de garantie en location meublée",
-    metaTitle: "Dépôt de garantie location meublée : montant, délais, retenues | lokt.fr",
+    metaTitle: "Dépôt de garantie location meublée | lokt.fr",
     description:
       "Comprendre le dépôt de garantie en location meublée : montant maximal, état des lieux, inventaire, restitution, retenues possibles et justificatifs.",
     eyebrow: "Départ locataire",

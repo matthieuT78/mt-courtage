@@ -30,6 +30,11 @@ const nextConfig = {
         destination: "/gestion-locative-lmnp",
         permanent: true,
       },
+      {
+        source: "/commencer",
+        destination: "/outil-gestion-locative",
+        permanent: true,
+      },
     ];
   },
 };

@@ -15,6 +15,12 @@ import type { SeoLandingPage as SeoLandingPageData } from "../lib/seoLandingPage
 
 const siteUrl = "https://lokt.fr";
 const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
+const organization = {
+  "@type": "Organization",
+  name: "lokt.fr",
+  url: siteUrl,
+  logo: `${siteUrl}/android-chrome-512x512.png`,
+};
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value));
@@ -63,9 +69,17 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
       headline: page.h1,
       description: page.description,
       url: pageUrl,
+      inLanguage: "fr-FR",
+      image: ogImage,
       dateModified: page.updatedAt,
       isPartOf: { "@type": "WebSite", name: "lokt.fr", url: siteUrl },
-      publisher: { "@type": "Organization", name: "lokt.fr", url: siteUrl },
+      publisher: organization,
+      about: page.eyebrow,
+      potentialAction: {
+        "@type": "RegisterAction",
+        target: `${siteUrl}/mon-compte?mode=register&redirect=/espace-bailleur`,
+        name: page.primaryCta,
+      },
     },
     {
       "@context": "https://schema.org",
@@ -74,10 +88,12 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
       name: page.title,
       description: page.description,
       url: pageUrl,
+      inLanguage: "fr-FR",
+      image: ogImage,
       datePublished: page.updatedAt,
       dateModified: page.updatedAt,
-      author: { "@type": "Organization", name: "lokt.fr" },
-      publisher: { "@type": "Organization", name: "lokt.fr", url: siteUrl },
+      author: organization,
+      publisher: organization,
       mainEntityOfPage: pageUrl,
       articleSection: page.eyebrow,
     },
@@ -90,13 +106,14 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
       url: `${siteUrl}/outil-gestion-locative`,
       description: "Espace bailleur pour suivre baux, loyers, quittances, documents, alertes et dossiers locatifs.",
       offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
-      provider: { "@type": "Organization", name: "lokt.fr", url: siteUrl },
+      provider: organization,
     },
     {
       "@context": "https://schema.org",
       "@type": "HowTo",
       name: page.h1,
       description: page.description,
+      inLanguage: "fr-FR",
       totalTime: "PT10M",
       step: page.sections.slice(0, 6).map((section, index) => ({
         "@type": "HowToStep",
@@ -116,6 +133,7 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
+      inLanguage: "fr-FR",
       mainEntity: page.faq.map((item) => ({
         "@type": "Question",
         name: item.q,
@@ -129,8 +147,10 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
       <Head>
         <title>{page.metaTitle}</title>
         <meta name="description" content={page.description} />
-        <meta name="robots" content="index, follow" />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
         <link rel="canonical" href={pageUrl} />
+        <link rel="alternate" hrefLang="fr-FR" href={pageUrl} />
+        <link rel="alternate" hrefLang="x-default" href={pageUrl} />
         <meta property="og:type" content="article" />
         <meta property="og:site_name" content="lokt.fr" />
         <meta property="og:locale" content="fr_FR" />
@@ -138,6 +158,8 @@ export default function SeoLandingPage({ page }: { page: SeoLandingPageData }) {
         <meta property="og:description" content={page.description} />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content={ogImage} />
+        <meta property="article:modified_time" content={page.updatedAt} />
+        <meta property="article:section" content={page.eyebrow} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={page.metaTitle} />
         <meta name="twitter:description" content={page.description} />

@@ -90,10 +90,9 @@ export default function PretRelaisPage() {
   const pagePath = "/pret-relais";
   const pageUrl = `${siteUrl}${pagePath}`;
 
-  // ✅ SEO: Title + Description mieux alignés requêtes ("simulateur", "pret relais")
-  const title = "Simulateur de prêt relais (pret relais) — calcul & budget avant vente | lokt.fr";
+  const title = "Simulateur prêt relais immobilier gratuit | lokt.fr";
   const description =
-    "Simulateur de prêt relais (pret relais) gratuit : estimez le montant du relais, le nouveau prêt possible, l’apport et votre budget d’achat avant de vendre. Résultat clair en 2 minutes.";
+    "Simulateur prêt relais immobilier : calculez le montant du crédit relais, le budget d'achat avant vente, les intérêts et votre marge de financement.";
 
   // OG image (non transparent, OK WhatsApp)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
@@ -101,28 +100,28 @@ export default function PretRelaisPage() {
   const faqData = useMemo(
     () => [
       {
-        q: "Qu’est-ce qu’un prêt relais ?",
-        a: "Un prêt relais permet d’acheter un nouveau bien avant d’avoir vendu le bien actuel. La banque avance une partie de la valeur du bien à vendre (après déduction du capital restant dû).",
+        q: "Comment calculer un prêt relais ?",
+        a: "Le calcul part généralement de la valeur estimée du bien à vendre. La banque retient une partie de cette valeur, souvent 60 % à 80 %, puis retire le capital restant dû. Le résultat donne un ordre de grandeur du crédit relais mobilisable.",
       },
       {
-        q: "Quel montant de relais puis-je obtenir ?",
-        a: "Cela dépend notamment de la valeur estimée du bien, du capital restant dû et du pourcentage retenu par la banque (souvent une décote). La calculette vous donne un ordre de grandeur.",
+        q: "Quelle est la formule simple du prêt relais ?",
+        a: "Une formule indicative est : valeur du bien à vendre × pourcentage retenu par la banque - capital restant dû. Exemple : 400 000 € × 70 % - 120 000 € = 160 000 € de prêt relais estimé.",
       },
       {
-        q: "Comment calculez-vous le budget total ?",
-        a: "Le budget est généralement la somme : prêt relais + nouveau prêt + apport. La simulation aide à comparer plusieurs hypothèses (prix de vente, durée, taux, apport).",
+        q: "Quelle différence entre prêt relais et crédit relais ?",
+        a: "Dans l’usage courant, prêt relais et crédit relais désignent le même mécanisme : un financement temporaire accordé en attendant la vente du bien actuel.",
       },
       {
         q: "Quels sont les coûts d’un prêt relais ?",
-        a: "Selon la formule (relais sec ou relais adossé), vous pouvez avoir des intérêts intercalaires, des frais de dossier et parfois une assurance. La banque peut aussi appliquer une décote sur le prix de vente estimé.",
+        a: "Le coût dépend du taux, de la durée, des intérêts intercalaires, de l’assurance et des frais de dossier. Plus la vente tarde, plus le coût réel du relais augmente.",
       },
       {
-        q: "Les résultats sont-ils fiables ?",
-        a: "Les résultats sont indicatifs : chaque banque a ses règles (durée du relais, franchise, assurance, frais, décote). Utilisez l’outil pour préparer votre scénario et vos échanges.",
+        q: "Combien de temps dure un prêt relais ?",
+        a: "La durée est souvent courte, généralement autour de 12 à 24 mois selon les banques et le dossier. L’objectif reste de vendre le bien actuel rapidement pour rembourser le relais.",
       },
       {
-        q: "Dois-je créer un compte ?",
-        a: "Non pour la V1 : vous pouvez utiliser la calculette librement. Certaines fonctionnalités à venir pourront nécessiter un compte.",
+        q: "Le simulateur remplace-t-il un accord bancaire ?",
+        a: "Non. Le simulateur donne un ordre de grandeur pour préparer votre projet. La banque reste seule décisionnaire sur le montant accordé, le taux, la durée et les conditions exactes.",
       },
     ],
     []
@@ -180,6 +179,7 @@ export default function PretRelaisPage() {
     const faqPage = {
       "@context": "https://schema.org",
       "@type": "FAQPage",
+      inLanguage: "fr-FR",
       mainEntity: faqData.map((f) => ({
         "@type": "Question",
         name: f.q,
@@ -187,7 +187,41 @@ export default function PretRelaisPage() {
       })),
     };
 
-    return [webPage, app, breadcrumb, faqPage];
+    const howTo = {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      name: "Calculer un prêt relais immobilier",
+      description: "Méthode simple pour estimer un prêt relais avant la vente d'un bien immobilier.",
+      inLanguage: "fr-FR",
+      step: [
+        {
+          "@type": "HowToStep",
+          position: 1,
+          name: "Estimer la valeur du bien à vendre",
+          text: "Renseignez une valeur réaliste du bien actuel, idéalement avec une estimation prudente.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 2,
+          name: "Déduire le capital restant dû",
+          text: "Retirez le capital restant à rembourser sur le crédit immobilier actuel.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 3,
+          name: "Appliquer le pourcentage bancaire",
+          text: "Appliquez le pourcentage retenu par la banque, souvent entre 60 % et 80 % de la valeur du bien.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 4,
+          name: "Comparer avec le nouveau projet",
+          text: "Ajoutez le nouveau prêt possible et l'apport pour estimer votre budget d'achat avant la vente.",
+        },
+      ],
+    };
+
+    return [webPage, app, breadcrumb, faqPage, howTo];
   }, [title, description, pageUrl, siteUrl, ogImage, faqData]);
 
   return (
@@ -195,8 +229,10 @@ export default function PretRelaisPage() {
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
-        <meta name="robots" content="index, follow" />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
         <link rel="canonical" href={pageUrl} />
+        <link rel="alternate" hrefLang="fr-FR" href={pageUrl} />
+        <link rel="alternate" hrefLang="x-default" href={pageUrl} />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
@@ -224,8 +260,8 @@ export default function PretRelaisPage() {
       <main className="flex-1">
         <CalculatorHero
           eyebrow="Calculette prêt relais lokt.fr"
-          title={isLoggedIn && displayName ? `${displayName}, préparez votre achat avant la vente.` : "Achetez avant de vendre avec un scénario clair."}
-          description="Estimez le montant du relais, le nouveau prêt possible et votre budget d'achat total à partir de la valeur de votre bien actuel."
+          title={isLoggedIn && displayName ? `${displayName}, simulez votre prêt relais.` : "Simulateur prêt relais immobilier gratuit"}
+          description="Calculez le crédit relais possible, les intérêts indicatifs et votre budget d'achat avant la vente du bien actuel."
           links={[
             { href: "/", label: "Accueil" },
             { href: "/capacite", label: "Capacité d'emprunt" },
@@ -238,61 +274,68 @@ export default function PretRelaisPage() {
           {/* Calculette */}
           <PretRelaisWizard showSaveButton={isLoggedIn} />
 
-          {/* Bloc SEO discret (enrichi comme capacité) */}
+          {/* Bloc SEO éditorial */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
-                Simulateur de prêt relais : acheter avant d’avoir vendu
+                Calcul prêt relais : la formule à connaître
               </h2>
 
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Cette calculette de prêt relais vous permet d’estimer le montant de relais mobilisable à partir de la
-                valeur de votre bien actuel, du capital restant dû et du pourcentage retenu par la banque. Elle projette
-                ensuite votre capacité pour un nouveau prêt et votre budget d’achat total (relais + nouveau prêt +
-                apport). Utile si vous cherchez un <strong>calcul pret relais</strong> rapide avant rendez-vous banque.
+                Le calcul d’un prêt relais repose sur une logique simple : la banque part de la valeur du bien à vendre,
+                retient seulement une partie de cette valeur par prudence, puis déduit le capital restant dû. Le simulateur
+                vous donne ensuite un budget d’achat en combinant <strong>crédit relais</strong>, nouveau prêt et apport.
               </p>
 
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Les résultats restent indicatifs : chaque banque applique ses propres règles (durée du relais, franchise,
-                intérêts intercalaires, assurance, frais). Utilisez l’outil pour comparer des scénarios et préparer un
-                échange plus efficace avec un conseiller.
+                Formule indicative : <strong>valeur du bien à vendre × pourcentage retenu - capital restant dû</strong>.
+                Si votre logement vaut 400 000 €, que la banque retient 70 % et qu’il reste 120 000 € à rembourser, le
+                relais estimé est de 160 000 €.
               </p>
             </div>
 
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">Comment fonctionne un prêt relais ?</h2>
-              <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
-                <li>
-                  La banque estime la <strong>valeur de votre bien actuel</strong> et applique souvent une{" "}
-                  <strong>décote</strong> (prudence).
-                </li>
-                <li>
-                  Elle retire le <strong>capital restant dû</strong> pour déterminer la base de calcul du relais.
-                </li>
-                <li>
-                  Le budget global combine souvent : <strong>relais</strong> + <strong>nouveau prêt</strong> +{" "}
-                  <strong>apport</strong>.
-                </li>
-                <li>
-                  Selon la formule, vous payez des <strong>intérêts intercalaires</strong> (mensuels) jusqu’à la vente.
-                </li>
-              </ul>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <h2 className="text-sm font-semibold text-slate-900">Exemple rapide</h2>
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Exemple indicatif : si votre bien vaut <strong>400 000 €</strong> et qu’il reste <strong>120 000 €</strong>{" "}
-                de crédit, la banque peut avancer un relais calculé sur une base décotée (ex : 70% à 80% de la valeur),
-                puis compléter avec un nouveau prêt selon votre capacité. La simulation sert à comparer vos hypothèses
-                (prix de vente, durée, taux, apport).
-              </p>
+            <div className="grid gap-3 md:grid-cols-3">
+              {[
+                {
+                  title: "1. Bien à vendre",
+                  text: "Renseignez la valeur estimée, le capital restant dû et le pourcentage retenu par la banque.",
+                },
+                {
+                  title: "2. Nouveau financement",
+                  text: "Ajoutez vos revenus, crédits existants, taux, durée et apport pour calculer la capacité restante.",
+                },
+                {
+                  title: "3. Budget d’achat",
+                  text: "Comparez le prix cible avec le relais, le nouveau prêt possible et les intérêts indicatifs.",
+                },
+              ].map((item) => (
+                <div key={item.title} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <h2 className="text-sm font-semibold text-slate-900">{item.title}</h2>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{item.text}</p>
+                </div>
+              ))}
             </div>
 
             <p className="text-xs text-slate-500">
-              Note : chaque banque a ses règles internes (décote, durée, franchise, assurance). L’outil donne un ordre de
-              grandeur utile pour arbitrer.
+              Note : chaque banque applique ses règles internes : décote, durée, franchise, assurance, frais et analyse
+              du taux d’endettement. Le résultat reste indicatif.
             </p>
+
+            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+              {[
+                { href: "/capacite", label: "Calculer ma capacité d’emprunt" },
+                { href: "/investissement", label: "Tester la rentabilité du futur bien" },
+                { href: "/outil-gestion-locative", label: "Gérer le bien après achat" },
+              ].map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="inline-flex min-h-10 items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:border-indigo-200 hover:bg-indigo-50"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
           </section>
 
           {/* FAQ */}

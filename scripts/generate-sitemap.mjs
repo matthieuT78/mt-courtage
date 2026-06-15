@@ -57,14 +57,29 @@ const INCLUDE_SIMULATEUR = false;
 
 const urls = [];
 
+function sitemapMeta(pathname) {
+  if (pathname === "/") return { changefreq: "weekly", priority: "1.0" };
+  if (pathname === "/outil-gestion-locative" || pathname === "/gestion-locative-lmnp") {
+    return { changefreq: "weekly", priority: "0.9" };
+  }
+  if (pathname === "/tarifs" || pathname === "/calculettes") {
+    return { changefreq: "weekly", priority: "0.8" };
+  }
+  if (pathname === "/cgu" || pathname === "/confidentialite" || pathname === "/a-propos") {
+    return { changefreq: "yearly", priority: "0.3" };
+  }
+  if (pathname.startsWith("/guides/")) return { changefreq: "monthly", priority: "0.7" };
+  return { changefreq: "monthly", priority: "0.75" };
+}
+
 // pages statiques V1
-for (const p of staticPagesV1) urls.push(`${siteUrl}${p}`);
-for (const slug of GUIDE_SLUGS) urls.push(`${siteUrl}/guides/${slug}`);
+for (const p of staticPagesV1) urls.push({ loc: `${siteUrl}${p}`, pathname: p });
+for (const slug of GUIDE_SLUGS) urls.push({ loc: `${siteUrl}/guides/${slug}`, pathname: `/guides/${slug}` });
 
 if (INCLUDE_SIMULATEUR) {
-  for (const r of REVENUS) urls.push(`${siteUrl}/simulateur/capacite-emprunt/${r}`);
-  for (const v of VALEURS) urls.push(`${siteUrl}/simulateur/pret-relais/${v}`);
-  for (const p of PRIX) urls.push(`${siteUrl}/simulateur/investissement/${p}`);
+  for (const r of REVENUS) urls.push({ loc: `${siteUrl}/simulateur/capacite-emprunt/${r}`, pathname: `/simulateur/capacite-emprunt/${r}` });
+  for (const v of VALEURS) urls.push({ loc: `${siteUrl}/simulateur/pret-relais/${v}`, pathname: `/simulateur/pret-relais/${v}` });
+  for (const p of PRIX) urls.push({ loc: `${siteUrl}/simulateur/investissement/${p}`, pathname: `/simulateur/investissement/${p}` });
 }
 
 const lastmod = new Date().toISOString();
@@ -73,7 +88,10 @@ const xml =
   `<?xml version="1.0" encoding="UTF-8"?>\n` +
   `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
   urls
-    .map((u) => `  <url>\n    <loc>${u}</loc>\n    <lastmod>${lastmod}</lastmod>\n  </url>`)
+    .map((u) => {
+      const meta = sitemapMeta(u.pathname);
+      return `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${meta.changefreq}</changefreq>\n    <priority>${meta.priority}</priority>\n  </url>`;
+    })
     .join("\n") +
   `\n</urlset>\n`;
 

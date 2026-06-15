@@ -19,9 +19,9 @@ import AppFooter from "../components/AppFooter";
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/gestion-locative-lmnp`;
 const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
-const title = "Gestion locative LMNP et location meublée | lokt.fr";
+const title = "Gestion locative LMNP : outil location meublée | lokt.fr";
 const description =
-  "Outil de gestion locative LMNP pour propriétaire bailleur : bail, quittances, inventaire meublé, état des lieux, finance, charges et aide à la déclaration.";
+  "Logiciel de gestion locative LMNP pour location meublée : bail, inventaire, état des lieux, quittances, loyers, charges, documents et finance.";
 
 const features = [
   {
@@ -48,24 +48,48 @@ const features = [
 
 const faq = [
   {
-    q: "lokt.fr est-il réservé au LMNP ?",
-    a: "Non. L’outil peut gérer d’autres locations, mais il est particulièrement adapté à la location meublée grâce à l’inventaire, au suivi financier et à l’aide à la déclaration.",
+    q: "Quel outil utiliser pour gérer une location meublée LMNP ?",
+    a: "Un bailleur LMNP doit pouvoir suivre le bail, le locataire, les loyers, les quittances, l’inventaire du mobilier, les états des lieux, les charges et les justificatifs. lokt.fr regroupe ces éléments dans un espace bailleur pensé pour la gestion locative meublée.",
   },
   {
-    q: "Pourquoi une page dédiée à la gestion locative LMNP ?",
-    a: "Parce que le propriétaire LMNP a des besoins spécifiques : mobilier à suivre, recettes et charges à classer, quittances à conserver et données utiles pour préparer sa déclaration.",
+    q: "La gestion locative LMNP est-elle différente d’une location vide ?",
+    a: "Oui. En LMNP, le bailleur doit notamment suivre le mobilier, conserver l’inventaire, classer les recettes et dépenses de location meublée, et garder des justificatifs utiles pour sa comptabilité ou sa déclaration.",
+  },
+  {
+    q: "Peut-on suivre les loyers et quittances d’un meublé LMNP ?",
+    a: "Oui. Le workflow permet de suivre le loyer attendu, confirmer le paiement, repérer un retard ou un paiement partiel, puis générer et archiver la quittance PDF quand la période est soldée.",
+  },
+  {
+    q: "L’inventaire est-il important en location meublée ?",
+    a: "Oui. L’inventaire permet de lister les meubles et équipements remis au locataire, de garder des preuves à l’entrée et de comparer l’état du logement lors de la sortie.",
+  },
+  {
+    q: "lokt.fr remplace-t-il un expert-comptable LMNP ?",
+    a: "Non. lokt.fr aide à organiser les informations, documents, loyers et charges. Pour un choix fiscal, une liasse ou une déclaration complexe, il faut vérifier avec un expert-comptable ou un professionnel compétent.",
   },
   {
     q: "Le plan gratuit suffit-il pour commencer ?",
-    a: "Oui. Il permet de gérer un logement actif avec le bail, le locataire, les quittances manuelles, l’état des lieux, l’inventaire et la finance simple.",
-  },
-  {
-    q: "lokt.fr remplace-t-il un expert-comptable ?",
-    a: "Non. lokt.fr aide à organiser les informations, documents et flux. Pour un choix fiscal ou une déclaration complexe, il faut vérifier avec un professionnel.",
+    a: "Oui. Il permet de gérer un logement actif avec le bail, le locataire, les quittances manuelles, l’état des lieux, l’inventaire et une finance simple.",
   },
 ];
 
 const jsonLdItems = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: title,
+    headline: "Gestion locative LMNP pour location meublée",
+    url: pageUrl,
+    description,
+    inLanguage: "fr-FR",
+    image: ogImage,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "lokt.fr",
+      url: siteUrl,
+    },
+    about: ["gestion locative LMNP", "location meublée", "inventaire meublé", "quittances de loyer"],
+  },
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -75,6 +99,7 @@ const jsonLdItems = [
     url: pageUrl,
     image: ogImage,
     description,
+    inLanguage: "fr-FR",
     offers: {
       "@type": "Offer",
       price: "0",
@@ -101,6 +126,7 @@ const jsonLdItems = [
   {
     "@context": "https://schema.org",
     "@type": "FAQPage",
+    inLanguage: "fr-FR",
     mainEntity: faq.map((item) => ({
       "@type": "Question",
       name: item.q,
@@ -141,8 +167,10 @@ export default function GestionLocativeLmnpPage() {
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
-        <meta name="robots" content="index, follow" />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
         <link rel="canonical" href={pageUrl} />
+        <link rel="alternate" hrefLang="fr-FR" href={pageUrl} />
+        <link rel="alternate" hrefLang="x-default" href={pageUrl} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="lokt.fr" />
         <meta property="og:locale" content="fr_FR" />
@@ -178,11 +206,11 @@ export default function GestionLocativeLmnpPage() {
                   Location meublée et LMNP
                 </div>
                 <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-white sm:mt-6">
-                  <span className="block text-[2.55rem] sm:text-6xl">Gérer un meublé LMNP.</span>
-                  <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Sans tableur dispersé.</span>
+                  <span className="block text-[2.55rem] sm:text-6xl">Gestion locative LMNP.</span>
+                  <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Le meublé sans tableur dispersé.</span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
-                  La page cas d’usage pour les propriétaires en location meublée : inventaire, loyers, quittances, état des lieux, finance et préparation de déclaration autour d’un logement LMNP.
+                  Un outil pour gérer une location meublée LMNP : bail, locataire, inventaire, état des lieux, loyers, quittances, charges, documents et suivi financier.
                 </p>
                 <div className="mt-7 grid gap-3 sm:mt-8 sm:flex sm:flex-wrap">
                   <Link
@@ -309,13 +337,13 @@ export default function GestionLocativeLmnpPage() {
             <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
               <div className="grid gap-0 lg:grid-cols-[0.82fr,1.18fr]">
                 <div className="p-5 sm:p-8">
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Pourquoi LMNP</p>
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Logiciel LMNP</p>
                   <h2 className="mt-2 font-semibold leading-tight text-slate-950">
-                    <span className="block text-2xl sm:text-3xl">Pensé pour le cas LMNP.</span>
-                    <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">Utile bien au-delà.</span>
+                    <span className="block text-2xl sm:text-3xl">Un dossier complet par meublé.</span>
+                    <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">Pas seulement une liste de loyers.</span>
                   </h2>
                   <p className="mt-4 text-sm leading-6 text-slate-600">
-                    La page outil gestion locative présente le produit global. Cette page se concentre sur les recherches liées à la location meublée et au LMNP : mobilier, inventaire, justificatifs, recettes, charges et documents à conserver.
+                    La gestion locative LMNP demande plus qu’un suivi de paiement. Il faut conserver les documents du bail, suivre les loyers, produire les quittances, garder l’inventaire du mobilier, classer les charges et retrouver rapidement les preuves utiles en cas de départ du locataire.
                   </p>
                 </div>
                 <div className="grid gap-3 bg-slate-50 p-4 sm:p-8">
@@ -325,6 +353,33 @@ export default function GestionLocativeLmnpPage() {
                     ["03", "Préparer les preuves", "Inventaire, état des lieux, justificatifs et finance classée."],
                   ].map(([step, titleStep, textStep]) => (
                     <LmnpStepCard key={step} step={step} title={titleStep} text={textStep} />
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
+              <div className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr] lg:items-start">
+                <div>
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Méthode LMNP</p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                    Que doit suivre un propriétaire LMNP ?
+                  </h2>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                    Pour une location meublée, le risque n’est pas seulement d’oublier un loyer. C’est de perdre le lien entre le bail, le mobilier, les photos, les états des lieux, les quittances et les charges. Un bon outil de gestion locative LMNP doit donc relier l’opérationnel et les justificatifs.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ["Bail et locataire", "Type de bail, dates, dépôt de garantie, coordonnées et logement rattaché."],
+                    ["Inventaire meublé", "Mobilier, équipements, photos, état et éléments à remplacer."],
+                    ["Loyers et quittances", "Montant attendu, paiement reçu, retard, reçu partiel et quittance PDF."],
+                    ["Charges et documents", "Factures, assurances, taxes, dépenses et pièces utiles pour la déclaration."],
+                  ].map(([titleBlock, textBlock]) => (
+                    <div key={titleBlock} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <h3 className="text-sm font-semibold text-slate-950">{titleBlock}</h3>
+                      <p className="mt-2 text-sm leading-6 text-slate-600">{textBlock}</p>
+                    </div>
                   ))}
                 </div>
               </div>
