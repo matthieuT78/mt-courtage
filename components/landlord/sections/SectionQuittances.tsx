@@ -445,7 +445,7 @@ export function SectionQuittances({
     next.add(String(row.key));
     persistReceiptSnoozes(next);
     setErr(null);
-    setOk("Quittance masquée de la vue À traiter. Elle reste disponible dans le mois choisi.");
+    setOk("Quittance masquée de la vue Alertes. Elle reste disponible dans le mois choisi.");
   };
 
   const restoreReceiptTask = (row: any) => {
@@ -453,7 +453,7 @@ export function SectionQuittances({
     next.delete(String(row.key));
     persistReceiptSnoozes(next);
     setErr(null);
-    setOk("Quittance réactivée dans la vue À traiter.");
+    setOk("Quittance réactivée dans la vue Alertes.");
   };
 
   const saveReminderSetting = async (leaseId: string, patch: Partial<ReminderSetting>) => {
@@ -1198,7 +1198,7 @@ export function SectionQuittances({
             <label className="text-[0.7rem] text-slate-700">Vue</label>
             <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
               {[
-                ["todo", `À traiter (${todoRows.length})`],
+                ["todo", `Alertes (${todoRows.length})`],
                 ["month", "Mois choisi"],
               ].map(([value, label]) => (
                 <button
@@ -1265,7 +1265,7 @@ export function SectionQuittances({
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">
-        <Kpi label={view === "todo" ? "À traiter" : "Reçus (période)"} value={dashboard.total} sub={view === "todo" ? "workflows ouverts" : "toutes lignes du mois"} />
+        <Kpi label={view === "todo" ? "Alertes" : "Reçus (période)"} value={dashboard.total} sub={view === "todo" ? "workflows ouverts" : "toutes lignes du mois"} />
         <Kpi label="Payés" value={dashboard.paidCount} sub="source de vérité paiement" />
         <Kpi label="PDF prêts" value={dashboard.pdfReady} sub="après paiement" />
         <Kpi label="Clôturées" value={dashboard.sent} sub={canUseReceiptAutomation ? "email envoyé" : "remise manuelle"} />
@@ -1281,7 +1281,7 @@ export function SectionQuittances({
         <Card
           title={
             <span>
-              {view === "todo" ? "À traiter" : "Workflow du mois"} <span className="text-slate-500">({visibleRows.length})</span>
+              {view === "todo" ? "Alertes" : "Workflow du mois"} <span className="text-slate-500">({visibleRows.length})</span>
             </span>
           }
           right={
@@ -1513,7 +1513,7 @@ export function SectionQuittances({
 
                     {isSnoozed ? (
                       <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                        Cette quittance est masquée de la vue À traiter. Elle reste consultable ici et peut être réactivée à tout moment.
+                        Cette quittance est masquée de la vue Alertes. Elle reste consultable ici et peut être réactivée à tout moment.
                       </div>
                     ) : null}
 

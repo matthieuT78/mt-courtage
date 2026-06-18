@@ -446,8 +446,9 @@ export function useLandlordDashboard() {
         const receiptStatus = String((receipt as any)?.status || "").toLowerCase();
         const receiptSent = receiptStatus === "sent" || !!(receipt as any)?.sent_at;
         const receiptReady = !!receipt?.pdf_url && (receiptStatus === "generated" || receiptStatus === "sent");
-        const paidReceiptTask = paid && received + 0.01 >= expected && !receiptSent && !receiptReady;
-        const readyNotSentTask = paid && received + 0.01 >= expected && receiptReady && !receiptSent;
+        const receiptsDisabled = !!(lease as any).receipts_disabled;
+        const paidReceiptTask = !receiptsDisabled && paid && received + 0.01 >= expected && !receiptSent && !receiptReady;
+        const readyNotSentTask = !receiptsDisabled && paid && received + 0.01 >= expected && receiptReady && !receiptSent;
 
         if (receiptSnoozeKeys.has(key) && (paidReceiptTask || readyNotSentTask)) continue;
         if (partial || ownerConfirmedUnpaid || late || paidReceiptTask || readyNotSentTask) count += 1;
