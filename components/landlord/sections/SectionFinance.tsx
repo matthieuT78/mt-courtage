@@ -1812,6 +1812,85 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </p>
       </div>
 
+      {/* Paramètres financiers par bien */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-4 py-3">
+          <p className="text-sm font-semibold text-slate-900">Paramètres financiers</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Prix d'achat, crédit, assurances, taxes — ces données alimentent Performance et les calculs de rentabilité.
+          </p>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {activePropertyOptions.length === 0 ? (
+            <p className="px-4 py-5 text-sm text-slate-500">Créez d'abord un bien pour renseigner ses paramètres financiers.</p>
+          ) : (
+            activePropertyOptions.map((property) => {
+              const existing = pf.get(property.id) || null;
+              const loanMonthly = Number(existing?.loan_monthly || 0) + Number(existing?.loan_insurance_monthly || 0);
+              const taxesMonthly = Number(existing?.property_tax_yearly || 0) / 12 + Number(existing?.cfe_yearly || 0) / 12;
+              const operatingMonthly =
+                Number(existing?.fixed_charges_monthly || 0) +
+                Number(existing?.pno_insurance_monthly || 0) +
+                Number(existing?.copro_charges_monthly || 0) +
+                Number(existing?.bank_fees_monthly || 0) +
+                Number(existing?.maintenance_monthly || 0) +
+                Number(existing?.rental_tax_monthly || 0);
+              const monthlyTotal = loanMonthly + taxesMonthly + operatingMonthly;
+              const missing = [
+                !existing?.purchase_price ? "prix d'achat" : "",
+                !existing?.loan_rate_percent ? "taux crédit" : "",
+              ].filter(Boolean);
+              const optionalMissing = [
+                !existing?.loan_monthly ? "crédit" : "",
+                !existing?.tax_regime ? "régime" : "",
+              ].filter(Boolean);
+
+              return (
+                <details key={property.id} className="group">
+                  <summary className="cursor-pointer list-none px-4 py-3 hover:bg-slate-50">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700">
+                          {(property.label || property.address_line1 || "B").slice(0, 1).toUpperCase()}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-900">{property.label || property.address_line1 || "Bien"}</p>
+                          <p className="truncate text-xs text-slate-500">
+                            {missing.length
+                              ? `À renseigner : ${missing.join(", ")}`
+                              : optionalMissing.length
+                              ? `À affiner : ${optionalMissing.join(", ")}`
+                              : "Paramètres complets"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex gap-4 text-xs text-slate-600">
+                          <LineMetric label="Total/mois" value={formatEuro(monthlyTotal)} strong />
+                          <LineMetric label="Crédit" value={formatEuro(loanMonthly)} />
+                          <LineMetric label="Taxes" value={formatEuro(taxesMonthly)} />
+                          <LineMetric
+                            label="Taux"
+                            value={existing?.loan_rate_percent ? `${Number(existing.loan_rate_percent).toLocaleString("fr-FR")} %` : "—"}
+                          />
+                          <LineMetric label="Régime" value={existing?.tax_regime ? taxRegimeLabel(existing.tax_regime) : "—"} />
+                        </div>
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 group-open:hidden">
+                          Modifier
+                        </span>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="border-t border-slate-100 bg-slate-50 px-4 pb-4">
+                    <PropertyFinanceForm propertyId={property.id} existing={existing} onSave={upsertPropertyFinance} />
+                  </div>
+                </details>
+              );
+            })
+          )}
+        </div>
+      </div>
+
       {txWizardOpen ? (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
           <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => { setTxWizardOpen(false); setInvoiceFile(null); }} />
