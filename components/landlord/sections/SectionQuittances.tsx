@@ -1105,6 +1105,33 @@ export function SectionQuittances({
     }
   };
 
+  const cancelArchivedPayment = async (r: any) => {
+    if (!r?.id) return;
+    const confirmed = window.confirm(
+      "Annuler ce paiement archivé ?\n\nLe paiement repassera en attente, la quittance PDF sera supprimée, et l'écriture Finance automatique sera retirée."
+    );
+    if (!confirmed) return;
+    setErr(null);
+    setOk(null);
+    try {
+      setLoading(true);
+      const headers = await authJsonHeaders();
+      const resp = await fetch("/api/receipts/cancel-payment", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ userId, receiptId: r.id }),
+      });
+      const { raw, json } = await safeJson(resp);
+      throwApiError(resp, raw, json, "Erreur annulation paiement.");
+      setOk("Paiement annulé ✅ Quittance et Finance remises à jour.");
+      await onRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Erreur annulation paiement.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const monthLabel = useMemo(() => {
     const { start } = monthStartEnd(month);
     return start.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
@@ -1809,6 +1836,21 @@ export function SectionQuittances({
                                         >
                                           ♻️ Régénérer
                                         </button>
+
+                                        {r.payment_id ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => cancelArchivedPayment(r)}
+                                            disabled={loading}
+                                            className={cx(
+                                              "rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50",
+                                              loading && "opacity-60"
+                                            )}
+                                            title="Annuler ce paiement confirmé et remettre la quittance en brouillon"
+                                          >
+                                            Annuler paiement
+                                          </button>
+                                        ) : null}
                                       </div>
                                     </td>
                                   </tr>
