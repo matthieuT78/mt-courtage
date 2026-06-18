@@ -198,13 +198,18 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     paymentMethod: lease.payment_method,
   });
 
+  // Find receipt for same period_start in same month (period_end may differ if end_date changed after payment)
+  const yyyymmR = normalizedPeriodStart.slice(0, 7);
   let receipt: any = null;
   const existingReceipt = await supabaseAdmin
     .from("rent_receipts")
     .select("*")
     .eq("lease_id", leaseId)
     .eq("period_start", normalizedPeriodStart)
-    .eq("period_end", normalizedPeriodEnd)
+    .gte("period_end", `${yyyymmR}-01`)
+    .lte("period_end", `${yyyymmR}-31`)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (existingReceipt.error) throw existingReceipt.error;
@@ -213,6 +218,7 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     const upd = await supabaseAdmin
       .from("rent_receipts")
       .update({
+        period_end: normalizedPeriodEnd,
         rent_amount: rent,
         charges_amount: charges,
         total_amount: total,

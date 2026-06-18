@@ -458,12 +458,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const chargesAmount = rentPeriod.charges;
     const totalAmount = rentPeriod.total;
 
+    // Accept payment if it covers at least up to periodEnd (handles end_date set after payment)
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from("rent_payments")
       .select("paid_at,total_amount")
       .eq("lease_id", leaseId)
       .eq("period_start", periodStart)
-      .eq("period_end", periodEnd)
+      .gte("period_end", periodEnd)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (paymentError) return res.status(500).json({ error: paymentError.message });
     if (!payment?.paid_at || Number(payment.total_amount || 0) + 0.01 < totalAmount) {
@@ -472,13 +475,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       });
     }
 
+    // Find existing receipt for same period_start in same month (period_end may differ if end_date changed)
+    const yyyymm = periodStart.slice(0, 7);
     let receipt: any = null;
     const existing = await supabaseAdmin
       .from("rent_receipts")
       .select("*")
       .eq("lease_id", leaseId)
       .eq("period_start", periodStart)
-      .eq("period_end", periodEnd)
+      .gte("period_end", `${yyyymm}-01`)
+      .lte("period_end", `${yyyymm}-31`)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     const issueDateISO = toISODateLocal(new Date());
@@ -487,6 +495,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const upd = await supabaseAdmin
         .from("rent_receipts")
         .update({
+          period_end: periodEnd,
           rent_amount: rentAmount,
           charges_amount: chargesAmount,
           total_amount: totalAmount,
