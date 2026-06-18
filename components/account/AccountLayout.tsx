@@ -1,6 +1,7 @@
 // components/account/AccountLayout.tsx
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { ReactNode, useEffect, useState } from "react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import AppHeader from "../AppHeader";
@@ -57,6 +58,7 @@ function NavItem({
 }
 
 export default function AccountLayout({ userEmail, active, onLogout, children }: Props) {
+  const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pageTitle =
@@ -77,9 +79,8 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
       await onLogout();
     } catch {
       // signOut failure is non-blocking
-    } finally {
-      window.location.href = "/";
     }
+    router.replace("/");
   };
 
   useEffect(() => {
