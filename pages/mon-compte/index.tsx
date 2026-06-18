@@ -14,6 +14,7 @@ import { useProfile } from "../../hooks/useProfile";
 import { usePermissions } from "../../components/PermissionProvider";
 
 type Mode = "login" | "register";
+type Role = "bailleur" | "locataire";
 
 /**
  * ✅ On autorise un redirect UNIQUEMENT si c'est un chemin interne
@@ -68,6 +69,7 @@ export default function MonCompteIndexPage() {
   const [propertyCount, setPropertyCount] = useState<number | null>(null);
 
   const [mode, setMode] = useState<Mode>("login");
+  const [role, setRole] = useState<Role>("bailleur");
   const [redirectPath, setRedirectPath] = useState<string>("/");
 
   // login
@@ -427,9 +429,48 @@ export default function MonCompteIndexPage() {
         ) : (
           <div className="mx-auto max-w-2xl">
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+              {/* Toggle Bailleur / Locataire */}
+              <div className="mb-5 flex items-center gap-2 rounded-full bg-slate-100 p-1 text-xs w-fit">
+                <button
+                  type="button"
+                  onClick={() => setRole("bailleur")}
+                  className={cx(
+                    "rounded-full px-4 py-1.5 font-semibold transition",
+                    role === "bailleur" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  Bailleur
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("locataire")}
+                  className={cx(
+                    "rounded-full px-4 py-1.5 font-semibold transition",
+                    role === "locataire" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
+                  )}
+                >
+                  Locataire
+                </button>
+              </div>
+
+              {role === "locataire" ? (
+                <div className="py-4">
+                  <h1 className="text-lg font-semibold text-slate-900">Espace locataire</h1>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Votre espace locataire est accessible depuis le lien envoyé par votre bailleur, ou directement depuis la page de connexion locataire.
+                  </p>
+                  <Link
+                    href="/espace-locataire/connexion"
+                    className="mt-5 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 transition"
+                  >
+                    Acceder a mon espace locataire
+                  </Link>
+                </div>
+              ) : (
+              <>
               <div className="flex items-center justify-between gap-3 mb-5">
                 <div>
-                  <p className="uppercase tracking-[0.18em] text-[0.7rem] text-sky-700 mb-1">Accès</p>
+                  <p className="uppercase tracking-[0.18em] text-[0.7rem] text-sky-700 mb-1">Accès bailleur</p>
                   <h1 className="text-lg font-semibold text-slate-900">
                     {mode === "login" ? "Connexion" : "Créer un compte"}
                   </h1>
@@ -832,6 +873,8 @@ export default function MonCompteIndexPage() {
                   </section>
                 </form>
               )}
+              </>
+              )} {/* end role */}
             </div>
           </div>
         )}

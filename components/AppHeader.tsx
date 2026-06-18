@@ -13,6 +13,7 @@ import {
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { useAuthUser } from "../hooks/useAuthUser";
+import { useTenantAuthUser } from "../hooks/useTenantAuthUser";
 import { GUIDE_CATEGORIES, getGuidesByCategory } from "../lib/guides";
 
 /**
@@ -39,6 +40,7 @@ const CALCULATOR_LINKS = [
 export default function AppHeader({ staticMode = false }: { staticMode?: boolean }) {
   const router = useRouter();
   const { checking: authChecking, isLoggedIn } = useAuthUser();
+  const { checking: tenantChecking, isLoggedIn: isTenantLoggedIn } = useTenantAuthUser();
   void staticMode;
 
   // ✅ Toggle simple : V1 landing
@@ -204,7 +206,7 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                 <BookOpenIcon className="h-5 w-5" />
               </Link>
 
-              {authChecking ? (
+              {authChecking || tenantChecking ? (
                 <>
                   <span className="hidden h-10 w-28 rounded-full bg-slate-100 sm:inline-flex" aria-hidden="true" />
                   <span className="h-9 w-9 rounded-full bg-slate-100 sm:hidden" aria-hidden="true" />
@@ -236,10 +238,21 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                     <span className="hidden sm:inline">Espace bailleur</span>
                   </Link>
                 </>
+              ) : isTenantLoggedIn ? (
+                <Link
+                  href="/espace-locataire"
+                  className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-[0.76rem] font-semibold shadow-sm sm:min-h-10 sm:gap-1.5 sm:px-3 sm:text-[0.8rem] ${brandBg} ${brandText} ${brandHover}`}
+                  title="Espace locataire"
+                  aria-label="Espace locataire"
+                >
+                  <HomeModernIcon className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                  <span className="sm:hidden">Mon espace</span>
+                  <span className="hidden sm:inline">Espace locataire</span>
+                </Link>
               ) : (
                 <>
                   <Link
-                    href="/mon-compte?mode=login&redirect=/espace-bailleur"
+                    href="/mon-compte?mode=login"
                     className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:hidden"
                     title="Se connecter"
                     aria-label="Se connecter"
@@ -247,7 +260,7 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                     <UserCircleIcon className="h-5 w-5" />
                   </Link>
                   <Link
-                    href="/mon-compte?mode=login&redirect=/espace-bailleur"
+                    href="/mon-compte?mode=login"
                     className="hidden min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[0.8rem] font-semibold text-slate-800 hover:bg-slate-50 sm:inline-flex"
                   >
                     Se connecter
