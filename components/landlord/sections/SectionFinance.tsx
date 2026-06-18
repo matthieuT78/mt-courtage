@@ -403,7 +403,7 @@ const csvCell = (value: string | number | null | undefined) => {
 function safeFileName(name: string) {
   return name
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-zA-Z0-9._-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
@@ -917,7 +917,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     });
 
     const csv = [headers, ...rows].map((row) => row.map(csvCell).join(";")).join("\r\n");
-    const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["﻿", csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     const slugPeriod = periodLabel.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
@@ -1314,26 +1314,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
   const accountingChartRows = useMemo(() => {
     const { start, end } = selectedPeriod;
-    const monthlyRecurring = sum(Array.from(monthlyRecurringByProperty.values()).map((row) => row.total));
-    const months: Array<{ key: string; label: string; income: number; ledgerIncome: number; expectedRent: number; expense: number; recurring: number; net: number }> = [];
+    const months: Array<{ key: string; label: string; income: number; expense: number; net: number }> = [];
 
     for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
       const key = monthKey(cursor);
-      const expectedRent = sum(
-        Array.from(expectedRentByPropertyMonth.entries())
-          .filter(([entryKey]) => entryKey.endsWith(`:${key}`))
-          .map(([, amount]) => amount)
-      );
-      months.push({
-        key,
-        label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()),
-        income: 0,
-        ledgerIncome: 0,
-        expectedRent,
-        expense: 0,
-        recurring: monthlyRecurring,
-        net: -monthlyRecurring,
-      });
+      months.push({ key, label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()), income: 0, expense: 0, net: 0 });
     }
 
     const byKey = new Map(months.map((row) => [row.key, row]));
@@ -1343,19 +1328,18 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       const bucket = byKey.get(monthKey(d));
       if (!bucket) continue;
       if (isIncomeReceived(row)) {
-        bucket.ledgerIncome += Number(row.amount || 0);
-        bucket.income = bucket.ledgerIncome;
+        bucket.income += Number(row.amount || 0);
       } else if (row.direction === "out") {
         bucket.expense += Number(row.amount || 0);
       }
-      bucket.net = bucket.income - bucket.expense - bucket.recurring;
+      bucket.net = bucket.income - bucket.expense;
     }
 
     return months;
-  }, [expectedRentByPropertyMonth, monthlyRecurringByProperty, periodLedger.rows, selectedPeriod]);
+  }, [periodLedger.rows, selectedPeriod]);
 
   const chartMax = useMemo(
-    () => Math.max(1, ...accountingChartRows.flatMap((row) => [row.income, row.expense, row.recurring, Math.abs(row.net)])),
+    () => Math.max(1, ...accountingChartRows.flatMap((row) => [row.income, row.expense, Math.abs(row.net)])),
     [accountingChartRows]
   );
 
@@ -1380,17 +1364,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           data: accountingChartRows.map((row) => row.expense),
           backgroundColor: "rgba(244, 63, 94, 0.78)",
           borderColor: "rgb(225, 29, 72)",
-          borderWidth: 1,
-          borderRadius: 8,
-          barPercentage: 0.72,
-          categoryPercentage: 0.72,
-        },
-        {
-          type: "bar" as const,
-          label: "Charges automatiques",
-          data: accountingChartRows.map((row) => row.recurring),
-          backgroundColor: "rgba(245, 158, 11, 0.7)",
-          borderColor: "rgb(217, 119, 6)",
           borderWidth: 1,
           borderRadius: 8,
           barPercentage: 0.72,
@@ -1431,7 +1404,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               const item = items?.[0];
               const row = accountingChartRows[item?.dataIndex ?? -1];
               if (!row) return "";
-              return `Cashflow = ${formatEuro(row.income)} - ${formatEuro(row.expense)} - ${formatEuro(row.recurring)} = ${formatEuro(row.net)}`;
+              return `Net = ${formatEuro(row.income)} − ${formatEuro(row.expense)} = ${formatEuro(row.net)}`;
             },
           },
         },
@@ -1494,544 +1467,349 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   ];
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm sm:p-5 space-y-5">
-      <SectionTitle
-        kicker="Finance"
-        title="Écritures & suivi financier"
-        desc="La priorité ici : saisir, retrouver et exporter les recettes et dépenses. La période et la synthèse servent de filtres de lecture."
-      />
+    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm sm:p-5 space-y-4">
+      {err && <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {ok && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div>}
 
-      {!userId ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Chargement utilisateur… (userId manquant)
-        </div>
-      ) : null}
-
-      <nav className="sticky top-3 z-20 -mx-1 rounded-[1.5rem] border border-indigo-100 bg-white/95 p-2 shadow-md backdrop-blur sm:rounded-[1.75rem]">
-        <div className="mb-2 flex items-center justify-between gap-3 px-2">
-          <p className="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-indigo-700">Navigation Finance</p>
-          <p className="hidden text-xs font-medium text-slate-500 sm:block">Cliquez pour aller directement à une partie</p>
-        </div>
-        <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
-          {chapters.map((chapter) => (
-            <a
-              key={chapter.href}
-              href={chapter.href}
-              className="group relative min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-left shadow-sm transition hover:border-indigo-200 hover:bg-white hover:shadow-md sm:rounded-[1.35rem] sm:px-4 sm:py-3"
-            >
-              <span className="flex items-center justify-between gap-3">
-                <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-indigo-500 transition group-hover:text-[#635bff]">
-                  {chapter.number}
-                </span>
-                <span className="hidden rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[0.65rem] font-semibold text-slate-500 group-hover:border-indigo-200 group-hover:text-indigo-700 sm:inline-flex">
-                  Aller à
-                </span>
-              </span>
-              <span className="mt-1 block text-sm font-extrabold text-slate-950 sm:mt-1.5">{chapter.label}</span>
-              <span className="mt-0.5 block truncate text-[0.68rem] font-medium text-slate-500 sm:text-xs">{chapter.sub}</span>
-              <span className="absolute inset-x-3 bottom-1 h-0.5 origin-left scale-x-100 rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:inset-x-4" />
-            </a>
-          ))}
-        </div>
-      </nav>
-
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white">
-              <BanknotesIcon className="h-6 w-6" />
-            </span>
-            <div>
-              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-indigo-700">Action principale</p>
-              <h3 className="mt-1 text-xl font-semibold text-slate-950">Ajouter une recette ou une dépense</h3>
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-                Les loyers viennent des quittances. Les autres mouvements, taxe foncière, assurance, copropriété, travaux ou frais,
-                se saisissent ici pour alimenter les exports et la performance.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
-            <button
-              type="button"
-              onClick={() => setTxWizardOpen(true)}
-              className={cx("inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold", brandBg, brandText, brandHover)}
-            >
-              <PlusIcon className="h-4 w-4" />
-              Nouvelle écriture
-            </button>
-            <a
-              href="#finance-ecritures"
-              className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              Voir le grand livre
-            </a>
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-2 md:grid-cols-4">
-          <Stat label="Lignes filtrées" value={String(filteredLedgerSummary.count)} />
-          <Stat label="Recettes" value={formatEuro(filteredLedgerSummary.income)} />
-          <Stat label="Dépenses" value={formatEuro(filteredLedgerSummary.expense)} />
-          <Stat label="Résultat" value={formatEuro(filteredLedgerSummary.net)} />
-        </div>
-      </section>
-
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">Paramètres financiers</p>
-            <h3 className="text-lg font-semibold text-slate-950">Charges récurrentes et crédit par bien</h3>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-              Pour terminer la mise en route, renseignez seulement le prix d’achat et le taux du crédit. Les autres champs affinent ensuite Finance
-              et Performance : mensualité, durée restante, assurance PNO, copropriété, CFE, taxe foncière, frais bancaires et entretien.
-            </p>
-          </div>
-          <a
-            href="#finance-pilotage"
-            className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-          >
-            Voir l’impact
-          </a>
-        </div>
-
-        <div className="mt-4 space-y-2">
-          {activePropertyOptions.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600 lg:col-span-2">
-              Créez d’abord un bien pour renseigner ses paramètres financiers.
-            </div>
-          ) : (
-            activePropertyOptions.map((property) => {
-              const existing = pf.get(property.id) || null;
-              const loanMonthly = Number(existing?.loan_monthly || 0) + Number(existing?.loan_insurance_monthly || 0);
-              const taxesMonthly = Number(existing?.property_tax_yearly || 0) / 12 + Number(existing?.cfe_yearly || 0) / 12;
-              const operatingMonthly =
-                Number(existing?.fixed_charges_monthly || 0) +
-                Number(existing?.pno_insurance_monthly || 0) +
-                Number(existing?.copro_charges_monthly || 0) +
-                Number(existing?.bank_fees_monthly || 0) +
-                Number(existing?.maintenance_monthly || 0) +
-                Number(existing?.rental_tax_monthly || 0);
-              const monthlyTotal =
-                loanMonthly + taxesMonthly + operatingMonthly;
-              const missing = [
-                !existing?.purchase_price ? "prix d’achat" : "",
-                !existing?.loan_rate_percent ? "taux crédit" : "",
-              ].filter(Boolean);
-              const optionalMissing = [
-                !existing?.loan_monthly ? "crédit" : "",
-                !existing?.tax_regime ? "régime" : "",
-              ].filter(Boolean);
-
-              return (
-                <details key={property.id} className="group overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm open:bg-white">
-                  <summary className="cursor-pointer list-none px-3 py-3 sm:px-4">
-                    <div className="space-y-3 lg:grid lg:grid-cols-[minmax(180px,1fr)_110px_110px_110px_150px_150px_96px] lg:items-center lg:gap-3 lg:space-y-0">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-sm font-semibold text-slate-900 ring-1 ring-slate-200">
-                          {(property.label || property.address_line1 || "B").slice(0, 1).toUpperCase()}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-950">{property.label || property.address_line1 || "Bien"}</p>
-                          <p className="truncate text-xs text-slate-500">
-                            {missing.length
-                              ? `Mise en route : ${missing.join(", ")}`
-                              : optionalMissing.length
-                              ? `À affiner : ${optionalMissing.join(", ")}`
-                              : "Paramètres prêts pour Performance"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-x-3 gap-y-2 border-t border-slate-200 pt-3 sm:grid-cols-5 lg:contents lg:border-0 lg:pt-0">
-                        <LineMetric label="Total" value={formatEuro(monthlyTotal)} strong />
-                        <LineMetric label="Crédit" value={formatEuro(loanMonthly)} />
-                        <LineMetric label="Taxes" value={formatEuro(taxesMonthly)} />
-                        <LineMetric
-                          label="Taux"
-                          value={existing?.loan_rate_percent ? `${Number(existing.loan_rate_percent).toLocaleString("fr-FR")} %` : "—"}
-                        />
-                        <LineMetric label="Régime" value={existing?.tax_regime ? taxRegimeLabel(existing.tax_regime) : "—"} />
-                      </div>
-
-                      <span className="inline-flex items-center justify-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 group-open:hidden lg:inline-flex">
-                        Modifier
-                      </span>
-                    </div>
-                  </summary>
-
-                  <div className="border-t border-slate-200 bg-white px-4 pb-4">
-                    <PropertyFinanceForm propertyId={property.id} existing={existing} onSave={upsertPropertyFinance} />
-                  </div>
-                </details>
-              );
-            })
-          )}
-        </div>
-      </section>
-
-      {/* Period selector */}
-      <section id="finance-periode" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <ChapterHeader
-              eyebrow="03 · Période"
-              title="Filtrer la lecture"
-              desc="La période ne pilote pas le workflow : elle sert à lire les écritures et les synthèses sous le bon angle."
-            />
-            <div className="mt-3 grid gap-2 sm:grid-cols-4">
-              {[
-                { key: "month" as const, label: "Mois", sub: "Vue précise" },
-                { key: "last6" as const, label: "6 derniers mois", sub: "Tendance" },
-                { key: "year" as const, label: "Année", sub: "Déclaration" },
-                { key: "custom" as const, label: "Choisir période", sub: "Sur mesure" },
-              ].map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => {
-                    if (option.key === "custom") setPeriodPickerOpen(true);
-                    else setPeriodMode(option.key);
-                  }}
-                  className={cx(
-                    "rounded-2xl border px-4 py-3 text-left transition",
-                    periodMode === option.key ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
-                  )}
-                >
-                  <span className="block text-sm font-semibold">{option.label}</span>
-                  <span className={cx("mt-0.5 block text-xs", periodMode === option.key ? "text-slate-200" : "text-slate-500")}>{option.sub}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-end gap-3">
-            <div>
-              <label className="mb-1 block text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Bien analysé
-              </label>
-              <select
-                value={analysisPropertyId}
-                onChange={(e) => {
-                  setAnalysisPropertyId(e.target.value);
-                  setFilterPropertyId("");
-                }}
-                className="w-full min-w-[220px] rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
-              >
-                <option value="">Tous les biens</option>
-                {activePropertyOptions.map((property) => (
-                  <option key={property.id} value={property.id}>
-                    {property.label || property.address_line1 || "Bien"}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-              Période : <span className="font-semibold text-slate-900">{periodLabel}</span>
-            </div>
-            <div
-              className={cx(
-                "inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs",
-                syncState === "error"
-                  ? "border-red-200 bg-red-50 text-red-700"
-                  : syncState === "syncing"
-                  ? "border-cyan-200 bg-cyan-50 text-cyan-800"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-800"
-              )}
-              title="Les données se mettent à jour automatiquement à l'ouverture, au retour sur l'onglet et lorsqu'une écriture change."
-            >
-              <span
-                className={cx(
-                  "h-2 w-2 rounded-full",
-                  syncState === "error" ? "bg-red-500" : syncState === "syncing" ? "animate-pulse bg-cyan-500" : "bg-emerald-500"
-                )}
-              />
-              <span className="font-semibold">
-                {syncState === "error" ? "Synchronisation à vérifier" : syncState === "syncing" ? "Synchronisation..." : "Données à jour"}
-              </span>
-              {lastSyncedAt ? (
-                <span className="text-slate-500">
-                  {lastSyncedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {periodPickerOpen ? (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
-          <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => setPeriodPickerOpen(false)} />
-          <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">Choisir une période</p>
-                <p className="mt-1 text-sm text-slate-600">Sélectionnez un mois de début et un mois de fin.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPeriodPickerOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                aria-label="Fermer"
-              >
-                <XMarkIcon className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="text-xs font-semibold text-slate-700">Début</label>
-                <input
-                  type="month"
-                  value={customStartMonth}
-                  onChange={(e) => setCustomStartMonth(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700">Fin</label>
-                <input
-                  type="month"
-                  value={customEndMonth}
-                  onChange={(e) => setCustomEndMonth(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-              Période sélectionnée : <span className="font-semibold text-slate-900">{fmtPeriodFR("custom", currentMonth, customStartMonth, customEndMonth)}</span>
-            </div>
-
-            <div className="mt-4 flex flex-wrap justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPeriodPickerOpen(false)}
-                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setPeriodMode("custom");
-                  setPeriodPickerOpen(false);
-                }}
-                className={cx("rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover)}
-              >
-                Appliquer
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
-      {ok ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div>
-      ) : null}
-
-      <section id="finance-pilotage" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <ChapterHeader
-          eyebrow="04 · Synthèse"
-          title="Cockpit de lecture"
-          desc="Une synthèse de contrôle, utile après la saisie ou pour comprendre une période."
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <SectionTitle
+          kicker="Finance"
+          title="Livre de comptes"
+          desc="Saisissez, retrouvez et exportez toutes vos recettes et dépenses. Les loyers remontent automatiquement depuis les quittances ; les autres mouvements (charges, travaux, assurances) se saisissent ici."
         />
-
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <Kpi title="Loyers attendus" value={formatEuro(periodInfo.expected)} sub="Selon les baux actifs" />
-          <Kpi title="Loyers encaissés" value={formatEuro(periodInfo.received)} sub="Paiements confirmés" />
-          <Kpi title="Cashflow estimé" value={formatEuro(totalCashflow)} sub="Après crédit, charges fixes et TF" />
-          <Kpi title="Charges récurrentes" value={formatEuro(recurringPeriodTotal)} sub="Appliquées automatiquement" />
-        </div>
-
-        <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr),320px]">
-          <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">Cashflow mensuel</p>
-                <p className="mt-1 text-[0.8rem] text-slate-600">
-                  Lecture mois par mois des loyers, des dépenses ponctuelles et des charges automatiques
-                  {analysisPropertyId ? ` · ${propsById.get(analysisPropertyId)?.label || "bien sélectionné"}` : " · tous les biens"}.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 text-[0.7rem] font-semibold">
-                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-800">
-                  Encaissé {formatEuro(periodLedger.income)}
-                </span>
-                <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-800">
-                  Dépenses ponctuelles {formatEuro(periodLedger.expense)}
-                </span>
-                <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-800">
-                  Charges auto {formatEuro(recurringPeriodTotal)}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-800">
-                  Cashflow {formatEuro(periodLedger.net - recurringPeriodTotal)}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-2 text-xs md:grid-cols-3">
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-emerald-950">
-                <span className="font-semibold">Vert</span> : loyers de la période, issus des quittances ou des baux attendus.
-              </div>
-              <div className="rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-2 text-rose-950">
-                <span className="font-semibold">Rose</span> : dépenses ajoutées dans Finance, facture par facture.
-              </div>
-              <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-3 py-2 text-amber-950">
-                <span className="font-semibold">Orange</span> : charges automatiques du bien, réparties chaque mois.
-              </div>
-            </div>
-
-            <div className="mt-4 h-[260px] min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 sm:h-[320px] sm:p-3">
-              <Chart type="bar" data={accountingChartData as any} options={accountingChartOptions as any} />
-            </div>
-
-            {accountingChartInsight ? (
-              <div className="mt-4 grid gap-3 text-sm md:grid-cols-[1.2fr,0.8fr]">
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-700">
-                  <p className="font-semibold text-slate-950">Formule lue par la courbe noire</p>
-                  <p className="mt-1 text-xs leading-5">
-                    Cashflow mensuel = loyers du mois - dépenses ponctuelles - charges automatiques. Les charges automatiques viennent des
-                    paramètres du bien : crédit, assurance, copropriété, impôts et frais récurrents.
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Lecture rapide</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-950">
-                    {accountingChartInsight.positiveMonths}/{accountingChartInsight.totalMonths} mois positifs
-                  </p>
-                  <p className="mt-1 text-xs text-slate-600">
-                    Meilleur mois : {accountingChartInsight.best.label} ({formatEuro(accountingChartInsight.best.net)}). Mois le plus tendu :{" "}
-                    {accountingChartInsight.worst.label} ({formatEuro(accountingChartInsight.worst.net)}).
-                  </p>
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5">
-            <p className="text-sm font-semibold text-slate-900">Postes de dépenses</p>
-            <p className="mt-1 text-[0.8rem] text-slate-600">Les catégories qui pèsent le plus sur la période.</p>
-
-            {expenseBreakdown.length === 0 ? (
-              <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-600">
-                Aucune dépense saisie sur cette période.
-              </div>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {expenseBreakdown.map((item) => {
-                  const pct = periodLedger.expense > 0 ? Math.round((item.amount / periodLedger.expense) * 100) : 0;
-                  return (
-                    <div key={item.category} className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="font-semibold text-slate-800">{item.label}</span>
-                        <span className="text-slate-600">{formatEuro(item.amount)}</span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                        <div className="h-full rounded-full bg-rose-500" style={{ width: `${pct}%` }} />
-                      </div>
-                      <p className="text-[0.68rem] text-slate-500">{pct}% des dépenses</p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </div>
-
-        <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr),minmax(0,0.9fr)]">
-        <section className="min-w-0 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Lecture propriétaire</p>
-              <p className="text-[0.8rem] text-slate-600">
-                Ce tableau résume ce que la période raconte vraiment : encaissement, charges et performance.
-              </p>
-            </div>
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-              {periodLabel}
-            </span>
-          </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <Stat label="Recettes période" value={formatEuro(periodLedger.income)} />
-            <Stat label="Dépenses saisies" value={formatEuro(periodLedger.expense)} />
-            <Stat label="Résultat après récurrent" value={formatEuro(periodLedger.net - recurringPeriodTotal)} />
-          </div>
-
-          <div className="mt-4">
-            <MiniBar value={periodInfo.received} max={periodInfo.expected} label="Taux d'encaissement de la période" />
-          </div>
-
-          {bestProperty ? (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Meilleur contributeur</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{bestProperty.label}</p>
-              <p className="mt-1 text-sm text-slate-700">
-                Cashflow estimé : <span className="font-semibold">{formatEuro(bestProperty.cashflow)}</span>
-              </p>
-            </div>
-          ) : null}
-        </section>
-
-        <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5">
-          <p className="text-sm font-semibold text-slate-900">Actions à fort impact</p>
-          <p className="mt-1 text-[0.8rem] text-slate-600">
-            Priorités contextualisées par bien, pour éviter les conseils génériques.
-          </p>
-          <div className="mt-4 space-y-2.5">
-            {impactActions.map((action) => (
-              <div key={`${action.propertyId}-${action.title}`} className={cx("rounded-2xl border px-3 py-3", actionToneClass[action.tone])}>
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] opacity-70">{action.label}</p>
-                    <p className="mt-1 text-sm font-semibold">{action.title}</p>
-                  </div>
-                  <span className="rounded-full border border-current/15 bg-white/70 px-2.5 py-1 text-[0.68rem] font-semibold">
-                    {action.impact}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-5 opacity-80">{action.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        <button
+          type="button"
+          onClick={() => setTxWizardOpen(true)}
+          className={cx("inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold", brandBg, brandText, brandHover)}
+        >
+          <PlusIcon className="h-4 w-4" />
+          Nouvelle écriture
+        </button>
       </div>
-      </section>
 
-      <RecoverableChargesGuide />
-
-      {/* Ajouter une écriture */}
-      <section id="finance-ecritures" className="scroll-mt-24 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 space-y-4">
-      <ChapterHeader
-        eyebrow="01 · Écritures"
-        title="Saisir, filtrer et exporter"
-        desc="Les loyers viennent des quittances. Les écritures manuelles servent aux charges, travaux et recettes exceptionnelles."
-      />
-
-      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-3">
-            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white">
-              <BanknotesIcon className="h-6 w-6" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Recettes & dépenses</p>
-              <p className="mt-1 max-w-2xl text-sm text-slate-600">
-                Les loyers remontent automatiquement depuis les quittances. Pour le reste, ajoutez une écriture guidée en quelques étapes.
-              </p>
-            </div>
-          </div>
+      {/* Controls: period + property + sync */}
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
+        <div className="flex rounded-xl bg-slate-100 p-0.5 gap-px">
+          {([
+            { key: "month" as const, label: "Ce mois" },
+            { key: "last6" as const, label: "6 mois" },
+            { key: "year" as const, label: "Année" },
+          ] as const).map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              onClick={() => setPeriodMode(opt.key)}
+              className={cx(
+                "rounded-[0.6rem] px-3 py-1.5 text-xs font-semibold transition",
+                periodMode === opt.key ? "bg-white shadow-sm text-slate-900" : "text-slate-600 hover:text-slate-800"
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
           <button
             type="button"
-            onClick={() => setTxWizardOpen(true)}
-            className={cx("inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold", brandBg, brandText, brandHover)}
+            onClick={() => { setPeriodPickerOpen(true); if (periodMode !== "custom") setPeriodMode("custom"); }}
+            className={cx(
+              "rounded-[0.6rem] px-3 py-1.5 text-xs font-semibold transition",
+              periodMode === "custom" ? "bg-white shadow-sm text-slate-900" : "text-slate-600 hover:text-slate-800"
+            )}
           >
-            <PlusIcon className="h-4 w-4" />
-            Nouvelle écriture
+            {periodMode === "custom" ? periodLabel : "Personnalisé"}
           </button>
         </div>
+
+        {activePropertyOptions.length > 1 && (
+          <select
+            value={analysisPropertyId}
+            onChange={(e) => { setAnalysisPropertyId(e.target.value); setFilterPropertyId(""); }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800"
+          >
+            <option value="">Tous les biens</option>
+            {activePropertyOptions.map((p) => (
+              <option key={p.id} value={p.id}>{p.label || p.address_line1 || "Bien"}</option>
+            ))}
+          </select>
+        )}
+
+        <div className="ml-auto flex items-center gap-1.5 text-xs text-slate-500">
+          <span className={cx(
+            "h-1.5 w-1.5 rounded-full",
+            syncState === "error" ? "bg-red-400" : syncState === "syncing" ? "animate-pulse bg-cyan-400" : "bg-emerald-400"
+          )} />
+          <span>
+            {syncState === "syncing"
+              ? "Synchronisation…"
+              : lastSyncedAt
+              ? `Màj ${lastSyncedAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`
+              : ""}
+          </span>
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {([
+          { label: "Recettes", value: formatEuro(periodLedger.income), cls: "text-emerald-700" },
+          { label: "Dépenses", value: formatEuro(periodLedger.expense), cls: "text-rose-700" },
+          {
+            label: "Net",
+            value: formatEuro(periodLedger.net),
+            cls: periodLedger.net >= 0 ? "text-emerald-700" : "text-rose-700",
+          },
+          { label: "Écritures", value: String(filteredLedgerSummary.count), cls: "text-slate-900" },
+        ] as const).map((kpi) => (
+          <div key={kpi.label} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">{kpi.label}</p>
+            <p className={cx("mt-1 text-xl font-semibold tabular-nums", kpi.cls)}>{kpi.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart */}
+      {accountingChartRows.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Recettes & dépenses</p>
+              <p className="text-xs text-slate-500">
+                {periodLabel}{analysisPropertyId ? ` · ${propsById.get(analysisPropertyId)?.label || "bien sélectionné"}` : ""}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-[0.7rem] font-semibold">
+              <span className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-800">
+                <span className="h-2 w-2 rounded-sm bg-emerald-500" />Encaissé {formatEuro(periodLedger.income)}
+              </span>
+              <span className="flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-800">
+                <span className="h-2 w-2 rounded-sm bg-rose-500" />Dépensé {formatEuro(periodLedger.expense)}
+              </span>
+              <span className={cx(
+                "flex items-center gap-1.5 rounded-full border px-2.5 py-1",
+                periodLedger.net >= 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"
+              )}>
+                Net {formatEuro(periodLedger.net)}
+              </span>
+            </div>
+          </div>
+          <div className="h-[200px]">
+            <Chart type="bar" data={accountingChartData as any} options={accountingChartOptions as any} />
+          </div>
+        </div>
+      )}
+
+      {/* Ledger */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        {/* Compact filter bar */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 p-3">
+          <input
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            className="min-w-[180px] flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            placeholder="Libellé, bien, catégorie…"
+          />
+          <div className="flex rounded-xl bg-slate-100 p-0.5 gap-px">
+            {([
+              { key: "", label: "Tout" },
+              { key: "in", label: "↑ Recettes" },
+              { key: "out", label: "↓ Dépenses" },
+            ]).map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => setFilterDirection(opt.key as TxDirection | "")}
+                className={cx(
+                  "rounded-[0.6rem] px-3 py-1.5 text-xs font-semibold transition",
+                  filterDirection === opt.key
+                    ? cx("bg-white shadow-sm", opt.key === "in" ? "text-emerald-700" : opt.key === "out" ? "text-rose-700" : "text-slate-900")
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <details className="group relative">
+            <summary className={cx(
+              "inline-flex cursor-pointer list-none items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold select-none",
+              filterCategory || filterStatus || filterSource || filterAmountMin || filterAmountMax || filterPropertyId
+                ? "border-indigo-300 bg-indigo-50 text-indigo-800"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            )}>
+              Filtres {filterCategory || filterStatus || filterSource || filterAmountMin || filterAmountMax || filterPropertyId ? "·" : "+"}
+            </summary>
+            <div className="absolute left-0 top-full z-10 mt-1 w-[min(680px,90vw)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Bien</label>
+                  <select value={filterPropertyId} onChange={(e) => setFilterPropertyId(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                    <option value="">Tous</option>
+                    {activePropertyOptions.map((p) => (
+                      <option key={p.id} value={p.id}>{p.label || p.address_line1 || "Bien"}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Catégorie</label>
+                  <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                    <option value="">Toutes</option>
+                    {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Statut</label>
+                  <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as TxStatus | "")} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                    <option value="">Tous</option>
+                    <option value="expected">Prévu</option>
+                    <option value="received">Encaissé</option>
+                    <option value="paid">Payé</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Source</label>
+                  <select value={filterSource} onChange={(e) => setFilterSource(e.target.value as "auto" | "manual" | "")} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                    <option value="">Toutes</option>
+                    <option value="auto">Quittance auto</option>
+                    <option value="manual">Manuel</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Montant min.</label>
+                  <input inputMode="decimal" value={filterAmountMin} onChange={(e) => setFilterAmountMin(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="0" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600">Montant max.</label>
+                  <input inputMode="decimal" value={filterAmountMax} onChange={(e) => setFilterAmountMax(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="9999" />
+                </div>
+              </div>
+              <button type="button" onClick={resetLedgerFilters} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50">
+                <ArrowPathIcon className="h-3.5 w-3.5" /> Réinitialiser
+              </button>
+            </div>
+          </details>
+          <button
+            type="button"
+            onClick={exportFilteredLedger}
+            disabled={filteredMonthLedger.length === 0}
+            className={cx(
+              "ml-auto inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold",
+              filteredMonthLedger.length === 0 ? "bg-slate-100 text-slate-500" : "border border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+            )}
+            title="Export CSV compatible Excel des lignes affichées."
+          >
+            <ArrowDownTrayIcon className="h-3.5 w-3.5" /> Export CSV
+          </button>
+        </div>
+
+        {/* Summary strip */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-600">
+          <span>{filteredLedgerSummary.count} écriture{filteredLedgerSummary.count !== 1 ? "s" : ""}</span>
+          <span className="font-semibold text-emerald-700">{formatEuro(filteredLedgerSummary.income)} recettes</span>
+          <span className="font-semibold text-rose-700">{formatEuro(filteredLedgerSummary.expense)} dépenses</span>
+          <span className={cx("font-semibold", filteredLedgerSummary.net >= 0 ? "text-slate-900" : "text-rose-700")}>
+            = {formatEuro(filteredLedgerSummary.net)} net
+          </span>
+        </div>
+
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50">
+              <tr className="text-left">
+                <th className="w-[110px] px-3 py-2 text-xs text-slate-600">Date</th>
+                <th className="w-[22%] px-3 py-2 text-xs text-slate-600">Bien</th>
+                <th className="px-3 py-2 text-xs text-slate-600">Écriture</th>
+                <th className="w-[110px] px-3 py-2 text-xs text-slate-600">Statut</th>
+                <th className="w-[110px] px-3 py-2 text-xs text-slate-600">Pièce</th>
+                <th className="w-[120px] px-3 py-2 text-xs text-slate-600 text-right">Montant</th>
+                <th className="w-[88px] px-3 py-2 text-xs text-slate-600"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredMonthLedger.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-sm text-slate-500">
+                    Aucune écriture sur cette période (ou filtres trop restrictifs).
+                  </td>
+                </tr>
+              ) : (
+                filteredMonthLedger.map((r) => {
+                  const p = r.property_id ? propsById.get(r.property_id) : null;
+                  const docs = txDocsByTransactionId.get(r.id) || [];
+
+                  return (
+                    <tr key={r.id} className="border-b border-slate-100 last:border-0">
+                      <td className="px-3 py-2 text-slate-700">{r.occurred_at}</td>
+                      <td className="truncate px-3 py-2 text-slate-700">{p?.label || "—"}</td>
+                      <td className="px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-slate-900">{r.label || categoryLabel(r.category)}</p>
+                          <p className="truncate text-xs text-slate-500">
+                            {directionLabel(r.direction)} · {categoryLabel(r.category)} · {sourceLabel(r)}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-slate-700">{statusLabel(r.status)}</td>
+                      <td className="px-3 py-2">
+                        <label className={cx(
+                          "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
+                          docs.length ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                          uploadingDocId === r.id && "opacity-60"
+                        )}>
+                          <PaperClipIcon className="h-3.5 w-3.5" />
+                          {uploadingDocId === r.id ? "..." : docs.length ? `${docs.length} pièce${docs.length > 1 ? "s" : ""}` : "Joindre"}
+                          <input
+                            type="file"
+                            accept="application/pdf,image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            disabled={uploadingDocId === r.id}
+                            onChange={(event) => {
+                              const file = event.target.files?.[0] || null;
+                              void attachDocumentFromLedger(r, file);
+                              event.currentTarget.value = "";
+                            }}
+                          />
+                        </label>
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold">
+                        <span className={r.direction === "out" ? "text-rose-700" : "text-emerald-700"}>
+                          {r.direction === "out" ? "−" : "+"}{formatEuro(Number(r.amount || 0))}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2">
+                        {!r.receipt_id ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              title="Modifier cette écriture"
+                              onClick={() => openEditTx(r)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                            >
+                              <PencilSquareIcon className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Supprimer cette écriture"
+                              disabled={deleteBusy}
+                              onClick={() => deleteOneTx(r)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                            >
+                              <TrashIcon className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="border-t border-slate-100 px-4 py-2.5 text-[0.72rem] text-slate-500">
+          Les écritures <span className="font-semibold">Quittance (auto)</span> et <span className="font-semibold">Caution</span> sont protégées — les gérer depuis la section Baux.
+        </p>
       </div>
 
       {txWizardOpen ? (
@@ -2450,295 +2228,73 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
       ) : null}
 
-      {/* Grand livre + suppression sélection */}
-      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">Recettes & dépenses ({periodLabel})</p>
-            <p className="text-[0.8rem] text-slate-600">Détail comptable de la période, utile pour contrôler et préparer la déclaration.</p>
-          </div>
-
-        </div>
-
-        {/* Filters */}
-        <div className="mt-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-900">Rechercher une écriture</p>
-              <p className="mt-1 text-xs text-slate-600">Commencez par les filtres principaux. Les filtres avancés restent disponibles si besoin.</p>
-            </div>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
-              {periodLabel}
-            </span>
-          </div>
-
-          <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr,0.8fr]">
-            <div>
-              <label className="text-xs font-semibold text-slate-600">Recherche</label>
-              <input
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
-                placeholder="Libellé, note, bien, statut..."
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-600">Bien</label>
-              <select
-                value={filterPropertyId}
-                onChange={(e) => setFilterPropertyId(e.target.value)}
-                className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
-              >
-                <option value="">Tous les biens</option>
-                {activePropertyOptions.map((property) => (
-                  <option key={property.id} value={property.id}>
-                    {property.label || property.address_line1 || "Bien"}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            {[
-              { label: "Tout", value: "" },
-              { label: "Recettes", value: "in" },
-              { label: "Dépenses", value: "out" },
-            ].map((option) => (
+      {/* Period picker modal */}
+      {periodPickerOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
+          <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => setPeriodPickerOpen(false)} />
+          <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Choisir une période</p>
+                <p className="mt-1 text-sm text-slate-600">Sélectionnez un mois de début et un mois de fin.</p>
+              </div>
               <button
-                key={option.label}
                 type="button"
-                onClick={() => setFilterDirection(option.value as TxDirection | "")}
-                className={cx(
-                  "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                  filterDirection === option.value
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-white"
-                )}
+                onClick={() => setPeriodPickerOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                aria-label="Fermer"
               >
-                {option.label}
+                <XMarkIcon className="h-5 w-5" />
               </button>
-            ))}
-          </div>
-
-          <details className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-            <summary className="cursor-pointer text-sm font-semibold text-slate-900">Filtres avancés</summary>
-            <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-600">Catégorie</label>
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">Toutes</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-600">Statut</label>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as TxStatus | "")}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">Tous</option>
-                  <option value="expected">Prévu</option>
-                  <option value="received">Encaissé</option>
-                  <option value="paid">Payé</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-600">Source</label>
-                <select
-                  value={filterSource}
-                  onChange={(e) => setFilterSource(e.target.value as "auto" | "manual" | "")}
-                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                >
-                  <option value="">Toutes</option>
-                  <option value="auto">Quittance auto</option>
-                  <option value="manual">Manuel</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Min.</label>
-                  <input
-                    inputMode="decimal"
-                    value={filterAmountMin}
-                    onChange={(e) => setFilterAmountMin(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                    placeholder="100"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600">Max.</label>
-                  <input
-                    inputMode="decimal"
-                    value={filterAmountMax}
-                    onChange={(e) => setFilterAmountMax(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                    placeholder="1200"
-                  />
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="grid gap-2 sm:grid-cols-4 lg:min-w-[560px]">
-              <Stat label="Lignes" value={String(filteredLedgerSummary.count)} />
-              <Stat label="Recettes" value={formatEuro(filteredLedgerSummary.income)} />
-              <Stat label="Dépenses" value={formatEuro(filteredLedgerSummary.expense)} />
-              <Stat label="Résultat" value={formatEuro(filteredLedgerSummary.net)} />
             </div>
 
-            <div className="flex flex-wrap gap-2 lg:justify-end">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-700">Début</label>
+                <input
+                  type="month"
+                  value={customStartMonth}
+                  onChange={(e) => setCustomStartMonth(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700">Fin</label>
+                <input
+                  type="month"
+                  value={customEndMonth}
+                  onChange={(e) => setCustomEndMonth(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              Période sélectionnée : <span className="font-semibold text-slate-900">{fmtPeriodFR("custom", currentMonth, customStartMonth, customEndMonth)}</span>
+            </div>
+
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
               <button
                 type="button"
-                onClick={resetLedgerFilters}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                onClick={() => setPeriodPickerOpen(false)}
+                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
               >
-                <ArrowPathIcon className="h-4 w-4" />
-                Réinitialiser
+                Annuler
               </button>
               <button
                 type="button"
-                onClick={exportFilteredLedger}
-                disabled={filteredMonthLedger.length === 0}
-                className={cx(
-                  "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
-                  filteredMonthLedger.length === 0 ? "bg-slate-200 text-slate-600" : `${brandBg} ${brandText} ${brandHover}`
-                )}
-                title="Export CSV compatible Excel des lignes affichées."
+                onClick={() => {
+                  setPeriodMode("custom");
+                  setPeriodPickerOpen(false);
+                }}
+                className={cx("rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover)}
               >
-                <ArrowDownTrayIcon className="h-4 w-4" />
-                Exporter le résultat
+                Appliquer
               </button>
             </div>
           </div>
         </div>
-
-        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full table-fixed text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr className="text-left">
-                <th className="w-[110px] px-3 py-2 text-xs text-slate-600">Date</th>
-                <th className="w-[22%] px-3 py-2 text-xs text-slate-600">Bien</th>
-                <th className="px-3 py-2 text-xs text-slate-600">Écriture</th>
-                <th className="w-[120px] px-3 py-2 text-xs text-slate-600">Statut</th>
-                <th className="w-[120px] px-3 py-2 text-xs text-slate-600">Pièce</th>
-                <th className="w-[130px] px-3 py-2 text-xs text-slate-600 text-right">Montant</th>
-                <th className="w-[88px] px-3 py-2 text-xs text-slate-600"></th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {filteredMonthLedger.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-3 py-4 text-slate-500">
-                    Aucune écriture (ou filtres trop restrictifs).
-                  </td>
-                </tr>
-              ) : (
-                filteredMonthLedger.map((r) => {
-                  const p = r.property_id ? propsById.get(r.property_id) : null;
-                  const docs = txDocsByTransactionId.get(r.id) || [];
-
-                  return (
-                    <tr key={r.id} className="border-b border-slate-100">
-                      <td className="px-3 py-2 text-slate-700">{r.occurred_at}</td>
-                      <td className="truncate px-3 py-2 text-slate-700">{p?.label || "—"}</td>
-                      <td className="px-3 py-2">
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-slate-900">{r.label || categoryLabel(r.category)}</p>
-                          <p className="truncate text-xs text-slate-500">
-                            {directionLabel(r.direction)} · {categoryLabel(r.category)} · {sourceLabel(r)}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">{statusLabel(r.status)}</td>
-                      <td className="px-3 py-2">
-                        <label className={cx(
-                          "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
-                          docs.length ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                          uploadingDocId === r.id && "opacity-60"
-                        )}>
-                          <PaperClipIcon className="h-3.5 w-3.5" />
-                          {uploadingDocId === r.id ? "..." : docs.length ? `${docs.length} pièce${docs.length > 1 ? "s" : ""}` : "Joindre"}
-                          <input
-                            type="file"
-                            accept="application/pdf,image/jpeg,image/png,image/webp"
-                            className="hidden"
-                            disabled={uploadingDocId === r.id}
-                            onChange={(event) => {
-                              const file = event.target.files?.[0] || null;
-                              void attachDocumentFromLedger(r, file);
-                              event.currentTarget.value = "";
-                            }}
-                          />
-                        </label>
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold text-slate-900">
-                        {r.direction === "out" ? "− " : ""}
-                        {formatEuro(Number(r.amount || 0))}
-                      </td>
-                      <td className="px-2 py-2">
-                        {!r.receipt_id ? (
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              title="Modifier cette écriture"
-                              onClick={() => openEditTx(r)}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
-                            >
-                              <PencilSquareIcon className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              title="Supprimer cette écriture"
-                              disabled={deleteBusy}
-                              onClick={() => deleteOneTx(r)}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
-                            >
-                              <TrashIcon className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ) : null}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <p className="mt-2 text-[0.75rem] text-slate-600">
-          Suppression : tu peux supprimer des lignes <span className="font-semibold">manuelles</span>. Les lignes{" "}
-          <span className="font-semibold">Quittance (auto)</span> sont protégées (sinon elles reviendraient au prochain sync).
-        </p>
-      </div>
-      </section>
-
-      {/* Attendu vs encaissé */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-sm font-semibold text-slate-900">Encaissement (baux/paiements)</p>
-        <div className="mt-3">
-          <MiniBar value={periodInfo.received} max={periodInfo.expected} label="Taux d’encaissement" />
-        </div>
-        <p className="mt-2 text-[0.75rem] text-slate-600">
-          Remarque : les quittances alimentent le ledger en “expected”. Les paiements (si tu les utilises) donnent la réalité “encaissé”.
-        </p>
-      </div>
+      ) : null}
     </div>
   );
 }
