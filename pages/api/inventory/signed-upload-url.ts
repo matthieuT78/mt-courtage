@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const signed = await supabaseAdmin.storage.from(INVENTORY_BUCKET).createSignedUploadUrl(path, { upsert: true });
     if (signed.error || !signed.data) return res.status(500).json({ error: signed.error?.message || "URL d’upload impossible." });
 
-    return res.status(200).json({ ok: true, bucket: INVENTORY_BUCKET, path, token: signed.data.token });
+    return res.status(200).json({ ok: true, bucket: INVENTORY_BUCKET, path, token: signed.data.token, signedUrl: signed.data.signedUrl });
   } catch (e: any) {
     console.error("[api/inventory/signed-upload-url] error:", e);
     return res.status(500).json({ error: e?.message || "Erreur interne" });

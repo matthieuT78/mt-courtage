@@ -539,6 +539,23 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   const [selectedLeaseId, setSelectedLeaseId] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
+  const xhrUploadPdf = (signedUrl: string, file: File): Promise<void> =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", signedUrl);
+      xhr.setRequestHeader("Content-Type", "application/pdf");
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Upload échoué (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error("Erreur réseau lors de l'upload."));
+      xhr.send(file);
+    });
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -1406,13 +1423,12 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
       const fallbackLeaseKey = selectedLeaseId || selectedReport.lease_id || "standalone";
       const path = String(json?.path || buildPdfPath({ reportId: selectedReportId, userId, leaseId: fallbackLeaseKey, kind: "signed" }));
-      const token = String(json?.token || "");
-      if (!token) throw new Error("URL d’upload signée indisponible.");
+      const signedUrl = String(json?.signedUrl || "");
+      if (!signedUrl) throw new Error("URL d’upload signée indisponible.");
 
-      const { error: eUp } = await supabase.storage.from(INVENTORY_BUCKET).uploadToSignedUrl(path, token, file, {
-        contentType: "application/pdf",
-      });
-      if (eUp) throw eUp;
+      setUploadProgress(0);
+      await xhrUploadPdf(signedUrl, file);
+      setUploadProgress(null);
 
       // On pointe pdf_url sur le PDF signé et on verrouille en “signed”
       const { error: eUpd } = await supabase
@@ -1498,13 +1514,12 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       if (!uploadUrlResp.ok) throw new Error(json?.error || raw || `Erreur ${uploadUrlResp.status}`);
 
       const path = String(json?.path || "");
-      const token = String(json?.token || "");
-      if (!path || !token) throw new Error("URL d’upload signée indisponible.");
+      const signedUrl = String(json?.signedUrl || "");
+      if (!path || !signedUrl) throw new Error("URL d’upload signée indisponible.");
 
-      const { error: uploadError } = await supabase.storage.from(INVENTORY_BUCKET).uploadToSignedUrl(path, token, file, {
-        contentType: "application/pdf",
-      });
-      if (uploadError) throw uploadError;
+      setUploadProgress(0);
+      await xhrUploadPdf(signedUrl, file);
+      setUploadProgress(null);
 
       const { error: updateError } = await supabase
         .from("inventory_reports")
@@ -2227,6 +2242,20 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
             {/* Body */}
             <div ref={wizardScrollRef} className="flex-1 overflow-y-auto p-4 pb-28 sm:p-5 sm:pb-5" style={{ overflowAnchor: "none" }}>
+              {uploadProgress !== null ? (
+                <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-xs font-medium text-sky-700">Upload en cours…</span>
+                    <span className="text-xs font-semibold text-sky-700">{uploadProgress}%</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-sky-100">
+                    <div
+                      className="h-full rounded-full bg-sky-500 transition-all duration-200"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              ) : null}
               {err ? <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
               {ok ? <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
@@ -3394,6 +3423,20 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
       {/* zone messages : réserve la place => évite layout shift (scroll jump) */}
       <div className="min-h-[44px] space-y-2" style={{ overflowAnchor: "none" }}>
+        {uploadProgress !== null ? (
+          <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5">
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-xs font-medium text-sky-700">Upload en cours…</span>
+              <span className="text-xs font-semibold text-sky-700">{uploadProgress}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-sky-100">
+              <div
+                className="h-full rounded-full bg-sky-500 transition-all duration-200"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
         {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
         {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
       </div>
