@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { supabase } from "../../lib/supabaseClient";
+import { supabaseTenant as supabase } from "../../lib/supabaseTenantClient";
 
 type Mode = "detecting" | "set-password" | "login";
 

@@ -13,7 +13,7 @@ import {
   PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
 import AppHeader from "../../components/AppHeader";
-import { supabase } from "../../lib/supabaseClient";
+import { supabaseTenant as supabase } from "../../lib/supabaseTenantClient";
 
 type PortalTab = "accueil" | "alertes" | "quittances" | "documents" | "messagerie";
 type PortalData = Record<string, any>;
