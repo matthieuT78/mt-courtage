@@ -389,6 +389,7 @@ export function SectionQuittances({
   const [view, setView] = useState<"todo" | "month">("todo");
   const [month, setMonth] = useState<string>(toMonthISO(new Date()));
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
+  const [openArchiveMenuId, setOpenArchiveMenuId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -523,7 +524,7 @@ export function SectionQuittances({
   }, [safeReceipts, month]);
 
   const buildRowsForMonth = (yyyymm: string) => {
-    return activeLeases
+    return safeLeases
       .filter((lease) => isLeaseExpectedForMonth(lease, yyyymm))
       .map((lease) => {
         const period = getLeaseRentPeriod(lease, yyyymm);
@@ -571,7 +572,7 @@ export function SectionQuittances({
 
   const expectedRows = useMemo(() => {
     return buildRowsForMonth(month);
-  }, [activeLeases, month, receiptByPeriod, paymentByPeriod]);
+  }, [safeLeases, month, receiptByPeriod, paymentByPeriod]);
 
   const todoRows = useMemo(() => {
     const rowRequiresActionNow = (row: any) => {
@@ -595,7 +596,7 @@ export function SectionQuittances({
         if (a.month !== b.month) return a.month.localeCompare(b.month);
         return leaseLabel(a.lease).localeCompare(leaseLabel(b.lease));
       });
-  }, [activeLeases, receiptByPeriod, paymentByPeriod, propsById, tenantsById, snoozedReceiptKeys]);
+  }, [safeLeases, receiptByPeriod, paymentByPeriod, propsById, tenantsById, snoozedReceiptKeys]);
 
   const visibleRows = view === "todo" ? todoRows : expectedRows;
 
@@ -1801,62 +1802,79 @@ export function SectionQuittances({
 
                                     {/* ✅ Plus de colonne "Last sent" -> libère de la place */}
                                     <td className="px-3 py-2 text-right">
-                                      <div className="inline-flex gap-2">
+                                      <div className="relative inline-flex items-center gap-1.5">
+                                        {/* Primary: PDF */}
                                         <button
                                           type="button"
                                           onClick={() => openPdf(r)}
-                                          disabled={loading}
+                                          disabled={loading || !r.pdf_url}
                                           className={cx(
-                                            "rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50",
-                                            loading && "opacity-60"
+                                            "rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50",
+                                            (!r.pdf_url || loading) && "opacity-40"
                                           )}
+                                          title="Voir le PDF"
                                         >
-                                          👁️ PDF
+                                          PDF
                                         </button>
 
-                                        <button
-                                          type="button"
-                                          onClick={() => resendArchivedNoFinance(r)}
-                                          disabled={loading || !canUseReceiptAutomation}
-                                          className={cx(
-                                            "rounded-full border px-3 py-1.5 text-xs font-semibold",
-                                            canUseReceiptAutomation
-                                              ? "border-slate-300 bg-white text-slate-800 hover:bg-slate-50"
-                                              : "border-slate-200 bg-slate-100 text-slate-500",
-                                            (loading || !canUseReceiptAutomation) && "opacity-60"
-                                          )}
-                                          title={canUseReceiptAutomation ? "Renvoyer sans toucher la Finance" : "Renvoi email réservé aux abonnements payants"}
-                                        >
-                                          {canUseReceiptAutomation ? "🔁 Renvoyer" : "Premium"}
-                                        </button>
-
-                                        <button
-                                          type="button"
-                                          onClick={() => regeneratePdfNoFinance(r)}
-                                          disabled={loading}
-                                          className={cx(
-                                            "rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50",
-                                            loading && "opacity-60"
-                                          )}
-                                          title="Régénérer le PDF (sans toucher la Finance)"
-                                        >
-                                          ♻️ Régénérer
-                                        </button>
-
-                                        {(r.payment_id || receiptStatus === "generated" || receiptStatus === "sent") ? (
+                                        {/* Secondary: ··· dropdown */}
+                                        <div className="relative">
                                           <button
                                             type="button"
-                                            onClick={() => cancelArchivedPayment(r)}
                                             disabled={loading}
+                                            onClick={() => setOpenArchiveMenuId(openArchiveMenuId === r.id ? null : r.id)}
                                             className={cx(
-                                              "rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50",
-                                              loading && "opacity-60"
+                                              "rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-50",
+                                              loading && "opacity-40"
                                             )}
-                                            title="Annuler ce paiement confirmé et remettre la quittance en brouillon"
+                                            title="Plus d'actions"
                                           >
-                                            Annuler paiement
+                                            ···
                                           </button>
-                                        ) : null}
+                                          {openArchiveMenuId === r.id && (
+                                            <>
+                                              <div
+                                                className="fixed inset-0 z-10"
+                                                onClick={() => setOpenArchiveMenuId(null)}
+                                              />
+                                              <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                                                <button
+                                                  type="button"
+                                                  disabled={loading || !canUseReceiptAutomation}
+                                                  onClick={() => { setOpenArchiveMenuId(null); resendArchivedNoFinance(r); }}
+                                                  className={cx(
+                                                    "flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50",
+                                                    (!canUseReceiptAutomation || loading) && "opacity-40"
+                                                  )}
+                                                  title={canUseReceiptAutomation ? undefined : "Réservé aux abonnements payants"}
+                                                >
+                                                  Renvoyer au locataire
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  disabled={loading}
+                                                  onClick={() => { setOpenArchiveMenuId(null); regeneratePdfNoFinance(r); }}
+                                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                                                >
+                                                  Régénérer le PDF
+                                                </button>
+                                                {(r.payment_id || receiptStatus === "generated" || receiptStatus === "sent") && (
+                                                  <>
+                                                    <div className="my-1 border-t border-slate-100" />
+                                                    <button
+                                                      type="button"
+                                                      disabled={loading}
+                                                      onClick={() => { setOpenArchiveMenuId(null); cancelArchivedPayment(r); }}
+                                                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 disabled:opacity-40"
+                                                    >
+                                                      Annuler le paiement
+                                                    </button>
+                                                  </>
+                                                )}
+                                              </div>
+                                            </>
+                                          )}
+                                        </div>
                                       </div>
                                     </td>
                                   </tr>
