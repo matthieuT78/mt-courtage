@@ -303,6 +303,7 @@ const statusLabel = (value: TxStatus) =>
 const directionLabel = (value: TxDirection) => (value === "in" ? "Recette" : "Dépense");
 const sourceLabel = (tx: Transaction) => (tx.receipt_id ? "Quittance auto" : "Manuel");
 const DEPOSIT_TRANSIT_CATEGORIES = ["deposit_collected", "deposit_returned"];
+const DEPOSIT_CATS = ["deposit_collected", "deposit_returned", "deposit_retained"];
 
 const isIncomeReceived = (row: Pick<Transaction, "direction" | "status" | "category">) =>
   row.direction === "in" &&
@@ -1176,7 +1177,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
   const deleteOneTx = async (r: Transaction) => {
     if (!supabase || !userId) return;
-    const DEPOSIT_CATS = ["deposit_collected", "deposit_returned", "deposit_retained"];
     if (r.receipt_id || DEPOSIT_CATS.includes(r.category)) {
       setErr("Cette écriture est protégée (quittance auto ou caution).");
       return;
@@ -1794,7 +1794,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                         </span>
                       </td>
                       <td className="px-2 py-2">
-                        {!r.receipt_id ? (
+                        {!r.receipt_id && !DEPOSIT_CATS.includes(r.category) ? (
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
