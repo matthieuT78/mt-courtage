@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import AccountLayout from "../../components/account/AccountLayout";
 import { supabase } from "../../lib/supabaseClient";
+import { signOutAll } from "../../lib/authUtils";
 import { useAuthUser } from "../../hooks/useAuthUser";
 import { PAID_BILLING_PLANS } from "../../lib/billingPlans";
 import { usePermissions } from "../../components/PermissionProvider";
@@ -86,13 +87,7 @@ export default function MonCompteAbonnementPage() {
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [invoicesError, setInvoicesError] = useState<string | null>(null);
 
-  const handleLogout = async () => {
-    try {
-      await supabase?.auth.signOut();
-    } finally {
-      window.location.href = "/";
-    }
-  };
+  const handleLogout = async () => { await signOutAll(); };
 
   useEffect(() => {
     const load = async () => {

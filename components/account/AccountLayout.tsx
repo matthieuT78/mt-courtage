@@ -73,9 +73,10 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
   const handleLogout = async () => {
     if (loggingOut) return;
     setLoggingOut(true);
-
     try {
       await onLogout();
+    } catch {
+      // signOut failure is non-blocking
     } finally {
       window.location.href = "/";
     }

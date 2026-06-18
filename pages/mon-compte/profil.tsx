@@ -1,6 +1,6 @@
 // pages/mon-compte/profil.tsx
 import AccountLayout from "../../components/account/AccountLayout";
-import { supabase } from "../../lib/supabaseClient";
+import { signOutAll } from "../../lib/authUtils";
 import { useAuthUser } from "../../hooks/useAuthUser";
 import { useProfile } from "../../hooks/useProfile";
 
@@ -8,13 +8,7 @@ export default function MonCompteProfilPage() {
   const { checking, user, isLoggedIn } = useAuthUser();
   const { loading, profile, error, ok, save, setProfile } = useProfile(user?.id ?? null);
 
-  const handleLogout = async () => {
-    try {
-      await supabase?.auth.signOut();
-    } finally {
-      window.location.href = "/";
-    }
-  };
+  const handleLogout = async () => { await signOutAll(); };
 
   if (checking) return <div className="min-h-screen bg-slate-100 flex items-center justify-center text-sm text-slate-500">Chargement…</div>;
 

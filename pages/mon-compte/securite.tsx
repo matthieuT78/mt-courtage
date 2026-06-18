@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import AccountLayout from "../../components/account/AccountLayout";
 import { supabase } from "../../lib/supabaseClient";
+import { signOutAll } from "../../lib/authUtils";
 
 export default function MonCompteSecuritePage() {
   const router = useRouter();
@@ -46,11 +47,7 @@ export default function MonCompteSecuritePage() {
     run();
   }, []);
 
-  const handleLogout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    router.push("/");
-  };
+  const handleLogout = async () => { await signOutAll(); };
 
   const goLogin = () => router.push("/mon-compte?mode=login&redirect=/mon-compte/securite");
 

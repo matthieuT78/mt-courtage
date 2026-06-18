@@ -9,6 +9,7 @@ import AccountLayout from "../../components/account/AccountLayout";
 import PostalCodeCityFields from "../../components/forms/PostalCodeCityFields";
 import { StorageUsagePanel } from "../../components/account/StorageUsagePanel";
 import { supabase } from "../../lib/supabaseClient";
+import { signOutAll } from "../../lib/authUtils";
 import { useAuthUser } from "../../hooks/useAuthUser";
 import { useProfile } from "../../hooks/useProfile";
 import { usePermissions } from "../../components/PermissionProvider";
@@ -280,8 +281,7 @@ export default function MonCompteIndexPage() {
   };
 
   const handleLogout = async () => {
-    await supabase?.auth.signOut();
-    window.location.href = "/";
+    await signOutAll();
   };
 
   const planLabel =
