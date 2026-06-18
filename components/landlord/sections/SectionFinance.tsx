@@ -1314,11 +1314,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
   const accountingChartRows = useMemo(() => {
     const { start, end } = selectedPeriod;
-    const months: Array<{ key: string; label: string; income: number; expense: number; net: number }> = [];
+    const monthlyRecurring = sum(Array.from(monthlyRecurringByProperty.values()).map((r) => r.total));
+    const months: Array<{ key: string; label: string; income: number; expense: number; recurring: number; net: number }> = [];
 
     for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
       const key = monthKey(cursor);
-      months.push({ key, label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()), income: 0, expense: 0, net: 0 });
+      months.push({ key, label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()), income: 0, expense: 0, recurring: monthlyRecurring, net: -monthlyRecurring });
     }
 
     const byKey = new Map(months.map((row) => [row.key, row]));
@@ -1332,14 +1333,14 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       } else if (row.direction === "out") {
         bucket.expense += Number(row.amount || 0);
       }
-      bucket.net = bucket.income - bucket.expense;
+      bucket.net = bucket.income - bucket.expense - bucket.recurring;
     }
 
     return months;
-  }, [periodLedger.rows, selectedPeriod]);
+  }, [monthlyRecurringByProperty, periodLedger.rows, selectedPeriod]);
 
   const chartMax = useMemo(
-    () => Math.max(1, ...accountingChartRows.flatMap((row) => [row.income, row.expense, Math.abs(row.net)])),
+    () => Math.max(1, ...accountingChartRows.flatMap((row) => [row.income, row.expense, row.recurring, Math.abs(row.net)])),
     [accountingChartRows]
   );
 
@@ -1364,6 +1365,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           data: accountingChartRows.map((row) => row.expense),
           backgroundColor: "rgba(244, 63, 94, 0.78)",
           borderColor: "rgb(225, 29, 72)",
+          borderWidth: 1,
+          borderRadius: 8,
+          barPercentage: 0.72,
+          categoryPercentage: 0.72,
+        },
+        {
+          type: "bar" as const,
+          label: "Charges structurelles",
+          data: accountingChartRows.map((row) => row.recurring),
+          backgroundColor: "rgba(245, 158, 11, 0.7)",
+          borderColor: "rgb(217, 119, 6)",
           borderWidth: 1,
           borderRadius: 8,
           barPercentage: 0.72,
@@ -1404,7 +1416,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               const item = items?.[0];
               const row = accountingChartRows[item?.dataIndex ?? -1];
               if (!row) return "";
-              return `Net = ${formatEuro(row.income)} − ${formatEuro(row.expense)} = ${formatEuro(row.net)}`;
+              return `Net = ${formatEuro(row.income)} − ${formatEuro(row.expense)} − ${formatEuro(row.recurring)} (struct.) = ${formatEuro(row.net)}`;
             },
           },
         },
@@ -1584,6 +1596,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               <span className="flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-800">
                 <span className="h-2 w-2 rounded-sm bg-rose-500" />Dépensé {formatEuro(periodLedger.expense)}
               </span>
+              {accountingChartRows[0]?.recurring > 0 && (
+                <span className="flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-amber-800">
+                  <span className="h-2 w-2 rounded-sm bg-amber-500" />Structurel {formatEuro(accountingChartRows[0].recurring)}/mois
+                </span>
+              )}
               <span className={cx(
                 "flex items-center gap-1.5 rounded-full border px-2.5 py-1",
                 periodLedger.net >= 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"
