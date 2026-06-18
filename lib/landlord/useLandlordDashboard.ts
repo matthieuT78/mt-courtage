@@ -61,11 +61,12 @@ const isPaymentPaid = (payment?: RentPayment | any | null) => {
 const isLeaseExpectedForMonth = (lease: Lease, yyyymm: string) => {
   const { start, end } = monthStartEnd(yyyymm);
   const status = String((lease as any).status || "").toLowerCase();
-  if (status === "draft" || status === "archived") return false;
-  if (status === "ended" && !lease.end_date) return false;
+  if (status === "draft") return false;
+  // archived/ended: only show for months within their active period (never future alerts)
+  if ((status === "archived" || status === "ended") && !lease.end_date) return false;
   if (lease.start_date && dateOnlyTime(lease.start_date) > end.getTime()) return false;
   if (lease.end_date && dateOnlyTime(lease.end_date) < start.getTime()) return false;
-  return status === "active" || status === "ended" || (!status && !!lease.start_date);
+  return status === "active" || status === "ended" || status === "archived" || (!status && !!lease.start_date);
 };
 
 export function useLandlordDashboard() {

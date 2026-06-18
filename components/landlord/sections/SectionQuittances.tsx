@@ -175,10 +175,12 @@ function dateOnlyTime(v?: string | null) {
 function isLeaseExpectedForMonth(lease: Lease, yyyymm: string) {
   const { start, end } = monthStartEnd(yyyymm);
   const status = String((lease as any).status || "").toLowerCase();
-  if (["draft", "archived", "inactive", "deleted", "ended"].includes(status)) return false;
+  if (["draft", "inactive", "deleted"].includes(status)) return false;
+  // archived/ended: only show for months within their active period (never future alerts)
+  if ((status === "archived" || status === "ended") && !lease.end_date) return false;
   if (lease.start_date && dateOnlyTime(lease.start_date) > end.getTime()) return false;
   if (lease.end_date && dateOnlyTime(lease.end_date) < start.getTime()) return false;
-  return status === "active" || (!status && !!lease.start_date);
+  return ["active", "ended", "archived"].includes(status) || (!status && !!lease.start_date);
 }
 
 /**
