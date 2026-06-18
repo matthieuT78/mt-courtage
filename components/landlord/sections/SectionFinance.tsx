@@ -9,7 +9,9 @@ import {
   BanknotesIcon,
   DocumentArrowUpIcon,
   PaperClipIcon,
+  PencilSquareIcon,
   PlusIcon,
+  TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import {
@@ -455,6 +457,20 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
 
+  // Edit transaction
+  const [editTxOpen, setEditTxOpen] = useState(false);
+  const [editTxId, setEditTxId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    property_id: "",
+    occurred_at: toISODate(new Date()),
+    direction: "out" as TxDirection,
+    status: "paid" as TxStatus,
+    category: "fees",
+    label: "",
+    amount: "",
+    notes: "",
+  });
+
   const propertyOptions = useMemo(
     () =>
       Array.from(propsById.values()).sort((a, b) =>
@@ -512,6 +528,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const selectableFormPropertyOptions = useMemo(
     () => includeSelected(activePropertyOptions, propertyOptions, form.property_id),
     [activePropertyOptions, propertyOptions, form.property_id]
+  );
+
+  const selectableEditPropertyOptions = useMemo(
+    () => includeSelected(activePropertyOptions, propertyOptions, editForm.property_id),
+    [activePropertyOptions, propertyOptions, editForm.property_id]
   );
   const txDocsByTransactionId = useMemo(() => {
     const map = new Map<string, TransactionDocument[]>();
@@ -1136,6 +1157,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     try {
       const amount = Number(String(form.amount || "0").replace(",", "."));
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Montant invalide.");
+      if (!form.property_id) throw new Error("Le champ Bien est obligatoire.");
 
       const payload = {
         user_id: userId,
@@ -1186,6 +1208,91 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       setErr(e?.message || "Impossible de joindre la facture.");
     } finally {
       setUploadingDocId(null);
+    }
+  };
+
+  // ========= Edit manual transaction =========
+  const openEditTx = (r: Transaction) => {
+    setEditTxId(r.id);
+    setEditForm({
+      property_id: r.property_id || "",
+      occurred_at: r.occurred_at,
+      direction: r.direction,
+      status: r.status,
+      category: r.category,
+      label: r.label || "",
+      amount: String(r.amount || ""),
+      notes: r.notes || "",
+    });
+    setEditTxOpen(true);
+  };
+
+  const updateTx = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !userId || !editTxId) return;
+
+    setLoading(true);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const amount = Number(String(editForm.amount || "0").replace(",", "."));
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Montant invalide.");
+      if (!editForm.property_id) throw new Error("Le champ Bien est obligatoire.");
+
+      const { error } = await supabase
+        .from("transactions")
+        .update({
+          property_id: editForm.property_id || null,
+          occurred_at: editForm.occurred_at,
+          direction: editForm.direction,
+          status: editForm.status,
+          category: editForm.category,
+          label: editForm.label?.trim() || null,
+          amount,
+          notes: editForm.notes?.trim() || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editTxId)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      setOk("Écriture modifiée ✅");
+      setEditTxOpen(false);
+      setEditTxId(null);
+      await loadFinance();
+      await onRefresh?.();
+    } catch (e: any) {
+      setErr(e?.message || "Erreur modification écriture.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteOneTx = async (r: Transaction) => {
+    if (!supabase || !userId) return;
+    const DEPOSIT_CATS = ["deposit_collected", "deposit_returned", "deposit_retained"];
+    if (r.receipt_id || DEPOSIT_CATS.includes(r.category)) {
+      setErr("Cette écriture est protégée (quittance auto ou caution).");
+      return;
+    }
+    const label = r.label || categoryLabel(r.category);
+    if (!confirm(`Supprimer cette écriture ?\n${label} — ${formatEuro(Number(r.amount || 0))}`)) return;
+
+    setDeleteBusy(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const { error } = await supabase.from("transactions").delete().eq("id", r.id).eq("user_id", userId);
+      if (error) throw error;
+      setOk("Écriture supprimée ✅");
+      await loadFinance();
+      await onRefresh?.();
+    } catch (e: any) {
+      setErr(e?.message || "Erreur suppression.");
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -2131,19 +2238,25 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700">Bien concerné</label>
+                  <label className="text-xs font-semibold text-slate-700">Bien concerné *</label>
                   <select
                     value={form.property_id}
                     onChange={(e) => setForm((s) => ({ ...s, property_id: e.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    className={cx(
+                      "mt-1 w-full rounded-xl border bg-white px-3 py-2 text-sm",
+                      !form.property_id ? "border-red-300 text-slate-400" : "border-slate-300 text-slate-900"
+                    )}
                   >
-                    <option value="">Non affecté</option>
+                    <option value="" disabled>Sélectionner un bien…</option>
                     {selectableFormPropertyOptions.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.label || "Bien"}
                       </option>
                     ))}
                   </select>
+                  {!form.property_id && (
+                    <p className="mt-1 text-[0.7rem] text-red-600">Champ obligatoire</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -2258,6 +2371,181 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
       ) : null}
 
+      {/* Modal édition écriture */}
+      {editTxOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
+          <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => setEditTxOpen(false)} />
+          <form onSubmit={updateTx} className="relative max-h-[92vh] w-full max-w-2xl overflow-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-5 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                    <PencilSquareIcon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Modifier l'écriture</p>
+                    <p className="text-[0.8rem] text-slate-600">Seules les lignes manuelles sont modifiables.</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setEditTxOpen(false)} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" aria-label="Fermer">
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* Recette / Dépense */}
+              <div className="grid gap-3 md:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setEditForm((s) => ({ ...s, direction: "out", status: "paid", category: s.category === "rent" ? "fees" : s.category }))}
+                  className={cx(
+                    "flex items-start gap-3 rounded-2xl border px-4 py-3 text-left transition",
+                    editForm.direction === "out" ? "border-red-200 bg-red-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                  )}
+                >
+                  <ArrowDownCircleIcon className={cx("mt-0.5 h-5 w-5", editForm.direction === "out" ? "text-red-600" : "text-slate-500")} />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-900">Dépense</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditForm((s) => ({ ...s, direction: "in", status: "received" }))}
+                  className={cx(
+                    "flex items-start gap-3 rounded-2xl border px-4 py-3 text-left transition",
+                    editForm.direction === "in" ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                  )}
+                >
+                  <ArrowUpCircleIcon className={cx("mt-0.5 h-5 w-5", editForm.direction === "in" ? "text-emerald-600" : "text-slate-500")} />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-900">Recette</span>
+                  </span>
+                </button>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Montant</label>
+                  <div className="mt-1 flex items-center rounded-2xl border border-slate-300 bg-white px-3 py-2 focus-within:border-slate-900">
+                    <input
+                      inputMode="decimal"
+                      value={editForm.amount}
+                      onChange={(e) => setEditForm((s) => ({ ...s, amount: e.target.value }))}
+                      className="min-w-0 flex-1 border-0 bg-transparent text-xl font-semibold text-slate-900 outline-none"
+                      placeholder="0"
+                    />
+                    <span className="text-sm font-semibold text-slate-500">EUR</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Date</label>
+                  <input
+                    type="date"
+                    value={editForm.occurred_at}
+                    onChange={(e) => setEditForm((s) => ({ ...s, occurred_at: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Bien concerné *</label>
+                  <select
+                    value={editForm.property_id}
+                    onChange={(e) => setEditForm((s) => ({ ...s, property_id: e.target.value }))}
+                    className={cx(
+                      "mt-1 w-full rounded-xl border bg-white px-3 py-2 text-sm",
+                      !editForm.property_id ? "border-red-300 text-slate-400" : "border-slate-300 text-slate-900"
+                    )}
+                  >
+                    <option value="" disabled>Sélectionner un bien…</option>
+                    {selectableEditPropertyOptions.map((p) => (
+                      <option key={p.id} value={p.id}>{p.label || "Bien"}</option>
+                    ))}
+                  </select>
+                  {!editForm.property_id && (
+                    <p className="mt-1 text-[0.7rem] text-red-600">Champ obligatoire</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Catégorie</label>
+                  <select
+                    value={editForm.category}
+                    onChange={(e) => {
+                      const cat = e.target.value;
+                      const def = CATEGORIES.find((c) => c.value === cat);
+                      setEditForm((s) => ({ ...s, category: cat, direction: def?.dir ? def.dir : s.direction }));
+                    }}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Statut</label>
+                  <select
+                    value={editForm.status}
+                    onChange={(e) => setEditForm((s) => ({ ...s, status: e.target.value as TxStatus }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="expected">Prévu</option>
+                    <option value="received">Encaissé</option>
+                    <option value="paid">Payé</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Libellé</label>
+                  <input
+                    value={editForm.label}
+                    onChange={(e) => setEditForm((s) => ({ ...s, label: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    placeholder="Ex : Assurance PNO, taxe foncière…"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-semibold text-slate-700">Note interne</label>
+                  <input
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm((s) => ({ ...s, notes: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    placeholder="Optionnel"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditTxOpen(false)}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={cx(
+                    "inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold",
+                    `${brandBg} ${brandText} ${brandHover}`,
+                    loading && "opacity-60"
+                  )}
+                >
+                  <PencilSquareIcon className="h-4 w-4" />
+                  {loading ? "Modification…" : "Enregistrer les modifications"}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
       {/* Grand livre + suppression sélection */}
       <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2266,21 +2554,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
             <p className="text-[0.8rem] text-slate-600">Détail comptable de la période, utile pour contrôler et préparer la déclaration.</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={deleteBusy || selectedIds.length === 0}
-              onClick={deleteSelected}
-              className={cx(
-                "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold",
-                selectedIds.length === 0 ? "bg-slate-200 text-slate-600" : "bg-red-600 text-white hover:bg-red-500",
-                deleteBusy && "opacity-60"
-              )}
-              title="Supprime uniquement les lignes manuelles (les quittances sont protégées)."
-            >
-              {deleteBusy ? "…" : selectedIds.length ? `Supprimer sélection (${selectedIds.length})` : "Supprimer sélection"}
-            </button>
-          </div>
         </div>
 
         {/* Filters */}
@@ -2469,13 +2742,14 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 <th className="w-[120px] px-3 py-2 text-xs text-slate-600">Statut</th>
                 <th className="w-[120px] px-3 py-2 text-xs text-slate-600">Pièce</th>
                 <th className="w-[130px] px-3 py-2 text-xs text-slate-600 text-right">Montant</th>
+                <th className="w-[88px] px-3 py-2 text-xs text-slate-600"></th>
               </tr>
             </thead>
 
             <tbody>
               {filteredMonthLedger.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-4 text-slate-500">
+                  <td colSpan={8} className="px-3 py-4 text-slate-500">
                     Aucune écriture (ou filtres trop restrictifs).
                   </td>
                 </tr>
@@ -2531,6 +2805,29 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                       <td className="px-3 py-2 text-right font-semibold text-slate-900">
                         {r.direction === "out" ? "− " : ""}
                         {formatEuro(Number(r.amount || 0))}
+                      </td>
+                      <td className="px-2 py-2">
+                        {!r.receipt_id ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              title="Modifier cette écriture"
+                              onClick={() => openEditTx(r)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                            >
+                              <PencilSquareIcon className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Supprimer cette écriture"
+                              disabled={deleteBusy}
+                              onClick={() => deleteOneTx(r)}
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                            >
+                              <TrashIcon className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : null}
                       </td>
                     </tr>
                   );
