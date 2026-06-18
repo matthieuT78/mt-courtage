@@ -118,7 +118,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .select("id")
         .eq("lease_id", leaseId)
         .eq("period_start", periodStart)
-        .eq("period_end", periodEnd)
+        .gte("period_end", periodEnd)
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (existingPayment.error) return res.status(500).json({ ok: false, error: `Lecture paiement échouée: ${existingPayment.error.message}` });

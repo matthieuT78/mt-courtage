@@ -231,7 +231,7 @@ export function useLandlordDashboard() {
           .select("*")
           .in("lease_id", leaseIds)
           .order("created_at", { ascending: false })
-          .limit(90),
+          .limit(200),
       ]);
 
       if (payErr) throw payErr;

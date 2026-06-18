@@ -632,8 +632,12 @@ export function SectionQuittances({
       }
     >();
 
-    for (const r of safeReceipts.filter(isWorkflowReceipt) as any[]) {
+    for (const r of safeReceipts as any[]) {
       const lease = safeLeases.find((l: any) => l.id === r.lease_id) as any;
+      const isArchived = String(lease?.status || "").toLowerCase() === "archived";
+      // For archived leases: show all receipts regardless of status (captures draft/partial states)
+      // For active leases: only show generated/sent receipts
+      if (!isArchived && !isWorkflowReceipt(r)) continue;
       const propertyId = String(lease?.property_id || "—");
       const p = propertyId !== "—" ? propsById.get(propertyId) : null;
       const propLabel = p?.label || "Non affecté";
@@ -1837,7 +1841,7 @@ export function SectionQuittances({
                                           ♻️ Régénérer
                                         </button>
 
-                                        {r.payment_id ? (
+                                        {(r.payment_id || receiptStatus === "generated" || receiptStatus === "sent") ? (
                                           <button
                                             type="button"
                                             onClick={() => cancelArchivedPayment(r)}
