@@ -394,6 +394,7 @@ export function SectionQuittances({
   const [reminderSettings, setReminderSettings] = useState<Map<string, ReminderSetting>>(new Map());
   const [reminderDraft, setReminderDraft] = useState<ReminderDraft | null>(null);
   const [snoozedReceiptKeys, setSnoozedReceiptKeys] = useState<Set<string>>(new Set());
+  const [confirmOverrideByRow, setConfirmOverrideByRow] = useState<Record<string, { rent: string; charges: string }>>({});
 
   const selectedReceipt = useMemo(
     () => safeReceipts.find((r: any) => r.id === selectedReceiptId) || null,
@@ -699,7 +700,7 @@ export function SectionQuittances({
     }
   };
 
-  const confirmPaymentForRow = async (row: any) => {
+  const confirmPaymentForRow = async (row: any, overrideRent?: number, overrideCharges?: number) => {
     setErr(null);
     setOk(null);
 
@@ -714,6 +715,8 @@ export function SectionQuittances({
           leaseId: row.lease.id,
           periodStart: row.periodStart,
           periodEnd: row.periodEnd,
+          ...(overrideRent !== undefined ? { overrideRent } : {}),
+          ...(overrideCharges !== undefined ? { overrideCharges } : {}),
         }),
       });
 
@@ -1382,11 +1385,20 @@ export function SectionQuittances({
                             <button
                               type="button"
                               disabled={loading}
-                              onClick={() => confirmPaymentForRow(row)}
+                              onClick={() => {
+                                const rowKey = `${row.lease.id}:${row.periodStart}`;
+                                setConfirmOverrideByRow((p) => ({
+                                  ...p,
+                                  [rowKey]: {
+                                    rent: String(row.pay.expectedRent),
+                                    charges: String(row.pay.expectedCharges),
+                                  },
+                                }));
+                              }}
                               className={cx("rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800", loading && "opacity-60")}
-                              title="Confirme le paiement complet reçu pour cette période."
+                              title="Confirme le paiement complet recu pour cette periode."
                             >
-                              {row.payStatus === "partial" ? "Solde reçu" : "Confirmer payé"}
+                              {row.payStatus === "partial" ? "Solde recu" : "Confirmer paye"}
                             </button>
                             {!(lease as any).receipts_disabled ? (
                               <button
@@ -1527,9 +1539,61 @@ export function SectionQuittances({
                       </div>
                     ) : pdfReady && !row.sent ? (
                       <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-                        {canUseReceiptAutomation ? "PDF prêt · envoie la quittance au locataire." : <>PDF prêt · remets-le au locataire puis clique sur &laquo;&nbsp;Quittance remise&nbsp;&raquo;.</>}
+                        {canUseReceiptAutomation ? "PDF pret · envoie la quittance au locataire." : <>PDF pret · remets-le au locataire puis clique sur &laquo;&nbsp;Quittance remise&nbsp;&raquo;.</>}
                       </div>
                     ) : null}
+
+                    {(() => {
+                      const rowKey = `${row.lease.id}:${row.periodStart}`;
+                      const override = confirmOverrideByRow[rowKey];
+                      if (!override) return null;
+                      const rentNum = parseFloat(override.rent) || 0;
+                      const chargesNum = parseFloat(override.charges) || 0;
+                      const closeForm = () => setConfirmOverrideByRow((p) => { const n = { ...p }; delete n[rowKey]; return n; });
+                      return (
+                        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-3">
+                          <p className="text-xs font-semibold text-slate-900">Montants a confirmer</p>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+                              Loyer (EUR)
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={override.rent}
+                                onChange={(e) => setConfirmOverrideByRow((p) => ({ ...p, [rowKey]: { ...p[rowKey], rent: e.target.value } }))}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </label>
+                            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+                              Charges (EUR)
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={override.charges}
+                                onChange={(e) => setConfirmOverrideByRow((p) => ({ ...p, [rowKey]: { ...p[rowKey], charges: e.target.value } }))}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </label>
+                          </div>
+                          <p className="text-xs text-slate-500">Total : {fmtEur(rentNum + chargesNum)}</p>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              disabled={loading}
+                              onClick={() => { closeForm(); confirmPaymentForRow(row, rentNum, chargesNum); }}
+                              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                            >
+                              {loading ? "Enregistrement..." : "Confirmer"}
+                            </button>
+                            <button type="button" onClick={closeForm} className="rounded-lg border px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-white">
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}

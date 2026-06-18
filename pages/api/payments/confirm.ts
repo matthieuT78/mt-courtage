@@ -15,12 +15,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const auth = await requireApiUser(req);
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
-    const { userId, leaseId, periodStart, periodEnd, paidAt } = (req.body || {}) as {
+    const { userId, leaseId, periodStart, periodEnd, paidAt, overrideRent, overrideCharges } = (req.body || {}) as {
       userId?: string;
       leaseId?: string;
       periodStart?: string;
       periodEnd?: string;
-      paidAt?: string; // ISO datetime
+      paidAt?: string;
+      overrideRent?: number;
+      overrideCharges?: number;
     };
 
     if (!userId) return res.status(400).json({ error: "userId requis." });
@@ -36,7 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const rentPeriod = getLeaseRentPeriodFromDate(lease, periodStart);
     if (!rentPeriod) return res.status(400).json({ error: "Cette période est en dehors des dates du bail." });
-    const { rent, charges, total } = rentPeriod;
+    const rent = overrideRent !== undefined ? Number(overrideRent) : rentPeriod.rent;
+    const charges = overrideCharges !== undefined ? Number(overrideCharges) : rentPeriod.charges;
+    const total = rent + charges;
     const normalizedPeriodStart = rentPeriod.periodStart;
     const normalizedPeriodEnd = rentPeriod.periodEnd;
     const periodKey = normalizedPeriodStart.slice(0, 7);
