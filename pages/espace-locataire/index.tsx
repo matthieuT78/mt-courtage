@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import AppHeader from "../../components/AppHeader";
 import { supabaseTenant as supabase } from "../../lib/supabaseTenantClient";
+import { signOutAll } from "../../lib/authUtils";
 
 type PortalTab = "accueil" | "alertes" | "quittances" | "documents" | "messagerie";
 type PortalData = Record<string, any>;
@@ -298,6 +299,15 @@ export default function EspaceLocatairePage() {
                   ) : null}
                 </button>
               ))}
+              <div className="mt-1 border-t border-slate-100 pt-1">
+                <button
+                  type="button"
+                  onClick={async () => { await signOutAll(); window.location.href = "/"; }}
+                  className="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                >
+                  Se deconnecter
+                </button>
+              </div>
             </nav>
 
             <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
