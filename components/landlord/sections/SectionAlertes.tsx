@@ -3,10 +3,12 @@ import Link from "next/link";
 import {
   BellAlertIcon,
   CheckCircleIcon,
+  ClockIcon,
   ExclamationTriangleIcon,
   HomeModernIcon,
   InformationCircleIcon,
   LockClosedIcon,
+  ShieldExclamationIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import {
@@ -26,22 +28,127 @@ type AlertConfig = {
   title: string;
   desc: string;
   schedule: string;
-  group: "Paiements et quittances" | "Baux et états des lieux" | "Qualité des données";
-  level: "Prioritaire" | "Prévention" | "Configuration";
+  group: "Paiements et loyers" | "Baux et documents" | "Données manquantes" | "Dépôt de garantie";
+  level: "Urgent" | "Anticipation" | "À compléter";
 };
 
 const ALERTS: AlertConfig[] = [
-  { key: "late_payment", title: "Loyer en retard", desc: "Échéance dépassée et paiement toujours non confirmé.", schedule: "J+1, J+3, J+7, puis chaque semaine", group: "Paiements et quittances", level: "Prioritaire" },
-  { key: "due_soon", title: "Loyer bientôt exigible", desc: "Échéance à venir pour anticiper le suivi.", schedule: "J-3, J-1 et jour de l’échéance", group: "Paiements et quittances", level: "Prévention" },
-  { key: "receipt_to_finalize", title: "Quittance à finaliser", desc: "Paiement confirmé, mais PDF absent ou quittance non envoyée.", schedule: "J+1, J+3, J+7, puis chaque semaine", group: "Paiements et quittances", level: "Prioritaire" },
-  { key: "rent_revision_due", title: "Révision annuelle du loyer à préparer", desc: "Contrôle de la clause du bail, du DPE et de l’IRL avant la date anniversaire.", schedule: "J-30 et J-14 avant l’anniversaire", group: "Baux et états des lieux", level: "Prévention" },
-  { key: "lease_end", title: "Bail bientôt à échéance", desc: "Rappels progressifs à l’approche de la date de fin du bail.", schedule: "J-60, J-30 et J-7", group: "Baux et états des lieux", level: "Prévention" },
-  { key: "expired_active_lease", title: "Bail expiré encore actif", desc: "Date de fin dépassée alors que le bail n’est pas clôturé.", schedule: "J+1, J+7, puis chaque semaine", group: "Baux et états des lieux", level: "Prioritaire" },
-  { key: "entry_inventory_missing", title: "État des lieux d’entrée manquant", desc: "Aucun état des lieux d’entrée n’est rattaché au bail.", schedule: "J-7 et J-1 pour préparer, puis J+1 et J+7 si le document manque", group: "Baux et états des lieux", level: "Prioritaire" },
-  { key: "exit_inventory_to_prepare", title: "État des lieux de sortie à préparer", desc: "La fin du bail approche et la sortie n’est pas finalisée.", schedule: "J-30, J-7 et J-1 pour préparer, puis J+1 et J+7 si la sortie reste à finaliser", group: "Baux et états des lieux", level: "Prévention" },
-  { key: "tenant_email_missing", title: "Email locataire manquant", desc: "L’adresse nécessaire à l’envoi automatique des quittances est absente.", schedule: "Une fois par semaine jusqu’à correction", group: "Qualité des données", level: "Configuration" },
-  { key: "owner_email_missing", title: "Email bailleur manquant", desc: "L’adresse de notification du bailleur n’est pas configurée sur le bail.", schedule: "Une fois par semaine jusqu’à correction", group: "Qualité des données", level: "Configuration" },
+  {
+    key: "late_payment",
+    title: "Loyer en retard",
+    desc: "Un loyer n'a pas été encaissé après sa date d'échéance. Vous recevez un rappel pour agir.",
+    schedule: "Le lendemain · à 3 jours · à 7 jours · puis toutes les semaines",
+    group: "Paiements et loyers",
+    level: "Urgent",
+  },
+  {
+    key: "due_soon",
+    title: "Loyer à venir",
+    desc: "Votre date d'encaissement approche. Un rappel pour préparer le suivi.",
+    schedule: "3 jours avant · la veille · le jour même",
+    group: "Paiements et loyers",
+    level: "Anticipation",
+  },
+  {
+    key: "receipt_to_finalize",
+    title: "Quittance non envoyée",
+    desc: "Le paiement est confirmé mais la quittance n'a pas encore été envoyée au locataire.",
+    schedule: "Le lendemain · à 3 jours · à 7 jours · puis toutes les semaines",
+    group: "Paiements et loyers",
+    level: "Urgent",
+  },
+  {
+    key: "rent_revision_due",
+    title: "Révision annuelle du loyer",
+    desc: "La date anniversaire du bail approche : c'est le moment de vérifier si une révision de loyer est possible.",
+    schedule: "30 jours avant · 14 jours avant la date anniversaire",
+    group: "Baux et documents",
+    level: "Anticipation",
+  },
+  {
+    key: "lease_end",
+    title: "Fin de bail imminente",
+    desc: "La fin de bail approche. Préparez le renouvellement ou la sortie du locataire.",
+    schedule: "2 mois avant · 1 mois avant · 7 jours avant",
+    group: "Baux et documents",
+    level: "Anticipation",
+  },
+  {
+    key: "expired_active_lease",
+    title: "Bail terminé non clôturé",
+    desc: "Le bail a dépassé sa date de fin mais n'a pas encore été archivé dans l'application.",
+    schedule: "Le lendemain · 7 jours · puis toutes les semaines",
+    group: "Baux et documents",
+    level: "Urgent",
+  },
+  {
+    key: "entry_inventory_missing",
+    title: "État des lieux d'entrée manquant",
+    desc: "Aucun état des lieux d'entrée n'est enregistré sur ce bail.",
+    schedule: "7 jours avant · la veille pour préparer · puis le lendemain et 7 jours après si manquant",
+    group: "Baux et documents",
+    level: "Urgent",
+  },
+  {
+    key: "exit_inventory_to_prepare",
+    title: "État des lieux de sortie à planifier",
+    desc: "La fin de bail approche sans état des lieux de sortie planifié.",
+    schedule: "30 jours avant · 7 jours avant · la veille · puis le lendemain et 7 jours après si non finalisé",
+    group: "Baux et documents",
+    level: "Anticipation",
+  },
+  {
+    key: "deposit_not_collected",
+    title: "Dépôt de garantie non encaissé",
+    desc: "Aucun encaissement de dépôt de garantie n'est enregistré sur ce bail.",
+    schedule: "Le lendemain · 7 jours · puis toutes les semaines",
+    group: "Dépôt de garantie",
+    level: "Urgent",
+  },
+  {
+    key: "deposit_return_overdue",
+    title: "Restitution du dépôt de garantie en retard",
+    desc: "Le délai légal de restitution du dépôt de garantie est dépassé.",
+    schedule: "Le lendemain · 7 jours · puis toutes les semaines",
+    group: "Dépôt de garantie",
+    level: "Urgent",
+  },
+  {
+    key: "tenant_email_missing",
+    title: "Email du locataire manquant",
+    desc: "L'email du locataire n'est pas renseigné. Il est nécessaire pour lui envoyer ses quittances automatiquement.",
+    schedule: "Chaque semaine jusqu'à correction",
+    group: "Données manquantes",
+    level: "À compléter",
+  },
+  {
+    key: "owner_email_missing",
+    title: "Votre email manquant sur un bail",
+    desc: "Votre adresse email n'est pas renseignée sur ce bail. Vous ne recevrez aucune notification le concernant.",
+    schedule: "Chaque semaine jusqu'à correction",
+    group: "Données manquantes",
+    level: "À compléter",
+  },
 ];
+
+const GROUP_META: Record<AlertConfig["group"], { icon: React.ReactNode; desc: string }> = {
+  "Paiements et loyers": {
+    icon: <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />,
+    desc: "Suivez l'encaissement de vos loyers et l'envoi des quittances.",
+  },
+  "Baux et documents": {
+    icon: <HomeModernIcon className="h-5 w-5 text-indigo-600" />,
+    desc: "Anticipez les échéances importantes liées à vos baux.",
+  },
+  "Dépôt de garantie": {
+    icon: <ShieldExclamationIcon className="h-5 w-5 text-rose-500" />,
+    desc: "Suivez l'encaissement et la restitution du dépôt de garantie.",
+  },
+  "Données manquantes": {
+    icon: <InformationCircleIcon className="h-5 w-5 text-slate-500" />,
+    desc: "Complétez les informations manquantes pour que les alertes fonctionnent correctement.",
+  },
+};
 
 function Toggle({ checked, disabled, label, onChange }: { checked: boolean; disabled?: boolean; label: string; onChange: () => void }) {
   return (
@@ -59,6 +166,12 @@ function Toggle({ checked, disabled, label, onChange }: { checked: boolean; disa
       <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition ${checked ? "left-[1.35rem]" : "left-0.5"}`} />
     </button>
   );
+}
+
+function LevelPill({ level }: { level: AlertConfig["level"] }) {
+  if (level === "Urgent") return <Pill tone="red">Urgent</Pill>;
+  if (level === "Anticipation") return <Pill tone="amber">Anticipation</Pill>;
+  return <Pill tone="slate">À compléter</Pill>;
 }
 
 export function SectionAlertes({ userId, plan }: Props) {
@@ -106,16 +219,20 @@ export function SectionAlertes({ userId, plan }: Props) {
     setSaving(false);
   };
 
-  const groups = ["Paiements et quittances", "Baux et états des lieux", "Qualité des données"] as const;
+  const groups = ["Paiements et loyers", "Baux et documents", "Dépôt de garantie", "Données manquantes"] as const;
 
   return (
     <section className="space-y-4">
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <SectionTitle
-          kicker="Contrôle des alertes"
-          title="Choisissez les emails utiles à votre gestion"
-          desc="Chaque alerte envoie son propre email uniquement aux moments utiles. Le contrôle automatique s’exécute chaque jour."
-          right={<Pill tone={preferences.digest_enabled ? "emerald" : "slate"}>{preferences.digest_enabled ? `${activeCount} alertes actives` : "Emails suspendus"}</Pill>}
+          kicker="Mes alertes"
+          title="Personnalisez vos notifications"
+          desc="Activez uniquement les alertes qui vous sont utiles. Chaque email est envoyé au bon moment, sans spam."
+          right={
+            <Pill tone={preferences.digest_enabled ? "emerald" : "slate"}>
+              {preferences.digest_enabled ? `${activeCount} alertes actives` : "Notifications suspendues"}
+            </Pill>
+          }
         />
 
         <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-[#f6f9fc] p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -124,14 +241,16 @@ export function SectionAlertes({ userId, plan }: Props) {
               <BellAlertIcon className="h-5 w-5" aria-hidden="true" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-950">Emails d’alertes métier</p>
-              <p className="mt-1 text-xs leading-5 text-slate-600">Désactivez cet interrupteur pour suspendre tous les emails sans perdre vos choix détaillés.</p>
+              <p className="text-sm font-semibold text-slate-950">Activer les notifications par email</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600">
+                Désactivez cet interrupteur pour suspendre tous les emails d'un coup, sans perdre vos réglages.
+              </p>
             </div>
           </div>
           <Toggle
             checked={preferences.digest_enabled}
             disabled={loading || saving}
-            label="Activer ou désactiver les emails d’alertes métier"
+            label="Activer ou désactiver toutes les notifications"
             onChange={() => void save({ ...preferences, digest_enabled: !preferences.digest_enabled })}
           />
         </div>
@@ -140,53 +259,64 @@ export function SectionAlertes({ userId, plan }: Props) {
         {error ? <p className="mt-3 text-xs font-semibold text-red-700">{error}</p> : null}
       </div>
 
-      {groups.map((group) => (
-        <div key={group} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex items-center gap-2">
-            {group === "Paiements et quittances" ? <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" /> : null}
-            {group === "Baux et états des lieux" ? <HomeModernIcon className="h-5 w-5 text-[#4f46e5]" /> : null}
-            {group === "Qualité des données" ? <InformationCircleIcon className="h-5 w-5 text-slate-500" /> : null}
-            <h3 className="text-sm font-semibold text-slate-950">{group}</h3>
-          </div>
-
-          <div className="mt-4 divide-y divide-slate-200">
-            {ALERTS.filter((alert) => alert.group === group).map((alert) => (
-              <div key={alert.key} className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-slate-900">{alert.title}</p>
-                    <Pill tone={alert.level === "Prioritaire" ? "red" : alert.level === "Prévention" ? "amber" : "slate"}>{alert.level}</Pill>
-                    {!planAllowsLandlordAlert(plan, alert.key) ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-[#635bff]/20 bg-[#635bff]/5 px-2 py-0.5 text-[0.65rem] font-semibold text-[#4f46e5]">
-                        <LockClosedIcon className="h-3 w-3" aria-hidden="true" />
-                        Starter
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-xs leading-5 text-slate-600">{alert.desc}</p>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-700">Cadence : {alert.schedule}</p>
-                  {!planAllowsLandlordAlert(plan, alert.key) ? (
-                    <Link href="/mon-compte/abonnement?source=alertes" className="mt-1 inline-flex text-xs font-semibold text-[#4f46e5] hover:underline">
-                      Débloquer avec Starter
-                    </Link>
-                  ) : null}
-                </div>
-                <Toggle
-                  checked={preferences[alert.key] && planAllowsLandlordAlert(plan, alert.key)}
-                  disabled={loading || saving || !planAllowsLandlordAlert(plan, alert.key)}
-                  label={`Activer ou désactiver : ${alert.title}`}
-                  onChange={() => void save({ ...preferences, [alert.key]: !preferences[alert.key] })}
-                />
+      {groups.map((group) => {
+        const meta = GROUP_META[group];
+        const groupAlerts = ALERTS.filter((alert) => alert.group === group);
+        return (
+          <div key={group} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 shrink-0">{meta.icon}</div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-950">{group}</h3>
+                <p className="mt-0.5 text-xs text-slate-500">{meta.desc}</p>
               </div>
-            ))}
+            </div>
+
+            <div className="mt-4 divide-y divide-slate-100">
+              {groupAlerts.map((alert) => {
+                const allowed = planAllowsLandlordAlert(plan, alert.key);
+                return (
+                  <div key={alert.key} className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-slate-900">{alert.title}</p>
+                        <LevelPill level={alert.level} />
+                        {!allowed ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-[#635bff]/20 bg-[#635bff]/5 px-2 py-0.5 text-[0.65rem] font-semibold text-[#4f46e5]">
+                            <LockClosedIcon className="h-3 w-3" aria-hidden="true" />
+                            Starter
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-slate-600">{alert.desc}</p>
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <ClockIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+                        <p className="text-xs text-slate-500">{alert.schedule}</p>
+                      </div>
+                      {!allowed ? (
+                        <Link href="/mon-compte/abonnement?source=alertes" className="mt-1 inline-flex text-xs font-semibold text-[#4f46e5] hover:underline">
+                          Débloquer avec Starter
+                        </Link>
+                      ) : null}
+                    </div>
+                    <Toggle
+                      checked={preferences[alert.key] && allowed}
+                      disabled={loading || saving || !allowed}
+                      label={`Activer ou désactiver : ${alert.title}`}
+                      onChange={() => void save({ ...preferences, [alert.key]: !preferences[alert.key] })}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
         <CheckCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" aria-hidden="true" />
         <p className="text-xs leading-5 text-emerald-900">
-          Ces réglages pilotent les emails unitaires. Le mail distinct demandant de confirmer l’encaissement du loyer reste géré depuis chaque bail.
+          Ces réglages s'appliquent aux alertes automatiques. L'email de confirmation d'encaissement du loyer se configure séparément, depuis chaque bail.
         </p>
       </div>
     </section>

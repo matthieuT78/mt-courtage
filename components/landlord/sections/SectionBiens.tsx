@@ -1,5 +1,7 @@
 // components/landlord/sections/SectionBiens.tsx
 import React, { useEffect, useMemo, useState } from "react";
+import { xhrUploadDirect } from "../../../lib/uploadWithProgress";
+import { UploadProgressBar } from "../../UploadProgressBar";
 import Link from "next/link";
 import {
   ArrowTrendingUpIcon,
@@ -170,6 +172,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [uploadPhotoProgress, setUploadPhotoProgress] = useState<number | null>(null);
 
   const photosByProperty = useMemo(() => {
     const m = new Map<string, any[]>();
@@ -472,12 +475,16 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       const safeName = file.name.replace(/[^\w.\-]+/g, "_");
       const path = `${userId}/${propertyId}/${Date.now()}-${safeName}`;
 
-      const { error: upErr } = await supabase.storage.from("property-photos").upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type || "image/*",
-      });
-      if (upErr) throw upErr;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("Session expirée.");
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+      setUploadPhotoProgress(0);
+      await xhrUploadDirect(supabaseUrl, "property-photos", path, accessToken, anonKey, file, (pct) => setUploadPhotoProgress(pct), false);
+      setUploadPhotoProgress(null);
 
       const { data } = supabase.storage.from("property-photos").getPublicUrl(path);
       const url = data?.publicUrl;
@@ -494,6 +501,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       await safeRefresh();
     } catch (e: any) {
       setErr(e?.message || "Erreur upload.");
+      setUploadPhotoProgress(null);
     }
   };
 
@@ -618,6 +626,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                   className="mt-1 block text-xs"
                 />
               </div>
+              <UploadProgressBar progress={uploadPhotoProgress} className="mt-2" />
 
               {selectedPhotos.length > 0 ? (
                 <div className="mt-2 flex flex-wrap gap-2">

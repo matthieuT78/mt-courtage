@@ -19,6 +19,8 @@ import type { Lease, Property } from "../../../lib/landlord/types";
 import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import type { Plan } from "../../../lib/permissions";
 import { SectionSimulateursBailleur } from "./SectionSimulateursBailleur";
+import { xhrUploadDirect } from "../../../lib/uploadWithProgress";
+import { UploadProgressBar } from "../../UploadProgressBar";
 
 const WATER_BUCKET = "water-tools";
 const DEFAULT_SITE_NAME = "Compteur eau principal";
@@ -1248,6 +1250,7 @@ export function SectionOutils({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const activeProperties = useMemo(() => properties.filter(isActivePropertyLike), [properties]);
 
@@ -1819,11 +1822,14 @@ export function SectionOutils({
 
   const uploadFile = async (file: File, path: string) => {
     if (!supabase) throw new Error("Supabase indisponible.");
-    const { error: uploadError } = await supabase.storage.from(WATER_BUCKET).upload(path, file, {
-      contentType: file.type || "application/octet-stream",
-      upsert: true,
-    });
-    if (uploadError) throw uploadError;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Session expirée.");
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    setUploadProgress(0);
+    await xhrUploadDirect(supabaseUrl, WATER_BUCKET, path, accessToken, anonKey, file, (pct) => setUploadProgress(pct), true);
+    setUploadProgress(null);
   };
 
   const openStorageFile = async (bucket?: string | null, path?: string | null) => {
@@ -3053,6 +3059,7 @@ export function SectionOutils({
                 </table>
               </div>
 
+              <UploadProgressBar progress={uploadProgress} className="mt-4" />
               <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <button type="button" onClick={goToPreviousStep} className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50">
                   Retour aux relevés

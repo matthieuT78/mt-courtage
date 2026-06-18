@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         : contractPdfPath(String(userId), document.lease_id, document.id, true);
     const { data, error } = await supabaseAdmin.storage.from(LEASE_CONTRACT_BUCKET).createSignedUploadUrl(path, { upsert: true });
     if (error || !data) throw error || new Error("Import impossible.");
-    return res.status(200).json({ bucket: LEASE_CONTRACT_BUCKET, path, token: data.token });
+    return res.status(200).json({ bucket: LEASE_CONTRACT_BUCKET, path, token: data.token, signedUrl: data.signedUrl });
   } catch (error: any) {
     return res.status(500).json({ error: error?.message || "Import impossible." });
   }

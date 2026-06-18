@@ -29,6 +29,7 @@ import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { SectionTitle, formatEuro } from "../UiBits";
 import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
 import { includeSelected, isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
+import { xhrUploadDirect } from "../../../lib/uploadWithProgress";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend);
 
@@ -454,6 +455,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [txWizardOpen, setTxWizardOpen] = useState(false);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
+  const [uploadDocProgress, setUploadDocProgress] = useState<number | null>(null);
 
   // Edit transaction
   const [editTxOpen, setEditTxOpen] = useState(false);
@@ -1029,11 +1031,15 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
     const filename = safeFileName(file.name || "facture");
     const path = `${userId}/${transaction.id}/${Date.now()}-${filename}`;
-    const { error: uploadError } = await supabase.storage.from("finance-documents").upload(path, file, {
-      contentType: file.type || "application/octet-stream",
-      upsert: false,
-    });
-    if (uploadError) throw uploadError;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Session expirée.");
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    setUploadDocProgress(0);
+    await xhrUploadDirect(supabaseUrl, "finance-documents", path, accessToken, anonKey, file, (pct) => setUploadDocProgress(pct), false);
+    setUploadDocProgress(null);
 
     const { error: insertError } = await supabase.from("transaction_documents").insert({
       user_id: userId,
@@ -1111,6 +1117,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       await loadFinance();
     } catch (e: any) {
       setErr(e?.message || "Impossible de joindre la facture.");
+      setUploadDocProgress(null);
     } finally {
       setUploadingDocId(null);
     }
@@ -1774,7 +1781,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                           uploadingDocId === r.id && "opacity-60"
                         )}>
                           <PaperClipIcon className="h-3.5 w-3.5" />
-                          {uploadingDocId === r.id ? "..." : docs.length ? `${docs.length} pièce${docs.length > 1 ? "s" : ""}` : "Joindre"}
+                          {uploadingDocId === r.id ? (uploadDocProgress !== null ? `${uploadDocProgress}%` : "…") : docs.length ? `${docs.length} pièce${docs.length > 1 ? "s" : ""}` : "Joindre"}
                           <input
                             type="file"
                             accept="application/pdf,image/jpeg,image/png,image/webp"

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentArrowUpIcon, DocumentTextIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabaseClient";
+import { xhrUploadToSignedUrl } from "../../lib/uploadWithProgress";
+import { UploadProgressBar } from "../UploadProgressBar";
 
 type Props = { userId: string; leaseId: string; onClose: () => void };
 const steps = ["Type", "Parties", "Logement", "Durée", "Finances", "Clauses", "Finaliser"];
@@ -81,6 +83,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [document, setDocument] = useState<any>(null);
   const [sourceMode, setSourceMode] = useState<"choose" | "generated" | "external">("choose");
   const [generatedDone, setGeneratedDone] = useState(false);
@@ -210,14 +213,14 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   const uploadSigned = async (file?: File) => {
     if (!file || file.type !== "application/pdf") return setErr("Sélectionne un fichier PDF signé.");
     try {
-      setLoading(true); setErr(null);
+      setLoading(true); setErr(null); setUploadProgress(0);
       const saved = document?.id ? document : await save();
       const signed = await api("/api/lease-contracts/signed-upload-url", { userId, documentId: saved.id, uploadType: "signed", sizeBytes: file.size });
-      const { error } = await supabase!.storage.from(signed.bucket).uploadToSignedUrl(signed.path, signed.token, file, { contentType: "application/pdf" });
-      if (error) throw error;
+      await xhrUploadToSignedUrl(signed.signedUrl, file, (pct) => setUploadProgress(pct));
+      setUploadProgress(null);
       const result = await api("/api/lease-contracts", { action: "confirmSigned", userId, leaseId, signedPdfUrl: `${signed.bucket}:${signed.path}` });
       setDocument(result.document);
-    } catch (error: any) { setErr(error?.message || "Import impossible."); } finally { setLoading(false); }
+    } catch (error: any) { setErr(error?.message || "Import impossible."); setUploadProgress(null); } finally { setLoading(false); }
   };
   const deleteExternal = async () => {
     if (!confirm("Supprimer le bail importé ? Cette action est irréversible.")) return;
@@ -230,11 +233,11 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   const uploadExternal = async (file?: File) => {
     if (!file || file.type !== "application/pdf") return setErr("Sélectionne ton bail au format PDF.");
     try {
-      setLoading(true); setErr(null);
+      setLoading(true); setErr(null); setUploadProgress(0);
       const saved = document?.id ? document : await save();
       const signed = await api("/api/lease-contracts/signed-upload-url", { userId, documentId: saved.id, uploadType: "external", sizeBytes: file.size });
-      const { error } = await supabase!.storage.from(signed.bucket).uploadToSignedUrl(signed.path, signed.token, file, { contentType: "application/pdf" });
-      if (error) throw error;
+      await xhrUploadToSignedUrl(signed.signedUrl, file, (pct) => setUploadProgress(pct));
+      setUploadProgress(null);
       const result = await api("/api/lease-contracts", {
         action: "confirmExternal",
         userId,
@@ -244,7 +247,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
       });
       setDocument(result.document);
       setSourceMode("external");
-    } catch (error: any) { setErr(error?.message || "Import impossible."); } finally { setLoading(false); }
+    } catch (error: any) { setErr(error?.message || "Import impossible."); setUploadProgress(null); } finally { setLoading(false); }
   };
 
   if (loading && !Object.keys(form).length) return <Modal onClose={onClose}><p className="p-6 text-sm text-slate-600">Chargement...</p></Modal>;
@@ -296,6 +299,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
             généré par Lokt dans ce parcours.
           </p>
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
+          <UploadProgressBar progress={uploadProgress} />
           {document?.external_pdf_url ? (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm font-semibold text-emerald-950">Bail importé et archivé</p>
@@ -332,6 +336,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
             Télécharge le PDF, fais-le signer par les parties puis reviens importer la version signée. Le bail Lokt reste actif pour le suivi de la location.
           </p>
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
+          <UploadProgressBar progress={uploadProgress} />
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
             <p className="text-sm font-semibold text-emerald-950">Génération terminée avec succès</p>
             <p className="mt-1 text-xs leading-5 text-emerald-800">Le document est archivé dans Lokt. Tu peux le rouvrir plus tard depuis cette fiche bail.</p>

@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const path = `${auth.userId}/${propertyId}/${crypto.randomUUID()}.pdf`;
     const { data, error } = await supabaseAdmin.storage.from(bucket).createSignedUploadUrl(path);
     if (error || !data) throw error || new Error("Import impossible.");
-    return res.status(200).json({ bucket, path, token: data.token, fileName, sizeBytes });
+    return res.status(200).json({ bucket, path, token: data.token, signedUrl: data.signedUrl, fileName, sizeBytes });
   } catch (error: any) {
     return res.status(500).json({ error: error?.message || "Import impossible." });
   }

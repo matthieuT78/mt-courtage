@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowDownTrayIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabaseClient";
+import { xhrUploadToSignedUrl } from "../../lib/uploadWithProgress";
+import { UploadProgressBar } from "../UploadProgressBar";
 
 type DpeDocument = {
   id: string;
@@ -30,6 +32,7 @@ export function PropertyDpePanel({ propertyId, propertyLabel }: { propertyId: st
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -51,15 +54,16 @@ export function PropertyDpePanel({ propertyId, propertyLabel }: { propertyId: st
     if (!file) return;
     if (file.type !== "application/pdf") return setErr("Sélectionne un DPE au format PDF.");
     try {
-      setLoading(true); setErr(null); setOk(null);
+      setLoading(true); setErr(null); setOk(null); setUploadProgress(0);
       const signed = await post("/api/account/dpe-upload-url", { propertyId, fileName: file.name, sizeBytes: file.size });
-      const { error } = await supabase!.storage.from(signed.bucket).uploadToSignedUrl(signed.path, signed.token, file, { contentType: "application/pdf" });
-      if (error) throw error;
+      await xhrUploadToSignedUrl(signed.signedUrl, file, (pct) => setUploadProgress(pct));
+      setUploadProgress(null);
       await post("/api/account/dpe-confirm", { propertyId, bucket: signed.bucket, path: signed.path, fileName: file.name, sizeBytes: file.size });
       setOk("DPE archivé avec succès.");
       await load();
     } catch (error: any) {
       setErr(error?.message || "Import impossible.");
+      setUploadProgress(null);
     } finally {
       setLoading(false);
     }
@@ -90,6 +94,7 @@ export function PropertyDpePanel({ propertyId, propertyLabel }: { propertyId: st
       </div>
       {err ? <p className="mt-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{err}</p> : null}
       {ok ? <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-700">{ok}</p> : null}
+      <UploadProgressBar progress={uploadProgress} className="mt-3" />
       <div className="mt-3 space-y-2">
         {dpes.map((dpe) => (
           <div key={dpe.id} className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
