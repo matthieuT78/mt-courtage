@@ -12,8 +12,8 @@ import {
   InformationCircleIcon,
   PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
-import AppHeader from "../components/AppHeader";
-import { supabase } from "../lib/supabaseClient";
+import AppHeader from "../../components/AppHeader";
+import { supabase } from "../../lib/supabaseClient";
 
 type PortalTab = "accueil" | "alertes" | "quittances" | "documents" | "messagerie";
 type PortalData = Record<string, any>;
@@ -67,10 +67,10 @@ export default function EspaceLocatairePage() {
     try {
       const response = await fetch("/api/tenant-portal/data", { headers: await authHeaders() });
       const json = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(json?.error || "Chargement de l’espace locataire impossible.");
+      if (!response.ok) throw new Error(json?.error || "Chargement de l'espace locataire impossible.");
       setData(json);
     } catch (e: any) {
-      setErr(e?.message || "Chargement de l’espace locataire impossible.");
+      setErr(e?.message || "Chargement de l'espace locataire impossible.");
     } finally {
       setLoading(false);
     }
@@ -390,7 +390,7 @@ export default function EspaceLocatairePage() {
                     empty="Aucun état des lieux PDF disponible pour le moment."
                     rows={(data.inventoryReports || []).map((report: any) => ({
                       id: report.id,
-                      title: report.report_type === "exit" ? "État des lieux de sortie" : "État des lieux d’entrée",
+                      title: report.report_type === "exit" ? "État des lieux de sortie" : "État des lieux d'entrée",
                       subtitle: `${formatDate(report.performed_at)} · ${report.status || "document"}`,
                     }))}
                     onOpen={(id) => openDocument("inventory", id)}
