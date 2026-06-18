@@ -159,8 +159,6 @@ export default function EspaceLocatairePage() {
     }
   };
 
-  if (checking) return null;
-
   const tenantAlerts = useMemo(() => {
     if (!activeLease || !data) return [];
     const today = new Date();
@@ -240,6 +238,8 @@ export default function EspaceLocatairePage() {
 
     return items;
   }, [activeLease, data]);
+
+  if (checking) return null;
 
   const tabs: Array<{ key: PortalTab; label: string; icon: React.ReactNode; badge?: number }> = [
     { key: "accueil", label: "Accueil", icon: <HomeModernIcon className="h-4 w-4" /> },
