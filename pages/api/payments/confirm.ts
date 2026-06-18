@@ -4,6 +4,7 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
 import { removeTrackedPartialPaymentTransactions } from "../../../lib/rentPaymentFinance";
+import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 
 type Json = Record<string, any>;
 
@@ -38,6 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { rent, charges, total } = rentPeriod;
     const normalizedPeriodStart = rentPeriod.periodStart;
     const normalizedPeriodEnd = rentPeriod.periodEnd;
+    const periodKey = normalizedPeriodStart.slice(0, 7);
+    const dueDate = getLeasePaymentDueDate(lease, periodKey)?.toISOString().slice(0, 10) || normalizedPeriodStart;
 
     // upsert payment by (lease_id, period_start, period_end)
     const existing = await supabaseAdmin
@@ -60,6 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           rent_amount: rent,
           charges_amount: charges,
           total_amount: total,
+          due_date: dueDate,
           updated_at: new Date().toISOString(),
         })
         .eq("id", existing.data.id);
@@ -82,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         rent_amount: rent,
         charges_amount: charges,
         total_amount: total,
-        due_date: normalizedPeriodStart,
+        due_date: dueDate,
         paid_at: now,
         payment_method: lease.payment_method || null,
         source: "manual_confirm",

@@ -19,7 +19,7 @@ function channelsFromSetting(value: unknown): TenantPaymentReminderChannel[] {
 
 function targetDateForPeriod(lease: any, period: string, delayDays: number) {
   const [year, month] = period.split("-").map(Number);
-  const dueMonth = String(lease.payment_type || "terme_a_echoir").toLowerCase() === "terme_echu" ? month : month - 1;
+  const dueMonth = month - 1;
   const lastDay = new Date(Date.UTC(year, dueMonth + 1, 0)).getUTCDate();
   const target = new Date(Date.UTC(year, dueMonth, Math.min(Math.max(Number(lease.payment_day || 1), 1), lastDay)));
   target.setUTCDate(target.getUTCDate() + delayDays);

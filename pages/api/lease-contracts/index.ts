@@ -71,6 +71,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (error) throw error;
       return res.status(200).json({ ok: true, document: data });
     }
+    if (action === "deleteExternal") {
+      if (!context.document?.id) return res.status(400).json({ error: "Document introuvable." });
+      const path = `${userId}/${leaseId}/${context.document.id}.external.pdf`;
+      await supabaseAdmin.storage.from("lease-contract-pdfs").remove([path]);
+      const { data, error } = await supabaseAdmin
+        .from("lease_contract_documents")
+        .update({
+          document_source: "generated",
+          external_pdf_url: null,
+          original_file_name: null,
+          status: "draft",
+          signed_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", context.document.id)
+        .eq("user_id", userId)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return res.status(200).json({ ok: true, document: data });
+    }
     if (action !== "save" || !isLeaseContractKind(contractKind)) return res.status(400).json({ error: "Action ou type de bail invalide." });
     const payload = {
       user_id: String(userId),

@@ -5,6 +5,7 @@ import {
   ArrowDownTrayIcon,
   ArrowUpRightIcon,
   ArrowPathIcon,
+  BuildingOfficeIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   DocumentTextIcon,
@@ -40,6 +41,15 @@ export type Lease = {
   rent_amount: number | null;
   charges_amount: number | null;
   deposit_amount: number | null;
+  deposit_paid_at?: string | null;
+  deposit_paid_amount?: number | null;
+  deposit_returned_at?: string | null;
+  deposit_returned_amount?: number | null;
+  deposit_retained_amount?: number | null;
+  deposit_retained_reason?: string | null;
+  deposit_collection_tx_id?: string | null;
+  deposit_return_tx_id?: string | null;
+  deposit_retain_tx_id?: string | null;
   payment_day: number | null;
   payment_method: string | null;
   lease_kind?: LeaseKind | string | null;
@@ -50,6 +60,7 @@ export type Lease = {
   status: string | null;
   auto_reminder_enabled: boolean | null;
   auto_quittance_enabled: boolean | null;
+  receipts_disabled?: boolean | null;
   reminder_day_of_month: number | null;
   reminder_email: string | null;
   tenant_receipt_email: string | null;
@@ -566,6 +577,41 @@ function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: Rent
     });
   }
 
+  const depositPaidAt = parseISODateLocal((lease as any).deposit_paid_at);
+  const depositReturnedAt = parseISODateLocal((lease as any).deposit_returned_at);
+  if (depositPaidAt) {
+    events.push({
+      id: `${lease.id}:deposit:collected`,
+      date: depositPaidAt,
+      tone: "emerald",
+      title: "Caution encaissée",
+      detail: `${formatEuro((lease as any).deposit_paid_amount ?? lease.deposit_amount)} encaissés.`,
+    });
+  }
+  if (depositReturnedAt) {
+    const retAmt = Number((lease as any).deposit_returned_amount ?? 0);
+    const retainAmt = Number((lease as any).deposit_retained_amount ?? 0);
+    if (retAmt > 0) {
+      events.push({
+        id: `${lease.id}:deposit:returned`,
+        date: depositReturnedAt,
+        tone: "emerald",
+        title: "Caution restituée",
+        detail: `${formatEuro(retAmt)} restitués au locataire.`,
+      });
+    }
+    if (retainAmt > 0) {
+      const reason = String((lease as any).deposit_retained_reason || "");
+      events.push({
+        id: `${lease.id}:deposit:retained`,
+        date: depositReturnedAt,
+        tone: "amber",
+        title: "Retenue sur caution",
+        detail: `${formatEuro(retainAmt)} retenus${reason ? ` — ${reason}` : ""}.`,
+      });
+    }
+  }
+
   for (const payment of payments.filter((payment) => payment.lease_id === lease.id)) {
     const due = parseISODateLocal(payment.due_date || payment.period_end);
     const paid = parseISODateLocal(payment.paid_at);
@@ -660,6 +706,79 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const [contractLeaseId, setContractLeaseId] = useState<string | null>(null);
   const [historyOpenByLease, setHistoryOpenByLease] = useState<Record<string, boolean>>({});
 
+  // Deposit state
+  type DepositAction = "collect" | "return" | null;
+  type DepositForm = { paid_at: string; paid_amount: string; returned_at: string; returned_amount: string; retained_amount: string; retained_reason: string };
+  const [depositActionByLease, setDepositActionByLease] = useState<Record<string, DepositAction>>({});
+  const [depositFormByLease, setDepositFormByLease] = useState<Record<string, DepositForm>>({});
+  const [depositLoadingByLease, setDepositLoadingByLease] = useState<Record<string, boolean>>({});
+  const [depositErrByLease, setDepositErrByLease] = useState<Record<string, string | null>>({});
+
+  const openDepositForm = (leaseId: string, action: DepositAction, lease: Lease) => {
+    const today = todayISO();
+    setDepositActionByLease((p) => ({ ...p, [leaseId]: action }));
+    setDepositErrByLease((p) => ({ ...p, [leaseId]: null }));
+    setDepositFormByLease((p) => ({
+      ...p,
+      [leaseId]: {
+        paid_at: action === "collect" ? today : (lease.deposit_paid_at || today),
+        paid_amount: action === "collect" ? String(lease.deposit_amount ?? "") : String(lease.deposit_paid_amount ?? lease.deposit_amount ?? ""),
+        returned_at: today,
+        returned_amount: action === "return" ? String(lease.deposit_paid_amount ?? lease.deposit_amount ?? "") : "",
+        retained_amount: "",
+        retained_reason: "",
+      },
+    }));
+  };
+
+  const closeDepositForm = (leaseId: string) =>
+    setDepositActionByLease((p) => ({ ...p, [leaseId]: null }));
+
+  const submitDepositAction = async (leaseId: string, action: "collect" | "return") => {
+    const form = depositFormByLease[leaseId];
+    if (!form || !supabase) return;
+    setDepositLoadingByLease((p) => ({ ...p, [leaseId]: true }));
+    setDepositErrByLease((p) => ({ ...p, [leaseId]: null }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch("/api/deposits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ action, userId, leaseId, ...form }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || "Erreur serveur.");
+      closeDepositForm(leaseId);
+      await onRefresh();
+    } catch (e: any) {
+      setDepositErrByLease((p) => ({ ...p, [leaseId]: e?.message || "Erreur." }));
+    } finally {
+      setDepositLoadingByLease((p) => ({ ...p, [leaseId]: false }));
+    }
+  };
+
+  const cancelDepositAction = async (leaseId: string, type: "cancel_collect" | "cancel_return") => {
+    if (!confirm(type === "cancel_collect" ? "Annuler l'encaissement ? L'écriture Finance sera supprimée." : "Annuler la restitution ? Les écritures Finance seront supprimées.")) return;
+    if (!supabase) return;
+    setDepositLoadingByLease((p) => ({ ...p, [leaseId]: true }));
+    setDepositErrByLease((p) => ({ ...p, [leaseId]: null }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch("/api/deposits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ action: type, userId, leaseId }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || "Erreur serveur.");
+      await onRefresh();
+    } catch (e: any) {
+      setDepositErrByLease((p) => ({ ...p, [leaseId]: e?.message || "Erreur." }));
+    } finally {
+      setDepositLoadingByLease((p) => ({ ...p, [leaseId]: false }));
+    }
+  };
+
   // Search
   const [q, setQ] = useState("");
 
@@ -721,7 +840,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       city: p?.city || null,
       total,
       status: (l.status || "—").toUpperCase(),
-      quittance: canUseReceiptAutomation && l.auto_quittance_enabled ? "Auto" : "Manuel",
+      quittance: l.receipts_disabled ? "Agence" : canUseReceiptAutomation && l.auto_quittance_enabled ? "Auto" : "Manuel",
       pay: `J${l.payment_day ?? "—"} • ${l.payment_method || "—"} • ${paymentTypeShort(l.payment_type)}`,
       renewal,
     };
@@ -851,6 +970,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     status: "active",
     auto_quittance_enabled: canUseReceiptAutomation,
     auto_reminder_enabled: canUseReceiptAutomation,
+    receipts_disabled: false,
     reminder_day_of_month: "1",
     reminder_email: userEmail || "",
     tenant_receipt_email: "",
@@ -883,6 +1003,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       status: "active",
       auto_quittance_enabled: canUseReceiptAutomation,
       auto_reminder_enabled: canUseReceiptAutomation,
+      receipts_disabled: false,
       reminder_day_of_month: "1",
       reminder_email: userEmail || "",
       tenant_receipt_email: "",
@@ -920,6 +1041,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       status: lease.status || "active",
       auto_quittance_enabled: canUseReceiptAutomation && !!lease.auto_quittance_enabled,
       auto_reminder_enabled: canUseReceiptAutomation && !!lease.auto_reminder_enabled,
+      receipts_disabled: !!lease.receipts_disabled,
       reminder_day_of_month: lease.reminder_day_of_month != null ? String(lease.reminder_day_of_month) : "1",
       reminder_email: lease.reminder_email || "",
       tenant_receipt_email: lease.tenant_receipt_email || "",
@@ -1050,6 +1172,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         status: form.status || "active",
         auto_quittance_enabled: canUseReceiptAutomation ? !!form.auto_quittance_enabled : false,
         auto_reminder_enabled: canUseReceiptAutomation ? !!form.auto_quittance_enabled : false,
+        receipts_disabled: !!form.receipts_disabled,
         reminder_day_of_month: reminderDayNum,
         reminder_email: ownerEmail || null,
         tenant_receipt_email: receiptEmail || null,
@@ -1152,12 +1275,18 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Informations</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <InfoPill tone={statusTone(l.status)}>{(l.status || "—").toUpperCase()}</InfoPill>
-                <InfoPill tone={canUseReceiptAutomation && l.auto_quittance_enabled ? "emerald" : "amber"}>
-                  {canUseReceiptAutomation && l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"}
-                </InfoPill>
-                <InfoPill tone={canUseReceiptAutomation && l.auto_reminder_enabled ? "emerald" : "slate"}>
-                  {canUseReceiptAutomation && l.auto_reminder_enabled ? "Validation paiement" : "Validation manuelle"}
-                </InfoPill>
+                {l.receipts_disabled ? (
+                  <InfoPill tone="slate">Quittances agence</InfoPill>
+                ) : (
+                  <>
+                    <InfoPill tone={canUseReceiptAutomation && l.auto_quittance_enabled ? "emerald" : "amber"}>
+                      {canUseReceiptAutomation && l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"}
+                    </InfoPill>
+                    <InfoPill tone={canUseReceiptAutomation && l.auto_reminder_enabled ? "emerald" : "slate"}>
+                      {canUseReceiptAutomation && l.auto_reminder_enabled ? "Validation paiement" : "Validation manuelle"}
+                    </InfoPill>
+                  </>
+                )}
                 <InfoPill tone={flow.tone as any}>{flow.label}</InfoPill>
                 <InfoPill tone={renewal.tone as any}>{renewal.status}</InfoPill>
               </div>
@@ -1338,6 +1467,135 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             </div>
           ) : null}
         </div>
+
+        {/* ===== Dépôt de garantie ===== */}
+        {(() => {
+          const depositAmount = Number(l.deposit_amount ?? 0);
+          if (depositAmount <= 0) return null;
+          const depositAction = depositActionByLease[l.id] ?? null;
+          const depositForm = depositFormByLease[l.id] ?? { paid_at: "", paid_amount: "", returned_at: "", returned_amount: "", retained_amount: "", retained_reason: "" };
+          const depositLoading = !!depositLoadingByLease[l.id];
+          const depositErr = depositErrByLease[l.id] ?? null;
+          const isPaid = !!l.deposit_paid_at;
+          const isReturned = !!l.deposit_returned_at;
+          const paidAmt = Number(l.deposit_paid_amount ?? depositAmount);
+          const returnedAmt = Number(l.deposit_returned_amount ?? 0);
+          const retainedAmt = Number(l.deposit_retained_amount ?? 0);
+
+          const inputCls = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
+          const labelCls = "block space-y-1 text-xs font-semibold text-slate-700";
+
+          return (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Dépôt de garantie</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(depositAmount)}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {!isPaid && !depositAction ? (
+                    <button type="button" onClick={() => openDepositForm(l.id, "collect", l)} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+                      Encaisser
+                    </button>
+                  ) : null}
+                  {isPaid && !isReturned && !depositAction ? (
+                    <>
+                      <button type="button" onClick={() => openDepositForm(l.id, "return", l)} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+                        Restituer
+                      </button>
+                      <button type="button" disabled={depositLoading} onClick={() => cancelDepositAction(l.id, "cancel_collect")} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50">
+                        Annuler encaissement
+                      </button>
+                    </>
+                  ) : null}
+                  {isReturned && !depositAction ? (
+                    <button type="button" disabled={depositLoading} onClick={() => cancelDepositAction(l.id, "cancel_return")} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50">
+                      Annuler restitution
+                    </button>
+                  ) : null}
+                  {depositAction ? (
+                    <button type="button" onClick={() => closeDepositForm(l.id)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold">
+                      Annuler
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Status summary */}
+              {!depositAction ? (
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {!isPaid ? (
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">En attente d&apos;encaissement</span>
+                  ) : !isReturned ? (
+                    <>
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">Encaissé le {l.deposit_paid_at}</span>
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">{formatEuro(paidAmt)}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">Clôturé le {l.deposit_returned_at}</span>
+                      {returnedAmt > 0 ? <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">Rendu : {formatEuro(returnedAmt)}</span> : null}
+                      {retainedAmt > 0 ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">Retenu : {formatEuro(retainedAmt)}</span> : null}
+                      {l.deposit_retained_reason ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">{l.deposit_retained_reason}</span> : null}
+                    </>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Form: collect */}
+              {depositAction === "collect" ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-slate-900">Encaissement de la caution</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className={labelCls}>
+                      Date d&apos;encaissement
+                      <input type="date" value={depositForm.paid_at} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], paid_at: e.target.value } }))} className={inputCls} />
+                    </label>
+                    <label className={labelCls}>
+                      Montant encaissé (€)
+                      <input type="number" min="0" step="0.01" value={depositForm.paid_amount} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], paid_amount: e.target.value } }))} className={inputCls} />
+                    </label>
+                  </div>
+                  {depositErr ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{depositErr}</p> : null}
+                  <button type="button" disabled={depositLoading} onClick={() => submitDepositAction(l.id, "collect")} className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+                    {depositLoading ? "Enregistrement..." : "Confirmer l'encaissement"}
+                  </button>
+                </div>
+              ) : null}
+
+              {/* Form: return */}
+              {depositAction === "return" ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-slate-900">Restitution de la caution</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className={labelCls}>
+                      Date de restitution
+                      <input type="date" value={depositForm.returned_at} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], returned_at: e.target.value } }))} className={inputCls} />
+                    </label>
+                    <label className={labelCls}>
+                      Montant restitué (€)
+                      <input type="number" min="0" step="0.01" value={depositForm.returned_amount} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], returned_amount: e.target.value } }))} className={inputCls} />
+                    </label>
+                    <label className={labelCls}>
+                      Montant retenu — dommages (€)
+                      <input type="number" min="0" step="0.01" value={depositForm.retained_amount} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], retained_amount: e.target.value } }))} className={inputCls} />
+                    </label>
+                    <label className={labelCls}>
+                      Motif de la retenue
+                      <input type="text" placeholder="Ex : réparation plomberie, loyer impayé…" value={depositForm.retained_reason} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], retained_reason: e.target.value } }))} className={inputCls} />
+                    </label>
+                  </div>
+                  {depositErr ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{depositErr}</p> : null}
+                  <button type="button" disabled={depositLoading} onClick={() => submitDepositAction(l.id, "return")} className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+                    {depositLoading ? "Enregistrement..." : "Confirmer la restitution"}
+                  </button>
+                </div>
+              ) : null}
+
+              {depositErr && !depositAction ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{depositErr}</p> : null}
+            </div>
+          );
+        })()}
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -1768,8 +2026,17 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               description="Génération et envoi depuis Quittances."
               icon={HandRaisedIcon}
               tone="slate"
-              selected={!form.auto_quittance_enabled}
-              onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false }))}
+              selected={!form.auto_quittance_enabled && !form.receipts_disabled}
+              onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false, receipts_disabled: false }))}
+            />
+
+            <WorkflowChoice
+              title="Géré par agence"
+              description="L'agence émet ses propres quittances. Seul le paiement est à confirmer chaque mois pour la Finance."
+              icon={BuildingOfficeIcon}
+              tone="slate"
+              selected={!!form.receipts_disabled}
+              onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false, receipts_disabled: true }))}
             />
           </div>
 
@@ -2036,10 +2303,12 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
                         <div className="mt-2 flex flex-wrap gap-2">
                           {badge(statusTone(l.status), meta.status)}
-                          {badge(
-                            canUseReceiptAutomation && l.auto_quittance_enabled ? "emerald" : "amber",
-                            canUseReceiptAutomation && l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"
-                          )}
+                          {l.receipts_disabled
+                            ? badge("slate", "Quittances agence")
+                            : badge(
+                                canUseReceiptAutomation && l.auto_quittance_enabled ? "emerald" : "amber",
+                                canUseReceiptAutomation && l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"
+                              )}
                           {badge("slate", `${formatEuro(meta.total)}`)}
                           {badge("slate", meta.pay)}
                           {badge(meta.renewal.tone, meta.renewal.status)}

@@ -82,6 +82,15 @@ export type Lease = {
   rent_amount: number | null;
   charges_amount: number | null;
   deposit_amount: number | null;
+  deposit_paid_at?: string | null;
+  deposit_paid_amount?: number | null;
+  deposit_returned_at?: string | null;
+  deposit_returned_amount?: number | null;
+  deposit_retained_amount?: number | null;
+  deposit_retained_reason?: string | null;
+  deposit_collection_tx_id?: string | null;
+  deposit_return_tx_id?: string | null;
+  deposit_retain_tx_id?: string | null;
   payment_day: number | null;
   payment_type?: string | null;
   payment_method: string | null;
@@ -90,6 +99,7 @@ export type Lease = {
   status: string | null;
   auto_reminder_enabled: boolean | null;
   auto_quittance_enabled: boolean | null;
+  receipts_disabled?: boolean | null;
   reminder_day_of_month: number | null;
   reminder_email: string | null;
   tenant_receipt_email: string | null;

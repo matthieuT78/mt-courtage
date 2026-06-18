@@ -289,6 +289,9 @@ const CATEGORIES: Array<{ value: string; label: string; dir?: TxDirection }> = [
   { value: "charges_recovered", label: "Charges récupérées / refacturées", dir: "in" },
   { value: "regularization", label: "Régularisation de charges", dir: undefined },
   { value: "loan", label: "Crédit (mensualité)", dir: "out" },
+  { value: "deposit_collected", label: "Caution reçue", dir: "in" as TxDirection },
+  { value: "deposit_returned", label: "Caution restituée", dir: "out" as TxDirection },
+  { value: "deposit_retained", label: "Retenue sur caution", dir: "in" as TxDirection },
   { value: "other", label: "Autre", dir: undefined },
 ];
 
@@ -297,6 +300,12 @@ const statusLabel = (value: TxStatus) =>
   value === "expected" ? "Prévu" : value === "received" ? "Encaissé" : "Payé";
 const directionLabel = (value: TxDirection) => (value === "in" ? "Recette" : "Dépense");
 const sourceLabel = (tx: Transaction) => (tx.receipt_id ? "Quittance auto" : "Manuel");
+const DEPOSIT_TRANSIT_CATEGORIES = ["deposit_collected", "deposit_returned"];
+
+const isIncomeReceived = (row: Pick<Transaction, "direction" | "status" | "category">) =>
+  row.direction === "in" &&
+  (row.status === "received" || row.status === "paid") &&
+  !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category);
 
 type FinancePropertyRow = {
   propertyId: string;
@@ -534,7 +543,13 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       ])
     );
 
-    const payload = uniqueReceipts.map((r) => {
+    const syncableReceipts = uniqueReceipts.filter((r) => {
+      const status = String((r as any).status || "").toLowerCase();
+      return status === "generated" || status === "sent";
+    });
+    if (syncableReceipts.length === 0) return;
+
+    const payload = syncableReceipts.map((r) => {
       const lease = safeLeases.find((l) => (l as any).id === r.lease_id);
       const payment = paymentsByPeriod.get(`${r.lease_id}:${r.period_start}:${r.period_end}`);
       const fullyPaid = !!payment?.paid_at && Number(payment.total_amount || 0) + 0.01 >= Number(r.total_amount || 0);
@@ -793,8 +808,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       return ms >= s && ms <= e;
     });
 
-    const income = sum(rows.filter((r) => r.direction === "in").map((r) => Number(r.amount || 0)));
-    const expense = sum(rows.filter((r) => r.direction === "out").map((r) => Number(r.amount || 0)));
+    const income = sum(rows.filter(isIncomeReceived).map((r) => Number(r.amount || 0)));
+    const expense = sum(rows.filter((r) => r.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(r.category)).map((r) => Number(r.amount || 0)));
     return { rows, income, expense, net: income - expense };
   }, [activePropertyIdSet, analysisPropertyId, tx, selectedPeriod]);
 
@@ -844,7 +859,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   ]);
 
   const filteredLedgerSummary = useMemo(() => {
-    const income = sum(filteredMonthLedger.filter((r) => r.direction === "in").map((r) => Number(r.amount || 0)));
+    const income = sum(filteredMonthLedger.filter(isIncomeReceived).map((r) => Number(r.amount || 0)));
     const expense = sum(filteredMonthLedger.filter((r) => r.direction === "out").map((r) => Number(r.amount || 0)));
     return { income, expense, net: income - expense, count: filteredMonthLedger.length };
   }, [filteredMonthLedger]);
@@ -942,18 +957,26 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     if (ids.length === 0) return;
 
     // Sécurité: on ne supprime pas les écritures générées depuis quittances (receipt_id != null)
+    // ni les écritures de caution (gérées depuis la section Baux)
+    const DEPOSIT_CATEGORIES = ["deposit_collected", "deposit_returned", "deposit_retained"];
     const selectedRows = filteredMonthLedger.filter((r) => ids.includes(r.id));
-    const protectedRows = selectedRows.filter((r) => !!r.receipt_id);
-    const deletableRows = selectedRows.filter((r) => !r.receipt_id);
+    const protectedRows = selectedRows.filter((r) => !!r.receipt_id || DEPOSIT_CATEGORIES.includes(r.category));
+    const deletableRows = selectedRows.filter((r) => !r.receipt_id && !DEPOSIT_CATEGORIES.includes(r.category));
 
     if (deletableRows.length === 0) {
-      setErr("Aucune ligne supprimable dans la sélection (les loyers issus de quittances sont protégés).");
+      setErr("Aucune ligne supprimable dans la sélection (loyers de quittances et cautions sont gérés depuis la section Baux).");
       return;
     }
 
+    const depositProtected = protectedRows.filter((r) => DEPOSIT_CATEGORIES.includes(r.category)).length;
+    const receiptProtected = protectedRows.filter((r) => !!r.receipt_id).length;
+    const protectedDesc = [
+      receiptProtected ? `${receiptProtected} quittance(s)` : "",
+      depositProtected ? `${depositProtected} caution(s)` : "",
+    ].filter(Boolean).join(" + ");
     const msg =
       protectedRows.length > 0
-        ? `Tu as sélectionné ${protectedRows.length} ligne(s) "quittance" (protégées) + ${deletableRows.length} ligne(s) supprimables.\n\nSupprimer seulement les lignes supprimables ?`
+        ? `Tu as sélectionné ${protectedDesc} (protégées) + ${deletableRows.length} ligne(s) supprimables.\n\nSupprimer seulement les lignes supprimables ?`
         : `Supprimer ${deletableRows.length} ligne(s) du grand livre ?`;
 
     if (!confirm(msg)) return;
@@ -994,8 +1017,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     for (const r of periodLedger.rows) {
       const pid = r.property_id || "—";
       const cur = by.get(pid) || { income: 0, expense: 0, net: 0 };
-      if (r.direction === "in") cur.income += Number(r.amount || 0);
-      else cur.expense += Number(r.amount || 0);
+      if (isIncomeReceived(r)) cur.income += Number(r.amount || 0);
+      else if (r.direction === "out") cur.expense += Number(r.amount || 0);
       cur.net = cur.income - cur.expense;
       by.set(pid, cur);
     }
@@ -1021,7 +1044,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
             if (!leaseStart) return false;
             return leaseStart <= selectedPeriod.end && (!leaseEnd || leaseEnd >= selectedPeriod.start);
           }).length;
-      const incomeBase = Math.max(v.income, expectedRent);
+      const incomeBase = v.income;
 
       const recurring = propertyId === "—" ? { loan: 0, fixed: 0, taxM: 0, total: 0 } : monthlyRecurringByProperty.get(propertyId) || { loan: 0, fixed: 0, taxM: 0, total: 0 };
       const loan = recurring.loan;
@@ -1215,13 +1238,14 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         continue;
       }
 
-      if (property.expectedRent > 0 && property.ledgerIncome <= 0 && property.income > 0) {
+      const incomeToConfirm = Math.max(0, property.expectedRent - property.ledgerIncome);
+      if (incomeToConfirm > 0.01) {
         actions.push({
           propertyId: property.propertyId,
           label: property.label,
           title: "Loyer attendu, encaissement à confirmer",
-          desc: `${formatEuro(property.expectedRent)} est attendu via le bail actif. Si le paiement est bien reçu, confirmez-le côté Quittances pour fiabiliser les revenus encaissés.`,
-          impact: `À confirmer : ${formatEuro(property.expectedRent)}`,
+          desc: `${formatEuro(property.expectedRent)} est attendu via le bail actif, mais ${formatEuro(property.ledgerIncome)} seulement est confirmé encaissé sur la période. Le graphe reste volontairement prudent tant que Quittances n’est pas pointé.`,
+          impact: `À confirmer : ${formatEuro(incomeToConfirm)}`,
           tone: "amber",
         });
       }
@@ -1292,12 +1316,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       months.push({
         key,
         label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()),
-        income: expectedRent,
+        income: 0,
         ledgerIncome: 0,
         expectedRent,
         expense: 0,
         recurring: monthlyRecurring,
-        net: expectedRent - monthlyRecurring,
+        net: -monthlyRecurring,
       });
     }
 
@@ -1307,10 +1331,10 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       if (!d) continue;
       const bucket = byKey.get(monthKey(d));
       if (!bucket) continue;
-      if (row.direction === "in") {
+      if (isIncomeReceived(row)) {
         bucket.ledgerIncome += Number(row.amount || 0);
-        bucket.income = Math.max(bucket.expectedRent, bucket.ledgerIncome);
-      } else {
+        bucket.income = bucket.ledgerIncome;
+      } else if (row.direction === "out") {
         bucket.expense += Number(row.amount || 0);
       }
       bucket.net = bucket.income - bucket.expense - bucket.recurring;
@@ -1330,7 +1354,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       datasets: [
         {
           type: "bar" as const,
-          label: "Revenus",
+          label: "Revenus encaissés",
           data: accountingChartRows.map((row) => row.income),
           backgroundColor: "rgba(16, 185, 129, 0.82)",
           borderColor: "rgb(5, 150, 105)",
@@ -1822,7 +1846,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               </div>
               <div className="flex flex-wrap gap-2 text-[0.7rem] font-semibold">
                 <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-emerald-800">
-                  Revenus {formatEuro(periodLedger.income)}
+                  Encaissé {formatEuro(periodLedger.income)}
                 </span>
                 <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-800">
                   Dépenses ponctuelles {formatEuro(periodLedger.expense)}

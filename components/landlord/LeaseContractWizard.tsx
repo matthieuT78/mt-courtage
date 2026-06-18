@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentArrowUpIcon, DocumentTextIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentArrowUpIcon, DocumentTextIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabaseClient";
 
 type Props = { userId: string; leaseId: string; onClose: () => void };
@@ -219,6 +219,14 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
       setDocument(result.document);
     } catch (error: any) { setErr(error?.message || "Import impossible."); } finally { setLoading(false); }
   };
+  const deleteExternal = async () => {
+    if (!confirm("Supprimer le bail importé ? Cette action est irréversible.")) return;
+    try {
+      setLoading(true); setErr(null);
+      const result = await api("/api/lease-contracts", { action: "deleteExternal", userId, leaseId });
+      setDocument(result.document);
+    } catch (error: any) { setErr(error?.message || "Suppression impossible."); } finally { setLoading(false); }
+  };
   const uploadExternal = async (file?: File) => {
     if (!file || file.type !== "application/pdf") return setErr("Sélectionne ton bail au format PDF.");
     try {
@@ -298,13 +306,15 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           )}
         </div>
         <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
-            <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><XMarkIcon className="h-4 w-4"/>Fermer</button>
-          </div>
+          <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
           <div className="flex flex-wrap gap-2">
             {document?.external_pdf_url ? <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le bail importé</button> : null}
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white"><DocumentArrowUpIcon className="h-4 w-4"/>{loading ? "Import..." : document?.external_pdf_url ? "Remplacer le PDF" : "Importer mon bail"}<input type="file" accept="application/pdf" className="hidden" disabled={loading} onChange={(event) => uploadExternal(event.target.files?.[0])}/></label>
+            {document?.external_pdf_url ? <button type="button" disabled={loading} onClick={deleteExternal} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"><TrashIcon className="h-4 w-4"/>Supprimer</button> : null}
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><DocumentArrowUpIcon className="h-4 w-4"/>{loading ? "Import..." : document?.external_pdf_url ? "Remplacer le PDF" : "Importer mon bail"}<input type="file" accept="application/pdf" className="hidden" disabled={loading} onChange={(event) => uploadExternal(event.target.files?.[0])}/></label>
+            {document?.external_pdf_url
+              ? <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Contrat juridique enregistré<XMarkIcon className="h-4 w-4"/></button>
+              : <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><XMarkIcon className="h-4 w-4"/>Fermer</button>
+            }
           </div>
         </div>
       </Modal>

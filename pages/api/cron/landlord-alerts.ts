@@ -69,20 +69,11 @@ function clampDay(year: number, month0: number, rawDay: any) {
 }
 
 function dueDateForCurrentPeriod(today: Date, lease: LeaseRow) {
-  const paymentType = String(lease.payment_type || "terme_a_echoir").toLowerCase();
   const day = Number(lease.payment_day || 1) || 1;
-  const periodDate = paymentType === "terme_echu" ? new Date(today.getFullYear(), today.getMonth() - 1, 1) : today;
+  const periodDate = today;
   const periodKey = `${periodDate.getFullYear()}-${pad2(periodDate.getMonth() + 1)}`;
   const rentPeriod = getLeaseRentPeriod(lease, periodKey);
   if (!rentPeriod) return null;
-
-  if (paymentType === "terme_echu") {
-    const dueDay = clampDay(today.getFullYear(), today.getMonth(), day);
-    return {
-      period: { start: rentPeriod.periodStart, end: rentPeriod.periodEnd },
-      dueDate: new Date(today.getFullYear(), today.getMonth(), dueDay),
-    };
-  }
 
   const dueDay = clampDay(today.getFullYear(), today.getMonth(), day);
   return {
@@ -312,7 +303,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
           }
 
-          if (paid && (!receipt?.pdf_url || !receipt?.sent_at)) {
+          if (paid && (!receipt?.pdf_url || !receipt?.sent_at) && !lease.receipts_disabled) {
             const daysAfterPayment = daysSince(today, payment?.paid_at);
             const scheduleKey =
               daysAfterPayment === null
@@ -345,7 +336,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
 
-          if (!lease.tenant_receipt_email && !tenantsById.get(lease.tenant_id)?.email) {
+          if (!lease.receipts_disabled && !lease.tenant_receipt_email && !tenantsById.get(lease.tenant_id)?.email) {
             alerts.push({
               key: weeklyScheduleKey(`tenant-email:${lease.id}`, today),
               preferenceKey: "tenant_email_missing",
@@ -380,6 +371,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               detail: "Ajoutez un email de notification pour recevoir les validations de paiement et alertes automatiques.",
               href: "/espace-bailleur",
             });
+          }
+        }
+
+        // Caution non encaissée : bail actif, dépôt attendu, non encore encaissé depuis >= 7 j
+        if (active && Number(lease.deposit_amount || 0) > 0 && !lease.deposit_paid_at && leaseStart) {
+          const daysAfterStart = daysBetween(leaseStart, today);
+          if (daysAfterStart >= 7) {
+            alerts.push({
+              key: weeklyScheduleKey(`deposit-not-collected:${lease.id}`, today),
+              preferenceKey: "deposit_not_collected",
+              tone: "amber",
+              title: `Caution non encaissee - ${labels.property}`,
+              detail: `Le depot de garantie de ${labels.tenant} (${Number(lease.deposit_amount).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}) n'a pas encore ete encaisse.`,
+              href: "/espace-bailleur?tab=locataires",
+            });
+          }
+        }
+
+        // Caution a restituer : bail termine, caution encaissee mais non restituee depuis >= 30 j
+        if (
+          !active &&
+          lease.deposit_paid_at &&
+          !lease.deposit_returned_at &&
+          leaseEnd
+        ) {
+          const daysAfterEnd = daysBetween(leaseEnd, today);
+          if (daysAfterEnd >= 30) {
+            const scheduleKey = recurringScheduleKey(`deposit-return:${lease.id}`, daysAfterEnd, [30, 60], 30);
+            if (scheduleKey) {
+              alerts.push({
+                key: scheduleKey,
+                preferenceKey: "deposit_return_overdue",
+                tone: "red",
+                title: `Caution non restituee - ${labels.property}`,
+                detail: `Le bail de ${labels.tenant} est termine depuis ${daysAfterEnd} jour(s) et le depot de garantie n'a pas encore ete restitue. Delai legal : 1 mois (2 mois si dommages constates).`,
+                href: "/espace-bailleur?tab=locataires",
+              });
+            }
           }
         }
 

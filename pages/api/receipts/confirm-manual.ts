@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 import { removeTrackedPartialPaymentTransactions } from "../../../lib/rentPaymentFinance";
+import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 
 type Json = Record<string, any>;
 
@@ -195,6 +196,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     if (String(lease.user_id) !== userId) return res.status(403).json({ error: "Accès refusé." });
     const canSendReceiptEmail = await userCanUseReceiptAutomation(userId);
+    const receiptPeriodKey = String(receipt.period_start || "").slice(0, 7);
+    const dueDate = getLeasePaymentDueDate(lease, receiptPeriodKey)?.toISOString().slice(0, 10) || receipt.period_start;
 
     // 3) Idempotence check (souple)
     const alreadyPaid = !!receipt.payment_id || String(receipt.status || "").toLowerCase() === "sent";
@@ -222,6 +225,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           rent_amount: receipt.rent_amount,
           charges_amount: receipt.charges_amount,
           total_amount: receipt.total_amount,
+          due_date: dueDate,
           updated_at: new Date().toISOString(), // ✅ existe dans rent_payments
         })
         .eq("id", paymentId);
@@ -237,7 +241,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           rent_amount: receipt.rent_amount,
           charges_amount: receipt.charges_amount,
           total_amount: receipt.total_amount,
-          due_date: receipt.period_start,
+          due_date: dueDate,
           paid_at: new Date().toISOString(),
           payment_method: lease.payment_method || null,
           source: "confirm_manual",
@@ -282,6 +286,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const txUp = await supabaseAdmin.from("transactions").upsert(txPayload as any, { onConflict: "user_id,receipt_id" });
     if (txUp.error) {
       return res.status(500).json({ error: `Upsert transaction échoué: ${txUp.error.message}` });
+    }
+
+    // 6) Skip PDF + email pour les baux gérés par agence
+    if (lease.receipts_disabled) {
+      const upd = await supabaseAdmin.from("rent_receipts").update({ payment_id: paymentId, status: "generated", edited_at: new Date().toISOString() }).eq("id", receipt.id);
+      if (upd.error) return res.status(500).json({ error: `Update quittance échoué: ${upd.error.message}` });
+      return res.status(200).json({ ok: true, alreadyPaid, receipt_id: receipt.id, payment_id: paymentId, status: "generated", receipts_disabled: true });
     }
 
     // 6) ✅ Assurer que le PDF existe (après confirmation paiement)

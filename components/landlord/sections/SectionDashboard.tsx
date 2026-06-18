@@ -24,6 +24,7 @@ type TransactionRow = {
   direction: "in" | "out";
   amount: number;
   property_id?: string | null;
+  status?: string | null;
 };
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
@@ -47,6 +48,10 @@ const monthLabel = (key: string) => {
 };
 const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 const hasPositiveAmount = (value?: number | null) => Number(value || 0) > 0;
+const isReceivedIncomeTransaction = (tx: TransactionRow) => {
+  const status = String(tx.status || "").toLowerCase();
+  return tx.direction === "in" && (status === "received" || status === "paid");
+};
 
 function hasFinanceSetup(finance?: PropertyFinance | null) {
   if (!finance) return false;
@@ -462,7 +467,7 @@ export function SectionDashboard({
       try {
         const { data, error } = await supabase
           .from("transactions")
-          .select("id, occurred_at, direction, amount, property_id")
+          .select("id, occurred_at, direction, amount, property_id, status")
           .eq("user_id", userId)
           .gte("occurred_at", toISODate(start))
           .order("occurred_at", { ascending: true });
@@ -518,21 +523,24 @@ export function SectionDashboard({
 
   const accountingSeries = useMemo(() => {
     const byMonth = new Map(accountingMonths.map((key) => [key, { key, income: 0, expense: 0 }]));
-    let scopedTransactionCount = 0;
+    let scopedReceivedIncomeCount = 0;
 
     for (const tx of transactions) {
       if (accountingPropertyId && (tx.property_id || "") !== accountingPropertyId) continue;
-      scopedTransactionCount += 1;
       const d = normalizeDate(tx.occurred_at);
       if (!d) continue;
       const key = monthKey(d);
       const row = byMonth.get(key);
       if (!row) continue;
-      if (tx.direction === "in") row.income += Number(tx.amount || 0);
-      else row.expense += Number(tx.amount || 0);
+      if (isReceivedIncomeTransaction(tx)) {
+        row.income += Number(tx.amount || 0);
+        scopedReceivedIncomeCount += 1;
+      } else if (tx.direction === "out") {
+        row.expense += Number(tx.amount || 0);
+      }
     }
 
-    if (scopedTransactionCount === 0) {
+    if (scopedReceivedIncomeCount === 0) {
       for (const payment of payments) {
         if (accountingPropertyId) {
           const lease = activeLeases.find((l) => l.id === payment.lease_id);
@@ -1198,8 +1206,8 @@ export function SectionDashboard({
       <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <SectionTitle
           kicker="Comptabilité"
-          title="Revenus et dépenses sur 6 mois"
-          desc="Graphique basé sur les écritures Finance. Si aucune écriture n’existe encore, les loyers encaissés servent de repère."
+          title="Encaissements et dépenses sur 6 mois"
+          desc="Le vert affiche uniquement les loyers confirmés encaissés. Les loyers attendus restent suivis dans Quittances tant que le paiement n’est pas pointé."
           right={
             <div className="flex flex-wrap items-center gap-2">
               <select
@@ -1235,7 +1243,7 @@ export function SectionDashboard({
                 return (
                   <div key={row.key} className="flex min-w-[72px] flex-1 flex-col items-center justify-end gap-2">
                     <div className="flex h-52 items-end gap-1">
-                      <div className="w-5 rounded-t-lg bg-emerald-500" style={{ height: `${incomeHeight}px` }} title={`Revenus ${formatEuro(row.income)}`} />
+                      <div className="w-5 rounded-t-lg bg-emerald-500" style={{ height: `${incomeHeight}px` }} title={`Encaissé ${formatEuro(row.income)}`} />
                       <div className="w-5 rounded-t-lg bg-rose-500" style={{ height: `${expenseHeight}px` }} title={`Dépenses ${formatEuro(row.expense)}`} />
                     </div>
                     <p className="text-xs font-semibold text-slate-600">{monthLabel(row.key)}</p>
@@ -1244,7 +1252,7 @@ export function SectionDashboard({
               })}
             </div>
             <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-600">
-              <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Revenus</span>
+              <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Encaissé</span>
               <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-rose-500" /> Dépenses</span>
               {transactionsLoading ? <span>Chargement des écritures...</span> : null}
               {transactionsError ? <span className="text-red-700">{transactionsError}</span> : null}
@@ -1252,9 +1260,9 @@ export function SectionDashboard({
           </div>
 
           <div className="grid gap-3">
-            <KpiCard title="Revenus 6 mois" value={formatEuro(accountingTotals.income)} hint="Écritures entrantes" tone="emerald" />
+            <KpiCard title="Encaissé 6 mois" value={formatEuro(accountingTotals.income)} hint="Paiements confirmés" tone="emerald" />
             <KpiCard title="Dépenses 6 mois" value={formatEuro(accountingTotals.expense)} hint="Écritures sortantes" tone={accountingTotals.expense > 0 ? "red" : "slate"} />
-            <KpiCard title="Résultat net" value={formatEuro(accountingTotals.net)} hint="Revenus - dépenses" tone={accountingTotals.net >= 0 ? "emerald" : "red"} />
+            <KpiCard title="Résultat net" value={formatEuro(accountingTotals.net)} hint="Encaissé - dépenses" tone={accountingTotals.net >= 0 ? "emerald" : "red"} />
           </div>
         </div>
       </section>

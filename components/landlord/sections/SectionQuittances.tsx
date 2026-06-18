@@ -135,7 +135,7 @@ async function authJsonHeaders() {
    CALENDRIER (terme à échoir / terme échu) + J+2
 ====================================================== */
 
-// ⚠️ ISO “calendaire” en local (pas UTC drift)
+// ⚠️ ISO "calendaire" en local (pas UTC drift)
 const toISODateLocal = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
 const lastDayOfMonth = (yyyy: number, month0: number) => new Date(yyyy, month0 + 1, 0).getDate();
@@ -175,18 +175,17 @@ function dateOnlyTime(v?: string | null) {
 function isLeaseExpectedForMonth(lease: Lease, yyyymm: string) {
   const { start, end } = monthStartEnd(yyyymm);
   const status = String((lease as any).status || "").toLowerCase();
-  if (status === "draft") return false;
-  if (status === "ended" && !lease.end_date) return false;
+  if (["draft", "archived", "inactive", "deleted", "ended"].includes(status)) return false;
   if (lease.start_date && dateOnlyTime(lease.start_date) > end.getTime()) return false;
   if (lease.end_date && dateOnlyTime(lease.end_date) < start.getTime()) return false;
-  return status === "active" || status === "ended" || (!status && !!lease.start_date);
+  return status === "active" || (!status && !!lease.start_date);
 }
 
 /**
- * Calcul “échéance” + “date génération (J+2)” pour la période yyyymm,
+ * Calcul "échéance" + "date génération (J+2)" pour la période yyyymm,
  * selon payment_type :
  * - terme_a_echoir  => échéance dans le mois de la période
- * - terme_echu      => échéance dans le mois suivant la période
+ * - terme_echu      => échéance en fin de mois de la période
  */
 function scheduleForPeriod(yyyymmPeriod: string, lease: any) {
   const paymentDayRaw = Number(lease?.payment_day || 1);
@@ -198,18 +197,8 @@ function scheduleForPeriod(yyyymmPeriod: string, lease: any) {
   const periodStart = new Date(y, month0, 1);
   const periodEnd = new Date(y, month0 + 1, 0);
 
-  let dueYear = y;
-  let dueMonth0 = month0;
-
-  if (paymentType === "terme_echu") {
-    // échéance dans le mois suivant la période
-    const next = new Date(y, month0 + 1, 1);
-    dueYear = next.getFullYear();
-    dueMonth0 = next.getMonth();
-  }
-
-  const dueDay = clampDayInMonth(dueYear, dueMonth0, paymentDayRaw);
-  const dueDate = new Date(dueYear, dueMonth0, dueDay);
+  const dueDay = clampDayInMonth(y, month0, paymentDayRaw);
+  const dueDate = new Date(y, month0, dueDay);
 
   const controlAt = new Date(dueDate);
   controlAt.setDate(controlAt.getDate() + 2);
@@ -236,9 +225,28 @@ function statusLabelReceipt(status?: string | null) {
   return status!;
 }
 
+function isWorkflowReceipt(receipt: any) {
+  const status = String(receipt?.status || "").toLowerCase();
+  return status === "generated" || status === "sent";
+}
+
 function paymentTypeLabel(v?: string | null) {
   const t = String(v || "terme_a_echoir").toLowerCase();
   return t === "terme_echu" ? "Fin de période (terme échu)" : "Début de période (terme à échoir)";
+}
+
+function fmtMonthLabel(yyyymm: string) {
+  const [y, m] = yyyymm.split("-").map(Number);
+  if (!y || !m) return yyyymm;
+  return new Date(y, m - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
+
+function fmtDateShort(d: Date) {
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+}
+
+function fmtEur(n: number) {
+  return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 2 });
 }
 
 type PaymentStatus = "paid" | "partial" | "pending" | "unknown";
@@ -326,7 +334,7 @@ function Kpi({ label, value, sub }: { label: string; value: React.ReactNode; sub
 }
 
 /* ======================================================
-   PAIEMENTS : mapping “période payée ?”
+   PAIEMENTS : mapping "période payée ?"
    (robuste aux champs exacts)
 ====================================================== */
 
@@ -494,6 +502,7 @@ export function SectionQuittances({
   const receiptByPeriod = useMemo(() => {
     const map = new Map<string, any>();
     for (const r of safeReceipts as any[]) {
+      if (!isWorkflowReceipt(r)) continue;
       const leaseId = String(r?.lease_id || "");
       const yyyymm = yyyymmFromReceipt(r);
       if (!leaseId || !yyyymm) continue;
@@ -505,12 +514,13 @@ export function SectionQuittances({
   // ---------- Receipts du mois sélectionné
   const monthReceipts = useMemo(() => {
     return safeReceipts
+      .filter(isWorkflowReceipt)
       .filter((r: any) => yyyymmFromReceipt(r) === month)
       .sort((a: any, b: any) => String(b.period_start).localeCompare(String(a.period_start)));
   }, [safeReceipts, month]);
 
   const buildRowsForMonth = (yyyymm: string) => {
-    return safeLeases
+    return activeLeases
       .filter((lease) => isLeaseExpectedForMonth(lease, yyyymm))
       .map((lease) => {
         const period = getLeaseRentPeriod(lease, yyyymm);
@@ -558,14 +568,16 @@ export function SectionQuittances({
 
   const expectedRows = useMemo(() => {
     return buildRowsForMonth(month);
-  }, [safeLeases, month, receiptByPeriod, paymentByPeriod]);
+  }, [activeLeases, month, receiptByPeriod, paymentByPeriod]);
 
   const todoRows = useMemo(() => {
     const rowRequiresActionNow = (row: any) => {
       if (row.sent) return false;
+      if ((row.lease as any).receipts_disabled && row.payStatus === "paid") return false;
       if (canSnoozeReceiptTask(row) && snoozedReceiptKeys.has(String(row.key))) return false;
       if (row.payStatus === "paid") return true;
       if (row.payStatus === "partial") return true;
+      if (row.payStatus === "pending") return true;
       if (row.pay?.ownerConfirmedUnpaid) return true;
       return row.isLate;
     };
@@ -580,12 +592,12 @@ export function SectionQuittances({
         if (a.month !== b.month) return a.month.localeCompare(b.month);
         return leaseLabel(a.lease).localeCompare(leaseLabel(b.lease));
       });
-  }, [safeLeases, receiptByPeriod, paymentByPeriod, propsById, tenantsById, snoozedReceiptKeys]);
+  }, [activeLeases, receiptByPeriod, paymentByPeriod, propsById, tenantsById, snoozedReceiptKeys]);
 
   const visibleRows = view === "todo" ? todoRows : expectedRows;
 
-  // ✅ “PDF prêts” = generated (après paiement)
-  // ✅ “Envoyées” = sent
+  // ✅ "PDF prêts" = generated (après paiement)
+  // ✅ "Envoyées" = sent
   const sentThisMonth = useMemo(() => {
     return monthReceipts.filter((r: any) => String(r.status || "").toLowerCase() === "sent");
   }, [monthReceipts]);
@@ -619,7 +631,7 @@ export function SectionQuittances({
       }
     >();
 
-    for (const r of safeReceipts as any[]) {
+    for (const r of safeReceipts.filter(isWorkflowReceipt) as any[]) {
       const lease = safeLeases.find((l: any) => l.id === r.lease_id) as any;
       const propertyId = String(lease?.property_id || "—");
       const p = propertyId !== "—" ? propsById.get(propertyId) : null;
@@ -727,6 +739,51 @@ export function SectionQuittances({
       if (generated.json?.receipt_id) setSelectedReceiptId(generated.json.receipt_id);
     } catch (e: any) {
       setErr(e?.message || "Erreur confirmation paiement.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelPaymentForRow = async (row: any) => {
+    const receipt = row.receipt;
+    const payment = row.payment;
+    if (!receipt?.id && !payment?.id) {
+      setErr("Aucun paiement confirmé à annuler pour cette ligne.");
+      return;
+    }
+
+    const ok = confirm(
+      "Annuler ce paiement confirmé ?\n\nLe paiement repassera en attente, la quittance PDF sera supprimée si elle existe, et l’écriture Finance automatique sera retirée."
+    );
+    if (!ok) return;
+
+    setErr(null);
+    setOk(null);
+
+    try {
+      setLoading(true);
+      const headers = await authJsonHeaders();
+      const resp = await fetch("/api/receipts/cancel-payment", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          userId,
+          receiptId: receipt?.id || undefined,
+          paymentId: payment?.id || undefined,
+          leaseId: row.lease?.id,
+          periodStart: row.periodStart,
+          periodEnd: row.periodEnd,
+        }),
+      });
+
+      const { raw, json } = await safeJson(resp);
+      throwApiError(resp, raw, json, "Erreur annulation paiement.");
+
+      setOk("Paiement annulé ✅ Quittance et Finance remises à jour.");
+      setSelectedReceiptId(null);
+      await onRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Erreur annulation paiement.");
     } finally {
       setLoading(false);
     }
@@ -935,7 +992,7 @@ export function SectionQuittances({
     }
   };
 
-  // ✅ “Marquer payé” (source de vérité paiement)
+  // ✅ "Marquer payé" (source de vérité paiement)
   const confirmPaidFromApp = async (receipt: any) => {
     setErr(null);
     setOk(null);
@@ -1259,57 +1316,55 @@ export function SectionQuittances({
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900 truncate">{label}</p>
-                        <p className="text-xs text-slate-600">
-                          Période : {fmtDate(row.periodStart)} → {fmtDate(row.periodEnd)}
-                          {view === "todo" ? <span className="font-semibold text-slate-900"> ({row.month})</span> : null}
-                          {row.prorated ? (
-                            <span className="ml-2 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[0.68rem] font-semibold text-indigo-800">
-                              Prorata automatique · {row.billedDays}/{row.daysInMonth} jours
-                            </span>
-                          ) : null}
+
+                        <p className="text-xs text-slate-500">
+                          {fmtMonthLabel(row.month)}
+                          {row.prorated ? <span className="ml-1 text-indigo-700">· Prorata {row.billedDays}/{row.daysInMonth}j</span> : null}
+                          {" · "}Échéance <span className="font-semibold text-slate-700">{fmtDateShort(row.sched.dueDate)}</span>
                         </p>
 
-                        <p className="mt-1 text-xs text-slate-500">
-                          Échéance : <span className="font-semibold">{toISODateLocal(row.sched.dueDate)}</span>{" "}
-                          <span className="text-slate-400">•</span>{" "}
-                          <span className="text-slate-600">{paymentTypeLabel((lease as any).payment_type)}</span>{" "}
-                          <span className="text-slate-400">•</span> Contrôle J+2 :{" "}
-                          <span className="font-semibold">{toISODateLocal(row.sched.controlAt)}</span>
+                        <p className="mt-1.5 text-base font-bold text-slate-900">
+                          {fmtEur(row.payStatus === "partial" ? row.pay.receivedTotal : row.pay.expectedTotal)}
+                          <span className="ml-1.5 text-xs font-normal text-slate-500">
+                            loyer {fmtEur(row.pay.expectedRent)}
+                            {row.pay.expectedCharges > 0 ? ` + charges ${fmtEur(row.pay.expectedCharges)}` : ""}
+                          </span>
                         </p>
 
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        <div className="mt-2 flex flex-wrap gap-1.5">
                           <span className={cx("inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold", pillTonePay(row.payStatus))}>
                             {payLabel(row.payStatus)}
                           </span>
 
-                          <span
-                            className={cx(
-                              "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold",
-                              pillToneReceipt(receiptStatus)
-                            )}
-                          >
-                            {receipt ? statusLabelReceipt(receiptStatus) : "Quittance à créer"}
-                          </span>
-
-                          {t?.email ? (
-                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.7rem] font-semibold text-slate-700">
-                              Email OK
+                          {row.isLate ? (
+                            <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.7rem] font-semibold text-red-800">
+                              Retard
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800">
-                              Email locataire manquant
+                          ) : row.payStatus === "pending" ? (
+                            <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[0.7rem] font-semibold text-sky-800">
+                              À venir
                             </span>
-                          )}
+                          ) : null}
 
                           {row.payStatus === "partial" ? (
                             <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[0.7rem] font-semibold text-orange-900">
-                              Reste {Number(row.pay.missingAmount || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
+                              Reste {fmtEur(Number(row.pay.missingAmount || 0))}
                             </span>
                           ) : null}
 
                           {row.pay.ownerConfirmedUnpaid ? (
                             <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.7rem] font-semibold text-red-800">
-                              Non reçu confirmé
+                              Non reçu déclaré
+                            </span>
+                          ) : null}
+
+                          {(lease as any).receipts_disabled ? (
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.7rem] font-semibold text-slate-600">
+                              Quittances agence
+                            </span>
+                          ) : !t?.email && row.payStatus !== "paid" ? (
+                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800">
+                              Email manquant
                             </span>
                           ) : null}
 
@@ -1333,22 +1388,28 @@ export function SectionQuittances({
                             >
                               {row.payStatus === "partial" ? "Solde reçu" : "Confirmer payé"}
                             </button>
-                            <button
-                              type="button"
-                              disabled={loading || !canUseReceiptAutomation}
-                              onClick={() => sendPaymentReminderForRow(row)}
-                              className={cx(
-                                "rounded-full border px-4 py-2 text-xs font-semibold",
-                                canUseReceiptAutomation
-                                  ? "border-orange-200 bg-orange-50 text-orange-900 hover:bg-orange-100"
-                                  : "border-slate-200 bg-slate-100 text-slate-500",
-                                (loading || !canUseReceiptAutomation) && "opacity-60"
-                              )}
-                              title={canUseReceiptAutomation ? "Envoie une relance au locataire après validation." : "Relance email réservée aux abonnements payants."}
-                            >
-                              {canUseReceiptAutomation ? "Relancer" : "Relance premium"}
-                            </button>
+                            {!(lease as any).receipts_disabled ? (
+                              <button
+                                type="button"
+                                disabled={loading || !canUseReceiptAutomation}
+                                onClick={() => sendPaymentReminderForRow(row)}
+                                className={cx(
+                                  "rounded-full border px-4 py-2 text-xs font-semibold",
+                                  canUseReceiptAutomation
+                                    ? "border-orange-200 bg-orange-50 text-orange-900 hover:bg-orange-100"
+                                    : "border-slate-200 bg-slate-100 text-slate-500",
+                                  (loading || !canUseReceiptAutomation) && "opacity-60"
+                                )}
+                                title={canUseReceiptAutomation ? "Envoie une relance au locataire après validation." : "Relance email réservée aux abonnements payants."}
+                              >
+                                {canUseReceiptAutomation ? "Relancer" : "Relance premium"}
+                              </button>
+                            ) : null}
                           </>
+                        ) : (lease as any).receipts_disabled ? (
+                          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-center text-xs font-semibold text-emerald-800">
+                            Paiement enregistré
+                          </span>
                         ) : !pdfReady ? (
                           <button
                             type="button"
@@ -1383,19 +1444,36 @@ export function SectionQuittances({
                           </span>
                         )}
 
-                        <button
-                          type="button"
-                          disabled={loading || !pdfReady}
-                          onClick={() => receipt && openPdf(receipt)}
-                          className={cx(
-                            "rounded-full px-4 py-2 text-xs font-semibold",
-                            "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
-                            (!pdfReady || loading) && "opacity-60"
-                          )}
-                          title={pdfReady ? "Ouvrir le PDF de quittance" : "PDF indisponible tant que la quittance n’est pas générée"}
-                        >
-                          Voir PDF
-                        </button>
+                        {!(lease as any).receipts_disabled ? (
+                          <button
+                            type="button"
+                            disabled={loading || !pdfReady}
+                            onClick={() => receipt && openPdf(receipt)}
+                            className={cx(
+                              "rounded-full px-4 py-2 text-xs font-semibold",
+                              "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
+                              (!pdfReady || loading) && "opacity-60"
+                            )}
+                            title={pdfReady ? "Ouvrir le PDF de quittance" : "PDF indisponible tant que la quittance n’est pas générée"}
+                          >
+                            Voir PDF
+                          </button>
+                        ) : null}
+
+                        {row.payStatus === "paid" ? (
+                          <button
+                            type="button"
+                            disabled={loading || (!receipt && !row.payment)}
+                            onClick={() => cancelPaymentForRow(row)}
+                            className={cx(
+                              "rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50",
+                              (loading || (!receipt && !row.payment)) && "opacity-60"
+                            )}
+                            title="Annule la confirmation de paiement, supprime le PDF de quittance et retire l’écriture Finance automatique."
+                          >
+                            Annuler paiement
+                          </button>
+                        ) : null}
 
                         {canSnooze ? (
                           <button
@@ -1427,29 +1505,29 @@ export function SectionQuittances({
                       </div>
                     ) : null}
 
-                    {row.isLate ? (
+                    {row.isLate && !row.pay.ownerConfirmedUnpaid ? (
                       <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-                        Retard : après <span className="font-semibold">{toISODateLocal(row.sched.controlAt)}</span>, le mois n’est toujours pas réglé complètement.
+                        Paiement en retard · confirme dès réception du virement.
                       </div>
-                    ) : null}
-
-                    {row.payStatus !== "paid" ? (
+                    ) : row.payStatus === "partial" ? (
                       <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                        {row.payStatus === "partial"
-                          ? "Paiement incomplet : la quittance attend le solde avant génération."
-                          : row.pay.ownerConfirmedUnpaid
-                          ? "Paiement déclaré non reçu : relance le locataire si nécessaire. Si le virement arrive ensuite, clique sur “Confirmer payé”."
-                          : "Quittance non générable avant paiement confirmé."}
+                        Paiement incomplet · il manque <span className="font-semibold">{fmtEur(Number(row.pay.missingAmount || 0))}</span>. Confirme le solde dès réception.
                       </div>
-                    ) : row.payStatus === "paid" && !pdfReady ? (
-                      <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-                        Paiement confirmé : tu peux générer la quittance PDF.
+                    ) : row.pay.ownerConfirmedUnpaid ? (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        Non reçu déclaré · si le virement arrive, clique sur &laquo;&nbsp;Confirmer payé&nbsp;&raquo;.
+                      </div>
+                    ) : row.payStatus === "pending" && !row.isLate ? (
+                      <div className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-sky-700">
+                        En attente · loyer dû le <span className="font-semibold">{fmtDateShort(row.sched.dueDate)}</span>.
+                      </div>
+                    ) : row.payStatus === "paid" && !pdfReady && !(row.lease as any).receipts_disabled ? (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                        Paiement confirmé · génère la quittance PDF.
                       </div>
                     ) : pdfReady && !row.sent ? (
                       <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-                        {canUseReceiptAutomation
-                          ? "PDF prêt : vérifie puis envoie au locataire."
-                          : "PDF prêt : remets-le au locataire, puis clique sur “Quittance remise” pour clôturer la tâche."}
+                        {canUseReceiptAutomation ? "PDF prêt · envoie la quittance au locataire." : <>PDF prêt · remets-le au locataire puis clique sur &laquo;&nbsp;Quittance remise&nbsp;&raquo;.</>}
                       </div>
                     ) : null}
                   </div>
@@ -1544,7 +1622,7 @@ export function SectionQuittances({
               </div>
 
               <p className="text-xs text-slate-500">
-                “Régénérer PDF” met à jour le PDF dans le bucket. Le renvoi email est une fonctionnalité payante.
+                "Régénérer PDF" met à jour le PDF dans le bucket. Le renvoi email est une fonctionnalité payante.
               </p>
             </div>
           ) : null}

@@ -29,7 +29,7 @@ export function getLeasePaymentDueDate(lease: LeaseSchedule, yyyymm: string) {
   if (!year || !month) return null;
 
   const paymentType = String(lease.payment_type || "terme_a_echoir").toLowerCase();
-  const dueMonth = paymentType === "terme_echu" ? new Date(year, month, 1) : new Date(year, month - 1, 1);
+  const dueMonth = new Date(year, month - 1, 1);
   const dueDate = new Date(
     dueMonth.getFullYear(),
     dueMonth.getMonth(),
@@ -40,4 +40,3 @@ export function getLeasePaymentDueDate(lease: LeaseSchedule, yyyymm: string) {
   if (paymentType !== "terme_echu" && periodStart && periodStart > dueDate) return periodStart;
   return dueDate;
 }
-

@@ -40,6 +40,7 @@ type Transaction = {
   direction: TxDirection;
   category: string;
   amount: number;
+  status?: string | null;
 };
 
 type PropertyFinance = {
@@ -145,32 +146,60 @@ function monthlyLeaseAmount(lease: Lease) {
   return Number((lease as any).rent_amount || 0) + Number((lease as any).charges_amount || 0);
 }
 
+const DEPOSIT_TRANSIT_CATEGORIES = ["deposit_collected", "deposit_returned"];
+
+function isReceivedIncome(row: Transaction) {
+  const status = String(row.status || "").toLowerCase();
+  return (
+    row.direction === "in" &&
+    (status === "received" || status === "paid") &&
+    !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category)
+  );
+}
+
 function labelForProperty(property: Property | undefined, fallback = "Bien") {
   return property?.label || property?.address_line1 || fallback;
 }
 
-function actionsFor(row: PropertyRow) {
-  const actions: string[] = [];
+type FriendlyAction = {
+  title: string;
+  detail: string;
+};
+
+function actionsFor(row: PropertyRow): FriendlyAction[] {
+  const actions: FriendlyAction[] = [];
 
   if (row.activeLeaseCount === 0) {
     if (row.recurring > 0) {
-      actions.push(
-        `Remettre le logement en exploitation : aucun bail actif ne génère de loyer, mais ${money(row.recurring)} de charges récurrentes continuent chaque mois.`
-      );
+      actions.push({
+        title: "Remettre ce bien en location",
+        detail: `Il ne produit aucun loyer aujourd’hui, mais ${money(row.recurring)} de charges continuent chaque mois.`,
+      });
     } else {
-      actions.push("Créer ou rattacher un bail actif : sans bail, ce bien reste à 0 € de revenu et sort du suivi quittances/encaissements.");
+      actions.push({
+        title: "Créer ou rattacher le bail",
+        detail: "Sans bail actif, ce bien reste à 0 € de revenu et sort du suivi des quittances.",
+      });
     }
-    actions.push("Si ce logement n’est plus géré, l’archiver évitera de fausser les indicateurs du portefeuille.");
+    actions.push({
+      title: "Archiver si le bien n’est plus suivi",
+      detail: "Cela évite de dégrader les indicateurs du portefeuille avec un logement sorti de votre gestion.",
+    });
     if (row.investment <= 0) {
-      actions.push("Compléter le prix d’achat et les frais seulement si le bien reste dans votre stratégie locative.");
+      actions.push({
+        title: "Compléter les chiffres si vous le gardez",
+        detail: "Prix d’achat, frais et travaux rendront la rentabilité exploitable si le bien reste dans votre stratégie.",
+      });
     }
     return actions.slice(0, 3);
   }
 
-  if (row.expected > 0 && row.received < row.expected) {
-    actions.push(
-      `Confirmer l’encaissement du loyer : ${money(row.expected - row.received)} restent à pointer sur le mois pour fiabiliser la performance.`
-    );
+  const confirmedIncome = Math.max(row.received, row.ledgerIncome);
+  if (row.expected > 0 && confirmedIncome < row.expected) {
+    actions.push({
+      title: "Pointer le paiement du mois",
+      detail: `${money(row.expected - confirmedIncome)} restent à confirmer. Une fois le virement visible, validez-le dans Quittances.`,
+    });
   }
 
   if (row.cashflow < -80) {
@@ -178,43 +207,74 @@ function actionsFor(row: PropertyRow) {
       row.loanMonthly > row.expected * 0.45
         ? `le crédit pèse ${money(row.loanMonthly)} par mois`
         : row.recurring > row.expected * 0.55
-          ? `les charges récurrentes atteignent ${money(row.recurring)} par mois`
-          : `les dépenses du mois atteignent ${money(row.expense)}`;
-    actions.push(
-      `Arbitrer le déficit : ${money(row.expected)} de loyers face à ${money(row.recurring + row.expense)} de sorties. Priorité : ${mainCost}.`
-    );
+        ? `les charges récurrentes atteignent ${money(row.recurring)} par mois`
+        : `les dépenses du mois atteignent ${money(row.expense)}`;
+    actions.push({
+      title: "Comprendre pourquoi le mois sort négatif",
+      detail: `${money(row.expected)} de loyers attendus face à ${money(row.recurring + row.expense)} de sorties. Premier point à regarder : ${mainCost}.`,
+    });
   }
 
   if (row.taxRegime == null) {
-    actions.push("Renseigner le régime fiscal du bien pour obtenir une lecture nette cohérente, pas seulement un cashflow brut.");
+    actions.push({
+      title: "Renseigner le régime fiscal",
+      detail: "La lecture sera plus juste : on évite de raisonner uniquement sur un cashflow brut.",
+    });
   }
   if (row.taxRegime === "lmnp_micro" && row.recurring + row.expense > row.expected * 0.35 && row.expected > 0) {
-    actions.push("Comparer le LMNP réel au micro-BIC : les charges semblent assez élevées pour mériter une simulation.");
+    actions.push({
+      title: "Comparer micro-BIC et réel",
+      detail: "Les charges semblent assez élevées pour mériter une simulation LMNP au réel.",
+    });
   }
   if (row.vacancyDays12m >= 30) {
-    actions.push(`Réduire la vacance : ${row.vacancyDays12m} jours estimés sur 12 mois. Revoir prix, annonce, délai de relocation ou état du logement.`);
+    actions.push({
+      title: "Réduire la vacance",
+      detail: `${row.vacancyDays12m} jours estimés sur 12 mois. À vérifier : prix, annonce, délai de relocation ou état du logement.`,
+    });
   }
   if (row.turnover12m >= 2) {
-    actions.push(`Stabiliser le locataire : ${row.turnover12m} entrées sur 12 mois. Vérifier loyer, qualité du logement et profil retenu.`);
+    actions.push({
+      title: "Stabiliser l’occupation",
+      detail: `${row.turnover12m} entrées sur 12 mois. Regardez le loyer, la qualité du logement et le profil retenu.`,
+    });
   }
   if (row.recurring <= 0) {
-    actions.push("Renseigner les charges récurrentes dans Finance pour éviter une rentabilité trop optimiste.");
+    actions.push({
+      title: "Compléter les charges fixes",
+      detail: "Crédit, copropriété, assurance et fiscalité évitent une rentabilité trop optimiste.",
+    });
   }
   if (row.investment <= 0) {
-    actions.push("Ajouter le prix d’achat, les frais et travaux pour obtenir une rentabilité nette exploitable.");
+    actions.push({
+      title: "Ajouter le coût du projet",
+      detail: "Prix d’achat, frais et travaux permettent d’obtenir une rentabilité nette exploitable.",
+    });
   }
 
   if (row.loanRate == null && row.loanMonthly > 0) {
-    actions.push("Ajouter le taux du crédit pour savoir si une renégociation est réellement pertinente.");
+    actions.push({
+      title: "Ajouter le taux du crédit",
+      detail: "C’est nécessaire pour savoir si une renégociation peut réellement améliorer le résultat.",
+    });
   }
   if (row.loanRate != null && row.loanRate >= 3.5 && row.loanMonthly > 0 && row.cashflow < 0) {
-    actions.push(`Comparer une renégociation de taux : ${money(row.loanMonthly)} de mensualité pèsent sur le résultat.`);
+    actions.push({
+      title: "Tester une renégociation",
+      detail: `${money(row.loanMonthly)} de mensualité pèsent sur le résultat. Une baisse de taux peut changer l’équilibre.`,
+    });
   }
   if (row.cashflow >= -80 && row.cashflow < 150) {
-    actions.push("Le bien est proche de l’équilibre : surveiller charges de copropriété, travaux à venir et indexation du loyer.");
+    actions.push({
+      title: "Bien proche de l’équilibre",
+      detail: "Surveillez les charges de copropriété, les travaux à venir et l’indexation du loyer.",
+    });
   }
   if (row.cashflow >= 150) {
-    actions.push("Bien solide : garder les justificatifs à jour et vérifier que les écritures Finance restent complètes.");
+    actions.push({
+      title: "Bien solide",
+      detail: "Gardez les justificatifs à jour et vérifiez que les écritures Finance restent complètes.",
+    });
   }
   return actions.slice(0, 3);
 }
@@ -367,7 +427,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       try {
         const { data: txData, error: txError } = await supabase
           .from("transactions")
-          .select("id,property_id,lease_id,occurred_at,direction,category,amount")
+          .select("id,property_id,lease_id,occurred_at,direction,category,amount,status")
           .eq("user_id", userId)
           .order("occurred_at", { ascending: false })
           .limit(2000);
@@ -437,12 +497,12 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
             .map((payment) => Number(payment.total_amount || 0))
         );
         const monthTx = tx.filter((row) => row.property_id === id && monthKey(normalizeDate(row.occurred_at) || new Date()) === currentMonth);
-        const ledgerIncome = sum(monthTx.filter((row) => row.direction === "in").map((row) => Number(row.amount || 0)));
-        const expense = sum(monthTx.filter((row) => row.direction === "out").map((row) => Number(row.amount || 0)));
+        const ledgerIncome = sum(monthTx.filter(isReceivedIncome).map((row) => Number(row.amount || 0)));
+        const expense = sum(monthTx.filter((row) => row.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category)).map((row) => Number(row.amount || 0)));
         const fin = finance.get(id) || null;
         const recurring = recurringMonthly(fin);
         const loanMonthly = Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
-        const incomeBase = Math.max(received, ledgerIncome, expected);
+        const incomeBase = Math.max(received, ledgerIncome);
         const cashflow = incomeBase - expense - recurring;
         const investment = investmentAmount(fin);
         const netYield = investment > 0 ? ((incomeBase - recurring) * 12 * 100) / investment : null;
@@ -475,27 +535,26 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
   const series = useMemo(() => {
     return months.map((date) => {
       const key = monthKey(date);
-      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
-      const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
       const rows = tx.filter((row) => {
         if (propertyId && row.property_id !== propertyId) return false;
         const rowDate = normalizeDate(row.occurred_at);
         return rowDate ? monthKey(rowDate) === key : false;
       });
-      const expectedIncome = sum(
-        activeLeases
-          .filter((lease) => {
+      const ledgerIncome = sum(rows.filter(isReceivedIncome).map((row) => Number(row.amount || 0)));
+      const paymentIncome = sum(
+        safePayments
+          .filter((payment) => {
+            const lease = leaseById.get(payment.lease_id);
+            if (!lease) return false;
             if (propertyId && lease.property_id !== propertyId) return false;
-            const leaseStart = normalizeDate((lease as any).start_date);
-            const leaseEnd = normalizeDate((lease as any).end_date);
-            if (!leaseStart) return false;
-            return leaseStart <= monthEnd && (!leaseEnd || leaseEnd >= monthStart);
+            const paidAt = normalizeDate((payment as any).paid_at);
+            const periodStart = normalizeDate((payment as any).period_start);
+            return !!paidAt && !!periodStart && monthKey(periodStart) === key;
           })
-          .map((lease) => monthlyLeaseAmount(lease))
+          .map((payment) => Number(payment.total_amount || 0))
       );
-      const ledgerIncome = sum(rows.filter((row) => row.direction === "in").map((row) => Number(row.amount || 0)));
-      const income = Math.max(expectedIncome, ledgerIncome);
-      const expense = sum(rows.filter((row) => row.direction === "out").map((row) => Number(row.amount || 0)));
+      const income = Math.max(paymentIncome, ledgerIncome);
+      const expense = sum(rows.filter((row) => row.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category)).map((row) => Number(row.amount || 0)));
       const recurring = sum(propertyRows.map((row) => row.recurring));
       return {
         key,
@@ -506,7 +565,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         net: income - expense - recurring,
       };
     });
-  }, [activeLeases, months, propertyId, propertyRows, tx]);
+  }, [leaseById, months, propertyId, propertyRows, safePayments, tx]);
 
   const totals = useMemo(() => {
     const expected = sum(propertyRows.map((row) => row.expected));
@@ -517,7 +576,9 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
     return { expected, received, expense, recurring, cashflow };
   }, [propertyRows]);
 
-  const priorityRows = propertyRows.filter((row) => row.cashflow < 150 || row.expected > row.received || row.recurring <= 0).slice(0, 4);
+  const priorityRows = propertyRows
+    .filter((row) => row.cashflow < 150 || row.expected > Math.max(row.received, row.ledgerIncome) || row.recurring <= 0)
+    .slice(0, 4);
 
   const scenarios = useMemo(() => {
     const renegociationPotential = sum(
@@ -582,7 +643,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       datasets: [
         {
           type: "bar" as const,
-          label: "Revenus",
+          label: "Revenus encaissés",
           data: series.map((row) => row.income),
           backgroundColor: "rgba(16, 185, 129, 0.82)",
           borderColor: "rgb(5, 150, 105)",
@@ -651,6 +712,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
     for (const row of tx) {
       if (propertyId && row.property_id !== propertyId) continue;
       if (row.direction !== "out") continue;
+      if (DEPOSIT_TRANSIT_CATEGORIES.includes(row.category)) continue;
       const rowDate = normalizeDate(row.occurred_at);
       if (!rowDate || monthKey(rowDate) !== currentMonth) continue;
       byCategory.set(row.category || "other", (byCategory.get(row.category || "other") || 0) + Number(row.amount || 0));
@@ -747,7 +809,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         <SectionTitle
           kicker="Performance"
           title="Cashflow & rentabilité"
-          desc="Une lecture financière directe : tendance, postes de charges, biens contributeurs et actions prioritaires."
+          desc="Les cartes affichent la lecture mensuelle du mois en cours. Le graphique garde le recul sur 6 mois pour voir la tendance."
         />
 
         <div className="w-full rounded-3xl border border-slate-200 bg-slate-50 p-3 lg:w-[320px]">
@@ -781,10 +843,14 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       {err ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{err}</div> : null}
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={<BanknotesIcon className="h-5 w-5" />} label="Cashflow estimé" value={money(totals.cashflow)} sub="après dépenses et charges récurrentes" />
-        <Metric icon={<HomeModernIcon className="h-5 w-5" />} label="Loyers attendus" value={money(totals.expected)} sub="baux actifs du mois" />
-        <Metric icon={<ChartBarIcon className="h-5 w-5" />} label="Charges récurrentes" value={money(totals.recurring)} sub="crédit, PNO, copro, fiscalité, frais" />
-        <Metric icon={<SparklesIcon className="h-5 w-5" />} label="À optimiser" value={String(priorityRows.length)} sub="points d’action détectés" />
+        <Metric icon={<BanknotesIcon className="h-5 w-5" />} label="Cashflow mensuel" value={money(totals.cashflow)} sub="loyers encaissés moins sorties du mois" />
+        <Metric icon={<HomeModernIcon className="h-5 w-5" />} label="Loyers mensuels" value={money(totals.expected)} sub="montant attendu sur les baux actifs" />
+        <Metric icon={<ChartBarIcon className="h-5 w-5" />} label="Charges mensuelles" value={money(totals.recurring)} sub="crédit, PNO, copro, fiscalité, frais" />
+        <Metric icon={<SparklesIcon className="h-5 w-5" />} label="À regarder" value={String(priorityRows.length)} sub="biens qui méritent une action" />
+      </div>
+
+      <div className="rounded-3xl border border-cyan-100 bg-white px-4 py-3 text-sm leading-6 text-slate-600 shadow-sm">
+        <span className="font-semibold text-slate-950">Lecture simple :</span> la mensualité reste la base. Les chiffres du haut parlent du mois en cours, puis les graphiques montrent comment ce mois se compare aux 5 précédents.
       </div>
 
       <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
@@ -811,9 +877,9 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">Tendance 6 mois</p>
-            <h3 className="text-lg font-semibold text-slate-950">Revenus, dépenses et résultat net</h3>
+            <h3 className="text-lg font-semibold text-slate-950">Encaissements, dépenses et résultat net</h3>
           </div>
-          <p className="text-xs text-slate-500">Les charges récurrentes sont appliquées automatiquement.</p>
+          <p className="text-xs text-slate-500">Chaque barre est rattachée au mois concerné. Les charges récurrentes sont ajoutées automatiquement.</p>
         </div>
 
         <div className="mt-5 h-[320px] rounded-3xl border border-slate-100 bg-slate-50 p-3">
@@ -879,16 +945,16 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
                       <div>
                         <p className="text-base font-semibold text-slate-950">{row.label}</p>
                         <p className="mt-1 text-xs text-slate-500">
-                          Loyers {money(row.expected)} · charges récurrentes {money(row.recurring)}
+                          Loyers mensuels {money(row.expected)} · charges mensuelles {money(row.recurring)}
                         </p>
                       </div>
                       <span className={`self-start rounded-full border px-3 py-1 text-xs font-semibold ${decision.tone}`}>{decision.label}</span>
                     </div>
 
                     <div className="mt-3 grid gap-2 sm:grid-cols-4">
-                      <Stat label="Encaissé" value={money(Math.max(row.received, row.ledgerIncome))} />
-                      <Stat label="Dépenses" value={money(row.expense)} />
-                      <Stat label="Cashflow" value={money(row.cashflow)} strong={row.cashflow >= 0 ? "good" : "bad"} />
+                      <Stat label="Encaissé ce mois" value={money(Math.max(row.received, row.ledgerIncome))} />
+                      <Stat label="Dépenses ce mois" value={money(row.expense)} />
+                      <Stat label="Cashflow mensuel" value={money(row.cashflow)} strong={row.cashflow >= 0 ? "good" : "bad"} />
                       <Stat label="Rendement net" value={row.netYield == null ? "À compléter" : pct(row.netYield)} />
                       <Stat label="Taux crédit" value={row.loanRate == null ? "À renseigner" : `${row.loanRate.toLocaleString("fr-FR")} %`} />
                       <Stat label="Fin crédit" value={row.loanEndYear == null ? "—" : String(row.loanEndYear)} />
@@ -913,23 +979,27 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
               <ExclamationTriangleIcon className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-amber-700">Priorités</p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-950">Actions à fort impact</h3>
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-amber-700">Conseils simples</p>
+              <h3 className="mt-1 text-lg font-semibold text-slate-950">À faire maintenant</h3>
+              <p className="mt-1 text-sm text-slate-600">Les chiffres sont traduits en prochaines actions concrètes.</p>
             </div>
           </div>
 
           <div className="mt-4 space-y-3">
             {(priorityRows.length ? priorityRows : propertyRows.slice(0, 2)).map((row) => (
-              <div key={row.propertyId} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-950">{row.label}</p>
+              <div key={row.propertyId} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-slate-950">{row.label}</p>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-semibold text-slate-600">
+                    {money(row.cashflow)} / mois
+                  </span>
+                </div>
                 <div className="mt-2 space-y-2">
-                  {actionsFor(row).map((action, index) => (
-                    <p key={action} className="flex gap-2 text-sm leading-6 text-slate-700">
-                      <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[0.65rem] font-semibold text-white">
-                        {index + 1}
-                      </span>
-                      <span>{action}</span>
-                    </p>
+                  {actionsFor(row).map((action) => (
+                    <div key={action.title} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2">
+                      <p className="text-sm font-semibold text-slate-950">{action.title}</p>
+                      <p className="mt-1 text-sm leading-6 text-slate-600">{action.detail}</p>
+                    </div>
                   ))}
                 </div>
               </div>

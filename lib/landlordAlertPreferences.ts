@@ -9,6 +9,8 @@ export const LANDLORD_ALERT_PREFERENCE_KEYS = [
   "exit_inventory_to_prepare",
   "tenant_email_missing",
   "owner_email_missing",
+  "deposit_not_collected",
+  "deposit_return_overdue",
 ] as const;
 
 export type LandlordAlertPreferenceKey = (typeof LANDLORD_ALERT_PREFERENCE_KEYS)[number];
@@ -44,6 +46,8 @@ export const DEFAULT_LANDLORD_ALERT_PREFERENCES: LandlordAlertPreferences = {
   exit_inventory_to_prepare: true,
   tenant_email_missing: true,
   owner_email_missing: true,
+  deposit_not_collected: true,
+  deposit_return_overdue: true,
 };
 
 export function normalizeLandlordAlertPreferences(row?: Record<string, unknown> | null): LandlordAlertPreferences {
