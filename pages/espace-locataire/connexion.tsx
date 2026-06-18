@@ -20,12 +20,12 @@ export default function TenantConnexionPage() {
       return;
     }
 
-    const isInviteHash =
-      typeof window !== "undefined" && window.location.hash.includes("type=invite");
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    const isSetPasswordHash = hash.includes("type=invite") || hash.includes("type=recovery");
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        if (isInviteHash) {
+      if ((event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") && session) {
+        if (isSetPasswordHash) {
           setMode("set-password");
         } else {
           router.replace("/espace-locataire");
@@ -35,12 +35,12 @@ export default function TenantConnexionPage() {
 
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
-        if (isInviteHash) {
+        if (isSetPasswordHash) {
           setMode("set-password");
         } else {
           router.replace("/espace-locataire");
         }
-      } else if (!isInviteHash) {
+      } else if (!isSetPasswordHash) {
         setMode("login");
       }
     });
