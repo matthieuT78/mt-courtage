@@ -69,7 +69,7 @@ export const LANDLORD_NAV_ITEMS: Record<LandlordSectionKey, LandlordNavItem> = {
   outils: { key: "outils", label: "Boîte à outils", shortLabel: "Outils", icon: WrenchScrewdriverIcon },
   etat_des_lieux: { key: "etat_des_lieux", label: "États des lieux", icon: ClipboardDocumentCheckIcon },
   messagerie: { key: "messagerie", label: "Messages", icon: ChatBubbleLeftRightIcon },
-  alertes: { key: "alertes", label: "À traiter", icon: BellAlertIcon },
+  alertes: { key: "alertes", label: "Alertes", icon: BellAlertIcon },
   inventaire: { key: "inventaire", label: "Inventaires", icon: ArchiveBoxIcon },
   declaration: { key: "declaration", label: "Déclaration", icon: DocumentMagnifyingGlassIcon },
   parametres: { key: "parametres", label: "Paramètres", icon: Cog6ToothIcon },
