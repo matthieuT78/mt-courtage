@@ -206,7 +206,7 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                 <BookOpenIcon className="h-5 w-5" />
               </Link>
 
-              {authChecking || tenantChecking ? (
+              {authChecking ? (
                 <>
                   <span className="hidden h-10 w-28 rounded-full bg-slate-100 sm:inline-flex" aria-hidden="true" />
                   <span className="h-9 w-9 rounded-full bg-slate-100 sm:hidden" aria-hidden="true" />
