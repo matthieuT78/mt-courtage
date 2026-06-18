@@ -1761,12 +1761,12 @@ export function SectionQuittances({
                       <div key={year} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <p className="text-sm font-semibold text-slate-900">{year}</p>
 
-                        <div className="mt-2 overflow-auto rounded-2xl border border-slate-200 bg-white">
-                          <table className="min-w-[900px] w-full text-sm">
+                        <div className="mt-2 rounded-2xl border border-slate-200 bg-white">
+                          <table className="w-full text-sm">
                             <thead className="bg-slate-50 border-b border-slate-200">
                               <tr className="text-left">
                                 <th className="px-3 py-2 text-xs text-slate-600">Période</th>
-                                <th className="px-3 py-2 text-xs                                text-slate-600">Locataire</th>
+                                <th className="px-3 py-2 text-xs text-slate-600">Locataire</th>
                                 <th className="px-3 py-2 text-xs text-slate-600">Statut</th>
                                 <th className="px-3 py-2 text-xs text-slate-600 text-right">Actions</th>
                               </tr>

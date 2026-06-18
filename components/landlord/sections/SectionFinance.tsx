@@ -1825,7 +1825,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
 
         <p className="border-t border-slate-100 px-4 py-2.5 text-[0.72rem] text-slate-500">
-          Les écritures <span className="font-semibold">Quittance (auto)</span> et <span className="font-semibold">Caution</span> sont protégées — les gérer depuis la section Baux.
+          Les écritures sans boutons (loyers auto, cautions) sont protégées. Pour annuler un loyer confirmé par erreur : <span className="font-semibold">Quittances → sélectionner le mois → Annuler paiement</span>. Cela réinitialise le paiement et retire l'écriture ici.
         </p>
       </div>
 
