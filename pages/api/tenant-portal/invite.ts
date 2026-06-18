@@ -13,7 +13,7 @@ function tenantPortalRedirectUrl(req: NextApiRequest) {
   const configuredIsLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
   const requestIsPublic = requestOrigin && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(requestOrigin);
   const origin = requestIsPublic && configuredIsLocal ? requestOrigin : configured || requestOrigin || "https://lokt.fr";
-  return `${origin.replace(/\/$/, "")}/espace-locataire`;
+  return `${origin.replace(/\/$/, "")}/espace-locataire/connexion`;
 }
 
 async function findUserByEmail(email: string) {

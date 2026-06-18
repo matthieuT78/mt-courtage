@@ -39,6 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { data: reports, error: reportsError },
       { data: contracts, error: contractsError },
       { data: dpes, error: dpesError },
+      { data: payments, error: paymentsError },
     ] = await Promise.all([
       propertyIds.length
         ? supabaseAdmin.from("properties").select("id,label,address_line1,address_line2,postal_code,city,country").in("id", propertyIds)
@@ -73,12 +74,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .in("property_id", propertyIds)
             .order("created_at", { ascending: false })
         : Promise.resolve({ data: [], error: null }),
+      leaseIds.length
+        ? supabaseAdmin
+            .from("rent_payments")
+            .select("id,lease_id,period_start,period_end,paid_at,total_amount,rent_amount,charges_amount,source")
+            .in("lease_id", leaseIds)
+            .order("period_start", { ascending: false })
+            .limit(12)
+        : Promise.resolve({ data: [], error: null }),
     ]);
     if (propertiesError) throw propertiesError;
     if (receiptsError) throw receiptsError;
     if (reportsError) throw reportsError;
     if (contractsError) throw contractsError;
     if (dpesError) throw dpesError;
+    if (paymentsError) throw paymentsError;
 
     const threads = [];
     for (const access of accesses) {
@@ -109,6 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       inventoryReports: reports || [],
       leaseContracts: (contracts || []).filter((contract: any) => contract.signed_pdf_url || contract.external_pdf_url),
       dpes: dpes || [],
+      payments: payments || [],
       threads,
     });
   } catch (e: any) {

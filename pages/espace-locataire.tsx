@@ -3,15 +3,19 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import {
   ArrowDownTrayIcon,
+  BellAlertIcon,
   ChatBubbleLeftRightIcon,
+  CheckCircleIcon,
   DocumentTextIcon,
+  ExclamationTriangleIcon,
   HomeModernIcon,
+  InformationCircleIcon,
   PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
 import { supabase } from "../lib/supabaseClient";
 
-type PortalTab = "accueil" | "quittances" | "documents" | "messagerie";
+type PortalTab = "accueil" | "alertes" | "quittances" | "documents" | "messagerie";
 type PortalData = Record<string, any>;
 
 async function authHeaders() {
@@ -90,7 +94,7 @@ export default function EspaceLocatairePage() {
       if (!supabase) return;
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        router.replace(`/mon-compte?mode=login&redirect=${encodeURIComponent("/espace-locataire")}`);
+        router.replace("/espace-locataire/connexion");
         return;
       }
       if (mounted) {
@@ -157,8 +161,94 @@ export default function EspaceLocatairePage() {
 
   if (checking) return null;
 
-  const tabs: Array<{ key: PortalTab; label: string; icon: React.ReactNode }> = [
+  const tenantAlerts = useMemo(() => {
+    if (!activeLease || !data) return [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const currentYYYYMM = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}`;
+    const prevYYYYMM = (() => {
+      const d = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+    })();
+
+    const items: Array<{ tone: "red" | "amber" | "emerald" | "slate"; icon: React.ReactNode; title: string; desc: string }> = [];
+
+    const paymentDay = Number(activeLease.payment_day || 1);
+    const dueThisMonth = new Date(today.getFullYear(), today.getMonth(), Math.min(paymentDay, 28));
+    const duePassed = today.getTime() >= dueThisMonth.getTime();
+
+    const currentPayment = (data.payments || []).find(
+      (p: any) => p.lease_id === activeLease.id && String(p.period_start || "").startsWith(currentYYYYMM)
+    );
+    const prevPayment = (data.payments || []).find(
+      (p: any) => p.lease_id === activeLease.id && String(p.period_start || "").startsWith(prevYYYYMM)
+    );
+
+    const currentReceipt = (data.receipts || []).find(
+      (r: any) => r.lease_id === activeLease.id && String(r.period_start || "").startsWith(currentYYYYMM)
+    );
+    const prevReceipt = (data.receipts || []).find(
+      (r: any) => r.lease_id === activeLease.id && String(r.period_start || "").startsWith(prevYYYYMM)
+    );
+
+    const monthLabel = today.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+
+    if (currentPayment?.paid_at) {
+      const total = Number(currentPayment.total_amount || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+      items.push({
+        tone: "emerald",
+        icon: <CheckCircleIcon className="h-5 w-5 text-emerald-600" />,
+        title: `Loyer de ${monthLabel} confirme`,
+        desc: `Votre bailleur a confirme la reception de votre loyer (${total}).`,
+      });
+    } else if (duePassed) {
+      items.push({
+        tone: "red",
+        icon: <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />,
+        title: `Loyer de ${monthLabel} non confirme`,
+        desc: `L'echeance du ${dueThisMonth.toLocaleDateString("fr-FR")} est passee et votre bailleur n'a pas encore confirme la reception de votre loyer.`,
+      });
+    } else {
+      const euro = Number(activeLease.rent_amount || 0) + Number(activeLease.charges_amount || 0);
+      items.push({
+        tone: "slate",
+        icon: <InformationCircleIcon className="h-5 w-5 text-slate-500" />,
+        title: `Loyer de ${monthLabel} a venir`,
+        desc: `Echeance le ${dueThisMonth.toLocaleDateString("fr-FR")}. Montant attendu : ${euro.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}.`,
+      });
+    }
+
+    if (currentReceipt?.pdf_url) {
+      items.push({
+        tone: "emerald",
+        icon: <DocumentTextIcon className="h-5 w-5 text-emerald-600" />,
+        title: `Quittance de ${monthLabel} disponible`,
+        desc: "Votre quittance de loyer est prete. Retrouvez-la dans l'onglet Quittances.",
+      });
+    }
+
+    if (prevPayment?.paid_at && !prevReceipt?.pdf_url) {
+      const prevMonthLabel = new Date(today.getFullYear(), today.getMonth() - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+      items.push({
+        tone: "amber",
+        icon: <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />,
+        title: `Quittance de ${prevMonthLabel} en attente`,
+        desc: "Votre loyer du mois precedent a ete confirme mais la quittance n'est pas encore disponible.",
+      });
+    }
+
+    return items;
+  }, [activeLease, data]);
+
+  const tabs: Array<{ key: PortalTab; label: string; icon: React.ReactNode; badge?: number }> = [
     { key: "accueil", label: "Accueil", icon: <HomeModernIcon className="h-4 w-4" /> },
+    {
+      key: "alertes",
+      label: "Alertes",
+      icon: <BellAlertIcon className="h-4 w-4" />,
+      badge: tenantAlerts.filter((a) => a.tone === "red" || a.tone === "amber").length || undefined,
+    },
     { key: "quittances", label: "Quittances", icon: <DocumentTextIcon className="h-4 w-4" /> },
     { key: "documents", label: "Documents", icon: <ArrowDownTrayIcon className="h-4 w-4" /> },
     { key: "messagerie", label: "Messagerie", icon: <ChatBubbleLeftRightIcon className="h-4 w-4" /> },
@@ -200,7 +290,12 @@ export default function EspaceLocatairePage() {
                   }`}
                 >
                   {tab.icon}
-                  {tab.label}
+                  <span className="flex-1">{tab.label}</span>
+                  {tab.badge ? (
+                    <span className={`flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[0.65rem] font-bold ${active === tab.key ? "bg-white text-slate-950" : "bg-red-500 text-white"}`}>
+                      {tab.badge}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </nav>
@@ -217,6 +312,40 @@ export default function EspaceLocatairePage() {
                     <Stat label="Début du bail" value={formatDate(activeLease?.start_date)} />
                     <Stat label="Quittances disponibles" value={String(data.receipts?.length || 0)} />
                     <Stat label="Documents" value={String((data.inventoryReports?.length || 0) + (data.leaseContracts?.length || 0) + (data.dpes?.length || 0))} />
+                  </div>
+                </div>
+              ) : null}
+
+              {active === "alertes" ? (
+                <div>
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Alertes</p>
+                  <h2 className="mt-1 text-xl font-semibold text-slate-950">Etat de votre location</h2>
+                  <div className="mt-5 space-y-3">
+                    {tenantAlerts.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                        Aucune alerte pour le moment.
+                      </div>
+                    ) : null}
+                    {tenantAlerts.map((alert, i) => (
+                      <div
+                        key={i}
+                        className={`flex gap-3 rounded-2xl border p-4 ${
+                          alert.tone === "red"
+                            ? "border-red-200 bg-red-50"
+                            : alert.tone === "amber"
+                            ? "border-amber-200 bg-amber-50"
+                            : alert.tone === "emerald"
+                            ? "border-emerald-200 bg-emerald-50"
+                            : "border-slate-200 bg-slate-50"
+                        }`}
+                      >
+                        <div className="mt-0.5 shrink-0">{alert.icon}</div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-950">{alert.title}</p>
+                          <p className="mt-0.5 text-xs text-slate-600">{alert.desc}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : null}
