@@ -449,9 +449,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [filterAmountMax, setFilterAmountMax] = useState<string>("");
   const [filterText, setFilterText] = useState<string>("");
 
-  // Sélection pour suppression
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const selectedIds = useMemo(() => Object.keys(selected).filter((id) => selected[id]), [selected]);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [txWizardOpen, setTxWizardOpen] = useState(false);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
@@ -933,99 +930,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     setOk(`Export Excel prêt ✅ (${filteredMonthLedger.length} ligne${filteredMonthLedger.length > 1 ? "s" : ""})`);
   };
 
-  // reset selection when list changes / filters change
-  useEffect(() => {
-    setSelected({});
-  }, [
-    periodMode,
-    selectedPeriod.start,
-    selectedPeriod.end,
-    filterPropertyId,
-    filterDirection,
-    filterCategory,
-    filterStatus,
-    filterSource,
-    filterAmountMin,
-    filterAmountMax,
-    filterText,
-    analysisPropertyId,
-    tx.length,
-  ]);
-
-  const allVisibleSelected = useMemo(() => {
-    if (filteredMonthLedger.length === 0) return false;
-    return filteredMonthLedger.every((r) => !!selected[r.id]);
-  }, [filteredMonthLedger, selected]);
-
-  const toggleSelectAllVisible = () => {
-    if (filteredMonthLedger.length === 0) return;
-    setSelected((prev) => {
-      const next = { ...prev };
-      const target = !allVisibleSelected;
-      for (const r of filteredMonthLedger) next[r.id] = target;
-      return next;
-    });
-  };
-
-  const toggleSelectOne = (id: string) => {
-    setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  // ========= Delete selected (only manual entries) =========
-  const deleteSelected = async () => {
-    if (!supabase || !userId) return;
-    const ids = selectedIds;
-    if (ids.length === 0) return;
-
-    // Sécurité: on ne supprime pas les écritures générées depuis quittances (receipt_id != null)
-    // ni les écritures de caution (gérées depuis la section Baux)
-    const DEPOSIT_CATEGORIES = ["deposit_collected", "deposit_returned", "deposit_retained"];
-    const selectedRows = filteredMonthLedger.filter((r) => ids.includes(r.id));
-    const protectedRows = selectedRows.filter((r) => !!r.receipt_id || DEPOSIT_CATEGORIES.includes(r.category));
-    const deletableRows = selectedRows.filter((r) => !r.receipt_id && !DEPOSIT_CATEGORIES.includes(r.category));
-
-    if (deletableRows.length === 0) {
-      setErr("Aucune ligne supprimable dans la sélection (loyers de quittances et cautions sont gérés depuis la section Baux).");
-      return;
-    }
-
-    const depositProtected = protectedRows.filter((r) => DEPOSIT_CATEGORIES.includes(r.category)).length;
-    const receiptProtected = protectedRows.filter((r) => !!r.receipt_id).length;
-    const protectedDesc = [
-      receiptProtected ? `${receiptProtected} quittance(s)` : "",
-      depositProtected ? `${depositProtected} caution(s)` : "",
-    ].filter(Boolean).join(" + ");
-    const msg =
-      protectedRows.length > 0
-        ? `Tu as sélectionné ${protectedDesc} (protégées) + ${deletableRows.length} ligne(s) supprimables.\n\nSupprimer seulement les lignes supprimables ?`
-        : `Supprimer ${deletableRows.length} ligne(s) du grand livre ?`;
-
-    if (!confirm(msg)) return;
-
-    setDeleteBusy(true);
-    setErr(null);
-    setOk(null);
-
-    try {
-      const idsToDelete = deletableRows.map((r) => r.id);
-      const { error } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("user_id", userId)
-        .in("id", idsToDelete);
-
-      if (error) throw error;
-
-      setOk(`Supprimé ✅ (${idsToDelete.length} ligne${idsToDelete.length > 1 ? "s" : ""})`);
-      setSelected({});
-      await loadFinance();
-      await onRefresh?.();
-    } catch (e: any) {
-      setErr(e?.message || "Erreur suppression.");
-    } finally {
-      setDeleteBusy(false);
-    }
-  };
 
   // ========= Per property: cashflow & rendement =========
   const perProperty = useMemo<FinancePropertyRow[]>(() => {
@@ -2727,15 +2631,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           <table className="w-full table-fixed text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr className="text-left">
-                <th className="px-3 py-2 text-xs text-slate-600 w-[44px]">
-                  <input
-                    type="checkbox"
-                    checked={allVisibleSelected}
-                    onChange={toggleSelectAllVisible}
-                    className="h-4 w-4"
-                    title="Tout sélectionner (lignes visibles)"
-                  />
-                </th>
                 <th className="w-[110px] px-3 py-2 text-xs text-slate-600">Date</th>
                 <th className="w-[22%] px-3 py-2 text-xs text-slate-600">Bien</th>
                 <th className="px-3 py-2 text-xs text-slate-600">Écriture</th>
@@ -2749,27 +2644,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
             <tbody>
               {filteredMonthLedger.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-4 text-slate-500">
+                  <td colSpan={6} className="px-3 py-4 text-slate-500">
                     Aucune écriture (ou filtres trop restrictifs).
                   </td>
                 </tr>
               ) : (
                 filteredMonthLedger.map((r) => {
                   const p = r.property_id ? propsById.get(r.property_id) : null;
-                  const isChecked = !!selected[r.id];
                   const docs = txDocsByTransactionId.get(r.id) || [];
 
                   return (
                     <tr key={r.id} className="border-b border-slate-100">
-                      <td className="px-3 py-2">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSelectOne(r.id)}
-                          className="h-4 w-4"
-                        />
-                      </td>
-
                       <td className="px-3 py-2 text-slate-700">{r.occurred_at}</td>
                       <td className="truncate px-3 py-2 text-slate-700">{p?.label || "—"}</td>
                       <td className="px-3 py-2">
