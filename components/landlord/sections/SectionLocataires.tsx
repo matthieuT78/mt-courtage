@@ -638,6 +638,15 @@ export function SectionLocataires({
     try {
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
 
+      // Détacher le locataire des baux clôturés avant suppression (contrainte FK)
+      const { error: unlinkErr } = await supabase
+        .from("leases")
+        .update({ tenant_id: null })
+        .eq("tenant_id", tenantId)
+        .eq("user_id", userId)
+        .in("status", ["archived", "ended"]);
+      if (unlinkErr) throw unlinkErr;
+
       const res = await withTimeout(Promise.resolve(supabase.from("tenants").delete().eq("id", tenantId).eq("user_id", userId)));
       // @ts-ignore
       if ((res as any)?.error) throw (res as any).error;
