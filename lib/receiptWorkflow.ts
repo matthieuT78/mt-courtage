@@ -191,8 +191,17 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     paymentMethod: lease.payment_method,
   });
 
-  // Find receipt for same period_start in same month (period_end may differ if end_date changed after payment)
+  // Clean up stale draft receipts for the same period_start but a different period_end.
+  // Prevents unique constraint conflicts when period_end changes after end_date is updated on the lease.
   const yyyymmR = normalizedPeriodStart.slice(0, 7);
+  await supabaseAdmin
+    .from("rent_receipts")
+    .delete()
+    .eq("lease_id", leaseId)
+    .eq("period_start", normalizedPeriodStart)
+    .eq("status", "draft")
+    .neq("period_end", normalizedPeriodEnd);
+
   let receipt: any = null;
   const existingReceipt = await supabaseAdmin
     .from("rent_receipts")
@@ -228,7 +237,7 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
   } else {
     const ins = await supabaseAdmin
       .from("rent_receipts")
-      .insert({
+      .upsert({
         lease_id: leaseId,
         owner_user_id: userId,
         period_start: normalizedPeriodStart,
@@ -240,7 +249,7 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
         issued_at: new Date().toISOString(),
         content_text: contentText,
         status: "generated",
-      })
+      }, { onConflict: "lease_id,period_start,period_end" })
       .select("*")
       .single();
     if (ins.error || !ins.data) throw new Error(ins.error?.message || "Création quittance échouée.");

@@ -405,6 +405,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // Find existing receipt for same period_start in same month (period_end may differ if end_date changed)
     const yyyymm = periodStart.slice(0, 7);
+
+    // Clean up stale draft receipts for the same month/period_start but a different period_end.
+    // These accumulate when end_date changes after a receipt was created, and cause a unique
+    // constraint conflict when UPDATE tries to write the new period_end.
+    await supabaseAdmin
+      .from("rent_receipts")
+      .delete()
+      .eq("lease_id", leaseId)
+      .eq("period_start", periodStart)
+      .eq("status", "draft")
+      .neq("period_end", periodEnd);
+
     let receipt: any = null;
     const existing = await supabaseAdmin
       .from("rent_receipts")
@@ -439,9 +451,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (upd.error || !upd.data) return res.status(500).json({ error: upd.error?.message || "Update quittance échoué." });
       receipt = upd.data;
     } else {
+      // Upsert instead of insert: handles any residual race condition on the unique constraint.
       const ins = await supabaseAdmin
         .from("rent_receipts")
-        .insert({
+        .upsert({
           lease_id: leaseId,
           period_start: periodStart,
           period_end: periodEnd,
@@ -453,7 +466,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           content_text: typeof contentText === "string" ? contentText : "",
           status: "generated",
           created_at: new Date().toISOString(),
-        })
+        }, { onConflict: "lease_id,period_start,period_end" })
         .select("*")
         .single();
 
