@@ -209,6 +209,8 @@ export function SectionLocataires({
   };
 
   const hasAnyLeaseForTenant = (tenantId: string) => safeLeases.some((l) => l?.tenant_id === tenantId);
+  const hasActiveLeaseForTenant = (tenantId: string) =>
+    safeLeases.some((l) => l?.tenant_id === tenantId && !["archived", "ended"].includes(String(l.status || "").toLowerCase()));
 
   const leasesForTenant = (tenantId: string) => safeLeases.filter((l) => l?.tenant_id === tenantId).slice(0, 12);
 
@@ -623,8 +625,8 @@ export function SectionLocataires({
   const deleteTenant = async (tenantId: string) => {
     if (!userId) return;
 
-    if (hasAnyLeaseForTenant(tenantId)) {
-      setErr("Suppression impossible : ce locataire est lié à un bail. Archive-le plutôt.");
+    if (hasActiveLeaseForTenant(tenantId)) {
+      setErr("Suppression impossible : ce locataire a un bail actif. Archive-le d'abord.");
       return;
     }
     if (!confirm("Supprimer définitivement ce locataire ?")) return;
@@ -1120,7 +1122,7 @@ export function SectionLocataires({
                         Restaurer
                       </button>
 
-                      {!hasAnyLeaseForTenant(t.id) ? (
+                      {!hasActiveLeaseForTenant(t.id) ? (
                         <button
                           type="button"
                           disabled={loading}
@@ -1129,9 +1131,7 @@ export function SectionLocataires({
                         >
                           Supprimer
                         </button>
-                      ) : (
-                        <span className="text-[0.75rem] text-slate-600">Suppression désactivée (lié à un bail).</span>
-                      )}
+                      ) : null}
                     </div>
                   </ExpandableRow>
                 );
