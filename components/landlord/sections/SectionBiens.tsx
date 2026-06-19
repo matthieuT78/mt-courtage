@@ -441,8 +441,15 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
     }
   };
 
+  const hasAnyLeaseForProperty = (propertyId: string) =>
+    safeLeases.some((l) => l?.property_id === propertyId);
+
   const remove = async (id: string) => {
-    if (!confirm("Supprimer définitivement ce bien ?")) return;
+    if (hasAnyLeaseForProperty(id)) {
+      setErr("Suppression impossible : ce bien a un historique de bail. Archivez-le pour le masquer des vues actives — les données (quittances, comptabilité) sont conservées.");
+      return;
+    }
+    if (!confirm("Supprimer définitivement ce bien ?\n\nCette action est irréversible.")) return;
 
     setErr(null);
     setOk(null);
@@ -458,7 +465,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       if (expandedId === id) setExpandedId(null);
       await safeRefresh();
     } catch (e: any) {
-      setErr(e?.message || "Suppression impossible (baux existants ?).");
+      setErr(e?.message || "Suppression impossible.");
     }
   };
 
@@ -992,14 +999,16 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                         Archiver
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => remove(p.id)}
-                        disabled={saving}
-                        className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                      >
-                        Supprimer
-                      </button>
+                      {!hasAnyLeaseForProperty(p.id) ? (
+                        <button
+                          type="button"
+                          onClick={() => remove(p.id)}
+                          disabled={saving}
+                          className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                        >
+                          Supprimer
+                        </button>
+                      ) : null}
                     </div>
                   </ExpandableRow>
                 );
@@ -1095,14 +1104,18 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                         </Link>
                       ) : null}
 
-                      <button
-                        type="button"
-                        onClick={() => remove(p.id)}
-                        disabled={saving}
-                        className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                      >
-                        Supprimer
-                      </button>
+                      {!hasAnyLeaseForProperty(p.id) ? (
+                        <button
+                          type="button"
+                          onClick={() => remove(p.id)}
+                          disabled={saving}
+                          className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                        >
+                          Supprimer
+                        </button>
+                      ) : (
+                        <span className="text-[0.75rem] text-slate-500">Données conservées</span>
+                      )}
                     </div>
                   </ExpandableRow>
                 );

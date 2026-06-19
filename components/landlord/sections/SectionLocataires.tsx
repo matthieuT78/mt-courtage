@@ -625,8 +625,8 @@ export function SectionLocataires({
   const deleteTenant = async (tenantId: string) => {
     if (!userId) return;
 
-    if (hasActiveLeaseForTenant(tenantId)) {
-      setErr("Suppression impossible : ce locataire a un bail actif. Archive-le d'abord.");
+    if (hasAnyLeaseForTenant(tenantId)) {
+      setErr("Suppression impossible : ce locataire a un historique de bail. Archivez-le pour le masquer — les données (quittances, comptabilité) sont conservées.");
       return;
     }
     if (!confirm("Supprimer définitivement ce locataire ?")) return;
@@ -637,15 +637,6 @@ export function SectionLocataires({
 
     try {
       if (!supabase) throw new Error("Supabase non initialisé (env manquantes ?).");
-
-      // Détacher le locataire des baux clôturés avant suppression (contrainte FK)
-      const { error: unlinkErr } = await supabase
-        .from("leases")
-        .update({ tenant_id: null })
-        .eq("tenant_id", tenantId)
-        .eq("user_id", userId)
-        .in("status", ["archived", "ended"]);
-      if (unlinkErr) throw unlinkErr;
 
       const res = await withTimeout(Promise.resolve(supabase.from("tenants").delete().eq("id", tenantId).eq("user_id", userId)));
       // @ts-ignore
@@ -1015,7 +1006,7 @@ export function SectionLocataires({
                           Supprimer
                         </button>
                       ) : (
-                        <span className="text-[0.75rem] text-slate-600">Suppression désactivée (lié à un bail).</span>
+                        <span className="text-[0.75rem] text-slate-500">Archivez-le pour le masquer</span>
                       )}
                     </div>
 
@@ -1131,7 +1122,7 @@ export function SectionLocataires({
                         Restaurer
                       </button>
 
-                      {!hasActiveLeaseForTenant(t.id) ? (
+                      {!hasAnyLeaseForTenant(t.id) ? (
                         <button
                           type="button"
                           disabled={loading}
@@ -1140,7 +1131,9 @@ export function SectionLocataires({
                         >
                           Supprimer
                         </button>
-                      ) : null}
+                      ) : (
+                        <span className="text-[0.75rem] text-slate-500">Données conservées</span>
+                      )}
                     </div>
                   </ExpandableRow>
                 );
