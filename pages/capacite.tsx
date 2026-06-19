@@ -187,7 +187,41 @@ export default function CapaciteEmpruntPage() {
       })),
     };
 
-    return [webPage, app, breadcrumb, faqPage];
+    const howTo = {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      name: "Comment calculer sa capacité d'emprunt immobilier",
+      description: "Méthode en 4 étapes pour estimer le montant maximum que vous pouvez emprunter en France pour un achat immobilier.",
+      totalTime: "PT3M",
+      step: [
+        {
+          "@type": "HowToStep",
+          position: 1,
+          name: "Calculer la mensualité soutenable",
+          text: "Multipliez vos revenus nets mensuels par le taux d'effort cible (généralement 35 % selon les règles bancaires françaises), puis déduisez vos charges fixes et crédits en cours. Cette mensualité disponible constitue le plafond de remboursement mensuel.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 2,
+          name: "Convertir en capital empruntable",
+          text: "Appliquez la formule d'emprunt : capital = mensualité × [(1 − (1 + taux_mensuel)^−n) / taux_mensuel], où le taux mensuel est le taux annuel divisé par 12 et n la durée en mois. Le simulateur effectue ce calcul automatiquement pour différentes durées et taux.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 3,
+          name: "Ajouter l'apport personnel",
+          text: "Le budget d'achat total correspond au capital empruntable additionné de votre apport disponible. Attention : une partie de l'apport couvre les frais de notaire (7 à 9 % dans l'ancien, 2 à 3 % dans le neuf) et les frais de garantie.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 4,
+          name: "Vérifier le reste à vivre",
+          text: "Certaines banques complètent l'analyse du taux d'endettement par le reste à vivre (revenus nets − toutes charges − mensualité). Ce montant doit être suffisant selon la composition du foyer, généralement au moins 800 à 1 000 € par personne adulte.",
+        },
+      ],
+    };
+
+    return [webPage, app, breadcrumb, faqPage, howTo];
   }, [title, description, pageUrl, siteUrl, ogImage, faqData]);
 
   return (

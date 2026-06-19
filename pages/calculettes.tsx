@@ -13,6 +13,7 @@ import {
   ScaleIcon,
   SparklesIcon,
   XMarkIcon,
+  QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
@@ -245,6 +246,15 @@ export default function CalculettesPage() {
         icon: ScaleIcon,
         access: "analysis_after_login",
         metric: "Vente d’un bien",
+      },
+      {
+        key: "acheter-ou-louer",
+        title: "Acheter ou louer ?",
+        desc: "Recommandation personnalisée selon votre profil pro, votre projet et le marché local.",
+        href: "/acheter-ou-louer",
+        icon: QuestionMarkCircleIcon,
+        access: "free",
+        metric: "Décision d’achat",
       },
     ],
     []
