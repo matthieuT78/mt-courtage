@@ -59,16 +59,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ── return ─────────────────────────────────────────────────────────────────
     if (action === "return") {
       if (!returned_at) return res.status(400).json({ error: "Date de restitution requise." });
+
+      // Structured decompte items (from new UI)
+      const imputedMonths: Array<{ period_start: string; period_end: string; amount: number }> =
+        Array.isArray(req.body.imputed_months) ? req.body.imputed_months : [];
+      const damageItems: Array<{ label: string; amount: number }> =
+        Array.isArray(req.body.damage_items) ? req.body.damage_items : [];
+
+      // Auto-calculate retained_amount from items if provided, otherwise fall back to explicit value
+      const imputedTotal = imputedMonths.reduce((s, m) => s + (safeNum(m.amount) ?? 0), 0);
+      const damageTotal = damageItems.reduce((s, d) => s + (safeNum(d.amount) ?? 0), 0);
+      const hasItems = imputedTotal + damageTotal > 0;
+      const retainAmt = hasItems ? Math.round((imputedTotal + damageTotal) * 100) / 100 : (safeNum(retained_amount) ?? 0);
       const retAmt = safeNum(returned_amount) ?? 0;
-      const retainAmt = safeNum(retained_amount) ?? 0;
+
       if (retAmt < 0 || retainAmt < 0) return res.status(400).json({ error: "Les montants ne peuvent pas être négatifs." });
       if (retAmt === 0 && retainAmt === 0) return res.status(400).json({ error: "Au moins un montant (restitué ou retenu) est requis." });
+
+      // Build a human-readable retained_reason from items
+      let reasonLabel = safeStr(retained_reason) || null;
+      if (hasItems) {
+        const parts: string[] = [];
+        if (imputedMonths.length) parts.push(`Loyers/charges : ${imputedMonths.map((m) => `${m.period_start.slice(0, 7)} (${safeNum(m.amount) ?? 0} €)`).join(", ")}`);
+        if (damageItems.length) parts.push(`Dommages : ${damageItems.map((d) => `${d.label} (${safeNum(d.amount) ?? 0} €)`).join(", ")}`);
+        reasonLabel = parts.join(" — ").slice(0, 500);
+      }
 
       const patch: Record<string, any> = {
         deposit_returned_at: safeStr(returned_at),
         deposit_returned_amount: retAmt,
         deposit_retained_amount: retainAmt,
-        deposit_retained_reason: safeStr(retained_reason) || null,
+        deposit_retained_reason: reasonLabel,
         updated_at: new Date().toISOString(),
       };
 
@@ -92,6 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       if (retainAmt > 0) {
+        const retainLabel = reasonLabel ? `Retenue : ${reasonLabel.slice(0, 80)}` : "Retenue sur caution";
         const { data: txRetain, error: txRetainErr } = await supabaseAdmin.from("transactions").insert({
           user_id: userId,
           property_id: lease.property_id ?? null,
@@ -101,13 +123,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           direction: "in",
           status: "received",
           category: "deposit_retained",
-          label: safeStr(retained_reason) ? `Retenue : ${safeStr(retained_reason).slice(0, 80)}` : "Retenue sur caution",
+          label: retainLabel,
           amount: retainAmt,
           notes: "[lokt:deposit]",
           updated_at: new Date().toISOString(),
         }).select("id").single();
         if (txRetainErr || !txRetain) return res.status(500).json({ error: `Écriture Finance (retenue) échouée : ${txRetainErr?.message}` });
         patch.deposit_retain_tx_id = txRetain.id;
+      }
+
+      // Close imputed months in rent_receipts (status = "closed_by_deposit")
+      for (const month of imputedMonths) {
+        if (!month.period_start) continue;
+        const yyyymm = String(month.period_start).slice(0, 7);
+        const { data: existing } = await supabaseAdmin
+          .from("rent_receipts")
+          .select("id, status")
+          .eq("lease_id", leaseId)
+          .eq("period_start", safeStr(month.period_start))
+          .gte("period_end", `${yyyymm}-01`)
+          .lte("period_end", `${yyyymm}-31`)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existing?.id) {
+          await supabaseAdmin
+            .from("rent_receipts")
+            .update({ status: "closed_by_deposit", pdf_url: null, updated_at: new Date().toISOString() })
+            .eq("id", existing.id);
+        } else {
+          await supabaseAdmin.from("rent_receipts").insert({
+            lease_id: leaseId,
+            owner_user_id: userId,
+            period_start: safeStr(month.period_start),
+            period_end: safeStr(month.period_end),
+            rent_amount: 0,
+            charges_amount: 0,
+            total_amount: 0,
+            issue_date: safeStr(returned_at),
+            issued_at: new Date().toISOString(),
+            content_text: "Compensé par retenue sur dépôt de garantie",
+            status: "closed_by_deposit",
+            created_at: new Date().toISOString(),
+          });
+        }
       }
 
       const { data: updated, error: updErr } = await supabaseAdmin.from("leases").update(patch).eq("id", leaseId).eq("user_id", userId).select("*").single();

@@ -163,7 +163,7 @@ function periodKey(leaseId: string, yyyymm: string) {
 }
 
 function canSnoozeReceiptTask(row: any) {
-  return row?.payStatus === "paid" && !row?.sent;
+  return row?.payStatus === "paid" && !row?.sent && !row?.closedByDeposit;
 }
 
 function dateOnlyTime(v?: string | null) {
@@ -214,6 +214,7 @@ function pillToneReceipt(status: string) {
   if (s === "generated") return "bg-amber-100 text-amber-900 border-amber-200";
   if (s === "draft") return "bg-slate-100 text-slate-800 border-slate-200";
   if (s === "error") return "bg-red-100 text-red-900 border-red-200";
+  if (s === "closed_by_deposit") return "bg-violet-100 text-violet-900 border-violet-200";
   return "bg-slate-100 text-slate-800 border-slate-200";
 }
 
@@ -223,13 +224,14 @@ function statusLabelReceipt(status?: string | null) {
   if (s === "generated") return "PDF prêt";
   if (s === "draft") return "Brouillon";
   if (s === "error") return "Erreur";
+  if (s === "closed_by_deposit") return "Compensé par caution";
   if (!s) return "—";
   return status!;
 }
 
 function isWorkflowReceipt(receipt: any) {
   const status = String(receipt?.status || "").toLowerCase();
-  return status === "generated" || status === "sent";
+  return status === "generated" || status === "sent" || status === "closed_by_deposit";
 }
 
 function paymentTypeLabel(v?: string | null) {
@@ -533,12 +535,13 @@ export function SectionQuittances({
         const receipt = receiptByPeriod.get(key) || null;
         const payment = paymentByPeriod.get(key) || null;
         const pay = paymentAnalysis(lease, payment, yyyymm);
-        const payStatus = pay.status;
         const receiptStatus = String(receipt?.status || "").toLowerCase();
+        const closedByDeposit = receiptStatus === "closed_by_deposit";
+        const payStatus = closedByDeposit ? ("paid" as PaymentStatus) : pay.status;
         const pdfReady = !!receipt?.pdf_url && (receiptStatus === "generated" || receiptStatus === "sent");
         const sent = receiptStatus === "sent" || !!receipt?.sent_at;
         const sched = scheduleForPeriod(yyyymm, lease);
-        const isLate = payStatus !== "paid" && Date.now() > sched.controlAt.getTime();
+        const isLate = !closedByDeposit && payStatus !== "paid" && Date.now() > sched.controlAt.getTime();
 
         return {
           key,
@@ -546,13 +549,14 @@ export function SectionQuittances({
           lease,
           receipt,
           payment,
-          payStatus: payStatus as PaymentStatus,
+          payStatus,
           pay,
           receiptStatus,
           pdfReady,
           sent,
           sched,
           isLate,
+          closedByDeposit,
           periodStart: period.periodStart,
           periodEnd: period.periodEnd,
           prorated: period.prorated,
@@ -576,6 +580,7 @@ export function SectionQuittances({
 
   const todoRows = useMemo(() => {
     const rowRequiresActionNow = (row: any) => {
+      if (row.closedByDeposit) return false;
       if (row.sent) return false;
       if ((row.lease as any).receipts_disabled && row.payStatus === "paid") return false;
       if (canSnoozeReceiptTask(row) && snoozedReceiptKeys.has(String(row.key))) return false;
@@ -1389,6 +1394,12 @@ export function SectionQuittances({
                             </span>
                           ) : null}
 
+                          {row.closedByDeposit ? (
+                            <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[0.7rem] font-semibold text-violet-800">
+                              Compensé par caution
+                            </span>
+                          ) : null}
+
                           {row.pay.ownerConfirmedUnpaid ? (
                             <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.7rem] font-semibold text-red-800">
                               Non reçu déclaré
@@ -1414,7 +1425,11 @@ export function SectionQuittances({
                       </div>
 
                       <div className="flex min-w-[142px] flex-col gap-2">
-                        {row.payStatus !== "paid" ? (
+                        {row.closedByDeposit ? (
+                          <span className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-center text-xs font-semibold text-violet-800">
+                            Compensé par caution
+                          </span>
+                        ) : row.payStatus !== "paid" ? (
                           <>
                             <button
                               type="button"
@@ -1506,7 +1521,7 @@ export function SectionQuittances({
                           </button>
                         ) : null}
 
-                        {row.payStatus === "paid" ? (
+                        {row.payStatus === "paid" && !row.closedByDeposit ? (
                           <button
                             type="button"
                             disabled={loading || (!receipt && !row.payment)}

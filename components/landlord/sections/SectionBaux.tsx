@@ -709,12 +709,17 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   // Deposit state
   type DepositAction = "collect" | "return" | null;
   type DepositForm = { paid_at: string; paid_amount: string; returned_at: string; returned_amount: string; retained_amount: string; retained_reason: string };
+  type ImputedMonthRow = { yyyymm: string; period_start: string; period_end: string; label: string; missing_amount: number; checked: boolean; amount: string };
+  type DamageItem = { id: string; label: string; amount: string };
   const [depositActionByLease, setDepositActionByLease] = useState<Record<string, DepositAction>>({});
   const [depositFormByLease, setDepositFormByLease] = useState<Record<string, DepositForm>>({});
   const [depositLoadingByLease, setDepositLoadingByLease] = useState<Record<string, boolean>>({});
   const [depositErrByLease, setDepositErrByLease] = useState<Record<string, string | null>>({});
+  const [imputedMonthsByLease, setImputedMonthsByLease] = useState<Record<string, ImputedMonthRow[]>>({});
+  const [damageItemsByLease, setDamageItemsByLease] = useState<Record<string, DamageItem[]>>({});
+  const [unpaidLoadingByLease, setUnpaidLoadingByLease] = useState<Record<string, boolean>>({});
 
-  const openDepositForm = (leaseId: string, action: DepositAction, lease: Lease) => {
+  const openDepositForm = async (leaseId: string, action: DepositAction, lease: Lease) => {
     const today = todayISO();
     setDepositActionByLease((p) => ({ ...p, [leaseId]: action }));
     setDepositErrByLease((p) => ({ ...p, [leaseId]: null }));
@@ -724,11 +729,42 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         paid_at: action === "collect" ? today : (lease.deposit_paid_at || today),
         paid_amount: action === "collect" ? String(lease.deposit_amount ?? "") : String(lease.deposit_paid_amount ?? lease.deposit_amount ?? ""),
         returned_at: today,
-        returned_amount: action === "return" ? String(lease.deposit_paid_amount ?? lease.deposit_amount ?? "") : "",
+        returned_amount: "",
         retained_amount: "",
         retained_reason: "",
       },
     }));
+
+    if (action === "return") {
+      setImputedMonthsByLease((p) => ({ ...p, [leaseId]: [] }));
+      setDamageItemsByLease((p) => ({ ...p, [leaseId]: [] }));
+      setUnpaidLoadingByLease((p) => ({ ...p, [leaseId]: true }));
+      try {
+        if (!supabase) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        const resp = await fetch(`/api/deposits/unpaid-summary?userId=${encodeURIComponent(userId)}&leaseId=${encodeURIComponent(leaseId)}`, {
+          headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
+        });
+        const json = await resp.json().catch(() => ({}));
+        const months: any[] = json.months || [];
+        setImputedMonthsByLease((p) => ({
+          ...p,
+          [leaseId]: months.map((m: any) => ({
+            yyyymm: m.yyyymm,
+            period_start: m.period_start,
+            period_end: m.period_end,
+            label: m.label,
+            missing_amount: Number(m.missing_amount || 0),
+            checked: true,
+            amount: String(Math.round(Number(m.missing_amount || 0) * 100) / 100),
+          })),
+        }));
+      } catch {
+        // ignore — user can still enter amounts manually
+      } finally {
+        setUnpaidLoadingByLease((p) => ({ ...p, [leaseId]: false }));
+      }
+    }
   };
 
   const closeDepositForm = (leaseId: string) =>
@@ -741,10 +777,29 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     setDepositErrByLease((p) => ({ ...p, [leaseId]: null }));
     try {
       const { data: { session } } = await supabase.auth.getSession();
+
+      let body: Record<string, any> = { action, userId, leaseId, ...form };
+
+      if (action === "return") {
+        const imputed = (imputedMonthsByLease[leaseId] || [])
+          .filter((m) => m.checked && Number(m.amount) > 0)
+          .map((m) => ({ period_start: m.period_start, period_end: m.period_end, amount: Math.round(Number(m.amount) * 100) / 100 }));
+
+        const damages = (damageItemsByLease[leaseId] || [])
+          .filter((d) => d.label.trim() && Number(d.amount) > 0)
+          .map((d) => ({ label: d.label.trim(), amount: Math.round(Number(d.amount) * 100) / 100 }));
+
+        const totalRetained = [...imputed, ...damages].reduce((s, i) => s + i.amount, 0);
+        const paidAmount = Number(form.paid_amount || 0);
+        const totalReturned = Math.max(0, Math.round((paidAmount - totalRetained) * 100) / 100);
+
+        body = { ...body, imputed_months: imputed, damage_items: damages, retained_amount: totalRetained, returned_amount: totalReturned };
+      }
+
       const resp = await fetch("/api/deposits", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ action, userId, leaseId, ...form }),
+        body: JSON.stringify(body),
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Erreur serveur.");
@@ -1563,34 +1618,167 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                 </div>
               ) : null}
 
-              {/* Form: return */}
-              {depositAction === "return" ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
-                  <p className="text-xs font-semibold text-slate-900">Restitution de la caution</p>
-                  <div className="grid gap-3 sm:grid-cols-2">
+              {/* Form: return — Décompte de sortie */}
+              {depositAction === "return" ? (() => {
+                const imputedMonths = imputedMonthsByLease[l.id] || [];
+                const damageItems = damageItemsByLease[l.id] || [];
+                const unpaidLoading = unpaidLoadingByLease[l.id] || false;
+                const paidAmt = Number(depositForm?.paid_amount || l.deposit_paid_amount || l.deposit_amount || 0);
+
+                const checkedImputedTotal = imputedMonths
+                  .filter((m) => m.checked)
+                  .reduce((s, m) => s + (Number(m.amount) || 0), 0);
+                const damageTotal = damageItems
+                  .filter((d) => d.label.trim() && Number(d.amount) > 0)
+                  .reduce((s, d) => s + (Number(d.amount) || 0), 0);
+                const totalRetained = Math.round((checkedImputedTotal + damageTotal) * 100) / 100;
+                const totalReturned = Math.max(0, Math.round((paidAmt - totalRetained) * 100) / 100);
+                const overRetained = totalRetained > paidAmt + 0.01;
+
+                const setImputed = (fn: (prev: (typeof imputedMonths)) => (typeof imputedMonths)) =>
+                  setImputedMonthsByLease((p) => ({ ...p, [l.id]: fn(p[l.id] || []) }));
+                const setDamages = (fn: (prev: (typeof damageItems)) => (typeof damageItems)) =>
+                  setDamageItemsByLease((p) => ({ ...p, [l.id]: fn(p[l.id] || []) }));
+
+                return (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                    <p className="text-xs font-semibold text-slate-900">Décompte de sortie — restitution de la caution</p>
+
                     <label className={labelCls}>
                       Date de restitution
                       <input type="date" value={depositForm.returned_at} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], returned_at: e.target.value } }))} className={inputCls} />
                     </label>
+
+                    {/* Bloc 1 : Loyers/charges impayés */}
+                    <div className="space-y-2">
+                      <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-slate-500">Loyers et charges impayés</p>
+                      {unpaidLoading ? (
+                        <p className="text-xs text-slate-400 italic">Chargement des impayés…</p>
+                      ) : imputedMonths.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">Aucun impayé détecté sur ce bail.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {imputedMonths.map((m, i) => (
+                            <div key={m.yyyymm} className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={m.checked}
+                                onChange={(e) => setImputed((prev) => prev.map((x, j) => j === i ? { ...x, checked: e.target.checked } : x))}
+                                className="h-4 w-4 rounded border-slate-300 accent-slate-900"
+                              />
+                              <span className="flex-1 text-xs text-slate-700">{m.label}</span>
+                              <span className="text-xs text-slate-400">manque {formatEuro(m.missing_amount)}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={m.amount}
+                                onChange={(e) => setImputed((prev) => prev.map((x, j) => j === i ? { ...x, amount: e.target.value } : x))}
+                                className="w-24 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+                                disabled={!m.checked}
+                              />
+                              <span className="text-xs text-slate-500">€</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bloc 2 : Dégradations matérielles */}
+                    <div className="space-y-2">
+                      <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-slate-500">Dégradations matérielles</p>
+                      {damageItems.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic">Aucune dégradation ajoutée.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {damageItems.map((d) => (
+                            <div key={d.id} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder="Description (ex : remplacement miroir)"
+                                value={d.label}
+                                onChange={(e) => setDamages((prev) => prev.map((x) => x.id === d.id ? { ...x, label: e.target.value } : x))}
+                                className="flex-1 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0"
+                                value={d.amount}
+                                onChange={(e) => setDamages((prev) => prev.map((x) => x.id === d.id ? { ...x, amount: e.target.value } : x))}
+                                className="w-24 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+                              />
+                              <span className="text-xs text-slate-500">€</span>
+                              <button
+                                type="button"
+                                onClick={() => setDamages((prev) => prev.filter((x) => x.id !== d.id))}
+                                className="text-slate-400 hover:text-red-600 text-sm font-bold leading-none"
+                              >×</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setDamages((prev) => [...prev, { id: String(Date.now()), label: "", amount: "" }])}
+                        className="text-xs font-semibold text-slate-600 hover:text-slate-900"
+                      >
+                        + Ajouter une dégradation
+                      </button>
+                    </div>
+
+                    {/* Bloc 3 : Résumé calculé */}
+                    <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-1.5">
+                      <div className="flex justify-between text-xs text-slate-600">
+                        <span>Caution encaissée</span>
+                        <span className="font-semibold text-slate-900">{formatEuro(paidAmt)}</span>
+                      </div>
+                      {checkedImputedTotal > 0 ? (
+                        <div className="flex justify-between text-xs text-slate-600">
+                          <span>Loyers/charges retenus</span>
+                          <span className="font-semibold">− {formatEuro(checkedImputedTotal)}</span>
+                        </div>
+                      ) : null}
+                      {damageTotal > 0 ? (
+                        <div className="flex justify-between text-xs text-slate-600">
+                          <span>Dégradations retenues</span>
+                          <span className="font-semibold">− {formatEuro(damageTotal)}</span>
+                        </div>
+                      ) : null}
+                      <div className="flex justify-between text-sm font-semibold border-t border-slate-200 pt-1.5 mt-1">
+                        <span className="text-slate-900">À restituer au locataire</span>
+                        <span className={overRetained ? "text-red-700" : "text-emerald-700"}>{formatEuro(totalReturned)}</span>
+                      </div>
+                      {totalRetained > 0 ? (
+                        <div className="flex justify-between text-xs text-amber-700">
+                          <span>Total retenu sur caution</span>
+                          <span className="font-semibold">{formatEuro(totalRetained)}</span>
+                        </div>
+                      ) : null}
+                      {overRetained ? (
+                        <p className="text-xs text-red-700 font-medium">Le total retenu dépasse la caution de {formatEuro(totalRetained - paidAmt)}.</p>
+                      ) : null}
+                    </div>
+
+                    {/* Notes */}
                     <label className={labelCls}>
-                      Montant restitué (€)
-                      <input type="number" min="0" step="0.01" value={depositForm.returned_amount} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], returned_amount: e.target.value } }))} className={inputCls} />
+                      Notes (facultatif)
+                      <input type="text" placeholder="Ex : accord signé avec le locataire, remarques état des lieux…" value={depositForm.retained_reason} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], retained_reason: e.target.value } }))} className={inputCls} />
                     </label>
-                    <label className={labelCls}>
-                      Montant retenu — dommages (€)
-                      <input type="number" min="0" step="0.01" value={depositForm.retained_amount} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], retained_amount: e.target.value } }))} className={inputCls} />
-                    </label>
-                    <label className={labelCls}>
-                      Motif de la retenue
-                      <input type="text" placeholder="Ex : réparation plomberie, loyer impayé…" value={depositForm.retained_reason} onChange={(e) => setDepositFormByLease((p) => ({ ...p, [l.id]: { ...p[l.id], retained_reason: e.target.value } }))} className={inputCls} />
-                    </label>
+
+                    {depositErr ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{depositErr}</p> : null}
+                    <button
+                      type="button"
+                      disabled={depositLoading || (totalRetained === 0 && totalReturned === 0)}
+                      onClick={() => submitDepositAction(l.id, "return")}
+                      className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {depositLoading ? "Enregistrement..." : "Confirmer et clôturer la caution"}
+                    </button>
                   </div>
-                  {depositErr ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{depositErr}</p> : null}
-                  <button type="button" disabled={depositLoading} onClick={() => submitDepositAction(l.id, "return")} className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
-                    {depositLoading ? "Enregistrement..." : "Confirmer la restitution"}
-                  </button>
-                </div>
-              ) : null}
+                );
+              })() : null}
 
               {depositErr && !depositAction ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{depositErr}</p> : null}
             </div>
