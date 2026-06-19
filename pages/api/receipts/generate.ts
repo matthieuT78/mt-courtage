@@ -1,7 +1,5 @@
 // pages/api/receipts/generate.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import fs from "fs";
-import path from "path";
 import chromium from "@sparticuz/chromium";
 import puppeteerCore from "puppeteer-core";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
@@ -61,19 +59,6 @@ function escapeHtml(s: string) {
     .replace(/>/g, "&gt;");
 }
 
-function readLogoDataUrlIfExists() {
-  const candidates = [
-    path.join(process.cwd(), "public", "minilogo.png"),
-    path.join(process.cwd(), "public", "lokt-logo.png"),
-    path.join(process.cwd(), "public", "LOKT_LOGO.jpg"),
-    path.join(process.cwd(), "public", "lokt-logo.jpg"),
-  ];
-  const p = candidates.find((x) => fs.existsSync(x));
-  if (!p) return null;
-  const buf = fs.readFileSync(p);
-  const mime = p.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
-  return `data:${mime};base64,${buf.toString("base64")}`;
-}
 
 function requireServerModule(moduleName: string): any {
   return (eval("require") as NodeRequire)(moduleName);
@@ -99,9 +84,7 @@ function buildDefaultQuittanceText(params: {
 }) {
   const {
     landlordFullName,
-    landlordAddressLine,
     tenantName,
-    tenantAddressLine,
     propertyAddressLine,
     periodStart,
     periodEnd,
@@ -115,18 +98,6 @@ function buildDefaultQuittanceText(params: {
 
   const lines: string[] = [];
 
-  if (safeStr(landlordFullName)) lines.push(`${safeStr(landlordFullName)}`);
-  if (safeStr(landlordAddressLine)) lines.push(`${safeStr(landlordAddressLine)}`);
-  lines.push("");
-
-  if (safeStr(tenantName)) {
-    lines.push(`À l’attention de : ${safeStr(tenantName)}`);
-    if (safeStr(tenantAddressLine)) lines.push(`${safeStr(tenantAddressLine)}`);
-    lines.push("");
-  }
-
-  const housingLine = safeStr(propertyAddressLine) || safeStr(tenantAddressLine) || "—";
-
   lines.push(
     `Je soussigné(e), ${safeStr(landlordFullName) || "le bailleur"}, reconnais avoir reçu de ${
       safeStr(tenantName) || "le locataire"
@@ -134,9 +105,9 @@ function buildDefaultQuittanceText(params: {
       chargesAmount
     )} de provisions sur charges), au titre du paiement du loyer et des charges pour le logement situé :`
   );
-  lines.push(housingLine);
+  lines.push(safeStr(propertyAddressLine) || "—");
   lines.push("");
-  lines.push(`Le paiement couvre la période du ${formatDateFR(periodStart)} au ${formatDateFR(periodEnd)}.`);
+  lines.push(`Cette somme couvre la période du ${formatDateFR(periodStart)} au ${formatDateFR(periodEnd)}.`);
   if (safeStr(paymentMethod)) lines.push(`Mode de paiement : ${safeStr(paymentMethod)}.`);
   lines.push("");
   lines.push("La présente quittance vaut reçu pour solde de toute dette locative pour la période indiquée.");
@@ -150,20 +121,15 @@ function buildDefaultQuittanceText(params: {
 }
 
 function htmlTemplatePremium(params: {
-  logoDataUrl: string | null;
-
-  title: string;
-  subtitleRightTop: string;
-  subtitleRightBottom: string;
+  periodLabel: string;
+  issueDateLabel: string;
 
   landlordName: string;
   landlordAddress: string;
 
   tenantName: string;
   tenantAddress: string;
-  tenantEmail: string;
 
-  propertyLabel: string;
   propertyAddress: string;
 
   rent: string;
@@ -175,16 +141,12 @@ function htmlTemplatePremium(params: {
   signatureName: string;
 }) {
   const {
-    logoDataUrl,
-    title,
-    subtitleRightTop,
-    subtitleRightBottom,
+    periodLabel,
+    issueDateLabel,
     landlordName,
     landlordAddress,
     tenantName,
     tenantAddress,
-    tenantEmail,
-    propertyLabel,
     propertyAddress,
     rent,
     charges,
@@ -192,12 +154,6 @@ function htmlTemplatePremium(params: {
     textBlock,
     signatureName,
   } = params;
-
-  const headerLogo = logoDataUrl
-    ? `<div class="brandMark"><img class="logoIcon" src="${logoDataUrl}" alt="" /><span>lokt.fr</span></div>`
-    : `<div class="brandMark brandFallback"><span>lokt.fr</span></div>`;
-
-  const footerLogo = logoDataUrl ? `<div class="footerMark"><img class="footerLogo" src="${logoDataUrl}" alt="" /><span>lokt.fr</span></div>` : ``;
 
   const textHtml = escapeHtml(textBlock).replace(/\n/g, "<br/>");
 
@@ -217,100 +173,76 @@ function htmlTemplatePremium(params: {
     background:white;
   }
   .header{
-    display:flex; justify-content:space-between; gap:16px;
-    padding-bottom:10px; border-bottom:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:flex-end; gap:16px;
+    padding-bottom:12px; border-bottom:2px solid var(--ink);
   }
-  .brandMark{
-    display:inline-flex; align-items:center; gap:6px;
-    color:#334155; font-size:11px; font-weight:800; letter-spacing:0.02em;
-  }
-  .logoIcon{
-    height:18px; width:18px; object-fit:contain;
-    opacity:0.78; filter:grayscale(100%);
-  }
-  .brandFallback{
-    border:1px solid var(--line); border-radius:999px; padding:4px 8px;
-    color:#475569; font-size:11px; font-weight:800;
-  }
-  .meta{ text-align:right; font-size:10.5px; color:var(--muted); line-height:1.35; max-width:50%; }
-  .meta strong{ color:var(--ink); }
-  .title{ margin-top:10px; font-size:18px; font-weight:900; letter-spacing:-0.02em; }
+  .docTitle{ font-size:20px; font-weight:900; letter-spacing:-0.02em; line-height:1; }
+  .meta{ text-align:right; font-size:10.5px; color:var(--muted); line-height:1.5; }
+  .meta strong{ color:var(--ink); font-weight:700; }
 
-  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
-  .card{ border:1px solid var(--line); border-radius:14px; padding:10px; background:#fff; }
-  .cardTitle{ font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; margin-bottom:6px; }
-  .kv{ font-size:11px; line-height:1.35; word-break:break-word; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .card{ border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; }
+  .cardTitle{ font-size:9.5px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+  .kv{ font-size:11px; line-height:1.45; word-break:break-word; }
+  .kvMain{ font-size:12px; font-weight:700; }
   .muted{ color:var(--muted); }
   .property{ margin-top:10px; }
 
-  .amounts{ margin-top:10px; border:1px solid var(--line); border-radius:14px; overflow:hidden; }
-  .amountsHeader{ background:var(--soft); padding:8px 10px; font-size:10px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; border-bottom:1px solid var(--line); }
+  .amounts{ margin-top:10px; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .amountsHeader{ background:var(--soft); padding:7px 12px; font-size:9.5px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); }
   table{ width:100%; border-collapse:collapse; font-size:11px; }
-  td{ padding:8px 10px; border-top:1px solid var(--line); }
-  td:last-child{ text-align:right; }
-  .totalRow td{ font-weight:900; font-size:12px; background:#fff; }
+  td{ padding:7px 12px; border-top:1px solid var(--line); color:var(--ink); }
+  td:last-child{ text-align:right; font-variant-numeric:tabular-nums; }
+  .totalRow td{ font-weight:800; font-size:12px; background:var(--soft); }
 
-  .textBlock{ margin-top:10px; border:1px solid var(--line); border-radius:14px; padding:10px; background:var(--soft); }
-  .textBlockBody{ font-size:11px; line-height:1.5; }
+  .textBlock{ margin-top:10px; border:1px solid var(--line); border-radius:12px; padding:12px; background:var(--soft); }
+  .textBlockBody{ font-size:11px; line-height:1.6; color:var(--ink); }
 
-  .signature{ margin-top:10px; border:1px solid var(--line); border-radius:14px; padding:10px; background:#fff; min-height:48px; display:flex; justify-content:space-between; }
-  .sigLabel{ font-size:10px; color:var(--muted); }
-  .sigName{ font-size:11px; font-weight:800; }
-
-  .footer{
-    position:fixed; left:14mm; right:14mm; bottom:9mm;
-    display:flex; justify-content:center; align-items:center;
-    height:12px; pointer-events:none;
+  .signature{
+    margin-top:10px; border:1px solid var(--line); border-radius:12px; padding:10px 12px;
+    background:#fff; display:flex; justify-content:space-between; align-items:flex-end; min-height:52px;
   }
-  .footerMark{
-    display:inline-flex; align-items:center; gap:4px;
-    opacity:0.35; filter:grayscale(100%);
-    color:#64748b; font-size:8px; font-weight:800;
-  }
-  .footerLogo{
-    height:9px; width:9px; object-fit:contain;
-  }
+  .sigLeft{ display:flex; flex-direction:column; gap:2px; }
+  .sigLabel{ font-size:9.5px; color:var(--muted); font-weight:600; letter-spacing:0.04em; }
+  .sigName{ font-size:11.5px; font-weight:800; margin-top:2px; }
+  .sigRight{ font-size:9.5px; color:var(--muted); text-align:right; }
 </style>
 </head>
 <body>
   <div class="page">
     <div class="header">
-      <div>${headerLogo}</div>
+      <div class="docTitle">Quittance de loyer</div>
       <div class="meta">
-        <div><strong>${escapeHtml(subtitleRightTop)}</strong></div>
-        <div>${escapeHtml(subtitleRightBottom)}</div>
+        <div><strong>${escapeHtml(periodLabel)}</strong></div>
+        <div>${escapeHtml(issueDateLabel)}</div>
       </div>
     </div>
-
-    <div class="title">${escapeHtml(title)}</div>
 
     <div class="grid2">
       <div class="card">
         <div class="cardTitle">Bailleur</div>
-        <div class="kv"><strong>${escapeHtml(landlordName || "—")}</strong></div>
+        <div class="kv kvMain">${escapeHtml(landlordName || "—")}</div>
         <div class="kv muted">${escapeHtml(landlordAddress || "—")}</div>
       </div>
 
       <div class="card">
         <div class="cardTitle">Locataire</div>
-        <div class="kv"><strong>${escapeHtml(tenantName || "—")}</strong></div>
+        <div class="kv kvMain">${escapeHtml(tenantName || "—")}</div>
         <div class="kv muted">${escapeHtml(tenantAddress || "—")}</div>
-        ${tenantEmail ? `<div class="kv muted" style="margin-top:4px;">${escapeHtml(tenantEmail)}</div>` : ``}
       </div>
     </div>
 
     <div class="card property">
-      <div class="cardTitle">Bien loué</div>
-      <div class="kv"><strong>${escapeHtml(propertyLabel || "—")}</strong></div>
-      <div class="kv muted">${escapeHtml(propertyAddress || "—")}</div>
+      <div class="cardTitle">Logement</div>
+      <div class="kv">${escapeHtml(propertyAddress || "—")}</div>
     </div>
 
     <div class="amounts">
-      <div class="amountsHeader">Détail du paiement</div>
+      <div class="amountsHeader">Montants perçus</div>
       <table><tbody>
-        <tr><td>Loyer</td><td>${escapeHtml(rent)}</td></tr>
-        <tr><td>Charges</td><td>${escapeHtml(charges)}</td></tr>
-        <tr class="totalRow"><td>Total payé</td><td>${escapeHtml(total)}</td></tr>
+        <tr><td>Loyer hors charges</td><td>${escapeHtml(rent)}</td></tr>
+        <tr><td>Provisions sur charges</td><td>${escapeHtml(charges)}</td></tr>
+        <tr class="totalRow"><td>Total perçu</td><td>${escapeHtml(total)}</td></tr>
       </tbody></table>
     </div>
 
@@ -319,15 +251,11 @@ function htmlTemplatePremium(params: {
     </div>
 
     <div class="signature">
-      <div>
-        <div class="sigLabel">Signature (nom / prénom)</div>
+      <div class="sigLeft">
+        <div class="sigLabel">Signature du bailleur</div>
         <div class="sigName">${escapeHtml(signatureName || "—")}</div>
       </div>
-      <div class="sigLabel"></div>
-    </div>
-
-    <div class="footer">
-      ${footerLogo}
+      <div class="sigRight">Cachet / tampon (optionnel)</div>
     </div>
   </div>
 </body>
@@ -602,25 +530,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ? safeStr(contentText)
         : defaultText;
 
-    const subtitleRightTop = `Période : ${formatDateFR(periodStart)} → ${formatDateFR(periodEnd)}`;
-    const subtitleRightBottom = `Émise le : ${formatDateFR(issueDateISO)}${issuePlace ? ` • Fait à : ${issuePlace}` : ""}`;
-
-    const logoDataUrl = readLogoDataUrlIfExists();
+    const periodLabel = `Période du ${formatDateFR(periodStart)} au ${formatDateFR(periodEnd)}`;
+    const issueDateLabel = issuePlace ? `Émise le ${formatDateFR(issueDateISO)} · ${issuePlace}` : `Émise le ${formatDateFR(issueDateISO)}`;
 
     const html = htmlTemplatePremium({
-      logoDataUrl,
-      title: "Quittance de loyer",
-      subtitleRightTop,
-      subtitleRightBottom,
+      periodLabel,
+      issueDateLabel,
 
       landlordName,
       landlordAddress: landlordAddress || "—",
 
       tenantName,
       tenantAddress,
-      tenantEmail,
 
-      propertyLabel,
       propertyAddress: propertyAddressLine,
 
       rent: euro(rentAmount),

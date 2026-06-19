@@ -64,20 +64,15 @@ function buildReceiptText(params: {
   paymentMethod?: string | null;
 }) {
   return [
-    `Quittance de loyer`,
+    `Je soussigné(e), ${params.landlordName || "le bailleur"}, reconnais avoir reçu de ${params.tenantName || "le locataire"} la somme de ${euro(params.total)} (dont ${euro(params.rent)} de loyer hors charges et ${euro(params.charges)} de provisions sur charges), au titre du paiement du loyer et des charges pour le logement situé :`,
+    `${params.propertyAddress || "—"}`,
     ``,
-    `Je soussigné(e), ${params.landlordName || "le bailleur"}, reconnais avoir reçu de ${params.tenantName || "le locataire"} la somme de ${euro(params.total)} au titre du paiement du loyer et des charges.`,
+    `Cette somme couvre la période du ${formatDateFR(params.periodStart)} au ${formatDateFR(params.periodEnd)}.`,
+    params.paymentMethod ? `Mode de paiement : ${params.paymentMethod}.` : "",
     ``,
-    `Logement : ${params.propertyAddress || "—"}`,
-    `Période : du ${formatDateFR(params.periodStart)} au ${formatDateFR(params.periodEnd)}`,
-    `Loyer hors charges : ${euro(params.rent)}`,
-    `Charges : ${euro(params.charges)}`,
-    `Total reçu : ${euro(params.total)}`,
-    params.paymentMethod ? `Mode de paiement : ${params.paymentMethod}` : "",
+    `La présente quittance vaut reçu pour solde de toute dette locative pour la période indiquée.`,
     ``,
-    `La présente quittance vaut reçu pour solde de toute dette locative pour la période indiquée, sous réserve d’encaissement effectif.`,
-    ``,
-    `Fait le ${formatDateFR(todayISO())}`,
+    `Le ${formatDateFR(todayISO())}`,
   ]
     .filter((line) => line !== "")
     .join("\n");
@@ -91,11 +86,9 @@ function buildPdfBuffer(text: string) {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    doc.fontSize(18).text("Quittance de loyer", { align: "center" });
-    doc.moveDown();
-    doc.fontSize(11).text(text, { lineGap: 4 });
-    doc.moveDown(2);
-    doc.fontSize(8).fillColor("#64748b").text("Document généré par lokt.fr", { align: "center" });
+    doc.fontSize(18).font("Helvetica-Bold").text("Quittance de loyer", { align: "left" });
+    doc.moveDown(0.8);
+    doc.fontSize(11).font("Helvetica").text(text, { lineGap: 5 });
     doc.end();
   });
 }
