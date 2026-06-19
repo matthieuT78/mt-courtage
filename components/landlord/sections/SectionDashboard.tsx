@@ -336,16 +336,20 @@ export function SectionDashboard({
 
   const [doneAtISO, setDoneAtISO] = useState<string | null>(null);
   const [justCompleted, setJustCompleted] = useState(false);
+  const [manuallyDismissed, setManuallyDismissed] = useState(false);
   const prevPercentRef = useRef<number>(-1);
+
+  const dismissedKey = useMemo(() => `imp:onboarding_dismissed:${(userId || "").trim() || "anon"}`, [userId]);
 
   useEffect(() => {
     try {
       const value = window.localStorage.getItem(storageKey);
       if (value) setDoneAtISO(value);
+      if (window.localStorage.getItem(dismissedKey) === "1") setManuallyDismissed(true);
     } catch {
       // localStorage indisponible : l'onboarding reste purement visuel.
     }
-  }, [storageKey]);
+  }, [storageKey, dismissedKey]);
 
   const onboarding = useMemo(() => {
     const managedProperties = (properties || []).filter(
@@ -417,12 +421,13 @@ export function SectionDashboard({
 
   const shouldHideOnboarding = useMemo(() => {
     if (onboarding.percent < 100) return false;
+    if (manuallyDismissed) return true;
     if (!doneAtISO) return false;
     const t = new Date(doneAtISO).getTime();
     if (!Number.isFinite(t)) return false;
     const days = (Date.now() - t) / (1000 * 60 * 60 * 24);
     return days >= HIDE_AFTER_DAYS;
-  }, [doneAtISO, onboarding.percent]);
+  }, [doneAtISO, manuallyDismissed, onboarding.percent]);
 
   useEffect(() => {
     const previous = prevPercentRef.current;
@@ -874,7 +879,19 @@ export function SectionDashboard({
                   {onboarding.cta.label}
                 </button>
               ) : (
-                <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800">Prêt</span>
+                <>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800">Prêt</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManuallyDismissed(true);
+                      try { window.localStorage.setItem(dismissedKey, "1"); } catch { /* ignore */ }
+                    }}
+                    className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-400 transition hover:border-slate-300 hover:text-slate-600"
+                  >
+                    Masquer
+                  </button>
+                </>
               )}
             </div>
           </div>
