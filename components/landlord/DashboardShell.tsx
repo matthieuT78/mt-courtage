@@ -33,6 +33,7 @@ import { SectionDeclaration } from "./sections/SectionDeclaration";
 import { SectionOutils } from "./sections/SectionOutils";
 import { SectionParametres } from "./sections/SectionParametres";
 import { SectionDocumentsTemplates } from "./sections/SectionDocumentsTemplates";
+import { SectionDossierBail } from "./sections/SectionDossierBail";
 import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools } from "../../lib/permissions";
@@ -523,6 +524,9 @@ export function DashboardShell(props: any) {
 
       case "outils":
         return <SectionOutils userId={userId} properties={properties} leases={leases} plan={plan} onRefresh={refresh} />;
+
+      case "dossier_bail":
+        return <SectionDossierBail userId={userId} leases={leases} properties={properties} tenants={tenants} />;
 
       case "etat_des_lieux":
         return <SectionEtatDesLieux userId={userId} leases={leases} properties={properties} tenants={tenants} onRefresh={refresh} onNavigateToBaux={() => setActive("baux")} />;

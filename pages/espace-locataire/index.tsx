@@ -54,6 +54,8 @@ export default function EspaceLocatairePage() {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [acknowledging, setAcknowledging] = useState<Set<string>>(new Set());
+  const [acknowledged, setAcknowledged] = useState<Set<string>>(new Set());
 
   const thread = data?.threads?.[0] || null;
   const tenant = data?.tenants?.[0] || null;
@@ -135,6 +137,25 @@ export default function EspaceLocatairePage() {
     } catch (e: any) {
       pdfWindow?.close();
       setErr(e?.message || "Ouverture du document impossible.");
+    }
+  };
+
+  const acknowledgeDocument = async (documentType: "lease_contract" | "inventory_report", documentId: string) => {
+    if (acknowledged.has(documentId) || acknowledging.has(documentId)) return;
+    setAcknowledging((prev) => new Set(prev).add(documentId));
+    try {
+      const response = await fetch("/api/tenant-portal/acknowledge", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({ documentType, documentId }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json?.error || "Erreur");
+      setAcknowledged((prev) => new Set(prev).add(documentId));
+    } catch {
+      // non-bloquant — l'UX reste ok
+    } finally {
+      setAcknowledging((prev) => { const s = new Set(prev); s.delete(documentId); return s; });
     }
   };
 
@@ -384,6 +405,9 @@ export default function EspaceLocatairePage() {
                       subtitle: `${formatDate(contract.signed_at)} · ${contract.document_source === "external" ? "document transmis par le bailleur" : contract.contract_kind || "contrat de location"}`,
                     }))}
                     onOpen={(id) => openDocument("lease_contract", id)}
+                    onAcknowledge={(id) => acknowledgeDocument("lease_contract", id)}
+                    acknowledging={acknowledging}
+                    acknowledged={acknowledged}
                   />
                   <DocumentList
                     title="Diagnostics énergétiques"
@@ -404,6 +428,9 @@ export default function EspaceLocatairePage() {
                       subtitle: `${formatDate(report.performed_at)} · ${report.status || "document"}`,
                     }))}
                     onOpen={(id) => openDocument("inventory", id)}
+                    onAcknowledge={(id) => acknowledgeDocument("inventory_report", id)}
+                    acknowledging={acknowledging}
+                    acknowledged={acknowledged}
                   />
                 </div>
               ) : null}
@@ -455,11 +482,17 @@ function DocumentList({
   empty,
   rows,
   onOpen,
+  onAcknowledge,
+  acknowledging,
+  acknowledged,
 }: {
   title: string;
   empty: string;
   rows: Array<{ id: string; title: string; subtitle: string }>;
   onOpen: (id: string) => void;
+  onAcknowledge?: (id: string) => void;
+  acknowledging?: Set<string>;
+  acknowledged?: Set<string>;
 }) {
   return (
     <div>
@@ -467,18 +500,41 @@ function DocumentList({
       <h2 className="mt-1 text-xl font-semibold text-slate-950">{title}</h2>
       <div className="mt-4 space-y-2">
         {rows.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">{empty}</div> : null}
-        {rows.map((row) => (
-          <div key={row.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-950">{row.title}</p>
-              <p className="mt-1 text-xs text-slate-500">{row.subtitle}</p>
+        {rows.map((row) => {
+          const isAcknowledging = acknowledging?.has(row.id);
+          const isAcknowledged = acknowledged?.has(row.id);
+          return (
+            <div key={row.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-950">{row.title}</p>
+                <p className="mt-1 text-xs text-slate-500">{row.subtitle}</p>
+                {isAcknowledged ? (
+                  <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                    <CheckCircleIcon className="h-3.5 w-3.5" />
+                    Réception confirmée
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                <button type="button" onClick={() => onOpen(row.id)} className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  Ouvrir le PDF
+                </button>
+                {onAcknowledge && !isAcknowledged ? (
+                  <button
+                    type="button"
+                    disabled={isAcknowledging}
+                    onClick={() => onAcknowledge(row.id)}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    <CheckCircleIcon className="h-4 w-4" />
+                    {isAcknowledging ? "Envoi…" : "Accuser réception"}
+                  </button>
+                ) : null}
+              </div>
             </div>
-            <button type="button" onClick={() => onOpen(row.id)} className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
-              <ArrowDownTrayIcon className="h-4 w-4" />
-              Ouvrir le PDF
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
