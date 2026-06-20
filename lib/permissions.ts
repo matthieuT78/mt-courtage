@@ -77,13 +77,13 @@ export function landlordMaxActiveProperties(plan: Plan): number {
 export function storageQuotaBytes(plan: Plan): number {
   switch (plan) {
     case "landlord_5":
-      return 500 * 1024 * 1024;
+      return 150 * 1024 * 1024;
     case "landlord_15":
-      return 2 * 1024 * 1024 * 1024;
+      return 500 * 1024 * 1024;
     case "landlord_unlimited":
       return 10 * 1024 * 1024 * 1024;
     case "calc_full":
-      return 50 * 1024 * 1024;
+      return 25 * 1024 * 1024;
     default:
       return 0;
   }

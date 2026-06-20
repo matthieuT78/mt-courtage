@@ -271,7 +271,7 @@ export default function TarifsPage() {
                 <li>✓ Bien, bail et locataire</li>
                 <li>✓ Quittances manuelles et PDF</li>
                 <li>✓ États des lieux et inventaire</li>
-                <li>✓ 50 Mo de stockage documentaire sécurisé</li>
+                <li>✓ 25 Mo de stockage documentaire sécurisé</li>
                 <li>✓ Finance simple</li>
                 <li>✓ 4 alertes essentielles : retard de paiement, quittance à finaliser, email manquant</li>
                 <li className="text-slate-500">Quittances automatiques non incluses</li>
@@ -333,7 +333,7 @@ export default function TarifsPage() {
                     ["États des lieux et inventaire", "Inclus", "Inclus", "Inclus"],
                     ["Finance simple", "Inclus", "Inclus", "Inclus"],
                     ["4 alertes essentielles (retard, quittance, email manquant)", "Inclus", "Inclus", "Inclus"],
-                    ["Stockage documentaire sécurisé", "50 Mo", "500 Mo", "2 Go"],
+                    ["Stockage documentaire sécurisé", "25 Mo", "150 Mo", "500 Mo"],
                     ["Alertes IRL, fin de bail et EDL", "Non inclus", "Inclus", "Inclus"],
                     ["Validation loyer par email", "Non inclus", "Inclus", "Inclus"],
                     ["Relance bailleur automatique à J+1", "Non inclus", "Inclus", "Inclus"],
