@@ -729,30 +729,36 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     }
   };
 
+  // Réagit uniquement au changement de bail sélectionné ou d'userId.
+  // activeLeases et selectedReportId sont intentionnellement exclus des deps :
+  // les inclure provoquait un clignotement à chaque re-render parent (nouveau
+  // tableau activeLeases) et une boucle clear→load→setSelectedReportId→clear.
+  useEffect(() => {
+    if (!selectedLeaseId || !userId) {
+      setReports([]);
+      setSelectedReportId(null);
+      setRooms([]);
+      setItems([]);
+      setPhotos([]);
+      return;
+    }
+    setReports([]);
+    setSelectedReportId(null);
+    setRooms([]);
+    setItems([]);
+    setPhotos([]);
+    loadReportsForLease(selectedLeaseId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLeaseId, userId]);
+
+  // Effet séparé : si le bail sélectionné disparaît (suppression, archivage),
+  // on le désélectionne proprement sans toucher aux données déjà chargées.
   useEffect(() => {
     if (selectedLeaseId && !activeLeases.some((lease: any) => lease.id === selectedLeaseId)) {
       setSelectedLeaseId("");
-      return;
-    }
-
-    if (selectedLeaseId && userId) {
-      setReports([]);
-      setSelectedReportId(null);
-      setRooms([]);
-      setItems([]);
-      setPhotos([]);
-      loadReportsForLease(selectedLeaseId);
-    } else if (selectedReportId && reports.some((report) => report.id === selectedReportId && !report.lease_id)) {
-      return;
-    } else {
-      setReports([]);
-      setSelectedReportId(null);
-      setRooms([]);
-      setItems([]);
-      setPhotos([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLeaseId, userId, activeLeases, selectedReportId]);
+  }, [activeLeases]);
 
   useEffect(() => {
     if (selectedReportId) loadReportDetails(selectedReportId);
