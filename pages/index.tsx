@@ -462,11 +462,13 @@ export default function Home() {
       (entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
+          const delay = (entry.target as HTMLElement).dataset.revealDelay ?? "0";
+          (entry.target as HTMLElement).style.transitionDelay = `${delay}ms`;
           entry.target.classList.add("is-visible");
           observer.unobserve(entry.target);
         });
       },
-      { threshold: 0.16, rootMargin: "0px 0px -8% 0px" }
+      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" }
     );
 
     items.forEach((item) => observer.observe(item));
@@ -816,157 +818,299 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="border-b border-slate-200 bg-white px-4 py-14 sm:py-20">
+        {/* ─── DEUX PRODUITS ───────────────────────────────────────── */}
+        <section className="border-b border-slate-200 bg-white px-4 py-16 sm:py-24">
           <div className="mx-auto max-w-7xl">
-            <div data-scroll-reveal className="grid gap-6 lg:grid-cols-[0.78fr,1.22fr] lg:items-end">
-              <div>
-                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Choisir son chemin</p>
-                <h2 className="mt-3 max-w-xl text-3xl font-semibold leading-tight tracking-tight text-slate-950 sm:text-4xl">
-                  Un site qui s’adapte au moment où vous êtes.
-                </h2>
-              </div>
-              <p className="max-w-3xl text-sm leading-7 text-slate-600">
-                Un propriétaire ne cherche pas toujours la même chose : parfois il compare un achat, parfois il doit envoyer une quittance,
-                parfois il doit justifier une charge. L’accueil met chaque besoin au bon endroit.
-              </p>
-            </div>
-
-            <div className="mt-8 grid gap-4 lg:grid-cols-3">
-              {[
-                ["Je veux gérer un bien", "Créer le logement, suivre le bail, confirmer les paiements et générer les quittances.", "/espace-bailleur", "bailleur" as const],
-                ["Je veux tester un projet", "Capacité, rentabilité, prêt relais, plus-value : vérifier les ordres de grandeur avant d’agir.", "/calculettes", "calc" as const],
-                ["Je veux régulariser proprement", "Calculer eau, charges, TEOM ou solde locatif, puis importer en finance après validation.", "/tarifs", "yield" as const],
-              ].map(([titleStep, textStep, href, icon]) => (
-                <Link
-                  key={String(titleStep)}
-                  href={String(href)}
-                  data-scroll-reveal
-                  className="group flex min-h-[250px] flex-col rounded-[1.6rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-200/70"
-                >
-                  <Sticker kind={icon as "calc" | "bailleur" | "yield"} className="h-14 w-14" />
-                  <h3 className="mt-7 text-2xl font-semibold tracking-tight text-slate-950">{titleStep}</h3>
-                  <p className="mt-3 flex-1 text-sm leading-7 text-slate-600">{textStep}</p>
-                  <span className="mt-6 text-sm font-semibold text-slate-950 transition group-hover:translate-x-1">Ouvrir →</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-slate-950 px-4 py-14 text-white sm:py-20">
-          <div className="mx-auto max-w-7xl">
-            <div data-scroll-reveal className="max-w-2xl">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-300">Workflow bailleur</p>
-              <h2 className="mt-3 max-w-3xl font-semibold leading-tight">
-                <span className="block text-3xl text-white sm:text-4xl">Le parcours complet, sans rupture.</span>
-                <span className="mt-1 block text-2xl text-cyan-300 sm:text-3xl">De la décision au justificatif.</span>
+            <div className="mb-12">
+              <p data-scroll-reveal className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">La plateforme</p>
+              <h2 data-scroll-reveal data-reveal-delay="100" className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                Deux outils. Une seule plateforme.
               </h2>
-              <p className="mt-4 text-sm leading-7 text-slate-300">
-                lokt.fr suit le cycle réel du propriétaire : décider, mettre en location, encaisser, répartir, archiver et préparer la finance.
+              <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
+                lokt.fr combine un espace de gestion locative complet et une suite de simulateurs immobiliers. Vous pouvez utiliser l’un, l’autre, ou les deux.
               </p>
             </div>
 
-            <div className="mt-10 grid gap-4 md:grid-cols-5">
-              {[
-                ["01", "Acheter", "Simuler budget, relais et rentabilité."],
-                ["02", "Louer", "Poser bien, bail, locataire et documents."],
-                ["03", "Encaisser", "Suivre paiements, retards et quittances."],
-                ["04", "Régulariser", "Calculer eau, charges, TEOM et soldes."],
-                ["05", "Archiver", "Conserver PDF, preuves et finance."],
-              ].map(([step, titleStep, textStep]) => (
-                <div key={step} data-scroll-reveal className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
-                  <p className="text-3xl font-semibold leading-none text-cyan-300/80">{step}</p>
-                  <h3 className="mt-5 text-lg font-semibold text-white">{titleStep}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">{textStep}</p>
+            <div className="grid gap-5 lg:grid-cols-2">
+              {/* Espace bailleur */}
+              <div data-scroll-reveal data-reveal-delay="0" className="flex flex-col rounded-[1.75rem] bg-slate-950 p-8 text-white">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-cyan-300">Espace bailleur</p>
+                <h3 className="mt-2 text-2xl font-semibold">Gérez vos locations de A à Z</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-400">Baux, loyers, quittances, alertes, relances, messagerie, EDL, documents et finance — au même endroit.</p>
+                <ul className="mt-6 flex-1 space-y-3">
+                  {[
+                    ["Quittances automatiques", "Loyer confirmé → PDF généré → envoyé au locataire"],
+                    ["Alertes & relances", "IRL, retards, baux expirants — zéro oubli"],
+                    ["Messagerie locataire", "Historique complet des échanges dans le dossier"],
+                    ["Portail locataire", "Documents en ligne, accusé de réception horodaté"],
+                    ["Finance & déclaration", "Cash-flow, charges, exports et aide fiscale"],
+                    ["États des lieux", "Entrée, sortie, inventaire avec photos"],
+                  ].map(([title, desc]) => (
+                    <li key={title} className="flex items-start gap-3">
+                      <span className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-cyan-400/20 text-[0.6rem] font-bold text-cyan-300">✓</span>
+                      <div>
+                        <p className="text-sm font-semibold text-white">{title}</p>
+                        <p className="text-xs text-slate-400">{desc}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/espace-bailleur" className="mt-8 inline-flex h-11 w-full items-center justify-center rounded-full bg-white text-sm font-semibold text-slate-950 hover:bg-slate-100 sm:w-auto sm:px-6">
+                  Ouvrir l’espace bailleur →
+                </Link>
+              </div>
+
+              {/* Simulateurs */}
+              <div data-scroll-reveal data-reveal-delay="120" className="flex flex-col rounded-[1.75rem] border border-[#635bff]/20 bg-white p-8">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#635bff]">Simulateurs immobiliers</p>
+                <h3 className="mt-2 text-2xl font-semibold text-slate-950">Décidez avant d’agir</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">5 calculettes pour investisseurs et propriétaires. Gratuits, sans compte, résultats instantanés avec score de viabilité.</p>
+
+                <div className="mt-6 flex-1 grid gap-2">
+                  {[
+                    ["/capacite", "Capacité d’emprunt", "Budget, mensualité, taux d’endettement", "loan" as const],
+                    ["/investissement", "Rentabilité locative", "Cash-flow, rendement brut et net", "yield" as const],
+                    ["/pret-relais", "Prêt relais", "Acheter avant de vendre", "bridge" as const],
+                    ["/plus-value-vente-immobiliere", "Plus-value immobilière", "Cash net estimé après impôt", "sale" as const],
+                    ["/parc-immobilier", "Parc immobilier", "Vision consolidée multi-biens", "portfolio" as const],
+                  ].map(([href, name, desc, icon]) => (
+                    <Link key={href} href={String(href)} className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-[#635bff]/30 hover:bg-[#635bff]/5">
+                      <Sticker kind={icon as "loan" | "bridge" | "yield" | "portfolio" | "sale"} className="h-9 w-9 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-950">{name}</p>
+                        <p className="text-[0.68rem] text-slate-500">{desc}</p>
+                      </div>
+                      <span className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[#635bff]">→</span>
+                    </Link>
+                  ))}
                 </div>
-              ))}
+
+                <div className="mt-4 flex items-center gap-3 rounded-2xl border border-[#635bff]/20 bg-gradient-to-r from-[#635bff]/8 to-[#00d4ff]/8 px-4 py-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#635bff] to-[#00d4ff] text-sm font-bold text-white">
+                    78
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">Score lokt.fr inclus</p>
+                    <p className="text-xs text-slate-500">Un score de 0 à 100 qui résume la viabilité de chaque projet</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="border-b border-slate-200 bg-white px-4 py-14 sm:py-20">
+        {/* ─── ESPACE BAILLEUR — FONCTIONNALITÉS ───────────────────── */}
+        <section className="border-b border-slate-200 bg-[#f6f9fc] px-4 py-16 sm:py-24">
           <div className="mx-auto max-w-7xl">
-            <div data-scroll-reveal className="grid gap-8 lg:grid-cols-[0.92fr,1.08fr] lg:items-end">
-              <div>
-                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-emerald-700">Boîte à outils Essentiel</p>
-                <h2 className="mt-3 max-w-3xl font-semibold leading-tight text-slate-950">
-                  <span className="block text-3xl sm:text-4xl">Les calculs que les bailleurs repoussent.</span>
-                  <span className="mt-1 block text-2xl text-emerald-700 sm:text-3xl">Préparés, justifiés, prêts à suivre.</span>
-                </h2>
-              </div>
-              <div className="rounded-[1.55rem] border border-emerald-100 bg-emerald-50/70 p-5">
-                <p className="text-sm font-semibold text-emerald-950">Ce qui change avec Essentiel</p>
-                <p className="mt-2 text-sm leading-7 text-emerald-900/80">
-                  Chaque outil guide la saisie, garde les justificatifs, produit une synthèse lisible et propose l’écriture finance uniquement après validation.
-                </p>
-              </div>
+            <div className="mb-12">
+              <p data-scroll-reveal className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Espace bailleur — fonctionnalités</p>
+              <h2 data-scroll-reveal data-reveal-delay="100" className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                Ce que lokt.fr fait à votre place.
+              </h2>
+              <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
+                Pas un tableur. Pas un dossier de mails. Un outil qui suit le cycle locatif et vous pousse ce qui mérite une action.
+              </p>
             </div>
 
-            <div className="mt-8 grid gap-4 lg:grid-cols-4">
-              {[
-                {
-                  title: "Facture d’eau",
-                  badge: "Multi-compteurs",
-                  text: "Dispatcher une facture générale entre les occupants, avec relevés, photos et historique par période.",
-                  label: "À facturer",
-                  output: "Montant dû par occupant",
-                  tone: "from-cyan-500 to-emerald-400",
-                },
-                {
-                  title: "Charges",
-                  badge: "Tantièmes & lots",
-                  text: "Transformer un montant global en quote-part claire par lot, même quand tous les lots ne sont pas concernés.",
-                  label: "À répartir",
-                  output: "Répartition défendable",
-                  tone: "from-violet-500 to-sky-400",
-                },
-                {
-                  title: "TEOM",
-                  badge: "Taxe récupérable",
-                  text: "Isoler la taxe d’ordures ménagères, appliquer le prorata d’occupation et documenter ce qui est récupérable.",
-                  label: "À récupérer",
-                  output: "Montant à récupérer",
-                  tone: "from-emerald-600 to-teal-300",
-                },
-                {
-                  title: "Régularisation",
-                  badge: "Solde locatif",
-                  text: "Comparer les provisions versées aux dépenses réelles pour savoir quoi demander ou rembourser.",
-                  label: "À régulariser",
-                  output: "Solde à payer ou rendre",
-                  tone: "from-indigo-500 to-cyan-400",
-                },
-              ].map((tool) => (
-                <div
-                  key={tool.title}
-                  data-scroll-reveal
-                  className="group overflow-hidden rounded-[1.55rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-200/70"
-                >
-                  <div className={`h-1.5 bg-gradient-to-r ${tool.tone}`} />
-                  <div className="flex min-h-[270px] flex-col p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <p className="text-xl font-semibold tracking-tight text-slate-950">{tool.title}</p>
-                      <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[0.68rem] font-semibold text-slate-600">
-                        {tool.badge}
-                      </span>
+            <div className="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">
+              {/* Quittances auto — grande tuile gauche */}
+              <div data-scroll-reveal data-reveal-delay="0" className="flex flex-col rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100">
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-emerald-700 stroke-[1.8]" aria-hidden>
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M8.5 12.5l2.5 2.5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <div>
+                    <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-emerald-700">Automatique</span>
+                    <h3 className="text-lg font-semibold text-slate-950">Quittances de loyer</h3>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm leading-6 text-slate-600">
+                  Vous confirmez le paiement en un clic. La quittance PDF est générée, numérotée, archivée et envoyée au locataire automatiquement. Zéro saisie manuelle, zéro oubli.
+                </p>
+                <div className="mt-6 flex-1 space-y-2.5">
+                  {[
+                    { n: "1", label: "Loyer attendu", sub: "T2 Centre · 780 €", chip: "bg-slate-100 text-slate-600" },
+                    { n: "2", label: "Paiement reçu", sub: "Virement confirmé le 3 juin", chip: "bg-sky-100 text-sky-700" },
+                    { n: "3", label: "Quittance générée", sub: "PDF archivé · Envoi automatique", chip: "bg-violet-100 text-violet-700" },
+                    { n: "✓", label: "Locataire notifié", sub: "Email + portail en ligne", chip: "bg-emerald-100 text-emerald-700" },
+                  ].map(({ n, label, sub, chip }) => (
+                    <div key={label} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${chip}`}>{n}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{label}</p>
+                        <p className="text-xs text-slate-500">{sub}</p>
+                      </div>
                     </div>
-                    <p className="mt-4 flex-1 text-sm leading-7 text-slate-600">{tool.text}</p>
-                    <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">{tool.label}</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-950">{tool.output}</p>
+                  ))}
+                </div>
+                <div className="mt-5 flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p className="text-xs text-emerald-700">Disponible en plan <span className="font-semibold">Starter</span></p>
+                  <Link href="/tarifs" className="text-xs font-semibold text-emerald-800 underline underline-offset-2">4,90 € / mois →</Link>
+                </div>
+              </div>
+
+              {/* Colonne droite : alertes + messagerie + portail */}
+              <div className="flex flex-col gap-5">
+                {/* Alertes & relances */}
+                <div data-scroll-reveal data-reveal-delay="100" className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100">
+                      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-amber-700 stroke-[1.8]" aria-hidden>
+                        <path d="M12 3a6 6 0 0 0-6 6v3.5l-1.5 2v.5h15v-.5L18 12.5V9a6 6 0 0 0-6-6z" strokeLinejoin="round"/>
+                        <path d="M10 19a2 2 0 0 0 4 0" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-amber-700">Proactif</span>
+                      <h3 className="text-base font-semibold text-slate-950">Alertes & relances</h3>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">lokt.fr surveille vos baux et vous pousse une action avant que ça devienne urgent.</p>
+                  <div className="mt-4 space-y-2">
+                    {[
+                      ["🔴", "Loyer en retard · J+3", "Relance auto envoyée"],
+                      ["🟡", "Révision IRL dans 12 j", "Bail T2 Centre"],
+                      ["🟠", "Bail expire dans 45 j", "Appartement B · À renouveler"],
+                      ["🔵", "EDL sortie à planifier", "Départ prévu fin juillet"],
+                    ].map(([dot, title, sub]) => (
+                      <div key={title} className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                        <span className="text-sm">{dot}</span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-slate-900">{title}</p>
+                          <p className="text-[0.65rem] text-slate-500">{sub}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Messagerie + Portail */}
+                <div data-scroll-reveal data-reveal-delay="200" className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="grid grid-cols-2 gap-5">
+                    <div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-100">
+                        <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-indigo-700 stroke-[1.8]" aria-hidden>
+                          <rect x="3" y="5" width="18" height="14" rx="2"/>
+                          <path d="M3 7l9 6 9-6" strokeLinecap="round"/>
+                        </svg>
+                      </div>
+                      <h3 className="mt-3 text-sm font-semibold text-slate-950">Messagerie</h3>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Échangez directement avec votre locataire. Historique dans le dossier.</p>
+                      <div className="mt-3 space-y-1.5">
+                        <div className="rounded-xl bg-indigo-50 px-3 py-1.5 text-[0.68rem] text-indigo-700">← Quittance reçue, merci</div>
+                        <div className="rounded-xl bg-slate-100 px-3 py-1.5 text-right text-[0.68rem] text-slate-600">Intervention le 14 →</div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#635bff]/10">
+                        <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-[#635bff] stroke-[1.8]" aria-hidden>
+                          <path d="M12 2L2 7l10 5 10-5-10-5z" strokeLinejoin="round"/>
+                          <path d="M2 17l10 5 10-5" strokeLinecap="round"/>
+                          <path d="M2 12l10 5 10-5" strokeLinecap="round"/>
+                        </svg>
+                      </div>
+                      <h3 className="mt-3 text-sm font-semibold text-slate-950">Portail locataire</h3>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Bail, quittances et EDL accessibles en ligne. Accusé de réception horodaté.</p>
+                      <div className="mt-3 rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 px-3 py-2">
+                        <p className="text-[0.65rem] font-semibold text-[#635bff]">Portail actif ✓</p>
+                        <p className="text-[0.6rem] text-slate-500">3 documents partagés · Vu le 12 juin</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
 
-            <div data-scroll-reveal className="mt-5 flex flex-col gap-3 rounded-[1.55rem] border border-slate-200 bg-slate-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="max-w-3xl text-sm leading-6 text-slate-600">
-                Les résultats restent vérifiables : formule visible, période indiquée, pièces jointes conservées et import finance déclenché seulement si vous validez.
-              </p>
-              <Link href="/tarifs" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
-                Voir l’offre Essentiel →
+            <div data-scroll-reveal className="mt-5 flex flex-col gap-3 rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-600">Gratuit pour 1 logement. Starter débloque quittances auto, alertes complètes, messagerie et portail locataire.</p>
+              <Link href="/espace-bailleur" className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800">
+                Essayer l’espace bailleur →
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── SIMULATEURS + SCORE ─────────────────────────────────── */}
+        <section className="border-b border-slate-200 bg-white px-4 py-16 sm:py-24">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-12 lg:grid-cols-[1fr,1.1fr] lg:items-start">
+              <div>
+                <p data-scroll-reveal className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Simulateurs immobiliers</p>
+                <h2 data-scroll-reveal data-reveal-delay="100" className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                  Cinq calculettes. Un score de viabilité.
+                </h2>
+                <p data-scroll-reveal data-reveal-delay="200" className="mt-4 text-sm leading-7 text-slate-600">
+                  Chaque simulateur donne un résultat chiffré — et un score lokt.fr de 0 à 100 qui résume si le projet tient la route. Gratuit, sans compte.
+                </p>
+
+                {/* Score lokt.fr */}
+                <div data-scroll-reveal data-reveal-delay="300" className="mt-7 rounded-[1.55rem] border border-[#635bff]/20 bg-gradient-to-br from-[#635bff]/6 to-[#00d4ff]/6 p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#635bff] to-[#00d4ff] text-xl font-bold text-white shadow-lg shadow-[#635bff]/25">
+                      78
+                    </div>
+                    <div>
+                      <p className="text-base font-semibold text-slate-950">Score lokt.fr</p>
+                      <p className="mt-0.5 text-sm text-[#635bff] font-medium">Projet viable · Marge de sécurité correcte</p>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                    Le score agrège les paramètres clés — taux d’endettement, rendement net, vacance estimée, effort mensuel — en un indicateur de 0 à 100.
+                    En dessous de 50, le projet mérite d’être revu. Au-dessus de 70, il tient la route.
+                  </p>
+                  <div className="mt-4 flex gap-3">
+                    <div className="flex-1 rounded-xl bg-red-50 border border-red-200 px-3 py-2 text-center">
+                      <p className="text-[0.65rem] font-semibold text-red-700">0 – 49</p>
+                      <p className="text-[0.6rem] text-red-600">À revoir</p>
+                    </div>
+                    <div className="flex-1 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-center">
+                      <p className="text-[0.65rem] font-semibold text-amber-700">50 – 69</p>
+                      <p className="text-[0.6rem] text-amber-600">Acceptable</p>
+                    </div>
+                    <div className="flex-1 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-center">
+                      <p className="text-[0.65rem] font-semibold text-emerald-700">70 – 100</p>
+                      <p className="text-[0.6rem] text-emerald-600">Viable</p>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  data-scroll-reveal
+                  data-reveal-delay="400"
+                  type="button"
+                  onClick={() => setPickerOpen(true)}
+                  className="mt-6 inline-flex h-11 items-center rounded-full bg-[#635bff] px-6 text-sm font-semibold text-white hover:bg-[#4f46e5]"
+                >
+                  Choisir un simulateur →
+                </button>
+              </div>
+
+              <div className="grid gap-3">
+                {[
+                  { href: "/capacite", icon: "loan" as const, name: "Capacité d’emprunt", desc: "Budget maximum, mensualité et taux d’endettement réels", color: "from-blue-500 to-cyan-400" },
+                  { href: "/investissement", icon: "yield" as const, name: "Rentabilité locative", desc: "Cash-flow mensuel, rendement brut, net et net-net", color: "from-emerald-500 to-teal-400" },
+                  { href: "/pret-relais", icon: "bridge" as const, name: "Prêt relais", desc: "Financer l’achat avant la vente sans blocage de trésorerie", color: "from-cyan-500 to-blue-400" },
+                  { href: "/plus-value-vente-immobiliere", icon: "sale" as const, name: "Plus-value immobilière", desc: "Cash net estimé après impôt sur cession", color: "from-amber-500 to-orange-400" },
+                  { href: "/parc-immobilier", icon: "portfolio" as const, name: "Parc immobilier", desc: "Rendement global et performance de l’ensemble de vos biens", color: "from-violet-500 to-purple-400" },
+                ].map((sim, i) => (
+                  <Link key={sim.href} href={sim.href} data-scroll-reveal data-reveal-delay={String(i * 70)} className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300">
+                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${sim.color}`}>
+                      <Icon name={sim.icon === "loan" ? "loan" : sim.icon === "yield" ? "yield" : sim.icon === "bridge" ? "bridge" : sim.icon === "sale" ? "sale" : "portfolio"} className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-950">{sim.name}</p>
+                      <p className="text-xs leading-5 text-slate-500">{sim.desc}</p>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2">
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.6rem] font-semibold text-slate-500">Gratuit</span>
+                      <span className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-[#635bff]">→</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
         </section>
