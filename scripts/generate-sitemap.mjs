@@ -11,6 +11,7 @@ const seoLandingPages = Array.from(seoLandingSource.matchAll(/slug:\s*"([^"]+)"/
 const staticPagesV1 = [
   "/",
   "/calculettes",
+  "/acheter-ou-louer",
   "/capacite",
   "/pret-relais",
   "/investissement",

@@ -1,5 +1,7 @@
 // components/AcheterOuLouerWizard.tsx
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import LeadGate from "./LeadGate";
+import { supabase } from "../lib/supabaseClient";
 import {
   BriefcaseIcon,
   ClockIcon,
@@ -18,6 +20,9 @@ import {
 } from "@heroicons/react/24/outline";
 import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
 import Link from "next/link";
+
+const UNLOCK_KEY = "acheter_ou_louer_unlock_v1";
+const EMAIL_KEY  = "acheter_ou_louer_email_v1";
 
 /* ─────────── helpers ─────────── */
 function fmtEuro(n: number, decimals = 0) {
@@ -533,9 +538,58 @@ function MonthlyRow({ label, amount, sub, highlight = false, icon: Icon }: {
 
 /* ─────────── main component ─────────── */
 export default function AcheterOuLouerWizard() {
-  const [step, setStep]           = useState(1);
-  const [form, setForm]           = useState<Form>(INIT);
+  const [step, setStep]             = useState(1);
+  const [form, setForm]             = useState<Form>(INIT);
   const [maxReached, setMaxReached] = useState(1);
+
+  // ── Auth & lead gate
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [leadEmail, setLeadEmail]   = useState("");
+  const [unlocked, setUnlocked]     = useState(false);
+  const [contactConsent, setContactConsent] = useState(false);
+  const [unlocking, setUnlocking]   = useState(false);
+  const [unlockMsg, setUnlockMsg]   = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!supabase) return;
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      const user = data.session?.user ?? null;
+      setIsLoggedIn(!!user);
+      if (user?.email) setLeadEmail(user.email);
+    })();
+    const { data: sub } = supabase?.auth.onAuthStateChange((_e, s) => {
+      if (!mounted) return;
+      setIsLoggedIn(!!s?.user);
+      if (s?.user?.email) setLeadEmail(s.user.email);
+    }) ?? { data: { subscription: { unsubscribe: () => {} } } };
+    return () => { mounted = false; sub?.subscription?.unsubscribe?.(); };
+  }, []);
+
+  // Restore email + unlock from localStorage
+  useEffect(() => {
+    try {
+      const savedEmail = window.localStorage.getItem(EMAIL_KEY);
+      if (savedEmail) setLeadEmail((e) => e || savedEmail);
+      const raw = window.localStorage.getItem(UNLOCK_KEY);
+      if (raw) {
+        const u = JSON.parse(raw);
+        if (u?.email && u?.unlockedAt) setUnlocked(true);
+      }
+    } catch {}
+  }, []);
+
+  // Persist email
+  useEffect(() => {
+    const e = leadEmail.trim().toLowerCase();
+    if (e && e.includes("@")) {
+      try { window.localStorage.setItem(EMAIL_KEY, e); } catch {}
+    }
+  }, [leadEmail]);
+
+  const canShowDetails = isLoggedIn || unlocked;
 
   const go  = (n: number) => { setStep(n); setMaxReached((p) => Math.max(p, n)); };
   const set = <K extends keyof Form>(key: K, val: Form[K]) => setForm((f) => ({ ...f, [key]: val }));
@@ -552,6 +606,48 @@ export default function AcheterOuLouerWizard() {
 
   const { scores, monthly } = useMemo(() => computeAll(form), [form]);
   const verdict = useMemo(() => getVerdict(scores, form), [scores, form]);
+
+  const handleUnlock = useCallback(async () => {
+    const email = leadEmail.trim().toLowerCase();
+    if (!email || !email.includes("@")) return;
+    setUnlocking(true);
+    setUnlockMsg(null);
+    try {
+      const emailPayload = {
+        verdict,
+        villeNom:           form.villeNom,
+        villePostal:        form.villePostal,
+        revenus:            toNum(form.revenus),
+        apport:             toNum(form.apport),
+        loyer_actuel:       toNum(form.loyer_actuel),
+        prix_rp:            toNum(form.prix_rp),
+        loyer_marche_rp:    toNum(form.loyer_marche_rp),
+        mensualite_rp:      monthly.mensualite_rp,
+        extra_rp:           monthly.extra_rp,
+        score_rp:           scores.rp.score,
+        prix_locatif:       toNum(form.prix_locatif),
+        loyer_locatif:      toNum(form.loyer_locatif),
+        mensualite_locatif: monthly.mensualite_locatif,
+        cashflow_net:       monthly.cashflow_net,
+        cout_net_locatif:   monthly.cout_net_locatif,
+        rendement_brut:     monthly.rendement_brut,
+        score_locatif:      scores.locatif.score,
+      };
+      // Fire and forget — don't block unlock on email error
+      fetch("/api/tools/acheter-ou-louer/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, payload: emailPayload }),
+      }).catch(() => {});
+    } catch {}
+    // Unlock immédiatement sans attendre la réponse email
+    setUnlocked(true);
+    try {
+      window.localStorage.setItem(UNLOCK_KEY, JSON.stringify({ email, unlockedAt: new Date().toISOString() }));
+    } catch {}
+    setUnlockMsg("Analyse débloquée ! Votre rapport arrive par email.");
+    setUnlocking(false);
+  }, [leadEmail, form, verdict, monthly, scores]);
 
   const verdictConfig = {
     rp:      { label: "Acheter votre résidence principale", color: "text-emerald-700", border: "border-emerald-200", bg: "bg-emerald-50",  badge: "bg-emerald-600 text-white" },
@@ -760,128 +856,146 @@ export default function AcheterOuLouerWizard() {
                 </p>
               </div>
 
-              {/* Comparaison mensuelle */}
-              {toNum(form.loyer_actuel) > 0 && monthly.mensualite_rp > 0 && (
-                <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-3">Comparaison mensuelle (vs louer seul)</p>
-                  <div className="space-y-2">
-                    <MonthlyRow
-                      label="Résidence principale"
-                      amount={monthly.extra_rp}
-                      sub={`Mensualité ${fmtEuro(monthly.mensualite_rp)}/mois — capital + charges vs loyer actuel ${fmtEuro(toNum(form.loyer_actuel))}/mois`}
-                      highlight={verdict === "rp"}
-                      icon={HomeModernIcon}
-                    />
-                    {showLocatif && (
-                      <MonthlyRow
-                        label="Locatif + rester locataire"
-                        amount={monthly.cout_net_locatif - toNum(form.loyer_actuel)}
-                        sub={`Loyer actuel ${fmtEuro(toNum(form.loyer_actuel))}/mois − cashflow net ${fmtEuro(Math.max(0, monthly.cashflow_net))}/mois`}
-                        highlight={verdict === "locatif"}
-                        icon={BuildingOffice2Icon}
-                      />
-                    )}
-                    <div className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
-                        <ClockIcon className="h-5 w-5" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-900">Rester locataire</p>
-                        <p className="text-xs text-slate-500">Aucun patrimoine immobilier constitué — référence</p>
-                      </div>
-                      <p className="shrink-0 text-base font-bold text-slate-400 tabular-nums">0 €/mois</p>
-                    </div>
-                  </div>
-                  {showLocatif && monthly.cashflow_net > 0 && (
-                    <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-                      <p className="text-xs font-semibold text-emerald-800">
-                        Cashflow net locatif estimé : +{fmtEuro(monthly.cashflow_net)}/mois après mensualité, charges, taxe foncière et frais de gestion (~7 %).
-                        Votre "loyer réel" tombe à {fmtEuro(Math.max(0, monthly.cout_net_locatif))}/mois.
-                      </p>
-                    </div>
-                  )}
-                  {showLocatif && monthly.cashflow_net <= 0 && (
-                    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                      <p className="text-xs font-semibold text-amber-800">
-                        Le cashflow locatif est légèrement négatif ({fmtEuro(monthly.cashflow_net)}/mois net).
-                        Vous payez plus que votre loyer seul à court terme, mais vous constituez un patrimoine.
-                        Un rendement brut &gt; 5,5 % est recommandé pour que l'opération soit immédiatement positive.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Scores détaillés */}
-              <div className={`grid gap-3 ${showLocatif ? "sm:grid-cols-2" : ""}`}>
-                <div>
-                  <ScoreBar
-                    score={scores.rp.score}
-                    label="Score — Résidence principale"
-                    sublabel={scores.rp.score >= 65 ? "Conditions favorables" : scores.rp.score >= 50 ? "Conditions moyennes" : "Conditions défavorables"}
-                    color="emerald"
-                  />
-                  <div className="mt-2 space-y-1.5 px-1">
-                    {scores.rp.details.map((d) => (
-                      <div key={d.label} className="flex items-center justify-between gap-2 text-xs">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {d.pts >= 0
-                            ? <CheckCircleIcon className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                            : <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
-                          <span className="truncate text-slate-600">{d.label}</span>
-                        </div>
-                        <span className={`shrink-0 font-semibold ${d.pts > 0 ? "text-emerald-600" : d.pts < 0 ? "text-red-500" : "text-slate-400"}`}>
-                          {d.pts > 0 ? `+${d.pts}` : d.pts === 0 ? "±0" : d.pts}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {showLocatif && (
-                  <div>
-                    <ScoreBar
-                      score={scores.locatif.score}
-                      label="Score — Investissement locatif"
-                      sublabel={scores.locatif.score >= 65 ? "Profil adapté à l'investissement" : scores.locatif.score >= 50 ? "Faisable avec vigilance" : "Conditions difficiles"}
-                      color="indigo"
-                    />
-                    <div className="mt-2 space-y-1.5 px-1">
-                      {scores.locatif.details.map((d) => (
-                        <div key={d.label} className="flex items-center justify-between gap-2 text-xs">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {d.pts >= 0
-                              ? <CheckCircleIcon className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                              : <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
-                            <span className="truncate text-slate-600">{d.label}</span>
-                          </div>
-                          <span className={`shrink-0 font-semibold ${d.pts > 0 ? "text-emerald-600" : d.pts < 0 ? "text-red-500" : "text-slate-400"}`}>
-                            {d.pts > 0 ? `+${d.pts}` : d.pts === 0 ? "±0" : d.pts}
+              {/* Gate ou contenu détaillé */}
+              {!canShowDetails ? (
+                <LeadGate
+                  title="Recevoir mon analyse complète"
+                  subtitle="Comparaison mensuelle chiffrée, scores détaillés et plan d'action — rapport envoyé par email."
+                  email={leadEmail}
+                  setEmail={setLeadEmail}
+                  contactConsent={contactConsent}
+                  setContactConsent={setContactConsent}
+                  unlocking={unlocking}
+                  unlockMsg={unlockMsg}
+                  onUnlock={handleUnlock}
+                  theme="cyan-emerald"
+                />
+              ) : (
+                <>
+                  {/* Comparaison mensuelle */}
+                  {toNum(form.loyer_actuel) > 0 && monthly.mensualite_rp > 0 && (
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400 mb-3">Comparaison mensuelle (vs louer seul)</p>
+                      <div className="space-y-2">
+                        <MonthlyRow
+                          label="Résidence principale"
+                          amount={monthly.extra_rp}
+                          sub={`Mensualité ${fmtEuro(monthly.mensualite_rp)}/mois — capital + charges vs loyer actuel ${fmtEuro(toNum(form.loyer_actuel))}/mois`}
+                          highlight={verdict === "rp"}
+                          icon={HomeModernIcon}
+                        />
+                        {showLocatif && (
+                          <MonthlyRow
+                            label="Locatif + rester locataire"
+                            amount={monthly.cout_net_locatif - toNum(form.loyer_actuel)}
+                            sub={`Loyer actuel ${fmtEuro(toNum(form.loyer_actuel))}/mois − cashflow net ${fmtEuro(Math.max(0, monthly.cashflow_net))}/mois`}
+                            highlight={verdict === "locatif"}
+                            icon={BuildingOffice2Icon}
+                          />
+                        )}
+                        <div className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-200 text-slate-500">
+                            <ClockIcon className="h-5 w-5" />
                           </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-slate-900">Rester locataire</p>
+                            <p className="text-xs text-slate-500">Aucun patrimoine immobilier constitué — référence</p>
+                          </div>
+                          <p className="shrink-0 text-base font-bold text-slate-400 tabular-nums">0 €/mois</p>
                         </div>
-                      ))}
+                      </div>
+                      {showLocatif && monthly.cashflow_net > 0 && (
+                        <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                          <p className="text-xs font-semibold text-emerald-800">
+                            Cashflow net locatif estimé : +{fmtEuro(monthly.cashflow_net)}/mois après mensualité, charges, taxe foncière et frais de gestion (~7 %).
+                            Votre "loyer réel" tombe à {fmtEuro(Math.max(0, monthly.cout_net_locatif))}/mois.
+                          </p>
+                        </div>
+                      )}
+                      {showLocatif && monthly.cashflow_net <= 0 && (
+                        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                          <p className="text-xs font-semibold text-amber-800">
+                            Le cashflow locatif est légèrement négatif ({fmtEuro(monthly.cashflow_net)}/mois net).
+                            Vous payez plus que votre loyer seul à court terme, mais vous constituez un patrimoine.
+                            Un rendement brut &gt; 5,5 % est recommandé pour que l'opération soit immédiatement positive.
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
 
-              {/* CTA */}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Link href="/capacite" className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#635bff] transition">
-                  Simuler ma capacité d'emprunt →
-                </Link>
-                {verdict === "locatif" && (
-                  <Link href="/investissement" className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#635bff]/30 bg-[#635bff]/5 px-5 py-2.5 text-sm font-semibold text-[#635bff] hover:bg-[#635bff]/10 transition">
-                    Calculer la rentabilité →
-                  </Link>
-                )}
-                {verdict !== "locatif" && (
-                  <button type="button" onClick={() => { setForm(INIT); go(1); }}
-                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
-                    Refaire la simulation
-                  </button>
-                )}
-              </div>
+                  {/* Scores détaillés */}
+                  <div className={`grid gap-3 ${showLocatif ? "sm:grid-cols-2" : ""}`}>
+                    <div>
+                      <ScoreBar
+                        score={scores.rp.score}
+                        label="Score — Résidence principale"
+                        sublabel={scores.rp.score >= 65 ? "Conditions favorables" : scores.rp.score >= 50 ? "Conditions moyennes" : "Conditions défavorables"}
+                        color="emerald"
+                      />
+                      <div className="mt-2 space-y-1.5 px-1">
+                        {scores.rp.details.map((d) => (
+                          <div key={d.label} className="flex items-center justify-between gap-2 text-xs">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {d.pts >= 0
+                                ? <CheckCircleIcon className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                                : <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+                              <span className="truncate text-slate-600">{d.label}</span>
+                            </div>
+                            <span className={`shrink-0 font-semibold ${d.pts > 0 ? "text-emerald-600" : d.pts < 0 ? "text-red-500" : "text-slate-400"}`}>
+                              {d.pts > 0 ? `+${d.pts}` : d.pts === 0 ? "±0" : d.pts}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {showLocatif && (
+                      <div>
+                        <ScoreBar
+                          score={scores.locatif.score}
+                          label="Score — Investissement locatif"
+                          sublabel={scores.locatif.score >= 65 ? "Profil adapté à l'investissement" : scores.locatif.score >= 50 ? "Faisable avec vigilance" : "Conditions difficiles"}
+                          color="indigo"
+                        />
+                        <div className="mt-2 space-y-1.5 px-1">
+                          {scores.locatif.details.map((d) => (
+                            <div key={d.label} className="flex items-center justify-between gap-2 text-xs">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                {d.pts >= 0
+                                  ? <CheckCircleIcon className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                                  : <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0 text-amber-500" />}
+                                <span className="truncate text-slate-600">{d.label}</span>
+                              </div>
+                              <span className={`shrink-0 font-semibold ${d.pts > 0 ? "text-emerald-600" : d.pts < 0 ? "text-red-500" : "text-slate-400"}`}>
+                                {d.pts > 0 ? `+${d.pts}` : d.pts === 0 ? "±0" : d.pts}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CTA */}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Link href="/capacite" className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#635bff] transition">
+                      Simuler ma capacité d'emprunt →
+                    </Link>
+                    {verdict === "locatif" && (
+                      <Link href="/investissement" className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#635bff]/30 bg-[#635bff]/5 px-5 py-2.5 text-sm font-semibold text-[#635bff] hover:bg-[#635bff]/10 transition">
+                        Calculer la rentabilité →
+                      </Link>
+                    )}
+                    {verdict !== "locatif" && (
+                      <button type="button" onClick={() => { setForm(INIT); go(1); }}
+                        className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+                        Refaire la simulation
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
 
               <NavButtons
                 onBack={() => go(4)}
