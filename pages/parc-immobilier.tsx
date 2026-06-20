@@ -8,6 +8,7 @@ import ParcImmobilierWizard from "../components/ParcImmobilierWizard";
 import CalculatorHero from "../components/calculators/CalculatorHero";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
+import { useScrollReveal } from "../hooks/useScrollReveal";
 
 type SimpleUser = {
   email?: string;
@@ -69,6 +70,8 @@ export default function ParcImmobilierPage() {
       authListener?.subscription?.unsubscribe?.();
     };
   }, []);
+
+  useScrollReveal();
 
   const displayName = firstNameFromUser(user);
   const isLoggedIn = !!user;
@@ -232,7 +235,7 @@ export default function ParcImmobilierPage() {
           <ParcImmobilierWizard />
 
           {/* Bloc SEO discret */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+          <section data-scroll-reveal data-reveal-delay="0" className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
             <h2 className="text-sm font-semibold text-slate-900">Analyse de parc immobilier : vue consolidée multi-biens</h2>
 
             <p className="mt-2 text-sm text-slate-600 leading-relaxed">

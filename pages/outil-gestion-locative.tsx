@@ -15,6 +15,7 @@ import {
 } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
+import { useScrollReveal } from "../hooks/useScrollReveal";
 
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/outil-gestion-locative`;
@@ -90,6 +91,8 @@ function IncludedLine({ icon: Icon, title, text }: Feature) {
 }
 
 export default function OutilGestionLocativePage() {
+  useScrollReveal();
+
   const faq = [
     {
       q: "L’outil de gestion locative est-il vraiment gratuit ?",
@@ -331,14 +334,14 @@ export default function OutilGestionLocativePage() {
         <section className="px-4 py-12 sm:py-20">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="max-w-3xl pb-3">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Tout relier</p>
-              <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+              <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Tout relier</p>
+              <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
                 <span className="block text-3xl sm:text-4xl">Un logement bien suivi.</span>
                 <span className="mt-1 block text-2xl text-cyan-600 sm:text-3xl">Sans multiplier les outils.</span>
               </h2>
             </div>
             <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <article className="flex h-full flex-col rounded-[1.75rem] border border-[#635bff]/20 bg-white p-5 shadow-sm">
+              <article data-scroll-reveal data-reveal-delay="0" className="flex h-full flex-col rounded-[1.75rem] border border-[#635bff]/20 bg-white p-5 shadow-sm">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#f6f9fc] text-[#635bff] ring-1 ring-slate-200">
                   <HomeModernIcon className="h-6 w-6" />
                 </div>
@@ -350,50 +353,58 @@ export default function OutilGestionLocativePage() {
                   Gestion locative LMNP →
                 </Link>
               </article>
-              {features.map((feature) => (
-                <FeatureCard key={feature.title} {...feature} />
+              {features.map((feature, i) => (
+                <div key={feature.title} data-scroll-reveal data-reveal-delay={`${(i + 1) * 70}`}>
+                  <FeatureCard {...feature} />
+                </div>
               ))}
             </section>
 
             <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
               <div className="grid gap-0 lg:grid-cols-[0.8fr,1.2fr]">
                 <div className="p-5 sm:p-8">
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Workflow bailleur</p>
-                  <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+                  <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Workflow bailleur</p>
+                  <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
                     <span className="block text-2xl sm:text-3xl">Un parcours guidé.</span>
                     <span className="mt-1 block text-xl text-[#635bff] sm:text-2xl">Pas une pile de formulaires.</span>
                   </h2>
-                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                  <p data-scroll-reveal data-reveal-delay="200" className="mt-4 text-sm leading-6 text-slate-600">
                     Chaque étape produit quelque chose d’utile pour le propriétaire : un logement exploitable, un bail suivi, puis des actions visibles dans le cockpit.
                   </p>
                 </div>
                 <div className="grid gap-3 bg-slate-50 p-4 sm:p-8 lg:grid-cols-3 lg:gap-4">
-                  <StepCard
-                    index="01"
-                    icon={HomeModernIcon}
-                    title="Créer le logement"
-                    outcome="Une fiche prête pour les quittances, finances et documents."
-                    text="Adresse, type de location, informations propriétaire et règles de suivi."
-                  />
-                  <StepCard
-                    index="02"
-                    icon={KeyIcon}
-                    title="Rattacher le bail"
-                    outcome="Le bail devient la référence pour les loyers et alertes."
-                    text="Locataire, loyer, charges, échéance et renouvellement reliés au même dossier."
-                  />
-                  <StepCard
-                    index="03"
-                    icon={BellAlertIcon}
-                    title="Piloter le mois"
-                    outcome="Le cockpit indique quoi encaisser, générer, envoyer ou surveiller."
-                    text="Paiements, quittances, retards et échéances remontent naturellement."
-                  />
+                  <div data-scroll-reveal data-reveal-delay="0">
+                    <StepCard
+                      index="01"
+                      icon={HomeModernIcon}
+                      title="Créer le logement"
+                      outcome="Une fiche prête pour les quittances, finances et documents."
+                      text="Adresse, type de location, informations propriétaire et règles de suivi."
+                    />
+                  </div>
+                  <div data-scroll-reveal data-reveal-delay="70">
+                    <StepCard
+                      index="02"
+                      icon={KeyIcon}
+                      title="Rattacher le bail"
+                      outcome="Le bail devient la référence pour les loyers et alertes."
+                      text="Locataire, loyer, charges, échéance et renouvellement reliés au même dossier."
+                    />
+                  </div>
+                  <div data-scroll-reveal data-reveal-delay="140">
+                    <StepCard
+                      index="03"
+                      icon={BellAlertIcon}
+                      title="Piloter le mois"
+                      outcome="Le cockpit indique quoi encaisser, générer, envoyer ou surveiller."
+                      text="Paiements, quittances, retards et échéances remontent naturellement."
+                    />
+                  </div>
                 </div>
               </div>
             </section>
 
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
+            <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="grid gap-6 lg:grid-cols-[1fr,360px] lg:items-center">
                 <div>
                   <p className="text-lg font-semibold text-slate-950">Tout se pilote depuis l’espace bailleur</p>
@@ -422,15 +433,15 @@ export default function OutilGestionLocativePage() {
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="grid gap-6 lg:grid-cols-[0.8fr,1.2fr]">
                 <div>
-                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Questions fréquentes</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-950">Comprendre l’outil avant de créer son compte</h2>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                  <p data-scroll-reveal data-reveal-delay="0" className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Questions fréquentes</p>
+                  <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 text-2xl font-semibold text-slate-950">Comprendre l’outil avant de créer son compte</h2>
+                  <p data-scroll-reveal data-reveal-delay="200" className="mt-3 text-sm leading-6 text-slate-600">
                     La page publique sert à expliquer. Le cockpit, les baux, les quittances et la finance restent dans l’espace bailleur privé.
                   </p>
                 </div>
                 <div className="grid gap-3">
-                  {faq.map((item) => (
-                    <details key={item.q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  {faq.map((item, i) => (
+                    <details key={item.q} data-scroll-reveal data-reveal-delay={`${i * 80}`} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-950">
                         {item.q}
                         <span className="text-slate-400 transition group-open:rotate-180">▾</span>

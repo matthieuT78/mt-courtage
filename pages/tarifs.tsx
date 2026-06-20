@@ -6,6 +6,7 @@ import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import { PAID_BILLING_PLANS } from "../lib/billingPlans";
 import { supabase } from "../lib/supabaseClient";
+import { useScrollReveal } from "../hooks/useScrollReveal";
 
 type Billing = "monthly" | "yearly";
 
@@ -30,17 +31,21 @@ function PlanCard({
   billing,
   loading,
   onCheckout,
+  revealDelay,
 }: {
   plan: (typeof PAID_BILLING_PLANS)[number];
   billing: Billing;
   loading: boolean;
   onCheckout: (planId: string) => void;
+  revealDelay?: number;
 }) {
   const isQuote = plan.monthlyPrice == null;
   const isComingSoon = plan.id === "landlord_unlimited";
 
   return (
     <article
+      data-scroll-reveal
+      data-reveal-delay={revealDelay ?? 0}
       className={cx(
         "flex h-full flex-col rounded-[1.5rem] border bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-[1.75rem] sm:p-5",
         plan.recommended ? "border-[#635bff]/30 ring-2 ring-[#635bff]/10" : "border-slate-200"
@@ -139,6 +144,7 @@ export default function TarifsPage() {
       { "@type": "Offer", name: "Pro / Agence", priceCurrency: "EUR", availability: "https://schema.org/PreOrder" },
     ],
   };
+  useScrollReveal();
   const [billing, setBilling] = useState<Billing>("monthly");
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -247,15 +253,15 @@ export default function TarifsPage() {
         <section className="px-4 pb-10 pt-8 sm:pb-16 sm:pt-14">
           <div className="relative mx-auto max-w-6xl space-y-6">
           <div className="max-w-3xl pb-2">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Choisir simplement</p>
-            <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+            <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Choisir simplement</p>
+            <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
               <span className="block text-3xl sm:text-4xl">Un abonnement lisible.</span>
               <span className="mt-1 block text-2xl text-cyan-600 sm:text-3xl">Le bon niveau quand il devient utile.</span>
             </h2>
           </div>
 
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <article className="flex h-full flex-col rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-[1.75rem] sm:p-5">
+            <article data-scroll-reveal data-reveal-delay="0" className="flex h-full flex-col rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-[1.75rem] sm:p-5">
               <div className="min-h-[3.65rem]">
                 <p className="text-sm font-semibold text-slate-900">Gratuit</p>
                 <p className="mt-1 text-xs leading-5 text-emerald-800">Gestion manuelle</p>
@@ -287,13 +293,14 @@ export default function TarifsPage() {
               </Link>
             </article>
 
-            {PAID_BILLING_PLANS.map((plan) => (
+            {PAID_BILLING_PLANS.map((plan, i) => (
               <PlanCard
                 key={plan.id}
                 plan={plan}
                 billing={billing}
                 loading={checkoutLoading === plan.id}
                 onCheckout={startCheckout}
+                revealDelay={(i + 1) * 80}
               />
             ))}
           </section>
@@ -304,7 +311,7 @@ export default function TarifsPage() {
             </div>
           ) : null}
 
-          <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[1.75rem]">
+          <section data-scroll-reveal data-reveal-delay="0" className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[1.75rem]">
             <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Comparatif détaillé</p>
               <h2 className="mt-1 font-semibold leading-tight text-slate-950">
@@ -361,19 +368,19 @@ export default function TarifsPage() {
           </section>
 
           <section className="grid gap-4 lg:grid-cols-3">
-            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
+            <div data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Gratuit = gestion manuelle</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Un propriétaire peut tester un vrai usage : créer son logement, rattacher un bail, générer une quittance PDF, tenir ses archives et recevoir quatre alertes essentielles. Le partage avec le locataire et le portail en ligne nécessitent le plan Starter.
               </p>
             </div>
-            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
+            <div data-scroll-reveal data-reveal-delay="80" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Starter = automatisation</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le propriétaire paie quand lokt.fr enlève les tâches répétitives et active la relation locataire : validation paiement, quittances auto, relances, alertes avancées, portail locataire, partage des documents et accusés de réception.
               </p>
             </div>
-            <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
+            <div data-scroll-reveal data-reveal-delay="160" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Essentiel = pilotage</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le palier supérieur ajoute la vision investisseur et les outils métier : rentabilité, exports finance, aide à la déclaration, répartitions d’eau, charges, TEOM, régularisation et simulateurs bailleur.
@@ -381,7 +388,7 @@ export default function TarifsPage() {
             </div>
           </section>
 
-          <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
+          <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
             <div className="grid gap-4 lg:grid-cols-[0.85fr,1.15fr] lg:items-center">
               <div>
                 <p className="text-sm font-semibold text-emerald-950">Un coût utile pour piloter votre location</p>
@@ -397,7 +404,7 @@ export default function TarifsPage() {
             </div>
           </section>
 
-          <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
+          <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm font-semibold text-amber-950">Pro / Agence arrive ensuite</p>
@@ -416,7 +423,7 @@ export default function TarifsPage() {
             </div>
           </section>
 
-          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
+          <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
             <p className="text-sm font-semibold text-slate-900">Logement actif ou bail actif ?</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Les limites commerciales sont exprimées en <span className="font-semibold text-slate-900">logements actifs</span> : c’est le plus clair
@@ -425,7 +432,7 @@ export default function TarifsPage() {
             </p>
           </section>
 
-          <section className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
+          <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-900">Vous hésitez sur le bon plan ?</p>

@@ -1,5 +1,6 @@
 import Head from "next/head";
 import Link from "next/link";
+import { useScrollReveal } from "../hooks/useScrollReveal";
 import {
   ArchiveBoxIcon,
   BanknotesIcon,
@@ -162,6 +163,7 @@ function LmnpStepCard({ step, title, text }: { step: string; title: string; text
 }
 
 export default function GestionLocativeLmnpPage() {
+  useScrollReveal();
   return (
     <div className="min-h-screen bg-[#f6f9fc] flex flex-col">
       <Head>
@@ -322,15 +324,17 @@ export default function GestionLocativeLmnpPage() {
         <section className="px-4 pb-10 pt-12 sm:pb-16 sm:pt-20">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="max-w-3xl pb-3">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Location meublée</p>
-              <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+              <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Location meublée</p>
+              <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
                 <span className="block text-3xl sm:text-4xl">Les preuves au bon endroit.</span>
                 <span className="mt-1 block text-2xl text-cyan-600 sm:text-3xl">Le pilotage sans surcharge.</span>
               </h2>
             </div>
             <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {features.map((feature) => (
-                <FeatureCard key={feature.title} feature={feature} />
+              {features.map((feature, i) => (
+                <div key={feature.title} data-scroll-reveal data-reveal-delay={`${i * 80}`}>
+                  <FeatureCard feature={feature} />
+                </div>
               ))}
             </section>
 
@@ -351,8 +355,10 @@ export default function GestionLocativeLmnpPage() {
                     ["01", "Créer le logement", "Adresse, type de location, bail, locataire et montants."],
                     ["02", "Suivre le mois", "Loyer attendu, paiement reçu, quittance et relance si besoin."],
                     ["03", "Préparer les preuves", "Inventaire, état des lieux, justificatifs et finance classée."],
-                  ].map(([step, titleStep, textStep]) => (
-                    <LmnpStepCard key={step} step={step} title={titleStep} text={textStep} />
+                  ].map(([step, titleStep, textStep], i) => (
+                    <div key={step} data-scroll-reveal data-reveal-delay={`${i * 80}`}>
+                      <LmnpStepCard step={step} title={titleStep} text={textStep} />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -361,11 +367,11 @@ export default function GestionLocativeLmnpPage() {
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
               <div className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr] lg:items-start">
                 <div>
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Méthode LMNP</p>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                  <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Méthode LMNP</p>
+                  <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
                     Que doit suivre un propriétaire LMNP ?
                   </h2>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                  <p data-scroll-reveal data-reveal-delay="200" className="mt-3 text-sm leading-6 text-slate-600">
                     Pour une location meublée, le risque n’est pas seulement d’oublier un loyer. C’est de perdre le lien entre le bail, le mobilier, les photos, les états des lieux, les quittances et les charges. Un bon outil de gestion locative LMNP doit donc relier l’opérationnel et les justificatifs.
                   </p>
                 </div>
@@ -375,8 +381,8 @@ export default function GestionLocativeLmnpPage() {
                     ["Inventaire meublé", "Mobilier, équipements, photos, état et éléments à remplacer."],
                     ["Loyers et quittances", "Montant attendu, paiement reçu, retard, reçu partiel et quittance PDF."],
                     ["Charges et documents", "Factures, assurances, taxes, dépenses et pièces utiles pour la déclaration."],
-                  ].map(([titleBlock, textBlock]) => (
-                    <div key={titleBlock} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  ].map(([titleBlock, textBlock], i) => (
+                    <div key={titleBlock} data-scroll-reveal data-reveal-delay={`${i * 80}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <h3 className="text-sm font-semibold text-slate-950">{titleBlock}</h3>
                       <p className="mt-2 text-sm leading-6 text-slate-600">{textBlock}</p>
                     </div>
@@ -388,9 +394,9 @@ export default function GestionLocativeLmnpPage() {
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
               <div className="grid gap-8 lg:grid-cols-[1fr,420px] lg:items-start">
                 <div>
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Sources et prudence</p>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Un outil de pilotage, pas un conseil fiscal personnalisé.</h2>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                  <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Sources et prudence</p>
+                  <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Un outil de pilotage, pas un conseil fiscal personnalisé.</h2>
+                  <p data-scroll-reveal data-reveal-delay="200" className="mt-3 text-sm leading-6 text-slate-600">
                     Service-Public rappelle qu’un logement meublé doit comporter un minimum d’équipements, qu’un inventaire et un état détaillé du mobilier sont utiles lors de la remise et de la restitution des clés, et que les revenus LMNP relèvent des revenus de location meublée. lokt.fr aide à organiser ces données, mais ne remplace pas un expert-comptable.
                   </p>
                   <div className="mt-5 flex flex-wrap gap-2">
@@ -405,7 +411,7 @@ export default function GestionLocativeLmnpPage() {
                     </a>
                   </div>
                 </div>
-                <div className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5">
+                <div data-scroll-reveal data-reveal-delay="300" className="rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5">
                   <ShieldCheckIcon className="h-8 w-8 text-emerald-700" />
                   <p className="mt-4 text-sm font-semibold text-emerald-950">Plan gratuit</p>
                   <p className="mt-2 text-sm leading-6 text-emerald-900">
@@ -419,11 +425,11 @@ export default function GestionLocativeLmnpPage() {
             </section>
 
             <section className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 sm:rounded-[2rem] sm:p-8">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">FAQ</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Questions fréquentes</h2>
+              <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">FAQ</p>
+              <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Questions fréquentes</h2>
               <div className="mt-6 grid gap-3">
-                {faq.map((item) => (
-                  <details key={item.q} className="group rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                {faq.map((item, i) => (
+                  <details key={item.q} data-scroll-reveal data-reveal-delay={`${i * 80}`} className="group rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-slate-950">
                       {item.q}
                       <span className="text-slate-400 transition group-open:rotate-180">▾</span>

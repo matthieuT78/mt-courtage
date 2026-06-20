@@ -15,6 +15,7 @@ import {
   XMarkIcon,
   QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
+import { useScrollReveal } from "../hooks/useScrollReveal";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 import { supabase } from "../lib/supabaseClient";
@@ -195,6 +196,8 @@ export default function CalculettesPage() {
       sub.subscription.unsubscribe();
     };
   }, []);
+
+  useScrollReveal();
 
   const isLoggedIn = !!user?.id;
   const displayName = firstNameFromUser(user);
@@ -434,20 +437,22 @@ export default function CalculettesPage() {
         <section className="px-4 py-12 sm:py-20">
           <div className="mx-auto max-w-6xl space-y-6">
             <div className="max-w-3xl pb-3">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Choisir son angle</p>
-              <h2 className="mt-2 font-semibold leading-tight text-slate-950">
+              <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Choisir son angle</p>
+              <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 font-semibold leading-tight text-slate-950">
                 <span className="block text-3xl sm:text-4xl">Une décision immobilière.</span>
                 <span className="mt-1 block text-2xl text-cyan-600 sm:text-3xl">La bonne calculette au bon moment.</span>
               </h2>
             </div>
             <section className="grid gap-4 sm:grid-cols-2">
-              {tools.map((tool) => {
+              {tools.map((tool, index) => {
                 const Icon = tool.icon;
                 return (
                   <button
                     key={tool.key}
                     type="button"
                     onClick={() => go(tool.href)}
+                    data-scroll-reveal
+                    data-reveal-delay={`${index * 70}`}
                     className="group flex h-full flex-col rounded-[1.5rem] border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md sm:rounded-[1.75rem] sm:p-5"
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -474,12 +479,12 @@ export default function CalculettesPage() {
             </section>
 
             <section className="grid gap-4 md:grid-cols-3">
-              <StatCard label="01" value="Simuler" text="Vous renseignez les hypothèses clés du projet immobilier." />
-              <StatCard label="02" value="Comparer" text="lokt.fr met les résultats en perspective avec des seuils simples." />
-              <StatCard label="03" value="Gérer" text="Si le projet devient un bien loué, l’espace bailleur prend la suite." />
+              <div data-scroll-reveal data-reveal-delay="0"><StatCard label="01" value="Simuler" text="Vous renseignez les hypothèses clés du projet immobilier." /></div>
+              <div data-scroll-reveal data-reveal-delay="80"><StatCard label="02" value="Comparer" text="lokt.fr met les résultats en perspective avec des seuils simples." /></div>
+              <div data-scroll-reveal data-reveal-delay="160"><StatCard label="03" value="Gérer" text="Si le projet devient un bien loué, l’espace bailleur prend la suite." /></div>
             </section>
 
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
+            <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="grid gap-6 lg:grid-cols-[1fr,360px] lg:items-center">
                 <div>
                   <p className="font-semibold leading-tight text-slate-950">

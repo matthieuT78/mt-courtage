@@ -7,6 +7,7 @@ import AppFooter from "../components/AppFooter";
 import CapaciteWizard from "../components/CapaciteWizard";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
+import { useScrollReveal } from "../hooks/useScrollReveal";
 
 type SimpleUser = {
   email?: string;
@@ -83,6 +84,8 @@ export default function CapaciteEmpruntPage() {
 
   const displayName = useMemo(() => firstNameFromUser(user), [user]);
   const isLoggedIn = !!user;
+
+  useScrollReveal();
 
   // --- SEO
   const siteUrl = "https://lokt.fr";
@@ -260,19 +263,19 @@ export default function CapaciteEmpruntPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-[#635bff] via-[#00a8d4] to-[#00c895]" />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,.22)_0%,transparent_42%),linear-gradient(72deg,transparent_58%,rgba(255,184,0,.38)_100%)]" />
           <div className="relative mx-auto max-w-6xl">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-white/80">
+            <p data-scroll-reveal data-reveal-delay="0" className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-white/80">
               Calculette immobilière lokt.fr
             </p>
-            <h1 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight sm:text-5xl">
+            <h1 data-scroll-reveal data-reveal-delay="100" className="mt-4 max-w-3xl text-3xl font-semibold leading-tight sm:text-5xl">
               {isLoggedIn && displayName
                 ? `${displayName}, trouvez le budget juste pour votre projet.`
                 : "Combien pouvez-vous emprunter pour votre projet immobilier ?"}
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/85 sm:text-base sm:leading-7">
+            <p data-scroll-reveal data-reveal-delay="200" className="mt-4 max-w-2xl text-sm leading-6 text-white/85 sm:text-base sm:leading-7">
               Revenus, charges, apport et durée : obtenez une estimation structurée de votre mensualité et de votre
               budget d&apos;achat.
             </p>
-            <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-white/90">
+            <div data-scroll-reveal data-reveal-delay="300" className="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-white/90">
               <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 backdrop-blur">Gratuit</span>
               <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 backdrop-blur">Sans engagement</span>
               <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 backdrop-blur">Résultat immédiat</span>
@@ -290,8 +293,8 @@ export default function CapaciteEmpruntPage() {
               ["01", "Cadrez votre recherche", "Un budget réaliste avant les visites."],
               ["02", "Comparez vos scénarios", "Durée, taux et apport restent ajustables."],
               ["03", "Préparez la suite", "Une lecture structurée pour avancer sereinement."],
-            ].map(([num, heading, text]) => (
-              <div key={num} className="bg-white p-5">
+            ].map(([num, heading, text], index) => (
+              <div key={num} data-scroll-reveal data-reveal-delay={index * 70} className="bg-white p-5">
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">{num}</p>
                 <h2 className="mt-2 text-sm font-semibold text-slate-950">{heading}</h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600">{text}</p>
@@ -310,15 +313,15 @@ export default function CapaciteEmpruntPage() {
           {/* Bloc SEO principal */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
             <div>
-              <h2 className="text-sm font-semibold text-slate-900">Comment est calculée la capacité d’emprunt ?</h2>
+              <h2 data-scroll-reveal data-reveal-delay="0" className="text-sm font-semibold text-slate-900">Comment est calculée la capacité d’emprunt ?</h2>
 
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+              <p data-scroll-reveal data-reveal-delay="100" className="mt-2 text-sm text-slate-600 leading-relaxed">
                 La capacité d’emprunt correspond au montant maximal que vous pouvez emprunter sans dépasser un endettement
                 cohérent. Elle dépend principalement de vos revenus nets, de vos charges, de la durée du prêt, du taux et
                 de l’assurance.
               </p>
 
-              <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
+              <ul data-scroll-reveal data-reveal-delay="200" className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
                 <li>
                   On estime d’abord une <strong>mensualité soutenable</strong> (revenus – charges).
                 </li>
@@ -334,7 +337,7 @@ export default function CapaciteEmpruntPage() {
             </div>
 
             {/* Exemple rapide */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div data-scroll-reveal data-reveal-delay="0" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
               <h2 className="text-sm font-semibold text-slate-900">Exemple de calcul de capacité d’emprunt</h2>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
                 Exemple indicatif : avec <strong>3 000 €</strong> de revenus nets mensuels, <strong>500 €</strong> de charges
@@ -346,15 +349,17 @@ export default function CapaciteEmpruntPage() {
 
             {/* FAQ visible */}
             <div className="space-y-2">
-              <h2 className="text-sm font-semibold text-slate-900">Questions fréquentes sur la capacité d’emprunt</h2>
+              <h2 data-scroll-reveal data-reveal-delay="0" className="text-sm font-semibold text-slate-900">Questions fréquentes sur la capacité d’emprunt</h2>
               <div className="mt-3 grid gap-3">
-                {faqData.map((f) => (
-                  <FaqItem key={f.q} q={f.q} a={<>{f.a}</>} />
+                {faqData.map((f, index) => (
+                  <div key={f.q} data-scroll-reveal data-reveal-delay={index * 70}>
+                    <FaqItem q={f.q} a={<>{f.a}</>} />
+                  </div>
                 ))}
               </div>
             </div>
 
-            <p className="text-xs text-slate-500">
+            <p data-scroll-reveal data-reveal-delay="0" className="text-xs text-slate-500">
               Note : les calculs sont fournis à titre indicatif et peuvent varier selon les banques, le type de projet et
               les conditions de financement.
             </p>

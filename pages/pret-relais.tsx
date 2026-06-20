@@ -8,6 +8,7 @@ import PretRelaisWizard from "../components/PretRelaisWizard";
 import CalculatorHero from "../components/calculators/CalculatorHero";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
+import { useScrollReveal } from "../hooks/useScrollReveal";
 
 type SimpleUser = {
   email?: string;
@@ -39,9 +40,13 @@ function JsonLd({ data }: { data: any }) {
   );
 }
 
-function FaqItem({ q, a }: { q: string; a: React.ReactNode }) {
+function FaqItem({ q, a, revealDelay }: { q: string; a: React.ReactNode; revealDelay?: number }) {
   return (
-    <details className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+    <details
+      className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+      data-scroll-reveal
+      data-reveal-delay={revealDelay ?? 0}
+    >
       <summary className="cursor-pointer list-none font-semibold text-slate-900 flex items-center justify-between">
         <span className="pr-4">{q}</span>
         <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
@@ -84,6 +89,8 @@ export default function PretRelaisPage() {
 
   const displayName = useMemo(() => firstNameFromUser(user), [user]);
   const isLoggedIn = !!user;
+
+  useScrollReveal();
 
   // --- SEO
   const siteUrl = "https://lokt.fr";
@@ -276,7 +283,7 @@ export default function PretRelaisPage() {
 
           {/* Bloc SEO éditorial */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
-            <div>
+            <div data-scroll-reveal data-reveal-delay="0">
               <h2 className="text-sm font-semibold text-slate-900">
                 Calcul prêt relais : la formule à connaître
               </h2>
@@ -308,20 +315,25 @@ export default function PretRelaisPage() {
                   title: "3. Budget d’achat",
                   text: "Comparez le prix cible avec le relais, le nouveau prêt possible et les intérêts indicatifs.",
                 },
-              ].map((item) => (
-                <div key={item.title} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+              ].map((item, i) => (
+                <div
+                  key={item.title}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                  data-scroll-reveal
+                  data-reveal-delay={i * 70}
+                >
                   <h2 className="text-sm font-semibold text-slate-900">{item.title}</h2>
                   <p className="mt-2 text-sm leading-relaxed text-slate-600">{item.text}</p>
                 </div>
               ))}
             </div>
 
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500" data-scroll-reveal data-reveal-delay="0">
               Note : chaque banque applique ses règles internes : décote, durée, franchise, assurance, frais et analyse
               du taux d’endettement. Le résultat reste indicatif.
             </p>
 
-            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4" data-scroll-reveal data-reveal-delay="0">
               {[
                 { href: "/capacite", label: "Calculer ma capacité d’emprunt" },
                 { href: "/investissement", label: "Tester la rentabilité du futur bien" },
@@ -344,13 +356,25 @@ export default function PretRelaisPage() {
             <div className="p-6 sm:p-8">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-slate-600">
+                  <p
+                    className="text-[0.7rem] sm:text-xs font-semibold uppercase tracking-[0.22em] text-slate-600"
+                    data-scroll-reveal
+                    data-reveal-delay="0"
+                  >
                     FAQ
                   </p>
-                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900 mt-1">
+                  <h2
+                    className="text-lg sm:text-xl font-semibold text-slate-900 mt-1"
+                    data-scroll-reveal
+                    data-reveal-delay="100"
+                  >
                     Questions fréquentes sur le prêt relais
                   </h2>
-                  <p className="text-sm text-slate-600 mt-2 max-w-3xl">
+                  <p
+                    className="text-sm text-slate-600 mt-2 max-w-3xl"
+                    data-scroll-reveal
+                    data-reveal-delay="200"
+                  >
                     Des réponses rapides pour comprendre le relais, le budget total et les hypothèses.
                   </p>
                 </div>
@@ -361,8 +385,8 @@ export default function PretRelaisPage() {
               </div>
 
               <div className="mt-6 grid gap-3">
-                {faqData.map((f) => (
-                  <FaqItem key={f.q} q={f.q} a={<>{f.a}</>} />
+                {faqData.map((f, i) => (
+                  <FaqItem key={f.q} q={f.q} a={<>{f.a}</>} revealDelay={i * 70} />
                 ))}
               </div>
 

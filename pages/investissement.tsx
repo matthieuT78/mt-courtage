@@ -8,6 +8,7 @@ import InvestissementWizard from "../components/InvestissementWizard";
 import CalculatorHero from "../components/calculators/CalculatorHero";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
+import { useScrollReveal } from "../hooks/useScrollReveal";
 
 type SimpleUser = {
   email?: string;
@@ -72,6 +73,8 @@ export default function InvestissementPage() {
   const displayName = useMemo(() => firstNameFromUser(user), [user]);
   const isLoggedIn = !!user;
 
+  useScrollReveal();
+
   // --- SEO
   const siteUrl = "https://lokt.fr";
   const pagePath = "/investissement";
@@ -90,11 +93,11 @@ export default function InvestissementPage() {
     () => [
       {
         q: "Quelle est la différence entre cash-flow et rendement ?",
-        a: "Le cash-flow correspond au flux mensuel net (loyer – charges – crédit). Le rendement mesure la performance annuelle (revenus / prix d’achat), et peut être brut ou net selon les charges prises en compte.",
+        a: "Le cash-flow correspond au flux mensuel net (loyer – charges – crédit). Le rendement mesure la performance annuelle (revenus / prix d'achat), et peut être brut ou net selon les charges prises en compte.",
       },
       {
         q: "Quelle différence entre rendement brut et rendement net ?",
-        a: "Le rendement brut compare les loyers annuels au prix d’achat. Le rendement net retire les charges (taxe foncière, copropriété, assurance, vacance, gestion…). Il est plus proche de la réalité pour comparer deux projets.",
+        a: "Le rendement brut compare les loyers annuels au prix d'achat. Le rendement net retire les charges (taxe foncière, copropriété, assurance, vacance, gestion…). Il est plus proche de la réalité pour comparer deux projets.",
       },
       {
         q: "Quelles charges faut-il inclure pour estimer une rentabilité réaliste ?",
@@ -102,15 +105,15 @@ export default function InvestissementPage() {
       },
       {
         q: "Longue durée ou Airbnb : comment comparer ?",
-        a: "La location saisonnière se compare en convertissant un prix par nuit et un taux d’occupation en revenu mensuel équivalent, puis en ajoutant les coûts spécifiques (ménage, conciergerie, vacance, renouvellement du mobilier).",
+        a: "La location saisonnière se compare en convertissant un prix par nuit et un taux d'occupation en revenu mensuel équivalent, puis en ajoutant les coûts spécifiques (ménage, conciergerie, vacance, renouvellement du mobilier).",
       },
       {
         q: "La fiscalité est-elle prise en compte ?",
-        a: "La V1 vise d’abord une rentabilité économique (revenus, charges, financement). La fiscalité peut être ajoutée ou estimée séparément selon votre régime (LMNP, réel, micro, etc.).",
+        a: "La V1 vise d'abord une rentabilité économique (revenus, charges, financement). La fiscalité peut être ajoutée ou estimée séparément selon votre régime (LMNP, réel, micro, etc.).",
       },
       {
-        q: "Quels leviers ont le plus d’impact sur la rentabilité ?",
-        a: "Le prix d’achat (et les frais), le niveau de loyer/occupation, la vacance, les charges récurrentes, et la structure du financement (taux, durée, apport). Tester 2 scénarios (prudent vs ambitieux) aide à décider.",
+        q: "Quels leviers ont le plus d'impact sur la rentabilité ?",
+        a: "Le prix d'achat (et les frais), le niveau de loyer/occupation, la vacance, les charges récurrentes, et la structure du financement (taux, durée, apport). Tester 2 scénarios (prudent vs ambitieux) aide à décider.",
       },
     ],
     []
@@ -228,20 +231,20 @@ export default function InvestissementPage() {
           <InvestissementWizard showSaveButton={isLoggedIn} />
 
           {/* ✅ Micro bloc confiance (UX + SEO) */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+          <section data-scroll-reveal data-reveal-delay="0" className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
             <h2 className="text-sm font-semibold text-slate-900">
-              Pourquoi simuler la rentabilité locative avant d’acheter ?
+              Pourquoi simuler la rentabilité locative avant d&apos;acheter ?
             </h2>
             <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
-              <li>Vérifier si le projet s’auto-finance (cash-flow) ou combien il “coûte” chaque mois.</li>
+              <li>Vérifier si le projet s&apos;auto-finance (cash-flow) ou combien il &quot;coûte&quot; chaque mois.</li>
               <li>Comparer plusieurs biens/scénarios à périmètre constant (prix, loyer, vacance, charges).</li>
-              <li>Identifier les leviers : prix d’achat, vacance, charges et structure de financement.</li>
+              <li>Identifier les leviers : prix d&apos;achat, vacance, charges et structure de financement.</li>
             </ul>
           </section>
 
           {/* Bloc SEO enrichi (comme capacité / pret-relais) */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
-            <div>
+            <div data-scroll-reveal data-reveal-delay="0">
               <h2 className="text-sm font-semibold text-slate-900">
                 Calcul de rentabilité locative : cash-flow, charges et financement
               </h2>
@@ -250,16 +253,16 @@ export default function InvestissementPage() {
                 Cette calculette de rentabilité locative vous aide à projeter un investissement en tenant compte du coût
                 total (prix + notaire + travaux/ameublement), des revenus (location longue durée ou saisonnière), des
                 charges (copropriété, taxe foncière, assurance, entretien, gestion, vacance) et du financement (taux,
-                durée, apport, assurance). L’objectif : une lecture simple et comparable entre scénarios.
+                durée, apport, assurance). L&apos;objectif : une lecture simple et comparable entre scénarios.
               </p>
 
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Les résultats sont indicatifs et dépendent de vos hypothèses. Utilisez l’outil pour comparer plusieurs
+                Les résultats sont indicatifs et dépendent de vos hypothèses. Utilisez l&apos;outil pour comparer plusieurs
                 biens, tester différents niveaux de loyers/occupation, et repérer ce qui améliore réellement le cash-flow.
               </p>
             </div>
 
-            <div>
+            <div data-scroll-reveal data-reveal-delay="100">
               <h2 className="text-sm font-semibold text-slate-900">Comment estimer une rentabilité réaliste ?</h2>
               <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
                 <li>
@@ -267,7 +270,7 @@ export default function InvestissementPage() {
                 </li>
                 <li>
                   Estimez les <strong>revenus</strong> (loyer mensuel ou revenu équivalent saisonnier : prix/nuit × taux
-                  d’occupation).
+                  d&apos;occupation).
                 </li>
                 <li>
                   Ajoutez les <strong>charges récurrentes</strong> (copro, taxe foncière, assurance, entretien, gestion,
@@ -280,7 +283,7 @@ export default function InvestissementPage() {
               </ul>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div data-scroll-reveal data-reveal-delay="200" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
               <h2 className="text-sm font-semibold text-slate-900">Exemple rapide</h2>
               <p className="mt-2 text-sm text-slate-600 leading-relaxed">
                 Exemple indicatif : un achat à <strong>200 000 €</strong> avec <strong>25 000 €</strong> de frais/travaux,
@@ -295,8 +298,8 @@ export default function InvestissementPage() {
             <div className="space-y-2">
               <h2 className="text-sm font-semibold text-slate-900">Questions fréquentes sur la rentabilité locative</h2>
               <div className="mt-3 grid gap-3">
-                {faqData.map((f) => (
-                  <details key={f.q} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                {faqData.map((f, i) => (
+                  <details key={f.q} data-scroll-reveal data-reveal-delay={i * 70} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                     <summary className="cursor-pointer list-none font-semibold text-slate-900 flex items-center justify-between">
                       <span className="pr-4">{f.q}</span>
                       <span className="text-slate-400 group-open:rotate-180 transition">▾</span>
@@ -308,8 +311,8 @@ export default function InvestissementPage() {
             </div>
 
             <p className="text-xs text-slate-500">
-              Note : la fiscalité dépend fortement du régime (LMNP, réel, micro…) et n’est pas l’objectif principal de la
-              V1. Ici, on vise d’abord une rentabilité “économique” comparable.
+              Note : la fiscalité dépend fortement du régime (LMNP, réel, micro…) et n&apos;est pas l&apos;objectif principal de la
+              V1. Ici, on vise d&apos;abord une rentabilité &quot;économique&quot; comparable.
             </p>
           </section>
         </div>

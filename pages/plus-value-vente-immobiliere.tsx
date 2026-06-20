@@ -8,6 +8,7 @@ import PlusValueWizard from "../components/PlusValueWizard";
 import CalculatorHero from "../components/calculators/CalculatorHero";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
+import { useScrollReveal } from "../hooks/useScrollReveal";
 
 type SimpleUser = {
   email?: string;
@@ -68,6 +69,8 @@ export default function PlusValueVenteImmobilierePage() {
       authListener?.subscription?.unsubscribe?.();
     };
   }, []);
+
+  useScrollReveal();
 
   const displayName = useMemo(() => firstNameFromUser(user), [user]);
   const isLoggedIn = !!user;
@@ -229,7 +232,7 @@ export default function PlusValueVenteImmobilierePage() {
           <PlusValueWizard />
 
           {/* ✅ Micro bloc confiance (UX + SEO) */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+          <section data-scroll-reveal data-reveal-delay="0" className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
             <h2 className="text-sm font-semibold text-slate-900">Pourquoi simuler avant de vendre ?</h2>
             <ul className="mt-2 text-sm text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
               <li>Connaître le <strong>cash net</strong> réellement récupéré (et pas seulement la plus-value).</li>
@@ -239,7 +242,7 @@ export default function PlusValueVenteImmobilierePage() {
           </section>
 
           {/* Bloc SEO enrichi */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+          <section data-scroll-reveal data-reveal-delay="100" className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Calcul plus-value immobilière : ce qui compte vraiment</h2>
 
