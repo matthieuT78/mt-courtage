@@ -207,27 +207,24 @@ export default function TarifsPage() {
 
       <AppHeader staticMode />
       <main className="flex-1">
-        <section className="relative overflow-hidden px-4 pb-10 pt-10 sm:pb-20 sm:pt-16">
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[560px] -skew-y-6 origin-top-left bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] sm:h-[430px]" />
-          <div aria-hidden className="absolute inset-x-0 top-0 h-[560px] -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.72)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.44)_100%)] sm:h-[430px]" />
-          <div aria-hidden className="absolute left-0 top-0 h-full w-full bg-gradient-to-r from-[#635bff]/70 via-[#00b8e8]/35 to-transparent lg:w-[68%]" />
+        <section className="relative border-b border-slate-200 bg-[#f6f9fc] px-4 pb-10 pt-10 sm:pb-16 sm:pt-14">
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-6 sm:gap-8 lg:grid-cols-[1fr,360px] lg:items-end">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 shadow-sm backdrop-blur">
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[0.72rem] font-semibold text-emerald-700 ring-1 ring-emerald-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Tarifs espace bailleur
                 </div>
-                <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-white sm:mt-6">
-                  <span className="block text-[2.55rem] sm:text-6xl">Gratuit pour gérer.</span>
-                  <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Payant quand lokt.fr automatise.</span>
+                <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] sm:mt-6">
+                  <span className="block text-[2.55rem] text-slate-950 sm:text-6xl">Gratuit pour gérer.</span>
+                  <span className="mt-1 block text-[2rem] text-slate-500 sm:text-5xl">Payant quand lokt.fr automatise.</span>
                 </h1>
-                <p className="mt-5 max-w-3xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
+                <p className="mt-5 max-w-3xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
                   Un logement gratuit pour démarrer. Starter automatise les quittances, active le portail locataire et le partage de documents. Essentiel ajoute le pilotage financier et la boîte à outils bailleur.
                 </p>
               </div>
 
-              <div className="rounded-[1.5rem] border border-white/60 bg-white/90 p-4 shadow-xl shadow-slate-900/10 backdrop-blur sm:rounded-[1.75rem]">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-xl shadow-slate-900/10 sm:rounded-[1.75rem]">
                 <p className="text-sm font-semibold text-slate-950">Facturation</p>
                 <div className="mt-3 inline-flex rounded-xl border border-slate-200 bg-[#f6f9fc] p-1">
                   {(["monthly", "yearly"] as Billing[]).map((value) => (

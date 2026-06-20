@@ -326,33 +326,28 @@ export default function CalculettesPage() {
       <ToolPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} tools={tools} />
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
-        <section className="lokt-public-hero relative overflow-hidden px-4 pb-10 pt-8 sm:pb-20 sm:pt-16">
-          <div aria-hidden className="lokt-public-hero-band lokt-public-hero-flow absolute -left-[8%] top-[-8%] w-[116%] -skew-y-6 origin-top-left" />
-          <div aria-hidden className="lokt-public-hero-band absolute inset-x-0 top-0 -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.48)_0%,transparent_35%),linear-gradient(75deg,transparent_56%,rgba(255,184,0,.34)_100%)]" />
-          <div aria-hidden className="lokt-public-hero-band absolute left-0 top-0 w-full bg-gradient-to-r from-[#635bff]/55 via-[#00b8e8]/20 to-transparent lg:w-[68%]" />
-          <div aria-hidden className="lokt-public-hero-band lokt-public-hero-sheen pointer-events-none absolute -left-1/4 top-[-8%] w-[150%] -skew-y-6 bg-[linear-gradient(112deg,transparent_18%,rgba(255,255,255,.34)_42%,rgba(255,215,120,.3)_55%,transparent_76%)]" />
-
+        <section className="relative border-b border-slate-200 bg-white px-4 pb-12 pt-10 sm:pb-16 sm:pt-14">
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 shadow-sm backdrop-blur">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#635bff]/8 px-3 py-1 text-[0.72rem] font-semibold text-[#635bff] ring-1 ring-[#635bff]/15">
                   <SparklesIcon className="h-4 w-4 text-[#635bff]" />
                   Simulateurs immobiliers gratuits
                 </div>
-                <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-white sm:mt-6">
+                <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-slate-950 sm:mt-6">
                   {displayName ? (
                     <>
                       <span className="block text-[2.55rem] sm:text-6xl">Bonjour {displayName}.</span>
-                      <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Simulez votre projet.</span>
+                      <span className="mt-1 block text-[2rem] text-slate-500 sm:text-5xl">Simulez votre projet.</span>
                     </>
                   ) : (
                     <>
                       <span className="block text-[2.55rem] sm:text-6xl">Simuler avant d’acheter.</span>
-                      <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Vendre ou investir.</span>
+                      <span className="mt-1 block text-[2rem] text-slate-500 sm:text-5xl">Vendre ou investir.</span>
                     </>
                   )}
                 </h1>
-                <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
+                <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
                   Capacité d’emprunt, rentabilité, prêt relais, parc immobilier et plus-value : des résultats lisibles pour prendre une décision sans tableur.
                 </p>
                 <div className="mt-7 grid gap-3 sm:mt-8 sm:flex sm:flex-wrap">
@@ -364,7 +359,7 @@ export default function CalculettesPage() {
                     Lancer une simulation →
                   </button>
                 </div>
-                <p className="mt-4 text-xs font-medium text-white/80">
+                <p className="mt-4 text-xs font-medium text-slate-500">
                   {checking
                     ? "Vérification de la session..."
                     : isLoggedIn
@@ -374,7 +369,7 @@ export default function CalculettesPage() {
               </div>
 
               <div>
-                <div className="relative rounded-[1.5rem] bg-white/35 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
+                <div className="relative rounded-[1.5rem] border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/15 sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
                   <div className="overflow-hidden rounded-[1.25rem] border border-white/60 bg-white sm:rounded-[1.55rem]">
                     <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
                       <div className="flex items-center gap-2">

@@ -218,24 +218,19 @@ export default function OutilGestionLocativePage() {
       <AppHeader staticMode />
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
-        <section className="lokt-public-hero relative overflow-hidden px-4 pb-10 pt-8 sm:pb-20 sm:pt-16">
-          <div aria-hidden className="lokt-public-hero-band lokt-public-hero-flow absolute -left-[8%] top-[-8%] w-[116%] -skew-y-6 origin-top-left" />
-          <div aria-hidden className="lokt-public-hero-band absolute inset-x-0 top-0 -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.48)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.34)_100%)]" />
-          <div aria-hidden className="lokt-public-hero-band absolute left-0 top-0 w-full bg-gradient-to-r from-[#635bff]/55 via-[#00b8e8]/20 to-transparent lg:w-[68%]" />
-          <div aria-hidden className="lokt-public-hero-band lokt-public-hero-sheen pointer-events-none absolute -left-1/4 top-[-8%] w-[150%] -skew-y-6 bg-[linear-gradient(112deg,transparent_18%,rgba(255,255,255,.34)_42%,rgba(255,215,120,.3)_55%,transparent_76%)]" />
-
+        <section className="relative border-b border-slate-200 bg-white px-4 pb-12 pt-10 sm:pb-16 sm:pt-14">
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-start">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 shadow-sm backdrop-blur">
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#635bff]/8 px-3 py-1 text-[0.72rem] font-semibold text-[#635bff] ring-1 ring-[#635bff]/15">
                   <HomeModernIcon className="h-4 w-4 text-[#635bff]" />
                   Gratuit pour un logement actif
                 </div>
-                <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-white sm:mt-6">
+                <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-slate-950 sm:mt-6">
                   <span className="block text-[2.55rem] sm:text-6xl">Un espace bailleur simple.</span>
-                  <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Clair, prêt à piloter.</span>
+                  <span className="mt-1 block text-[2rem] text-slate-500 sm:text-5xl">Clair, prêt à piloter.</span>
                 </h1>
-                <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
+                <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
                   La page produit générale pour gérer une location nue, meublée ou LMNP : baux, loyers, quittances, états des lieux, inventaire, finance et alertes.
                 </p>
                 <div className="mt-6 grid gap-3 sm:mt-7 sm:flex sm:flex-wrap">
@@ -247,13 +242,13 @@ export default function OutilGestionLocativePage() {
                   </Link>
                   <Link
                     href="/mon-compte?mode=login&redirect=/espace-bailleur"
-                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white sm:w-auto"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm hover:bg-slate-50 sm:w-auto"
                   >
                     Se connecter →
                   </Link>
                   <Link
                     href="/gestion-locative-lmnp"
-                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm backdrop-blur hover:bg-white sm:w-auto"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-[#3f37c9] shadow-sm hover:bg-slate-50 sm:w-auto"
                   >
                     Voir le cas LMNP →
                   </Link>
@@ -261,7 +256,7 @@ export default function OutilGestionLocativePage() {
               </div>
 
               <div>
-                <div className="relative rounded-[1.5rem] bg-white/35 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
+                <div className="relative rounded-[1.5rem] border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/15 sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
                   <div className="overflow-hidden rounded-[1.25rem] border border-white/60 bg-white sm:rounded-[1.55rem]">
                     <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
                       <div className="flex items-center gap-2">
