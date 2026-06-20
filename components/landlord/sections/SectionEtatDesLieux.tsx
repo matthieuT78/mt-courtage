@@ -97,6 +97,7 @@ type Props = {
   properties?: Property[];
   tenants?: Tenant[];
   onRefresh?: () => Promise<void>;
+  onNavigateToBaux?: () => void;
 };
 
 async function authJsonHeaders() {
@@ -498,7 +499,7 @@ function openBlankPdfWindow() {
 // =========================
 // BLOCK 2/4
 // =========================
-export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRefresh }: Props) {
+export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRefresh, onNavigateToBaux }: Props) {
   const safeLeases = useMemo(() => (Array.isArray(leases) ? leases : []), [leases]);
   const safeProps = useMemo(() => (Array.isArray(properties) ? properties : []), [properties]);
   const safeTenants = useMemo(() => (Array.isArray(tenants) ? tenants : []), [tenants]);
@@ -558,6 +559,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     });
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [sendingTenant, setSendingTenant] = useState(false);
+  const [tenantEmailSent, setTenantEmailSent] = useState<string | null>(null);
 
   const [reports, setReports] = useState<InventoryReport[]>([]);
   const [standaloneReports, setStandaloneReports] = useState<InventoryReport[]>([]);
@@ -762,6 +765,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   useEffect(() => {
     if (selectedReportId) loadReportDetails(selectedReportId);
+    setTenantEmailSent(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedReportId]);
 
@@ -1457,6 +1461,43 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     } finally {
       setLoading(false);
       if (signedFileInputRef.current) signedFileInputRef.current.value = "";
+    }
+  };
+
+  const handleSendToTenant = async () => {
+    if (!selectedReport?.occupant_email || !selectedReport.pdf_url) return;
+    setSendingTenant(true);
+    setErr(null);
+    try {
+      const address = [
+        selectedReport.property_address_line1,
+        selectedReport.property_address_line2,
+        [selectedReport.property_postal_code, selectedReport.property_city].filter(Boolean).join(" "),
+      ]
+        .filter((p) => String(p || "").trim())
+        .join(", ");
+
+      const res = await fetch("/api/inventory/send-to-tenant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: selectedReport.occupant_email,
+          reportType: selectedReport.report_type,
+          occupantLabel: selectedReport.occupant_label || "",
+          propertyLabel: selectedReport.property_label || selectedReport.property_address_line1 || "Logement",
+          propertyAddress: address,
+          performedAt: selectedReport.performed_at,
+          pdfUrl: selectedReport.pdf_url,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Erreur d'envoi");
+      setTenantEmailSent(selectedReport.occupant_email);
+      setOk(`Email envoyé à ${selectedReport.occupant_email} ✅`);
+    } catch (e: any) {
+      setErr(e?.message || "Erreur lors de l'envoi de l'email");
+    } finally {
+      setSendingTenant(false);
     }
   };
 
@@ -3009,19 +3050,20 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
                           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                             <p className="text-xs font-semibold text-slate-900">Compteurs</p>
+                            <p className="text-[0.68rem] text-slate-500 mt-0.5">Index relevé au moment de la visite</p>
                             <div className="mt-2 grid gap-3 sm:grid-cols-3">
                               {[
-                                ["electricity", "Électricité"],
-                                ["water", "Eau"],
-                                ["gas", "Gaz"],
-                              ].map(([key, label]) => (
+                                ["electricity", "Électricité", "Ex : 12 345 kWh"],
+                                ["water", "Eau", "Ex : 1 234 m³"],
+                                ["gas", "Gaz", "Ex : 456 m³"],
+                              ].map(([key, label, placeholder]) => (
                                 <div key={key} className="space-y-1">
                                   <label className="text-[0.7rem] text-slate-700">{label}</label>
                                   <input
                                     disabled={isLocked}
                                     value={String(counters[key] || "")}
                                     onChange={(e) => updateCounterField(key, e.target.value)}
-                                    placeholder="Index / relevé"
+                                    placeholder={placeholder}
                                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
                                   />
                                 </div>
@@ -3031,19 +3073,20 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
                           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                             <p className="text-xs font-semibold text-slate-900">Remise des accès</p>
+                            <p className="text-[0.68rem] text-slate-500 mt-0.5">Quantités remises au locataire</p>
                             <div className="mt-2 grid gap-3 sm:grid-cols-3">
                               {[
-                                ["keys", "Clés"],
-                                ["badges", "Badges"],
-                                ["remotes", "Télécommandes"],
-                              ].map(([key, label]) => (
+                                ["keys", "Clés", "Ex : 2 jeux"],
+                                ["badges", "Badges", "Ex : 1 badge"],
+                                ["remotes", "Télécommandes", "Ex : 1 télécommande"],
+                              ].map(([key, label, placeholder]) => (
                                 <div key={key} className="space-y-1">
                                   <label className="text-[0.7rem] text-slate-700">{label}</label>
                                   <input
                                     disabled={isLocked}
                                     value={String(counters[key] || "")}
                                     onChange={(e) => updateCounterField(key, e.target.value)}
-                                    placeholder="Ex : 2 jeux"
+                                    placeholder={placeholder}
                                     className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
                                   />
                                 </div>
@@ -3453,6 +3496,34 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
       </div>
 
+      {selectedReportId && !isExternalReport && !isLocked ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="flex items-start gap-3">
+            <MapPinIcon className="mt-0.5 h-5 w-5 shrink-0 text-slate-700" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-900">Checklist terrain</p>
+              <p className="mt-1 text-xs text-slate-600">À garder sous les yeux pendant la visite, surtout sur téléphone.</p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+            {fieldChecklist.map((item) => (
+              <div
+                key={item.label}
+                className={cx(
+                  "rounded-xl border px-3 py-2 text-xs font-semibold",
+                  item.done ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-slate-200 bg-slate-50 text-slate-700"
+                )}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <CheckCircleIcon className={cx("h-4 w-4", item.done ? "text-emerald-700" : "text-slate-400")} aria-hidden="true" />
+                  {item.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* Résumé / Actions */}
       {selectedReportId ? (
       <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white" style={{ overflowAnchor: "none" }}>
@@ -3573,6 +3644,18 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       {primaryReportActionLabel}
                     </button>
                   ) : null}
+
+                  {isLocked && hasPdf && selectedReport?.occupant_email ? (
+                    <button
+                      type="button"
+                      disabled={sendingTenant || !!tenantEmailSent}
+                      onClick={handleSendToTenant}
+                      className="col-span-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-900 hover:bg-indigo-100 disabled:opacity-60 sm:col-span-1 sm:min-h-0 sm:rounded-full sm:text-xs"
+                      title={tenantEmailSent ? `Envoyé à ${tenantEmailSent}` : `Envoyer le PDF à ${selectedReport.occupant_email}`}
+                    >
+                      {sendingTenant ? "Envoi…" : tenantEmailSent ? "Email envoyé ✓" : "Envoyer au locataire"}
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -3585,6 +3668,22 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     : "L’état des lieux de sortie reprend automatiquement les pièces et éléments de l’entrée lorsqu’elle existe."
                   : "Ce document est libre : il peut être finalisé tel quel ou rattaché à un bail actif plus tard."}
               </p>
+            ) : null}
+
+            {isLocked && selectedReport?.report_type === "exit" && onNavigateToBaux ? (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-xs font-semibold text-amber-900">
+                  EDL de sortie archivé — des dégradations à retenir sur le dépôt de garantie ?
+                </p>
+                <button
+                  type="button"
+                  onClick={onNavigateToBaux}
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-amber-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800"
+                >
+                  Gérer la caution
+                  <ArrowRightIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
             ) : null}
           </div>
         </div>
@@ -3728,32 +3827,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         </section>
       </div>
       ) : null}
-
-      {selectedReportId && !isExternalReport && !isLocked ? <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="flex items-start gap-3">
-          <MapPinIcon className="mt-0.5 h-5 w-5 shrink-0 text-slate-700" aria-hidden="true" />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-slate-900">Checklist terrain</p>
-            <p className="mt-1 text-xs text-slate-600">À garder sous les yeux pendant la visite, surtout sur téléphone.</p>
-          </div>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-          {fieldChecklist.map((item) => (
-            <div
-              key={item.label}
-              className={cx(
-                "rounded-xl border px-3 py-2 text-xs font-semibold",
-                item.done ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-slate-200 bg-slate-50 text-slate-700"
-              )}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <CheckCircleIcon className={cx("h-4 w-4", item.done ? "text-emerald-700" : "text-slate-400")} aria-hidden="true" />
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div> : null}
 
       <RepairsGuideCard />
 
