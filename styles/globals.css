@@ -87,9 +87,38 @@ body {
   }
 }
 
+/* ── Hero : conic gradient rotatif ────────────────────────────── */
+
+@keyframes lokt-bg-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* width/height explicites (pas d'aspect-ratio) — centré via top/left négatifs */
+.lokt-hero-spin {
+  position: absolute;
+  width: 260%;
+  height: 260%;
+  top: -80%;
+  left: -80%;
+  background: conic-gradient(
+    from 0deg at 42% 55%,
+    #635bff,
+    #00bce8  22%,
+    #00e5a8  44%,
+    #7c3aed  66%,
+    #4f46e5  88%,
+    #635bff
+  );
+  filter: blur(35px);
+  animation: lokt-bg-spin 20s linear infinite;
+}
+
+/* ── Reduced motion ─────────────────────────────────────────────── */
+
 @media (prefers-reduced-motion: reduce) {
   .lokt-public-hero-flow,
-  .lokt-public-hero-sheen {
+  .lokt-public-hero-sheen,
+  .lokt-hero-spin {
     animation: none !important;
   }
 

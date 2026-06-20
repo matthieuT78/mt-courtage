@@ -681,16 +681,16 @@ export default function Home() {
       <ToolPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} />
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
-        <section className="lokt-public-hero relative overflow-hidden px-4 pb-10 pt-8 sm:pb-16 sm:pt-14">
-          <div aria-hidden className="lokt-public-hero-band lokt-public-hero-flow absolute -left-[8%] top-[-8%] w-[116%] -skew-y-6 origin-top-left" />
-          <div aria-hidden className="lokt-public-hero-band absolute inset-x-0 top-0 -skew-y-6 origin-top-left bg-[linear-gradient(120deg,rgba(255,255,255,.48)_0%,transparent_34%),linear-gradient(75deg,transparent_54%,rgba(255,184,0,.34)_100%)]" />
-          <div aria-hidden className="lokt-public-hero-band absolute left-0 top-0 w-full bg-gradient-to-r from-[#635bff]/55 via-[#00b8e8]/20 to-transparent lg:w-[68%]" />
-          <div aria-hidden className="lokt-public-hero-band lokt-public-hero-sheen pointer-events-none absolute -left-1/4 top-[-8%] w-[150%] -skew-y-6 bg-[linear-gradient(112deg,transparent_18%,rgba(255,255,255,.34)_42%,rgba(255,215,120,.3)_55%,transparent_76%)]" />
+        <section className="lokt-public-hero relative overflow-hidden bg-[#07040f] px-4 pb-10 pt-8 sm:pb-16 sm:pt-14">
+          {/* Conic gradient rotatif */}
+          <div aria-hidden className="lokt-hero-spin" />
+          {/* Fondu bas vers la page */}
+          <div aria-hidden className="pointer-events-none absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-[#f6f9fc]" />
 
           <div className="relative mx-auto max-w-7xl">
             <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.88fr,1.12fr] lg:items-center">
               <div>
-                <div className="anim-fadeUp d-0 inline-flex items-center gap-2 rounded-full bg-white/82 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 shadow-sm backdrop-blur">
+                <div className="anim-fadeUp d-0 inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[0.72rem] font-semibold text-slate-700 shadow-sm">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Simulateurs immobiliers + gestion locative
                 </div>
@@ -726,8 +726,8 @@ export default function Home() {
               </div>
 
               <div className="anim-fadeUp d-4">
-                <div className="relative rounded-[1.5rem] bg-white/35 p-1.5 shadow-xl shadow-slate-900/15 backdrop-blur sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
-                  <div className="overflow-hidden rounded-[1.25rem] border border-white/60 bg-white sm:rounded-[1.55rem]">
+                <div className="relative rounded-[1.5rem] bg-white p-1.5 shadow-2xl shadow-black/25 sm:rounded-[2rem] sm:p-2">
+                  <div className="overflow-hidden rounded-[1.25rem] border border-slate-100 bg-white sm:rounded-[1.55rem]">
                     <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-[#ff5f57] sm:h-2.5 sm:w-2.5" />
@@ -971,37 +971,86 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="border-b border-slate-200 bg-[#f8fafc] px-4 py-14 sm:py-20">
-          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.92fr,1.08fr] lg:items-center">
-            <div data-scroll-reveal>
+        <section className="border-b border-slate-200 bg-[#f6f9fc] px-4 py-14 sm:py-20">
+          <div className="mx-auto max-w-7xl">
+            <div data-scroll-reveal className="mb-10">
               <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Tarifs</p>
               <h2 className="mt-3 max-w-2xl font-semibold leading-tight text-slate-950">
-                <span className="block text-3xl sm:text-4xl">Le bon niveau selon votre gestion.</span>
-                <span className="mt-1 block text-2xl text-[#635bff] sm:text-3xl">Gratuit, automatisé ou piloté.</span>
+                <span className="block text-3xl sm:text-4xl">Gratuit pour gérer.</span>
+                <span className="mt-1 block text-2xl text-[#635bff] sm:text-3xl">Payant quand lokt.fr automatise.</span>
               </h2>
-              <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-600">
-                Gratuit permet de démarrer. Starter automatise le quotidien. Essentiel ajoute la finance avancée, la déclaration
-                et les outils métier réservés aux bailleurs qui veulent justifier leurs calculs.
-              </p>
             </div>
-            <div data-scroll-reveal className="grid gap-3">
+
+            <div className="grid gap-4 sm:grid-cols-3">
               {[
-                ["Gratuit", "1 logement actif, gestion manuelle", "0 €"],
-                ["Starter", "Quittances automatiques, alertes, jusqu’à 3 logements", "4,90 € / mois"],
-                ["Essentiel", "Finance, déclaration, outils bailleur, jusqu’à 10 logements", "9,90 € / mois"],
-              ].map(([plan, desc, price], index) => (
-                <div key={plan} className={`grid gap-3 rounded-3xl border p-5 sm:grid-cols-[1fr,auto] sm:items-center ${index === 2 ? "border-[#635bff]/25 bg-white shadow-xl shadow-[#635bff]/10" : "border-slate-200 bg-white"}`}>
-                  <div>
-                    <p className="text-base font-semibold text-slate-950">{plan}</p>
-                    <p className="mt-1 text-sm text-slate-500">{desc}</p>
-                  </div>
-                  <p className="text-sm font-semibold text-slate-950">{price}</p>
+                {
+                  name: "Gratuit",
+                  price: "0 €",
+                  cadence: "1 logement actif",
+                  desc: "Biens, baux, quittances PDF, états des lieux, finance simple, 4 alertes.",
+                  features: ["1 logement actif", "Quittances manuelles", "États des lieux", "Finance simple", "4 alertes essentielles"],
+                  cta: "Créer mon espace",
+                  href: "/mon-compte?mode=register&redirect=/espace-bailleur",
+                  card: "border-emerald-200 bg-white",
+                  badge: null as string | null,
+                  ctaClass: "bg-emerald-700 text-white hover:bg-emerald-600",
+                },
+                {
+                  name: "Starter",
+                  price: "4,90 €",
+                  cadence: "/ mois · 3 logements",
+                  desc: "Automatisation complète + portail locataire + partage de documents.",
+                  features: ["Quittances automatiques", "Portail locataire activé", "Partage bail & EDL", "Toutes les alertes", "Accusé de réception"],
+                  cta: "Souscrire",
+                  href: "/tarifs",
+                  card: "border-[#635bff]/30 bg-white ring-2 ring-[#635bff]/10",
+                  badge: "Recommandé" as string | null,
+                  ctaClass: "bg-gradient-to-r from-[#635bff] to-[#00d4ff] text-white hover:opacity-90",
+                },
+                {
+                  name: "Essentiel",
+                  price: "9,90 €",
+                  cadence: "/ mois · 10 logements",
+                  desc: "Pilotage investisseur : rentabilité, outils bailleur, exports, déclaration.",
+                  features: ["Performance & cash-flow", "Boîte à outils bailleur", "Aide à la déclaration", "Exports financiers", "10 logements actifs"],
+                  cta: "Souscrire",
+                  href: "/tarifs",
+                  card: "border-slate-200 bg-white",
+                  badge: null as string | null,
+                  ctaClass: "bg-slate-950 text-white hover:bg-slate-800",
+                },
+              ].map((plan) => (
+                <div key={plan.name} data-scroll-reveal className={`relative flex flex-col rounded-[1.75rem] border p-7 shadow-sm ${plan.card}`}>
+                  {plan.badge ? (
+                    <span className="absolute right-5 top-5 rounded-full border border-[#635bff]/20 bg-[#635bff]/10 px-2.5 py-0.5 text-[0.68rem] font-semibold text-[#3f37c9]">
+                      {plan.badge}
+                    </span>
+                  ) : null}
+                  <p className="text-sm font-semibold text-slate-500">{plan.name}</p>
+                  <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+                    {plan.price} <span className="text-base font-normal text-slate-400">{plan.cadence}</span>
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-slate-600">{plan.desc}</p>
+                  <ul className="mt-5 flex-1 space-y-2">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2 text-sm text-slate-700">
+                        <span className="font-bold text-[#635bff]">✓</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href={plan.href} className={`mt-6 inline-flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold ${plan.ctaClass}`}>
+                    {plan.cta} →
+                  </Link>
                 </div>
               ))}
-              <Link href="/tarifs" className="mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 sm:justify-self-start">
-                Comparer les offres →
-              </Link>
             </div>
+
+            <p data-scroll-reveal className="mt-6 text-center text-xs text-slate-500">
+              Sans engagement · Résiliable à tout moment ·{" "}
+              <Link href="/tarifs" className="underline underline-offset-2 hover:text-slate-700">
+                Voir le comparatif complet
+              </Link>
+            </p>
           </div>
         </section>
 
