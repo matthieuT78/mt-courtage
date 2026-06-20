@@ -94,6 +94,7 @@ type Props = {
   receipts?: RentReceipt[];
   onRefresh: () => Promise<void>;
   onPrepareDeparture?: (tenantId: string) => void;
+  canShareWithTenant?: boolean;
 };
 
 /* ======================================================
@@ -671,7 +672,7 @@ function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: Rent
 
 type Mode = "idle" | "create" | "edit";
 
-export function SectionBaux({ userId, userEmail, leases, properties, tenants, payments, receipts, onRefresh, onPrepareDeparture }: Props) {
+export function SectionBaux({ userId, userEmail, leases, properties, tenants, payments, receipts, onRefresh, onPrepareDeparture, canShareWithTenant }: Props) {
   const { canUseLandlord } = usePermissions();
   const canUseReceiptAutomation = canUseLandlord;
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -2369,7 +2370,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
   return (
     <>
-    {contractLeaseId ? <LeaseContractWizard userId={userId} leaseId={contractLeaseId} onClose={() => setContractLeaseId(null)} /> : null}
+    {contractLeaseId ? <LeaseContractWizard userId={userId} leaseId={contractLeaseId} canShareWithTenant={canShareWithTenant} onClose={() => setContractLeaseId(null)} /> : null}
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
       <SectionTitle
         kicker="Baux"

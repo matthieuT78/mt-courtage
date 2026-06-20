@@ -36,7 +36,7 @@ import { SectionDocumentsTemplates } from "./sections/SectionDocumentsTemplates"
 import { SectionDossierBail } from "./sections/SectionDossierBail";
 import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
-import { planAllowsPerformance, planAllowsTools } from "../../lib/permissions";
+import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing } from "../../lib/permissions";
 
 type LockedSectionConfig = {
   eyebrow: string;
@@ -269,6 +269,7 @@ export function DashboardShell(props: any) {
   const planLabel = getBillingPlan(plan)?.name || plan;
   const canUsePerformance = planAllowsPerformance(plan);
   const canUseTools = planAllowsTools(plan);
+  const canShareDocuments = planAllowsDocumentSharing(plan);
 
   useEffect(() => {
     if (!userId) return;
@@ -402,8 +403,25 @@ export function DashboardShell(props: any) {
         features: ["Répartition de facture d’eau au prorata des relevés", "Répartition des charges par tantièmes", "TEOM et régularisation locative", "Simulateurs bailleur intégrés"],
       };
     }
+    if (active === "dossier_bail" && !canShareDocuments) {
+      return {
+        eyebrow: "Fonctionnalité Starter",
+        title: "Dossier bail réservé au plan Starter",
+        desc:
+          "Le Dossier bail centralise pour chaque location le statut du contrat, des états des lieux et des quittances — avec le suivi du partage locataire et des accusés de réception.",
+        requiredPlan: "Starter",
+        href: "/mon-compte/abonnement?source=dossier-bail",
+        cta: "Passer au plan Starter",
+        features: [
+          "Vue consolidée bail / EDL / quittances par location",
+          "Partage du bail avec le locataire par email",
+          "Accusé de réception locataire horodaté",
+          "Portail locataire activé (quittances, bail, EDL accessibles en ligne)",
+        ],
+      };
+    }
     return null;
-  }, [active, canUsePerformance, canUseTools, permissionsLoading]);
+  }, [active, canUsePerformance, canUseTools, canShareDocuments, permissionsLoading]);
 
   const content = useMemo(() => {
     if (!userId) {
@@ -479,6 +497,7 @@ export function DashboardShell(props: any) {
             payments={payments}
             receipts={receipts}
             onRefresh={refresh}
+            canShareWithTenant={canShareDocuments}
             onPrepareDeparture={(tenantId) => {
               setDepartureTenantId(tenantId);
               setActive("locataires");

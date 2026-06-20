@@ -217,7 +217,7 @@ export default function TarifsPage() {
                   <span className="mt-1 block text-[2rem] text-white/85 sm:text-5xl">Payant quand lokt.fr automatise.</span>
                 </h1>
                 <p className="mt-5 max-w-3xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
-                  Un logement actif gratuit pour démarrer. Starter automatise les quittances et les alertes. Essentiel ajoute le pilotage financier, l’aide à la déclaration et la boîte à outils bailleur.
+                  Un logement gratuit pour démarrer. Starter automatise les quittances, active le portail locataire et le partage de documents. Essentiel ajoute le pilotage financier et la boîte à outils bailleur.
                 </p>
               </div>
 
@@ -273,9 +273,11 @@ export default function TarifsPage() {
                 <li>✓ États des lieux et inventaire</li>
                 <li>✓ 50 Mo de stockage documentaire sécurisé</li>
                 <li>✓ Finance simple</li>
-                <li>✓ 4 alertes essentielles par email</li>
-                <li className="text-slate-500">Quittances et relances automatiques non incluses</li>
-                <li className="text-slate-500">Aide déclaration premium non incluse</li>
+                <li>✓ 4 alertes essentielles : retard de paiement, quittance à finaliser, email manquant</li>
+                <li className="text-slate-500">Quittances automatiques non incluses</li>
+                <li className="text-slate-500">Portail locataire non inclus</li>
+                <li className="text-slate-500">Partage de documents non inclus</li>
+                <li className="text-slate-500">Alertes IRL, fin de bail, EDL non incluses</li>
               </ul>
               <Link
                 href="/mon-compte?mode=register&redirect=/espace-bailleur"
@@ -329,13 +331,17 @@ export default function TarifsPage() {
                     ["Biens, locataires et baux", "Inclus", "Inclus", "Inclus"],
                     ["Quittances PDF manuelles", "Inclus", "Inclus", "Inclus"],
                     ["États des lieux et inventaire", "Inclus", "Inclus", "Inclus"],
-                    ["Stockage documentaire sécurisé", "50 Mo", "500 Mo", "2 Go"],
                     ["Finance simple", "Inclus", "Inclus", "Inclus"],
-                    ["Alertes essentielles", "4 alertes", "Toutes les alertes", "Toutes les alertes"],
+                    ["4 alertes essentielles (retard, quittance, email manquant)", "Inclus", "Inclus", "Inclus"],
+                    ["Stockage documentaire sécurisé", "50 Mo", "500 Mo", "2 Go"],
                     ["Alertes IRL, fin de bail et EDL", "Non inclus", "Inclus", "Inclus"],
                     ["Validation loyer par email", "Non inclus", "Inclus", "Inclus"],
                     ["Relance bailleur automatique à J+1", "Non inclus", "Inclus", "Inclus"],
                     ["Envoi automatique des quittances", "Non inclus", "Inclus", "Inclus"],
+                    ["Portail locataire (quittances, bail, EDL en ligne)", "Non inclus", "Inclus", "Inclus"],
+                    ["Partage des documents avec le locataire par email", "Non inclus", "Inclus", "Inclus"],
+                    ["Accusé de réception locataire horodaté", "Non inclus", "Inclus", "Inclus"],
+                    ["Vue dossier bail (statut consolidé par location)", "Non inclus", "Inclus", "Inclus"],
                     ["Boîte à outils bailleur", "Non inclus", "Non inclus", "Inclus"],
                     ["Répartition eau, charges, TEOM et régularisation", "Non inclus", "Non inclus", "Inclus"],
                     ["Simulateurs bailleur", "Non inclus", "Non inclus", "Inclus"],
@@ -358,13 +364,13 @@ export default function TarifsPage() {
             <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Gratuit = gestion manuelle</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Un propriétaire peut tester un vrai usage : créer son logement, rattacher un bail, générer une quittance PDF, garder ses archives et recevoir quatre alertes essentielles.
+                Un propriétaire peut tester un vrai usage : créer son logement, rattacher un bail, générer une quittance PDF, tenir ses archives et recevoir quatre alertes essentielles. Le partage avec le locataire et le portail en ligne nécessitent le plan Starter.
               </p>
             </div>
             <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Starter = automatisation</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Le propriétaire paie quand lokt.fr enlève les tâches répétitives : validation paiement, génération PDF, envoi email, relances et alertes métier avancées.
+                Le propriétaire paie quand lokt.fr enlève les tâches répétitives et active la relation locataire : validation paiement, quittances auto, relances, alertes avancées, portail locataire, partage des documents et accusés de réception.
               </p>
             </div>
             <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">

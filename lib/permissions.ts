@@ -38,6 +38,10 @@ export function planAllowsTools(plan: Plan) {
   return planAllowsPerformance(plan);
 }
 
+export function planAllowsDocumentSharing(plan: Plan) {
+  return plan === "landlord_5" || plan === "landlord_15" || plan === "landlord_unlimited";
+}
+
 export function planAllowsReceiptAutomation(plan: Plan) {
   return planAllowsLandlord(plan);
 }

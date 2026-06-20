@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentArrowUpIcon, DocumentTextIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentArrowUpIcon, DocumentTextIcon, LockClosedIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabaseClient";
 import { xhrUploadToSignedUrl } from "../../lib/uploadWithProgress";
 import { UploadProgressBar } from "../UploadProgressBar";
 
-type Props = { userId: string; leaseId: string; onClose: () => void };
+type Props = { userId: string; leaseId: string; onClose: () => void; canShareWithTenant?: boolean };
 const steps = ["Type", "Parties", "Logement", "Durée", "Finances", "Clauses", "Finaliser"];
 const input = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm";
 const label = "space-y-1 text-xs font-semibold text-slate-700";
@@ -79,7 +79,7 @@ function openUrl(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
+export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTenant = false }: Props) {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -330,7 +330,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
           <div className="flex flex-wrap gap-2">
             {document?.external_pdf_url ? <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le bail importé</button> : null}
-            {document?.external_pdf_url ? <button type="button" disabled={sharing || shared} onClick={shareWithTenant} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${shared ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-indigo-300 text-indigo-700 hover:bg-indigo-50"}`}>{sharing ? "Envoi…" : shared ? "Envoyé au locataire ✓" : "Partager avec le locataire"}</button> : null}
+            {document?.external_pdf_url ? (canShareWithTenant ? <button type="button" disabled={sharing || shared} onClick={shareWithTenant} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${shared ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-indigo-300 text-indigo-700 hover:bg-indigo-50"}`}>{sharing ? "Envoi…" : shared ? "Envoyé au locataire ✓" : "Partager avec le locataire"}</button> : <a href="/mon-compte/abonnement?source=partage-bail" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-50"><LockClosedIcon className="h-3.5 w-3.5"/>Partager · Starter</a>) : null}
             {document?.external_pdf_url ? <button type="button" disabled={loading} onClick={deleteExternal} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"><TrashIcon className="h-4 w-4"/>Supprimer</button> : null}
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><DocumentArrowUpIcon className="h-4 w-4"/>{loading ? "Import..." : document?.external_pdf_url ? "Remplacer le PDF" : "Importer mon bail"}<input type="file" accept="application/pdf" className="hidden" disabled={loading} onChange={(event) => uploadExternal(event.target.files?.[0])}/></label>
             {document?.external_pdf_url
@@ -364,7 +364,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><XMarkIcon className="h-4 w-4"/>Fermer</button>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le PDF</button>
-            <button type="button" disabled={sharing || shared} onClick={shareWithTenant} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${shared ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-indigo-300 text-indigo-700 hover:bg-indigo-50"}`}>{sharing ? "Envoi…" : shared ? "Envoyé au locataire ✓" : "Partager avec le locataire"}</button>
+            {canShareWithTenant ? <button type="button" disabled={sharing || shared} onClick={shareWithTenant} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${shared ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-indigo-300 text-indigo-700 hover:bg-indigo-50"}`}>{sharing ? "Envoi…" : shared ? "Envoyé au locataire ✓" : "Partager avec le locataire"}</button> : <a href="/mon-compte/abonnement?source=partage-bail" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-50"><LockClosedIcon className="h-3.5 w-3.5"/>Partager · Starter</a>}
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white"><DocumentArrowUpIcon className="h-4 w-4"/>Importer la version signée<input type="file" accept="application/pdf" className="hidden" onChange={(event) => uploadSigned(event.target.files?.[0])}/></label>
           </div>
         </div>
@@ -396,7 +396,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
           {document?.pdf_url ? <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>{document.signed_pdf_url ? "Ouvrir le bail signé" : "Ouvrir le PDF"}</button> : null}
-          {document?.signed_pdf_url || document?.external_pdf_url ? <button type="button" disabled={sharing || shared} onClick={shareWithTenant} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${shared ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-indigo-300 text-indigo-700 hover:bg-indigo-50"}`}>{sharing ? "Envoi…" : shared ? "Envoyé ✓" : "Partager"}</button> : null}
+          {document?.signed_pdf_url || document?.external_pdf_url ? (canShareWithTenant ? <button type="button" disabled={sharing || shared} onClick={shareWithTenant} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${shared ? "border-indigo-200 bg-indigo-50 text-indigo-700" : "border-indigo-300 text-indigo-700 hover:bg-indigo-50"}`}>{sharing ? "Envoi…" : shared ? "Envoyé ✓" : "Partager"}</button> : <a href="/mon-compte/abonnement?source=partage-bail" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-50"><LockClosedIcon className="h-3.5 w-3.5"/>Partager · Starter</a>) : null}
           {document?.pdf_url ? <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><DocumentArrowUpIcon className="h-4 w-4"/>Importer signé<input type="file" accept="application/pdf" className="hidden" onChange={(event) => uploadSigned(event.target.files?.[0])}/></label> : null}
           {step < 6 ? <button type="button" onClick={next} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white">Suivant<ArrowRightIcon className="h-4 w-4"/></button> : <button type="button" disabled={loading} onClick={generate} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white">{loading ? "Génération..." : "Finaliser et générer le PDF"}</button>}
         </div>
