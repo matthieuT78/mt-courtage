@@ -3374,10 +3374,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       ? "L’état des lieux de sortie est signé : il est verrouillé."
                       : exitReport
                       ? "Reprendre l’état des lieux de sortie."
+                      : entryReport.document_source === "external"
+                      ? "L’entrée est un PDF importé — la sortie sera créée vierge (pas de copie automatique des pièces)."
                       : "Créer la sortie en copiant les pièces de l’entrée."
                   }
                 >
-                  {exitReport ? "Reprendre la sortie" : "Créer la sortie depuis l’entrée"}
+                  {exitReport
+                    ? "Reprendre la sortie"
+                    : entryReport?.document_source === "external"
+                    ? "Créer la sortie"
+                    : "Créer la sortie depuis l’entrée"}
                 </button>
 
                 <div className="my-1 border-t border-slate-200" />
@@ -3574,7 +3580,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
             {!isLocked ? (
               <p className="mt-3 text-xs text-slate-600">
                 {selectedLeaseId
-                  ? "L’état des lieux de sortie reprend automatiquement les pièces et éléments de l’entrée lorsqu’elle existe."
+                  ? entryReport?.document_source === "external"
+                    ? "L’entrée a été importée en PDF : la sortie sera créée vierge. Ajoutez les pièces manuellement."
+                    : "L’état des lieux de sortie reprend automatiquement les pièces et éléments de l’entrée lorsqu’elle existe."
                   : "Ce document est libre : il peut être finalisé tel quel ou rattaché à un bail actif plus tard."}
               </p>
             ) : null}
