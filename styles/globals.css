@@ -116,86 +116,114 @@ body {
 /* ── Bailleur Dark Mode ─────────────────────────────────────────── */
 /*
   Scoped to .bailleur-dark wrapper — public marketing pages unaffected.
-  Using !important to override Tailwind utility classes without touching
-  every section component individually.
+  Palette :
+    bg page      #0c1220   surface     #162035   surface-2   #1d2b42
+    border       #2a3e5a   text        #e8eeff   text-2      #b4c2dc
+    text-3       #8096b8   text-muted  #607090
+    emphasis     #334f7a   (ex-slate-900/950, distinguishable from surface)
 */
 
 .bailleur-dark {
   color-scheme: dark;
 }
 
-/* Backgrounds */
+/* ── Backgrounds ──────────────────────────────────────────────── */
 .bailleur-dark .bg-white {
-  background-color: #131e32 !important;
+  background-color: #162035 !important;
 }
 .bailleur-dark .bg-slate-50 {
-  background-color: #192640 !important;
+  background-color: #1d2b42 !important;
 }
 .bailleur-dark .bg-slate-100 {
-  background-color: #1e2c4a !important;
+  background-color: #223050 !important;
 }
-/* f6f9fc is used as "inner panel" bg in bailleur components */
+/* bg-[#f6f9fc] used as inner panel */
 .bailleur-dark .bg-\[\#f6f9fc\] {
-  background-color: #192640 !important;
+  background-color: #1d2b42 !important;
+}
+/* slate-900 / slate-950 were dark CTA buttons on light bg →
+   flip to medium-blue so they stay readable on dark surfaces */
+.bailleur-dark .bg-slate-950 {
+  background-color: #334f7a !important;
+}
+.bailleur-dark .bg-slate-900 {
+  background-color: #334f7a !important;
+}
+.bailleur-dark .bg-slate-800 {
+  background-color: #3a5a8a !important;
+}
+/* Hover variants of those buttons */
+.bailleur-dark .hover\:bg-slate-800:hover {
+  background-color: #3a5a8a !important;
+}
+.bailleur-dark .hover\:bg-slate-900:hover,
+.bailleur-dark .hover\:bg-slate-950:hover {
+  background-color: #3a5a8a !important;
 }
 /* Backdrop blur variants */
 .bailleur-dark .bg-white\/90,
 .bailleur-dark .bg-white\/95 {
-  background-color: rgb(19 30 50 / 0.94) !important;
+  background-color: rgb(22 32 53 / 0.95) !important;
 }
 
-/* Borders */
+/* ── Borders ─────────────────────────────────────────────────── */
 .bailleur-dark .border-slate-200 {
-  border-color: #253650 !important;
+  border-color: #2a3e5a !important;
 }
 .bailleur-dark .border-slate-100 {
-  border-color: #1e2c44 !important;
+  border-color: #213048 !important;
+}
+.bailleur-dark .border-slate-300 {
+  border-color: #2a3e5a !important;
 }
 
-/* Text */
+/* ── Text ───────────────────────────────────────────────────── */
 .bailleur-dark .text-slate-950 {
-  color: #eef1ff !important;
+  color: #e8eeff !important;
 }
 .bailleur-dark .text-slate-900 {
-  color: #e2e8f8 !important;
+  color: #dce6ff !important;
 }
 .bailleur-dark .text-slate-800 {
-  color: #c8d4ec !important;
+  color: #c8d8f0 !important;
 }
 .bailleur-dark .text-slate-700 {
-  color: #a8bace !important;
+  color: #b4c2dc !important;
 }
 .bailleur-dark .text-slate-600 {
-  color: #8898b5 !important;
+  color: #8096b8 !important;
 }
 .bailleur-dark .text-slate-500 {
-  color: #64748b !important;
+  color: #607090 !important;
 }
 
-/* Shadows */
+/* ── Shadows ────────────────────────────────────────────────── */
 .bailleur-dark .shadow-sm {
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4) !important;
+  box-shadow: 0 1px 4px 0 rgb(0 0 0 / 0.5) !important;
 }
 
-/* Inputs / Selects */
+/* ── Inputs / Selects ────────────────────────────────────────── */
 .bailleur-dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 .bailleur-dark select,
 .bailleur-dark textarea {
-  background-color: #192640 !important;
-  border-color: #253650 !important;
-  color: #eef1ff !important;
+  background-color: #1d2b42 !important;
+  border-color: #2a3e5a !important;
+  color: #e8eeff !important;
 }
 .bailleur-dark input::placeholder,
 .bailleur-dark textarea::placeholder {
-  color: #64748b !important;
+  color: #607090 !important;
 }
 
-/* Hover row */
+/* ── Hover rows ─────────────────────────────────────────────── */
 .bailleur-dark .hover\:bg-slate-50:hover {
-  background-color: #1e2c44 !important;
+  background-color: #223050 !important;
 }
 .bailleur-dark .hover\:bg-slate-100:hover {
-  background-color: #253250 !important;
+  background-color: #263555 !important;
+}
+.bailleur-dark .hover\:bg-white:hover {
+  background-color: #1d2b42 !important;
 }
 
 /* ── Reduced motion ─────────────────────────────────────────────── */
