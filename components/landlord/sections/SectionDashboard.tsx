@@ -1,6 +1,6 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BellIcon, HomeModernIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
+import { BellIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
@@ -337,6 +337,7 @@ export function SectionDashboard({
   const [doneAtISO, setDoneAtISO] = useState<string | null>(null);
   const [justCompleted, setJustCompleted] = useState(false);
   const [manuallyDismissed, setManuallyDismissed] = useState(false);
+  const [notifExpanded, setNotifExpanded] = useState(false);
   const prevPercentRef = useRef<number>(-1);
 
   const dismissedKey = useMemo(() => `imp:onboarding_dismissed:${(userId || "").trim() || "anon"}`, [userId]);
@@ -1113,49 +1114,100 @@ export function SectionDashboard({
 
       {/* ── Notification mise en route ─────────────────────────── */}
       {!shouldHideOnboarding && (
-        <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
-            <BellIcon className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[0.8rem] font-semibold text-amber-900">
-              Mise en route · {onboarding.doneCount}/{onboarding.steps.length} étapes terminées
-            </p>
-            {onboarding.next && (
-              <p className="mt-0.5 truncate text-[0.73rem] text-amber-700">
-                À faire : {onboarding.next.label}
+        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50">
+          {/* Ligne résumé (toujours visible) */}
+          <div className="flex items-center gap-3 px-4 py-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+              <BellIcon className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[0.8rem] font-semibold text-amber-900">
+                Mise en route · {onboarding.doneCount}/{onboarding.steps.length} étapes terminées
               </p>
-            )}
-          </div>
-          {/* Barre de progression */}
-          <div className="hidden w-16 shrink-0 sm:block">
-            <div className="h-1.5 overflow-hidden rounded-full bg-amber-200">
-              <div className="h-full bg-amber-500 transition-all duration-700" style={{ width: `${onboarding.percent}%` }} />
+              {!notifExpanded && onboarding.next && (
+                <p className="mt-0.5 truncate text-[0.73rem] text-amber-700">
+                  À faire : {onboarding.next.label}
+                </p>
+              )}
             </div>
-            <p className="mt-0.5 text-center text-[0.65rem] font-semibold text-amber-600">{onboarding.percent}%</p>
-          </div>
-          {/* CTA */}
-          {onboarding.next && (
+            {/* Barre de progression */}
+            <div className="hidden w-16 shrink-0 sm:block">
+              <div className="h-1.5 overflow-hidden rounded-full bg-amber-200">
+                <div className="h-full bg-amber-500 transition-all duration-700" style={{ width: `${onboarding.percent}%` }} />
+              </div>
+              <p className="mt-0.5 text-center text-[0.65rem] font-semibold text-amber-600">{onboarding.percent}%</p>
+            </div>
+            {/* Expand toggle */}
             <button
               type="button"
-              onClick={() => onGo(onboarding.next!.key)}
-              className="shrink-0 rounded-full bg-amber-500 px-3 py-1.5 text-[0.73rem] font-semibold text-white transition hover:bg-amber-600"
+              onClick={() => setNotifExpanded((v) => !v)}
+              className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-600 transition hover:bg-amber-200"
+              aria-label={notifExpanded ? "Réduire" : "Voir les étapes"}
             >
-              Continuer →
+              <ChevronDownIcon className={"h-4 w-4 transition-transform duration-200 " + (notifExpanded ? "rotate-180" : "")} aria-hidden="true" />
             </button>
+            {/* Dismiss */}
+            <button
+              type="button"
+              onClick={() => {
+                setManuallyDismissed(true);
+                try { window.localStorage.setItem(dismissedKey, "1"); } catch { /* ignore */ }
+              }}
+              className="shrink-0 rounded-lg px-1.5 py-1 text-[0.85rem] font-medium text-amber-400 transition hover:bg-amber-100 hover:text-amber-700"
+              aria-label="Masquer"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Détail des étapes (expandable) */}
+          {notifExpanded && (
+            <div className="border-t border-amber-200 bg-white/60 px-4 py-3">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {onboarding.steps.map((step) => (
+                  <button
+                    key={step.key}
+                    type="button"
+                    onClick={() => onGo(step.key)}
+                    className={
+                      "flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition " +
+                      (step.done
+                        ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                        : "border-amber-200 bg-amber-50 hover:bg-amber-100")
+                    }
+                  >
+                    <span className={"mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full " + (step.done ? "bg-emerald-500" : "bg-amber-300")}>
+                      {step.done
+                        ? <CheckCircleIcon className="h-4 w-4 text-white" aria-hidden="true" />
+                        : <span className="h-2 w-2 rounded-full bg-white" />}
+                    </span>
+                    <div className="min-w-0">
+                      <p className={"text-[0.78rem] font-semibold " + (step.done ? "text-emerald-800" : "text-amber-900")}>
+                        {step.label}
+                      </p>
+                      <p className={"text-[0.7rem] " + (step.done ? "text-emerald-600" : "text-amber-700")}>
+                        {step.key === "biens" ? "Adresse, infos, statut"
+                          : step.key === "locataires" ? "Nom, email, contact"
+                          : step.key === "baux" ? "Bien, locataire et loyer"
+                          : "Prix et taux crédit"}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {onboarding.next && (
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => onGo(onboarding.next!.key)}
+                    className="rounded-full bg-amber-500 px-4 py-1.5 text-[0.73rem] font-semibold text-white transition hover:bg-amber-600"
+                  >
+                    Continuer : {onboarding.next.label} →
+                  </button>
+                </div>
+              )}
+            </div>
           )}
-          {/* Dismiss */}
-          <button
-            type="button"
-            onClick={() => {
-              setManuallyDismissed(true);
-              try { window.localStorage.setItem(dismissedKey, "1"); } catch { /* ignore */ }
-            }}
-            className="shrink-0 rounded-lg px-1.5 py-1 text-[0.85rem] font-medium text-amber-400 transition hover:bg-amber-100 hover:text-amber-700"
-            aria-label="Masquer"
-          >
-            ✕
-          </button>
         </div>
       )}
 
