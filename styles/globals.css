@@ -233,9 +233,25 @@ body {
   background-color: #1d2b42 !important;
 }
 
+/* ── bg-white opacity variants ──────────────────────────────── */
+.bailleur-dark .bg-white\/70,
+.bailleur-dark .bg-white\/75,
+.bailleur-dark .bg-white\/80,
+.bailleur-dark .bg-white\/85 {
+  background-color: rgba(22, 32, 53, 0.88) !important;
+}
+
+/* ── Arbitrary gradient overlays (radial-gradient inline bg) ── */
+/* Absolute overlay divs with combined radial+linear light gradients */
+.bailleur-dark [class*="radial-gradient"] {
+  background: rgba(99, 91, 255, 0.05) !important;
+}
+
 /* ── Colored bg-*-50 panels (chips, banners, info panels) ──── */
 /* sky */
 .bailleur-dark .bg-sky-50 { background-color: #0e2540 !important; }
+.bailleur-dark .bg-sky-100 { background-color: #112e50 !important; }
+.bailleur-dark .border-sky-100 { border-color: #1a3f60 !important; }
 .bailleur-dark .border-sky-200 { border-color: #1a3f60 !important; }
 .bailleur-dark .text-sky-800,
 .bailleur-dark .text-sky-900 { color: #7dd3fc !important; }
