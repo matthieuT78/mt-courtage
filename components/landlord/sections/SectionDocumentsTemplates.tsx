@@ -433,6 +433,7 @@ function compareDocuments(a: VaultDocument, b: VaultDocument, sort: DocumentSort
 export function SectionDocumentsTemplates({ userId, properties, tenants, leases }: Props) {
   const { loading, canUseLandlord } = usePermissions();
   const [folder, setFolder] = useState<FolderKey>("all");
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<DocumentSort>("date_desc");
   const [ok, setOk] = useState<string | null>(null);
@@ -704,15 +705,21 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
     };
   }, [userId, locked]);
 
+  const propertiesInVault = useMemo(() => {
+    const ids = new Set(vaultDocuments.filter((d) => d.propertyId).map((d) => d.propertyId!));
+    return safeProperties.filter((p) => ids.has(p.id));
+  }, [vaultDocuments, safeProperties]);
+
   const filteredVaultDocuments = useMemo(() => {
     const q = query.trim().toLowerCase();
     const rows = vaultDocuments.filter((doc) => {
       const hay = [doc.kind, doc.title, doc.context, doc.status, doc.source].join(" ").toLowerCase();
       const matchesFolder = folder === "all" || folderForDocument(doc) === folder || (folder === "properties" && !!doc.propertyId);
-      return matchesFolder && (!q || hay.includes(q));
+      const matchesProperty = folder !== "properties" || !selectedPropertyId || doc.propertyId === selectedPropertyId;
+      return matchesFolder && matchesProperty && (!q || hay.includes(q));
     });
     return [...rows].sort((a, b) => compareDocuments(a, b, sort));
-  }, [vaultDocuments, query, folder, sort]);
+  }, [vaultDocuments, query, folder, selectedPropertyId, sort]);
 
   const docStats = useMemo(() => {
     const pdfReady = vaultDocuments.filter((doc) => !!doc.open).length;
@@ -844,7 +851,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
                 <button
                   key={item.key}
                   type="button"
-                  onClick={() => setFolder(item.key)}
+                  onClick={() => { setFolder(item.key); if (item.key !== "properties") setSelectedPropertyId(null); }}
                   className={cx(
                     "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition",
                     folder === item.key ? "bg-white text-slate-950 shadow-sm" : "text-slate-700 hover:bg-white/70"
@@ -868,12 +875,49 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">Chargement des documents…</div>
           ) : filteredVaultDocuments.length ? (
             <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
-              <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-slate-950">{folders.find((item) => item.key === folder)?.label || "Fichiers"}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{filteredVaultDocuments.length} fichier{filteredVaultDocuments.length > 1 ? "s" : ""}</p>
+              <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">{folders.find((item) => item.key === folder)?.label || "Fichiers"}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{filteredVaultDocuments.length} fichier{filteredVaultDocuments.length > 1 ? "s" : ""}</p>
+                  </div>
+                  <p className="text-xs text-slate-500">Les documents signés restent conservés pour la traçabilité.</p>
                 </div>
-                <p className="text-xs text-slate-500">Les documents signés restent conservés pour la traçabilité.</p>
+                {folder === "properties" && propertiesInVault.length > 1 && (
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPropertyId(null)}
+                      className={cx(
+                        "rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors",
+                        !selectedPropertyId
+                          ? "border-[#635bff]/30 bg-[#635bff]/10 text-[#635bff]"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                      )}
+                    >
+                      Tous
+                    </button>
+                    {propertiesInVault.map((p) => {
+                      const label = p.label || p.address || p.city || "Logement";
+                      const isActive = selectedPropertyId === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setSelectedPropertyId(isActive ? null : p.id)}
+                          className={cx(
+                            "max-w-[160px] truncate rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors",
+                            isActive
+                              ? "border-[#635bff]/30 bg-[#635bff]/10 text-[#635bff]"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                          )}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               <div className="divide-y divide-slate-100">
                 {filteredVaultDocuments.map((doc) => (
