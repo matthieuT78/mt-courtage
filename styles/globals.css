@@ -226,6 +226,52 @@ body {
   background-color: #1d2b42 !important;
 }
 
+/* ── Custom bg colors not covered by bg-white ──────────────── */
+/* WorkflowIntro step grid, etc. */
+.bailleur-dark .bg-\[\#f8fafc\],
+.bailleur-dark .bg-\[\#f9fafb\],
+.bailleur-dark .bg-\[\#f6f9fc\] {
+  background-color: #1d2b42 !important;
+}
+
+/* ── Gradient backgrounds (tool cards, inner panels) ─────────
+   Light from-*/via-*/to-* gradient stops → dark equivalents.
+   Uses Tailwind's CSS custom properties so bg-gradient-to-* picks them up.
+   Attribute selectors cover opacity variants like to-emerald-50/60.        */
+
+/* from-* light → dark start */
+.bailleur-dark .from-white,
+.bailleur-dark .from-slate-50,
+.bailleur-dark [class*="from-cyan-50"],
+.bailleur-dark [class*="from-violet-50"],
+.bailleur-dark [class*="from-emerald-50"],
+.bailleur-dark [class*="from-amber-50"],
+.bailleur-dark [class*="from-sky-50"],
+.bailleur-dark [class*="from-teal-50"] {
+  --tw-gradient-from: #162035 !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgb(22 32 53 / 0)) !important;
+}
+
+/* via-* light → dark midpoint */
+.bailleur-dark .via-white,
+.bailleur-dark [class*="via-slate-50"],
+.bailleur-dark [class*="via-cyan-50"],
+.bailleur-dark [class*="via-emerald-50"] {
+  --tw-gradient-stops: var(--tw-gradient-from), #1d2b42, var(--tw-gradient-to, rgb(29 43 66 / 0)) !important;
+}
+
+/* to-* light → dark end */
+.bailleur-dark .to-white,
+.bailleur-dark [class*="to-slate-50"],
+.bailleur-dark [class*="to-cyan-50"],
+.bailleur-dark [class*="to-emerald-50"],
+.bailleur-dark [class*="to-sky-50"],
+.bailleur-dark [class*="to-amber-50"],
+.bailleur-dark [class*="to-violet-50"],
+.bailleur-dark [class*="to-teal-50"] {
+  --tw-gradient-to: #223050 !important;
+}
+
 /* ── Reduced motion ─────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
