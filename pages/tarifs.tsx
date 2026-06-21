@@ -207,7 +207,12 @@ export default function TarifsPage() {
 
       <AppHeader staticMode />
       <main className="flex-1">
-        <section className="relative border-b border-slate-200 bg-[#f6f9fc] px-4 pb-10 pt-10 sm:pb-16 sm:pt-14">
+        <section className="relative overflow-hidden border-b border-slate-200 bg-white px-4 pb-10 pt-10 sm:pb-16 sm:pt-14">
+          {/* Ligne accent top */}
+          <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#635bff]/60 to-transparent" />
+          {/* Orbes statiques */}
+          <div aria-hidden className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-[#635bff]/[0.08] blur-3xl" />
+          <div aria-hidden className="pointer-events-none absolute -right-24 top-16 h-[380px] w-[380px] rounded-full bg-[#00d4ff]/[0.06] blur-3xl" />
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-6 sm:gap-8 lg:grid-cols-[1fr,360px] lg:items-end">
               <div>
@@ -217,14 +222,14 @@ export default function TarifsPage() {
                 </div>
                 <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] sm:mt-6">
                   <span className="block text-[2.55rem] text-slate-950 sm:text-6xl">Gratuit pour gérer.</span>
-                  <span className="mt-1 block text-[2rem] text-slate-500 sm:text-5xl">Payant quand lokt.fr automatise.</span>
+                  <span className="mt-1 block text-[2rem] bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] sm:text-5xl">Payant quand lokt.fr automatise.</span>
                 </h1>
                 <p className="mt-5 max-w-3xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
                   Un logement gratuit pour démarrer. Starter automatise les quittances, active le portail locataire et le partage de documents. Essentiel ajoute le pilotage financier et la boîte à outils bailleur.
                 </p>
               </div>
 
-              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-xl shadow-slate-900/10 sm:rounded-[1.75rem]">
+              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-xl shadow-[#635bff]/10 sm:rounded-[1.75rem]">
                 <p className="text-sm font-semibold text-slate-950">Facturation</p>
                 <div className="mt-3 inline-flex rounded-xl border border-slate-200 bg-[#f6f9fc] p-1">
                   {(["monthly", "yearly"] as Billing[]).map((value) => (

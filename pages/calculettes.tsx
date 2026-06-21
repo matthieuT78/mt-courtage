@@ -326,7 +326,12 @@ export default function CalculettesPage() {
       <ToolPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} tools={tools} />
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
-        <section className="relative border-b border-slate-200 bg-white px-4 pb-12 pt-10 sm:pb-16 sm:pt-14">
+        <section className="relative overflow-hidden border-b border-slate-200 bg-white px-4 pb-12 pt-10 sm:pb-16 sm:pt-14">
+          {/* Ligne accent top */}
+          <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#635bff]/60 to-transparent" />
+          {/* Orbes statiques — pas d'animation contrairement à l'index */}
+          <div aria-hidden className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-[#635bff]/[0.08] blur-3xl" />
+          <div aria-hidden className="pointer-events-none absolute -right-24 top-16 h-[380px] w-[380px] rounded-full bg-[#00d4ff]/[0.06] blur-3xl" />
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-center">
               <div>
@@ -338,12 +343,12 @@ export default function CalculettesPage() {
                   {displayName ? (
                     <>
                       <span className="block text-[2.55rem] sm:text-6xl">Bonjour {displayName}.</span>
-                      <span className="mt-1 block text-[2rem] text-slate-500 sm:text-5xl">Simulez votre projet.</span>
+                      <span className="mt-1 block text-[2rem] sm:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8]">Simulez votre projet.</span>
                     </>
                   ) : (
                     <>
                       <span className="block text-[2.55rem] sm:text-6xl">Simuler avant d’acheter.</span>
-                      <span className="mt-1 block text-[2rem] text-slate-500 sm:text-5xl">Vendre ou investir.</span>
+                      <span className="mt-1 block text-[2rem] sm:text-5xl bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8]">Vendre ou investir.</span>
                     </>
                   )}
                 </h1>
@@ -354,7 +359,7 @@ export default function CalculettesPage() {
                   <button
                     type="button"
                     onClick={() => setPickerOpen(true)}
-                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800 sm:w-auto"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#635bff] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-[#4f46e5] sm:w-auto"
                   >
                     Lancer une simulation →
                   </button>
@@ -369,7 +374,7 @@ export default function CalculettesPage() {
               </div>
 
               <div>
-                <div className="relative rounded-[1.5rem] border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/15 sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
+                <div className="relative rounded-[1.5rem] border border-slate-200 bg-white p-1.5 shadow-xl shadow-[#635bff]/10 sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
                   <div className="overflow-hidden rounded-[1.25rem] border border-white/60 bg-white sm:rounded-[1.55rem]">
                     <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
                       <div className="flex items-center gap-2">

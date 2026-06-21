@@ -218,7 +218,12 @@ export default function OutilGestionLocativePage() {
       <AppHeader staticMode />
 
       <main className="flex-1 bg-[#f6f9fc] text-slate-950">
-        <section className="relative border-b border-slate-200 bg-white px-4 pb-12 pt-10 sm:pb-16 sm:pt-14">
+        <section className="relative overflow-hidden border-b border-slate-200 bg-white px-4 pb-12 pt-10 sm:pb-16 sm:pt-14">
+          {/* Ligne accent top */}
+          <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#635bff]/60 to-transparent" />
+          {/* Orbes statiques */}
+          <div aria-hidden className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-[#635bff]/[0.08] blur-3xl" />
+          <div aria-hidden className="pointer-events-none absolute -right-24 top-16 h-[380px] w-[380px] rounded-full bg-[#00d4ff]/[0.06] blur-3xl" />
           <div className="relative mx-auto max-w-6xl">
             <div className="grid gap-7 sm:gap-10 lg:grid-cols-[0.95fr,1.05fr] lg:items-start">
               <div>
@@ -228,7 +233,7 @@ export default function OutilGestionLocativePage() {
                 </div>
                 <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-slate-950 sm:mt-6">
                   <span className="block text-[2.55rem] sm:text-6xl">Un espace bailleur simple.</span>
-                  <span className="mt-1 block text-[2rem] text-slate-500 sm:text-5xl">Clair, prêt à piloter.</span>
+                  <span className="mt-1 block bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] text-[2rem] sm:text-5xl">Clair, prêt à piloter.</span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
                   La page produit générale pour gérer une location nue, meublée ou LMNP : baux, loyers, quittances, états des lieux, inventaire, finance et alertes.
@@ -236,7 +241,7 @@ export default function OutilGestionLocativePage() {
                 <div className="mt-6 grid gap-3 sm:mt-7 sm:flex sm:flex-wrap">
                   <Link
                     href="/mon-compte?mode=register&redirect=/espace-bailleur"
-                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800 sm:w-auto"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-[#635bff] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-[#4f46e5] sm:w-auto"
                   >
                     Créer un compte gratuit →
                   </Link>
@@ -256,7 +261,7 @@ export default function OutilGestionLocativePage() {
               </div>
 
               <div>
-                <div className="relative rounded-[1.5rem] border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/15 sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
+                <div className="relative rounded-[1.5rem] border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/15 shadow-[#635bff]/10 sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
                   <div className="overflow-hidden rounded-[1.25rem] border border-white/60 bg-white sm:rounded-[1.55rem]">
                     <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
                       <div className="flex items-center gap-2">
