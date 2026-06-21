@@ -277,30 +277,6 @@ export function SectionDossierBail({ userId, leases, properties, tenants }: Prop
           })}
         </div>
       )}
-
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <p className="text-xs font-semibold text-amber-900">Migration Supabase requise pour les accusés de réception</p>
-        <p className="mt-1 text-xs leading-5 text-amber-800">
-          Pour que les accusés de réception soient persistés, exécutez ce SQL dans votre console Supabase :
-        </p>
-        <pre className="mt-2 overflow-auto rounded-lg bg-amber-100 p-3 text-[0.68rem] leading-5 text-amber-950">{`CREATE TABLE IF NOT EXISTS document_acknowledgments (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  landlord_user_id uuid NOT NULL,
-  document_type text NOT NULL,
-  document_id uuid NOT NULL,
-  tenant_id uuid,
-  tenant_email text,
-  acknowledged_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(document_type, document_id)
-);
-CREATE INDEX IF NOT EXISTS idx_doc_ack_landlord
-  ON document_acknowledgments(landlord_user_id);
-
--- Optionnel : tracking du partage bail
-ALTER TABLE lease_contract_documents
-  ADD COLUMN IF NOT EXISTS shared_with_tenant_at timestamptz,
-  ADD COLUMN IF NOT EXISTS shared_to_tenant_email text;`}</pre>
-      </div>
     </div>
   );
 }
