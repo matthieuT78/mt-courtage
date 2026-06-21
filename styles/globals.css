@@ -113,6 +113,91 @@ body {
   animation: lokt-bg-spin 20s linear infinite;
 }
 
+/* ── Bailleur Dark Mode ─────────────────────────────────────────── */
+/*
+  Scoped to .bailleur-dark wrapper — public marketing pages unaffected.
+  Using !important to override Tailwind utility classes without touching
+  every section component individually.
+*/
+
+.bailleur-dark {
+  color-scheme: dark;
+}
+
+/* Backgrounds */
+.bailleur-dark .bg-white {
+  background-color: #131e32 !important;
+}
+.bailleur-dark .bg-slate-50 {
+  background-color: #192640 !important;
+}
+.bailleur-dark .bg-slate-100 {
+  background-color: #1e2c4a !important;
+}
+/* f6f9fc is used as "inner panel" bg in bailleur components */
+.bailleur-dark .bg-\[\#f6f9fc\] {
+  background-color: #192640 !important;
+}
+/* Backdrop blur variants */
+.bailleur-dark .bg-white\/90,
+.bailleur-dark .bg-white\/95 {
+  background-color: rgb(19 30 50 / 0.94) !important;
+}
+
+/* Borders */
+.bailleur-dark .border-slate-200 {
+  border-color: #253650 !important;
+}
+.bailleur-dark .border-slate-100 {
+  border-color: #1e2c44 !important;
+}
+
+/* Text */
+.bailleur-dark .text-slate-950 {
+  color: #eef1ff !important;
+}
+.bailleur-dark .text-slate-900 {
+  color: #e2e8f8 !important;
+}
+.bailleur-dark .text-slate-800 {
+  color: #c8d4ec !important;
+}
+.bailleur-dark .text-slate-700 {
+  color: #a8bace !important;
+}
+.bailleur-dark .text-slate-600 {
+  color: #8898b5 !important;
+}
+.bailleur-dark .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Shadows */
+.bailleur-dark .shadow-sm {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4) !important;
+}
+
+/* Inputs / Selects */
+.bailleur-dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.bailleur-dark select,
+.bailleur-dark textarea {
+  background-color: #192640 !important;
+  border-color: #253650 !important;
+  color: #eef1ff !important;
+}
+.bailleur-dark input::placeholder,
+.bailleur-dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Hover row */
+.bailleur-dark .hover\:bg-slate-50:hover {
+  background-color: #1e2c44 !important;
+}
+.bailleur-dark .hover\:bg-slate-100:hover {
+  background-color: #253250 !important;
+}
+
 /* ── Reduced motion ─────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

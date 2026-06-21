@@ -1,4 +1,5 @@
 import React from "react";
+import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { Pill } from "./UiBits";
 import { getLandlordNavItems, type LandlordSectionKey } from "./navigation";
 
@@ -16,6 +17,8 @@ export function SidebarNav({
   onChange,
   healthScore,
   navOrder,
+  isDark,
+  onToggleDark,
   className = "",
 }: {
   active: LandlordSectionKey;
@@ -23,6 +26,8 @@ export function SidebarNav({
   healthScore: number;
   overLimit: boolean;
   navOrder?: LandlordSectionKey[];
+  isDark?: boolean;
+  onToggleDark?: () => void;
   className?: string;
 }) {
   // 🎨 Brand lokt.fr
@@ -66,6 +71,36 @@ export function SidebarNav({
 
           <p className="mt-1 text-sm font-semibold text-slate-900">Espace bailleur</p>
           <p className="mt-1 text-[0.75rem] leading-5 text-slate-600">Pilotez vos logements, loyers et documents.</p>
+
+          {onToggleDark && (
+            <button
+              type="button"
+              onClick={onToggleDark}
+              className={`mt-3 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                isDark
+                  ? "border-[#635bff]/25 bg-[#635bff]/10 text-[#9b96ff] hover:bg-[#635bff]/15"
+                  : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+              }`}
+              aria-label={isDark ? "Passer en mode clair" : "Passer en mode sombre"}
+            >
+              <span className="flex items-center gap-2">
+                {isDark ? (
+                  <SunIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <MoonIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                {isDark ? "Mode clair" : "Mode sombre"}
+              </span>
+              {/* Toggle switch */}
+              <span className={`relative h-4 w-7 rounded-full transition-colors ${isDark ? "bg-[#635bff]" : "bg-slate-300"}`}>
+                <span
+                  className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow-sm transition-all ${
+                    isDark ? "left-3.5" : "left-0.5"
+                  }`}
+                />
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Nav items */}

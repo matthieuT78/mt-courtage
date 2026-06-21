@@ -6,7 +6,9 @@ import {
   ArrowUpRightIcon,
   CheckCircleIcon,
   LockClosedIcon,
+  MoonIcon,
   SparklesIcon,
+  SunIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { SidebarNav, LandlordSectionKey } from "./SidebarNav";
@@ -235,6 +237,9 @@ export function DashboardShell(props: any) {
   const [departureTenantId, setDepartureTenantId] = useState<string | null>(null);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [navOrder, setNavOrder] = useState<LandlordSectionKey[]>(DEFAULT_LANDLORD_NAV_ORDER);
+
+  const isDark = !!props?.isDark;
+  const onToggleDark = props?.onToggleDark as (() => void) | undefined;
 
   const userId: string = props?.user?.id || "";
   const userEmail: string | undefined = props?.user?.email;
@@ -612,6 +617,24 @@ export function DashboardShell(props: any) {
             <span className="rounded-full border border-[#635bff]/20 bg-[#635bff]/5 px-2.5 py-1 text-[0.68rem] font-semibold text-[#4f46e5]">
               Santé {healthScore}
             </span>
+            {onToggleDark && (
+              <button
+                type="button"
+                onClick={onToggleDark}
+                className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
+                  isDark
+                    ? "bg-[#635bff]/15 text-[#9b96ff]"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+                aria-label={isDark ? "Mode clair" : "Mode sombre"}
+              >
+                {isDark ? (
+                  <SunIcon className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <MoonIcon className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -680,6 +703,8 @@ export function DashboardShell(props: any) {
           healthScore={healthScore}
           overLimit={overLimit}
           navOrder={navOrder}
+          isDark={isDark}
+          onToggleDark={onToggleDark}
           className="hidden lg:block"
         />
         <section className="min-w-0 space-y-4">{content}</section>

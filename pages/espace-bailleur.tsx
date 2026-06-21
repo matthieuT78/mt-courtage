@@ -4,17 +4,23 @@ import Head from "next/head";
 import AppHeader from "../components/AppHeader";
 import { useLandlordDashboard } from "../lib/landlord/useLandlordDashboard";
 import { DashboardShell } from "../components/landlord/DashboardShell";
+import { useBailleurTheme } from "../hooks/useBailleurTheme";
 
 export default function EspaceBailleurPage() {
   const d = useLandlordDashboard();
+  const { dark, toggle } = useBailleurTheme();
 
   // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]";
   const brandText = "text-white";
 
+  const pageClass = `min-h-screen flex flex-col transition-colors duration-300 ${
+    dark ? "bailleur-dark bg-[#0d1423]" : "bg-[#f6f9fc]"
+  }`;
+
   if (d.checkingAuth) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#f6f9fc]">
+      <div className={pageClass}>
         <Head>
           <title>Espace bailleur | lokt.fr</title>
           <meta name="robots" content="noindex, nofollow" />
@@ -53,7 +59,7 @@ export default function EspaceBailleurPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f6f9fc]">
+    <div className={pageClass}>
       <Head>
         <title>Espace bailleur | lokt.fr</title>
         <meta name="robots" content="noindex, nofollow" />
@@ -61,14 +67,14 @@ export default function EspaceBailleurPage() {
       <AppHeader />
 
       {/* On garde le shell monté même pendant loading,
-          sinon l’onglet actif revient à "dashboard" après un refresh */}
+          sinon l'onglet actif revient à "dashboard" après un refresh */}
       {d.error ? (
         <main className="flex-1 px-4 py-8">
           <div className="max-w-5xl mx-auto">
             <div className="rounded-[2rem] border border-red-200 bg-white shadow-sm overflow-hidden">
               <div className="h-1.5 w-full bg-red-500" />
               <div className="p-6">
-                <p className="text-sm font-semibold text-red-700">Impossible d’ouvrir l’espace bailleur</p>
+                <p className="text-sm font-semibold text-red-700">Impossible d'ouvrir l'espace bailleur</p>
                 <p className="mt-1 text-sm text-red-700">{d.error}</p>
                 <p className="mt-3 text-xs text-slate-500">
                   Si le problème persiste, contactez-nous :{" "}
@@ -102,7 +108,7 @@ export default function EspaceBailleurPage() {
           ) : null}
 
           <main className="flex-1">
-            <DashboardShell {...d} />
+            <DashboardShell {...d} isDark={dark} onToggleDark={toggle} />
           </main>
         </>
       )}
