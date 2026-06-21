@@ -227,12 +227,63 @@ body {
 }
 
 /* ── Custom bg colors not covered by bg-white ──────────────── */
-/* WorkflowIntro step grid, etc. */
 .bailleur-dark .bg-\[\#f8fafc\],
 .bailleur-dark .bg-\[\#f9fafb\],
 .bailleur-dark .bg-\[\#f6f9fc\] {
   background-color: #1d2b42 !important;
 }
+
+/* ── Colored bg-*-50 panels (chips, banners, info panels) ──── */
+/* sky */
+.bailleur-dark .bg-sky-50 { background-color: #0e2540 !important; }
+.bailleur-dark .border-sky-200 { border-color: #1a3f60 !important; }
+.bailleur-dark .text-sky-800,
+.bailleur-dark .text-sky-900 { color: #7dd3fc !important; }
+.bailleur-dark .text-sky-700 { color: #38bdf8 !important; }
+/* cyan */
+.bailleur-dark .bg-cyan-50 { background-color: #0d2f40 !important; }
+.bailleur-dark .border-cyan-100,
+.bailleur-dark .border-cyan-200 { border-color: #184860 !important; }
+.bailleur-dark .text-cyan-800,
+.bailleur-dark .text-cyan-900,
+.bailleur-dark .text-cyan-950 { color: #67e8f9 !important; }
+.bailleur-dark .text-cyan-700 { color: #22d3ee !important; }
+.bailleur-dark .bg-cyan-100 { background-color: #163a50 !important; }
+/* violet */
+.bailleur-dark .bg-violet-50 { background-color: #1e1050 !important; }
+.bailleur-dark .border-violet-100,
+.bailleur-dark .border-violet-200 { border-color: #332070 !important; }
+.bailleur-dark .text-violet-800,
+.bailleur-dark .text-violet-900 { color: #c4b5fd !important; }
+.bailleur-dark .text-violet-700 { color: #a78bfa !important; }
+/* emerald */
+.bailleur-dark .bg-emerald-50 { background-color: #082e20 !important; }
+.bailleur-dark .border-emerald-100,
+.bailleur-dark .border-emerald-200 { border-color: #104830 !important; }
+.bailleur-dark .text-emerald-800,
+.bailleur-dark .text-emerald-900,
+.bailleur-dark .text-emerald-950 { color: #6ee7b7 !important; }
+.bailleur-dark .text-emerald-700 { color: #34d399 !important; }
+.bailleur-dark .text-emerald-600 { color: #10b981 !important; }
+.bailleur-dark .bg-emerald-100 { background-color: #0f4030 !important; }
+/* amber */
+.bailleur-dark .bg-amber-50 { background-color: #2a1800 !important; }
+.bailleur-dark .border-amber-100,
+.bailleur-dark .border-amber-200 { border-color: #402800 !important; }
+.bailleur-dark .text-amber-800,
+.bailleur-dark .text-amber-900,
+.bailleur-dark .text-amber-950 { color: #fcd34d !important; }
+.bailleur-dark .text-amber-700 { color: #fbbf24 !important; }
+/* red (error states) */
+.bailleur-dark .bg-red-50 { background-color: #2a0a0a !important; }
+.bailleur-dark .border-red-200 { border-color: #4a1010 !important; }
+.bailleur-dark .text-red-700,
+.bailleur-dark .text-red-800,
+.bailleur-dark .text-red-900 { color: #fca5a5 !important; }
+/* indigo */
+.bailleur-dark .bg-indigo-50 { background-color: #1a1440 !important; }
+.bailleur-dark .border-indigo-100,
+.bailleur-dark .border-indigo-200 { border-color: #2a2060 !important; }
 
 /* ── Gradient backgrounds (tool cards, inner panels) ─────────
    Light gradient stops overridden via Tailwind CSS custom properties.

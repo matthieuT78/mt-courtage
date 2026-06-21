@@ -58,8 +58,8 @@ export function SidebarNav({
   };
 
   return (
-    <aside className={`h-max w-full lg:sticky lg:top-4 lg:w-[280px] lg:self-start ${className}`}>
-      <div className="flex rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur lg:max-h-[calc(100vh-2rem)] lg:flex-col lg:overflow-hidden">
+    <aside className={`h-max w-full lg:sticky lg:top-[4.5rem] lg:w-[280px] lg:self-start ${className}`}>
+      <div className="flex rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur lg:max-h-[calc(100vh-5rem)] lg:flex-col lg:overflow-hidden">
         {/* Header sidebar */}
         <div className="shrink-0 px-2 pb-3 pt-1">
           <div className="flex items-center gap-2">
