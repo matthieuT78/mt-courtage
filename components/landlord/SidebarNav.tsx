@@ -58,8 +58,8 @@ export function SidebarNav({
   };
 
   return (
-    <aside className={`h-max w-full lg:sticky lg:top-[4.5rem] lg:w-[280px] lg:self-start ${className}`}>
-      <div className="flex rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur lg:max-h-[calc(100vh-5rem)] lg:flex-col lg:overflow-hidden">
+    <aside className={`h-full w-full ${className}`}>
+      <div className="flex h-full flex-col rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur overflow-hidden">
         {/* Header sidebar */}
         <div className="shrink-0 px-2 pb-3 pt-1">
           <div className="flex items-center gap-2">
@@ -104,7 +104,7 @@ export function SidebarNav({
         </div>
 
         {/* Nav items */}
-        <div className="mt-1 space-y-1 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+        <div className="mt-1 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
           {items.map((it) => {
             const isActive = it.key === active;
             const Icon = it.icon;

@@ -606,8 +606,10 @@ export function DashboardShell(props: any) {
   const activeLabel = LANDLORD_NAV_ITEMS[active]?.label || "Espace bailleur";
 
   return (
-    <div className="mx-auto max-w-7xl px-3 pb-24 pt-4 sm:px-4 sm:py-6 lg:pb-6">
-      <div className="sticky top-0 z-30 mb-3 -mx-3 border-b border-slate-200 bg-white/90 px-3 py-2 backdrop-blur-xl lg:hidden">
+    <div className="lg:flex lg:h-[calc(100dvh-4.5rem)] lg:overflow-hidden">
+
+      {/* ── Mobile sticky header (hidden on desktop) ─────────── */}
+      <div className="sticky top-0 z-30 mb-3 border-b border-slate-200 bg-white/90 px-3 py-2 backdrop-blur-xl lg:hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[0.68rem] font-semibold lowercase tracking-[0.2em] text-slate-500">lokt.fr</p>
@@ -639,64 +641,8 @@ export function DashboardShell(props: any) {
         </div>
       </div>
 
-      {!permissionsLoading ? (
-        <div className="mb-4 hidden overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm sm:block">
-          <div className="h-1 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-          <div className="p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                {isFreePlan ? "Offre gratuite" : `Abonnement ${planLabel}`}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">
-                {isFreePlan
-                  ? "1 logement actif inclus gratuitement"
-                  : `Votre plan permet ${propertyLimitLabel} actif${maxActiveProperties > 1 ? "s" : ""}.`}
-              </p>
-              <p className="mt-1 text-xs text-slate-600">
-                Logements actifs : {activePropertiesCount}
-                {maxActiveProperties < 999999 ? ` / ${maxActiveProperties}` : ""}. Les fonctionnalités premium, comme l’aide à la déclaration, sont réservées aux abonnements payants.
-              </p>
-            </div>
-            {isFreePlan && activePropertiesCount >= 1 ? (
-              <a
-                href="/mon-compte/abonnement"
-                className="inline-flex items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-              >
-                Débloquer plusieurs logements
-              </a>
-            ) : null}
-          </div>
-          </div>
-        </div>
-      ) : null}
-      {rentFeedback ? (
-        <div
-          className={
-            "mb-4 rounded-3xl border p-4 shadow-sm " +
-            (rentFeedback.tone === "emerald"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-950"
-              : rentFeedback.tone === "amber"
-              ? "border-amber-200 bg-amber-50 text-amber-950"
-              : "border-red-200 bg-red-50 text-red-900")
-          }
-        >
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm font-semibold">{rentFeedback.title}</p>
-              <p className="mt-1 text-sm opacity-90">{rentFeedback.desc}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => router.replace("/espace-bailleur?tab=quittances", undefined, { shallow: true })}
-              className="self-start rounded-full border border-current/20 bg-white/70 px-3 py-1.5 text-xs font-semibold hover:bg-white md:self-auto"
-            >
-              Masquer
-            </button>
-          </div>
-        </div>
-      ) : null}
-      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+      {/* ── Desktop sidebar panel (fixed height, never scrolls) ── */}
+      <aside className="hidden shrink-0 p-3 lg:flex lg:w-[280px] lg:flex-col">
         <SidebarNav
           active={active}
           onChange={onChangeTab}
@@ -705,10 +651,79 @@ export function DashboardShell(props: any) {
           navOrder={navOrder}
           isDark={isDark}
           onToggleDark={onToggleDark}
-          className="hidden lg:block"
         />
-        <section className="min-w-0 space-y-4">{content}</section>
+      </aside>
+
+      {/* ── Scrollable content column ─────────────────────────── */}
+      <div className="min-w-0 flex-1 lg:overflow-y-auto">
+        <div className="px-3 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-4 lg:px-6 lg:py-6 lg:pb-10">
+
+          {/* Subscription / plan banner */}
+          {!permissionsLoading ? (
+            <div className="mb-4 hidden overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm sm:block">
+              <div className="h-1 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+              <div className="p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                      {isFreePlan ? "Offre gratuite" : `Abonnement ${planLabel}`}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                      {isFreePlan
+                        ? "1 logement actif inclus gratuitement"
+                        : `Votre plan permet ${propertyLimitLabel} actif${maxActiveProperties > 1 ? "s" : ""}.`}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Logements actifs : {activePropertiesCount}
+                      {maxActiveProperties < 999999 ? ` / ${maxActiveProperties}` : ""}. Les fonctionnalités premium, comme l’aide à la déclaration, sont réservées aux abonnements payants.
+                    </p>
+                  </div>
+                  {isFreePlan && activePropertiesCount >= 1 ? (
+                    <a
+                      href="/mon-compte/abonnement"
+                      className="inline-flex items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                    >
+                      Débloquer plusieurs logements
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Rent feedback banner */}
+          {rentFeedback ? (
+            <div
+              className={
+                "mb-4 rounded-3xl border p-4 shadow-sm " +
+                (rentFeedback.tone === "emerald"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                  : rentFeedback.tone === "amber"
+                  ? "border-amber-200 bg-amber-50 text-amber-950"
+                  : "border-red-200 bg-red-50 text-red-900")
+              }
+            >
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold">{rentFeedback.title}</p>
+                  <p className="mt-1 text-sm opacity-90">{rentFeedback.desc}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.replace("/espace-bailleur?tab=quittances", undefined, { shallow: true })}
+                  className="self-start rounded-full border border-current/20 bg-white/70 px-3 py-1.5 text-xs font-semibold hover:bg-white md:self-auto"
+                >
+                  Masquer
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <section className="min-w-0 space-y-4">{content}</section>
+        </div>
       </div>
+
+      {/* ── Mobile bottom nav ─────────────────────────────────── */}
       <MobileBottomNav
         active={active}
         onChange={onChangeTab}

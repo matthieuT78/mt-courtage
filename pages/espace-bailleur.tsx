@@ -14,7 +14,7 @@ export default function EspaceBailleurPage() {
   const brandBg = "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]";
   const brandText = "text-white";
 
-  const pageClass = `min-h-screen flex flex-col transition-colors duration-300 ${
+  const pageClass = `flex flex-col transition-colors duration-300 min-h-screen lg:h-dvh lg:overflow-hidden ${
     dark ? "bailleur-dark bg-[#0d1423]" : "bg-[#f6f9fc]"
   }`;
 
@@ -113,7 +113,7 @@ export default function EspaceBailleurPage() {
         </>
       )}
 
-      <footer className="border-t border-slate-200 bg-white py-5 text-center text-xs text-slate-500">
+      <footer className="border-t border-slate-200 bg-white py-5 text-center text-xs text-slate-500 lg:hidden">
         <p>© {new Date().getFullYear()} lokt.fr – Espace bailleur.</p>
         <p className="mt-1">
           Contact :{" "}
