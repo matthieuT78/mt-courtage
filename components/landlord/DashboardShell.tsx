@@ -606,8 +606,7 @@ export function DashboardShell(props: any) {
   const activeLabel = LANDLORD_NAV_ITEMS[active]?.label || "Espace bailleur";
 
   return (
-    <div className="lg:flex lg:h-[calc(100dvh-4.5rem)] lg:overflow-hidden">
-
+    <div>
       {/* ── Mobile sticky header (hidden on desktop) ─────────── */}
       <div className="sticky top-0 z-30 mb-3 border-b border-slate-200 bg-white/90 px-3 py-2 backdrop-blur-xl lg:hidden">
         <div className="flex items-center justify-between gap-3">
@@ -641,8 +640,8 @@ export function DashboardShell(props: any) {
         </div>
       </div>
 
-      {/* ── Desktop sidebar panel (fixed height, never scrolls) ── */}
-      <aside className="hidden shrink-0 p-3 lg:flex lg:w-[280px] lg:flex-col">
+      {/* ── Desktop sidebar — position:fixed, jamais scrollable ─ */}
+      <aside className="fixed bottom-0 left-0 top-[4.5rem] z-20 hidden w-[280px] overflow-hidden p-3 lg:block">
         <SidebarNav
           active={active}
           onChange={onChangeTab}
@@ -654,8 +653,8 @@ export function DashboardShell(props: any) {
         />
       </aside>
 
-      {/* ── Scrollable content column ─────────────────────────── */}
-      <div className="min-w-0 flex-1 lg:overflow-y-auto">
+      {/* ── Contenu principal — décalé à droite du sidebar ────── */}
+      <div className="lg:pl-[280px]">
         <div className="px-3 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-4 lg:px-6 lg:py-6 lg:pb-10">
 
           {/* Subscription / plan banner */}

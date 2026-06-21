@@ -14,7 +14,7 @@ export default function EspaceBailleurPage() {
   const brandBg = "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]";
   const brandText = "text-white";
 
-  const pageClass = `flex flex-col transition-colors duration-300 min-h-screen lg:h-dvh lg:overflow-hidden ${
+  const pageClass = `min-h-screen flex flex-col transition-colors duration-300 ${
     dark ? "bailleur-dark bg-[#0d1423]" : "bg-[#f6f9fc]"
   }`;
 
