@@ -81,6 +81,17 @@ export function SectionDossierBail({ userId, leases, properties, tenants }: Prop
   const propertyById = new Map(safeProps.map((p) => [(p as any).id, p]));
   const tenantById = new Map(safeTenants.map((t) => [(t as any).id, t]));
 
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+
+  // Properties that have at least one active lease
+  const propertiesWithLeases = safeProps.filter((p) =>
+    activeLeases.some((l: any) => l.property_id === (p as any).id)
+  );
+
+  const visibleLeases = selectedPropertyId
+    ? activeLeases.filter((l: any) => l.property_id === selectedPropertyId)
+    : activeLeases;
+
   const [data, setData] = useState<Record<string, DossierData>>({});
   const [loading, setLoading] = useState(true);
 
@@ -164,6 +175,40 @@ export function SectionDossierBail({ userId, leases, properties, tenants }: Prop
         desc="Vue consolidée : contrat de bail, états des lieux et quittances — statut et partage locataire pour chaque location active."
       />
 
+      {propertiesWithLeases.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectedPropertyId(null)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              !selectedPropertyId
+                ? "border-[#635bff]/30 bg-[#635bff]/10 text-[#635bff]"
+                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+            }`}
+          >
+            Tous les biens
+          </button>
+          {propertiesWithLeases.map((p: any) => {
+            const label = p.label || p.address_line1 || "Logement";
+            const isActive = selectedPropertyId === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSelectedPropertyId(isActive ? null : p.id)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  isActive
+                    ? "border-[#635bff]/30 bg-[#635bff]/10 text-[#635bff]"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {loading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">Chargement…</div>
       ) : activeLeases.length === 0 ? (
@@ -172,7 +217,7 @@ export function SectionDossierBail({ userId, leases, properties, tenants }: Prop
         </div>
       ) : (
         <div className="space-y-4">
-          {activeLeases.map((lease: any) => {
+          {visibleLeases.map((lease: any) => {
             const property = propertyById.get(lease.property_id);
             const tenant = tenantById.get(lease.tenant_id);
             const d = data[lease.id];
