@@ -66,11 +66,8 @@ export function SidebarNav({
     return (
       <aside className={`h-full w-full ${className}`}>
         <div className="flex h-full flex-col items-center rounded-[2rem] border border-slate-200 bg-white/95 py-3 shadow-sm backdrop-blur overflow-hidden">
-          {/* Header : logo + bouton expand (même position que collapse en mode étendu) */}
-          <div className="shrink-0 flex flex-col items-center gap-2 pb-3">
-            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${brandBg} text-sm font-bold text-white shadow-sm`}>
-              L
-            </span>
+          {/* Header : bouton expand */}
+          <div className="shrink-0 flex flex-col items-center pb-3">
             <button
               type="button"
               onClick={onToggleCollapse}
@@ -131,10 +128,7 @@ export function SidebarNav({
       <div className="flex h-full flex-col rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur overflow-hidden">
         {/* Header */}
         <div className="shrink-0 px-2 pb-3 pt-1">
-          <div className="flex items-center justify-between">
-            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${brandBg} text-sm font-bold text-white shadow-sm`}>
-              L
-            </span>
+          <div className="flex items-center justify-end">
             {/* Bouton réduire */}
             <button
               type="button"
