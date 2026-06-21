@@ -420,8 +420,8 @@ export function SectionDashboard({
   }, [activeLeases, properties, propertyFinance, tenantById]);
 
   const shouldHideOnboarding = useMemo(() => {
-    if (onboarding.percent < 100) return false;
     if (manuallyDismissed) return true;
+    if (onboarding.percent < 100) return false;
     if (!doneAtISO) return false;
     const t = new Date(doneAtISO).getTime();
     if (!Number.isFinite(t)) return false;
@@ -851,98 +851,84 @@ export function SectionDashboard({
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {!shouldHideOnboarding ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+      <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm sm:rounded-3xl">
+        {/* ── Hero gradient ─────────────────────────────────────── */}
+        <div className="bg-gradient-to-br from-[#5e6cf0] via-[#4d9cff] to-[#2bbfd5] px-5 py-6 text-white">
+          <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Mise en route</p>
-              <p className="mt-1 text-base font-semibold text-slate-900">{onboarding.headline}</p>
-              <p className="mt-1 text-[0.85rem] text-slate-600">{onboarding.sub}</p>
-              {doneAtISO && onboarding.percent === 100 ? (
-                <p className="mt-1 text-xs text-slate-500">
-                  Terminé le {new Date(doneAtISO).toLocaleDateString("fr-FR")} · Masqué automatiquement après {HIDE_AFTER_DAYS} jours
-                </p>
-              ) : null}
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <span className={justCompleted ? "animate-pulse" : ""}>
-                <Pill tone={toneFromPercent(onboarding.percent) as any}>{onboarding.percent}%</Pill>
-              </span>
-
-              {!onboarding.cta && (
-                <>
-                  <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800">Prêt</span>
+              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-white/50">Cockpit bailleur</p>
+              <h2 className="mt-2 text-xl font-semibold leading-tight text-white">Bonjour, voici le point du jour</h2>
+              <p className="mt-1 text-[0.8rem] text-white/65">
+                {fmtDate(monthRange.startISO)} → {fmtDate(monthRange.endISO)}
+              </p>
+              {/* Quick shortcuts */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(
+                  [
+                    { label: "Loyers", key: "quittances" },
+                    { label: "Baux", key: "baux" },
+                    { label: "Finance", key: "finance" },
+                    { label: "Documents", key: "documents" },
+                  ] as { label: string; key: LandlordSectionKey }[]
+                ).map(({ label, key }) => (
                   <button
+                    key={key}
                     type="button"
-                    onClick={() => {
-                      setManuallyDismissed(true);
-                      try { window.localStorage.setItem(dismissedKey, "1"); } catch { /* ignore */ }
-                    }}
-                    className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-400 transition hover:border-slate-300 hover:text-slate-600"
+                    onClick={() => onGo(key)}
+                    className="rounded-full bg-white/15 px-3 py-1.5 text-[0.73rem] font-semibold text-white backdrop-blur transition hover:bg-white/28"
                   >
-                    Masquer
+                    {label} →
                   </button>
-                </>
-              )}
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="mt-4">
-            <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${onboarding.percent}%` }} />
+            {/* Score badge proéminent */}
+            <div className="flex shrink-0 flex-col items-center gap-0.5 rounded-2xl bg-white/15 px-4 py-3.5 backdrop-blur">
+              <p className="text-[0.58rem] font-semibold uppercase tracking-widest text-white/55">Score</p>
+              <p className="text-3xl font-bold leading-none text-white">{healthScore}</p>
+              <p className="text-[0.58rem] text-white/45">/100</p>
+              <div className="mt-2 h-1 w-12 overflow-hidden rounded-full bg-white/20">
+                <div
+                  className="h-full rounded-full bg-white transition-all duration-700"
+                  style={{ width: `${healthScore > 0 ? Math.max(8, Math.min(100, healthScore)) : 0}%` }}
+                />
+              </div>
             </div>
-            <p className="mt-2 text-xs text-slate-600">{onboarding.doneCount}/{onboarding.steps.length} étapes terminées</p>
-          </div>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {onboarding.steps.map((step) => (
-              <button
-                key={step.key}
-                type="button"
-                onClick={() => onGo(step.key)}
-                className={
-                  "rounded-xl border px-3 py-3 text-left transition " +
-                  (step.done ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50 hover:bg-slate-100")
-                }
-                >
-                <p className="text-sm font-semibold text-slate-900">{step.done ? "Fait" : "À faire"} · {step.label}</p>
-                <p className="mt-0.5 text-[0.8rem] text-slate-600">
-                  {step.key === "biens"
-                    ? "Adresse, infos, statut"
-                    : step.key === "locataires"
-                    ? "Nom, email, contact"
-                    : step.key === "baux"
-                    ? "Bien, locataire et loyer"
-                    : "Prix et taux crédit"}
-                </p>
-              </button>
-            ))}
           </div>
         </div>
-      ) : null}
 
-      <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm sm:rounded-3xl">
-        <div className="border-b border-slate-100 bg-gradient-to-br from-[#6072ff] via-[#4d9cff] to-[#5bcbd5] px-4 py-5 text-white sm:px-5 sm:py-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-white/70">Cockpit bailleur</p>
-              <h2 className="mt-1 text-2xl font-semibold leading-tight text-white sm:text-lg">Bonjour, voici le point du jour</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-5 text-white/88 sm:mt-1">
-                Période : {fmtDate(monthRange.startISO)} → {fmtDate(monthRange.endISO)} · loyers, quittances, retards et performance.
-              </p>
+        {/* ── Stats bar ─────────────────────────────────────────── */}
+        <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100 bg-white">
+          {(
+            [
+              {
+                label: "Encaissement",
+                value: hasOnlyUpcomingRents ? "À venir" : `${ratio}%`,
+                tone: hasOnlyUpcomingRents ? "text-emerald-600" : ratio >= 95 ? "text-emerald-600" : ratio >= 70 ? "text-amber-600" : "text-red-600",
+              },
+              {
+                label: "Retards",
+                value: String(lateCount),
+                tone: lateCount > 0 ? "text-red-600" : "text-emerald-600",
+              },
+              {
+                label: "Occupation",
+                value: `${occupancySnapshot.rate}%`,
+                tone: occupancySnapshot.rate >= 80 ? "text-emerald-600" : "text-amber-600",
+              },
+              {
+                label: "Quittances",
+                value: hasOnlyUpcomingRents ? "—" : `${receiptCoverage}%`,
+                tone: receiptCoverage >= 100 ? "text-emerald-600" : receiptCoverage >= 50 ? "text-amber-600" : "text-red-600",
+              },
+            ] as { label: string; value: string; tone: string }[]
+          ).map(({ label, value, tone }) => (
+            <div key={label} className="flex flex-col items-center px-2 py-3">
+              <p className="text-[0.6rem] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+              <p className={`mt-0.5 text-base font-bold ${tone}`}>{value}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-white/25 bg-white/18 px-3 py-1 text-xs font-semibold text-white shadow-sm backdrop-blur">Score {healthScore}/100</span>
-              <span className="rounded-full border border-white/25 bg-white/90 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm backdrop-blur">Occupation {occupancySnapshot.rate}%</span>
-            </div>
-          </div>
-          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/25 sm:mt-3">
-            <div
-              className="h-full rounded-full bg-white"
-              style={{ width: `${healthScore > 0 ? Math.max(8, Math.min(100, healthScore)) : 0}%` }}
-            />
-          </div>
+          ))}
         </div>
 
         <div className="grid min-w-0 gap-3 bg-[#f6f9fc] p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(0,1fr),minmax(0,0.85fr)]">
@@ -1124,6 +1110,54 @@ export function SectionDashboard({
           </div>
         </div>
       </section>
+
+      {/* ── Notification mise en route ─────────────────────────── */}
+      {!shouldHideOnboarding && (
+        <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+            <BellIcon className="h-4 w-4" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.8rem] font-semibold text-amber-900">
+              Mise en route · {onboarding.doneCount}/{onboarding.steps.length} étapes terminées
+            </p>
+            {onboarding.next && (
+              <p className="mt-0.5 truncate text-[0.73rem] text-amber-700">
+                À faire : {onboarding.next.label}
+              </p>
+            )}
+          </div>
+          {/* Barre de progression */}
+          <div className="hidden w-16 shrink-0 sm:block">
+            <div className="h-1.5 overflow-hidden rounded-full bg-amber-200">
+              <div className="h-full bg-amber-500 transition-all duration-700" style={{ width: `${onboarding.percent}%` }} />
+            </div>
+            <p className="mt-0.5 text-center text-[0.65rem] font-semibold text-amber-600">{onboarding.percent}%</p>
+          </div>
+          {/* CTA */}
+          {onboarding.next && (
+            <button
+              type="button"
+              onClick={() => onGo(onboarding.next!.key)}
+              className="shrink-0 rounded-full bg-amber-500 px-3 py-1.5 text-[0.73rem] font-semibold text-white transition hover:bg-amber-600"
+            >
+              Continuer →
+            </button>
+          )}
+          {/* Dismiss */}
+          <button
+            type="button"
+            onClick={() => {
+              setManuallyDismissed(true);
+              try { window.localStorage.setItem(dismissedKey, "1"); } catch { /* ignore */ }
+            }}
+            className="shrink-0 rounded-lg px-1.5 py-1 text-[0.85rem] font-medium text-amber-400 transition hover:bg-amber-100 hover:text-amber-700"
+            aria-label="Masquer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
         <SectionTitle

@@ -237,6 +237,21 @@ export function DashboardShell(props: any) {
   const [departureTenantId, setDepartureTenantId] = useState<string | null>(null);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [navOrder, setNavOrder] = useState<LandlordSectionKey[]>(DEFAULT_LANDLORD_NAV_ORDER);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      setSidebarCollapsed(window.localStorage.getItem("lokt:sidebar-collapsed") === "1");
+    } catch { /* ignore */ }
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try { window.localStorage.setItem("lokt:sidebar-collapsed", next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   const isDark = !!props?.isDark;
   const onToggleDark = props?.onToggleDark as (() => void) | undefined;
@@ -640,8 +655,15 @@ export function DashboardShell(props: any) {
         </div>
       </div>
 
-      {/* ── Desktop sidebar — position:fixed, jamais scrollable ─ */}
-      <aside className="fixed bottom-0 left-0 top-[4.5rem] z-20 hidden w-[280px] overflow-hidden p-3 lg:block">
+      {/* ── Desktop sidebar — position:fixed, collapsible ──────── */}
+      <aside
+        className="fixed bottom-0 left-0 top-[4.5rem] z-20 hidden overflow-hidden lg:block"
+        style={{
+          width: sidebarCollapsed ? "72px" : "280px",
+          padding: sidebarCollapsed ? "8px" : "12px",
+          transition: "width 280ms cubic-bezier(0.4,0,0.2,1), padding 280ms cubic-bezier(0.4,0,0.2,1)",
+        }}
+      >
         <SidebarNav
           active={active}
           onChange={onChangeTab}
@@ -650,45 +672,20 @@ export function DashboardShell(props: any) {
           navOrder={navOrder}
           isDark={isDark}
           onToggleDark={onToggleDark}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebar}
         />
       </aside>
 
       {/* ── Contenu principal — décalé à droite du sidebar ────── */}
-      <div className="lg:pl-[280px]">
+      <div
+        style={{
+          paddingLeft: sidebarCollapsed ? "72px" : "280px",
+          transition: "padding-left 280ms cubic-bezier(0.4,0,0.2,1)",
+        }}
+      >
         <div className="px-3 pb-24 pt-2 sm:px-4 sm:pb-24 sm:pt-4 lg:px-6 lg:py-6 lg:pb-10">
 
-          {/* Subscription / plan banner */}
-          {!permissionsLoading ? (
-            <div className="mb-4 hidden overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm sm:block">
-              <div className="h-1 w-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-              <div className="p-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                      {isFreePlan ? "Offre gratuite" : `Abonnement ${planLabel}`}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                      {isFreePlan
-                        ? "1 logement actif inclus gratuitement"
-                        : `Votre plan permet ${propertyLimitLabel} actif${maxActiveProperties > 1 ? "s" : ""}.`}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-600">
-                      Logements actifs : {activePropertiesCount}
-                      {maxActiveProperties < 999999 ? ` / ${maxActiveProperties}` : ""}. Les fonctionnalités premium, comme l’aide à la déclaration, sont réservées aux abonnements payants.
-                    </p>
-                  </div>
-                  {isFreePlan && activePropertiesCount >= 1 ? (
-                    <a
-                      href="/mon-compte/abonnement"
-                      className="inline-flex items-center justify-center rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                      Débloquer plusieurs logements
-                    </a>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          ) : null}
 
           {/* Rent feedback banner */}
           {rentFeedback ? (
