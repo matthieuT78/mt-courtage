@@ -66,11 +66,19 @@ export function SidebarNav({
     return (
       <aside className={`h-full w-full ${className}`}>
         <div className="flex h-full flex-col items-center rounded-[2rem] border border-slate-200 bg-white/95 py-3 shadow-sm backdrop-blur overflow-hidden">
-          {/* Logo */}
-          <div className="shrink-0 pb-3">
-            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${brandBg} text-xs font-semibold text-white shadow-sm`}>
+          {/* Header : logo + bouton expand (même position que collapse en mode étendu) */}
+          <div className="shrink-0 flex flex-col items-center gap-2 pb-3">
+            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${brandBg} text-sm font-bold text-white shadow-sm`}>
               L
             </span>
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              title="Agrandir le menu"
+              className={`group flex h-8 w-8 items-center justify-center rounded-full ${brandBg} text-white shadow-md transition hover:opacity-90 active:scale-95`}
+            >
+              <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </button>
           </div>
 
           {/* Nav — icônes uniquement */}
@@ -99,9 +107,9 @@ export function SidebarNav({
             })}
           </div>
 
-          {/* Bas : dark toggle + expand */}
-          <div className="mt-2 shrink-0 w-full space-y-1 px-1.5">
-            {onToggleDark && (
+          {/* Bas : dark toggle uniquement */}
+          {onToggleDark && (
+            <div className="mt-2 shrink-0 w-full px-1.5">
               <button
                 type="button"
                 onClick={onToggleDark}
@@ -110,16 +118,8 @@ export function SidebarNav({
               >
                 {isDark ? <SunIcon className="h-4 w-4" aria-hidden="true" /> : <MoonIcon className="h-4 w-4" aria-hidden="true" />}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              title="Agrandir le menu"
-              className="flex h-10 w-full items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-            >
-              <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
+            </div>
+          )}
         </div>
       </aside>
     );
@@ -140,7 +140,7 @@ export function SidebarNav({
               type="button"
               onClick={onToggleCollapse}
               title="Réduire le menu"
-              className="group flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white shadow-md transition hover:bg-slate-700 active:scale-95"
+              className={`group flex h-8 w-8 items-center justify-center rounded-full ${brandBg} text-white shadow-md transition hover:opacity-90 active:scale-95`}
             >
               <ChevronLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
             </button>
