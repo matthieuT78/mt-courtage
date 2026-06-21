@@ -870,15 +870,7 @@ export function SectionDashboard({
                 <Pill tone={toneFromPercent(onboarding.percent) as any}>{onboarding.percent}%</Pill>
               </span>
 
-              {onboarding.cta ? (
-                <button
-                  type="button"
-                  onClick={() => onGo(onboarding.cta!.key)}
-                  className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                >
-                  {onboarding.cta.label}
-                </button>
-              ) : (
+              {!onboarding.cta && (
                 <>
                   <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-800">Prêt</span>
                   <button
