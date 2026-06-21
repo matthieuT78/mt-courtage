@@ -399,7 +399,7 @@ export function SectionQuittances({
   const [reminderSettings, setReminderSettings] = useState<Map<string, ReminderSetting>>(new Map());
   const [reminderDraft, setReminderDraft] = useState<ReminderDraft | null>(null);
   const [snoozedReceiptKeys, setSnoozedReceiptKeys] = useState<Set<string>>(new Set());
-  const [confirmOverrideByRow, setConfirmOverrideByRow] = useState<Record<string, { rent: string; charges: string }>>({});
+  const [confirmOverrideByRow, setConfirmOverrideByRow] = useState<Record<string, { rent: string; charges: string; paymentMethod: string }>>({});
 
   const selectedReceipt = useMemo(
     () => safeReceipts.find((r: any) => r.id === selectedReceiptId) || null,
@@ -712,7 +712,7 @@ export function SectionQuittances({
     }
   };
 
-  const confirmPaymentForRow = async (row: any, overrideRent?: number, overrideCharges?: number) => {
+  const confirmPaymentForRow = async (row: any, overrideRent?: number, overrideCharges?: number, paymentMethodOverride?: string) => {
     setErr(null);
     setOk(null);
 
@@ -729,6 +729,7 @@ export function SectionQuittances({
           periodEnd: row.periodEnd,
           ...(overrideRent !== undefined ? { overrideRent } : {}),
           ...(overrideCharges !== undefined ? { overrideCharges } : {}),
+          ...(paymentMethodOverride ? { paymentMethodOverride } : {}),
         }),
       });
 
@@ -1441,6 +1442,7 @@ export function SectionQuittances({
                                   [rowKey]: {
                                     rent: String(row.pay.expectedRent),
                                     charges: String(row.pay.expectedCharges),
+                                    paymentMethod: row.lease.payment_method || "virement",
                                   },
                                 }));
                               }}
@@ -1626,12 +1628,25 @@ export function SectionQuittances({
                               />
                             </label>
                           </div>
+                          <label className="block space-y-1 text-xs font-semibold text-slate-700">
+                            Mode de règlement
+                            <select
+                              value={override.paymentMethod}
+                              onChange={(e) => setConfirmOverrideByRow((p) => ({ ...p, [rowKey]: { ...p[rowKey], paymentMethod: e.target.value } }))}
+                              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal"
+                            >
+                              <option value="virement">Virement</option>
+                              <option value="prelevement">Prélèvement</option>
+                              <option value="cheque">Chèque</option>
+                              <option value="especes">Espèces</option>
+                            </select>
+                          </label>
                           <p className="text-xs text-slate-500">Total : {fmtEur(rentNum + chargesNum)}</p>
                           <div className="flex gap-2">
                             <button
                               type="button"
                               disabled={loading}
-                              onClick={() => { closeForm(); confirmPaymentForRow(row, rentNum, chargesNum); }}
+                              onClick={() => { closeForm(); confirmPaymentForRow(row, rentNum, chargesNum, override.paymentMethod); }}
                               className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
                             >
                               {loading ? "Enregistrement..." : "Confirmer"}

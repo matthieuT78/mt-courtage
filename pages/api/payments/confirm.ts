@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const auth = await requireApiUser(req);
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
-    const { userId, leaseId, periodStart, periodEnd, paidAt, overrideRent, overrideCharges } = (req.body || {}) as {
+    const { userId, leaseId, periodStart, periodEnd, paidAt, overrideRent, overrideCharges, paymentMethodOverride } = (req.body || {}) as {
       userId?: string;
       leaseId?: string;
       periodStart?: string;
@@ -23,6 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       paidAt?: string;
       overrideRent?: number;
       overrideCharges?: number;
+      paymentMethodOverride?: string;
     };
 
     if (!userId) return res.status(400).json({ error: "userId requis." });
@@ -62,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .from("rent_payments")
         .update({
           paid_at: now,
-          payment_method: lease.payment_method || null,
+          payment_method: paymentMethodOverride || lease.payment_method || null,
           source: "manual_confirm",
           rent_amount: rent,
           charges_amount: charges,

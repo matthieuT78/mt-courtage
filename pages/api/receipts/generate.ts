@@ -389,7 +389,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // Accept payment if it covers at least up to periodEnd (handles end_date set after payment)
     const { data: payment, error: paymentError } = await supabaseAdmin
       .from("rent_payments")
-      .select("paid_at,total_amount")
+      .select("paid_at,total_amount,payment_method")
       .eq("lease_id", leaseId)
       .eq("period_start", periodStart)
       .gte("period_end", periodEnd)
@@ -520,7 +520,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // ✅ adresse “locataire” = adresse du bien loué
     const tenantAddress = propertyAddressLine;
 
-    const paymentMethod = safeStr(landlord?.default_payment_method) || safeStr(lease?.payment_method) || "";
+    const paymentMethod = safeStr((payment as any)?.payment_method) || safeStr(landlord?.default_payment_method) || safeStr(lease?.payment_method) || "";
 
     const defaultText = buildDefaultQuittanceText({
       landlordFullName: landlordName,
