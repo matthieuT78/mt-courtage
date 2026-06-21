@@ -117,6 +117,7 @@ export default function MonCompteIndexPage() {
   }, [router.isReady, router.query.mode, router.query.redirect]);
 
   // Si une page a explicitement demandé un redirect, on l'honore. Sinon /mon-compte devient la vue d'ensemble.
+  // (Le cas redirectPath === "/" sans login explicite reste la vue compte connecté — pas de redirect auto.)
   useEffect(() => {
     if (!router.isReady) return;
     if (checking) return;
@@ -156,8 +157,8 @@ export default function MonCompteIndexPage() {
         return;
       }
 
-      // ✅ Après login => HOME (ou redirect interne si tu veux le garder)
-      router.replace(redirectPath || "/");
+      // Après login : honore le redirect explicite, sinon va vers l'espace bailleur
+      router.replace(redirectPath !== "/" ? redirectPath : "/espace-bailleur");
     } finally {
       setAuthLoading(false);
     }
