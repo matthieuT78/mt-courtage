@@ -131,26 +131,20 @@ export function SidebarNav({
       <div className="flex h-full flex-col rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur overflow-hidden">
         {/* Header */}
         <div className="shrink-0 px-2 pb-3 pt-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className={`flex h-7 w-7 items-center justify-center rounded-xl ${brandBg} text-xs font-semibold text-white shadow-sm`}>
-                L
-              </span>
-              <p className="text-[0.7rem] lowercase tracking-[0.18em] text-slate-500">lokt.fr</p>
-            </div>
+          <div className="flex items-center justify-between">
+            <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${brandBg} text-sm font-bold text-white shadow-sm`}>
+              L
+            </span>
             {/* Bouton réduire */}
             <button
               type="button"
               onClick={onToggleCollapse}
               title="Réduire le menu"
-              className="flex h-7 w-7 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              className="group flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white shadow-md transition hover:bg-slate-700 active:scale-95"
             >
-              <ChevronLeftIcon className="h-3.5 w-3.5" aria-hidden="true" />
+              <ChevronLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
             </button>
           </div>
-
-          <p className="mt-2 text-sm font-semibold text-slate-900">Espace bailleur</p>
-          <p className="mt-0.5 text-[0.75rem] leading-5 text-slate-500">Pilotez vos logements, loyers et documents.</p>
 
           {onToggleDark && (
             <button
