@@ -235,9 +235,8 @@ body {
 }
 
 /* ── Gradient backgrounds (tool cards, inner panels) ─────────
-   Light from-*/via-*/to-* gradient stops → dark equivalents.
-   Uses Tailwind's CSS custom properties so bg-gradient-to-* picks them up.
-   Attribute selectors cover opacity variants like to-emerald-50/60.        */
+   Light gradient stops overridden via Tailwind CSS custom properties.
+   Attribute selectors cover opacity variants like to-emerald-50-60.   */
 
 /* from-* light → dark start */
 .bailleur-dark .from-white,
