@@ -104,7 +104,7 @@ export function SidebarNav({
         </div>
 
         {/* Nav items */}
-        <div className="mt-1 min-h-0 flex-1 space-y-1 overflow-hidden">
+        <div className="mt-1 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
           {items.map((it) => {
             const isActive = it.key === active;
             const Icon = it.icon;
