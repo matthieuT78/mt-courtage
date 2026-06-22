@@ -19,7 +19,7 @@ export type SeoLandingPage = {
   links: Array<{ label: string; href: string; text: string }>;
 };
 
-const today = "2026-06-06";
+const today = "2026-06-23";
 
 export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
@@ -712,6 +712,172 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       { label: "Inventaire meublé", href: "/inventaire-location-meublee", text: "Préparer les preuves utiles pour comparer les meubles à la sortie." },
       { label: "État des lieux de sortie", href: "/guides/depart-locataire-etat-des-lieux-sortie", text: "Préparer le départ et comparer les états." },
       { label: "Service-Public : dépôt de garantie", href: "https://www.service-public.fr/particuliers/vosdroits/F31269", text: "Vérifier les délais, retenues et règles officielles de restitution." },
+    ],
+  },
+  {
+    slug: "modele-lettre-conge-bailleur",
+    title: "Modèle lettre de congé bailleur 2026 — Reprise, vente, motif légitime",
+    metaTitle: "Modèle lettre de congé bailleur 2026 : reprise, vente, motif légitime | lokt.fr",
+    description:
+      "Rédigez votre lettre de congé bailleur conforme à la loi du 6 juillet 1989 : reprise pour habiter, vente du logement, motif légitime. Délais, forme obligatoire, modèles complets et générateur PDF.",
+    eyebrow: "Congé bailleur",
+    h1: "Lettre de congé bailleur : modèle 2026 conforme à la loi",
+    intro:
+      "Un bailleur ne peut pas mettre fin à un bail d'habitation à tout moment. La loi du 6 juillet 1989 impose un motif précis parmi trois autorisés, un délai strict à respecter à partir de la réception par le locataire, et une forme obligatoire — lettre recommandée avec accusé de réception, remise en main propre contre signature, ou acte d'huissier. Un congé mal rédigé ou envoyé hors délai est nul de plein droit : le locataire reste en place pour une nouvelle période complète.",
+    primaryCta: "Générer ma lettre de congé en PDF",
+    secondaryCta: { label: "Voir les modèles de lettres", href: "/modele-lettre-conge-bailleur#modeles" },
+    updatedAt: today,
+    intent: "Requête cible : lettre de congé bailleur modèle, congé pour reprise vente motif légitime",
+    sections: [
+      {
+        title: "1. Les 3 seuls motifs légaux autorisés",
+        body: [
+          "L'article 15 de la loi du 6 juillet 1989 est limitatif : seuls trois motifs permettent à un bailleur de donner congé à son locataire occupant sa résidence principale. Tout autre motif rend le congé nul de plein droit.",
+          "Le motif de reprise pour habiter permet au bailleur de récupérer le logement pour y habiter lui-même ou pour y loger un proche. Le bénéficiaire doit obligatoirement appartenir à la liste légale : le bailleur lui-même, son conjoint, partenaire de PACS ou concubin notoire, ses ascendants ou descendants, ou ceux de son conjoint ou partenaire.",
+          "Le motif de vente permet au bailleur de vendre le logement libre. Le locataire bénéficie alors d'un droit de préemption : il peut acheter en priorité aux conditions indiquées dans le congé. La lettre doit reproduire intégralement les cinq premiers alinéas du II de l'article 15 relatifs à ce droit.",
+          "Le motif légitime et sérieux couvre notamment les loyers impayés répétés, les troubles de voisinage constatés par décision de justice, la transformation non autorisée du logement ou le non-respect grave des obligations locataires. Le motif doit être décrit précisément dans la lettre.",
+        ],
+        bullets: [
+          "Reprise pour habiter : le bailleur ou un proche éligible y vit effectivement après la restitution",
+          "Vente du logement : droit de préemption du locataire à reproduire intégralement dans la lettre",
+          "Motif légitime et sérieux : impayés, troubles, dégradations — motif précisément décrit",
+          "Tout autre motif = congé nul, le locataire reste en place",
+        ],
+      },
+      {
+        title: "2. Délais de préavis à respecter impérativement",
+        body: [
+          "Le délai de préavis court à partir de la date de réception du courrier recommandé par le locataire, pas de la date d'envoi. En pratique, il faut envoyer avec 8 à 10 jours d'avance pour absorber les délais postaux et éviter tout litige sur la date.",
+          "Pour une location vide à usage de résidence principale, le préavis est de six mois avant la date d'échéance du bail. Pour une location meublée à usage de résidence principale, le préavis est de trois mois. Les bails mobilité et étudiants 9 mois ne sont pas renouvelables, aucun congé formel n'est nécessaire.",
+          "Un congé reçu par le locataire avec un seul jour de moins que le délai légal est nul. Il n'existe aucune tolérance légale, même si le locataire ne conteste pas immédiatement. L'irrespect du délai reporte la fin du bail d'un an complet pour un meublé, et de trois ans pour un logement vide.",
+        ],
+        bullets: [
+          "Location vide (résidence principale) : 6 mois de préavis minimum",
+          "Location meublée (résidence principale) : 3 mois de préavis minimum",
+          "Délai calculé à partir de la réception — pas de l'envoi",
+          "Un jour de retard = bail reconduit pour une période complète",
+        ],
+      },
+      {
+        title: "3. Forme obligatoire de l'envoi",
+        body: [
+          "Un email, un SMS ou une lettre simple n'ont aucune valeur juridique pour un congé bailleur. La loi impose exclusivement trois modes de remise : la lettre recommandée avec accusé de réception, la remise en main propre contre émargement ou récépissé signé par le locataire, ou la signification par acte d'huissier.",
+          "La lettre recommandée avec accusé de réception est la solution la plus courante. Si le locataire ne retire pas le courrier, la date de première présentation à sa boîte aux lettres fait quand même foi — le délai commence à courir. Conservez le bordereau d'envoi et l'accusé de réception.",
+          "L'acte d'huissier est recommandé dans les situations conflictuelles. L'huissier atteste de la remise et de sa date avec une valeur probante incontestable.",
+        ],
+        bullets: [
+          "Lettre recommandée avec AR : solution la plus courante, date de présentation fait foi",
+          "Remise en main propre : contre émargement ou récépissé signé",
+          "Acte d'huissier : pour situations conflictuelles, preuve incontestable",
+          "Email / courrier simple : aucune valeur juridique",
+        ],
+      },
+      {
+        title: "4. Contenu obligatoire de la lettre selon le motif",
+        body: [
+          "Pour un congé pour reprise, la lettre doit indiquer le motif explicite, le nom et l'adresse actuelle du bénéficiaire de la reprise, et son lien de parenté précis avec le bailleur. Un congé pour reprise au profit d'un ami ou d'un cousin est nul — seuls les proches listés par la loi sont éligibles.",
+          "Pour un congé pour vente, la lettre doit mentionner le prix et les conditions de vente envisagées, et reproduire intégralement les cinq premiers alinéas du II de l'article 15 de la loi du 6 juillet 1989 relatifs au droit de préemption. Sans ces alinéas reproduits, le congé est nul.",
+          "Pour un motif légitime et sérieux, la lettre doit décrire précisément les faits reprochés avec dates et références si disponibles. Une formulation vague comme « troubles répétés » sans détails est insuffisante et expose le congé à la nullité.",
+        ],
+        bullets: [
+          "Reprise : nom, adresse actuelle et lien de parenté du bénéficiaire",
+          "Vente : prix, conditions et reproduction des 5 alinéas sur le droit de préemption",
+          "Motif légitime : faits précis, datés, documentés",
+          "Adresse et identité complète du bailleur et du locataire",
+        ],
+      },
+      {
+        title: "5. Erreurs qui invalident le congé",
+        body: [
+          "Les erreurs les plus fréquentes portent sur le délai, le motif et la forme. Un congé envoyé un jour trop tard est nul. Un congé pour reprise sans nommer le bénéficiaire est nul. Un congé par email est nul. Ces nullités peuvent être invoquées même plusieurs années après si le locataire n'a pas quitté les lieux.",
+          "Le bailleur qui donne congé pour reprise et ne reprend pas effectivement le logement dans les six mois suivant la restitution des clés s'expose à une amende pénale pouvant atteindre 6 000 € pour une personne physique, ainsi qu'à des dommages et intérêts au bénéfice du locataire.",
+          "Les locataires de plus de 65 ans dont les ressources sont inférieures au plafond applicable aux logements conventionnés bénéficient d'une protection renforcée : le bailleur doit leur proposer un relogement adapté dans le même secteur géographique, sauf si le bailleur lui-même répond aux mêmes critères d'âge ou de ressources.",
+        ],
+        bullets: [
+          "Délai non respecté même d'un seul jour : congé nul, bail reconduit",
+          "Bénéficiaire non éligible pour la reprise : congé nul",
+          "Droit de préemption absent dans un congé pour vente : congé nul",
+          "Fausse reprise : amende jusqu'à 6 000 € + dommages et intérêts",
+          "Locataire de plus de 65 ans à faibles ressources : protection renforcée",
+        ],
+      },
+      {
+        title: "6. Générer sa lettre de congé avec lokt.fr",
+        body: [
+          "Depuis la section Modèles de l'espace bailleur lokt.fr, vous pouvez générer votre lettre de congé en renseignant les informations nécessaires selon le motif choisi. La lettre est générée en PDF, datée, et prête à être imprimée et envoyée en recommandé avec accusé de réception.",
+          "Le formulaire guide le bailleur selon le motif sélectionné : champs bénéficiaire pour la reprise, prix et droit de préemption pour la vente, description précise pour le motif légitime. Le rappel du délai applicable est affiché selon le type de bail.",
+        ],
+        bullets: [
+          "Formulaire guidé selon le motif : reprise, vente ou motif légitime",
+          "Rappel automatique du délai de préavis applicable",
+          "PDF généré instantanément, prêt à imprimer",
+          "Accès depuis la section Modèles de l'espace bailleur",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Quels sont les motifs légaux pour donner congé à son locataire ?",
+        a: "La loi du 6 juillet 1989 n'autorise que trois motifs : la reprise du logement pour y habiter (ou y loger un proche éligible), la vente du logement, ou un motif légitime et sérieux (loyers impayés répétés, troubles constatés, non-respect grave des obligations). Un congé donné sans motif valable est nul.",
+      },
+      {
+        q: "Quel est le délai de préavis pour un congé bailleur ?",
+        a: "Six mois avant la date de fin du bail pour une location vide à usage de résidence principale. Trois mois pour une location meublée à usage de résidence principale. Ce délai court à partir de la date de réception par le locataire, pas de l'envoi. Un envoi en recommandé 8 à 10 jours avant suffit en pratique.",
+      },
+      {
+        q: "Comment envoyer le congé bailleur ?",
+        a: "Par lettre recommandée avec accusé de réception, par remise en main propre contre émargement ou récépissé signé, ou par acte d'huissier. Un email ou un courrier simple n'a aucune valeur juridique pour un congé bailleur.",
+      },
+      {
+        q: "Que doit contenir une lettre de congé pour reprise ?",
+        a: "Le motif précis (reprise pour habiter), le nom complet et l'adresse actuelle du bénéficiaire, et son lien de parenté avec le bailleur. Le bénéficiaire doit être le bailleur lui-même, son conjoint, partenaire de PACS, concubin notoire, ses ascendants ou descendants, ou ceux du conjoint ou partenaire.",
+      },
+      {
+        q: "Le locataire peut-il contester le congé pour reprise ?",
+        a: "Oui. Si le bailleur ne reprend pas effectivement le logement dans les six mois suivant la restitution des clés, ou si la reprise ne bénéficie pas à la personne désignée, le locataire peut saisir le tribunal. Le bailleur risque une amende pénale jusqu'à 6 000 € et des dommages et intérêts.",
+      },
+      {
+        q: "Que doit contenir un congé pour vente ?",
+        a: "Le prix et les conditions de vente envisagés, et la reproduction intégrale des cinq premiers alinéas du II de l'article 15 de la loi du 6 juillet 1989 relatifs au droit de préemption du locataire. Sans ces alinéas reproduits dans la lettre, le congé est nul.",
+      },
+      {
+        q: "Le locataire a-t-il un droit de préemption en cas de vente ?",
+        a: "Oui. À compter de la réception du congé-vente, le locataire dispose de deux mois pour accepter d'acheter en priorité aux conditions indiquées. S'il accepte, il a ensuite deux mois pour réaliser la vente (quatre mois s'il recourt à un prêt immobilier).",
+      },
+      {
+        q: "Que se passe-t-il si le congé est envoyé un jour trop tard ?",
+        a: "Le bail est reconduit tacitement pour une nouvelle période complète : trois ans pour un bail vide, un an pour un bail meublé. Il n'y a aucune tolérance légale sur les délais, même si le locataire ne conteste pas immédiatement.",
+      },
+      {
+        q: "Un locataire de plus de 65 ans bénéficie-t-il d'une protection spéciale ?",
+        a: "Oui. Un locataire de plus de 65 ans dont les ressources sont inférieures au plafond applicable aux logements locatifs conventionnés bénéficie d'une protection renforcée : le bailleur doit lui proposer un relogement adapté dans le même secteur géographique, sauf si le bailleur lui-même a plus de 65 ans ou des ressources inférieures au même plafond.",
+      },
+      {
+        q: "Le locataire peut-il partir avant la fin du préavis ?",
+        a: "Oui. Dès réception du congé, le locataire peut quitter le logement à tout moment avant la date effective de fin de bail. Il ne paie le loyer et les charges que jusqu'à la date effective de remise des clés.",
+      },
+    ],
+    links: [
+      {
+        label: "Espace bailleur lokt.fr",
+        href: "/espace-bailleur",
+        text: "Gérer vos baux, loyers et documents depuis un seul espace.",
+      },
+      {
+        label: "Modèle quittance de loyer PDF",
+        href: "/modele-quittance-loyer-pdf",
+        text: "Générer vos quittances mensuelles en PDF.",
+      },
+      {
+        label: "États des lieux et documents",
+        href: "/etats-des-lieux-documents",
+        text: "Réaliser et archiver états des lieux d'entrée et de sortie.",
+      },
+      {
+        label: "Dépôt de garantie location meublée",
+        href: "/depot-garantie-location-meublee",
+        text: "Règles de restitution et retenues autorisées.",
+      },
     ],
   },
 ];

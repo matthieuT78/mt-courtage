@@ -9,8 +9,8 @@ import {
   Cog6ToothIcon,
   DocumentMagnifyingGlassIcon,
   DocumentTextIcon,
-  FolderOpenIcon,
   HomeIcon,
+  PencilSquareIcon,
   ReceiptPercentIcon,
   Squares2X2Icon,
   UserGroupIcon,
@@ -31,9 +31,9 @@ export type LandlordSectionKey =
   | "outils"
   | "inventaire"
   | "documents"
+  | "modeles"
   | "declaration"
-  | "parametres"
-  | "dossier_bail";
+  | "parametres";
 
 export type LandlordNavItem = {
   key: LandlordSectionKey;
@@ -47,8 +47,8 @@ export const DEFAULT_LANDLORD_NAV_ORDER: LandlordSectionKey[] = [
   "locataires",
   "biens",
   "baux",
-  "dossier_bail",
   "documents",
+  "modeles",
   "quittances",
   "finance",
   "performance",
@@ -77,7 +77,7 @@ export const LANDLORD_NAV_ITEMS: Record<LandlordSectionKey, LandlordNavItem> = {
   declaration: { key: "declaration", label: "Déclaration", icon: DocumentMagnifyingGlassIcon },
   parametres: { key: "parametres", label: "Paramètres", icon: Cog6ToothIcon },
   documents: { key: "documents", label: "Documents", icon: DocumentTextIcon },
-  dossier_bail: { key: "dossier_bail", label: "Dossier bail", icon: FolderOpenIcon },
+  modeles: { key: "modeles", label: "Modèles", icon: PencilSquareIcon },
 };
 
 export function normalizeLandlordNavOrder(input: unknown): LandlordSectionKey[] {

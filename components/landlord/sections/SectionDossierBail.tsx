@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import {
   CheckCircleIcon,
   ClockIcon,
-  DocumentTextIcon,
   EnvelopeIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
@@ -322,6 +321,7 @@ export function SectionDossierBail({ userId, leases, properties, tenants }: Prop
           })}
         </div>
       )}
+
     </div>
   );
 }

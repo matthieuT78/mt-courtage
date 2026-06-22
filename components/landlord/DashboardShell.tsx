@@ -35,7 +35,7 @@ import { SectionDeclaration } from "./sections/SectionDeclaration";
 import { SectionOutils } from "./sections/SectionOutils";
 import { SectionParametres } from "./sections/SectionParametres";
 import { SectionDocumentsTemplates } from "./sections/SectionDocumentsTemplates";
-import { SectionDossierBail } from "./sections/SectionDossierBail";
+import { SectionModeles } from "./sections/SectionModeles";
 import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing } from "../../lib/permissions";
@@ -449,23 +449,6 @@ export function DashboardShell(props: any) {
         features: ["Répartition de facture d’eau au prorata des relevés", "Répartition des charges par tantièmes", "TEOM et régularisation locative", "Simulateurs bailleur intégrés"],
       };
     }
-    if (active === "dossier_bail" && !canShareDocuments) {
-      return {
-        eyebrow: "Fonctionnalité Starter",
-        title: "Dossier bail réservé au plan Starter",
-        desc:
-          "Le Dossier bail centralise pour chaque location le statut du contrat, des états des lieux et des quittances — avec le suivi du partage locataire et des accusés de réception.",
-        requiredPlan: "Starter",
-        href: "/mon-compte/abonnement?source=dossier-bail",
-        cta: "Passer au plan Starter",
-        features: [
-          "Vue consolidée bail / EDL / quittances par location",
-          "Partage du bail avec le locataire par email",
-          "Accusé de réception locataire horodaté",
-          "Portail locataire activé (quittances, bail, EDL accessibles en ligne)",
-        ],
-      };
-    }
     return null;
   }, [active, canUsePerformance, canUseTools, canShareDocuments, permissionsLoading]);
 
@@ -591,9 +574,6 @@ export function DashboardShell(props: any) {
       case "outils":
         return <SectionOutils userId={userId} properties={properties} leases={leases} plan={plan} onRefresh={refresh} />;
 
-      case "dossier_bail":
-        return <SectionDossierBail userId={userId} leases={leases} properties={properties} tenants={tenants} />;
-
       case "etat_des_lieux":
         return <SectionEtatDesLieux userId={userId} leases={leases} properties={properties} tenants={tenants} onRefresh={refresh} onNavigateToBaux={() => setActive("baux")} />;
 
@@ -602,6 +582,9 @@ export function DashboardShell(props: any) {
 
       case "documents":
         return <SectionDocumentsTemplates userId={userId} userEmail={userEmail} properties={properties} tenants={tenants} leases={leases} />;
+
+      case "modeles":
+        return <SectionModeles userId={userId} />;
 
       case "declaration":
         return <SectionDeclaration userId={userId} properties={properties} />;
