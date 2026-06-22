@@ -22,6 +22,7 @@ function missingRequiredFields(payload: any) {
     "property_address_line1",
     "property_postal_code",
     "property_city",
+    "housing_nature",
     "housing_type",
     "legal_regime",
     "building_period",
@@ -32,16 +33,19 @@ function missingRequiredFields(payload: any) {
     ...(fiscalIdRequired(d.property_country) ? ["fiscal_property_id"] : []),
     "destination",
     "ict_equipment",
+    "dpe_class",
+    "ges_class",
     "start_date",
     "end_date",
     ...(payload.contract_kind === "mobility" ? ["mobility_reason"] : []),
     "rent_amount",
     "charges_amount",
+    "charges_type",
     ...(payload.contract_kind === "mobility" ? [] : ["deposit_amount"]),
     "payment_method",
     "payment_day",
     ...(d.rent_revision_enabled ? ["irl_reference"] : []),
-    ...(d.rent_controlled_area ? ["reference_rent_increased"] : []),
+    ...(d.rent_controlled_area ? ["reference_rent", "reference_rent_increased"] : []),
     "signature_place",
     "signature_date",
   ];
@@ -63,21 +67,33 @@ function makePdf(payload: any) {
 
     doc.font("Helvetica-Bold").fontSize(17).fillColor("#0f172a").text("CONTRAT DE LOCATION", { align: "center" });
     doc.moveDown(0.25).fontSize(11).text(leaseContractKindLabels[payload.contract_kind], { align: "center" });
-    doc.moveDown(0.6).font("Helvetica").fontSize(8.5).fillColor("#475569").text(
-      "Document préparé à partir des informations saisies par le bailleur. Relisez l’intégralité du contrat et joignez les annexes obligatoires avant signature.",
+    doc.moveDown(0.3).font("Helvetica").fontSize(8).fillColor("#64748b").text(
+      "Établi conformément à la loi n°89-462 du 6 juillet 1989, à la loi ALUR du 24 mars 2014 et au décret n°2015-587 du 29 mai 2015.",
+      { align: "center" }
+    );
+    doc.moveDown(0.4).fontSize(8.5).fillColor("#b45309").text(
+      "⚠ Document préparé à partir des informations saisies par le bailleur. Relisez l’intégralité du contrat, joignez les annexes obligatoires (notice, DDT/DPE, état des lieux, inventaire si meublé) avant signature. Pour toute situation particulière, sollicitez un professionnel.",
       { align: "center" }
     );
 
     heading("1. Désignation des parties");
     row("Bailleur", d.landlord_name);
     row("Adresse du bailleur", d.landlord_address);
+    if (d.mandataire_name) {
+      row("Mandataire / gestionnaire", d.mandataire_name);
+      if (d.mandataire_address) row("Adresse du mandataire", d.mandataire_address);
+    }
     row("Locataire", d.tenant_name);
+    if (d.co_tenant_name) row("Co-locataire", d.co_tenant_name);
     row("Adresse e-mail du locataire", d.tenant_email);
 
     heading("2. Objet du contrat et logement");
     row("Adresse du logement", propertyAddress(d));
+    if (d.housing_nature) row("Nature du logement", d.housing_nature);
     row("Type d’habitat", d.housing_type);
+    if (d.floor) row("Étage", d.floor);
     row("Régime juridique de l’immeuble", d.legal_regime);
+    if (d.lot_number) row("Numéro de lot de copropriété", d.lot_number);
     row("Identifiant fiscal du logement", d.fiscal_property_id);
     row("Période de construction", d.building_period);
     row("Surface habitable", d.surface_m2 ? `${d.surface_m2} m²` : "");
@@ -86,56 +102,82 @@ function makePdf(payload: any) {
     row("Production d’eau chaude", d.hot_water_method);
     row("Destination des locaux", d.destination);
     row("Équipements d’accès aux technologies de l’information et de la communication", d.ict_equipment);
-    row("Autres parties du logement", d.other_parts);
-    row("Équipements privatifs", d.private_equipment);
-    row("Parties et équipements communs", d.common_equipment);
+    if (d.other_parts) row("Autres parties du logement", d.other_parts);
+    if (d.private_equipment) row("Équipements privatifs", d.private_equipment);
+    if (d.common_equipment) row("Parties et équipements communs", d.common_equipment);
     row("Destination", "Usage d’habitation à titre de résidence principale");
     if (payload.contract_kind !== "empty_primary") row("Mobilier principal", d.furniture_inventory);
+    // DPE et GES — obligatoires depuis loi Climat 2021
+    doc.moveDown(0.4);
+    doc.font("Helvetica-Bold").fontSize(9.5).text("Diagnostic de performance énergétique (DPE) et émissions de gaz à effet de serre (GES)");
+    doc.font("Helvetica").fontSize(9.5);
+    row("Classe DPE", d.dpe_class || "Non renseigné");
+    if (d.energy_kwh_sqm) row("Consommation énergétique estimée", `${d.energy_kwh_sqm} kWh/m²/an`);
+    row("Classe GES", d.ges_class || "Non renseigné");
+    if (d.ges_kgco2_sqm) row("Émissions de GES estimées", `${d.ges_kgco2_sqm} kg CO₂/m²/an`);
+    if (d.estimated_energy_cost) row("Estimation annuelle des dépenses d’énergie", euro(d.estimated_energy_cost) + (d.energy_reference_year ? ` (référence ${d.energy_reference_year})` : ""));
 
     heading("3. Date de prise d’effet et durée");
     row("Date de prise d’effet", d.start_date);
     row("Date de fin", d.end_date);
-    if (payload.contract_kind === "mobility") {
-      row("Motif d’éligibilité au bail mobilité", d.mobility_reason);
-      doc.text("Le bail mobilité n’est ni renouvelable ni reconductible. Aucun dépôt de garantie ne peut être exigé.");
+    if (payload.contract_kind === "empty_primary") {
+      doc.text("Ce contrat est conclu pour une durée de trois (3) ans, conformément à l’article 10 de la loi n°89-462 du 6 juillet 1989. Il est reconduit tacitement par périodes de trois ans. Le bailleur souhaitant donner congé doit notifier le locataire par lettre recommandée avec accusé de réception ou acte d’huissier au moins six (6) mois avant le terme du contrat.");
+    } else if (payload.contract_kind === "furnished_primary") {
+      doc.text("Ce contrat est conclu pour une durée de un (1) an, conformément à l’article 11 de la loi n°89-462 du 6 juillet 1989. Il est reconduit tacitement par périodes d’un an. Le bailleur souhaitant donner congé doit notifier le locataire par lettre recommandée avec accusé de réception ou acte d’huissier au moins trois (3) mois avant le terme du contrat.");
     } else if (payload.contract_kind === "furnished_student") {
-      doc.text("Le contrat étudiant est conclu pour neuf mois et n’est pas reconduit tacitement.");
-    } else {
-      doc.text("Le contrat est soumis aux règles de reconduction applicables au type de location choisi.");
+      doc.text("Ce contrat est conclu pour une durée de neuf (9) mois, conformément à l’article 25-7 de la loi n°89-462 du 6 juillet 1989. Il n’est pas reconduit tacitement à son terme. Le locataire peut donner congé à tout moment avec un préavis d’un mois.");
+    } else if (payload.contract_kind === "mobility") {
+      row("Motif d’éligibilité au bail mobilité", d.mobility_reason);
+      doc.text("Ce contrat est un bail mobilité au sens de l’article 25-12 de la loi n°89-462 du 6 juillet 1989. Il n’est ni renouvelable ni reconductible. Aucun dépôt de garantie ne peut être exigé. Le locataire peut donner congé à tout moment avec un préavis d’un mois.");
     }
 
     heading("4. Conditions financières");
     row("Loyer mensuel hors charges", euro(d.rent_amount));
-    row("Provision ou forfait mensuel de charges", euro(d.charges_amount));
-    row("Total mensuel", euro(Number(d.rent_amount || 0) + Number(d.charges_amount || 0)));
+    row("Charges mensuelles", euro(d.charges_amount));
+    if (d.charges_type) row("Nature des charges", d.charges_type);
+    else row("Nature des charges", payload.contract_kind === "empty_primary" ? "Provision sur charges récupérables (régularisation annuelle)" : "À préciser");
+    row("Total mensuel (loyer + charges)", euro(Number(d.rent_amount || 0) + Number(d.charges_amount || 0)));
     row("Modalité de règlement", d.payment_method);
     row("Date de paiement", d.payment_day ? `Le ${d.payment_day} de chaque mois` : "");
-    row("Dépôt de garantie", payload.contract_kind === "mobility" ? "Aucun" : euro(d.deposit_amount));
-    row("Dernier loyer appliqué au précédent locataire", d.previous_rent ? euro(d.previous_rent) : "");
-    row("Date de départ du précédent locataire", d.previous_tenant_departure_date);
-    row("Révision annuelle du loyer", yesNo(d.rent_revision_enabled));
-    if (d.rent_revision_enabled) row("Trimestre de référence IRL", d.irl_reference);
+    row("Dépôt de garantie", payload.contract_kind === "mobility" ? "Aucun (bail mobilité)" : euro(d.deposit_amount));
+    if (d.previous_rent) row("Dernier loyer appliqué au précédent locataire", euro(d.previous_rent));
+    if (d.previous_tenant_departure_date) row("Date de départ du précédent locataire", d.previous_tenant_departure_date);
+    row("Révision annuelle du loyer (IRL)", yesNo(d.rent_revision_enabled));
+    if (d.rent_revision_enabled) {
+      row("Trimestre de référence IRL", d.irl_reference);
+      doc.text("Le loyer sera révisé chaque année à la date anniversaire du contrat selon la formule : Nouveau loyer = Loyer en cours × (Nouvel IRL / IRL de référence), conformément à l'article 17-1 de la loi du 6 juillet 1989.");
+    }
     row("Zone soumise à encadrement des loyers", yesNo(d.rent_controlled_area));
     if (d.rent_controlled_area) {
+      if (d.reference_rent) row("Loyer de référence", `${euro(d.reference_rent)} / mois`);
       row("Loyer de référence majoré", d.reference_rent_increased ? `${euro(d.reference_rent_increased)} / mois` : "");
       row("Complément de loyer", d.rent_supplement ? `${euro(d.rent_supplement)} / mois` : "Aucun");
-      row("Justification du complément", d.rent_supplement_reason);
+      if (d.rent_supplement_reason) row("Justification du complément", d.rent_supplement_reason);
     }
 
     heading("5. Travaux et clauses particulières");
-    row("Travaux réalisés depuis le précédent contrat", d.recent_works);
-    row("Estimation annuelle des dépenses d’énergie", d.estimated_energy_cost ? euro(d.estimated_energy_cost) : "");
-    row("Année de référence de l’estimation énergétique", d.energy_reference_year);
-    row("Honoraires imputés au locataire", d.tenant_agency_fees ? euro(d.tenant_agency_fees) : "Aucun");
-    row("Honoraires d’état des lieux imputés au locataire", d.tenant_inventory_fees ? euro(d.tenant_inventory_fees) : "Aucun");
-    row("Clause résolutoire et assurances", "Application des dispositions légales en vigueur");
-    doc.text(
-      "Le contrat prévoit sa résiliation de plein droit dans les conditions légales applicables en cas de défaut de paiement du loyer ou des charges, de non-versement du dépôt de garantie, de défaut d’assurance des risques locatifs ou de troubles de voisinage constatés par une décision de justice passée en force de chose jugée."
+    if (d.recent_works) row("Travaux réalisés depuis le précédent contrat", d.recent_works);
+    if (d.tenant_agency_fees) row("Honoraires imputés au locataire", euro(d.tenant_agency_fees));
+    if (d.tenant_inventory_fees) row("Honoraires d’état des lieux imputés au locataire", euro(d.tenant_inventory_fees));
+
+    doc.moveDown(0.35).font("Helvetica-Bold").fontSize(9.5).text("Clause résolutoire");
+    doc.font("Helvetica").fontSize(9.5).text(
+      "Le contrat prévoit sa résiliation de plein droit, deux mois après un commandement de payer resté infructueux, en cas de : défaut de paiement du loyer ou des charges aux termes convenus ; non-versement du dépôt de garantie ; défaut de souscription d’une assurance des risques locatifs ; troubles de voisinage constatés par une décision de justice passée en force de chose jugée."
     );
-    doc.moveDown(0.35).text(
-      "Le logement doit respecter les exigences de performance énergétique applicables aux logements décents prévues par la législation en vigueur."
+
+    if (d.annual_insurance_clause !== false) {
+      doc.moveDown(0.35).font("Helvetica-Bold").fontSize(9.5).text("Clause d’assurance habitation");
+      doc.font("Helvetica").fontSize(9.5).text(
+        "Le locataire est tenu de souscrire une assurance contre les risques locatifs (incendie, dégâts des eaux, responsabilité civile) auprès d’un assureur de son choix, et de remettre au bailleur une attestation lors de la remise des clés, puis à chaque renouvellement et sur simple demande du bailleur, conformément à l’article 7 g) de la loi du 6 juillet 1989."
+      );
+    }
+
+    doc.moveDown(0.35).font("Helvetica-Bold").fontSize(9.5).text("Décence et performance énergétique");
+    doc.font("Helvetica").fontSize(9.5).text(
+      "Le logement répond aux critères de décence définis par le décret n°2002-120 du 30 janvier 2002. Il respecte les exigences de performance énergétique applicables aux logements décents telles que prévues par la loi n°2021-1104 du 22 août 2021 portant lutte contre le dérèglement climatique."
     );
-    row("Clauses particulières", d.special_terms);
+
+    if (d.special_terms) { doc.moveDown(0.35).font("Helvetica-Bold").fontSize(9.5).text("Clauses particulières"); doc.font("Helvetica").fontSize(9.5).text(d.special_terms); }
 
     heading("6. Annexes à remettre avec le contrat");
     const annexes = [

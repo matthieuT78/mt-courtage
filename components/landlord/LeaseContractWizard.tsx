@@ -15,6 +15,7 @@ const requiredLabels: Record<string, string> = {
   property_address_line1: "Adresse du logement",
   property_postal_code: "Code postal du logement",
   property_city: "Ville du logement",
+  housing_nature: "Nature du logement",
   housing_type: "Type d’habitat",
   legal_regime: "Régime juridique de l’immeuble",
   building_period: "Période de construction",
@@ -25,6 +26,9 @@ const requiredLabels: Record<string, string> = {
   fiscal_property_id: "Identifiant fiscal du logement",
   destination: "Destination du logement",
   ict_equipment: "Équipements d’accès aux communications",
+  dpe_class: "Classe DPE",
+  ges_class: "Classe GES",
+  charges_type: "Nature des charges",
   start_date: "Date de prise d’effet",
   end_date: "Date de fin",
   mobility_reason: "Motif d’éligibilité au bail mobilité",
@@ -34,6 +38,7 @@ const requiredLabels: Record<string, string> = {
   payment_method: "Modalité de paiement",
   payment_day: "Jour de paiement",
   irl_reference: "Trimestre de référence IRL",
+  reference_rent: "Loyer de référence",
   reference_rent_increased: "Loyer de référence majoré",
   signature_place: "Lieu de signature",
   signature_date: "Date de signature",
@@ -41,9 +46,9 @@ const requiredLabels: Record<string, string> = {
 
 function requiredFieldsForStep(step: number, kind: string, form: Record<string, any>) {
   if (step === 1) return ["landlord_name", "landlord_address", "tenant_name"];
-  if (step === 2) return ["property_address_line1", "property_postal_code", "property_city", "housing_type", "legal_regime", "building_period", "surface_m2", "main_rooms", "heating_method", "hot_water_method", ...(fiscalIdRequired(form.property_country) ? ["fiscal_property_id"] : []), "destination", "ict_equipment"];
+  if (step === 2) return ["property_address_line1", "property_postal_code", "property_city", "housing_nature", "housing_type", "legal_regime", "building_period", "surface_m2", "main_rooms", "heating_method", "hot_water_method", ...(fiscalIdRequired(form.property_country) ? ["fiscal_property_id"] : []), "destination", "ict_equipment", "dpe_class", "ges_class"];
   if (step === 3) return ["start_date", "end_date", ...(kind === "mobility" ? ["mobility_reason"] : [])];
-  if (step === 4) return ["rent_amount", "charges_amount", ...(kind === "mobility" ? [] : ["deposit_amount"]), "payment_method", "payment_day", ...(form.rent_revision_enabled ? ["irl_reference"] : []), ...(form.rent_controlled_area ? ["reference_rent_increased"] : [])];
+  if (step === 4) return ["rent_amount", "charges_amount", ...(kind === "mobility" ? [] : ["deposit_amount"]), "payment_method", "payment_day", "charges_type", ...(form.rent_revision_enabled ? ["irl_reference"] : []), ...(form.rent_controlled_area ? ["reference_rent", "reference_rent_increased"] : [])];
   if (step === 6) return ["signature_place", "signature_date"];
   return [];
 }
@@ -121,8 +126,11 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
           property_postal_code: property.postal_code || "",
           property_city: property.city || "",
           property_country: property.country || "FR",
+          housing_nature: "",
           housing_type: "Immeuble collectif",
           legal_regime: "",
+          floor: "",
+          lot_number: "",
           surface_m2: "",
           main_rooms: "",
           other_parts: "",
@@ -134,6 +142,10 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
           heating_method: "",
           hot_water_method: "",
           fiscal_property_id: "",
+          dpe_class: "",
+          ges_class: "",
+          energy_kwh_sqm: "",
+          ges_kgco2_sqm: "",
           furniture_inventory: "",
           start_date: lease.start_date || "",
           end_date: lease.end_date || "",
@@ -145,10 +157,16 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
           payment_day: lease.payment_day || 1,
           rent_revision_enabled: true,
           irl_reference: "",
+          charges_type: "",
           rent_controlled_area: false,
+          reference_rent: "",
           reference_rent_increased: "",
           rent_supplement: "",
           rent_supplement_reason: "",
+          co_tenant_name: "",
+          mandataire_name: "",
+          mandataire_address: "",
+          annual_insurance_clause: true,
           previous_rent: "",
           previous_tenant_departure_date: "",
           estimated_energy_cost: "",
@@ -381,11 +399,11 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
         {err ? <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
         {step > 0 ? <p className="mb-4 text-xs leading-5 text-slate-500"><span className="font-bold text-red-600">*</span> Information obligatoire pour établir le contrat de location avec ce modèle.</p> : null}
         {step === 0 ? <StepType kind={kind} setKind={setKind} /> : null}
-        {step === 1 ? <Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} names={[["landlord_name","Nom du bailleur"],["landlord_address","Adresse du bailleur"],["tenant_name","Nom du locataire"],["tenant_email","E-mail du locataire"]]} /> : null}
-        {step === 2 ? <><Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} names={[["property_address_line1","Numéro et nom de rue"],["property_address_line2","Complément d’adresse"],["property_postal_code","Code postal"],["property_city","Ville"],["property_country","Pays","select",[["FR","France"],["GP","Guadeloupe"],["MQ","Martinique"],["GF","Guyane"],["RE","La Réunion"],["YT","Mayotte"]]],["fiscal_property_id","Identifiant fiscal du logement"],["housing_type","Type d’habitat","select",["Immeuble collectif","Maison individuelle"]],["legal_regime","Régime juridique de l’immeuble","select",["Copropriété","Monopropriété"]],["building_period","Période de construction","select",["Avant 1949","De 1949 à 1974","De 1975 à 1989","De 1989 à 2005","Depuis 2005"]],["surface_m2","Surface habitable (m²)"],["main_rooms","Nombre de pièces principales"],["heating_method","Mode de chauffage","select",["Individuel électrique","Individuel gaz","Individuel autre","Collectif"]],["hot_water_method","Production d’eau chaude sanitaire","select",["Individuelle électrique","Individuelle gaz","Individuelle autre","Collective"]],["destination","Destination du logement","select",["Usage d’habitation","Usage mixte professionnel et habitation"]],["ict_equipment","Accès internet, TV et communications"],["other_parts","Autres parties du logement"],["private_equipment","Équipements privatifs"],["common_equipment","Équipements communs"],["furniture_inventory","Mobilier principal"]]} /><p className="mt-3 text-xs leading-5 text-slate-500">L’identifiant fiscal du logement figure dans le contrat type depuis le 1er janvier 2025. Il n’est pas requis pour les logements situés en Guadeloupe, Martinique, Guyane, à La Réunion ou à Mayotte.</p></> : null}
+        {step === 1 ? <><Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} names={[["landlord_name","Nom du bailleur"],["landlord_address","Adresse du bailleur"],["tenant_name","Nom du locataire (ou 1er locataire)"],["tenant_email","E-mail du locataire"],["co_tenant_name","Co-locataire (si applicable)"],["mandataire_name","Mandataire / gestionnaire (si applicable)"],["mandataire_address","Adresse du mandataire"]]} /></> : null}
+        {step === 2 ? <><Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} names={[["property_address_line1","Numéro et nom de rue"],["property_address_line2","Complément d’adresse"],["property_postal_code","Code postal"],["property_city","Ville"],["property_country","Pays","select",[["FR","France"],["GP","Guadeloupe"],["MQ","Martinique"],["GF","Guyane"],["RE","La Réunion"],["YT","Mayotte"]]],["fiscal_property_id","Identifiant fiscal du logement"],["housing_nature","Nature du logement","select",["Appartement","Studio","F1","F2","F3","F4","F5 ou plus","Maison","Pavillon","Villa","Autre"]],["housing_type","Type d’habitat","select",["Immeuble collectif","Maison individuelle"]],["floor","Étage (ex : RDC, 2e…)"],["legal_regime","Régime juridique de l’immeuble","select",["Copropriété","Monopropriété"]],["lot_number","Numéro de lot (copropriété)"],["building_period","Période de construction","select",["Avant 1949","De 1949 à 1974","De 1975 à 1989","De 1989 à 2005","Depuis 2005"]],["surface_m2","Surface habitable (m²)"],["main_rooms","Nombre de pièces principales"],["heating_method","Mode de chauffage","select",["Individuel électrique","Individuel gaz","Individuel autre","Collectif"]],["hot_water_method","Production d’eau chaude sanitaire","select",["Individuelle électrique","Individuelle gaz","Individuelle autre","Collective"]],["destination","Destination du logement","select",["Usage d’habitation","Usage mixte professionnel et habitation"]],["ict_equipment","Accès internet, TV et communications"],["dpe_class","Classe DPE (étiquette énergie)","select",["A","B","C","D","E","F","G","Vierge / non soumis"]],["energy_kwh_sqm","Consommation énergétique (kWh/m²/an)"],["ges_class","Classe GES (émissions CO₂)","select",["A","B","C","D","E","F","G","Non soumis"]],["ges_kgco2_sqm","Émissions GES (kg CO₂/m²/an)"],["other_parts","Autres parties du logement"],["private_equipment","Équipements privatifs"],["common_equipment","Équipements communs"],["furniture_inventory","Mobilier principal"]]} /><p className="mt-3 text-xs leading-5 text-slate-500">Le DPE et la classe GES sont obligatoires depuis la loi Climat du 22 août 2021. L’identifiant fiscal du logement est requis depuis le 1er janvier 2025, sauf DOM.</p></> : null}
         {step === 3 ? <Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} names={[["start_date","Date de prise d’effet","date"],["end_date","Date de fin","date"],["mobility_reason","Motif d’éligibilité au bail mobilité"]]} /> : null}
-        {step === 4 ? <><Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} names={[["rent_amount","Loyer mensuel hors charges","number"],["charges_amount","Charges mensuelles","number"],["deposit_amount","Dépôt de garantie","number"],["payment_method","Modalité de paiement"],["payment_day","Jour de paiement","number"],["irl_reference","Trimestre de référence IRL"],["previous_rent","Dernier loyer appliqué au précédent locataire","number"],["previous_tenant_departure_date","Date de départ du précédent locataire","date"]]} /><Checks form={form} set={set} names={[["rent_revision_enabled","Révision annuelle du loyer"],["rent_controlled_area","Zone soumise à encadrement des loyers"]]} /></> : null}
-        {step === 5 ? <Fields form={form} set={set} names={[["recent_works","Travaux récents"],["estimated_energy_cost","Estimation annuelle des dépenses d’énergie","number"],["energy_reference_year","Année de référence de l’estimation énergétique"],["tenant_agency_fees","Honoraires imputés au locataire","number"],["tenant_inventory_fees","Honoraires d’état des lieux imputés au locataire","number"],["special_terms","Clauses particulières"],["reference_rent_increased","Loyer de référence majoré","number"],["rent_supplement","Complément de loyer","number"],["rent_supplement_reason","Justification du complément"]]} /> : null}
+        {step === 4 ? <><Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} names={[["rent_amount","Loyer mensuel hors charges","number"],["charges_amount","Charges mensuelles","number"],["charges_type","Nature des charges","select",[["Provision sur charges récupérables (régularisation annuelle)","Provision sur charges récupérables (régularisation annuelle)"],["Forfait de charges (meublé uniquement)","Forfait de charges (meublé uniquement)"]]],["deposit_amount","Dépôt de garantie","number"],["payment_method","Modalité de paiement"],["payment_day","Jour de paiement","number"],["irl_reference","Trimestre de référence IRL"],["reference_rent","Loyer de référence (encadrement)","number"],["reference_rent_increased","Loyer de référence majoré (encadrement)","number"],["previous_rent","Dernier loyer appliqué au précédent locataire","number"],["previous_tenant_departure_date","Date de départ du précédent locataire","date"]]} /><Checks form={form} set={set} names={[["rent_revision_enabled","Révision annuelle du loyer"],["rent_controlled_area","Zone soumise à encadrement des loyers"]]} /></> : null}
+        {step === 5 ? <><Fields form={form} set={set} names={[["recent_works","Travaux récents"],["estimated_energy_cost","Estimation annuelle des dépenses d’énergie","number"],["energy_reference_year","Année de référence de l’estimation énergétique"],["tenant_agency_fees","Honoraires imputés au locataire","number"],["tenant_inventory_fees","Honoraires d’état des lieux imputés au locataire","number"],["rent_supplement","Complément de loyer","number"],["rent_supplement_reason","Justification du complément de loyer"],["special_terms","Clauses particulières"]]} /><Checks form={form} set={set} names={[["annual_insurance_clause","Clause assurance habitation annuelle (recommandée)"]]} /></> : null}
         {step === 6 ? <><AnnexChecks form={form} set={set} /><Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} names={[["signature_place","Lieu de signature"],["signature_date","Date de signature","date"]]} /></> : null}
       </div>
       <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
