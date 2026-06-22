@@ -460,6 +460,7 @@ export function DashboardShell(props: any) {
           <SectionDashboard
             userId={userId}
             onGo={setActive}
+            planLabel={planLabel}
             propertiesCount={properties.length}
             properties={properties}
             propertyFinance={propertyFinance}

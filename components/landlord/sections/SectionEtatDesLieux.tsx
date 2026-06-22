@@ -4,6 +4,7 @@
 // =========================
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowLeftIcon,
   ArrowRightIcon,
   BuildingOffice2Icon,
   CheckCircleIcon,
@@ -575,6 +576,14 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   const [search, setSearch] = useState("");
   const [creationMode, setCreationMode] = useState<"lease" | "standalone">("lease");
   const [attachLeaseId, setAttachLeaseId] = useState("");
+  const [creationWizardStep, setCreationWizardStep] = useState<0 | 1 | 2 | 3 | null>(null);
+  const [creationWizardReportType, setCreationWizardReportType] = useState<"entry" | "exit" | null>(null);
+  const externalCreationWizardFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const resetCreationWizard = () => {
+    setCreationWizardStep(null);
+    setCreationWizardReportType(null);
+  };
   const [standaloneForm, setStandaloneForm] = useState({
     reportType: "entry" as "entry" | "exit",
     propertyLabel: "",
@@ -589,6 +598,18 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const selectedReport = useMemo(() => reports.find((r) => r.id === selectedReportId) || null, [reports, selectedReportId]);
   const selectedLease = useMemo(() => activeLeases.find((l: any) => l.id === selectedLeaseId) || null, [activeLeases, selectedLeaseId]);
+  const leaseEnded = useMemo(() => {
+    if (!selectedLease) return false;
+    const l = selectedLease as any;
+    if (l.status === "archived" || l.status === "ended" || l.status === "terminated") return true;
+    if (l.end_date && new Date(l.end_date) < new Date()) return true;
+    return false;
+  }, [selectedLease]);
+  const startWizardStep3 = (type: "entry" | "exit") => {
+    setCreationMode("lease");
+    setCreationWizardReportType(type);
+    setCreationWizardStep(3);
+  };
   const selectedProperty = selectedLease ? propertyById.get((selectedLease as any).property_id) || null : null;
   const standalonePlaceLabel = selectedReport
     ? [
@@ -3207,14 +3228,127 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               </p>
 
               {selectedLeaseId || selectedReportId ? (
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-white/90 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#635bff]">{selectedLeaseId ? "Bail sélectionné" : "État des lieux libre"}</p>
-                  <p className="mt-1 text-base font-semibold text-slate-950">{selectedContextLabel}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Badge tone="slate">{reports.length} état(s) des lieux</Badge>
-                    {selectedReport ? <Badge tone={statusUi(selectedReport.status).tone}>{statusUi(selectedReport.status).label}</Badge> : null}
-                    {hasPdf ? <Badge tone="emerald">PDF disponible</Badge> : null}
+                <div className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">
+                        {selectedLeaseId ? "Bail sélectionné" : "État des lieux libre"}
+                      </p>
+                      <p className="mt-0.5 text-base font-semibold text-slate-950">{selectedContextLabel}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedLeaseId(""); setSelectedReportId(null); resetCreationWizard(); }}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                    >
+                      <ArrowLeftIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                      Revenir à la liste
+                    </button>
                   </div>
+
+                  {/* Alerte bail terminé sans sortie */}
+                  {selectedLeaseId && leaseEnded && !exitReport && (
+                    <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                      <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+                      <p className="text-xs leading-5 text-amber-800">
+                        Ce bail est <strong>terminé</strong> — l'état des lieux de sortie n'a pas encore été créé.{" "}
+                        <button type="button" onClick={() => startWizardStep3("exit")} className="font-semibold underline hover:no-underline">
+                          Créer la sortie →
+                        </button>
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Dashboard entrée / sortie */}
+                  {selectedLeaseId && (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {/* Carte entrée */}
+                      <div className={cx(
+                        "rounded-xl border p-3",
+                        entryReport ? (entryReport.status === "signed" || entryReport.status === "archived" ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50") : "border-slate-200 bg-slate-50"
+                      )}>
+                        <p className="text-[0.62rem] font-semibold uppercase tracking-widest text-slate-500">Entrée</p>
+                        {entryReport ? (
+                          <>
+                            <p className={cx("mt-1 text-sm font-semibold", entryReport.status === "signed" || entryReport.status === "archived" ? "text-emerald-900" : "text-amber-900")}>
+                              {statusUi(entryReport.status).label}
+                            </p>
+                            {(entryReport as any).performed_at && (
+                              <p className="text-xs text-slate-500">Le {new Date((entryReport as any).performed_at).toLocaleDateString("fr-FR")}</p>
+                            )}
+                            {entryReport.document_source === "external" && (
+                              <p className="mt-0.5 text-xs text-slate-500">PDF externe</p>
+                            )}
+                            {entryReport.status !== "signed" && entryReport.status !== "archived" && (
+                              <button type="button" onClick={() => setSelectedReportId(entryReport.id)}
+                                className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                                Reprendre →
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <p className="mt-1 text-sm font-semibold text-slate-400">Non créé</p>
+                            <button type="button" onClick={() => startWizardStep3("entry")}
+                              className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                              Créer l'entrée →
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Carte sortie */}
+                      <div className={cx(
+                        "rounded-xl border p-3",
+                        exitReport ? (exitReport.status === "signed" || exitReport.status === "archived" ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50")
+                          : leaseEnded ? "border-amber-200 bg-amber-50"
+                          : "border-slate-200 bg-slate-50"
+                      )}>
+                        <p className="text-[0.62rem] font-semibold uppercase tracking-widest text-slate-500">Sortie</p>
+                        {exitReport ? (
+                          <>
+                            <p className={cx("mt-1 text-sm font-semibold", exitReport.status === "signed" || exitReport.status === "archived" ? "text-emerald-900" : "text-amber-900")}>
+                              {statusUi(exitReport.status).label}
+                            </p>
+                            {(exitReport as any).performed_at && (
+                              <p className="text-xs text-slate-500">Le {new Date((exitReport as any).performed_at).toLocaleDateString("fr-FR")}</p>
+                            )}
+                            {exitReport.status !== "signed" && exitReport.status !== "archived" && (
+                              <button type="button" onClick={() => setSelectedReportId(exitReport.id)}
+                                className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                                Reprendre →
+                              </button>
+                            )}
+                          </>
+                        ) : !entryReport ? (
+                          <p className="mt-1 text-xs text-slate-400">Entrée requise d'abord</p>
+                        ) : (
+                          <>
+                            <p className={cx("mt-1 text-sm font-semibold", leaseEnded ? "text-amber-700" : "text-slate-400")}>
+                              {leaseEnded ? "Manquante" : "Non créée"}
+                            </p>
+                            <p className="mt-0.5 text-xs text-slate-500">
+                              {leaseEnded ? "Bail terminé — à traiter" : "Bail en cours"}
+                            </p>
+                            <button type="button" onClick={() => startWizardStep3("exit")}
+                              className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                              Créer la sortie →
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* EDL libre (sans bail) */}
+                  {!selectedLeaseId && selectedReport && (
+                    <div className="flex flex-wrap gap-2">
+                      <Badge tone="slate">{reports.length} état(s) des lieux</Badge>
+                      <Badge tone={statusUi(selectedReport.status).tone}>{statusUi(selectedReport.status).label}</Badge>
+                      {hasPdf ? <Badge tone="emerald">PDF disponible</Badge> : null}
+                    </div>
+                  )}
                 </div>
               ) : leaseStarterCards.length ? (
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -3264,213 +3398,229 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               ) : null}
             </div>
 
+            {/* ── Wizard création EDL ──────────────────────────────── */}
             <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm">
-              <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">
-                <button
-                  type="button"
-                  onClick={() => setCreationMode("lease")}
-                  className={cx(
-                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
-                    creationMode === "lease" ? "bg-white text-slate-950 shadow-sm" : "text-slate-600 hover:text-slate-950"
-                  )}
-                >
-                  Depuis un bail
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreationMode("standalone");
-                    setSelectedLeaseId("");
-                  }}
-                  className={cx(
-                    "rounded-xl px-3 py-2 text-sm font-semibold transition",
-                    creationMode === "standalone" ? "bg-white text-slate-950 shadow-sm" : "text-slate-600 hover:text-slate-950"
-                  )}
-                >
-                  EDL libre
-                </button>
-              </div>
 
-              {creationMode === "standalone" ? (
-                <div className="mb-5 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-950">Créer sans bail</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-600">Utile avant la signature du bail ou si le bail a été fait ailleurs. Le rattachement restera possible ensuite.</p>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <select
-                      value={standaloneForm.reportType}
-                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, reportType: e.target.value as "entry" | "exit" }))}
-                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
-                    >
-                      <option value="entry">Entrée</option>
-                      <option value="exit">Sortie</option>
-                    </select>
-                    <input
-                      value={standaloneForm.propertyLabel}
-                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, propertyLabel: e.target.value }))}
-                      placeholder="Nom du logement"
-                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
-                    />
-                  </div>
-                  <input
-                    value={standaloneForm.addressLine1}
-                    onChange={(e) => setStandaloneForm((prev) => ({ ...prev, addressLine1: e.target.value }))}
-                    placeholder="Adresse"
-                    className="min-h-[44px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
-                  />
-                  <div className="grid gap-2 sm:grid-cols-[120px,1fr]">
-                    <input
-                      value={standaloneForm.postalCode}
-                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, postalCode: e.target.value }))}
-                      placeholder="Code postal"
-                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
-                    />
-                    <input
-                      value={standaloneForm.city}
-                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, city: e.target.value }))}
-                      placeholder="Ville"
-                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
-                    />
-                  </div>
-                  <input
-                    value={standaloneForm.occupantLabel}
-                    onChange={(e) => setStandaloneForm((prev) => ({ ...prev, occupantLabel: e.target.value }))}
-                    placeholder="Nom de l’occupant"
-                    className="min-h-[44px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
-                  />
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <input
-                      value={standaloneForm.occupantEmail}
-                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, occupantEmail: e.target.value }))}
-                      placeholder="Email occupant"
-                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
-                    />
-                    <input
-                      value={standaloneForm.occupantPhone}
-                      onChange={(e) => setStandaloneForm((prev) => ({ ...prev, occupantPhone: e.target.value }))}
-                      placeholder="Téléphone"
-                      className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900"
-                    />
-                  </div>
+              {/* Hidden file inputs (kept for upload functions) */}
+              <input ref={externalEntryFileInputRef} type="file" accept="application/pdf" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadExternalPdf("entry", f); }} />
+              <input ref={externalExitFileInputRef} type="file" accept="application/pdf" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadExternalPdf("exit", f); }} />
+              <input ref={externalCreationWizardFileInputRef} type="file" accept="application/pdf" className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f || !creationWizardReportType) return;
+                  if (creationWizardReportType === "entry") void uploadExternalPdf("entry", f);
+                  else void uploadExternalPdf("exit", f);
+                  resetCreationWizard();
+                }} />
+
+              {creationWizardStep === null ? (
+                /* ── État repos : bouton déclencheur ─────────────────── */
+                <div className="space-y-3">
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Nouveau</p>
                   <button
                     type="button"
-                    onClick={createStandaloneReport}
-                    disabled={loading}
-                    className="inline-flex min-h-[46px] w-full items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                    onClick={() => setCreationWizardStep(1)}
+                    className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
                   >
-                    Créer l’état des lieux libre
+                    <span className="text-base">+</span> Créer un état des lieux
                   </button>
                 </div>
-              ) : null}
+              ) : (
+                /* ── Wizard actif ─────────────────────────────────────── */
+                <div className="space-y-4">
+                  {/* Progress indicator */}
+                  <div className="flex items-center justify-between">
+                    <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      Étape {creationWizardStep}/3
+                    </p>
+                    <button type="button" onClick={resetCreationWizard} className="text-xs text-slate-400 hover:text-slate-600">
+                      Annuler
+                    </button>
+                  </div>
+                  <div className="flex gap-1">
+                    {[1, 2, 3].map((s) => (
+                      <div key={s} className={"h-1 flex-1 rounded-full transition-colors " + (s <= (creationWizardStep ?? 0) ? "bg-slate-950" : "bg-slate-200")} />
+                    ))}
+                  </div>
 
-              <label className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Bail à utiliser</label>
-              <select
-                value={selectedLeaseId}
-                onChange={(e) => setSelectedLeaseId(e.target.value)}
-                className="mt-2 min-h-[48px] w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-[#635bff] focus:outline-none focus:ring-4 focus:ring-[#635bff]/10"
-              >
-                <option value="">Sélectionner un bail</option>
-                {activeLeases.map((l: any) => (
-                  <option key={l.id} value={l.id}>
-                    {leaseLabel(l)}
-                  </option>
-                ))}
-              </select>
-
-              <div className="mt-4 grid gap-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Actions disponibles</p>
-                <button
-                  type="button"
-                  disabled={!selectedLeaseId || loading || entryReport?.status === "signed" || entryReport?.status === "archived"}
-                  onClick={() => createReport("entry")}
-                  className={cx(
-                    "inline-flex min-h-[46px] items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold disabled:opacity-50",
-                    entryReport
-                      ? "border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
-                      : "bg-slate-950 text-white hover:bg-slate-800"
+                  {/* ── Step 1 : bail à rattacher ? ───────────────────── */}
+                  {creationWizardStep === 1 && (
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-slate-900">Avez-vous un bail à rattacher ?</p>
+                      <p className="text-xs text-slate-500">Le bail pré-remplit le logement et le locataire. Le rattachement peut aussi être fait plus tard.</p>
+                      <div className="grid gap-2">
+                        <div className="space-y-2">
+                          <select
+                            value={selectedLeaseId}
+                            onChange={(e) => setSelectedLeaseId(e.target.value)}
+                            className="min-h-[48px] w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-[#635bff] focus:outline-none focus:ring-4 focus:ring-[#635bff]/10"
+                          >
+                            <option value="">— Sélectionner un bail —</option>
+                            {activeLeases.map((l: any) => (
+                              <option key={l.id} value={l.id}>{leaseLabel(l)}</option>
+                            ))}
+                          </select>
+                          {selectedLeaseId && (
+                            <button
+                              type="button"
+                              onClick={() => { setCreationMode("lease"); setCreationWizardStep(2); }}
+                              className="inline-flex min-h-[46px] w-full items-center justify-center rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+                            >
+                              Continuer avec ce bail →
+                            </button>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setCreationMode("standalone"); setSelectedLeaseId(""); setCreationWizardStep(2); }}
+                          className="inline-flex min-h-[46px] w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Continuer sans bail (rattacher plus tard)
+                        </button>
+                      </div>
+                    </div>
                   )}
-                  title={
-                    entryReport?.status === "signed" || entryReport?.status === "archived"
-                      ? "L’état des lieux d’entrée est signé : il est verrouillé."
-                      : entryReport
-                      ? "Reprendre l’état des lieux d’entrée."
-                      : "Créer l’état des lieux d’entrée."
-                  }
-                >
-                  {entryReport ? "Reprendre l’entrée" : "Créer l’entrée"}
-                </button>
-                <button
-                  type="button"
-                  disabled={!selectedLeaseId || loading || !entryReport || exitReport?.status === "signed" || exitReport?.status === "archived"}
-                  onClick={() => createReport("exit")}
-                  className={cx(
-                    "inline-flex min-h-[46px] items-center justify-center rounded-2xl px-4 py-2 text-sm font-semibold disabled:opacity-50",
-                    exitReport
-                      ? "border border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100"
-                      : "border border-slate-300 bg-white text-slate-950 hover:bg-slate-50"
-                  )}
-                  title={
-                    !entryReport
-                      ? "Crée d’abord l’état des lieux d’entrée."
-                      : exitReport?.status === "signed" || exitReport?.status === "archived"
-                      ? "L’état des lieux de sortie est signé : il est verrouillé."
-                      : exitReport
-                      ? "Reprendre l’état des lieux de sortie."
-                      : entryReport.document_source === "external"
-                      ? "L’entrée est un PDF importé — la sortie sera créée vierge (pas de copie automatique des pièces)."
-                      : "Créer la sortie en copiant les pièces de l’entrée."
-                  }
-                >
-                  {exitReport
-                    ? "Reprendre la sortie"
-                    : entryReport?.document_source === "external"
-                    ? "Créer la sortie"
-                    : "Créer la sortie depuis l’entrée"}
-                </button>
 
-                <div className="my-1 border-t border-slate-200" />
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">PDF réalisé à l’extérieur</p>
-                <input
-                  ref={externalEntryFileInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void uploadExternalPdf("entry", file);
-                  }}
-                />
-                <input
-                  ref={externalExitFileInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void uploadExternalPdf("exit", file);
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled={!selectedLeaseId || loading || entryReport?.status === "signed" || entryReport?.status === "archived"}
-                  onClick={() => externalEntryFileInputRef.current?.click()}
-                  className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  <DocumentArrowUpIcon className="h-4 w-4" aria-hidden="true" />
-                  Importer l’entrée en PDF
-                </button>
-                <button
-                  type="button"
-                  disabled={!selectedLeaseId || loading || exitReport?.status === "signed" || exitReport?.status === "archived"}
-                  onClick={() => externalExitFileInputRef.current?.click()}
-                  className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  <DocumentArrowUpIcon className="h-4 w-4" aria-hidden="true" />
-                  Importer la sortie en PDF
-                </button>
-                <p className="text-[0.7rem] leading-4 text-slate-500">PDF finalisé uniquement, 10 Mo maximum. Le document importé est archivé et verrouillé.</p>
-              </div>
+                  {/* ── Step 2 : entrée ou sortie ? ───────────────────── */}
+                  {creationWizardStep === 2 && (
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-slate-900">Entrée ou sortie ?</p>
+
+                      {/* Bail sélectionné + lien changer */}
+                      {creationMode === "lease" && selectedLeaseId && (
+                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                          <span className="truncate text-xs text-slate-700">
+                            {leaseLabel(activeLeases.find((l: any) => l.id === selectedLeaseId))}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCreationWizardStep(1)}
+                            className="ml-2 shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                          >
+                            Changer
+                          </button>
+                        </div>
+                      )}
+
+                      {creationMode === "standalone" && (
+                        <p className="text-xs text-slate-500">Sans bail rattaché, les deux sont possibles.</p>
+                      )}
+                      {creationMode === "lease" && !entryReport && (
+                        <p className="text-xs text-amber-600">Aucune entrée existante — créez-la d’abord pour pouvoir copier les pièces lors de la sortie.</p>
+                      )}
+                      <div className="grid gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setCreationWizardReportType("entry"); setCreationWizardStep(3); }}
+                          disabled={creationMode === "lease" && (entryReport?.status === "signed" || entryReport?.status === "archived")}
+                          className={cx(
+                            "inline-flex min-h-[46px] w-full items-center justify-between rounded-2xl border px-4 text-sm font-semibold transition disabled:opacity-40",
+                            entryReport ? "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100" : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+                          )}
+                        >
+                          <span>État des lieux d’entrée</span>
+                          {entryReport ? <span className="text-xs font-normal text-emerald-600">Reprendre</span> : <span className="text-slate-400">→</span>}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setCreationWizardReportType("exit"); setCreationWizardStep(3); }}
+                          disabled={creationMode === "lease" && (!entryReport || exitReport?.status === "signed" || exitReport?.status === "archived")}
+                          className={cx(
+                            "inline-flex min-h-[46px] w-full items-center justify-between rounded-2xl border px-4 text-sm font-semibold transition disabled:opacity-40",
+                            exitReport ? "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100" : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+                          )}
+                        >
+                          <span>État des lieux de sortie</span>
+                          {exitReport ? <span className="text-xs font-normal text-emerald-600">Reprendre</span> : <span className="text-slate-400">→</span>}
+                        </button>
+                      </div>
+                      <button type="button" onClick={() => setCreationWizardStep(1)} className="text-xs text-slate-400 hover:text-slate-600">← Retour</button>
+                    </div>
+                  )}
+
+                  {/* ── Step 3 : lokt.fr ou PDF ? ─────────────────────── */}
+                  {creationWizardStep === 3 && (
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-slate-900">
+                        Comment souhaitez-vous {creationWizardReportType === "entry" ? "créer l’entrée" : "créer la sortie"} ?
+                      </p>
+
+                      {/* Bail sélectionné + lien changer */}
+                      {creationMode === "lease" && selectedLeaseId && (
+                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                          <span className="truncate text-xs text-slate-700">
+                            {leaseLabel(activeLeases.find((l: any) => l.id === selectedLeaseId))}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCreationWizardStep(1)}
+                            className="ml-2 shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                          >
+                            Changer
+                          </button>
+                        </div>
+                      )}
+                      <div className="grid gap-2">
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => {
+                            if (creationMode === "lease" && creationWizardReportType) {
+                              void createReport(creationWizardReportType);
+                            } else {
+                              setStandaloneForm((prev) => ({ ...prev, reportType: creationWizardReportType ?? "entry" }));
+                              void createStandaloneReport();
+                            }
+                            resetCreationWizard();
+                          }}
+                          className="inline-flex min-h-[46px] w-full items-center gap-3 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-base">📝</span>
+                          <div className="text-left">
+                            <p>Saisir dans lokt.fr</p>
+                            <p className="text-[0.72rem] font-normal text-white/60">Guidé pièce par pièce, photos, signature</p>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => externalCreationWizardFileInputRef.current?.click()}
+                          className="inline-flex min-h-[46px] w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-base">📄</span>
+                          <div className="text-left">
+                            <p>Importer un PDF existant</p>
+                            <p className="text-[0.72rem] font-normal text-slate-500">PDF finalisé, 10 Mo max — archivé et verrouillé</p>
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Standalone form (only when no lease) */}
+                      {creationMode === "standalone" && (
+                        <div className="mt-2 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                          <p className="text-xs font-semibold text-slate-600">Informations du logement</p>
+                          <input value={standaloneForm.propertyLabel} onChange={(e) => setStandaloneForm((p) => ({ ...p, propertyLabel: e.target.value }))}
+                            placeholder="Nom du logement" className="min-h-[40px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                          <input value={standaloneForm.addressLine1} onChange={(e) => setStandaloneForm((p) => ({ ...p, addressLine1: e.target.value }))}
+                            placeholder="Adresse" className="min-h-[40px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                          <div className="grid gap-2 sm:grid-cols-[110px,1fr]">
+                            <input value={standaloneForm.postalCode} onChange={(e) => setStandaloneForm((p) => ({ ...p, postalCode: e.target.value }))}
+                              placeholder="CP" className="min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                            <input value={standaloneForm.city} onChange={(e) => setStandaloneForm((p) => ({ ...p, city: e.target.value }))}
+                              placeholder="Ville" className="min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                          </div>
+                          <input value={standaloneForm.occupantLabel} onChange={(e) => setStandaloneForm((p) => ({ ...p, occupantLabel: e.target.value }))}
+                            placeholder="Nom de l’occupant" className="min-h-[40px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900" />
+                        </div>
+                      )}
+
+                      <button type="button" onClick={() => setCreationWizardStep(2)} className="text-xs text-slate-400 hover:text-slate-600">← Retour</button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

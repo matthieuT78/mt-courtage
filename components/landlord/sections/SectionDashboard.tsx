@@ -1,6 +1,6 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { BellIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, BellIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
@@ -164,6 +164,7 @@ export function SectionDashboard({
   onGo,
   onPrepareDeparture,
   userId,
+  planLabel,
 }: {
   monthRange: { startISO: string; endISO: string };
   monthlyExpected: number;
@@ -186,6 +187,7 @@ export function SectionDashboard({
   onGo: (k: LandlordSectionKey) => void;
   onPrepareDeparture?: (tenantId: string) => void;
   userId?: string;
+  planLabel?: string;
 }) {
   const ratio = monthlyExpected > 0 ? clampPct((monthlyPaid / monthlyExpected) * 100) : 0;
   const remainingToCollect = Math.max(0, monthlyExpected - monthlyPaid);
@@ -262,6 +264,12 @@ export function SectionDashboard({
   const [accountingPropertyId, setAccountingPropertyId] = useState<string>("");
   const [alertSnoozes, setAlertSnoozes] = useState<AlertSnoozeState>({});
   const [openAlertMenuId, setOpenAlertMenuId] = useState<string | null>(null);
+  const [scoreHovered, setScoreHovered] = useState(false);
+  const [news, setNews] = useState<{ title: string; url: string; image: string | null; source: string; publishedAt: string }[]>([]);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const scoreHoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onScoreEnter = () => { if (scoreHoverTimeout.current) clearTimeout(scoreHoverTimeout.current); setScoreHovered(true); };
+  const onScoreLeave = () => { scoreHoverTimeout.current = setTimeout(() => setScoreHovered(false), 180); };
 
   const alertSnoozeStorageKey = useMemo(() => {
     const u = (userId || "").trim();
@@ -276,6 +284,16 @@ export function SectionDashboard({
       setAlertSnoozes({});
     }
   }, [alertSnoozeStorageKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/news/immobilier")
+      .then((r) => r.json())
+      .then((data) => { if (!cancelled) setNews(Array.isArray(data) ? data : []); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setNewsLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const saveAlertSnoozes = (next: AlertSnoozeState) => {
     setAlertSnoozes(next);
@@ -852,227 +870,340 @@ export function SectionDashboard({
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm sm:rounded-3xl">
-        {/* ── Hero gradient ─────────────────────────────────────── */}
-        <div className="bg-gradient-to-br from-[#5e6cf0] via-[#4d9cff] to-[#2bbfd5] px-5 py-6 text-white">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
+
+      {/* ═══════════════════════════════════════════════════
+          HERO
+      ═══════════════════════════════════════════════════ */}
+      <div className="relative">
+      <section className="overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
+
+        {/* Gradient header */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#4338ca] via-[#4d9cff] to-[#06b6d4] px-5 py-7 sm:px-7">
+          <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
               <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-white/50">Cockpit bailleur</p>
-              <h2 className="mt-2 text-xl font-semibold leading-tight text-white">Bonjour, voici le point du jour</h2>
-              <p className="mt-1 text-[0.8rem] text-white/65">
-                {fmtDate(monthRange.startISO)} → {fmtDate(monthRange.endISO)}
-              </p>
-              {/* Quick shortcuts */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(
-                  [
-                    { label: "Loyers", key: "quittances" },
-                    { label: "Baux", key: "baux" },
-                    { label: "Finance", key: "finance" },
-                    { label: "Documents", key: "documents" },
-                  ] as { label: string; key: LandlordSectionKey }[]
-                ).map(({ label, key }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => onGo(key)}
-                    className="rounded-full bg-white/15 px-3 py-1.5 text-[0.73rem] font-semibold text-white backdrop-blur transition hover:bg-white/28"
-                  >
-                    {label} →
-                  </button>
-                ))}
-              </div>
+              <h2 className="mt-1.5 text-xl font-bold text-white sm:text-2xl">Bonjour, voici le point du jour</h2>
+              <p className="mt-1 text-sm text-white/60">{fmtDate(monthRange.startISO)} → {fmtDate(monthRange.endISO)}</p>
+
+              {/* Revenu mensuel */}
+              {monthlyExpected > 0 ? (
+                <div className="mt-5 flex flex-wrap items-baseline gap-2">
+                  <span className="text-3xl font-extrabold text-white">{formatEuro(monthlyExpected)}</span>
+                  <span className="text-sm text-white/60">attendus ce mois</span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${ratio >= 95 ? "bg-emerald-400/25 text-white" : ratio >= 70 ? "bg-amber-400/25 text-white" : "bg-red-400/25 text-white"}`}>
+                    {hasOnlyUpcomingRents ? "À venir" : `${ratio}% encaissé`}
+                  </span>
+                </div>
+              ) : (
+                <div className="mt-5">
+                  <span className="text-sm text-white/50">Aucun loyer configuré ce mois</span>
+                </div>
+              )}
+
+              {/* Plan — discret, en bas */}
+              {planLabel && (
+                <div className="mt-5">
+                  <span className="rounded-full border border-white/15 bg-white/8 px-2.5 py-1 text-[0.62rem] font-semibold text-white/50">
+                    Plan {planLabel}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Score badge proéminent */}
-            <div className="flex shrink-0 flex-col items-center gap-0.5 rounded-2xl bg-white/15 px-4 py-3.5 backdrop-blur">
+            {/* Score — hover → weather popover */}
+            <div
+              onMouseEnter={onScoreEnter}
+              onMouseLeave={onScoreLeave}
+              className="flex shrink-0 cursor-default flex-col items-center gap-1.5 rounded-2xl bg-white/15 px-5 py-5 backdrop-blur transition-all duration-150 hover:bg-white/22"
+            >
               <p className="text-[0.58rem] font-semibold uppercase tracking-widest text-white/55">Score</p>
-              <p className="text-3xl font-bold leading-none text-white">{healthScore}</p>
-              <p className="text-[0.58rem] text-white/45">/100</p>
-              <div className="mt-2 h-1 w-12 overflow-hidden rounded-full bg-white/20">
-                <div
-                  className="h-full rounded-full bg-white transition-all duration-700"
-                  style={{ width: `${healthScore > 0 ? Math.max(8, Math.min(100, healthScore)) : 0}%` }}
-                />
+              <p className="text-4xl font-extrabold leading-none text-white">{healthScore}</p>
+              <p className="text-[0.6rem] text-white/45">/100</p>
+              <div className="mt-2 h-1.5 w-14 overflow-hidden rounded-full bg-white/20">
+                <div className="h-full rounded-full bg-white transition-all duration-700" style={{ width: `${healthScore > 0 ? Math.max(8, Math.min(100, healthScore)) : 0}%` }} />
               </div>
+              <p className="mt-0.5 text-[0.62rem] font-semibold text-white/70">
+                {healthScore >= 90 ? "Excellent" : healthScore >= 75 ? "Bon" : healthScore >= 50 ? "À améliorer" : "À traiter"}
+              </p>
+              <p className="mt-1 text-lg leading-none">
+                {healthScore >= 90 ? "☀️" : healthScore >= 75 ? "🌤️" : healthScore >= 50 ? "⛅" : "🌧️"}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* ── Stats bar ─────────────────────────────────────────── */}
-        <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100 bg-white">
-          {(
-            [
-              {
-                label: "Encaissement",
-                value: hasOnlyUpcomingRents ? "À venir" : `${ratio}%`,
-                tone: hasOnlyUpcomingRents ? "text-emerald-600" : ratio >= 95 ? "text-emerald-600" : ratio >= 70 ? "text-amber-600" : "text-red-600",
-              },
-              {
-                label: "Retards",
-                value: String(lateCount),
-                tone: lateCount > 0 ? "text-red-600" : "text-emerald-600",
-              },
-              {
-                label: "Occupation",
-                value: `${occupancySnapshot.rate}%`,
-                tone: occupancySnapshot.rate >= 80 ? "text-emerald-600" : "text-amber-600",
-              },
-              {
-                label: "Quittances",
-                value: hasOnlyUpcomingRents ? "—" : `${receiptCoverage}%`,
-                tone: receiptCoverage >= 100 ? "text-emerald-600" : receiptCoverage >= 50 ? "text-amber-600" : "text-red-600",
-              },
-            ] as { label: string; value: string; tone: string }[]
-          ).map(({ label, value, tone }) => (
-            <div key={label} className="flex flex-col items-center px-2 py-3">
-              <p className="text-[0.6rem] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-              <p className={`mt-0.5 text-base font-bold ${tone}`}>{value}</p>
-            </div>
-          ))}
-        </div>
+        {/* ── KPI strip — tuiles individuelles avec coins arrondis ── */}
+        <div className="grid grid-cols-2 gap-2 bg-[#f1f5f9] px-3 pb-3 pt-2 sm:grid-cols-4">
+          <button type="button" onClick={() => onGo("quittances")}
+            className="flex min-h-[108px] flex-col gap-1 rounded-2xl bg-white px-4 py-4 text-left shadow-sm transition hover:shadow-md active:scale-[0.98]">
+            <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-400">Encaissement</p>
+            <p className={`text-2xl font-extrabold ${hasOnlyUpcomingRents ? "text-emerald-600" : ratio >= 95 ? "text-emerald-600" : ratio >= 70 ? "text-amber-600" : "text-red-600"}`}>
+              {hasOnlyUpcomingRents ? "À venir" : `${ratio}%`}
+            </p>
+            {monthlyExpected > 0 && (
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div className={`h-full rounded-full transition-all duration-700 ${ratio >= 95 ? "bg-emerald-500" : ratio >= 70 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${Math.min(100, ratio)}%` }} />
+              </div>
+            )}
+            <p className="text-[0.68rem] text-slate-500">{formatEuro(monthlyPaid)} / {formatEuro(monthlyExpected)}</p>
+          </button>
 
-        <div className="grid min-w-0 gap-3 bg-[#f6f9fc] p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(0,1fr),minmax(0,0.85fr)]">
-          <div className="min-w-0 space-y-2">
-            <button
-              type="button"
-              onClick={() => onGo("biens")}
-              className="block w-full min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left shadow-sm transition hover:border-[#635bff]/30 hover:shadow-md"
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#eef2ff] text-[#4f46e5]">
-                    <HomeModernIcon className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-950">Occupation du parc</p>
-                      <span
-                        className={
-                          "rounded-full border px-2.5 py-0.5 text-[0.68rem] font-semibold " +
-                          (occupancySnapshot.rate >= 95
-                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                            : occupancySnapshot.rate >= 70
-                            ? "border-amber-200 bg-amber-50 text-amber-700"
-                            : "border-red-200 bg-red-50 text-red-700")
-                        }
-                      >
-                        {occupancySnapshot.rate} %
+          <button type="button" onClick={() => lateCount > 0 ? onGo("quittances") : undefined}
+            className={`flex min-h-[108px] flex-col gap-1 rounded-2xl bg-white px-4 py-4 text-left shadow-sm transition ${lateCount > 0 ? "cursor-pointer hover:shadow-md active:scale-[0.98]" : "cursor-default"}`}>
+            <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-400">Retards</p>
+            <p className={`text-2xl font-extrabold ${lateCount > 0 ? "text-red-600" : "text-emerald-600"}`}>{lateCount}</p>
+            <span className={`inline-flex self-start rounded-full px-2 py-0.5 text-[0.62rem] font-semibold ${lateCount > 0 ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
+              {lateCount > 0 ? `${lateCount} en retard` : "Aucun retard"}
+            </span>
+            <p className="text-[0.68rem] text-slate-500">{lateCount > 0 ? "Action requise →" : "Tout est à jour"}</p>
+          </button>
+
+          <button type="button" onClick={() => onGo("biens")}
+            className="flex min-h-[108px] flex-col gap-1 rounded-2xl bg-white px-4 py-4 text-left shadow-sm transition hover:shadow-md active:scale-[0.98]">
+            <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-400">Occupation</p>
+            <p className={`text-2xl font-extrabold ${occupancySnapshot.rate >= 80 ? "text-emerald-600" : occupancySnapshot.rate >= 60 ? "text-amber-600" : "text-red-600"}`}>
+              {occupancySnapshot.rate}%
+            </p>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className={`h-full rounded-full ${occupancySnapshot.rate >= 80 ? "bg-emerald-500" : occupancySnapshot.rate >= 60 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${occupancySnapshot.rate}%` }} />
+            </div>
+            <p className="text-[0.68rem] text-slate-500">
+              {occupancySnapshot.occupiedCount}/{occupancySnapshot.total} logement{occupancySnapshot.total > 1 ? "s" : ""}
+              {occupancySnapshot.vacantCount > 0 ? ` · ${occupancySnapshot.vacantCount} vacant` : ""}
+            </p>
+          </button>
+
+          <button type="button" onClick={() => onGo("baux")}
+            className="flex min-h-[108px] flex-col gap-1 rounded-2xl bg-white px-4 py-4 text-left shadow-sm transition hover:shadow-md active:scale-[0.98]">
+            <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-400">Dépôts en gestion</p>
+            <p className="text-2xl font-extrabold text-indigo-600">{depositTotal > 0 ? formatEuro(depositTotal) : "—"}</p>
+            <p className="text-[0.68rem] text-slate-500">
+              {activeLeases.length} bail{activeLeases.length > 1 ? "s" : ""} actif{activeLeases.length > 1 ? "s" : ""}
+              {receiptCoverage > 0 ? ` · quittances ${receiptCoverage}%` : ""}
+            </p>
+          </button>
+        </div>
+      </section>
+
+      {/* ── Weather popover (score badge hover) ───────────────── */}
+      {scoreHovered && (
+        <div
+          onMouseEnter={onScoreEnter}
+          onMouseLeave={onScoreLeave}
+          className="absolute right-0 top-[148px] z-50 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)]"
+        >
+          {/* Header météo */}
+          <div className={`px-4 py-3 ${
+            healthScore >= 90 ? "bg-amber-50" :
+            healthScore >= 75 ? "bg-sky-50" :
+            healthScore >= 50 ? "bg-slate-100" :
+            "bg-slate-200"
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score de gestion</p>
+                <p className="text-sm font-bold text-slate-900">
+                  {healthScore >= 90 ? "Temps superbe" : healthScore >= 75 ? "Beau fixe" : healthScore >= 50 ? "Ciel variable" : "Perturbé"}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-3xl leading-none">
+                  {healthScore >= 90 ? "☀️" : healthScore >= 75 ? "🌤️" : healthScore >= 50 ? "⛅" : "🌧️"}
+                </p>
+                <p className="mt-0.5 text-xs font-bold text-slate-600">{healthScore}/100</p>
+              </div>
+            </div>
+          </div>
+          {/* Lignes par KPI */}
+          <div className="divide-y divide-slate-100">
+            {healthDetails.map((detail) => {
+              const icon = detail.tone === "emerald" ? "☀️" : detail.tone === "amber" ? "⛅" : detail.tone === "red" ? "🌧️" : "🌤️";
+              return (
+                <button
+                  key={detail.label}
+                  type="button"
+                  onClick={() => { detail.target && onGo(detail.target); setScoreHovered(false); }}
+                  disabled={!detail.target}
+                  className={"flex w-full items-center gap-3 px-4 py-3 text-left " + (detail.target ? "hover:bg-slate-50" : "cursor-default")}
+                >
+                  <span className="text-base leading-none">{icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-800">{detail.label}</p>
+                    <p className="truncate text-[0.68rem] text-slate-500">{detail.desc}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.62rem] font-bold ${
+                    detail.tone === "emerald" ? "bg-emerald-50 text-emerald-700" :
+                    detail.tone === "amber" ? "bg-amber-50 text-amber-700" :
+                    detail.tone === "red" ? "bg-red-50 text-red-700" :
+                    "bg-slate-100 text-slate-600"
+                  }`}>{detail.value}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      </div>{/* end relative wrapper */}
+
+      {/* ═══════════════════════════════════════════════════
+          MAIN GRID
+      ═══════════════════════════════════════════════════ */}
+      {/* Grid 4 cellules : les items de la même ligne CSS partagent la même hauteur */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr),minmax(0,2fr)]">
+
+          {/* Loyers du mois — tableau par bail */}
+          {leaseCards.length > 0 && (
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">Loyers du mois</p>
+                  <p className="text-xs text-slate-500">{fmtDate(monthRange.startISO)} — {fmtDate(monthRange.endISO)}</p>
+                </div>
+                <button type="button" onClick={() => onGo("quittances")}
+                  className="rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700">
+                  Gérer →
+                </button>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {leaseCards.map((card) => (
+                  <button key={card.lease.id} type="button" onClick={() => onGo("quittances")}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                      <HomeModernIcon className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">{card.propertyLabel}</p>
+                      <p className="truncate text-xs text-slate-500">
+                        {card.tenantName}
+                        {card.leaseEndingSoon ? <span className="ml-2 font-semibold text-amber-600">· Fin bail proche</span> : null}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-bold text-slate-900">{card.total > 0 ? formatEuro(card.total) : "—"}</p>
+                      {card.dueDate && <p className="text-xs text-slate-400">Éch. {fmtDate(toISODate(card.dueDate))}</p>}
+                    </div>
+                    <div className="flex shrink-0 min-w-[96px] flex-col items-end gap-1">
+                      <span className={`rounded-full px-2.5 py-0.5 text-[0.62rem] font-semibold ${
+                        card.paymentStatus === "Encaissé" ? "bg-emerald-50 text-emerald-700" :
+                        card.paymentStatus === "En retard" ? "bg-red-50 text-red-700" :
+                        card.paymentStatus === "À venir" ? "bg-sky-50 text-sky-700" :
+                        "bg-amber-50 text-amber-700"
+                      }`}>{card.paymentStatus}</span>
+                      <span className={`rounded-full px-2.5 py-0.5 text-[0.6rem] font-semibold ${
+                        card.hasReceipt ? "bg-emerald-50 text-emerald-600" :
+                        card.paymentStatus === "Encaissé" ? "bg-amber-50 text-amber-600" :
+                        "bg-slate-100 text-slate-400"
+                      }`}>
+                        {card.hasReceipt ? "Quittance ✓" : card.paymentStatus === "Encaissé" ? "Quittance ⚠" : "Quittance —"}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm leading-5 text-slate-600">
-                      {occupancySnapshot.total
-                        ? `${occupancySnapshot.occupiedCount}/${occupancySnapshot.total} logement${occupancySnapshot.total > 1 ? "s" : ""} occupé${occupancySnapshot.occupiedCount > 1 ? "s" : ""}`
-                        : "Ajoutez un logement pour suivre l’occupation."}
-                      {occupancySnapshot.vacantCount ? ` · ${occupancySnapshot.vacantCount} vacant${occupancySnapshot.vacantCount > 1 ? "s" : ""}` : ""}
-                      {occupancySnapshot.shortHistoryCount ? ` · ${occupancySnapshot.shortHistoryCount} historique récent` : ""}
-                    </p>
-                  </div>
-                </div>
-                <div className="min-w-0 sm:min-w-[9rem]">
-                  <div className="flex items-center justify-between text-[0.7rem] font-semibold text-slate-500">
-                    <span>Période connue</span>
-                    <span>{occupancySnapshot.rate}%</span>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className={
-                        "h-full rounded-full " +
-                        (occupancySnapshot.rate >= 95 ? "bg-emerald-500" : occupancySnapshot.rate >= 70 ? "bg-amber-500" : "bg-red-500")
-                      }
-                      style={{ width: `${Math.max(0, Math.min(100, occupancySnapshot.rate))}%` }}
-                    />
-                  </div>
-                </div>
+                  </button>
+                ))}
               </div>
-            </button>
+            </section>
+          )}
 
+          {/* ── Trésorerie (col 2, row 1 — même hauteur que Loyers) ── */}
+          <section className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:row-start-1 lg:col-start-2">
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Trésorerie 6 mois</p>
+                <p className="text-xs text-slate-500">Encaissé vs dépenses</p>
+              </div>
+              <button type="button" onClick={() => onGo("finance")} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                Finance →
+              </button>
+            </div>
+            <div className="flex flex-1 items-end gap-1.5">
+              {accountingSeries.map((row) => {
+                const incH = maxChartValue > 0 ? Math.max(2, (row.income / maxChartValue) * 88) : 2;
+                const expH = maxChartValue > 0 && row.expense > 0 ? Math.max(2, (row.expense / maxChartValue) * 88) : 0;
+                return (
+                  <div key={row.key} className="flex flex-1 flex-col items-center">
+                    <div className="flex w-full items-end justify-center gap-0.5">
+                      <div className="flex-1 rounded-t bg-emerald-400" style={{ height: `${incH}px`, minHeight: "2px" }} title={`Encaissé ${formatEuro(row.income)}`} />
+                      {expH > 0 && <div className="flex-1 rounded-t bg-rose-400" style={{ height: `${expH}px` }} title={`Dépenses ${formatEuro(row.expense)}`} />}
+                    </div>
+                    <p className="mt-1.5 text-[0.6rem] text-slate-400">{monthLabel(row.key)}</p>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">
+              {[
+                { label: "Encaissé", value: formatEuro(accountingTotals.income), cls: "text-emerald-600" },
+                { label: "Dépenses", value: formatEuro(accountingTotals.expense), cls: "text-rose-600" },
+                { label: "Net", value: formatEuro(accountingTotals.net), cls: accountingTotals.net >= 0 ? "text-slate-900" : "text-red-600" },
+              ].map(({ label, value, cls }) => (
+                <div key={label} className="text-center">
+                  <p className="text-[0.6rem] text-slate-400">{label}</p>
+                  <p className={`text-xs font-bold ${cls}`}>{value}</p>
+                </div>
+              ))}
+            </div>
+            {transactionsLoading && <p className="mt-2 text-[0.65rem] text-slate-400">Chargement des écritures…</p>}
+            {transactionsError && <p className="mt-2 text-[0.65rem] text-red-600">{transactionsError}</p>}
+          </section>
+
+          {/* ── Alertes (col 1, row 2) ──────────────────────────── */}
+          <div className="space-y-2 lg:col-start-1 lg:row-start-2">
             {priorityActions.map((action, index) => (
               <div
                 key={`${action.title}-${index}`}
                 className="group relative overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
               >
-                <button
-                  type="button"
-                  onClick={() => action.target && onGo(action.target)}
-                  disabled={!action.target}
-                  className={
-                    "block w-full rounded-2xl px-3 py-3 text-left " +
-                    (action.target ? "cursor-pointer" : "cursor-default")
-                  }
-                >
+                <button type="button" onClick={() => action.target && onGo(action.target)} disabled={!action.target}
+                  className={"block w-full rounded-2xl px-3 py-3 text-left " + (action.target ? "cursor-pointer" : "cursor-default")}>
                   <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:pr-20 md:pr-24">
                     <div className="flex min-w-0 items-start gap-3">
-                    <span
-                      className={
+                      <span className={
                         "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
-                        (action.tone === "red"
-                          ? "bg-red-50 text-red-700"
-                          : action.tone === "amber"
-                          ? "bg-amber-50 text-amber-700"
-                          : action.tone === "indigo"
-                          ? "bg-[#635bff]/10 text-[#4f46e5]"
-                          : "bg-emerald-50 text-emerald-700")
-                      }
-                    >
-                      !
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="text-[0.62rem] font-semibold uppercase tracking-[0.13em] text-slate-500">Alerte</span>
-                        <span className="h-1 w-1 rounded-full bg-slate-300" />
-                        <p className="text-sm font-semibold tracking-tight text-slate-950">{action.title}</p>
+                        (action.tone === "red" ? "bg-red-50 text-red-700" : action.tone === "amber" ? "bg-amber-50 text-amber-700" : action.tone === "indigo" ? "bg-[#635bff]/10 text-[#4f46e5]" : "bg-emerald-50 text-emerald-700")
+                      }>!</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-[0.62rem] font-semibold uppercase tracking-[0.13em] text-slate-500">Alerte</span>
+                          <span className="h-1 w-1 rounded-full bg-slate-300" />
+                          <p className="text-sm font-semibold tracking-tight text-slate-950">{action.title}</p>
+                        </div>
+                        <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600">{action.desc}</p>
+                        {action.details?.length ? (
+                          <p className="mt-1.5 break-words text-xs font-semibold text-slate-500 sm:truncate">{action.details.join(" · ")}</p>
+                        ) : null}
                       </div>
-                      <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600">{action.desc}</p>
-                      {action.details?.length ? (
-                        <p className="mt-1.5 break-words text-xs font-semibold text-slate-500 sm:truncate">{action.details.join(" · ")}</p>
-                      ) : null}
-                    </div>
                     </div>
                     {action.cta ? (
-                      <span className="hidden shrink-0 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white md:inline-flex">
-                        {action.cta}
-                      </span>
+                      <span className="hidden shrink-0 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white md:inline-flex">{action.cta}</span>
                     ) : null}
                   </div>
                 </button>
                 {action.snoozable !== false && action.id ? (
                   <div className="px-3 pb-3 sm:absolute sm:right-3 sm:top-1/2 sm:z-20 sm:-translate-y-1/2 sm:px-0 sm:pb-0">
                     <div className="relative" data-alert-snooze-menu>
-                      <button
-                        type="button"
-                        onClick={() => setOpenAlertMenuId(openAlertMenuId === action.id ? null : action.id)}
+                      <button type="button" onClick={() => setOpenAlertMenuId(openAlertMenuId === action.id ? null : action.id)}
                         className="inline-flex min-h-8 items-center justify-center rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 opacity-100 shadow-sm transition hover:border-red-300 hover:bg-red-100 md:opacity-0 md:group-hover:opacity-100"
-                        aria-expanded={openAlertMenuId === action.id}
-                      >
+                        aria-expanded={openAlertMenuId === action.id}>
                         Masquer
                       </button>
-                      {openAlertMenuId === action.id ? (
+                      {openAlertMenuId === action.id && (
                         <div className="absolute right-0 top-10 z-20 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] lg:w-72">
                           <div className="px-2 pb-2 pt-1">
                             <p className="text-sm font-semibold text-slate-950">Masquer cette alerte</p>
                             <p className="mt-0.5 text-xs leading-5 text-slate-500">Choisissez si elle doit revenir demain ou disparaître de ce cockpit.</p>
                           </div>
                           <div className="grid gap-1">
-                            <button
-                              type="button"
-                              onClick={() => snoozePriorityAction(action.id!, "tomorrow")}
-                              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-[#635bff]/5 hover:text-[#4f46e5]"
-                            >
-                              <BellIcon className="h-4 w-4 text-[#635bff]" aria-hidden="true" />
-                              Me le rappeler demain
+                            <button type="button" onClick={() => snoozePriorityAction(action.id!, "tomorrow")}
+                              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-[#635bff]/5 hover:text-[#4f46e5]">
+                              <BellIcon className="h-4 w-4 text-[#635bff]" aria-hidden="true" /> Me le rappeler demain
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => snoozePriorityAction(action.id!, "forever")}
-                              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-red-50 hover:text-red-700"
-                            >
-                              <NoSymbolIcon className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                              Ignorer définitivement
+                            <button type="button" onClick={() => snoozePriorityAction(action.id!, "forever")}
+                              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-red-50 hover:text-red-700">
+                              <NoSymbolIcon className="h-4 w-4 text-slate-500" aria-hidden="true" /> Ignorer définitivement
                             </button>
                           </div>
                         </div>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 ) : null}
@@ -1080,37 +1211,80 @@ export function SectionDashboard({
             ))}
           </div>
 
-          <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:bg-slate-50 sm:shadow-none">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-slate-900">Score de gestion</p>
-                <p className="mt-1 text-xs text-slate-600">Pourquoi le score monte ou descend.</p>
+          {/* ── Actu Immobilier (col 2, row 2) ─────────────────── */}
+          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:col-start-2 lg:row-start-2">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pb-2 pt-3.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-orange-400 text-sm shadow-sm">📰</span>
+                <div>
+                  <p className="text-[0.72rem] font-bold text-slate-900">Actu Immobilier</p>
+                  <p className="text-[0.6rem] text-slate-400 leading-tight">Mis à jour toutes les 15 min</p>
+                </div>
               </div>
-              <p className="text-2xl font-semibold text-slate-950">{healthScore}</p>
+              <span className={`h-2 w-2 rounded-full ${newsLoading ? "bg-amber-400 animate-pulse" : news.length > 0 ? "bg-emerald-400" : "bg-slate-200"}`} title={newsLoading ? "Chargement…" : "Live"} />
             </div>
-            <div className="mt-4 space-y-2">
-              {healthDetails.map((detail) => (
-                <button
-                  key={detail.label}
-                  type="button"
-                  onClick={() => detail.target && onGo(detail.target)}
-                  disabled={!detail.target}
-                  className={
-                    "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left " +
-                    (detail.target ? "hover:bg-slate-50" : "cursor-default")
-                  }
-                >
-                    <span className="flex min-w-0 items-center justify-between gap-3">
-                    <span className="min-w-0 text-sm font-semibold text-slate-800">{detail.label}</span>
-                    <Pill tone={detail.tone as any}>{detail.value}</Pill>
-                  </span>
-                  <span className="mt-1 block text-xs text-slate-500">{detail.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+
+            {/* Skeleton loading */}
+            {newsLoading && (
+              <div className="space-y-px px-3 pb-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-2xl px-1 py-2.5">
+                    <div className="h-14 w-14 shrink-0 animate-pulse rounded-2xl bg-slate-100" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 animate-pulse rounded-full bg-slate-100" />
+                      <div className="h-3 w-3/4 animate-pulse rounded-full bg-slate-100" />
+                      <div className="h-2 w-1/3 animate-pulse rounded-full bg-slate-100" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Articles */}
+            {!newsLoading && news.length > 0 && (
+              <div className="space-y-px px-3 pb-3">
+                {news.map((item, i) => {
+                  const ms = Date.now() - new Date(item.publishedAt).getTime();
+                  const h = Math.floor(ms / 3_600_000);
+                  const age = h < 1 ? "À l'instant" : h < 24 ? `${h}h` : `${Math.floor(h / 24)}j`;
+                  return (
+                    <a key={item.url + i} href={item.url} target="_blank" rel="noopener noreferrer"
+                      className="group flex items-start gap-3 rounded-2xl px-1 py-2.5 transition hover:bg-slate-50 active:bg-slate-100">
+                      {/* Thumbnail */}
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-slate-100 shadow-sm">
+                        {item.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={item.image} alt="" className="h-full w-full object-cover" loading="lazy"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-100 to-sky-100 text-xl">🏠</div>
+                        )}
+                      </div>
+                      {/* Text */}
+                      <div className="min-w-0 flex-1 pt-0.5">
+                        <p className="line-clamp-2 text-[0.75rem] font-semibold leading-snug text-slate-900 group-hover:text-indigo-700">
+                          {item.title}
+                        </p>
+                        <p className="mt-1.5 text-[0.62rem] text-slate-400">
+                          <span className="font-medium text-slate-500">{item.source}</span>
+                          {item.publishedAt ? <> · {age}</> : null}
+                        </p>
+                      </div>
+                      <ArrowTopRightOnSquareIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-200 transition group-hover:text-indigo-400" aria-hidden="true" />
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Empty fallback */}
+            {!newsLoading && news.length === 0 && (
+              <p className="px-4 pb-4 text-xs text-slate-400">Aucun article disponible pour le moment.</p>
+            )}
+          </section>
+
+      </div>
 
       {/* ── Notification mise en route ─────────────────────────── */}
       {!shouldHideOnboarding && (
