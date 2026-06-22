@@ -25,6 +25,7 @@ type TransactionRow = {
   amount: number;
   property_id?: string | null;
   status?: string | null;
+  category?: string | null;
 };
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
@@ -48,8 +49,10 @@ const monthLabel = (key: string) => {
 };
 const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 const hasPositiveAmount = (value?: number | null) => Number(value || 0) > 0;
+const DEPOSIT_CATEGORIES = new Set(["deposit_collected", "deposit_returned"]);
 const isReceivedIncomeTransaction = (tx: TransactionRow) => {
   const status = String(tx.status || "").toLowerCase();
+  if (DEPOSIT_CATEGORIES.has(tx.category || "")) return false;
   return tx.direction === "in" && (status === "received" || status === "paid");
 };
 
@@ -514,7 +517,7 @@ export function SectionDashboard({
       try {
         const { data, error } = await supabase
           .from("transactions")
-          .select("id, occurred_at, direction, amount, property_id, status")
+          .select("id, occurred_at, direction, amount, property_id, status, category")
           .eq("user_id", userId)
           .gte("occurred_at", toISODate(start))
           .order("occurred_at", { ascending: true });
