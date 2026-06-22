@@ -72,6 +72,26 @@ const faq = [
     q: "Le plan gratuit suffit-il pour commencer ?",
     a: "Oui. Il permet de gérer un logement actif avec le bail, le locataire, les quittances manuelles, l’état des lieux, l’inventaire et une finance simple.",
   },
+  {
+    q: "Quelle est la durée d’un bail en location meublée LMNP ?",
+    a: "La durée minimale d’un bail meublé à titre de résidence principale est d’un an, reconductible tacitement. Pour un étudiant, cette durée peut être réduite à 9 mois (bail étudiant), non reconductible. En bail mobilité, la durée varie de 1 à 10 mois, sans reconduction.",
+  },
+  {
+    q: "Quelle est la différence entre LMNP et LMP ?",
+    a: "Le LMNP (Loueur en Meublé Non Professionnel) s’applique quand les recettes locatives annuelles sont inférieures à 23 000 € ou représentent moins de 50 % des revenus du foyer fiscal. Au-delà de ces deux seuils simultanément, le bailleur bascule en LMP (Professionnel), ce qui entraîne des obligations comptables et sociales différentes.",
+  },
+  {
+    q: "Micro-BIC ou régime réel en LMNP : lequel choisir ?",
+    a: "Le micro-BIC s’applique automatiquement si les recettes restent sous 77 700 € (ou 15 000 € pour les meublés de tourisme classés). Il offre un abattement forfaitaire de 50 % mais ne permet pas de déduire les charges réelles ni d’amortir le bien. Le régime réel simplifié permet de déduire toutes les charges (intérêts, travaux, frais de gestion) et d’amortir le bien, ce qui peut annuler l’impôt sur plusieurs années. Il est souvent plus avantageux dès que les charges réelles dépassent 50 % des recettes.",
+  },
+  {
+    q: "Quels meubles sont obligatoires en location meublée ?",
+    a: "Le décret du 31 juillet 2015 liste le mobilier minimum obligatoire : literie avec couette, volets ou rideaux dans les chambres, plaques de cuisson, four ou micro-ondes, réfrigérateur, congélateur ou compartiment, vaisselle, ustensiles de cuisine, table et sièges, étagères, luminaires et matériel d’entretien ménager. L’absence d’un élément peut requalifier le bail en location vide.",
+  },
+  {
+    q: "Que se passe-t-il en cas de départ du locataire d’un meublé ?",
+    a: "Le préavis de départ est d’un mois pour le locataire d’un meublé (contre 3 mois en location vide). À la sortie, un état des lieux de sortie est obligatoire et doit être comparé à l’état des lieux d’entrée. Le dépôt de garantie doit être restitué dans un délai d’un mois (ou deux si des dégradations sont constatées), déduction faite des retenues justifiées.",
+  },
 ];
 
 const jsonLdItems = [
@@ -389,6 +409,138 @@ export default function GestionLocativeLmnpPage() {
                   ))}
                 </div>
               </div>
+            </section>
+
+            {/* ── Section éditoriale A : Qu'est-ce que le LMNP ── */}
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8 space-y-5">
+              <div>
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Comprendre le statut</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Qu'est-ce que le LMNP ?</h2>
+              </div>
+              <p className="text-sm leading-relaxed text-slate-600">
+                Le statut de <strong>Loueur en Meublé Non Professionnel (LMNP)</strong> s'applique à toute personne physique qui met en location un logement meublé sans que cette activité constitue son activité principale. C'est l'un des statuts les plus répandus parmi les propriétaires bailleurs en France, notamment pour les studios en ville, les appartements proches d'universités ou les biens destinés à la location saisonnière.
+              </p>
+              <p className="text-sm leading-relaxed text-slate-600">
+                Pour rester en LMNP, deux conditions doivent être respectées simultanément : les <strong>recettes locatives annuelles doivent être inférieures à 23 000 €</strong> ET elles doivent représenter <strong>moins de 50 % des revenus globaux du foyer fiscal</strong>. Si ces deux seuils sont dépassés en même temps, le bailleur passe en LMP (Loueur en Meublé Professionnel), avec des obligations comptables et sociales différentes.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                  <p className="text-sm font-semibold text-indigo-900">LMNP — Non Professionnel</p>
+                  <ul className="mt-3 space-y-1.5 text-sm text-indigo-800">
+                    <li>→ Recettes &lt; 23 000 € / an</li>
+                    <li>→ Recettes &lt; 50 % des revenus du foyer</li>
+                    <li>→ Régimes fiscaux : micro-BIC ou réel simplifié</li>
+                    <li>→ Pas de cotisations sociales sur les revenus</li>
+                  </ul>
+                </div>
+                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                  <p className="text-sm font-semibold text-amber-900">LMP — Professionnel</p>
+                  <ul className="mt-3 space-y-1.5 text-sm text-amber-800">
+                    <li>→ Recettes ≥ 23 000 € ET ≥ 50 % des revenus</li>
+                    <li>→ Inscription au registre du commerce (RCS)</li>
+                    <li>→ Cotisations sociales obligatoires</li>
+                    <li>→ Déficits imputables sur le revenu global</li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            {/* ── Section éditoriale B : Micro-BIC vs réel ── */}
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8 space-y-5">
+              <div>
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Fiscalité LMNP</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Micro-BIC ou régime réel simplifié ?</h2>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                  C'est la question centrale de tout bailleur LMNP. Le choix du régime fiscal impacte directement le montant d'impôt payé chaque année. Il se fait au moment de la déclaration et peut être modifié annuellement.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-slate-200 text-left">
+                      <th className="pb-3 pr-4 font-semibold text-slate-700 w-1/3"></th>
+                      <th className="pb-3 pr-4 font-semibold text-indigo-700">Micro-BIC</th>
+                      <th className="pb-3 font-semibold text-emerald-700">Réel simplifié</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-slate-600">
+                    {[
+                      ["Plafond de recettes", "77 700 € / an", "Aucun plafond"],
+                      ["Abattement forfaitaire", "50 % des recettes", "Aucun — charges réelles"],
+                      ["Déduction des charges", "Non", "Oui (travaux, intérêts, frais…)"],
+                      ["Amortissement du bien", "Non", "Oui — peut annuler l'impôt"],
+                      ["Comptabilité", "Simplifiée", "Bilan comptable requis"],
+                      ["Idéal si…", "Peu de charges réelles", "Charges > 50 % des recettes"],
+                    ].map(([label, micro, reel]) => (
+                      <tr key={String(label)} className="border-b border-slate-100">
+                        <td className="py-2.5 pr-4 font-medium text-slate-800">{label}</td>
+                        <td className="py-2.5 pr-4 text-indigo-700">{micro}</td>
+                        <td className="py-2.5 text-emerald-700">{reel}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 leading-relaxed">
+                <strong className="text-slate-800">En pratique :</strong> le régime réel est souvent plus avantageux dès que vous avez un crédit immobilier en cours (intérêts déductibles), des travaux ou un bien récemment acquis (amortissement). L'amortissement comptable du bien (hors terrain) et du mobilier permet de créer un déficit fiscal qui s'impute sur les recettes locatives, réduisant l'imposition à zéro sur plusieurs années. Un expert-comptable spécialisé LMNP peut calculer l'option optimale pour votre situation.
+              </div>
+            </section>
+
+            {/* ── Section éditoriale C : Obligations légales ── */}
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8 space-y-5">
+              <div>
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Obligations légales</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Ce que la loi impose en location meublée</h2>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                  La location meublée est encadrée par des règles spécifiques qui diffèrent de la location vide. Les ignorer peut entraîner une requalification du bail ou des litiges au départ du locataire.
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  {
+                    title: "Le bail meublé",
+                    items: [
+                      "Durée minimale : 1 an (ou 9 mois pour un bail étudiant)",
+                      "Bail mobilité : 1 à 10 mois, non reconductible",
+                      "Dépôt de garantie limité à 2 mois de loyer hors charges",
+                      "Préavis locataire : 1 mois (contre 3 mois en vide)",
+                    ],
+                  },
+                  {
+                    title: "L'inventaire obligatoire",
+                    items: [
+                      "Rédigé contradictoirement à l'entrée ET à la sortie",
+                      "Liste les meubles, équipements et leur état",
+                      "Sert de référence en cas de litige sur les dégradations",
+                      "Décret du 31 juillet 2015 : liste minimale d'équipements",
+                    ],
+                  },
+                  {
+                    title: "Les documents à conserver",
+                    items: [
+                      "Bail signé + avenants éventuels",
+                      "État des lieux d'entrée et de sortie",
+                      "Quittances de loyer (preuve des paiements)",
+                      "Justificatifs de charges, travaux, assurances",
+                    ],
+                  },
+                ].map((block) => (
+                  <div key={block.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">{block.title}</p>
+                    <ul className="mt-3 space-y-2">
+                      {block.items.map((item) => (
+                        <li key={item} className="flex gap-2 text-sm text-slate-600">
+                          <span className="mt-0.5 shrink-0 text-indigo-400">→</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500">
+                Sources : loi ALUR, décret n°2015-981 du 31 juillet 2015, Service-Public.fr. Ces informations sont indicatives — consultez un professionnel pour votre situation.
+              </p>
             </section>
 
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
