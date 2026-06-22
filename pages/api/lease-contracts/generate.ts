@@ -72,7 +72,7 @@ function makePdf(payload: any) {
       { align: "center" }
     );
     doc.moveDown(0.4).fontSize(8.5).fillColor("#b45309").text(
-      "⚠ Document préparé à partir des informations saisies par le bailleur. Relisez l’intégralité du contrat, joignez les annexes obligatoires (notice, DDT/DPE, état des lieux, inventaire si meublé) avant signature. Pour toute situation particulière, sollicitez un professionnel.",
+      "⚠ Relisez l’intégralité du contrat et joignez les annexes obligatoires (notice d’information, DDT/DPE, état des lieux d’entrée, inventaire si meublé) avant signature. Ce modèle couvre les baux d’habitation à usage de résidence principale entre particuliers (loi du 6 juillet 1989). Il ne convient pas aux colocations avec baux individuels, logements conventionnés APL/Anah, locataires personnes morales, SCI ou baux commerciaux.",
       { align: "center" }
     );
 
