@@ -443,6 +443,36 @@ export default function GestionLocativeLmnpPage() {
         </section>
       </main>
 
+      {/* Maillage → simulateurs */}
+      <div className="border-t border-slate-200 bg-slate-50 py-10">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-400">Avant d'acheter un nouveau bien</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <a
+              href="/investissement"
+              className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 text-lg">📈</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Simulateur de rentabilité locative</p>
+                <p className="mt-0.5 text-[0.8rem] text-slate-500">Calculez le rendement brut, net et cash-flow avant d'investir dans un nouveau bien LMNP.</p>
+                <p className="mt-2 text-[0.78rem] font-semibold text-indigo-600">Tester le simulateur →</p>
+              </div>
+            </a>
+            <a
+              href="/parc-immobilier"
+              className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 text-lg">🏘️</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Simulateur de parc immobilier</p>
+                <p className="mt-0.5 text-[0.8rem] text-slate-500">Visualisez la performance globale de vos biens LMNP : revenus, charges, rendement du parc.</p>
+                <p className="mt-2 text-[0.78rem] font-semibold text-indigo-600">Simuler mon parc →</p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
       <AppFooter />
     </div>
   );
