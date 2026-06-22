@@ -267,6 +267,7 @@ export function SectionDashboard({
   const [scoreHovered, setScoreHovered] = useState(false);
   const [news, setNews] = useState<{ title: string; url: string; image: string | null; source: string; publishedAt: string }[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
+  const [weatherAlerts, setWeatherAlerts] = useState<import("../../../pages/api/weather/alerts").WeatherAlert[]>([]);
   const scoreHoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onScoreEnter = () => { if (scoreHoverTimeout.current) clearTimeout(scoreHoverTimeout.current); setScoreHovered(true); };
   const onScoreLeave = () => { scoreHoverTimeout.current = setTimeout(() => setScoreHovered(false), 180); };
@@ -294,6 +295,26 @@ export function SectionDashboard({
       .finally(() => { if (!cancelled) setNewsLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    const active = (properties || []).filter(
+      (p) => p.city?.trim() && String(p.status || "").toLowerCase() !== "archived"
+    );
+    if (!active.length) return;
+    let cancelled = false;
+    fetch("/api/weather/alerts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        properties: active.map((p) => ({ id: p.id, label: p.label, city: p.city, postal_code: p.postal_code })),
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => { if (!cancelled && Array.isArray(data.alerts)) setWeatherAlerts(data.alerts); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [properties?.map((p) => p.id).join(",")]);
 
   const saveAlertSnoozes = (next: AlertSnoozeState) => {
     setAlertSnoozes(next);
@@ -1045,6 +1066,41 @@ export function SectionDashboard({
         </div>
       )}
       </div>{/* end relative wrapper */}
+
+      {/* ── Alertes météo biens ──────────────────────────────── */}
+      {weatherAlerts.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 shadow-sm">
+          <div className="flex items-center gap-2.5 border-b border-amber-200/70 px-4 py-2.5">
+            <span className="text-base leading-none">🌦️</span>
+            <p className="text-xs font-semibold text-amber-900">Météo de vos biens</p>
+            <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
+              {weatherAlerts.length} alerte{weatherAlerts.length > 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="divide-y divide-amber-100">
+            {weatherAlerts.map((a) => {
+              const dayLabel = a.day === "today" ? "Aujourd'hui" : a.day === "tomorrow" ? "Demain" : "Après-demain";
+              return (
+                <div key={a.propertyId + a.type} className="flex items-start gap-3 px-4 py-2.5">
+                  <span className="mt-0.5 text-lg leading-none">{a.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-900">
+                      {a.message}
+                      <span className="ml-1.5 font-normal text-slate-500">· {a.propertyLabel}</span>
+                    </p>
+                    <p className="text-[0.68rem] text-amber-700">{a.tip}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.62rem] font-semibold ${
+                    a.severity === "high" ? "bg-orange-100 text-orange-700" : "bg-amber-100 text-amber-700"
+                  }`}>
+                    {dayLabel}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════
           MAIN GRID
