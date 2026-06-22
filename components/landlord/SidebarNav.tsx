@@ -21,6 +21,7 @@ export function SidebarNav({
   onToggleDark,
   collapsed = false,
   onToggleCollapse,
+  onContactClick,
   className = "",
 }: {
   active: LandlordSectionKey;
@@ -32,6 +33,7 @@ export function SidebarNav({
   onToggleDark?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  onContactClick?: () => void;
   className?: string;
 }) {
   // 🎨 Brand lokt.fr
@@ -104,9 +106,9 @@ export function SidebarNav({
             })}
           </div>
 
-          {/* Bas : dark toggle uniquement */}
-          {onToggleDark && (
-            <div className="mt-2 shrink-0 w-full px-1.5">
+          {/* Bas : dark toggle + aide */}
+          <div className="mt-2 shrink-0 w-full space-y-1 px-1.5">
+            {onToggleDark && (
               <button
                 type="button"
                 onClick={onToggleDark}
@@ -115,8 +117,20 @@ export function SidebarNav({
               >
                 {isDark ? <SunIcon className="h-4 w-4" aria-hidden="true" /> : <MoonIcon className="h-4 w-4" aria-hidden="true" />}
               </button>
-            </div>
-          )}
+            )}
+            {onContactClick && (
+              <button
+                type="button"
+                onClick={onContactClick}
+                title="Aide & contact"
+                className="flex h-10 w-full items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       </aside>
     );
@@ -195,6 +209,22 @@ export function SidebarNav({
             );
           })}
         </div>
+
+        {/* Bas : aide & contact */}
+        {onContactClick && (
+          <div className="mt-2 shrink-0 px-1">
+            <button
+              type="button"
+              onClick={onContactClick}
+              className="flex w-full items-center gap-2.5 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[0.8rem] font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Aide & contact
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   );

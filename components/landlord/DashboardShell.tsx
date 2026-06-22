@@ -39,6 +39,7 @@ import { SectionDossierBail } from "./sections/SectionDossierBail";
 import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing } from "../../lib/permissions";
+import ContactChat from "../ChatContact";
 
 type LockedSectionConfig = {
   eyebrow: string;
@@ -104,12 +105,14 @@ function MobileBottomNav({
   moreOpen,
   setMoreOpen,
   navOrder,
+  onContactClick,
 }: {
   active: LandlordSectionKey;
   onChange: (k: LandlordSectionKey) => void;
   moreOpen: boolean;
   setMoreOpen: (open: boolean) => void;
   navOrder: LandlordSectionKey[];
+  onContactClick?: () => void;
 }) {
   const orderedItems = getLandlordNavItems(navOrder);
   const items = orderedItems.slice(0, 4);
@@ -167,10 +170,22 @@ function MobileBottomNav({
                 }
               >
                 <Icon className="h-5 w-5" aria-hidden="true" />
-              <span className="leading-tight">{item.shortLabel || item.label}</span>
+                <span className="leading-tight">{item.shortLabel || item.label}</span>
               </button>
             );
           })}
+          {onContactClick && (
+            <button
+              type="button"
+              onClick={onContactClick}
+              className="flex min-h-[78px] flex-col items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 px-2 text-center text-[0.72rem] font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span className="leading-tight">Aide</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -239,6 +254,7 @@ export function DashboardShell(props: any) {
   const [navOrder, setNavOrder] = useState<LandlordSectionKey[]>(DEFAULT_LANDLORD_NAV_ORDER);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarPad, setSidebarPad] = useState("0px");
+  const [contactOpen, setContactOpen] = useState(false);
 
   useEffect(() => {
     const updatePad = () => {
@@ -685,6 +701,7 @@ export function DashboardShell(props: any) {
           onToggleDark={onToggleDark}
           collapsed={sidebarCollapsed}
           onToggleCollapse={toggleSidebar}
+          onContactClick={() => setContactOpen(true)}
         />
       </aside>
 
@@ -737,7 +754,11 @@ export function DashboardShell(props: any) {
         moreOpen={mobileMoreOpen}
         setMoreOpen={setMobileMoreOpen}
         navOrder={navOrder}
+        onContactClick={() => { setMobileMoreOpen(false); setContactOpen(true); }}
       />
+
+      {/* ── Modal contact (desktop + mobile) ─────────────────── */}
+      <ContactChat open={contactOpen} onClose={() => setContactOpen(false)} />
     </div>
   );
 }
