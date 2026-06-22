@@ -11,11 +11,6 @@ const nextConfig = {
         permanent: true,
       },
       {
-        source: "/comparatif-logiciel-gestion-locative",
-        destination: "/outil-gestion-locative",
-        permanent: true,
-      },
-      {
         source: "/guides/revision-loyer-irl",
         destination: "/revision-loyer-irl",
         permanent: true,
