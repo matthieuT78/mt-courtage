@@ -949,9 +949,6 @@ export function SectionDashboard({
               <p className="mt-0.5 text-[0.62rem] font-semibold text-white/70">
                 {healthScore >= 90 ? "Excellent" : healthScore >= 75 ? "Bon" : healthScore >= 50 ? "À améliorer" : "À traiter"}
               </p>
-              <p className="mt-1 text-lg leading-none">
-                {healthScore >= 90 ? "☀️" : healthScore >= 75 ? "🌤️" : healthScore >= 50 ? "⛅" : "🌧️"}
-              </p>
             </div>
           </div>
         </div>
@@ -1070,16 +1067,21 @@ export function SectionDashboard({
       </div>{/* end relative wrapper */}
 
       {/* ── Alertes météo biens ──────────────────────────────── */}
-      {/* Météo biens — toujours visible après chargement si des biens ont une ville */}
+      {/* Risques climatiques sur les biens — toujours visible après chargement */}
       {weatherLoaded && (
         weatherAlerts.length > 0 ? (
           /* ── État alerte ── */
           <div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 shadow-sm">
             <div className="flex items-center gap-2.5 border-b border-amber-200/70 px-4 py-2.5">
-              <span className="text-base leading-none">🌦️</span>
-              <p className="text-xs font-semibold text-amber-900">Météo de vos biens</p>
-              <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
-                {weatherAlerts.length} alerte{weatherAlerts.length > 1 ? "s" : ""}
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-amber-900">Risques climatiques sur vos biens</p>
+                <p className="text-[0.65rem] text-amber-700">Événements pouvant affecter vos logements dans les 3 prochains jours</p>
+              </div>
+              <span className="ml-auto shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
+                {weatherAlerts.length} risque{weatherAlerts.length > 1 ? "s" : ""}
               </span>
             </div>
             <div className="divide-y divide-amber-100">
@@ -1108,13 +1110,15 @@ export function SectionDashboard({
         ) : (
           /* ── État calme ── */
           <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm">
-            <span className="text-xl leading-none">☀️</span>
+            <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
+            </svg>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-emerald-900">Météo de vos biens</p>
-              <p className="text-[0.68rem] text-emerald-700">Pas d'alerte météo sur les 3 prochains jours</p>
+              <p className="text-xs font-semibold text-emerald-900">Risques climatiques sur vos biens</p>
+              <p className="text-[0.68rem] text-emerald-700">Aucun événement à risque détecté sur vos logements dans les 3 prochains jours</p>
             </div>
             <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[0.62rem] font-semibold text-emerald-700">
-              Tout va bien
+              Aucun risque
             </span>
           </div>
         )
