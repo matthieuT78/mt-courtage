@@ -84,15 +84,31 @@ export default function ConfidentialitePage() {
               </Section>
 
               <Section title="4. Destinataires et sous-traitants">
-                <p>Les données peuvent être traitées par des prestataires techniques nécessaires au service, notamment :</p>
+                <p>Les données peuvent être traitées par les prestataires techniques suivants, nécessaires au fonctionnement du service :</p>
                 <ul className="list-disc space-y-1 pl-5">
-                  <li>hébergement, base de données et authentification ;</li>
-                  <li>hébergement applicatif et déploiement ;</li>
-                  <li>paiement et facturation via Stripe ;</li>
-                  <li>envoi d’emails opérationnels via un prestataire d’emailing ;</li>
-                  <li>outils de journalisation, sécurité ou support lorsque nécessaires.</li>
+                  <li>
+                    <strong>Supabase Inc.</strong> (États-Unis) — base de données, authentification et stockage de fichiers. Transfert encadré par les clauses contractuelles types de la Commission européenne.
+                  </li>
+                  <li>
+                    <strong>Vercel Inc.</strong> (États-Unis) — hébergement applicatif et déploiement. Transfert encadré par les clauses contractuelles types.
+                  </li>
+                  <li>
+                    <strong>Stripe, Inc.</strong> (États-Unis) — paiement et facturation. Certifié PCI-DSS. Les numéros complets de carte ne sont pas stockés par lokt.fr.
+                  </li>
+                  <li>
+                    <strong>Resend</strong> — envoi des emails opérationnels (quittances, alertes, rappels, confirmations) à destination des bailleurs et locataires.
+                  </li>
+                  <li>
+                    <strong>Google LLC</strong> via Google Analytics 4 — mesure d’audience anonymisée du site public. Les adresses IP sont masquées côté serveur avant tout traitement. Aucun cookie publicitaire n’est utilisé.
+                  </li>
+                  <li>
+                    <strong>Open-Meteo</strong> — prévisions météorologiques à partir des coordonnées géographiques des communes où se situent vos biens. Seule la localité (ville) est transmise, sans donnée nominative.
+                  </li>
+                  <li>
+                    <strong>API Adresse — data.gouv.fr</strong> — géocodage des villes françaises (localité → coordonnées GPS). API publique gérée par l’État français ; aucune donnée personnelle n’est transmise.
+                  </li>
                 </ul>
-                <p>lokt.fr ne revend pas les données personnelles et ne les partage pas avec des partenaires commerciaux tiers pour prospection.</p>
+                <p>lokt.fr ne revend pas les données personnelles et ne les partage pas avec des partenaires commerciaux tiers à des fins de prospection.</p>
               </Section>
 
               <Section title="5. Transferts hors Union européenne">
@@ -122,10 +138,16 @@ export default function ConfidentialitePage() {
               </Section>
 
               <Section title="8. Cookies et stockage local">
-                <p>
-                  lokt.fr utilise des cookies ou stockages locaux nécessaires au fonctionnement du site : session, authentification, préférences,
-                  sauvegarde temporaire de formulaires ou consentements. Aucun cookie publicitaire tiers n’est prévu dans la version actuelle.
-                </p>
+                <p>lokt.fr utilise des cookies ou stockages locaux dans les catégories suivantes :</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>
+                    <strong>Fonctionnement :</strong> session, authentification, préférences d’interface (mode sombre, menu réduit), sauvegarde temporaire de formulaires.
+                  </li>
+                  <li>
+                    <strong>Mesure d’audience :</strong> Google Analytics 4 dépose des cookies pour mesurer la fréquentation du site public (pages vues, source de trafic). Les adresses IP sont anonymisées ; aucune donnée n’est utilisée à des fins publicitaires.
+                  </li>
+                </ul>
+                <p>Aucun cookie publicitaire tiers ou de reciblage n’est utilisé.</p>
               </Section>
 
               <Section title="9. Vos droits">
@@ -167,7 +189,7 @@ export default function ConfidentialitePage() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">Dernière mise à jour : 21 mai 2026</p>
+              <p className="text-xs text-slate-500">Dernière mise à jour : 22 juin 2026</p>
               <Link href="/cgu" className="text-sm font-semibold text-slate-700 underline">
                 Voir les CGU/CGV
               </Link>

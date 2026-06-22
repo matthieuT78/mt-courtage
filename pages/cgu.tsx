@@ -63,7 +63,9 @@ export default function CGUPage() {
                 <ul className="list-disc space-y-1 pl-5">
                   <li>des simulateurs immobiliers : capacité d’emprunt, prêt relais, rentabilité locative, plus-value, analyse de parc ;</li>
                   <li>un espace bailleur pour gérer biens, locataires, baux, quittances, finances, états des lieux, inventaire et documents ;</li>
-                  <li>des workflows d’automatisation, d’alertes et d’aide à la déclaration selon l’offre souscrite.</li>
+                  <li>des workflows d’automatisation, d’alertes et d’aide à la déclaration selon l’offre souscrite ;</li>
+                  <li>un cockpit de pilotage : score de gestion, alertes météo sur les biens, widget d’actualité immobilière et indicateurs financiers ;</li>
+                  <li>un portail locataire permettant d’accéder aux documents partagés par le bailleur.</li>
                 </ul>
                 <p>
                   Le service peut évoluer régulièrement afin d’améliorer les fonctionnalités, la présentation et les limites d’usage proposées.
@@ -79,19 +81,19 @@ export default function CGUPage() {
               </Section>
 
               <Section title="4. Offres, limites et abonnements">
-                <p>Le modèle tarifaire actuellement prévu est le suivant :</p>
+                <p>Le modèle tarifaire en vigueur est le suivant :</p>
                 <ul className="list-disc space-y-1 pl-5">
                   <li>
-                    <strong>Gratuit :</strong> 1 logement actif, avec gestion manuelle des quittances et accès aux fonctions de base.
+                    <strong>Gratuit :</strong> 1 logement actif, avec gestion manuelle des quittances et accès aux fonctions de base (biens, locataires, baux, finances, états des lieux).
                   </li>
                   <li>
-                    <strong>Starter :</strong> jusqu’à 3 logements actifs, avec automatisation des quittances, emails et rappels.
+                    <strong>Starter — 4,90 € / mois (ou 49 € / an) :</strong> jusqu’à 3 logements actifs, avec automatisation des quittances, envoi email au locataire, validation du paiement, alertes métier et portail locataire.
                   </li>
                   <li>
-                    <strong>Essentiel :</strong> jusqu’à 10 logements actifs, avec pilotage avancé, exports et aide à la déclaration.
+                    <strong>Essentiel — 9,90 € / mois (ou 99 € / an) :</strong> jusqu’à 10 logements actifs, avec pilotage avancé, boîte à outils bailleur, simulateurs LMNP/IRL, aide à la déclaration et exports.
                   </li>
                   <li>
-                    <strong>Pro / agence :</strong> offre sur devis pour les usages de volume ou professionnels.
+                    <strong>Pro / agence :</strong> offre en cours de déploiement, non disponible à ce jour. Destinée aux gestionnaires multi-biens et agences avec coffre-fort documentaire et traçabilité équipe.
                   </li>
                 </ul>
                 <p>
@@ -208,7 +210,7 @@ export default function CGUPage() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">Dernière mise à jour : 21 mai 2026</p>
+              <p className="text-xs text-slate-500">Dernière mise à jour : 22 juin 2026</p>
               <Link href="/" className="text-sm font-semibold text-slate-700 underline">
                 Retour à l’accueil
               </Link>
