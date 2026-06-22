@@ -238,6 +238,16 @@ export function DashboardShell(props: any) {
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [navOrder, setNavOrder] = useState<LandlordSectionKey[]>(DEFAULT_LANDLORD_NAV_ORDER);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarPad, setSidebarPad] = useState("0px");
+
+  useEffect(() => {
+    const updatePad = () => {
+      setSidebarPad(window.innerWidth >= 1024 ? (sidebarCollapsed ? "72px" : "280px") : "0px");
+    };
+    updatePad();
+    window.addEventListener("resize", updatePad);
+    return () => window.removeEventListener("resize", updatePad);
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     try {
@@ -678,10 +688,10 @@ export function DashboardShell(props: any) {
         />
       </aside>
 
-      {/* ── Contenu principal — décalé à droite du sidebar ────── */}
+      {/* ── Contenu principal — décalé à droite du sidebar (desktop only) ── */}
       <div
         style={{
-          paddingLeft: sidebarCollapsed ? "72px" : "280px",
+          paddingLeft: sidebarPad,
           transition: "padding-left 280ms cubic-bezier(0.4,0,0.2,1)",
         }}
       >
