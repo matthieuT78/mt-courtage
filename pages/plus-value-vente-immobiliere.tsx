@@ -308,6 +308,32 @@ export default function PlusValueVenteImmobilierePage() {
         </div>
       </main>
 
+      {/* Maillage → gestion locative */}
+      <div className="border-t border-slate-200 bg-slate-50 py-10">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-indigo-100 bg-white px-6 py-5 shadow-sm sm:flex-row sm:items-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-500">Vous gardez le bien ?</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">Avant de revendre, pensez à le mettre en location.</p>
+              <p className="mt-0.5 text-sm text-slate-500">Simulez la rentabilité locative, puis gérez vos loyers depuis lokt.fr.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href="/investissement"
+                className="shrink-0 rounded-full border border-indigo-200 bg-indigo-50 px-5 py-2.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+              >
+                Simuler la rentabilité →
+              </a>
+              <a
+                href="/espace-bailleur"
+                className="shrink-0 rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+              >
+                Espace bailleur →
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
       <AppFooter />
     </div>
   );
