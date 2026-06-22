@@ -130,6 +130,22 @@ export default function PretRelaisPage() {
         q: "Le simulateur remplace-t-il un accord bancaire ?",
         a: "Non. Le simulateur donne un ordre de grandeur pour préparer votre projet. La banque reste seule décisionnaire sur le montant accordé, le taux, la durée et les conditions exactes.",
       },
+      {
+        q: "Qu'est-ce qu'un prêt relais sec ?",
+        a: "Un prêt relais sec couvre seul l'achat du nouveau bien, sans crédit complémentaire. Il s'applique quand le produit de la vente suffit à financer intégralement le nouveau projet. Pendant la période de relais, vous ne remboursez que les intérêts.",
+      },
+      {
+        q: "Que se passe-t-il si le bien ne se vend pas dans les délais ?",
+        a: "La plupart des banques accordent un prêt relais pour 12 à 24 mois maximum. Si la vente tarde, deux options : la banque peut accepter une prorogation (rare), ou le prêt relais doit être transformé en prêt classique — ce qui alourdit les mensualités. Il est donc conseillé d'estimer le bien à sa valeur de vente réelle, légèrement conservatrice.",
+      },
+      {
+        q: "Peut-on obtenir un prêt relais sans crédit en cours ?",
+        a: "Oui. Si vous avez fini de rembourser votre crédit ou que vous êtes propriétaire sans emprunt, le calcul est simplifié : la banque retient directement 60 % à 80 % de la valeur estimée du bien à vendre, sans déduire de capital restant dû.",
+      },
+      {
+        q: "Faut-il un compromis de vente pour obtenir un prêt relais ?",
+        a: "Non, mais cela aide. Un compromis signé sur le bien à vendre rassure la banque sur la réalité et le délai de la transaction. Sans compromis, la banque appliquera généralement une décote plus importante sur la valeur du bien, par prudence.",
+      },
     ],
     []
   );
@@ -281,59 +297,177 @@ export default function PretRelaisPage() {
           {/* Calculette */}
           <PretRelaisWizard showSaveButton={isLoggedIn} />
 
-          {/* Bloc SEO éditorial */}
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+          {/* ── Section 1 : définition + formule ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-5">
             <div data-scroll-reveal data-reveal-delay="0">
-              <h2 className="text-sm font-semibold text-slate-900">
-                Calcul prêt relais : la formule à connaître
+              <h2 className="text-base font-semibold text-slate-900">
+                Qu’est-ce qu’un prêt relais immobilier ?
               </h2>
-
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Le calcul d’un prêt relais repose sur une logique simple : la banque part de la valeur du bien à vendre,
-                retient seulement une partie de cette valeur par prudence, puis déduit le capital restant dû. Le simulateur
-                vous donne ensuite un budget d’achat en combinant <strong>crédit relais</strong>, nouveau prêt et apport.
+              <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+                Le <strong>prêt relais</strong> (ou crédit relais) est un financement temporaire accordé par une banque pour permettre
+                d’acheter un nouveau bien immobilier <em>avant</em> d’avoir vendu l’ancien. Il « fait le pont » entre les deux
+                transactions, évitant d’avoir à attendre la vente pour disposer des fonds.
               </p>
-
-              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                Formule indicative : <strong>valeur du bien à vendre × pourcentage retenu - capital restant dû</strong>.
-                Si votre logement vaut 400 000 €, que la banque retient 70 % et qu’il reste 120 000 € à rembourser, le
-                relais estimé est de 160 000 €.
+              <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+                La banque avance une partie de la valeur estimée du bien à vendre — généralement entre 60 % et 80 % — déduction faite
+                du capital restant dû s’il existe encore un crédit en cours. Cette avance est remboursée en une seule fois dès que la
+                vente est conclue. Pendant la période de relais, vous ne payez généralement que les <strong>intérêts intercalaires</strong>,
+                ce qui limite l’effort mensuel à court terme.
               </p>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div data-scroll-reveal data-reveal-delay="70">
+              <h3 className="text-sm font-semibold text-slate-900">La formule de calcul</h3>
+              <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                Formule indicative : <strong>valeur du bien à vendre × pourcentage retenu − capital restant dû</strong>.
+              </p>
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                <p className="font-semibold">Exemple concret</p>
+                <ul className="mt-2 space-y-1 text-slate-600">
+                  <li>Valeur du bien à vendre : <strong>400 000 €</strong></li>
+                  <li>Pourcentage retenu par la banque : <strong>70 %</strong> → 280 000 €</li>
+                  <li>Capital restant dû : <strong>120 000 €</strong></li>
+                  <li className="pt-1 font-semibold text-slate-800">Prêt relais estimé : 280 000 − 120 000 = <strong>160 000 €</strong></li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3" data-scroll-reveal data-reveal-delay="140">
               {[
-                {
-                  title: "1. Bien à vendre",
-                  text: "Renseignez la valeur estimée, le capital restant dû et le pourcentage retenu par la banque.",
-                },
-                {
-                  title: "2. Nouveau financement",
-                  text: "Ajoutez vos revenus, crédits existants, taux, durée et apport pour calculer la capacité restante.",
-                },
-                {
-                  title: "3. Budget d’achat",
-                  text: "Comparez le prix cible avec le relais, le nouveau prêt possible et les intérêts indicatifs.",
-                },
+                { title: "1. Bien à vendre", text: "Renseignez la valeur estimée, le capital restant dû et le pourcentage retenu par la banque." },
+                { title: "2. Nouveau financement", text: "Ajoutez vos revenus, crédits existants, taux, durée et apport pour calculer la capacité restante." },
+                { title: "3. Budget d’achat", text: "Comparez le prix cible avec le relais, le nouveau prêt possible et les intérêts indicatifs." },
               ].map((item, i) => (
-                <div
-                  key={item.title}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                  data-scroll-reveal
-                  data-reveal-delay={i * 70}
-                >
-                  <h2 className="text-sm font-semibold text-slate-900">{item.title}</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{item.text}</p>
+                <div key={item.title} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{item.text}</p>
                 </div>
               ))}
             </div>
 
-            <p className="text-xs text-slate-500" data-scroll-reveal data-reveal-delay="0">
-              Note : chaque banque applique ses règles internes : décote, durée, franchise, assurance, frais et analyse
-              du taux d’endettement. Le résultat reste indicatif.
+            <p className="text-xs text-slate-500" data-scroll-reveal>
+              Chaque banque applique ses propres règles : décote, durée maximale, franchise, assurance et analyse du taux d’endettement. Le résultat du simulateur reste indicatif.
             </p>
+          </section>
 
-            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4" data-scroll-reveal data-reveal-delay="0">
+          {/* ── Section 2 : prêt relais sec vs adossé ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
+            <h2 className="text-base font-semibold text-slate-900">Prêt relais sec ou adossé : quelle différence ?</h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Il existe deux grandes formes de prêt relais. Le choix dépend de votre situation : avez-vous besoin d’un financement
+              complémentaire pour acheter le nouveau bien, ou le produit de la vente couvre-t-il l’intégralité du prix ?
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-4">
+                <p className="text-sm font-semibold text-indigo-900">Prêt relais sec</p>
+                <p className="mt-2 text-sm text-indigo-800 leading-relaxed">
+                  Le prêt relais couvre à lui seul l’achat du nouveau bien. Aucun nouveau crédit long terme n’est souscrit en parallèle.
+                  Cas typique : la vente du bien actuel suffit largement à financer le suivant.
+                </p>
+                <p className="mt-2 text-xs text-indigo-700 font-medium">Mensualité : intérêts seuls pendant la période de relais.</p>
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4">
+                <p className="text-sm font-semibold text-amber-900">Prêt relais adossé</p>
+                <p className="mt-2 text-sm text-amber-800 leading-relaxed">
+                  Le crédit relais est combiné avec un nouveau prêt immobilier classique. C’est le cas le plus courant : le produit de
+                  la vente ne suffit pas — un financement long terme complète l’opération.
+                </p>
+                <p className="mt-2 text-xs text-amber-700 font-medium">Mensualité : intérêts du relais + mensualité du nouveau prêt.</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Dans les deux cas, le remboursement du capital du relais intervient lors de la vente du bien. Certaines banques proposent
+              une <strong>franchise totale</strong> pendant les premiers mois (ni capital ni intérêts), mais les intérêts s’accumulent
+              alors et viennent gonfler la somme à rembourser in fine.
+            </p>
+          </section>
+
+          {/* ── Section 3 : coût réel ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
+            <h2 className="text-base font-semibold text-slate-900">Le coût réel d’un prêt relais</h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Le coût d’un crédit relais dépend essentiellement du <strong>taux appliqué</strong>, de la <strong>durée avant la vente</strong>
+              et du <strong>montant avancé</strong>. Plus la vente tarde, plus les intérêts s’accumulent.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left">
+                    <th className="pb-2 pr-4 font-semibold text-slate-700">Montant relais</th>
+                    <th className="pb-2 pr-4 font-semibold text-slate-700">Taux</th>
+                    <th className="pb-2 pr-4 font-semibold text-slate-700">6 mois</th>
+                    <th className="pb-2 font-semibold text-slate-700">12 mois</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-600">
+                  {[
+                    ["100 000 €", "4,0 %", "~2 000 €", "~4 000 €"],
+                    ["160 000 €", "4,0 %", "~3 200 €", "~6 400 €"],
+                    ["250 000 €", "4,0 %", "~5 000 €", "~10 000 €"],
+                  ].map(([m, t, s, a]) => (
+                    <tr key={m} className="border-b border-slate-100">
+                      <td className="py-2 pr-4 font-medium text-slate-800">{m}</td>
+                      <td className="py-2 pr-4">{t}</td>
+                      <td className="py-2 pr-4">{s}</td>
+                      <td className="py-2">{a}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-slate-500">Intérêts indicatifs hors assurance et frais de dossier. Taux à titre d’illustration.</p>
+            <div className="space-y-2 text-sm text-slate-600 leading-relaxed">
+              <p>
+                À ces intérêts s’ajoutent en pratique : l’<strong>assurance emprunteur</strong> (souvent 0,2 % à 0,4 % du capital par an),
+                les <strong>frais de dossier</strong> (plusieurs centaines d’euros) et parfois des frais de garantie si la banque exige
+                une hypothèque sur le bien à vendre.
+              </p>
+              <p>
+                Le coût total reste raisonnable si la vente est rapide (3 à 6 mois). En revanche, si le marché est difficile et que la
+                vente s’étire sur 18 à 24 mois, la facture peut rapidement dépasser 10 000 à 15 000 € sur un relais moyen.
+              </p>
+            </div>
+          </section>
+
+          {/* ── Section 4 : conditions et précautions ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
+            <h2 className="text-base font-semibold text-slate-900">Conditions d’obtention et précautions</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-sm font-semibold text-slate-800 mb-2">Ce que les banques examinent</p>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {[
+                    "La capacité de remboursement : le taux d’endettement global (relais + nouveau prêt) doit rester supportable.",
+                    "La valeur du bien à vendre, souvent vérifiée par une expertise ou estimation immobilière.",
+                    "L’état du marché local : une banque sera plus prudente si la vente paraît longue ou incertaine.",
+                    "L’existence d’un avant-contrat (compromis) sur le bien à vendre rassure le dossier.",
+                  ].map((t, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="mt-0.5 text-indigo-500 shrink-0">→</span>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800 mb-2">Les pièges à éviter</p>
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {[
+                    "Surestimer la valeur du bien à vendre : une décote de 10 % peut compromettre tout l’équilibre financier.",
+                    "Sous-estimer la durée de vente : prévoir systématiquement au moins 6 à 9 mois de relais.",
+                    "Oublier les frais de double propriété : taxe foncière, charges, assurances des deux biens en parallèle.",
+                    "Accepter un taux de relais sans comparer : les écarts entre banques peuvent atteindre 0,5 à 1 point.",
+                  ].map((t, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="mt-0.5 text-amber-500 shrink-0">⚠</span>
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
               {[
                 { href: "/capacite", label: "Calculer ma capacité d’emprunt" },
                 { href: "/investissement", label: "Tester la rentabilité du futur bien" },
