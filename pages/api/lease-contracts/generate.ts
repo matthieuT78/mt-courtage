@@ -71,8 +71,8 @@ function makePdf(payload: any) {
       "Établi conformément à la loi n°89-462 du 6 juillet 1989, à la loi ALUR du 24 mars 2014 et au décret n°2015-587 du 29 mai 2015.",
       { align: "center" }
     );
-    doc.moveDown(0.4).fontSize(8.5).fillColor("#b45309").text(
-      "⚠ Relisez l’intégralité du contrat et joignez les annexes obligatoires (notice d’information, DDT/DPE, état des lieux d’entrée, inventaire si meublé) avant signature. Ce modèle couvre les baux d’habitation à usage de résidence principale entre particuliers (loi du 6 juillet 1989). Il ne convient pas aux colocations avec baux individuels, logements conventionnés APL/Anah, locataires personnes morales, SCI ou baux commerciaux.",
+    doc.moveDown(0.4).fontSize(8.5).fillColor("#334155").text(
+      "Ce contrat établi entre particuliers a pleine valeur juridique une fois signé par les deux parties, conformément à la loi du 6 juillet 1989. Aucun notaire ni agence n’est requis pour un bail d’habitation à usage de résidence principale. Avant signature, joignez les annexes obligatoires : notice d’information bailleur-locataire, dossier de diagnostics techniques (dont DPE), état des lieux d’entrée, et inventaire du mobilier si location meublée. Ce modèle ne couvre pas : colocation avec baux individuels, logement conventionné APL/Anah, locataire personne morale, SCI, bail commercial.",
       { align: "center" }
     );
 
