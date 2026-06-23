@@ -584,13 +584,6 @@ export function useLandlordDashboard() {
             : `${receiptWorkflowIssueCount} lignes de quittance demandent un contrôle : paiements manquants, incomplets ou quittances non finalisées.`,
         action: "Ouvrir Quittances",
       });
-    } else if (lateCount > 0) {
-      a.push({
-        tone: "red",
-        title: `${lateCount} retard(s) de paiement`,
-        desc: "Certains loyers sont échus et non marqués payés.",
-        action: "Voir les quittances",
-      });
     }
 
     if (receiptWorkflowIssueCount === 0 && missingReceiptsAfterPaymentCount > 0)
