@@ -350,14 +350,29 @@ export function useLandlordDashboard() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const currentMonth = monthRange.startISO.slice(0, 7);
-    return activeLeases.filter((lease) => {
+
+    // Mois passés : tout paiement enregistré mais non payé
+    const pastOverdueLeaseIds = new Set(
+      (payments || [])
+        .filter((p) => {
+          const period = String(p.period_start || "").slice(0, 7);
+          return period < currentMonth && !p.paid_at;
+        })
+        .map((p) => p.lease_id)
+    );
+
+    // Mois courant : échéance dépassée et non payé (en excluant les bails déjà comptés)
+    const currentMonthLate = activeLeases.filter((lease) => {
+      if (pastOverdueLeaseIds.has(lease.id)) return false;
       const dueDate = getLeasePaymentDueDate(lease, currentMonth);
       if (!dueDate || dueDate >= today) return false;
       const expected = Number(getLeaseRentPeriod(lease, currentMonth)?.total || 0);
       const payment = paymentsThisMonth.find((row) => row.lease_id === lease.id);
       return !payment?.paid_at || Number(payment.total_amount || 0) + 0.01 < expected;
     }).length;
-  }, [activeLeases, monthRange.startISO, paymentsThisMonth]);
+
+    return pastOverdueLeaseIds.size + currentMonthLate;
+  }, [activeLeases, monthRange.startISO, payments, paymentsThisMonth]);
 
   const monthlyDueExpected = useMemo(() => {
     const today = new Date();
