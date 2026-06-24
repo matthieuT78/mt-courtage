@@ -1824,7 +1824,14 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   }, [wizardStep, wizardStepsMeta]);
 
   const openWizard = (reportId: string, preferredStep?: WizardStep) => {
-    if (isLocked) {
+    // Vérifier le statut du rapport CIBLE, pas du rapport actuellement sélectionné.
+    // isLocked dépend du rendu courant (stale closure) et est faux quand on vient de créer
+    // un nouveau rapport (ex : EDL sortie) alors que l’EDL d’entrée signé était sélectionné.
+    const targetReport = reports.find((r) => r.id === reportId);
+    const targetIsLocked = targetReport
+      ? targetReport.status === "signed" || targetReport.status === "archived"
+      : false; // rapport pas encore en state = vient d’être créé = draft, pas verrouillé
+    if (targetIsLocked) {
       setErr("Document verrouillé : l’assistant est désactivé.");
       return;
     }
@@ -3591,7 +3598,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         >
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-base">📄</span>
                           <div className="text-left">
-                            <p>Importer un PDF existant</p>
+                            <p>{loading ? "Import en cours…" : "Importer un PDF existant"}</p>
                             <p className="text-[0.72rem] font-normal text-slate-500">PDF finalisé, 10 Mo max — archivé et verrouillé</p>
                           </div>
                         </button>
@@ -3768,7 +3775,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       title={!hasPdf ? "Génère d’abord le PDF (finaliser)." : "Importer le PDF signé pour archiver"}
                     >
                       <DocumentArrowUpIcon className="h-5 w-5 sm:h-4 sm:w-4" aria-hidden="true" />
-                      Importer le PDF signé
+                      {loading ? "Import en cours…" : "Importer le PDF signé"}
                     </button>
                   ) : null}
 

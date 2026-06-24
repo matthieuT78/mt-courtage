@@ -710,90 +710,13 @@ export default function Home() {
               </div>
 
               <div className="anim-fadeUp d-4">
-                <div className="relative rounded-[1.5rem] bg-white p-1.5 shadow-2xl shadow-black/25 sm:rounded-[2rem] sm:p-2">
-                  <div className="overflow-hidden rounded-[1.25rem] border border-slate-100 bg-white sm:rounded-[1.55rem]">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-[#ff5f57] sm:h-2.5 sm:w-2.5" />
-                        <span className="h-2 w-2 rounded-full bg-[#ffbd2e] sm:h-2.5 sm:w-2.5" />
-                        <span className="h-2 w-2 rounded-full bg-[#28c840] sm:h-2.5 sm:w-2.5" />
-                      </div>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.68rem] font-semibold text-slate-600">Cockpit bailleur</span>
-                    </div>
-
-                    <div className="p-3 sm:p-6">
-                      <div className="grid gap-3 lg:grid-cols-[1.1fr,0.9fr] sm:gap-4">
-                        <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3 sm:rounded-[1.35rem] sm:p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#635bff]">Ce mois-ci</p>
-                              <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">3 actions utiles, pas 12 menus</h2>
-                              <p className="mt-1 text-xs leading-5 text-slate-500">L’écran pousse ce qui mérite vraiment une décision.</p>
-                            </div>
-                            <Sticker kind="bailleur" className="h-10 w-10 shrink-0 sm:h-11 sm:w-11" />
-                          </div>
-                          <div className="mt-3 grid gap-2 sm:mt-4">
-                            {[
-                              ["Loyer attendu", "Appartement T2", "780 €"],
-                              ["Quittance prête", "Paiement confirmé", "PDF"],
-                              ["Facture d’eau", "Répartition à valider", "4 lots"],
-                            ].map(([label, detail, value]) => (
-                              <div key={label} className="flex items-center justify-between gap-3 rounded-2xl bg-white px-3 py-2">
-                                <div className="min-w-0">
-                                  <span className="block text-xs font-semibold text-slate-950">{label}</span>
-                                  <span className="block truncate text-[0.68rem] text-slate-500">{detail}</span>
-                                </div>
-                                <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-800">{value}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3 sm:rounded-[1.35rem] sm:p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-emerald-700">Finance</p>
-                              <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950 sm:text-xl">Solde locatif</h2>
-                              <p className="mt-1 text-xs leading-5 text-slate-500">Les décisions validées peuvent alimenter le suivi.</p>
-                            </div>
-                            <Sticker kind="yield" className="h-10 w-10 shrink-0 sm:h-11 sm:w-11" />
-                          </div>
-                          <div className="mt-3 grid gap-2 sm:mt-4">
-                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2">
-                              <p className="text-xs font-semibold text-emerald-950">Encaissements</p>
-                              <p className="mt-0.5 text-lg font-semibold text-emerald-950">+1 840 €</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                <p className="text-[0.68rem] text-slate-500">Charges</p>
-                                <p className="mt-1 text-sm font-semibold text-slate-950">-214 €</p>
-                              </div>
-                              <div className="rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2">
-                                <p className="text-[0.68rem] text-sky-700">À valider</p>
-                                <p className="mt-1 text-sm font-semibold text-sky-950">2 lignes</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 rounded-[1.35rem] border border-slate-200 bg-white p-4 sm:mt-4">
-                        <div className="grid gap-3 sm:grid-cols-4">
-                          {[
-                            ["Décider", "Simulateurs"],
-                            ["Encaisser", "Loyers"],
-                            ["Justifier", "Outils"],
-                            ["Archiver", "Documents"],
-                          ].map(([titleStep, textStep]) => (
-                            <div key={titleStep} className="rounded-2xl bg-slate-50 px-3 py-3">
-                              <p className="text-sm font-semibold text-slate-950">{titleStep}</p>
-                              <p className="mt-1 text-xs leading-5 text-slate-500">{textStep}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                <div className="relative rounded-[1.5rem] overflow-hidden shadow-2xl shadow-black/30 sm:rounded-[2rem] ring-1 ring-white/10">
+                  <img
+                    src="/1A0A4109-195A-4848-B12A-5B5A6228D9DA.png"
+                    alt="Cockpit bailleur lokt.fr — tableau de bord gestion locative"
+                    className="w-full h-auto block"
+                    loading="eager"
+                  />
                 </div>
               </div>
             </div>

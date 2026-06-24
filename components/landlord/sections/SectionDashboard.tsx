@@ -1325,7 +1325,7 @@ export function SectionDashboard({
             {/* Articles */}
             {!newsLoading && news.length > 0 && (
               <div className="space-y-px px-3 pb-3">
-                {news.map((item, i) => {
+                {news.slice(0, 5).map((item, i) => {
                   const ms = Date.now() - new Date(item.publishedAt).getTime();
                   const h = Math.floor(ms / 3_600_000);
                   const age = h < 1 ? "À l'instant" : h < 24 ? `${h}h` : `${Math.floor(h / 24)}j`;

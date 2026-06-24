@@ -1907,14 +1907,17 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <label className={labelBase}>Charges mensuelles hors crédits (€)</label>
+                  <label className={labelBase}>Charges fixes persistantes hors crédits (€)</label>
                   <input
                     inputMode="numeric"
                     value={chargesMensuellesHorsCredits}
                     onChange={(e) => setChargesMensuellesHorsCredits(onlyDigits(e.target.value))}
-                    placeholder="pension, loyer restant, etc."
+                    placeholder="pension alimentaire, garde d'enfant…"
                     className={inputBase}
                   />
+                  <p className="text-[0.7rem] leading-4 text-slate-500">
+                    Ne pas inclure votre loyer actuel — il disparaît avec l'achat.
+                  </p>
                 </div>
 
                 <div className="space-y-1">

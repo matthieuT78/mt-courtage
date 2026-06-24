@@ -4,6 +4,8 @@ import {
   ArrowTopRightOnSquareIcon,
   ChevronLeftIcon,
   DocumentTextIcon,
+  PlusIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
@@ -32,9 +34,9 @@ const TEMPLATES: Template[] = [
   {
     id: "mise-en-demeure",
     title: "Mise en demeure loyer impayé",
-    subtitle: "Courrier formel avant procédure — à adapter selon la situation",
+    subtitle: "Courrier formel avant procédure — art. 24 loi 89-462",
     category: "courrier",
-    status: "soon",
+    status: "available",
   },
   {
     id: "revision-loyer",
@@ -315,12 +317,238 @@ function CongeForm({ userId, onBack }: { userId: string; onBack: () => void }) {
   );
 }
 
+// ── Formulaire mise en demeure loyer impayé ─────────────────
+type UnpaidRow = { id: number; period: string; amount: string };
+
+function MiseEnDemeureForm({ userId, onBack }: { userId: string; onBack: () => void }) {
+  const defaultDeadline = new Date();
+  defaultDeadline.setDate(defaultDeadline.getDate() + 8);
+
+  const [form, setForm] = useState({
+    landlordName: "",
+    landlordAddress: "",
+    tenantName: "",
+    propertyAddress: "",
+    deadlineDate: defaultDeadline.toISOString().slice(0, 10),
+    signaturePlace: "",
+    signatureDate: new Date().toISOString().slice(0, 10),
+  });
+  const [rows, setRows] = useState<UnpaidRow[]>([{ id: 1, period: "", amount: "" }]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const totalAmount = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+  const addRow = () => setRows((rs) => [...rs, { id: Date.now(), period: "", amount: "" }]);
+  const removeRow = (id: number) => setRows((rs) => rs.filter((r) => r.id !== id));
+  const setRow = (id: number, k: keyof UnpaidRow, v: string) =>
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, [k]: v } : r)));
+
+  const inp =
+    "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#635bff] focus:outline-none focus:ring-1 focus:ring-[#635bff]/30";
+  const lbl = "block space-y-1 text-xs font-semibold text-slate-700";
+
+  const generate = async () => {
+    setErr(null);
+    setLoading(true);
+    try {
+      const { data: session } = await supabase!.auth.getSession();
+      const token = session.session?.access_token;
+      const res = await fetch("/api/lease-contracts/generate-mise-en-demeure", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          landlordName: form.landlordName,
+          landlordAddress: form.landlordAddress,
+          tenantName: form.tenantName,
+          propertyAddress: form.propertyAddress,
+          unpaidRows: rows
+            .filter((r) => r.period || r.amount)
+            .map((r) => ({ period: r.period, amount: parseFloat(r.amount) || 0 })),
+          totalAmount,
+          deadlineDate: form.deadlineDate,
+          signaturePlace: form.signaturePlace,
+          signatureDate: form.signatureDate,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Génération impossible.");
+      if (json.signedUrl) window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      setErr(e?.message || "Erreur.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900"
+      >
+        <ChevronLeftIcon className="h-4 w-4" />
+        Retour aux modèles
+      </button>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-[#635bff]">Courrier</p>
+        <h2 className="mt-1 text-xl font-semibold text-slate-950">Mise en demeure loyer impayé</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Courrier formel à envoyer en recommandé AR avant toute procédure judiciaire. Remplissez les champs — le PDF s'ouvre dans un nouvel onglet.
+        </p>
+      </div>
+
+      {err && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</div>}
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
+        {/* Bailleur */}
+        <div>
+          <p className="mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bailleur</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={lbl}>
+              Nom complet
+              <input className={inp} value={form.landlordName} onChange={(e) => set("landlordName", e.target.value)} placeholder="Prénom Nom" />
+            </label>
+            <label className={lbl}>
+              Adresse
+              <input className={inp} value={form.landlordAddress} onChange={(e) => set("landlordAddress", e.target.value)} placeholder="12 rue des Lilas, 75010 Paris" />
+            </label>
+          </div>
+        </div>
+
+        {/* Locataire */}
+        <div>
+          <p className="mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Locataire & logement</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={lbl}>
+              Nom du locataire
+              <input className={inp} value={form.tenantName} onChange={(e) => set("tenantName", e.target.value)} placeholder="Prénom Nom" />
+            </label>
+            <label className={lbl}>
+              Adresse du logement
+              <input className={inp} value={form.propertyAddress} onChange={(e) => set("propertyAddress", e.target.value)} placeholder="5 av. Victor Hugo, 69001 Lyon" />
+            </label>
+          </div>
+        </div>
+
+        {/* Loyers impayés */}
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Loyers impayés</p>
+            <button
+              type="button"
+              onClick={addRow}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+              Ajouter un mois
+            </button>
+          </div>
+          <div className="space-y-2">
+            {rows.map((row, idx) => (
+              <div key={row.id} className="flex items-center gap-2">
+                <input
+                  className={`${inp} flex-1`}
+                  value={row.period}
+                  onChange={(e) => setRow(row.id, "period", e.target.value)}
+                  placeholder={idx === 0 ? "ex : Mai 2026" : "ex : Juin 2026"}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className={`${inp} w-32 shrink-0`}
+                  value={row.amount}
+                  onChange={(e) => setRow(row.id, "amount", e.target.value)}
+                  placeholder="Montant €"
+                />
+                {rows.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => removeRow(row.id)}
+                    className="shrink-0 text-slate-400 hover:text-red-500"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <span className="w-4 shrink-0" />
+                )}
+              </div>
+            ))}
+          </div>
+          {totalAmount > 0 && (
+            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-900">
+              Total réclamé :{" "}
+              <span className="text-slate-950">
+                {totalAmount.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Délai */}
+        <div>
+          <p className="mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Délai de règlement</p>
+          <label className={`${lbl} max-w-xs`}>
+            Date limite (8 jours après réception de la LRAR)
+            <input
+              type="date"
+              className={inp}
+              value={form.deadlineDate}
+              onChange={(e) => set("deadlineDate", e.target.value)}
+            />
+          </label>
+        </div>
+
+        {/* Signature */}
+        <div>
+          <p className="mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Signature</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={lbl}>
+              Lieu
+              <input className={inp} value={form.signaturePlace} onChange={(e) => set("signaturePlace", e.target.value)} placeholder="Paris" />
+            </label>
+            <label className={lbl}>
+              Date
+              <input type="date" className={inp} value={form.signatureDate} onChange={(e) => set("signatureDate", e.target.value)} />
+            </label>
+          </div>
+        </div>
+
+        {/* Rappel légal */}
+        <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
+          <strong>Rappel :</strong> Cette mise en demeure précède le commandement de payer (acte d'huissier obligatoire,
+          art. 24 loi 89-462). Elle n'a pas de valeur exécutoire par elle-même mais constitue une preuve de votre
+          démarche amiable. Envoyez en <strong>lettre recommandée avec AR</strong>.
+        </div>
+
+        <button
+          type="button"
+          disabled={loading || totalAmount <= 0}
+          onClick={generate}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+        >
+          <ArrowDownTrayIcon className="h-4 w-4" />
+          {loading ? "Génération en cours…" : "Générer le PDF"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Composant principal ──────────────────────────────────────
 export function SectionModeles({ userId }: Props) {
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
 
   if (activeTemplate === "conge-bailleur") {
     return <CongeForm userId={userId} onBack={() => setActiveTemplate(null)} />;
+  }
+
+  if (activeTemplate === "mise-en-demeure") {
+    return <MiseEnDemeureForm userId={userId} onBack={() => setActiveTemplate(null)} />;
   }
 
   return (

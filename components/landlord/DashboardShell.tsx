@@ -505,6 +505,7 @@ export function DashboardShell(props: any) {
             tenants={tenants}
             leases={leases}
             properties={properties}
+            payments={payments}
             onRefresh={refresh}
             initialDepartureTenantId={departureTenantId}
             onDepartureOpened={() => setDepartureTenantId(null)}

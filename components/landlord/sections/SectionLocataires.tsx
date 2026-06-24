@@ -6,7 +6,8 @@ import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { PhoneIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import type { RentPayment } from "../../../lib/landlord/types";
 
 /* ======================================================
    TYPES
@@ -66,6 +67,7 @@ type Props = {
   tenants?: Tenant[];
   leases?: Lease[];
   properties?: PropertyLite[];
+  payments?: RentPayment[];
   onRefresh: () => Promise<void>;
   onContactTenant?: (tenantId: string) => void;
   initialDepartureTenantId?: string | null;
@@ -150,6 +152,31 @@ function isArchived(t: Tenant) {
   return !!t.archived_at;
 }
 
+const AVATAR_COLORS = [
+  "bg-violet-500", "bg-sky-500", "bg-indigo-500",
+  "bg-emerald-500", "bg-amber-500", "bg-rose-500",
+  "bg-teal-500", "bg-orange-500",
+];
+function avatarColor(name: string): string {
+  if (!name) return "bg-slate-400";
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) & 0xffff;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
+function getTenantPaymentStatus(leaseId: string, payments: RentPayment[]): "paid" | "overdue" | "pending" {
+  const now = new Date();
+  const currentMonth = now.toISOString().slice(0, 7);
+  const pastOverdue = payments.some(
+    (p) => p.lease_id === leaseId && String(p.period_start || "").slice(0, 7) < currentMonth && !p.paid_at
+  );
+  if (pastOverdue) return "overdue";
+  const current = payments.find((p) => p.lease_id === leaseId && String(p.period_start || "").slice(0, 7) === currentMonth);
+  if (current?.paid_at) return "paid";
+  if (current?.due_date && new Date(current.due_date + "T23:59:59") < now) return "overdue";
+  return "pending";
+}
+
 /* ======================================================
    COMPONENT
 ====================================================== */
@@ -161,6 +188,7 @@ export function SectionLocataires({
   tenants,
   leases,
   properties,
+  payments,
   onRefresh,
   onContactTenant,
   initialDepartureTenantId,
@@ -170,6 +198,7 @@ export function SectionLocataires({
   const safeTenants = Array.isArray(tenants) ? tenants : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safeProperties = Array.isArray(properties) ? properties : [];
+  const safePayments = Array.isArray(payments) ? payments : [];
 
   const [expandedId, setExpandedId] = useState<string | null>(null); // row ouverte (create ou tenant id)
   const [query, setQuery] = useState("");
@@ -669,8 +698,8 @@ export function SectionLocataires({
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
       <SectionTitle
         kicker="Locataires"
-        title="Gestion des locataires"
-        desc="Même UX partout : une ligne Créer + sections Actifs / Archivés. Chaque ligne est cliquable."
+        title="Locataires"
+        desc="Coordonnées, bail actif et statut de paiement du mois en cours pour chaque locataire."
       />
 
       {err ? (
@@ -842,6 +871,18 @@ export function SectionLocataires({
                     archived_reason: "",
                   } as const);
 
+                const paymentStatus = activeLease ? getTenantPaymentStatus(activeLease.id, safePayments) : null;
+                const paymentBadge = open
+                  ? badge("slate", "Ouvert")
+                  : paymentStatus === "paid"
+                  ? badge("emerald", "Payé ✓")
+                  : paymentStatus === "overdue"
+                  ? badge("red", "En retard")
+                  : null;
+                const totalRent = activeLease
+                  ? Number(activeLease.rent_amount || 0) + Number(activeLease.charges_amount || 0)
+                  : 0;
+
                 return (
                   <ExpandableRow
                     key={t.id}
@@ -853,27 +894,46 @@ export function SectionLocataires({
                       setExpandedId(id);
                     }}
                     left={
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-start gap-3">
-                          <div className="shrink-0 h-10 w-10 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center text-sm font-semibold text-slate-800">
+                          <div className={cx("shrink-0 h-11 w-11 rounded-2xl flex items-center justify-center text-sm font-bold text-white", avatarColor(displayName(t)))}>
                             {initials(t.first_name, t.last_name, t.full_name)}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-slate-900 truncate">{displayName(t)}</p>
-                            <p className="mt-0.5 text-[0.75rem] text-slate-600 truncate">
-                              {(t.email || "—") + (t.phone ? ` • ${t.phone}` : "")}
-                            </p>
-                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <div className="mt-0.5 flex items-center gap-1.5">
+                              <p className="text-[0.75rem] text-slate-600 truncate">
+                                {t.email || "—"}{t.phone ? ` · ${t.phone}` : ""}
+                              </p>
+                              {t.phone ? (
+                                <a
+                                  href={`tel:${sanitizePhone(t.phone)}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title={`Appeler ${t.phone}`}
+                                  className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition"
+                                >
+                                  <PhoneIcon className="h-3.5 w-3.5" />
+                                </a>
+                              ) : null}
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
                               {activeLease ? badge("emerald", "Actif") : hasLease ? badge("slate", "Historique") : badge("amber", "Sans bail")}
-                              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-800">
-                                🏠 {p?.label || "—"}
-                              </span>
+                              {p ? (
+                                <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-800">
+                                  🏠 {p.label}
+                                </span>
+                              ) : null}
+                              {totalRent > 0 ? (
+                                <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-700">
+                                  {formatEuro(totalRent)}/mois
+                                </span>
+                              ) : null}
                             </div>
                           </div>
                         </div>
                       </div>
                     }
-                    right={open ? badge("slate", "Ouvert") : null}
+                    right={paymentBadge}
                   >
                     {/* Quick actions */}
                     <div className="flex flex-wrap gap-2">
@@ -906,6 +966,15 @@ export function SectionLocataires({
                       >
                         Copier tél.
                       </button>
+
+                      {t.phone ? (
+                        <a
+                          href={`tel:${sanitizePhone(t.phone)}`}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
+                        >
+                          Appeler
+                        </a>
+                      ) : null}
 
                       {t.email ? (
                         <a

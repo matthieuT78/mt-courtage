@@ -484,6 +484,13 @@ const parisNow = () => new Date(new Date().toLocaleString("en-US", { timeZone: "
 const fmtFR = (d: Date) =>
   d.toLocaleDateString("fr-FR", { year: "numeric", month: "short", day: "2-digit", timeZone: "Europe/Paris" });
 
+const fmtDateShortFR = (iso?: string | null) => {
+  if (!iso) return null;
+  const d = parseISODateLocal(iso);
+  if (!d) return null;
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+};
+
 type LeaseHistoryEvent = {
   id: string;
   date: Date;
@@ -883,11 +890,42 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     };
   }, [safeLeases, q, propertyById, tenantById]);
 
+  const getLeasePaymentStatus = (leaseId: string): "paid" | "overdue" | "pending" => {
+    const now = parisNow();
+    const thisYYYYMM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const leasePayments = safePayments.filter((p) => p.lease_id === leaseId);
+    const pastUnpaid = leasePayments.some((p) => {
+      const pm = (p.period_start || "").slice(0, 7);
+      return pm < thisYYYYMM && !p.paid_at;
+    });
+    if (pastUnpaid) return "overdue";
+    const currentPaid = leasePayments.some((p) => {
+      const pm = (p.period_start || "").slice(0, 7);
+      return pm === thisYYYYMM && p.paid_at;
+    });
+    if (currentPaid) return "paid";
+    const currentDue = leasePayments.some((p) => {
+      const pm = (p.period_start || "").slice(0, 7);
+      return pm === thisYYYYMM && !p.paid_at;
+    });
+    if (currentDue) {
+      const due = leasePayments.find((p) => (p.period_start || "").slice(0, 7) === thisYYYYMM && !p.paid_at);
+      if (due?.due_date) {
+        const dueDate = parseISODateLocal(due.due_date);
+        if (dueDate && dueDate < now) return "overdue";
+      }
+      return "pending";
+    }
+    return "pending";
+  };
+
   const leaseLine = (l: Lease) => {
     const p = propertyById.get(l.property_id);
     const t = tenantById.get(l.tenant_id);
     const total = Number(l.rent_amount || 0) + Number(l.charges_amount || 0);
     const renewal = leaseRenewalInfo(l);
+    const startDateFR = fmtDateShortFR(l.start_date);
+    const endDateFR = fmtDateShortFR(l.end_date);
 
     return {
       propertyLabel: p?.label || "Bien",
@@ -896,6 +934,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       city: p?.city || null,
       total,
       status: (l.status || "—").toUpperCase(),
+      startDateFR,
+      endDateFR,
       quittance: l.receipts_disabled ? "Agence" : canUseReceiptAutomation && l.auto_quittance_enabled ? "Auto" : "Manuel",
       pay: `J${l.payment_day ?? "—"} • ${l.payment_method || "—"} • ${paymentTypeShort(l.payment_type)}`,
       renewal,
@@ -1326,31 +1366,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     return (
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
         <div className="rounded-xl border border-slate-200 bg-white p-3">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Informations</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <InfoPill tone={statusTone(l.status)}>{(l.status || "—").toUpperCase()}</InfoPill>
-                {l.receipts_disabled ? (
-                  <InfoPill tone="slate">Quittances agence</InfoPill>
-                ) : (
-                  <>
-                    <InfoPill tone={canUseReceiptAutomation && l.auto_quittance_enabled ? "emerald" : "amber"}>
-                      {canUseReceiptAutomation && l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"}
-                    </InfoPill>
-                    <InfoPill tone={canUseReceiptAutomation && l.auto_reminder_enabled ? "emerald" : "slate"}>
-                      {canUseReceiptAutomation && l.auto_reminder_enabled ? "Validation paiement" : "Validation manuelle"}
-                    </InfoPill>
-                  </>
-                )}
-                <InfoPill tone={flow.tone as any}>{flow.label}</InfoPill>
-                <InfoPill tone={renewal.tone as any}>{renewal.status}</InfoPill>
-              </div>
-            </div>
-
-            <div className="min-w-0">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-500 lg:text-right">Actions</p>
-              <div className="mt-2 flex flex-wrap gap-2 lg:justify-end">
+              <div className="flex flex-wrap gap-2">
                 <ActionButton
                   icon={PencilSquareIcon}
                   tone="primary"
@@ -1371,18 +1389,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                     setContractLeaseId(l.id);
                   }}
                 >
-                  Contrat juridique
-                </ActionButton>
-
-                <ActionButton
-                  icon={PowerIcon}
-                  disabled={loading || (!l.auto_quittance_enabled && !canUseReceiptAutomation)}
-                  onClick={(e) => {
-                    stop(e);
-                    quickToggleQuittance(l);
-                  }}
-                >
-                  {l.auto_quittance_enabled ? "Désactiver auto" : canUseReceiptAutomation ? "Activer auto" : "Auto premium"}
+                  Contrat
                 </ActionButton>
 
                 {isActiveLease(l) ? (
@@ -1398,18 +1405,25 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                     Gérer le départ
                   </ActionButton>
                 ) : null}
+              </div>
 
-                <ActionButton
-                  icon={TrashIcon}
-                  tone="danger"
+              <div className="mt-2 flex flex-wrap items-center gap-3 lg:justify-end">
+                <button
+                  type="button"
+                  disabled={loading || (!l.auto_quittance_enabled && !canUseReceiptAutomation)}
+                  onClick={(e) => { stop(e); quickToggleQuittance(l); }}
+                  className="text-xs text-slate-500 hover:text-slate-700 disabled:opacity-40 underline underline-offset-2"
+                >
+                  {l.auto_quittance_enabled ? "Désactiver auto" : canUseReceiptAutomation ? "Activer auto" : "Auto premium"}
+                </button>
+                <button
+                  type="button"
                   disabled={loading}
-                  onClick={(e) => {
-                    stop(e);
-                    onDelete(l.id);
-                  }}
+                  onClick={(e) => { stop(e); onDelete(l.id); }}
+                  className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
                 >
                   Supprimer
-                </ActionButton>
+                </button>
               </div>
             </div>
           </div>
@@ -1417,40 +1431,56 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
         <div className="grid gap-3 sm:grid-cols-2 text-sm">
           <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Bien</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Bien</p>
+              <span className={cx("h-2 w-2 rounded-full", p?.label ? "bg-emerald-400" : "bg-amber-400")} />
+            </div>
             <p className="mt-1 font-semibold text-slate-900">{p?.label || "—"}</p>
             {p?.city ? <p className="text-xs text-slate-600">{p.city}</p> : null}
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Locataire</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Locataire</p>
+              <span className={cx("h-2 w-2 rounded-full", t?.full_name ? "bg-emerald-400" : "bg-amber-400")} />
+            </div>
             <p className="mt-1 font-semibold text-slate-900">{t?.full_name || "—"}</p>
             {t?.email ? <p className="text-xs text-slate-600">{t.email}</p> : null}
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Dates</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Dates</p>
+              <span className={cx("h-2 w-2 rounded-full", l.start_date ? "bg-emerald-400" : "bg-amber-400")} />
+            </div>
             <p className="mt-1 text-slate-900">
-              <span className="font-semibold">Début</span> : {l.start_date}
+              <span className="font-semibold">Début</span> {fmtDateShortFR(l.start_date) ?? l.start_date}
             </p>
             <p className="text-slate-700">
-              <span className="font-semibold">Fin</span> : {l.end_date || "—"}
+              <span className="font-semibold">Fin</span>{" "}
+              {fmtDateShortFR(l.end_date) ?? (l.end_date || "—")}
             </p>
             <p className="mt-1 text-xs text-slate-600">{renewal.rule.label}</p>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Paiement</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Paiement</p>
+              <span className={cx("h-2 w-2 rounded-full", l.payment_day ? "bg-emerald-400" : "bg-amber-400")} />
+            </div>
             <p className="mt-1 text-slate-900">
-              <span className="font-semibold">Jour</span> {l.payment_day ?? "—"} • {l.payment_method || "—"}
+              Jour <span className="font-semibold">{l.payment_day ?? "—"}</span> • {l.payment_method || "—"}
             </p>
             <p className="text-xs text-slate-600">
-              Échéance : <span className="font-semibold">{paymentTypeLabel(l.payment_type)}</span>
+              {paymentTypeLabel(l.payment_type)}
             </p>
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Montants</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Montants</p>
+              <span className={cx("h-2 w-2 rounded-full", Number(l.rent_amount || 0) > 0 ? "bg-emerald-400" : "bg-amber-400")} />
+            </div>
             <p className="mt-1 text-slate-900">
               <span className="font-semibold">Total</span> :{" "}
               {formatEuro(Number(l.rent_amount || 0) + Number(l.charges_amount || 0))}
@@ -2378,57 +2408,18 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         desc="Le bail rassemble le logement, le locataire, le loyer et les dates qui pilotent ensuite le suivi mensuel."
       />
 
-      <WorkflowIntro
-        title="Commencez par créer la fiche de location"
-        description="Elle ne remplace pas le contrat signé : elle sert à faire fonctionner lokt.fr au quotidien, avec les bons montants, les bonnes échéances et les bons destinataires."
-        steps={[
-          { title: "Choisir le logement et le locataire", text: "Sélectionnez uniquement les dossiers actifs concernés par cette location." },
-          { title: "Renseigner les conditions", text: "Indiquez les dates, le loyer, les charges, le dépôt et le jour d’échéance." },
-          { title: "Piloter le mois", text: "Les loyers, alertes, quittances et documents se préparent ensuite automatiquement à partir de cette fiche." },
-        ]}
-        note="Le contrat juridique peut être généré ou archivé depuis chaque bail, une fois la fiche de location prête."
-      />
-
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
       {/* Toolbar */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xl">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Rechercher (bien, locataire, email, date, montant, échu/échoir…)…"
-            className="w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm text-slate-900"
-          />
-        </div>
-
-        <button
-          type="button"
-          disabled={loading}
-          onClick={async () => {
-            setErr(null);
-            setOk(null);
-            setLoading(true);
-            try {
-              await onRefresh();
-              setOk("Données rafraîchies ✅");
-            } catch (e: any) {
-              setErr(e?.message || "Erreur rafraîchissement.");
-            } finally {
-              setLoading(false);
-            }
-          }}
-          className={cx(
-            "inline-flex h-9 items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold",
-            "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
-            loading && "opacity-60"
-          )}
-        >
-          <ArrowPathIcon className={cx("h-4 w-4", loading && "animate-spin")} aria-hidden="true" />
-          {loading ? "Rafraîchissement" : "Rafraîchir"}
-        </button>
+      <div className="relative w-full">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Rechercher un bail, locataire, bien…"
+          className="w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm text-slate-900"
+        />
       </div>
 
       <div className="grid gap-4">
@@ -2472,6 +2463,14 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               {filtered.actifs.map((l) => {
                 const meta = leaseLine(l);
                 const open = expandedId === l.id;
+                const payStatus = getLeasePaymentStatus(l.id);
+                const payBadge = open
+                  ? badge("slate", "Ouvert")
+                  : payStatus === "paid"
+                  ? badge("emerald", "Payé ✓")
+                  : payStatus === "overdue"
+                  ? badge("red", "En retard")
+                  : null;
 
                 return (
                   <ExpandableRow
@@ -2482,29 +2481,20 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                     left={
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900 truncate">
-                          {meta.propertyLabel} <span className="text-slate-500 font-normal">• {meta.tenantName}</span>
+                          {meta.propertyLabel}{" "}
+                          <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-600 truncate">
-                          {meta.city ? `${meta.city} • ` : ""}
-                          Début {l.start_date}
-                          {l.end_date ? ` • Fin ${l.end_date}` : ""}
+                        <p className="mt-0.5 text-xs text-slate-500 truncate">
+                          {meta.startDateFR ? `depuis le ${meta.startDateFR}` : ""}
+                          {meta.endDateFR ? ` → ${meta.endDateFR}` : ""}
                         </p>
-
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {badge(statusTone(l.status), meta.status)}
-                          {l.receipts_disabled
-                            ? badge("slate", "Quittances agence")
-                            : badge(
-                                canUseReceiptAutomation && l.auto_quittance_enabled ? "emerald" : "amber",
-                                canUseReceiptAutomation && l.auto_quittance_enabled ? "Quittance auto" : "Quittance manuel"
-                              )}
-                          {badge("slate", `${formatEuro(meta.total)}`)}
-                          {badge("slate", meta.pay)}
-                          {badge(meta.renewal.tone, meta.renewal.status)}
+                          {badge("emerald", "Actif")}
+                          {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
                         </div>
                       </div>
                     }
-                    right={open ? badge("slate", "Ouvert") : null}
+                    right={payBadge}
                   >
                     {mode === "edit" && editingId === l.id ? (
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">{renderLeaseForm()}</div>
@@ -2534,6 +2524,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               {filtered.archives.map((l) => {
                 const meta = leaseLine(l);
                 const open = expandedId === l.id;
+                const archiveLabel = isEndedLease(l) ? "Terminé" : isDraftLease(l) ? "Brouillon" : meta.status;
+                const archiveTone = isEndedLease(l) ? ("amber" as const) : ("slate" as const);
 
                 return (
                   <ExpandableRow
@@ -2544,20 +2536,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                     left={
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900 truncate">
-                          {meta.propertyLabel} <span className="text-slate-500 font-normal">• {meta.tenantName}</span>
+                          {meta.propertyLabel}{" "}
+                          <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-600 truncate">
-                          {(isEndedLease(l) ? "Terminé" : isDraftLease(l) ? "Brouillon" : "—") +
-                            " • Début " +
-                            l.start_date +
-                            (l.end_date ? ` • Fin ${l.end_date}` : "")}
+                        <p className="mt-0.5 text-xs text-slate-500 truncate">
+                          {meta.startDateFR ? `du ${meta.startDateFR}` : ""}
+                          {meta.endDateFR ? ` au ${meta.endDateFR}` : ""}
                         </p>
-
                         <div className="mt-2 flex flex-wrap gap-2">
-                          {badge(statusTone(l.status), meta.status)}
-                          {badge("slate", `${formatEuro(meta.total)}`)}
-                          {badge("slate", meta.pay)}
-                          {badge(meta.renewal.tone, meta.renewal.status)}
+                          {badge(archiveTone, archiveLabel)}
+                          {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
                         </div>
                       </div>
                     }
