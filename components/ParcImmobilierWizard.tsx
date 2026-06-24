@@ -1141,7 +1141,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
         </div>
 
         {/* Résultats */}
-        <div className="flex flex-col gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+        {hasSimulation && <div className="flex flex-col gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-indigo-600 mb-1">Résultats</p>
@@ -1247,7 +1247,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
               </div>
             </div>
           )}
-        </div>
+        </div>}
       </section>
 
       {renderRecapTable()}

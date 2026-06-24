@@ -1616,7 +1616,7 @@ const canClickUnlock =
       )}
 
       {/* STEP: Résultats */}
-      {step === "resultats" && (
+      {step === "resultats" && hasSimulation && (
         <section
           ref={resultSectionRef}
           className="calculator-premium-form space-y-4"

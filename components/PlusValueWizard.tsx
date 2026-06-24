@@ -1570,7 +1570,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       </CalculatorWizardShell>
 
       {/* ======================== Résultats ======================== */}
-      <section
+      {(result && displayResult) && <section
         id="resultats-plusvalue"
         className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4"
       >
@@ -1766,7 +1766,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
             </p>
           </>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

@@ -341,12 +341,11 @@ export function CapaciteSimple() {
       </div>
 
       {/* Résultats épurés */}
-      <div
+      {result && <div
         id="resultats-capacite-simple"
         className="w-full max-w-3xl space-y-4"
       >
-        {result ? (
-          <>
+        <>
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-600 mb-1">
                 Résultats indicatifs
@@ -445,13 +444,7 @@ export function CapaciteSimple() {
               </div>
             </div>
           </>
-        ) : (
-          <p className="text-[0.8rem] text-slate-500 text-center">
-            Remplissez les 3 étapes ci-dessus pour afficher une première
-            estimation de votre capacité d&apos;emprunt.
-          </p>
-        )}
-      </div>
+        </div>}
     </div>
   );
 }

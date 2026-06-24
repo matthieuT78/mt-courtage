@@ -2079,7 +2079,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       </section>
 
       {/* Résultats */}
-      <section
+      {hasResult && <section
         id="resultats-capacite"
         className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-2xl sm:p-5"
       >
@@ -2362,7 +2362,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             </p>
           </>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

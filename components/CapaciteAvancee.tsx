@@ -610,7 +610,7 @@ export function CapaciteAvancee() {
       </div>
 
       {/* Colonne droite : résultats */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 flex flex-col gap-3">
+      {hasResult && <div className="rounded-2xl border border-slate-200 bg-white shadow-md p-5 flex flex-col gap-3">
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">
@@ -711,7 +711,7 @@ export function CapaciteAvancee() {
             accessible.
           </p>
         )}
-      </div>
+      </div>}
     </section>
   );
 }

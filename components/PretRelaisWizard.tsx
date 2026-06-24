@@ -1343,7 +1343,7 @@ const renderAnalysisBlocks = (text: string) => {
       </CalculatorWizardShell>
 
       {/* Résultats */}
-      <section id="resultats-pret-relais" className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+      {hasResult && <section id="resultats-pret-relais" className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-700 mb-1">Résultats</p>
@@ -1450,7 +1450,7 @@ const renderAnalysisBlocks = (text: string) => {
         )}
 
         <p className="mt-3 text-[0.7rem] text-slate-500">Simulation indicative. Chaque banque applique ses propres règles.</p>
-      </section>
+      </section>}
     </div>
   );
 }
