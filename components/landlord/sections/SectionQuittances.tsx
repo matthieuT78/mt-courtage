@@ -1232,54 +1232,59 @@ export function SectionQuittances({
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
       {/* Workflow selector + KPI */}
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="space-y-1">
-            <label className="text-[0.7rem] text-slate-700">Vue</label>
-            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-              {[
-                ["todo", `À traiter (${todoRows.length})`],
-                ["month", "Mois choisi"],
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setView(value as "todo" | "month")}
-                  className={cx(
-                    "rounded-lg px-3 py-1.5 text-xs font-semibold transition",
-                    view === value ? "bg-slate-900 text-white shadow-sm" : "text-slate-700 hover:bg-white"
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex flex-col gap-3">
+          <div className="inline-flex rounded-2xl bg-slate-100/80 p-1 self-start">
+            <button
+              type="button"
+              onClick={() => setView("todo")}
+              className={cx(
+                "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
+                view === "todo" ? "bg-white shadow-sm ring-1 ring-slate-200/60 text-slate-900" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Actions
+              {todoRows.length > 0 && (
+                <span className={cx("rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold tabular-nums", view === "todo" ? "bg-indigo-50 text-indigo-600" : "bg-slate-200 text-slate-500")}>
+                  {todoRows.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("month")}
+              className={cx(
+                "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
+                view === "month" ? "bg-white shadow-sm ring-1 ring-slate-200/60 text-slate-900" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Consulter un mois
+            </button>
+          </div>
+
+          {view === "todo" ? (
+            <p className="text-xs text-slate-500 max-w-sm">
+              Paiements à confirmer, quittances à envoyer et retards — sur les <span className="font-medium text-slate-700">{LOOKBACK_MONTHS} derniers mois</span>. Rien ici = tout est à jour.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <div className="space-y-0.5">
+                <label className="text-[0.7rem] text-slate-500">Mois</label>
+                <input
+                  type="month"
+                  value={month}
+                  onChange={(e) => {
+                    setSelectedReceiptId(null);
+                    setMonth(e.target.value);
+                  }}
+                  className="block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+              <p className="text-xs text-slate-500 max-w-xs pt-1">
+                Tous les baux attendus pour <span className="font-medium text-slate-700">{monthLabel}</span> — pour vérifier, retrouver ou agir sur une quittance passée.
+              </p>
             </div>
-          </div>
-
-          <div className={cx("space-y-1", view === "todo" && "opacity-60")}>
-            <label className="text-[0.7rem] text-slate-700">Mois (période)</label>
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => {
-                setSelectedReceiptId(null);
-                setMonth(e.target.value);
-              }}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div className="max-w-md text-[0.75rem] text-slate-500">
-            {view === "todo" ? (
-              <>
-                Tous les workflows ouverts sur les <span className="font-semibold text-slate-900">{LOOKBACK_MONTHS} derniers mois</span>.
-              </>
-            ) : (
-              <>
-                Vue : <span className="font-semibold text-slate-900">{monthLabel}</span>
-              </>
-            )}
-          </div>
+          )}
         </div>
 
         <button
@@ -1305,7 +1310,7 @@ export function SectionQuittances({
       </div>
 
       <div className="grid gap-3 md:grid-cols-5">
-        <Kpi label={view === "todo" ? "À traiter" : "Reçus (période)"} value={dashboard.total} sub={view === "todo" ? "workflows ouverts" : "toutes lignes du mois"} />
+        <Kpi label={view === "todo" ? "Actions" : "Baux attendus"} value={dashboard.total} sub={view === "todo" ? "en attente d'action" : "ce mois-ci"} />
         <Kpi label="Payés" value={dashboard.paidCount} sub="source de vérité paiement" />
         <Kpi label="PDF prêts" value={dashboard.pdfReady} sub="après paiement" />
         <Kpi label="Clôturées" value={dashboard.sent} sub={canUseReceiptAutomation ? "email envoyé" : "remise manuelle"} />
@@ -1321,7 +1326,7 @@ export function SectionQuittances({
         <Card
           title={
             <span>
-              {view === "todo" ? "À traiter" : "Workflow du mois"} <span className="text-slate-500">({visibleRows.length})</span>
+              {view === "todo" ? "Actions en attente" : `Baux · ${monthLabel}`} <span className="text-slate-500">({visibleRows.length})</span>
             </span>
           }
           right={
@@ -1337,7 +1342,7 @@ export function SectionQuittances({
         >
           {visibleRows.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm text-slate-700">
-              {view === "todo" ? "Rien à traiter : aucun workflow ouvert sur les derniers mois." : "Aucun bail actif à traiter pour cette période."}
+              {view === "todo" ? "Tout est à jour — aucune action en attente sur les derniers mois." : `Aucun bail actif trouvé pour ${monthLabel}.`}
             </div>
           ) : (
             <div className="space-y-2">
@@ -1538,7 +1543,7 @@ export function SectionQuittances({
                           </button>
                         ) : null}
 
-                        {canSnooze ? (
+                        {canSnooze && view === "todo" ? (
                           <button
                             type="button"
                             disabled={loading}
@@ -1564,7 +1569,7 @@ export function SectionQuittances({
 
                     {isSnoozed ? (
                       <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                        Cette quittance est masquée de la vue À traiter. Elle reste consultable ici et peut être réactivée à tout moment.
+                        Masquée des actions en attente. Toujours visible ici dans l'historique.{view === "todo" && " Clique sur « Réactiver » pour la remettre dans Actions."}
                       </div>
                     ) : null}
 
