@@ -1412,6 +1412,16 @@ export function SectionQuittances({
                             </span>
                           ) : null}
 
+                          {row.sent ? (
+                            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[0.7rem] font-semibold text-emerald-800">
+                              Quittance envoyée
+                            </span>
+                          ) : pdfReady && !row.lease.receipts_disabled ? (
+                            <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[0.7rem] font-semibold text-sky-700">
+                              PDF prêt
+                            </span>
+                          ) : null}
+
                           {(lease as any).receipts_disabled ? (
                             <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.7rem] font-semibold text-slate-600">
                               Quittances agence
