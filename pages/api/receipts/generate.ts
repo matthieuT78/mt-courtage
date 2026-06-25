@@ -120,15 +120,28 @@ function buildDefaultQuittanceText(params: {
   return lines.join("\n");
 }
 
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "?";
+}
+
 function htmlTemplatePremium(params: {
+  receiptNumber: string;
   periodLabel: string;
   issueDateLabel: string;
 
   landlordName: string;
   landlordAddress: string;
+  landlordInitials: string;
 
   tenantName: string;
   tenantAddress: string;
+  tenantInitials: string;
 
   propertyAddress: string;
 
@@ -141,12 +154,15 @@ function htmlTemplatePremium(params: {
   signatureName: string;
 }) {
   const {
+    receiptNumber,
     periodLabel,
     issueDateLabel,
     landlordName,
     landlordAddress,
+    landlordInitials,
     tenantName,
     tenantAddress,
+    tenantInitials,
     propertyAddress,
     rent,
     charges,
@@ -160,104 +176,220 @@ function htmlTemplatePremium(params: {
   return `<!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8"/>
 <style>
-  @page { size: A4; margin: 14mm; }
-  :root{ --ink:#0f172a; --muted:#475569; --line:#e2e8f0; --soft:#f8fafc; }
-  *{ box-sizing:border-box; }
-  body{
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,"Noto Sans","Helvetica Neue",sans-serif;
-    color:var(--ink);
-    margin:0;
-    background:white;
+  @page { size: A4; margin: 0; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #0f172a;
+    background: white;
+    font-size: 11px;
+    line-height: 1.5;
   }
-  .header{
-    display:flex; justify-content:space-between; align-items:flex-end; gap:16px;
-    padding-bottom:12px; border-bottom:2px solid var(--ink);
+
+  /* ── EN-TÊTE COLORÉ ── */
+  .accent-bar {
+    background: #4f46e5;
+    padding: 18px 26px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
   }
-  .docTitle{ font-size:20px; font-weight:900; letter-spacing:-0.02em; line-height:1; }
-  .meta{ text-align:right; font-size:10.5px; color:var(--muted); line-height:1.5; }
-  .meta strong{ color:var(--ink); font-weight:700; }
-
-  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
-  .card{ border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; }
-  .cardTitle{ font-size:9.5px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
-  .kv{ font-size:11px; line-height:1.45; word-break:break-word; }
-  .kvMain{ font-size:12px; font-weight:700; }
-  .muted{ color:var(--muted); }
-  .property{ margin-top:10px; }
-
-  .amounts{ margin-top:10px; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
-  .amountsHeader{ background:var(--soft); padding:7px 12px; font-size:9.5px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); }
-  table{ width:100%; border-collapse:collapse; font-size:11px; }
-  td{ padding:7px 12px; border-top:1px solid var(--line); color:var(--ink); }
-  td:last-child{ text-align:right; font-variant-numeric:tabular-nums; }
-  .totalRow td{ font-weight:800; font-size:12px; background:var(--soft); }
-
-  .textBlock{ margin-top:10px; border:1px solid var(--line); border-radius:12px; padding:12px; background:var(--soft); }
-  .textBlockBody{ font-size:11px; line-height:1.6; color:var(--ink); }
-
-  .signature{
-    margin-top:10px; border:1px solid var(--line); border-radius:12px; padding:10px 12px;
-    background:#fff; display:flex; justify-content:space-between; align-items:flex-end; min-height:52px;
+  .doc-title {
+    font-size: 19px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: white;
+    line-height: 1.1;
   }
-  .sigLeft{ display:flex; flex-direction:column; gap:2px; }
-  .sigLabel{ font-size:9.5px; color:var(--muted); font-weight:600; letter-spacing:0.04em; }
-  .sigName{ font-size:11.5px; font-weight:800; margin-top:2px; }
-  .sigRight{ font-size:9.5px; color:var(--muted); text-align:right; }
+  .doc-number {
+    font-size: 10px;
+    color: rgba(255,255,255,0.65);
+    margin-top: 3px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .accent-meta {
+    text-align: right;
+    color: rgba(255,255,255,0.75);
+    font-size: 10px;
+    line-height: 1.65;
+  }
+  .accent-meta strong { color: white; font-size: 11px; font-weight: 700; }
+
+  /* ── CORPS ── */
+  .body { padding: 18px 26px 22px; }
+
+  /* ── PARTIES ── */
+  .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .party-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 11px 13px;
+    background: white;
+  }
+  .party-header { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10.5px; font-weight: 800; flex-shrink: 0; letter-spacing: -0.01em;
+  }
+  .av-landlord { background: #ede9fe; color: #4f46e5; }
+  .av-tenant   { background: #dcfce7; color: #16a34a; }
+  .party-role {
+    font-size: 8.5px; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #94a3b8;
+  }
+  .party-name  { font-size: 12px; font-weight: 700; color: #0f172a; }
+  .party-addr  { font-size: 10px; color: #64748b; margin-top: 2px; line-height: 1.4; }
+
+  /* ── LOGEMENT ── */
+  .property-card {
+    border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 9px 13px; background: #f8fafc;
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .property-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: #ede9fe; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0;
+  }
+  .prop-role {
+    font-size: 8.5px; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #94a3b8; margin-bottom: 2px;
+  }
+  .prop-addr { font-size: 11px; font-weight: 600; color: #0f172a; }
+
+  /* ── MONTANTS ── */
+  .amounts-wrap { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .amounts-head {
+    background: #f8fafc; padding: 7px 14px;
+    font-size: 8.5px; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #94a3b8;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 8px 14px; border-top: 1px solid #f1f5f9; font-size: 11px; color: #334155; }
+  td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; color: #0f172a; }
+  .total-row td {
+    background: #4f46e5; color: white;
+    font-weight: 800; font-size: 12.5px; border-top: none; padding: 10px 14px;
+  }
+  .total-row td:last-child { color: white; }
+
+  /* ── TEXTE LÉGAL ── */
+  .legal {
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #4f46e5;
+    border-radius: 0 12px 12px 0;
+    padding: 12px 14px;
+    background: #fafafa;
+    margin-bottom: 10px;
+    font-size: 10.5px;
+    line-height: 1.7;
+    color: #1e293b;
+  }
+
+  /* ── SIGNATURE ── */
+  .sig-wrap {
+    border: 1px solid #e2e8f0; border-radius: 12px;
+    padding: 13px 16px 12px; background: white;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    min-height: 72px; margin-bottom: 18px;
+  }
+  .sig-role {
+    font-size: 8.5px; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #94a3b8; margin-bottom: 16px;
+  }
+  .sig-line { border-bottom: 1px solid #cbd5e1; width: 190px; margin-bottom: 5px; }
+  .sig-name { font-size: 10.5px; font-weight: 700; color: #334155; }
+  .sig-stamp { font-size: 9px; color: #94a3b8; text-align: right; line-height: 1.5; }
+
+  /* ── PIED DE PAGE ── */
+  .footer {
+    border-top: 1px solid #f1f5f9; padding-top: 9px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-brand { font-size: 8px; color: #cbd5e1; }
+  .footer-legal { font-size: 8px; color: #cbd5e1; text-align: right; max-width: 260px; line-height: 1.5; }
 </style>
 </head>
 <body>
-  <div class="page">
-    <div class="header">
-      <div class="docTitle">Quittance de loyer</div>
-      <div class="meta">
-        <div><strong>${escapeHtml(periodLabel)}</strong></div>
-        <div>${escapeHtml(issueDateLabel)}</div>
+
+<div class="accent-bar">
+  <div>
+    <div class="doc-title">Quittance de loyer</div>
+    <div class="doc-number">Réf. ${escapeHtml(receiptNumber)}</div>
+  </div>
+  <div class="accent-meta">
+    <div><strong>${escapeHtml(periodLabel)}</strong></div>
+    <div>${escapeHtml(issueDateLabel)}</div>
+  </div>
+</div>
+
+<div class="body">
+
+  <div class="parties">
+    <div class="party-card">
+      <div class="party-header">
+        <div class="avatar av-landlord">${escapeHtml(landlordInitials)}</div>
+        <div class="party-role">Bailleur</div>
       </div>
+      <div class="party-name">${escapeHtml(landlordName || "—")}</div>
+      <div class="party-addr">${escapeHtml(landlordAddress || "—")}</div>
     </div>
-
-    <div class="grid2">
-      <div class="card">
-        <div class="cardTitle">Bailleur</div>
-        <div class="kv kvMain">${escapeHtml(landlordName || "—")}</div>
-        <div class="kv muted">${escapeHtml(landlordAddress || "—")}</div>
+    <div class="party-card">
+      <div class="party-header">
+        <div class="avatar av-tenant">${escapeHtml(tenantInitials)}</div>
+        <div class="party-role">Locataire</div>
       </div>
-
-      <div class="card">
-        <div class="cardTitle">Locataire</div>
-        <div class="kv kvMain">${escapeHtml(tenantName || "—")}</div>
-        <div class="kv muted">${escapeHtml(tenantAddress || "—")}</div>
-      </div>
-    </div>
-
-    <div class="card property">
-      <div class="cardTitle">Logement</div>
-      <div class="kv">${escapeHtml(propertyAddress || "—")}</div>
-    </div>
-
-    <div class="amounts">
-      <div class="amountsHeader">Montants perçus</div>
-      <table><tbody>
-        <tr><td>Loyer hors charges</td><td>${escapeHtml(rent)}</td></tr>
-        <tr><td>Provisions sur charges</td><td>${escapeHtml(charges)}</td></tr>
-        <tr class="totalRow"><td>Total perçu</td><td>${escapeHtml(total)}</td></tr>
-      </tbody></table>
-    </div>
-
-    <div class="textBlock">
-      <div class="textBlockBody">${textHtml}</div>
-    </div>
-
-    <div class="signature">
-      <div class="sigLeft">
-        <div class="sigLabel">Signature du bailleur</div>
-        <div class="sigName">${escapeHtml(signatureName || "—")}</div>
-      </div>
-      <div class="sigRight">Cachet / tampon (optionnel)</div>
+      <div class="party-name">${escapeHtml(tenantName || "—")}</div>
+      <div class="party-addr">${escapeHtml(tenantAddress || "—")}</div>
     </div>
   </div>
+
+  <div class="property-card">
+    <div class="property-icon">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </div>
+    <div>
+      <div class="prop-role">Logement</div>
+      <div class="prop-addr">${escapeHtml(propertyAddress || "—")}</div>
+    </div>
+  </div>
+
+  <div class="amounts-wrap">
+    <div class="amounts-head">Montants perçus</div>
+    <table><tbody>
+      <tr><td>Loyer hors charges</td><td>${escapeHtml(rent)}</td></tr>
+      <tr><td>Provisions sur charges</td><td>${escapeHtml(charges)}</td></tr>
+      <tr class="total-row"><td>Total perçu</td><td>${escapeHtml(total)}</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="legal">${textHtml}</div>
+
+  <div class="sig-wrap">
+    <div>
+      <div class="sig-role">Signature du bailleur</div>
+      <div class="sig-line"></div>
+      <div class="sig-name">${escapeHtml(signatureName || "—")}</div>
+    </div>
+    <div class="sig-stamp">Cachet / tampon<br/>(optionnel)</div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">Document généré via lokt.fr</div>
+    <div class="footer-legal">Cette quittance annule tous reçus antérieurs établis en règlement partiel pour la même période.</div>
+  </div>
+
+</div>
 </body>
 </html>`;
 }
@@ -546,15 +678,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const periodLabel = `Période du ${formatDateFR(periodStart)} au ${formatDateFR(periodEnd)}`;
     const issueDateLabel = issuePlace ? `Émise le ${formatDateFR(issueDateISO)} · ${issuePlace}` : `Émise le ${formatDateFR(issueDateISO)}`;
 
+    const receiptNumber = `QU-${periodStart.slice(0, 7).replace("-", ".")}-${String(receipt.id).slice(0, 6).toUpperCase()}`;
+
     const html = htmlTemplatePremium({
+      receiptNumber,
       periodLabel,
       issueDateLabel,
 
       landlordName,
       landlordAddress: landlordAddress || "—",
+      landlordInitials: initials(landlordName),
 
       tenantName,
       tenantAddress,
+      tenantInitials: initials(tenantName),
 
       propertyAddress: propertyAddressLine,
 
