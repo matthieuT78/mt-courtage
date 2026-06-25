@@ -2155,60 +2155,13 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
               </div>
             </div>
 
-            {computedAll?.scenarios?.length ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-3">
-                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
-                      Comparer les durées
-                    </p>
-                    <p className="text-[0.75rem] text-slate-600">
-                      Même cible d’endettement, même taux, assurance incluse.
-                    </p>
-                  </div>
-                  <p className="text-[0.7rem] text-slate-500">
-                    Durée sélectionnée : {dureeCreditNum || "-"} ans
-                  </p>
-                </div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-4">
-                  {computedAll.scenarios.map((scenario) => (
-                    <div
-                      key={scenario.duree}
-                      className={
-                        "rounded-lg border px-3 py-2 " +
-                        (scenario.duree === dureeCreditNum
-                          ? "border-emerald-300 bg-emerald-50"
-                          : "border-slate-200 bg-slate-50")
-                      }
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-[0.75rem] font-semibold text-slate-900">{scenario.duree} ans</p>
-                        {scenario.duree === dureeCreditNum ? (
-                          <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[0.6rem] font-semibold text-white">
-                            choisi
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(scenario.montantMax)}</p>
-                      <p className="text-[0.68rem] text-slate-600">
-                        {formatEuro(scenario.mensualiteCreditHorsAssurance)} + {formatEuro(scenario.assuranceMensuelle)} ass.
-                      </p>
-                      <p className="mt-1 text-[0.68rem] text-slate-500">
-                        Prix bien env. {formatEuro(scenario.prixBienMax)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
             {/* 🔒 Gate */}
             {!canShowFullAnalysis ? (
               <div className="space-y-3">
                 <LeadGate
                   theme="cyan-emerald"
-                  title="Recevoir mon rapport de capacité"
-                  subtitle="Score lokt.fr™, budget estimé, points de vigilance et plan d’action concret."
+                  title="Débloquer l’analyse complète de votre dossier"
+                  subtitle="Comparaison des durées (15/20/25 ans), score de finançabilité, lecture bancaire de votre profil et plan d’action personnalisé."
                   email={leadEmail}
                   setEmail={setLeadEmail}
                   consent={consentLokt}
@@ -2229,6 +2182,38 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             {/* ✅ Partie débloquée */}
             {canShowFullAnalysis && bankability ? (
               <>
+                {computedAll?.scenarios?.length ? (
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                      <div>
+                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Comparer les durées</p>
+                        <p className="text-[0.75rem] text-slate-600">Même cible d'endettement, même taux, assurance incluse.</p>
+                      </div>
+                      <p className="text-[0.7rem] text-slate-500">Durée sélectionnée : {dureeCreditNum || "-"} ans</p>
+                    </div>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                      {computedAll.scenarios.map((scenario) => (
+                        <div
+                          key={scenario.duree}
+                          className={"rounded-lg border px-3 py-2 " + (scenario.duree === dureeCreditNum ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-slate-50")}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[0.75rem] font-semibold text-slate-900">{scenario.duree} ans</p>
+                            {scenario.duree === dureeCreditNum ? (
+                              <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[0.6rem] font-semibold text-white">choisi</span>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(scenario.montantMax)}</p>
+                          <p className="text-[0.68rem] text-slate-600">
+                            {formatEuro(scenario.mensualiteCreditHorsAssurance)} + {formatEuro(scenario.assuranceMensuelle)} ass.
+                          </p>
+                          <p className="mt-1 text-[0.68rem] text-slate-500">Prix bien env. {formatEuro(scenario.prixBienMax)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="mt-4 grid gap-3 sm:grid-cols-4 items-stretch">
                   <div className="rounded-xl bg-slate-900 text-white px-3 py-2.5 sm:col-span-2 h-full flex flex-col">
                     <p className="text-[0.65rem] uppercase tracking-[0.14em] text-emerald-200">{loktScoreLabel}</p>
