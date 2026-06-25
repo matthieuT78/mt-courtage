@@ -5,7 +5,11 @@ import {
   DocumentTextIcon,
   EyeIcon,
   FolderIcon,
+  PencilSquareIcon,
 } from "@heroicons/react/24/outline";
+import { SectionModeles, TEMPLATES as MODELES_TEMPLATES } from "./SectionModeles";
+
+type DocTab = "vault" | "modeles";
 import { usePermissions } from "../../PermissionProvider";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -432,6 +436,7 @@ function compareDocuments(a: VaultDocument, b: VaultDocument, sort: DocumentSort
 
 export function SectionDocumentsTemplates({ userId, properties, tenants, leases }: Props) {
   const { loading, canUseLandlord } = usePermissions();
+  const [tab, setTab] = useState<DocTab>("vault");
   const [folder, setFolder] = useState<FolderKey>("all");
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -746,32 +751,77 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
     }));
   }, [vaultDocuments]);
 
+  const TABS = [
+    { key: "vault"   as const, label: "Coffre documentaire", icon: FolderIcon,       count: docsLoading ? null : vaultDocuments.length },
+    { key: "modeles" as const, label: "Modèles de lettres",  icon: PencilSquareIcon, count: MODELES_TEMPLATES.filter((t) => t.status === "available").length },
+  ];
+
   return (
     <div className="space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+
+      {/* ── En-tête unifié ─────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">Documents</p>
-          <h2 className="mt-1 text-2xl font-semibold text-slate-950">Le coffre documentaire du bailleur</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-            Retrouvez les documents générés ou attachés : baux, états des lieux, DPE, quittances, factures et photos liées aux outils. L’objectif est simple : tout consulter, télécharger et contrôler depuis un seul endroit.
+          <h2 className="mt-1 text-2xl font-semibold text-slate-950">Documents & Modèles</h2>
+          <p className="mt-1.5 text-sm text-slate-500">
+            {tab === "vault" ? "Tous vos fichiers générés, en un seul endroit." : "Générez des courriers juridiques prêts à envoyer."}
           </p>
         </div>
-
-        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-center text-sm">
-          <div>
-            <p className="font-semibold text-slate-900">{docStats.total}</p>
-            <p className="mt-1 text-[0.68rem] text-slate-500">Docs</p>
+        {tab === "vault" && (
+          <div className="grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 text-center text-sm shrink-0">
+            <div>
+              <p className="font-semibold text-slate-900">{docStats.total}</p>
+              <p className="mt-0.5 text-[0.68rem] text-slate-500">Docs</p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-900">{docStats.pdfReady}</p>
+              <p className="mt-0.5 text-[0.68rem] text-slate-500">PDF</p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-900">{storageLoading && !storageData ? "…" : `${storagePercent}%`}</p>
+              <p className="mt-0.5 text-[0.68rem] text-slate-500">Stockage</p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-slate-900">{docStats.pdfReady}</p>
-            <p className="mt-1 text-[0.68rem] text-slate-500">PDF</p>
-          </div>
-          <div>
-            <p className="font-semibold text-slate-900">{storageLoading && !storageData ? "…" : `${storagePercent}%`}</p>
-            <p className="mt-1 text-[0.68rem] text-slate-500">Stockage</p>
-          </div>
-        </div>
+        )}
       </div>
+
+      {/* ── Onglets ────────────────────────────────────────────────── */}
+      <div className="flex rounded-2xl bg-slate-100/80 p-1 gap-1">
+        {TABS.map(({ key, label, icon: Icon, count }) => {
+          const active = tab === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={cx(
+                "relative flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200",
+                active
+                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60"
+                  : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              <Icon className={cx("h-4 w-4 transition-colors shrink-0", active ? "text-indigo-500" : "text-slate-400")} aria-hidden="true" />
+              <span className="truncate">{label}</span>
+              {count != null && count > 0 && (
+                <span className={cx(
+                  "rounded-full px-2 py-0.5 text-[0.68rem] font-semibold shrink-0",
+                  active ? "bg-indigo-50 text-indigo-600" : "bg-white/70 text-slate-400"
+                )}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Modèles tab ───────────────────────────────────────────── */}
+      {tab === "modeles" && <SectionModeles userId={userId} />}
+
+      {/* ── Coffre tab ────────────────────────────────────────────── */}
+      {tab === "vault" && <>
 
       {locked ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
@@ -993,6 +1043,8 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
           )}
           </section>
       </div>
+
+      </>}
     </div>
   );
 }

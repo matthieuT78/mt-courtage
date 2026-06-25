@@ -19,7 +19,7 @@ export type SeoLandingPage = {
   links: Array<{ label: string; href: string; text: string }>;
 };
 
-const today = "2026-06-23";
+const today = "2026-06-25";
 
 export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
@@ -712,6 +712,354 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       { label: "Inventaire meublé", href: "/inventaire-location-meublee", text: "Préparer les preuves utiles pour comparer les meubles à la sortie." },
       { label: "État des lieux de sortie", href: "/guides/depart-locataire-etat-des-lieux-sortie", text: "Préparer le départ et comparer les états." },
       { label: "Service-Public : dépôt de garantie", href: "https://www.service-public.fr/particuliers/vosdroits/F31269", text: "Vérifier les délais, retenues et règles officielles de restitution." },
+    ],
+  },
+  {
+    slug: "modele-mise-en-demeure-loyer-impaye",
+    title: "Modèle mise en demeure loyer impayé 2026 — Lettre officielle à envoyer en LRAR",
+    metaTitle: "Modèle mise en demeure loyer impayé 2026 : lettre officielle LRAR | lokt.fr",
+    description:
+      "Rédigez votre mise en demeure pour loyer impayé conforme à l'article 24 de la loi du 6 juillet 1989. Contenu obligatoire, délai de règlement, procédure après mise en demeure. Modèle complet et générateur de courrier.",
+    eyebrow: "Loyer impayé",
+    h1: "Mise en demeure loyer impayé : modèle 2026 et guide juridique",
+    intro:
+      "Face à un loyer impayé, la mise en demeure est la première étape formelle avant toute procédure judiciaire. Elle constitue la preuve écrite de votre démarche amiable et marque le point de départ du délai accordé au locataire pour régulariser sa situation. Un courrier mal rédigé ou envoyé sans preuve peut fragiliser votre dossier devant le tribunal.",
+    primaryCta: "Générer ma mise en demeure",
+    secondaryCta: { label: "Accéder aux modèles de lettres", href: "/espace-bailleur" },
+    updatedAt: today,
+    intent: "Requête cible : mise en demeure loyer impayé modèle, lettre impayé locataire",
+    sections: [
+      {
+        title: "1. Qu'est-ce qu'une mise en demeure et pourquoi l'envoyer ?",
+        body: [
+          "La mise en demeure est un courrier formel par lequel le bailleur demande à son locataire de régler les loyers et charges impayés dans un délai précis. Elle n'a pas de valeur exécutoire par elle-même, mais elle constitue une preuve indispensable de votre démarche amiable préalable à toute procédure judiciaire.",
+          "L'article 24 de la loi du 6 juillet 1989 encadre la procédure en cas de loyers impayés. Avant de saisir le tribunal, le bailleur doit démontrer qu'il a tenté une résolution amiable. La mise en demeure est la preuve de cette tentative. Sans elle, une procédure judiciaire peut être ralentie ou complexifiée.",
+          "La mise en demeure doit être envoyée en lettre recommandée avec accusé de réception (LRAR). C'est le seul mode d'envoi qui permet de prouver la date de réception par le locataire, point de départ du délai de règlement. Un email ou un SMS n'a aucune valeur probante dans ce contexte.",
+        ],
+        bullets: [
+          "Preuve de la démarche amiable obligatoire avant toute procédure judiciaire",
+          "Point de départ officiel du délai accordé au locataire pour régulariser",
+          "Envoi obligatoire en lettre recommandée avec accusé de réception",
+          "Applicable aux loyers, charges, et toute somme due par le locataire",
+        ],
+      },
+      {
+        title: "2. Contenu obligatoire de la lettre",
+        body: [
+          "La mise en demeure doit identifier précisément les parties : nom et adresse du bailleur, nom et adresse du locataire, adresse du logement concerné. Elle doit lister les périodes impayées avec les montants correspondants et le total réclamé.",
+          "La lettre doit fixer un délai de règlement explicite. La pratique courante est de 8 jours à compter de la réception du courrier, ce qui laisse au locataire un délai raisonnable tout en permettant d'enchaîner rapidement sur la procédure suivante si nécessaire.",
+          "Il est recommandé de mentionner la suite que vous envisagez en cas de non-règlement : commandement de payer délivré par huissier, puis saisine du tribunal judiciaire. Cette mention, sans être obligatoire, renforce le caractère formel de la démarche et incite souvent à un règlement rapide.",
+        ],
+        bullets: [
+          "Identité complète des deux parties et adresse du logement",
+          "Liste des périodes impayées avec montant unitaire et total",
+          "Délai de règlement fixé (8 jours après réception est la pratique courante)",
+          "Mention de la procédure envisagée en cas de non-règlement",
+        ],
+      },
+      {
+        title: "3. Étapes suivantes si la mise en demeure reste sans effet",
+        body: [
+          "Si le locataire ne régularise pas dans le délai imparti, l'étape suivante est le commandement de payer. Cet acte d'huissier est obligatoire avant toute procédure d'expulsion : il accorde au locataire deux mois supplémentaires pour régler ou saisir la CAF. Sans commandement de payer délivré par huissier, le juge ne peut pas prononcer la résiliation du bail.",
+          "La CAF ou la MSA doit être informée de l'impayé par le bailleur dès l'envoi du commandement de payer si le locataire est allocataire. Cette obligation s'applique à tous les bailleurs, particuliers ou professionnels. Le non-respect peut ralentir la procédure.",
+          "Après expiration du délai de deux mois du commandement de payer sans régularisation, le bailleur peut saisir le tribunal judiciaire pour obtenir la résiliation du bail et l'expulsion. La procédure est distincte selon que le bail contient ou non une clause résolutoire.",
+        ],
+        bullets: [
+          "Commandement de payer par huissier : 2 mois supplémentaires légaux",
+          "Information de la CAF/MSA obligatoire si le locataire est allocataire",
+          "Saisine du tribunal judiciaire après expiration du commandement",
+          "Clause résolutoire dans le bail : procédure accélérée possible",
+        ],
+      },
+      {
+        title: "4. Cas particuliers et situations spécifiques",
+        body: [
+          "En cas de colocation avec solidarité, la mise en demeure peut être adressée à l'un des colocataires ou à tous. La solidarité signifie que chacun est redevable de la totalité du loyer. Adresser la mise en demeure à tous les colocataires reste préférable pour éviter toute contestation.",
+          "Si le logement est couvert par une garantie Visale ou une assurance loyers impayés (GLI), il est conseillé de contacter l'organisme garant dès le premier impayé. Les contrats fixent des délais de déclaration précis dont le non-respect peut entraîner la perte de la garantie. La mise en demeure reste nécessaire en parallèle.",
+          "Pour les locations meublées courte durée, les règles sont différentes. Le contrat de location meublée de courte durée relève du droit commun des contrats, pas de la loi du 6 juillet 1989. La mise en demeure reste pertinente mais la procédure judiciaire diffère.",
+        ],
+        bullets: [
+          "Colocation solidaire : mettre en demeure tous les colocataires de préférence",
+          "GLI / Visale : déclarer l'impayé à l'assureur dans les délais du contrat",
+          "Allocataires CAF : signaler l'impayé à la CAF dès le commandement de payer",
+          "Location meublée courte durée : procédure distincte de la loi 89-462",
+        ],
+      },
+      {
+        title: "5. Erreurs fréquentes à éviter",
+        body: [
+          "Envoyer la mise en demeure par email ou SMS est une erreur courante. Ces modes de communication ne prouvent pas la réception par le locataire et ne constituent pas une mise en demeure juridiquement valable. Seul l'envoi en LRAR, la remise en main propre contre signature ou l'acte d'huissier ont une valeur probante.",
+          "Ne pas lister les périodes précises avec les montants affaiblit la portée du courrier. Un montant global sans décomposition mensuelle peut être contesté par le locataire. Détaillez chaque mois impayé avec le montant exact, charges comprises si elles sont dues.",
+          "Attendre trop longtemps avant d'envoyer la mise en demeure peut compliquer la procédure. Plus les impayés s'accumulent, plus la somme à recouvrer est importante et plus la procédure d'expulsion devient longue. Les professionnels recommandent d'agir dès le deuxième mois d'impayé.",
+        ],
+        bullets: [
+          "Email et SMS : aucune valeur probante, toujours envoyer en LRAR",
+          "Montant global sans décomposition : préférer un détail par période",
+          "Attendre trop longtemps : agir dès le 2e mois impayé",
+          "Oublier d'informer la CAF/MSA si le locataire est allocataire",
+        ],
+      },
+      {
+        title: "6. Générer sa mise en demeure avec lokt.fr",
+        body: [
+          "Depuis la section Modèles de lettres de l'espace bailleur lokt.fr, vous pouvez générer votre mise en demeure en renseignant les informations nécessaires : bailleur, locataire, logement, périodes impayées et délai de règlement. Le courrier est prêt à copier et à envoyer en recommandé AR.",
+          "Le formulaire calcule automatiquement le total réclamé à partir des lignes de loyers impayés que vous renseignez. Il suggère le délai de règlement standard de 8 jours et intègre les mentions recommandées sur la procédure envisagée.",
+        ],
+        bullets: [
+          "Saisie des périodes impayées ligne par ligne avec calcul automatique du total",
+          "Délai de règlement paramétrable selon votre situation",
+          "Courrier prêt à copier-coller et à envoyer en recommandé AR",
+          "Accès depuis la section Modèles de l'espace bailleur lokt.fr",
+        ],
+      },
+    ],
+    faq: [
+      { q: "La mise en demeure est-elle obligatoire avant de saisir le tribunal ?", a: "Elle n'est pas légalement obligatoire mais est fortement recommandée. Elle constitue la preuve de votre démarche amiable et renforce votre dossier devant le juge. En pratique, les tribunaux apprécient que le bailleur ait d'abord tenté de régler la situation à l'amiable avant d'engager une procédure." },
+      { q: "Quel délai fixer dans la mise en demeure ?", a: "La pratique courante est de 8 jours à compter de la réception du courrier recommandé. Ce délai est raisonnable : il laisse au locataire le temps de réagir sans trop allonger la procédure. Certains bailleurs fixent 15 jours, mais un délai plus long retarde la suite de la procédure si nécessaire." },
+      { q: "Que faire si le locataire refuse de signer l'avis de passage ?", a: "Si le locataire ne retire pas le recommandé, la date de première présentation à sa boîte aux lettres fait foi. Le délai commence à courir à compter de cette date. Conservez le bordereau d'envoi et l'avis de non-retrait. En cas de doute, faites délivrer le courrier par un huissier." },
+      { q: "Peut-on envoyer la mise en demeure par email ?", a: "Non. Un email n'a pas la valeur probante d'une lettre recommandée avec accusé de réception pour une mise en demeure juridique. Seul l'envoi en LRAR, la remise en main propre contre signature ou l'acte d'huissier ont une valeur juridique reconnue." },
+      { q: "Que faire si le locataire règle partiellement après la mise en demeure ?", a: "Un paiement partiel ne suspend pas la procédure si le solde reste dû. Accusez réception du paiement partiel et relancez pour le solde restant. Si le locataire justifie de difficultés temporaires et propose un échéancier sérieux, vous pouvez accepter pour éviter une procédure longue." },
+      { q: "Faut-il envoyer une mise en demeure si le locataire a une GLI ?", a: "Oui, il faut envoyer la mise en demeure en parallèle de la déclaration à l'assureur GLI. Les deux démarches sont indépendantes. L'assureur GLI peut imposer ses propres délais de déclaration — lisez votre contrat pour ne pas perdre la garantie." },
+      { q: "Combien de mises en demeure faut-il envoyer ?", a: "Une seule mise en demeure est suffisante juridiquement. Il n'y a pas d'obligation d'en envoyer plusieurs. Après l'expiration du délai fixé sans paiement, vous pouvez directement mandater un huissier pour délivrer un commandement de payer." },
+      { q: "Peut-on réclamer les frais d'huissier dans la mise en demeure ?", a: "La mise en demeure envoyée par lettre recommandée par le bailleur lui-même ne génère pas de frais d'huissier. Si vous faites appel à un huissier pour la mise en demeure, ses honoraires sont à votre charge, mais peuvent être intégrés dans la créance réclamée si une procédure judiciaire suit." },
+    ],
+    links: [
+      { label: "Espace bailleur lokt.fr", href: "/espace-bailleur", text: "Gérer vos baux, loyers, quittances et documents depuis un seul espace." },
+      { label: "Modèle lettre de congé bailleur", href: "/modele-lettre-conge-bailleur", text: "Mettre fin au bail pour reprise, vente ou motif légitime." },
+      { label: "Restitution du dépôt de garantie", href: "/modele-restitution-depot-garantie", text: "Courrier de restitution avec ou sans retenues." },
+      { label: "Service-Public : loyers impayés", href: "https://www.service-public.fr/particuliers/vosdroits/F1169", text: "Procédure officielle en cas de loyers impayés." },
+    ],
+  },
+  {
+    slug: "modele-notification-revision-loyer",
+    title: "Modèle notification révision du loyer IRL 2026 — Calcul et courrier officiel",
+    metaTitle: "Modèle notification révision loyer IRL 2026 : calcul et courrier | lokt.fr",
+    description:
+      "Calculez la révision annuelle de votre loyer selon l'indice IRL publié par l'INSEE et rédigez la notification officielle à envoyer à votre locataire. Conforme à l'article 17-1 de la loi du 6 juillet 1989. Modèle 2026 complet.",
+    eyebrow: "Révision du loyer",
+    h1: "Notification de révision du loyer IRL 2026 : calcul et modèle de lettre",
+    intro:
+      "La révision annuelle du loyer est encadrée par la loi : elle ne peut se faire qu'une fois par an, à la date anniversaire du bail, et uniquement dans la limite de l'évolution de l'Indice de Référence des Loyers (IRL) publié chaque trimestre par l'INSEE. Une notification écrite au locataire est obligatoire — sans elle, la révision ne peut pas être appliquée rétroactivement au-delà de 12 mois.",
+    primaryCta: "Calculer et générer ma notification",
+    secondaryCta: { label: "Accéder aux modèles de lettres", href: "/espace-bailleur" },
+    updatedAt: today,
+    intent: "Requête cible : révision loyer IRL 2026, calcul révision loyer, notification révision loyer locataire",
+    sections: [
+      {
+        title: "1. Principe et conditions de la révision IRL",
+        body: [
+          "La révision annuelle du loyer est régie par l'article 17-1 de la loi du 6 juillet 1989. Elle n'est possible que si le contrat de location contient une clause de révision explicite. Sans cette clause, le bailleur ne peut pas réviser le loyer pendant toute la durée du bail.",
+          "La révision ne peut intervenir qu'une seule fois par an, à la date anniversaire du bail fixée par le contrat. Si aucune date n'est prévue, elle peut intervenir à la date d'anniversaire de la prise d'effet du bail. La révision ne peut jamais dépasser l'évolution de l'IRL du trimestre de référence prévu au bail.",
+          "En zone tendue, des règles supplémentaires s'appliquent depuis l'encadrement des loyers : même si l'IRL permet une hausse, un plafond de loyer de référence majoré peut limiter la révision possible. Vérifiez si votre commune est soumise à l'encadrement des loyers avant d'appliquer la révision.",
+        ],
+        bullets: [
+          "Clause de révision obligatoire dans le bail — sans clause, pas de révision possible",
+          "Une seule révision par an, à la date anniversaire du bail",
+          "Plafonnée à l'évolution de l'IRL du trimestre de référence",
+          "En zone tendue : vérifier l'encadrement des loyers avant application",
+        ],
+      },
+      {
+        title: "2. Calcul de la révision selon l'IRL",
+        body: [
+          "L'Indice de Référence des Loyers (IRL) est publié chaque trimestre par l'INSEE. Il est calculé à partir de l'évolution des prix à la consommation hors tabac et hors loyers sur les douze derniers mois. Le tableau des IRL est consultable directement sur le site de l'INSEE.",
+          "La formule de calcul est la suivante : Nouveau loyer = Loyer actuel × (IRL du trimestre de révision ÷ IRL du trimestre de référence). Le trimestre de référence est celui indiqué dans le bail, ou à défaut le trimestre correspondant à la date de signature du contrat.",
+          "Si le bailleur ne demande pas la révision à la date anniversaire, il peut la réclamer pour les 12 mois précédant sa demande. Au-delà de 12 mois, la révision est perdue : le bailleur ne peut pas la récupérer rétroactivement. Il vaut donc mieux ne pas attendre.",
+        ],
+        bullets: [
+          "Formule : Nouveau loyer = Loyer actuel × (IRL révision ÷ IRL référence)",
+          "IRL de référence : trimestre indiqué au bail ou de la signature",
+          "IRL de révision : dernier IRL publié par l'INSEE au moment de la notification",
+          "Rétroactivité limitée à 12 mois en cas d'oubli",
+        ],
+      },
+      {
+        title: "3. La notification au locataire : contenu et forme",
+        body: [
+          "La notification de révision du loyer doit être adressée par écrit au locataire. Elle doit mentionner le loyer actuel, les deux indices IRL utilisés (référence et révision) avec leur valeur respective, et le nouveau loyer calculé. Une notification incomplète peut être contestée.",
+          "Bien que la loi n'impose pas la lettre recommandée pour la notification de révision (contrairement au congé), il est fortement recommandé de l'envoyer en LRAR ou de la remettre contre signature. En cas de litige ultérieur, vous devez pouvoir prouver que le locataire a bien reçu la notification.",
+          "La notification doit préciser la date d'application du nouveau loyer. Cette date correspond à la prochaine date anniversaire du bail si la notification est envoyée avant. Si elle est envoyée après la date anniversaire, le nouveau loyer peut être appliqué rétroactivement dans la limite des 12 derniers mois.",
+        ],
+        bullets: [
+          "Mention obligatoire : loyer actuel, IRL référence et révision, nouveau loyer",
+          "Envoi recommandé en LRAR même si non légalement obligatoire",
+          "Date d'application : prochaine date anniversaire ou rétroactivité 12 mois max",
+          "Notification incomplète : le locataire peut la contester",
+        ],
+      },
+      {
+        title: "4. IRL 2026 : les derniers indices publiés",
+        body: [
+          "L'INSEE publie l'IRL chaque trimestre. Les indices les plus récents sont utilisés pour calculer les révisions de l'année en cours. Le 1er trimestre 2026 est le dernier indice publié à la date de mise à jour de cette page — il sert de référence pour toute révision notifiée depuis sa publication.",
+          "L'IRL T1 2026 s'établit à 145,47, soit une hausse annuelle de 1,10 % par rapport au T1 2025. L'IRL T4 2025 s'établissait à 145,15, soit +1,26 % sur un an. Ces évolutions modérées s'inscrivent dans la continuité du ralentissement de l'inflation observé depuis 2024.",
+          "Pour calculer votre révision, vous avez besoin de deux indices : l'IRL du trimestre de référence inscrit dans votre bail (ou correspondant à la date de signature), et le dernier IRL publié. La différence entre ces deux indices détermine la hausse maximale autorisée.",
+        ],
+        bullets: [
+          "IRL T1 2026 : 145,47 (+1,10 % sur un an) — dernier indice publié",
+          "IRL T4 2025 : 145,15 (+1,26 % sur un an)",
+          "IRL T3 2025 : 144,81 (+1,47 % sur un an)",
+          "IRL T2 2025 : 144,51 (+1,58 % sur un an)",
+        ],
+      },
+      {
+        title: "5. Cas où la révision est impossible ou plafonnée",
+        body: [
+          "La révision est impossible si le bail ne contient pas de clause de révision. Elle est également exclue si le logement fait l'objet d'une décence insuffisante reconnue ou si le bailleur n'a pas respecté les obligations d'entretien imposées par la loi.",
+          "En zone d'encadrement des loyers (Paris, Lille, Lyon, certaines communes), le loyer révisé ne peut pas dépasser le loyer de référence majoré fixé par arrêté préfectoral. Si le loyer actuel dépasse déjà ce plafond, aucune révision n'est possible même si l'IRL est en hausse.",
+          "Si l'IRL est en baisse (ce qui n'est pas arrivé depuis 2016 mais reste théoriquement possible), le loyer doit être révisé à la baisse. La clause de révision joue dans les deux sens — la loi ne permet pas de ne réviser qu'en cas de hausse.",
+        ],
+        bullets: [
+          "Pas de clause de révision dans le bail : révision impossible pendant toute la durée",
+          "Zone d'encadrement des loyers : vérifier le loyer de référence majoré",
+          "IRL en baisse : révision à la baisse obligatoire si la clause le prévoit",
+          "Logement indécent : révision bloquée jusqu'à mise en conformité",
+        ],
+      },
+      {
+        title: "6. Calculer et notifier avec lokt.fr",
+        body: [
+          "L'outil de révision du loyer lokt.fr intègre l'ensemble des indices IRL publiés par l'INSEE. Saisissez le loyer actuel, sélectionnez les deux trimestres de référence et de révision, et le nouveau loyer est calculé instantanément avec le détail de la variation en pourcentage et en euros par mois.",
+          "La notification officielle est générée automatiquement avec toutes les mentions légales requises : articles de loi, indices utilisés, nouveau loyer et date d'application. Vous pouvez la copier directement pour l'envoyer en recommandé AR à votre locataire.",
+        ],
+        bullets: [
+          "Calcul automatique avec les indices IRL mis à jour",
+          "Notification officielle avec mentions légales complètes",
+          "Aperçu du courrier avant envoi",
+          "Accès depuis la section Modèles de l'espace bailleur lokt.fr",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Peut-on réviser le loyer sans clause de révision dans le bail ?", a: "Non. La clause de révision doit figurer expressément dans le contrat de location. Sans cette clause, le loyer reste fixe pendant toute la durée du bail, que l'IRL augmente ou non. Il est possible d'inclure une clause de révision lors du renouvellement du bail." },
+      { q: "Quel IRL de référence utiliser pour le calcul ?", a: "L'IRL de référence est celui indiqué dans le contrat de location. À défaut de mention explicite, il s'agit du dernier IRL publié à la date de signature du bail, qui correspond généralement au trimestre du même trimestre que la signature. Vérifiez les termes exacts de votre contrat." },
+      { q: "Quand peut-on appliquer la révision ?", a: "La révision peut être appliquée une fois par an, à la date anniversaire du bail. Si vous oubliez d'envoyer la notification à la date anniversaire, vous pouvez la réclamer rétroactivement dans la limite des 12 mois précédant votre demande. Au-delà, la révision est définitivement perdue." },
+      { q: "La notification de révision doit-elle être envoyée en recommandé ?", a: "La loi n'impose pas la lettre recommandée pour la notification de révision — contrairement au congé bailleur. Mais il est fortement conseillé d'envoyer en LRAR ou de remettre contre signature pour pouvoir prouver la réception en cas de contestation ultérieure." },
+      { q: "Le locataire peut-il refuser la révision ?", a: "Si le bail contient une clause de révision et que le calcul respecte l'IRL, le locataire ne peut pas refuser la révision. En revanche, si le loyer révisé dépasse le plafond d'encadrement en zone tendue, la partie excédentaire est illégale et contestable." },
+      { q: "Que se passe-t-il si l'IRL est inférieur à l'indice de référence ?", a: "Si l'IRL de révision est inférieur à l'IRL de référence, la révision entraîne une baisse du loyer. La clause de révision joue dans les deux sens. Le bailleur ne peut pas choisir de ne pas réviser en cas de baisse pour maintenir le loyer actuel." },
+      { q: "La révision est-elle possible en zone d'encadrement des loyers ?", a: "Oui, mais le loyer révisé ne peut pas dépasser le loyer de référence majoré fixé par arrêté préfectoral pour la zone et le type de logement. Si le loyer actuel est déjà au plafond ou le dépasse, aucune révision à la hausse n'est possible, même si l'IRL augmente." },
+      { q: "Faut-il notifier la révision même si on veut appliquer une hausse inférieure à l'IRL ?", a: "Oui, une notification écrite reste recommandée même si vous choisissez d'appliquer une hausse inférieure à ce que l'IRL permet. Elle précise le nouveau loyer applicable et la date d'effet, ce qui évite toute ambiguïté avec le locataire." },
+    ],
+    links: [
+      { label: "Espace bailleur lokt.fr", href: "/espace-bailleur", text: "Gérer vos baux, loyers, quittances et documents depuis un seul espace." },
+      { label: "Modèle lettre de congé bailleur", href: "/modele-lettre-conge-bailleur", text: "Mettre fin au bail pour reprise, vente ou motif légitime." },
+      { label: "Mise en demeure loyer impayé", href: "/modele-mise-en-demeure-loyer-impaye", text: "Courrier formel avant procédure en cas de loyers impayés." },
+      { label: "INSEE — IRL", href: "https://www.insee.fr/fr/statistiques/serie/001515333", text: "Indices IRL officiels publiés chaque trimestre par l'INSEE." },
+    ],
+  },
+  {
+    slug: "modele-restitution-depot-garantie",
+    title: "Modèle restitution dépôt de garantie 2026 — Délais, retenues et lettre officielle",
+    metaTitle: "Modèle restitution dépôt de garantie 2026 : délais, retenues, lettre | lokt.fr",
+    description:
+      "Restituez le dépôt de garantie de votre locataire dans les délais légaux. Retenues autorisées, justificatifs nécessaires, pénalités en cas de dépassement. Modèle de courrier 2026 conforme à l'article 22 de la loi du 6 juillet 1989.",
+    eyebrow: "Dépôt de garantie",
+    h1: "Restitution du dépôt de garantie 2026 : délais, retenues autorisées et modèle de lettre",
+    intro:
+      "La restitution du dépôt de garantie obéit à des règles strictes fixées par l'article 22 de la loi du 6 juillet 1989. Le bailleur dispose d'un ou deux mois après la remise des clés pour restituer le solde, sous peine d'une majoration automatique de 10 % du montant mensuel du loyer hors charges par mois de retard. Un courrier de restitution clair et documenté protège le bailleur en cas de contestation.",
+    primaryCta: "Générer mon courrier de restitution",
+    secondaryCta: { label: "Accéder aux modèles de lettres", href: "/espace-bailleur" },
+    updatedAt: today,
+    intent: "Requête cible : restitution dépôt de garantie délai, retenue dépôt locataire modèle lettre",
+    sections: [
+      {
+        title: "1. Délais légaux de restitution",
+        body: [
+          "L'article 22 de la loi du 6 juillet 1989 fixe deux délais selon l'état des lieux de sortie : un mois si l'état des lieux de sortie est conforme à l'état des lieux d'entrée, deux mois dans le cas contraire. Le délai commence à courir à partir de la date de remise des clés par le locataire.",
+          "La comparaison entre les deux états des lieux doit être objective. Une usure normale liée au temps — peintures légèrement passées, petites marques d'usage — ne constitue pas une dégradation. Seules les dégradations imputables au locataire et excédant l'usure normale justifient un délai de deux mois.",
+          "Si le locataire quitte un bien en copropriété, le bailleur peut retenir jusqu'à 20 % du dépôt en attente de la régularisation annuelle des charges de copropriété. Cette retenue provisoire doit être mentionnée dans le courrier de restitution et le solde doit être versé dans un délai raisonnable après l'arrêté des comptes.",
+        ],
+        bullets: [
+          "1 mois si l'état des lieux de sortie est conforme à celui d'entrée",
+          "2 mois si des dégradations sont constatées à l'état des lieux de sortie",
+          "Délai calculé à partir de la remise des clés — conservez la date et la preuve",
+          "Copropriété : retenue provisoire possible de 20 % pour charges à régulariser",
+        ],
+      },
+      {
+        title: "2. Retenues autorisées sur le dépôt",
+        body: [
+          "Le bailleur peut opérer des retenues sur le dépôt de garantie pour couvrir les loyers et charges impayés, les réparations locatives non effectuées par le locataire, les dégradations dépassant l'usure normale constatées à l'état des lieux de sortie, et le remplacement d'éléments manquants ou détériorés.",
+          "Chaque retenue doit être justifiée par des documents probants : devis ou factures d'artisan pour les réparations, relevé de compte pour les loyers impayés, états des lieux comparatifs et photos pour les dégradations. Les justificatifs doivent être joints au courrier de restitution.",
+          "L'usure normale du logement ne peut pas être retenue. Sont considérés comme usure normale : les légères traces sur les murs, l'encrassement normal des moquettes, l'altération progressive des peintures. La jurisprudence est abondante sur ce point et les tribunaux sanctionnent régulièrement les retenues injustifiées.",
+        ],
+        bullets: [
+          "Loyers et charges impayés : justifiés par relevé de compte",
+          "Réparations locatives non effectuées : devis ou factures obligatoires",
+          "Dégradations anormales : états des lieux comparatifs et photos",
+          "Usure normale (peintures, moquettes) : non retenue",
+        ],
+      },
+      {
+        title: "3. Pénalités en cas de retard de restitution",
+        body: [
+          "Si le bailleur ne restitue pas le dépôt dans le délai légal, le montant dû est majoré de 10 % du loyer mensuel hors charges par mois de retard commencé. Cette pénalité est automatique : le locataire n'a pas besoin de la demander ni de mettre le bailleur en demeure.",
+          "Exemple : pour un loyer mensuel hors charges de 800 €, chaque mois de retard entraîne une majoration de 80 €. Si le bailleur restitue avec 3 mois de retard, il devra 240 € de pénalités en plus du dépôt dû. Ces pénalités s'ajoutent aux éventuels dommages et intérêts si le locataire saisit le juge.",
+          "Le locataire peut mettre le bailleur en demeure de restituer le dépôt, puis saisir la commission départementale de conciliation (CDC) ou le tribunal judiciaire. La procédure de référé est rapide pour des montants inférieurs à 10 000 €.",
+        ],
+        bullets: [
+          "Pénalité automatique : +10 % du loyer mensuel HC par mois de retard",
+          "Applicable dès le premier jour de dépassement du délai légal",
+          "Saisine possible : CDC, puis tribunal judiciaire en cas d'échec",
+          "Procédure de référé disponible pour recouvrement rapide",
+        ],
+      },
+      {
+        title: "4. Contenu du courrier de restitution",
+        body: [
+          "Le courrier de restitution doit mentionner le montant initial du dépôt de garantie, la liste détaillée des retenues effectuées avec leur justification, et le solde restitué. Si aucune retenue n'est effectuée, le courrier doit l'indiquer explicitement.",
+          "Le mode de remise du solde doit être précisé : virement bancaire (joindre un RIB ou demander celui du locataire), chèque adressé à la nouvelle adresse du locataire. Le délai légal s'applique à la mise à disposition des fonds, pas à leur encaissement.",
+          "Joindre les justificatifs des retenues est obligatoire si des déductions sont effectuées. Les justificatifs doivent être contemporains des dégradations constatées — une facture de travaux réalisés plusieurs mois après l'état des lieux peut être contestée.",
+        ],
+        bullets: [
+          "Montant initial du dépôt clairement mentionné",
+          "Détail de chaque retenue avec référence au justificatif joint",
+          "Solde restitué et mode de remise (virement ou chèque)",
+          "Justificatifs joints pour toute retenue effectuée",
+        ],
+      },
+      {
+        title: "5. Situations particulières",
+        body: [
+          "En cas de vente du logement en cours de bail, le dépôt de garantie est transféré au nouveau propriétaire qui en assume la restitution. Si le vendeur conserve le dépôt, le locataire peut néanmoins réclamer sa restitution au nouveau bailleur, qui devra ensuite se retourner contre le vendeur.",
+          "En colocation, si le bail est unique avec solidarité, le dépôt est restitué au colocataire partant uniquement si les autres colocataires et le bailleur y consentent par avenant. À défaut, le dépôt est restitué globalement à la fin du bail.",
+          "Si le locataire a sous-loué sans autorisation ou laissé des occupants sans droit ni titre dans le logement, le bailleur peut intégrer les dégradations causées par ces occupants dans les retenues sur dépôt, dès lors qu'elles sont documentées par l'état des lieux de sortie.",
+        ],
+        bullets: [
+          "Vente du logement : le dépôt est transféré au nouveau propriétaire",
+          "Colocation : restitution partielle soumise à accord de toutes les parties",
+          "Sous-location non autorisée : dégradations causées retenues sur dépôt",
+          "Locataire décédé : restitution aux ayants droit sur présentation des documents",
+        ],
+      },
+      {
+        title: "6. Générer son courrier de restitution avec lokt.fr",
+        body: [
+          "L'outil lokt.fr vous permet de générer votre courrier de restitution en quelques minutes. Renseignez les informations des parties, la date de sortie, le montant du dépôt et les éventuelles retenues. Le calcul du solde à restituer est automatique.",
+          "Une case à cocher vous permet d'indiquer si des dégradations ont été constatées à l'état des lieux de sortie — le délai légal applicable (1 ou 2 mois) est alors affiché automatiquement dans le courrier. Choisissez le mode de restitution (virement ou chèque) et le courrier est prêt à copier.",
+        ],
+        bullets: [
+          "Calcul automatique du solde à restituer après retenues",
+          "Délai légal affiché selon l'état des lieux de sortie",
+          "Choix du mode de restitution : virement ou chèque",
+          "Courrier prêt à copier avec toutes les mentions légales",
+        ],
+      },
+    ],
+    faq: [
+      { q: "Quel est le délai pour restituer le dépôt de garantie ?", a: "Un mois à compter de la remise des clés si l'état des lieux de sortie est conforme à l'état des lieux d'entrée. Deux mois si des dégradations ont été constatées. Ce délai est calculé à partir de la date effective de remise des clés par le locataire." },
+      { q: "Que se passe-t-il si le bailleur ne restitue pas le dépôt à temps ?", a: "Le montant dû est majoré de 10 % du loyer mensuel hors charges par mois de retard commencé, de manière automatique. Le locataire peut ensuite mettre en demeure le bailleur, puis saisir la commission de conciliation ou le tribunal judiciaire." },
+      { q: "Quelles retenues sont autorisées sur le dépôt de garantie ?", a: "Les retenues autorisées couvrent les loyers et charges impayés, les réparations locatives non effectuées et les dégradations dépassant l'usure normale. Chaque retenue doit être justifiée par des documents probants : états des lieux comparatifs, photos, devis ou factures." },
+      { q: "L'usure normale du logement peut-elle être retenue ?", a: "Non. L'usure liée au temps et à un usage normal du logement — légères traces sur les murs, encrassement progressif, altération des peintures — ne peut pas être imputée au locataire. Seules les dégradations anormales et documentées sont retenues." },
+      { q: "Faut-il joindre les justificatifs au courrier de restitution ?", a: "Oui, si des retenues sont effectuées. Les justificatifs (devis, factures, états des lieux, photos) doivent être joints au courrier de restitution. À défaut, le locataire peut contester les retenues et obtenir leur remboursement en justice." },
+      { q: "Peut-on retenir une partie du dépôt pour les charges en attente de régularisation ?", a: "Oui, en copropriété. Le bailleur peut retenir jusqu'à 20 % du dépôt en attente de la régularisation annuelle des charges. Cette retenue provisoire doit être mentionnée dans le courrier et le solde doit être versé dans un délai raisonnable après l'arrêté des comptes de copropriété." },
+      { q: "Que faire si le locataire conteste les retenues ?", a: "En cas de désaccord, le locataire peut saisir la commission départementale de conciliation (CDC). Si la conciliation échoue, il peut saisir le tribunal judiciaire. Les tribunaux examinent les états des lieux et les justificatifs. Les retenues mal documentées sont régulièrement annulées." },
+      { q: "Le dépôt de garantie est-il transféré en cas de vente du logement ?", a: "Oui. En cas de vente du logement occupé, le dépôt de garantie est en principe transféré au nouveau propriétaire lors de la transaction. Si le dépôt n'est pas transféré, le locataire peut néanmoins réclamer sa restitution au nouveau bailleur, à charge pour lui de se retourner contre le vendeur." },
+    ],
+    links: [
+      { label: "Espace bailleur lokt.fr", href: "/espace-bailleur", text: "Gérer vos baux, loyers, quittances et documents depuis un seul espace." },
+      { label: "Mise en demeure loyer impayé", href: "/modele-mise-en-demeure-loyer-impaye", text: "Courrier formel avant procédure en cas de loyers impayés." },
+      { label: "Révision du loyer IRL", href: "/modele-notification-revision-loyer", text: "Calculer et notifier la révision annuelle du loyer." },
+      { label: "Service-Public : dépôt de garantie", href: "https://www.service-public.fr/particuliers/vosdroits/F31269", text: "Délais, retenues et règles officielles de restitution." },
     ],
   },
   {

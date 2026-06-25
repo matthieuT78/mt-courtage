@@ -1,6 +1,6 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowTopRightOnSquareIcon, BellIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, ArrowTrendingUpIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
@@ -119,7 +119,7 @@ function actionTarget(action?: string): LandlordSectionKey | null {
   if (a.includes("locataire")) return "locataires";
   if (a.includes("bail")) return "baux";
   if (a.includes("quittance") || a.includes("retard") || a.includes("paiement")) return "quittances";
-  if (a.includes("déclaration") || a.includes("declaration")) return "declaration";
+  if (a.includes("déclaration") || a.includes("declaration")) return "finance";
   if (a.includes("inventaire")) return "inventaire";
   if (a.includes("état") || a.includes("etat")) return "etat_des_lieux";
   if (a.includes("finance")) return "finance";
@@ -165,6 +165,7 @@ export function SectionDashboard({
   tenantsCount,
   leasesCount,
   onGo,
+  onNavigateDeep,
   onPrepareDeparture,
   userId,
   planLabel,
@@ -188,11 +189,55 @@ export function SectionDashboard({
   tenantsCount: number;
   leasesCount: number;
   onGo: (k: LandlordSectionKey) => void;
+  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" }) => void;
   onPrepareDeparture?: (tenantId: string) => void;
   userId?: string;
   planLabel?: string;
 }) {
   const ratio = monthlyExpected > 0 ? clampPct((monthlyPaid / monthlyExpected) * 100) : 0;
+
+  // ── Événements contextuels (anniversaires + baux expirants) ──────────────
+  const contextualEvents = useMemo(() => {
+    const now = new Date();
+    const events: Array<{
+      type: "anniversary" | "expiring";
+      leaseId: string;
+      tenantName: string;
+      propertyLabel: string;
+      days: number;
+      urgency: "high" | "medium" | "low";
+    }> = [];
+
+    for (const l of activeLeases) {
+      const tenant   = tenantById.get(l.tenant_id);
+      const property = propertyById.get(l.property_id);
+      const tenantName    = tenant?.full_name    || (l as any).tenant_name    || "Locataire";
+      const propertyLabel = (property as any)?.label || (property as any)?.city || "Logement";
+
+      // Prochain anniversaire du bail (révision IRL)
+      if (l.start_date && Number(l.rent_amount || 0) > 0) {
+        const start = new Date(l.start_date + "T00:00:00");
+        const ann = new Date(start);
+        ann.setFullYear(now.getFullYear());
+        if (ann.getTime() <= now.getTime()) ann.setFullYear(now.getFullYear() + 1);
+        const days = Math.ceil((ann.getTime() - now.getTime()) / 86400000);
+        if (days <= 60) {
+          events.push({ type: "anniversary", leaseId: l.id, tenantName, propertyLabel, days, urgency: days <= 14 ? "high" : days <= 30 ? "medium" : "low" });
+        }
+      }
+
+      // Bail à durée déterminée expirant bientôt
+      if (l.end_date) {
+        const end  = new Date(l.end_date + "T00:00:00");
+        const days = Math.ceil((end.getTime() - now.getTime()) / 86400000);
+        if (days >= 0 && days <= 90) {
+          events.push({ type: "expiring", leaseId: l.id, tenantName, propertyLabel, days, urgency: days <= 30 ? "high" : "medium" });
+        }
+      }
+    }
+
+    return events.sort((a, b) => a.days - b.days).slice(0, 6);
+  }, [activeLeases, tenantById, propertyById]);
   const remainingToCollect = Math.max(0, monthlyExpected - monthlyPaid);
   const currentMonthPayments = useMemo(
     () =>
@@ -1145,6 +1190,48 @@ export function SectionDashboard({
             </span>
           </div>
         )
+      )}
+
+      {/* ── Agenda contextuel ─────────────────────────────────────────────── */}
+      {contextualEvents.length > 0 && (
+        <div className="space-y-2">
+          <p className="px-1 text-[0.68rem] font-semibold uppercase tracking-wider text-slate-400">À faire</p>
+          {contextualEvents.map((evt) => {
+            const isHigh   = evt.urgency === "high";
+            const isMedium = evt.urgency === "medium";
+            const bgIcon   = isHigh ? "bg-red-100" : isMedium ? "bg-amber-100" : "bg-indigo-50";
+            const clrIcon  = isHigh ? "text-red-600" : isMedium ? "text-amber-600" : "text-indigo-500";
+            const bgBadge  = isHigh ? "bg-red-100 text-red-700" : isMedium ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600";
+            const dayLabel = evt.days === 0 ? "Aujourd'hui" : evt.days === 1 ? "Demain" : `Dans ${evt.days}j`;
+            return (
+              <button
+                key={`${evt.type}-${evt.leaseId}`}
+                type="button"
+                onClick={() => onNavigateDeep?.("baux", evt.type === "anniversary" ? { leaseId: evt.leaseId, openPanel: "irl" } : { leaseId: evt.leaseId })}
+                className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition hover:border-indigo-200 hover:bg-indigo-50 hover:shadow-sm active:scale-[0.99]"
+              >
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${bgIcon}`}>
+                  {evt.type === "anniversary"
+                    ? <ArrowTrendingUpIcon className={`h-4 w-4 ${clrIcon}`} aria-hidden="true" />
+                    : <CalendarDaysIcon    className={`h-4 w-4 ${clrIcon}`} aria-hidden="true" />
+                  }
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {evt.type === "anniversary" ? "Réviser le loyer" : "Bail se termine"} · {evt.tenantName}
+                  </p>
+                  <p className="text-xs text-slate-500">{evt.propertyLabel}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${bgBadge}`}>{dayLabel}</span>
+                  {evt.type === "anniversary" && (
+                    <p className="mt-0.5 text-[0.68rem] text-indigo-500">Réviser avec IRL →</p>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {/* ═══════════════════════════════════════════════════

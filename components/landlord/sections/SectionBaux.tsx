@@ -1,5 +1,5 @@
 // components/landlord/sections/SectionBaux.tsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDownTrayIcon,
@@ -96,6 +96,7 @@ type Props = {
   onRefresh: () => Promise<void>;
   onPrepareDeparture?: (tenantId: string) => void;
   canShareWithTenant?: boolean;
+  deepLink?: { key: number; leaseId?: string; openPanel?: "irl" } | null;
 };
 
 /* ======================================================
@@ -680,7 +681,7 @@ function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: Rent
 
 type Mode = "idle" | "create" | "edit";
 
-export function SectionBaux({ userId, userEmail, leases, properties, tenants, payments, receipts, onRefresh, onPrepareDeparture, canShareWithTenant }: Props) {
+export function SectionBaux({ userId, userEmail, leases, properties, tenants, payments, receipts, onRefresh, onPrepareDeparture, canShareWithTenant, deepLink }: Props) {
   const { canUseLandlord } = usePermissions();
   const canUseReceiptAutomation = canUseLandlord;
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -705,6 +706,14 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const activeTenants = useMemo(() => safeTenants.filter(isActiveTenantLike), [safeTenants]);
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!deepLink?.leaseId) return;
+    setExpandedId(deepLink.leaseId);
+    setTimeout(() => {
+      document.getElementById(`lease-${deepLink.leaseId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+  }, [deepLink]);
 
   const [mode, setMode] = useState<Mode>("idle");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -1881,7 +1890,12 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
           ) : null}
         </div>
 
-        <IrlRevisionPanel lease={l} property={p || null} tenant={t || null} />
+        <IrlRevisionPanel
+          lease={l}
+          property={p || null}
+          tenant={t || null}
+          openTrigger={deepLink?.leaseId === l.id && deepLink?.openPanel === "irl" ? deepLink.key : undefined}
+        />
       </div>
     );
   };
@@ -2476,35 +2490,36 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                   : null;
 
                 return (
-                  <ExpandableRow
-                    key={l.id}
-                    id={l.id}
-                    expandedId={expandedId}
-                    setExpandedId={(id) => openRow(id)}
-                    left={
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">
-                          {meta.propertyLabel}{" "}
-                          <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
-                        </p>
-                        <p className="mt-0.5 text-xs text-slate-500 truncate">
-                          {meta.startDateFR ? `depuis le ${meta.startDateFR}` : ""}
-                          {meta.endDateFR ? ` → ${meta.endDateFR}` : ""}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {badge("emerald", "Actif")}
-                          {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
+                  <div key={l.id} id={`lease-${l.id}`}>
+                    <ExpandableRow
+                      id={l.id}
+                      expandedId={expandedId}
+                      setExpandedId={(id) => openRow(id)}
+                      left={
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">
+                            {meta.propertyLabel}{" "}
+                            <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500 truncate">
+                            {meta.startDateFR ? `depuis le ${meta.startDateFR}` : ""}
+                            {meta.endDateFR ? ` → ${meta.endDateFR}` : ""}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {badge("emerald", "Actif")}
+                            {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
+                          </div>
                         </div>
-                      </div>
-                    }
-                    right={payBadge}
-                  >
-                    {mode === "edit" && editingId === l.id ? (
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">{renderLeaseForm()}</div>
-                    ) : (
-                      renderLeaseDetails(l)
-                    )}
-                  </ExpandableRow>
+                      }
+                      right={payBadge}
+                    >
+                      {mode === "edit" && editingId === l.id ? (
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">{renderLeaseForm()}</div>
+                      ) : (
+                        renderLeaseDetails(l)
+                      )}
+                    </ExpandableRow>
+                  </div>
                 );
               })}
             </div>

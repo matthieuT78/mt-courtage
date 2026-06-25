@@ -8,12 +8,16 @@ import {
   ArrowUpCircleIcon,
   BanknotesIcon,
   DocumentArrowUpIcon,
+  DocumentMagnifyingGlassIcon,
   PaperClipIcon,
   PencilSquareIcon,
   PlusIcon,
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { SectionDeclaration } from "./SectionDeclaration";
+
+type FinanceTab = "finance" | "declaration";
 import {
   BarElement,
   CategoryScale,
@@ -132,6 +136,7 @@ type Props = {
   payments?: RentPayment[];
   receipts?: Receipt[];
   propertyById?: Map<string, Property>;
+  properties?: Property[];
   onRefresh?: () => Promise<void> | void;
 };
 
@@ -457,7 +462,9 @@ function buildRecurringInstances(
   return instances;
 }
 
-export function SectionFinance({ userId, leases, payments, receipts, propertyById, onRefresh }: Props) {
+export function SectionFinance({ userId, leases, payments, receipts, propertyById, properties, onRefresh }: Props) {
+  const [tab, setTab] = useState<FinanceTab>("finance");
+
   // 🎨 lokt.fr
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
@@ -1629,25 +1636,61 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm sm:p-5 space-y-4">
+
+      {/* ── En-tête unifié ─────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">Finance</p>
+          <h2 className="mt-1 text-2xl font-semibold text-slate-950">Finance & Déclaration</h2>
+          <p className="mt-1.5 text-sm text-slate-500">
+            {tab === "finance"
+              ? "Loyers, charges, grand livre et bilan par période."
+              : "Aide à la déclaration et synthèse fiscale par bien."}
+          </p>
+        </div>
+        {tab === "finance" && (
+          <button
+            type="button"
+            onClick={() => setTxWizardOpen(true)}
+            className={cx("inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold", brandBg, brandText, brandHover)}
+          >
+            <PlusIcon className="h-4 w-4" />
+            Nouvelle écriture
+          </button>
+        )}
+      </div>
+
+      {/* ── Onglets ────────────────────────────────────────────────── */}
+      <div className="flex rounded-2xl bg-slate-100/80 p-1 gap-1">
+        {([
+          { key: "finance"     as const, label: "Livre de comptes",    icon: BanknotesIcon },
+          { key: "declaration" as const, label: "Déclaration fiscale", icon: DocumentMagnifyingGlassIcon },
+        ] as const).map(({ key, label, icon: Icon }) => {
+          const active = tab === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={cx(
+                "relative flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200",
+                active ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/60" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              <Icon className={cx("h-4 w-4 transition-colors shrink-0", active ? "text-indigo-500" : "text-slate-400")} aria-hidden="true" />
+              <span className="truncate">{label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Déclaration tab ───────────────────────────────────────── */}
+      {tab === "declaration" && <SectionDeclaration userId={userId} properties={properties} />}
+
+      {/* ── Finance tab ───────────────────────────────────────────── */}
+      {tab === "finance" && <>
       {err && <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
       {ok && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div>}
-
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <SectionTitle
-          kicker="Finance"
-          title="Livre de comptes"
-          desc="Saisissez, retrouvez et exportez toutes vos recettes et dépenses. Les loyers remontent automatiquement depuis les quittances ; les autres mouvements (charges, travaux, assurances) se saisissent ici."
-        />
-        <button
-          type="button"
-          onClick={() => setTxWizardOpen(true)}
-          className={cx("inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold", brandBg, brandText, brandHover)}
-        >
-          <PlusIcon className="h-4 w-4" />
-          Nouvelle écriture
-        </button>
-      </div>
 
       {/* Controls: period + property + sync */}
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
@@ -2608,6 +2651,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           </div>
         </div>
       ) : null}
+      </>}
     </div>
   );
 }

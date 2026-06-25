@@ -1,6 +1,6 @@
 // components/landlord/sections/SectionRevision.tsx
 // Bloc IRL intégré dans la fiche bail de SectionBaux.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ClipboardDocumentIcon, CheckIcon, ChevronDownIcon, ArrowTrendingUpIcon } from "@heroicons/react/24/outline";
 import { IRL_TABLE, LATEST_IRL, dateToIrlQuarter, irlByQuarter } from "../../../lib/irlData";
 import type { Lease } from "./SectionBaux";
@@ -12,6 +12,7 @@ type Props = {
   lease: Lease;
   property: PropertyLike | null;
   tenant: TenantLike | null;
+  openTrigger?: number;
 };
 
 function euro(n: number) {
@@ -25,7 +26,7 @@ function signedPct(n: number) {
   return (n >= 0 ? "+" : "") + n.toFixed(2) + " %";
 }
 
-export function IrlRevisionPanel({ lease, property, tenant }: Props) {
+export function IrlRevisionPanel({ lease, property, tenant, openTrigger }: Props) {
   const currentRent = Number(lease.rent_amount || 0);
 
   // Trimestre de référence : champ irl_reference du bail ou trimestre de start_date
@@ -37,6 +38,10 @@ export function IrlRevisionPanel({ lease, property, tenant }: Props) {
   }, [lease]);
 
   const [open, setOpen]           = useState(false);
+
+  useEffect(() => {
+    if (openTrigger != null) setOpen(true);
+  }, [openTrigger]);
   const [refQuarter, setRefQuarter] = useState<string>(defaultRef);
   const [newQuarter, setNewQuarter] = useState<string>(LATEST_IRL.quarter);
   const [showLetter, setShowLetter] = useState(false);

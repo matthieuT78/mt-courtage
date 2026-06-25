@@ -31,11 +31,9 @@ import { SectionFinance } from "./sections/SectionFinance";
 import { SectionPerformance } from "./sections/SectionPerformance";
 import { SectionEtatDesLieux } from "./sections/SectionEtatDesLieux";
 import { SectionInventaire } from "./sections/SectionInventaire";
-import { SectionDeclaration } from "./sections/SectionDeclaration";
 import { SectionOutils } from "./sections/SectionOutils";
 import { SectionParametres } from "./sections/SectionParametres";
 import { SectionDocumentsTemplates } from "./sections/SectionDocumentsTemplates";
-import { SectionModeles } from "./sections/SectionModeles";
 import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing } from "../../lib/permissions";
@@ -256,6 +254,8 @@ export function DashboardShell(props: any) {
   const [sidebarPad, setSidebarPad] = useState("0px");
   const [contactOpen, setContactOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const deepLinkKeyRef = useRef(0);
+  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" } | null>(null);
 
   useEffect(() => {
     const updatePad = () => {
@@ -412,6 +412,12 @@ export function DashboardShell(props: any) {
     setMobileMoreOpen(false);
   };
 
+  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" }) {
+    setActive(section);
+    setMobileMoreOpen(false);
+    setDeepLink(link ? { ...link, key: ++deepLinkKeyRef.current } : null);
+  }
+
   // ── Index de recherche ────────────────────────────────────────────────────
   const searchItems = useMemo<SearchItem[]>(() => {
     const items: SearchItem[] = [];
@@ -430,10 +436,8 @@ export function DashboardShell(props: any) {
       messagerie:     "message, email, courrier, contacter",
       alertes:        "notification, rappel, alerte, mail automatique",
       inventaire:     "meubles, mobilier, équipement, meublé",
-      declaration:    "impôts, fiscal, revenus, déclaration, 2044",
       parametres:     "compte, profil, réglages, configuration",
       documents:      "fichiers, PDF, pièces jointes, documents",
-      modeles:        "lettre, courrier, modèle, template",
     };
     for (const key of navOrder) {
       const nav = LANDLORD_NAV_ITEMS[key];
@@ -466,14 +470,14 @@ export function DashboardShell(props: any) {
       { label: "Vendre ou louer",            sublabel: "arbitrage, plus-value, comparateur, revendre, stratégie", section: "outils" },
       { label: "Calcul charges locatives",   sublabel: "répartition charges, eau, chauffage, TEOM, récupérer charges", section: "outils" },
       // Déclaration
-      { label: "Déclaration fiscale",        sublabel: "impôts, revenus fonciers, 2044, réduction impôt, déductible", section: "declaration" },
-      { label: "LMNP",                       sublabel: "meublé, amortissement, bilan comptable, BIC réel, non professionnel", section: "declaration" },
-      { label: "Micro-foncier",              sublabel: "abattement 30%, nu, revenus fonciers, régime micro", section: "declaration" },
+      { label: "Déclaration fiscale",        sublabel: "impôts, revenus fonciers, 2044, réduction impôt, déductible", section: "finance" },
+      { label: "LMNP",                       sublabel: "meublé, amortissement, bilan comptable, BIC réel, non professionnel", section: "finance" },
+      { label: "Micro-foncier",              sublabel: "abattement 30%, nu, revenus fonciers, régime micro", section: "finance" },
       // État des lieux
       { label: "État des lieux d'entrée",   sublabel: "entrer locataire, remise clés, photos, inventaire état, signature", section: "etat_des_lieux" },
       { label: "État des lieux de sortie",  sublabel: "sortir locataire, rendre clés, dégradations, retenue caution", section: "etat_des_lieux" },
       // Documents & Modèles
-      { label: "Modèles de lettres",         sublabel: "courrier, lettre révision, congé, relance, mise en demeure, LRAR", section: "modeles" },
+      { label: "Modèles de lettres",         sublabel: "courrier, lettre révision, congé, relance, mise en demeure, LRAR", section: "documents" },
       { label: "Documents locataire",        sublabel: "partager fichiers, PDF, pièces jointes, attestation assurance", section: "documents" },
       // Alertes
       { label: "Alertes & rappels",          sublabel: "notification, rappel échéance, automatique, mail, loyer manquant", section: "alertes" },
@@ -543,18 +547,6 @@ export function DashboardShell(props: any) {
         features: ["Rentabilité et cash-flow par logement", "Analyse des charges et du crédit", "Actions prioritaires pour améliorer la gestion", "Jusqu’à 10 logements actifs"],
       };
     }
-    if (active === "declaration" && !canUsePerformance) {
-      return {
-        eyebrow: "Fonctionnalité Essentiel",
-        title: "Aide à la déclaration réservée au plan Essentiel",
-        desc:
-          "Cette section prépare un dossier exploitable : import Finance, comparaison micro/réel, checklist de justificatifs et export pour votre comptable.",
-        requiredPlan: "Essentiel",
-        href: "/mon-compte/abonnement?source=declaration",
-        cta: "Upgrade vers Essentiel",
-        features: ["Import des recettes et charges depuis Finance", "Comparaison indicative micro / réel", "Checklist justificatifs", "Export de synthèse"],
-      };
-    }
     if (active === "outils" && !canUseTools) {
       return {
         eyebrow: "Fonctionnalité Essentiel",
@@ -587,6 +579,7 @@ export function DashboardShell(props: any) {
           <SectionDashboard
             userId={userId}
             onGo={setActive}
+            onNavigateDeep={navigateDeep}
             planLabel={planLabel}
             propertiesCount={properties.length}
             properties={properties}
@@ -647,6 +640,7 @@ export function DashboardShell(props: any) {
             receipts={receipts}
             onRefresh={refresh}
             canShareWithTenant={canShareDocuments}
+            deepLink={deepLink}
             onPrepareDeparture={(tenantId) => {
               setDepartureTenantId(tenantId);
               setActive("locataires");
@@ -683,6 +677,7 @@ export function DashboardShell(props: any) {
             payments={payments}
             receipts={receipts}
             propertyById={propertyById}
+            properties={properties}
             onRefresh={refresh}
           />
         );
@@ -702,11 +697,7 @@ export function DashboardShell(props: any) {
       case "documents":
         return <SectionDocumentsTemplates userId={userId} userEmail={userEmail} properties={properties} tenants={tenants} leases={leases} />;
 
-      case "modeles":
-        return <SectionModeles userId={userId} />;
 
-      case "declaration":
-        return <SectionDeclaration userId={userId} properties={properties} />;
 
       case "parametres":
         return <SectionParametres userId={userId} navOrder={navOrder} onNavOrderChange={setNavOrder} />;

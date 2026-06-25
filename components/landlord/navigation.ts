@@ -7,10 +7,8 @@ import {
   ChatBubbleLeftRightIcon,
   ClipboardDocumentCheckIcon,
   Cog6ToothIcon,
-  DocumentMagnifyingGlassIcon,
   DocumentTextIcon,
   HomeIcon,
-  PencilSquareIcon,
   ReceiptPercentIcon,
   Squares2X2Icon,
   UserGroupIcon,
@@ -31,8 +29,6 @@ export type LandlordSectionKey =
   | "outils"
   | "inventaire"
   | "documents"
-  | "modeles"
-  | "declaration"
   | "parametres";
 
 export type LandlordNavItem = {
@@ -48,7 +44,6 @@ export const DEFAULT_LANDLORD_NAV_ORDER: LandlordSectionKey[] = [
   "biens",
   "baux",
   "documents",
-  "modeles",
   "quittances",
   "finance",
   "performance",
@@ -57,7 +52,6 @@ export const DEFAULT_LANDLORD_NAV_ORDER: LandlordSectionKey[] = [
   "messagerie",
   "alertes",
   "inventaire",
-  "declaration",
   "parametres",
 ];
 
@@ -74,10 +68,8 @@ export const LANDLORD_NAV_ITEMS: Record<LandlordSectionKey, LandlordNavItem> = {
   messagerie: { key: "messagerie", label: "Messages", icon: ChatBubbleLeftRightIcon },
   alertes: { key: "alertes", label: "Alertes", icon: BellAlertIcon },
   inventaire: { key: "inventaire", label: "Inventaires", icon: ArchiveBoxIcon },
-  declaration: { key: "declaration", label: "Déclaration", icon: DocumentMagnifyingGlassIcon },
   parametres: { key: "parametres", label: "Paramètres", icon: Cog6ToothIcon },
-  documents: { key: "documents", label: "Documents", icon: DocumentTextIcon },
-  modeles: { key: "modeles", label: "Modèles", icon: PencilSquareIcon },
+  documents: { key: "documents", label: "Documents & Modèles", icon: DocumentTextIcon },
 };
 
 export function normalizeLandlordNavOrder(input: unknown): LandlordSectionKey[] {
