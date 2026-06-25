@@ -1,11 +1,15 @@
 // components/landlord/sections/SectionInventaire.tsx
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
 import {
+  ArchiveBoxArrowDownIcon,
   ArrowDownTrayIcon,
   ArrowPathIcon,
   CheckCircleIcon,
+  ClipboardDocumentListIcon,
   ExclamationTriangleIcon,
   HomeModernIcon,
+  ListBulletIcon,
+  MagnifyingGlassIcon,
   PlusIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
@@ -584,19 +588,32 @@ export function SectionInventaire({ userId, properties }: Props) {
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
-      <section className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
-        <div className="flex items-start gap-3">
-          <CheckCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-800" />
-          <div>
-            <p className="text-sm font-semibold text-emerald-950">Workflow métier</p>
-            <p className="mt-1 text-sm text-emerald-900">
-              Pour un meublé, l’inventaire doit vivre indépendamment de l’état des lieux : on prépare la dotation minimale, on contrôle les quantités
-              entre deux locataires, puis on crée un état daté d’entrée/sortie si l’on veut conserver une copie de preuve. L’inventaire reste toujours
-              modifiable ensuite.
-            </p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="relative overflow-hidden rounded-2xl bg-indigo-50 p-5">
+          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-indigo-100">1</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100">
+            <ListBulletIcon className="h-5 w-5 text-indigo-600" />
           </div>
+          <p className="mt-4 text-sm font-bold text-indigo-950">Créer la dotation</p>
+          <p className="mt-1 text-xs leading-5 text-indigo-900/60">Charger les obligations LMNP minimales puis ajouter les équipements réellement fournis.</p>
         </div>
-      </section>
+        <div className="relative overflow-hidden rounded-2xl bg-violet-50 p-5">
+          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-violet-100">2</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
+            <MagnifyingGlassIcon className="h-5 w-5 text-violet-600" />
+          </div>
+          <p className="mt-4 text-sm font-bold text-violet-950">Contrôler les quantités</p>
+          <p className="mt-1 text-xs leading-5 text-violet-900/60">Attendu vs réel, état de chaque élément, coût unitaire de remplacement.</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl bg-emerald-50 p-5">
+          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-emerald-100">3</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+            <ArchiveBoxArrowDownIcon className="h-5 w-5 text-emerald-600" />
+          </div>
+          <p className="mt-4 text-sm font-bold text-emerald-950">Archiver un état daté</p>
+          <p className="mt-1 text-xs leading-5 text-emerald-900/60">Photo à l’instant T avant entrée ou sortie — l’inventaire reste modifiable après.</p>
+        </div>
+      </div>
 
       <section className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
         <div className="grid gap-3 lg:grid-cols-[1fr,auto] lg:items-end">
@@ -640,21 +657,46 @@ export function SectionInventaire({ userId, properties }: Props) {
       </section>
 
       <div className="grid gap-3 md:grid-cols-4">
-        <Stat label="Éléments" value={String(summary.total)} sub="Dans le bien sélectionné" />
-        <Stat label="Conformité LMNP" value={`${summary.compliance}%`} sub={`${summary.required} élément(s) obligatoires`} />
-        <Stat label="Manquants" value={String(summary.missing)} sub="Quantité insuffisante" />
-        <Stat label="Budget" value={formatEuro(summary.replacementBudget)} sub="Remplacement estimé" />
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Éléments</p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">{summary.total}</p>
+          <p className="mt-1 text-xs text-slate-500">dans le bien sélectionné</p>
+        </div>
+        <div className={cx("rounded-2xl border p-4", summary.compliance === 100 ? "border-emerald-200 bg-emerald-50" : summary.compliance >= 80 ? "border-amber-200 bg-amber-50" : "border-red-200 bg-red-50")}>
+          <p className={cx("text-[0.7rem] uppercase tracking-[0.18em]", summary.compliance === 100 ? "text-emerald-700" : summary.compliance >= 80 ? "text-amber-700" : "text-red-700")}>Conformité LMNP</p>
+          <p className={cx("mt-1 text-2xl font-bold", summary.compliance === 100 ? "text-emerald-900" : summary.compliance >= 80 ? "text-amber-900" : "text-red-900")}>{summary.compliance}%</p>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-white/60">
+            <div
+              className={cx("h-1.5 rounded-full transition-all duration-500", summary.compliance === 100 ? "bg-emerald-500" : summary.compliance >= 80 ? "bg-amber-500" : "bg-red-500")}
+              style={{ width: `${summary.compliance}%` }}
+            />
+          </div>
+          <p className={cx("mt-1.5 text-xs", summary.compliance === 100 ? "text-emerald-700" : summary.compliance >= 80 ? "text-amber-700" : "text-red-700")}>{summary.required} obligatoire{summary.required > 1 ? "s" : ""}</p>
+        </div>
+        <div className={cx("rounded-2xl border p-4", summary.missing > 0 ? "border-red-200 bg-red-50" : "border-slate-200 bg-white")}>
+          <p className={cx("text-[0.7rem] uppercase tracking-[0.18em]", summary.missing > 0 ? "text-red-700" : "text-slate-500")}>Manquants</p>
+          <p className={cx("mt-1 text-2xl font-bold", summary.missing > 0 ? "text-red-900" : "text-slate-900")}>{summary.missing}</p>
+          <p className={cx("mt-1 text-xs", summary.missing > 0 ? "text-red-600" : "text-slate-500")}>quantité insuffisante</p>
+        </div>
+        <div className={cx("rounded-2xl border p-4", summary.replacementBudget > 0 ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-white")}>
+          <p className={cx("text-[0.7rem] uppercase tracking-[0.18em]", summary.replacementBudget > 0 ? "text-amber-700" : "text-slate-500")}>Budget</p>
+          <p className={cx("mt-1 text-2xl font-bold", summary.replacementBudget > 0 ? "text-amber-900" : "text-slate-900")}>{formatEuro(summary.replacementBudget)}</p>
+          <p className={cx("mt-1 text-xs", summary.replacementBudget > 0 ? "text-amber-700" : "text-slate-500")}>remplacement estimé</p>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
         <section className="rounded-3xl border border-slate-200 bg-white p-5">
-          <p className="text-sm font-semibold text-slate-900">Plan d’action</p>
-          <p className="mt-1 text-xs text-slate-600">Ce qu’un propriétaire doit traiter avant une entrée, une relocation ou un contrôle.</p>
+          <div className="flex items-center gap-2">
+            <ClipboardDocumentListIcon className="h-5 w-5 text-indigo-500" />
+            <p className="text-sm font-semibold text-slate-900">Plan d’action</p>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">Ce qu’il reste à traiter avant une entrée, une relocation ou un contrôle.</p>
           <div className="mt-4 space-y-2">
             {actionPlan.map((action, index) => (
-              <div key={index} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Action {index + 1}</p>
-                <p className="mt-1 text-sm text-slate-800">{action}</p>
+              <div key={index} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600 mt-0.5">{index + 1}</span>
+                <p className="text-sm leading-5 text-slate-800">{action}</p>
               </div>
             ))}
           </div>
@@ -846,51 +888,63 @@ export function SectionInventaire({ userId, properties }: Props) {
                           </div>
 
                           <div className="grid gap-2 sm:grid-cols-5 xl:w-[700px]">
-                            <input
-                              inputMode="numeric"
-                              value={item.required_quantity}
-                              disabled={savingId === item.id}
-                              onChange={(e) => updateItem(item.id, { required_quantity: Math.max(0, Math.round(num(e.target.value))) })}
-                              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                              title="Quantité attendue"
-                            />
-                            <input
-                              inputMode="numeric"
-                              value={item.actual_quantity}
-                              disabled={savingId === item.id}
-                              onChange={(e) => updateItem(item.id, { actual_quantity: Math.max(0, Math.round(num(e.target.value))) })}
-                              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                              title="Quantité réelle"
-                            />
-                            <select
-                              value={item.condition}
-                              disabled={savingId === item.id}
-                              onChange={(e) => updateItem(item.id, { condition: e.target.value as InventoryCondition })}
-                              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                            >
-                              {conditionOptions.map((condition) => (
-                                <option key={condition.value} value={condition.value}>
-                                  {condition.label}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              inputMode="decimal"
-                              value={item.replacement_cost ?? ""}
-                              disabled={savingId === item.id}
-                              onChange={(e) => updateItem(item.id, { replacement_cost: e.target.value ? num(e.target.value) : null })}
-                              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                              placeholder="Coût"
-                              title="Coût de remplacement unitaire"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => deleteItem(item.id)}
-                              className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
-                              title="Supprimer"
-                            >
-                              <TrashIcon className="h-4 w-4" />
-                            </button>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Attendu</span>
+                              <input
+                                inputMode="numeric"
+                                value={item.required_quantity}
+                                disabled={savingId === item.id}
+                                onChange={(e) => updateItem(item.id, { required_quantity: Math.max(0, Math.round(num(e.target.value))) })}
+                                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Réel</span>
+                              <input
+                                inputMode="numeric"
+                                value={item.actual_quantity}
+                                disabled={savingId === item.id}
+                                onChange={(e) => updateItem(item.id, { actual_quantity: Math.max(0, Math.round(num(e.target.value))) })}
+                                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">État</span>
+                              <select
+                                value={item.condition}
+                                disabled={savingId === item.id}
+                                onChange={(e) => updateItem(item.id, { condition: e.target.value as InventoryCondition })}
+                                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                              >
+                                {conditionOptions.map((condition) => (
+                                  <option key={condition.value} value={condition.value}>
+                                    {condition.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Coût unit.</span>
+                              <input
+                                inputMode="decimal"
+                                value={item.replacement_cost ?? ""}
+                                disabled={savingId === item.id}
+                                onChange={(e) => updateItem(item.id, { replacement_cost: e.target.value ? num(e.target.value) : null })}
+                                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                                placeholder="0 €"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400 invisible">—</span>
+                              <button
+                                type="button"
+                                onClick={() => deleteItem(item.id)}
+                                className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                                title="Supprimer"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -906,10 +960,12 @@ export function SectionInventaire({ userId, properties }: Props) {
       <section className="rounded-3xl border border-slate-200 bg-white p-5">
         <div className="grid gap-4 xl:grid-cols-[1fr,0.9fr]">
           <div>
-            <p className="text-sm font-semibold text-slate-900">Créer un état daté de l’inventaire</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Cette action crée une copie d’archive à la date choisie. Elle ne bloque rien : l’inventaire reste modifiable après coup. À utiliser à
-              l’entrée, à la sortie ou lors d’un contrôle pour conserver les quantités, les manquants et le budget de remplacement.
+            <div className="flex items-center gap-2">
+              <ArchiveBoxArrowDownIcon className="h-5 w-5 text-emerald-500" />
+              <p className="text-sm font-semibold text-slate-900">Créer un état daté de l’inventaire</p>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Copie d’archive à la date choisie — n’empêche pas de modifier l’inventaire ensuite. À utiliser à l’entrée, à la sortie ou lors d’un contrôle intermédiaire.
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               <select
