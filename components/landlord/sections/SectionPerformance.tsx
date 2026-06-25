@@ -164,118 +164,219 @@ function labelForProperty(property: Property | undefined, fallback = "Bien") {
 type FriendlyAction = {
   title: string;
   detail: string;
+  tone: "red" | "amber" | "emerald" | "slate";
 };
 
 function actionsFor(row: PropertyRow): FriendlyAction[] {
   const actions: FriendlyAction[] = [];
 
+  // ── 1. PAS DE BAIL ───────────────────────────────────────────────────────
   if (row.activeLeaseCount === 0) {
     if (row.recurring > 0) {
       actions.push({
-        title: "Remettre ce bien en location",
-        detail: `Il ne produit aucun loyer aujourd’hui, mais ${money(row.recurring)} de charges continuent chaque mois.`,
+        tone: "red",
+        title: "Aucun locataire — charges à découvert",
+        detail: `${money(row.recurring)}/mois sortent sans revenu en face. Chaque mois vide coûte ${money(row.recurring)}. Rattachez le bail ou remettez le bien en location.`,
       });
     } else {
       actions.push({
-        title: "Créer ou rattacher le bail",
-        detail: "Sans bail actif, ce bien reste à 0 € de revenu et sort du suivi des quittances.",
+        tone: "slate",
+        title: "Créer ou rattacher le bail actif",
+        detail: "Sans bail, ce bien est à 0 € dans tous vos indicateurs et sort du suivi des quittances.",
       });
     }
     actions.push({
-      title: "Archiver si le bien n’est plus suivi",
-      detail: "Cela évite de dégrader les indicateurs du portefeuille avec un logement sorti de votre gestion.",
+      tone: "slate",
+      title: "Archiver si le bien est sorti du parc",
+      detail: "Un bien sans bail sans suivi alourdit vos tableaux. Archivez-le pour ne tracker que l’actif réel.",
     });
-    if (row.investment <= 0) {
-      actions.push({
-        title: "Compléter les chiffres si vous le gardez",
-        detail: "Prix d’achat, frais et travaux rendront la rentabilité exploitable si le bien reste dans votre stratégie.",
-      });
-    }
     return actions.slice(0, 3);
   }
 
+  // ── 2. URGENCES FINANCIÈRES ───────────────────────────────────────────────
   const confirmedIncome = Math.max(row.received, row.ledgerIncome);
-  if (row.expected > 0 && confirmedIncome < row.expected) {
+  if (row.expected > 0 && confirmedIncome < row.expected * 0.8) {
     actions.push({
-      title: "Pointer le paiement du mois",
-      detail: `${money(row.expected - confirmedIncome)} restent à confirmer. Une fois le virement visible, validez-le dans Quittances.`,
+      tone: "amber",
+      title: "Loyer non confirmé en banque",
+      detail: `${money(row.expected - confirmedIncome)} restent à pointer. Dès le virement visible, validez-le dans Quittances pour que Finance le prenne en compte.`,
     });
   }
 
-  if (row.cashflow < -80) {
-    const mainCost =
-      row.loanMonthly > row.expected * 0.45
-        ? `le crédit pèse ${money(row.loanMonthly)} par mois`
-        : row.recurring > row.expected * 0.55
-        ? `les charges récurrentes atteignent ${money(row.recurring)} par mois`
-        : `les dépenses du mois atteignent ${money(row.expense)}`;
+  if (row.cashflow < -300) {
+    const pctSorties = row.expected > 0 ? Math.round(((row.recurring + row.expense) / row.expected) * 100) : 0;
+    const culprit =
+      row.loanMonthly > row.expected * 0.5
+        ? `le crédit (${money(row.loanMonthly)}/mois = ${Math.round((row.loanMonthly / Math.max(row.expected, 1)) * 100)} % du loyer)`
+        : row.expense > row.recurring * 0.6 && row.expense > 200
+        ? `les dépenses ponctuelles de la période (${money(row.expense)})`
+        : `les charges récurrentes (${money(row.recurring)}/mois)`;
     actions.push({
-      title: "Comprendre pourquoi le mois sort négatif",
-      detail: `${money(row.expected)} de loyers attendus face à ${money(row.recurring + row.expense)} de sorties. Premier point à regarder : ${mainCost}.`,
+      tone: "red",
+      title: `−${money(Math.abs(row.cashflow))}/mois — trop négatif pour durer`,
+      detail: `Charges à ${pctSorties} % du loyer. Levier immédiat : ${culprit}. Évaluer hausse de loyer, renégociation de crédit, ou arbitrage de vente.`,
+    });
+  } else if (row.cashflow < -80) {
+    const culprit =
+      row.loanMonthly > row.expected * 0.45
+        ? `le crédit (${money(row.loanMonthly)}/mois)`
+        : row.recurring > row.expected * 0.55
+        ? `les charges récurrentes (${money(row.recurring)}/mois)`
+        : `les dépenses ponctuelles (${money(row.expense)})`;
+    actions.push({
+      tone: "amber",
+      title: "Cashflow négatif — identifier le premier levier",
+      detail: `${money(row.expected)} de loyers, ${money(row.recurring + row.expense)} de sorties. Poste le plus lourd : ${culprit}.`,
+    });
+  }
+
+  // ── 3. OPTIMISATIONS (visibles même si cashflow positif) ────────────────
+  if ((row.loanRate ?? 0) >= 3.5 && row.loanMonthly > 0 && (row.loanRemainingMonths ?? 0) > 24) {
+    const gain = Math.round(row.loanMonthly * 0.08);
+    actions.push({
+      tone: row.cashflow < 0 ? "amber" : "slate",
+      title: `Crédit à ${row.loanRate} % — renégociation à évaluer`,
+      detail: `Une baisse de 0,5 point peut libérer ~${money(gain)}/mois (${money(gain * 12)}/an) sur ${row.loanRemainingMonths} mois restants. À comparer au coût du rachat de crédit.`,
+    });
+  }
+
+  if ((row.loanRemainingMonths ?? 999) <= 36 && (row.loanRemainingMonths ?? 0) > 0 && row.loanMonthly > 0) {
+    actions.push({
+      tone: "emerald",
+      title: `Crédit terminé dans ${row.loanRemainingMonths} mois — ${money(row.loanMonthly)} libérés`,
+      detail: `Soit ${money(row.loanMonthly * 12)}/an en plus dans votre trésorerie. Anticipez dès maintenant : épargne, remboursement d’un autre prêt, ou capacité pour un nouvel achat.`,
+    });
+  }
+
+  if (row.vacancyDays12m >= 30) {
+    const cost = Math.round((row.expected / 30) * row.vacancyDays12m);
+    const vsRecurring = row.recurring > 0 ? ` = ${Math.round(cost / row.recurring)} mois de charges` : "";
+    actions.push({
+      tone: row.vacancyDays12m >= 60 ? "red" : "amber",
+      title: `Vacance : ${row.vacancyDays12m} jours → ${money(cost)} perdus`,
+      detail: `${money(cost)} de loyers non perçus sur 12 mois${vsRecurring}. Axes : loyer de marché, délai de remise en état, qualité de sélection des candidats.`,
+    });
+  }
+
+  if (row.turnover12m >= 2) {
+    actions.push({
+      tone: "amber",
+      title: `${row.turnover12m} changements de locataire en 12 mois`,
+      detail: "Chaque rotation coûte en vacance et remise en état. À analyser : loyer inadapté, logement trop petit, mauvaise sélection, ou marché local très concurrentiel.",
+    });
+  }
+
+  if (row.expected > 0 && row.cashflow >= -300) {
+    const ratio = row.expected > 0 ? (row.recurring + row.expense) / row.expected : 0;
+    if (ratio > 0.72 && row.recurring > 0) {
+      const heaviest = row.loanMonthly > row.recurring * 0.5 ? "le crédit" : "les charges fixes";
+      actions.push({
+        tone: "amber",
+        title: `${Math.round(ratio * 100)} % du loyer part en charges`,
+        detail: `Marge serrée. Levier prioritaire : ${heaviest}. Cible à viser : passer sous 65 % pour dégager un cashflow positif durable. Tester aussi la révision IRL annuelle du loyer.`,
+      });
+    }
+  }
+
+  if (row.taxRegime === "lmnp_micro" && row.recurring > 0 && row.expected > 0) {
+    const microAbat = row.expected * 0.5;
+    if (row.recurring > microAbat) {
+      actions.push({
+        tone: "amber",
+        title: "LMNP micro-BIC : le réel serait plus avantageux",
+        detail: `Abattement micro : ${money(microAbat)}/mois. Vos charges réelles estimées : ${money(row.recurring)}/mois. Le régime réel pourrait réduire votre assiette imposable de ${money(row.recurring - microAbat)}/mois.`,
+      });
+    } else {
+      actions.push({
+        tone: "slate",
+        title: "LMNP micro-BIC : simuler le passage au réel",
+        detail: `Abattement forfaitaire de 50 %. Si vos travaux ou votre crédit augmentent, le réel devient vite plus favorable. À simuler chaque année avec un comptable.`,
+      });
+    }
+  }
+
+  if (row.taxRegime === "nu_micro" && row.recurring > row.expected * 0.3 && row.expected > 0) {
+    actions.push({
+      tone: "slate",
+      title: "Micro-foncier : vérifier l’intérêt du réel",
+      detail: `Abattement fixe à 30 %. Avec un crédit et des charges réelles supérieures à ${money(row.expected * 0.3)}/mois, le régime réel peut être plus favorable. À simuler si vous avez un emprunt.`,
+    });
+  }
+
+  // ── 4. DONNÉES MANQUANTES (en dernier, seulement si pas encore 3 conseils) ──
+  if (row.recurring <= 0 && row.expected > 0) {
+    actions.push({
+      tone: "slate",
+      title: "Charges récurrentes non renseignées",
+      detail: "Sans crédit, copro et assurance, le rendement est surestimé. Ajoutez-les via Finance > Nouvelle écriture > Charge récurrente.",
+    });
+  }
+
+  if (row.investment <= 0) {
+    actions.push({
+      tone: "slate",
+      title: "Coût d’acquisition à compléter",
+      detail: "Prix d’achat + frais notaire + travaux = base du rendement net. Sans ça, impossible de comparer ce bien à d’autres placements.",
     });
   }
 
   if (row.taxRegime == null) {
     actions.push({
-      title: "Renseigner le régime fiscal",
-      detail: "La lecture sera plus juste : on évite de raisonner uniquement sur un cashflow brut.",
-    });
-  }
-  if (row.taxRegime === "lmnp_micro" && row.recurring + row.expense > row.expected * 0.35 && row.expected > 0) {
-    actions.push({
-      title: "Comparer micro-BIC et réel",
-      detail: "Les charges semblent assez élevées pour mériter une simulation LMNP au réel.",
-    });
-  }
-  if (row.vacancyDays12m >= 30) {
-    actions.push({
-      title: "Réduire la vacance",
-      detail: `${row.vacancyDays12m} jours estimés sur 12 mois. À vérifier : prix, annonce, délai de relocation ou état du logement.`,
-    });
-  }
-  if (row.turnover12m >= 2) {
-    actions.push({
-      title: "Stabiliser l’occupation",
-      detail: `${row.turnover12m} entrées sur 12 mois. Regardez le loyer, la qualité du logement et le profil retenu.`,
-    });
-  }
-  if (row.recurring <= 0) {
-    actions.push({
-      title: "Compléter les charges fixes",
-      detail: "Crédit, copropriété, assurance et fiscalité évitent une rentabilité trop optimiste.",
-    });
-  }
-  if (row.investment <= 0) {
-    actions.push({
-      title: "Ajouter le coût du projet",
-      detail: "Prix d’achat, frais et travaux permettent d’obtenir une rentabilité nette exploitable.",
+      tone: "slate",
+      title: "Régime fiscal non renseigné",
+      detail: "LMNP réel, micro-foncier, Pinel… chaque régime change les charges déductibles et la lecture de la rentabilité.",
     });
   }
 
   if (row.loanRate == null && row.loanMonthly > 0) {
     actions.push({
-      title: "Ajouter le taux du crédit",
-      detail: "C’est nécessaire pour savoir si une renégociation peut réellement améliorer le résultat.",
+      tone: "slate",
+      title: "Taux du crédit à renseigner",
+      detail: "Sans taux, impossible de savoir si une renégociation peut changer l’équilibre de ce bien. À ajouter dans Finance > Paramètres du bien.",
     });
   }
-  if (row.loanRate != null && row.loanRate >= 3.5 && row.loanMonthly > 0 && row.cashflow < 0) {
+
+  // ── 5. BIENS PERFORMANTS — que faire ensuite ? ───────────────────────────
+  if (row.cashflow >= 250) {
     actions.push({
-      title: "Tester une renégociation",
-      detail: `${money(row.loanMonthly)} de mensualité pèsent sur le résultat. Une baisse de taux peut changer l’équilibre.`,
+      tone: "emerald",
+      title: `+${money(row.cashflow)}/mois d’excédent — à faire fructifier`,
+      detail: `${money(row.cashflow * 12)}/an de trésorerie libre. Options : remboursement anticipé du crédit, épargne de précaution, ou apport pour un prochain investissement avec effet de levier.`,
     });
-  }
-  if (row.cashflow >= -80 && row.cashflow < 150) {
+  } else if (row.cashflow >= 80) {
     actions.push({
-      title: "Bien proche de l’équilibre",
-      detail: "Surveillez les charges de copropriété, les travaux à venir et l’indexation du loyer.",
+      tone: "emerald",
+      title: "Cashflow positif — maintenir le cap",
+      detail: "L’essentiel est là. Pensez à la révision IRL annuelle du loyer et surveillez l’évolution des charges de copropriété pour tenir ce résultat dans la durée.",
     });
-  }
-  if (row.cashflow >= 150) {
+  } else if (row.cashflow >= -80) {
     actions.push({
-      title: "Bien solide",
-      detail: "Gardez les justificatifs à jour et vérifiez que les écritures Finance restent complètes.",
+      tone: "slate",
+      title: "À l’équilibre — chercher le 1er levier",
+      detail: `Cashflow quasi nul. Une hausse de loyer de 3 % (IRL) ou ${money(Math.max(row.recurring * 0.05, 30))}/mois de charges en moins suffisent à basculer en positif.`,
     });
   }
+
+  if ((row.netYield ?? 0) >= 5) {
+    actions.push({
+      tone: "emerald",
+      title: `Rendement net ${pct(row.netYield!)} — au-dessus de la moyenne`,
+      detail: "Performance solide. Documentez la fiscalité et les charges pour reproduire ce modèle sur un prochain investissement, ou le valoriser en cas de revente.",
+    });
+  } else if ((row.netYield ?? 0) >= 3) {
+    actions.push({
+      tone: "slate",
+      title: `Rendement net ${pct(row.netYield!)} — dans la moyenne`,
+      detail: `Correct, mais améliorable. Révision IRL du loyer, renégociation d’assurance, ou déduction fiscale plus poussée peuvent gagner 0,5 à 1 point.`,
+    });
+  } else if (row.netYield != null && row.netYield < 3 && row.investment > 0) {
+    actions.push({
+      tone: "amber",
+      title: `Rendement net ${pct(row.netYield)} — en dessous du marché`,
+      detail: "En dessous de 3 %, le bien peine à justifier son risque. Trois leviers : hausse de loyer, baisse de charges, ou étude de revente si une plus-value est constituée.",
+    });
+  }
+
   return actions.slice(0, 3);
 }
 
@@ -995,12 +1096,21 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
                   </span>
                 </div>
                 <div className="mt-2 space-y-2">
-                  {actionsFor(row).map((action) => (
-                    <div key={action.title} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2">
-                      <p className="text-sm font-semibold text-slate-950">{action.title}</p>
-                      <p className="mt-1 text-sm leading-6 text-slate-600">{action.detail}</p>
-                    </div>
-                  ))}
+                  {actionsFor(row).map((action) => {
+                    const bg = action.tone === "red" ? "border-red-100 bg-red-50" : action.tone === "amber" ? "border-amber-100 bg-amber-50" : action.tone === "emerald" ? "border-emerald-100 bg-emerald-50" : "border-slate-100 bg-slate-50";
+                    const dot = action.tone === "red" ? "bg-red-400" : action.tone === "amber" ? "bg-amber-400" : action.tone === "emerald" ? "bg-emerald-400" : "bg-slate-300";
+                    return (
+                      <div key={action.title} className={`rounded-2xl border px-3 py-2.5 ${bg}`}>
+                        <div className="flex items-start gap-2">
+                          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+                          <div>
+                            <p className="text-sm font-semibold text-slate-950">{action.title}</p>
+                            <p className="mt-0.5 text-sm leading-6 text-slate-600">{action.detail}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
