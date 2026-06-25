@@ -113,6 +113,8 @@ type PropertyFinance = {
   maintenance_monthly?: number | null;
   rental_tax_monthly?: number | null;
 
+  recurring_since?: string | null;
+
   created_at?: string;
   updated_at?: string;
 };
@@ -1321,12 +1323,25 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
   const accountingChartRows = useMemo(() => {
     const { start, end } = selectedPeriod;
-    const monthlyRecurring = sum(Array.from(monthlyRecurringByProperty.values()).map((r) => r.total));
+
+    // Calcule le récurrent pour un mois donné en tenant compte de recurring_since par bien
+    const recurringForMonth = (monthStart: Date) => {
+      let total = 0;
+      for (const propertyId of analysisPropertyIds) {
+        const fin = pf.get(propertyId);
+        const since = fin?.recurring_since ? new Date(fin.recurring_since) : null;
+        if (since && monthStart < new Date(since.getFullYear(), since.getMonth(), 1)) continue;
+        total += monthlyRecurringByProperty.get(propertyId)?.total ?? 0;
+      }
+      return total;
+    };
+
     const months: Array<{ key: string; label: string; income: number; expense: number; recurring: number; net: number }> = [];
 
     for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
       const key = monthKey(cursor);
-      months.push({ key, label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()), income: 0, expense: 0, recurring: monthlyRecurring, net: -monthlyRecurring });
+      const recurring = recurringForMonth(cursor);
+      months.push({ key, label: fmtMonthFR(key).replace(/^\w/, (c) => c.toUpperCase()), income: 0, expense: 0, recurring, net: -recurring });
     }
 
     const byKey = new Map(months.map((row) => [row.key, row]));
@@ -2486,6 +2501,7 @@ function PropertyFinanceForm({
     bank_fees_monthly: existing?.bank_fees_monthly ?? null,
     maintenance_monthly: existing?.maintenance_monthly ?? null,
     rental_tax_monthly: existing?.rental_tax_monthly ?? null,
+    recurring_since: existing?.recurring_since ?? null,
   });
 
   useEffect(() => {
@@ -2512,6 +2528,7 @@ function PropertyFinanceForm({
       bank_fees_monthly: existing?.bank_fees_monthly ?? null,
       maintenance_monthly: existing?.maintenance_monthly ?? null,
       rental_tax_monthly: existing?.rental_tax_monthly ?? null,
+      recurring_since: existing?.recurring_since ?? null,
     }));
   }, [existing]);
 
@@ -2542,6 +2559,7 @@ function PropertyFinanceForm({
         bank_fees_monthly: s.bank_fees_monthly,
         maintenance_monthly: s.maintenance_monthly,
         rental_tax_monthly: s.rental_tax_monthly,
+        recurring_since: s.recurring_since || null,
       });
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2500);
@@ -2655,6 +2673,30 @@ function PropertyFinanceForm({
           onChange={(v) => setS((p) => ({ ...p, rental_tax_monthly: v }))}
           hint="Pour l'impôt sur les revenus locatifs et prélèvements sociaux. Ne pas y mettre la taxe foncière, qui a son champ annuel dédié."
         />
+      </div>
+
+      {/* Date de début des charges récurrentes */}
+      <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold text-amber-900">Ces charges s'appliquent depuis…</p>
+            <p className="mt-0.5 text-[0.72rem] leading-4 text-amber-700">
+              Si vous gérez un bail déjà en cours, indiquez la date de début réelle. Le graphe Finance reconstruira
+              l'historique sans projeter les charges sur des mois antérieurs.
+            </p>
+          </div>
+          <input
+            type="date"
+            value={s.recurring_since ?? ""}
+            onChange={(e) => setS((p) => ({ ...p, recurring_since: e.target.value || null }))}
+            className="shrink-0 rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+          />
+        </div>
+        {!s.recurring_since && (
+          <p className="text-[0.68rem] text-amber-600">
+            Non renseigné — les charges sont projetées sur toute la période affichée.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
