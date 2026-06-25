@@ -582,7 +582,7 @@ export function SectionQuittances({
     const rowRequiresActionNow = (row: any) => {
       if (row.closedByDeposit) return false;
       if (row.sent) return false;
-      if ((row.lease as any).receipts_disabled && row.payStatus === "paid") return false;
+      if (row.lease.receipts_disabled && (row.payStatus === "paid" || (row.payStatus === "pending" && !row.isLate))) return false;
       if (canSnoozeReceiptTask(row) && snoozedReceiptKeys.has(String(row.key))) return false;
       if (row.payStatus === "paid") return true;
       if (row.payStatus === "partial") return true;
@@ -1588,7 +1588,7 @@ export function SectionQuittances({
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                         Paiement confirmé · génère la quittance PDF.
                       </div>
-                    ) : pdfReady && !row.sent ? (
+                    ) : pdfReady && !row.sent && !row.lease.receipts_disabled ? (
                       <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
                         {canUseReceiptAutomation ? "PDF pret · envoie la quittance au locataire." : <>PDF pret · remets-le au locataire puis clique sur &laquo;&nbsp;Quittance remise&nbsp;&raquo;.</>}
                       </div>
