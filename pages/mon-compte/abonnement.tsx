@@ -219,7 +219,7 @@ export default function MonCompteAbonnementPage() {
   return (
     <AccountLayout userEmail={user?.email ?? null} active="abonnement" onLogout={handleLogout}>
       {!isLoggedIn ? (
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm px-6 py-6 sm:px-8">
           <h2 className="text-lg font-semibold text-slate-900">Accès requis</h2>
           <p className="text-sm text-slate-600 mt-1">Merci de te connecter pour consulter ton abonnement.</p>
           <Link className="mt-3 inline-flex rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white" href="/mon-compte">
@@ -228,7 +228,7 @@ export default function MonCompteAbonnementPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm px-6 py-6 sm:px-8">
             <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Abonnement</p>
             <h2 className="text-lg font-semibold text-slate-900">Votre offre</h2>
             <p className="mt-1 text-sm text-slate-600">
@@ -298,7 +298,7 @@ export default function MonCompteAbonnementPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm px-6 py-5 sm:px-8">
             <p className="text-sm font-semibold text-slate-900">Choisir une facturation</p>
             <div className="mt-3 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
               {(["monthly", "yearly"] as Billing[]).map((value) => (
@@ -317,7 +317,7 @@ export default function MonCompteAbonnementPage() {
             <p className="mt-2 text-xs text-slate-500">Le paiement, les factures et l’annulation sont gérés par Stripe.</p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm px-6 py-6 sm:px-8">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-900">Mes factures</p>
