@@ -2766,89 +2766,112 @@ function PropertyFinanceForm({
   const fixedChargesFrequency = s.fixed_charges_frequency || "monthly";
   const fixedChargesDisplay = displayAmountFromMonthly(s.fixed_charges_monthly, fixedChargesFrequency);
 
+  const totalInvested =
+    (s.purchase_price || 0) + (s.notary_fees || 0) + (s.agency_fees || 0) + (s.works || 0);
+  const isLmnpReal = s.tax_regime === "lmnp_real";
+
   return (
-    <form onSubmit={save} className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
+    <form onSubmit={save} className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
 
-      {/* Bandeau : charges → grand livre */}
-      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3">
-        <p className="text-xs font-semibold text-indigo-900">Charges récurrentes → Grand livre</p>
-        <p className="mt-1 text-[0.72rem] leading-5 text-indigo-800">
-          Crédit, assurance, copropriété, taxe foncière… se saisissent désormais via{" "}
-          <strong>Nouvelle écriture &gt; Charge récurrente</strong>. Vous pouvez y joindre vos documents
-          (appel de fonds, avis d’assurance) et lokt.fr reconstruit l’historique automatiquement.
+      {/* Bandeau */}
+      <div className="flex items-start gap-3 border-b border-slate-100 bg-indigo-50 px-5 py-3.5">
+        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700">
+          <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm.75 4.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM7.25 7a.75.75 0 011.5 0v4a.75.75 0 01-1.5 0V7z"/></svg>
+        </div>
+        <p className="text-[0.72rem] leading-5 text-indigo-800">
+          Crédit, assurance, copropriété… se saisissent via{" "}
+          <strong className="font-semibold text-indigo-900">Nouvelle écriture &gt; Charge récurrente</strong>{" "}
+          pour apparaître dans le grand livre et dans le graphe.
         </p>
       </div>
 
-      {/* Investissement */}
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Coût d’acquisition</p>
-        <div className="grid gap-3 md:grid-cols-4">
-          <Field label="Prix d’achat" value={s.purchase_price} onChange={(v) => setS((p) => ({ ...p, purchase_price: v }))} />
-          <Field label="Frais notaire" value={s.notary_fees} onChange={(v) => setS((p) => ({ ...p, notary_fees: v }))} />
-          <Field label="Frais agence" value={s.agency_fees} onChange={(v) => setS((p) => ({ ...p, agency_fees: v }))} />
-          <Field label="Travaux" value={s.works} onChange={(v) => setS((p) => ({ ...p, works: v }))} />
-        </div>
-      </div>
+      <div className="divide-y divide-slate-100 px-5">
 
-      {/* Crédit — analytique uniquement */}
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Crédit (analytique)</p>
-        <div className="grid gap-3 md:grid-cols-3">
-          <Field label="Apport personnel" value={s.down_payment} onChange={(v) => setS((p) => ({ ...p, down_payment: v }))} />
-          <Field label="Taux crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} />
-          <Field
-            label="Année de fin du crédit"
-            value={s.loan_end_year ?? null}
-            integer
-            placeholder="Ex. 2043"
-            onChange={(v) => setS((p) => ({ ...p, loan_end_year: v == null ? null : Math.round(v) }))}
-          />
-        </div>
-        <p className="mt-1.5 text-[0.68rem] text-slate-400">
-          La mensualité de crédit se saisit dans le grand livre (Nouvelle écriture &gt; Charge récurrente &gt; catégorie Crédit).
-        </p>
-      </div>
-
-      {/* Fiscal */}
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Fiscal</p>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Régime fiscal suivi</label>
-            <select
-              value={s.tax_regime || ""}
-              onChange={(e) => setS((p) => ({ ...p, tax_regime: e.target.value || null }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">Non renseigné</option>
-              <option value="lmnp_micro">LMNP micro-BIC</option>
-              <option value="lmnp_real">LMNP réel</option>
-              <option value="nu_micro">Location nue micro-foncier</option>
-              <option value="nu_real">Location nue réel</option>
-              <option value="pinel">Pinel</option>
-            </select>
+        {/* Acquisition */}
+        <div className="py-5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Acquisition</p>
+            {totalInvested > 0 && (
+              <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                Total investi : {totalInvested.toLocaleString("fr-FR", { minimumFractionDigits: 0 })} €
+              </span>
+            )}
           </div>
-          <Field
-            label="Intérêts d’emprunt mensuels (LMNP réel)"
-            value={s.loan_interest_monthly ?? null}
-            onChange={(v) => setS((p) => ({ ...p, loan_interest_monthly: v }))}
-            hint="Depuis votre tableau d’amortissement, pour la déclaration au réel. Pas nécessaire pour le cashflow."
-          />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Prix d’achat" value={s.purchase_price} onChange={(v) => setS((p) => ({ ...p, purchase_price: v }))} />
+            <Field label="Frais de notaire" value={s.notary_fees} onChange={(v) => setS((p) => ({ ...p, notary_fees: v }))} />
+            <Field label="Frais d’agence" value={s.agency_fees} onChange={(v) => setS((p) => ({ ...p, agency_fees: v }))} />
+            <Field label="Travaux" value={s.works} onChange={(v) => setS((p) => ({ ...p, works: v }))} />
+          </div>
         </div>
+
+        {/* Financement */}
+        <div className="py-5">
+          <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Financement</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Field label="Apport personnel" value={s.down_payment} onChange={(v) => setS((p) => ({ ...p, down_payment: v }))} />
+            <Field label="Taux du crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} />
+            <Field
+              label="Fin du crédit (année)"
+              value={s.loan_end_year ?? null}
+              integer
+              placeholder="Ex. 2043"
+              onChange={(v) => setS((p) => ({ ...p, loan_end_year: v == null ? null : Math.round(v) }))}
+            />
+          </div>
+          <p className="mt-2 text-[0.68rem] leading-4 text-slate-400">
+            Mensualité et assurance crédit → Nouvelle écriture &gt; Charge récurrente &gt; Crédit.
+          </p>
+        </div>
+
+        {/* Régime fiscal */}
+        <div className="py-5">
+          <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Régime fiscal</p>
+          <div className={cx("grid gap-3", isLmnpReal ? "sm:grid-cols-2" : "sm:grid-cols-1 max-w-xs")}>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Régime applicable</label>
+              <select
+                value={s.tax_regime || ""}
+                onChange={(e) => setS((p) => ({ ...p, tax_regime: e.target.value || null }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              >
+                <option value="">Non renseigné</option>
+                <option value="lmnp_micro">LMNP micro-BIC</option>
+                <option value="lmnp_real">LMNP réel</option>
+                <option value="nu_micro">Location nue micro-foncier</option>
+                <option value="nu_real">Location nue réel</option>
+                <option value="pinel">Pinel</option>
+              </select>
+            </div>
+            {isLmnpReal && (
+              <Field
+                label="Intérêts d’emprunt mensuels"
+                value={s.loan_interest_monthly ?? null}
+                onChange={(v) => setS((p) => ({ ...p, loan_interest_monthly: v }))}
+                hint="Depuis le tableau d’amortissement — pour la déclaration LMNP réel uniquement."
+              />
+            )}
+          </div>
+        </div>
+
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Footer enregistrer */}
+      <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3.5">
+        {saved
+          ? <span className="text-sm font-semibold text-emerald-700">Configuration enregistrée ✓</span>
+          : <span className="text-xs text-slate-400">Ces données calculent le rendement et le cashflow théorique.</span>
+        }
         <button
           type="submit"
           disabled={saving}
           className={cx(
-            "inline-flex min-h-[42px] items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-70",
-            saved ? "bg-emerald-700 hover:bg-emerald-700" : "bg-slate-900 hover:bg-slate-800"
+            "inline-flex min-h-[38px] items-center rounded-full px-5 py-2 text-sm font-semibold text-white transition-colors disabled:cursor-wait disabled:opacity-60",
+            saved ? "bg-emerald-700" : "bg-slate-900 hover:bg-slate-800"
           )}
         >
-          {saving ? "Enregistrement..." : saved ? "Enregistré ✓" : "Enregistrer"}
+          {saving ? "Enregistrement…" : saved ? "Enregistré ✓" : "Enregistrer"}
         </button>
-        {saved ? <span className="text-sm font-semibold text-emerald-700">Configuration prise en compte.</span> : null}
       </div>
     </form>
   );
