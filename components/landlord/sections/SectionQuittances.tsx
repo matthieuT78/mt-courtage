@@ -1,7 +1,8 @@
 // components/landlord/sections/SectionQuittances.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-import { SectionTitle, WorkflowIntro, fmtDate } from "../UiBits";
+import { SectionTitle, fmtDate } from "../UiBits";
+import { EyeIcon, BanknotesIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import type { RentReceipt, Lease, Property, Tenant, LandlordSettings } from "../../../lib/landlord/types";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { usePermissions } from "../../PermissionProvider";
@@ -1158,16 +1159,32 @@ export function SectionQuittances({
         desc="La quittance est le reçu du locataire : elle se prépare uniquement quand le paiement du mois est confirmé."
       />
 
-      <WorkflowIntro
-        title="Le bon ordre pour traiter un mois"
-        description="Chaque ligne correspond à un mois de loyer. Vous confirmez d’abord l’encaissement, puis lokt.fr prépare le PDF de quittance et garde l’historique."
-        steps={[
-          { title: "Vérifier le mois", text: "Contrôlez le bien, le locataire, la période et le montant attendu." },
-          { title: "Confirmer le paiement", text: "Marquez le mois payé uniquement quand le loyer et les charges sont réellement encaissés." },
-          { title: "Remettre la quittance", text: "Générez le PDF, envoyez-le avec l’abonnement adapté ou indiquez qu’il a été remis manuellement." },
-        ]}
-        note="En gratuit, la gestion manuelle reste incluse. Les relances, emails et envois automatiques sont réservés aux abonnements payants."
-      />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="relative overflow-hidden rounded-2xl bg-indigo-50 p-5">
+          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-indigo-100">1</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100">
+            <EyeIcon className="h-5 w-5 text-indigo-600" />
+          </div>
+          <p className="mt-4 text-sm font-bold text-indigo-950">Vérifier le mois</p>
+          <p className="mt-1 text-xs leading-5 text-indigo-900/60">Le bien, le locataire, la période et le montant attendu.</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl bg-violet-50 p-5">
+          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-violet-100">2</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
+            <BanknotesIcon className="h-5 w-5 text-violet-600" />
+          </div>
+          <p className="mt-4 text-sm font-bold text-violet-950">Confirmer l’encaissement</p>
+          <p className="mt-1 text-xs leading-5 text-violet-900/60">Marquez le mois payé quand le loyer et les charges sont réellement encaissés.</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl bg-emerald-50 p-5">
+          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-emerald-100">3</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+            <PaperAirplaneIcon className="h-5 w-5 text-emerald-600" />
+          </div>
+          <p className="mt-4 text-sm font-bold text-emerald-950">Remettre la quittance</p>
+          <p className="mt-1 text-xs leading-5 text-emerald-900/60">Générez le PDF et envoyez-le, ou indiquez une remise manuelle.</p>
+        </div>
+      </div>
 
       {!canUseReceiptAutomation ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">

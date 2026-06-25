@@ -8,15 +8,18 @@ import {
   ArrowRightIcon,
   BuildingOffice2Icon,
   CheckCircleIcon,
+  ClipboardDocumentListIcon,
   DocumentArrowUpIcon,
+  DocumentCheckIcon,
   ExclamationTriangleIcon,
+  FolderOpenIcon,
   MapPinIcon,
   PhotoIcon,
   PencilSquareIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
-import { SectionTitle, WorkflowIntro } from "../UiBits";
+import { SectionTitle } from "../UiBits";
 import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
 import { isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import RepairsGuideCard from "../RepairsGuideCard";
@@ -3209,16 +3212,32 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         desc="Choisissez le contexte, complétez la visite, puis conservez un document finalisé et verrouillé."
       />
 
-      <WorkflowIntro
-        title="Deux façons de démarrer"
-        description="Vous pouvez partir d’un bail pour préremplir le logement et le locataire, ou créer un état des lieux libre si la location n’est pas encore rattachée."
-        steps={[
-          { title: "Choisir le dossier", text: "Sélectionnez un bail actif, reprenez un état des lieux existant ou créez un dossier libre." },
-          { title: "Faire la visite", text: "Renseignez pièces, équipements, compteurs, clés, photos et observations utiles." },
-          { title: "Finaliser le document", text: "Générez ou importez le PDF finalisé. Une fois signé ou archivé, il est verrouillé." },
-        ]}
-        note="Pour une sortie, lokt.fr peut repartir de l’état des lieux d’entrée afin d’éviter une double saisie."
-      />
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="relative overflow-hidden rounded-2xl bg-indigo-50 p-5">
+          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-indigo-100">1</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100">
+            <FolderOpenIcon className="h-5 w-5 text-indigo-600" />
+          </div>
+          <p className="mt-4 text-sm font-bold text-indigo-950">Choisir le dossier</p>
+          <p className="mt-1 text-xs leading-5 text-indigo-900/60">Bail actif, état des lieux existant ou dossier libre si la location n’est pas encore rattachée.</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl bg-violet-50 p-5">
+          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-violet-100">2</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
+            <ClipboardDocumentListIcon className="h-5 w-5 text-violet-600" />
+          </div>
+          <p className="mt-4 text-sm font-bold text-violet-950">Faire la visite</p>
+          <p className="mt-1 text-xs leading-5 text-violet-900/60">Pièces, équipements, compteurs, clés, photos et observations.</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl bg-emerald-50 p-5">
+          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-emerald-100">3</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
+            <DocumentCheckIcon className="h-5 w-5 text-emerald-600" />
+          </div>
+          <p className="mt-4 text-sm font-bold text-emerald-950">Finaliser le document</p>
+          <p className="mt-1 text-xs leading-5 text-emerald-900/60">Générez ou importez le PDF. Une fois signé ou archivé, il est verrouillé.</p>
+        </div>
+      </div>
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="relative">
