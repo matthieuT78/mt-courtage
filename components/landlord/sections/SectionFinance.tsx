@@ -66,6 +66,13 @@ type Transaction = {
   amount: number;
   notes: string | null;
 
+  // Charges récurrentes
+  is_recurring?: boolean;
+  recurrence_frequency?: "monthly" | "quarterly" | "yearly" | null;
+  recurrence_since?: string | null;
+  recurrence_end_date?: string | null;
+  recurrence_parent_id?: string | null;
+
   created_at: string;
   updated_at: string;
 };
@@ -413,6 +420,43 @@ function safeFileName(name: string) {
     .toLowerCase();
 }
 
+function buildRecurringInstances(
+  parentId: string,
+  template: Record<string, unknown>,
+  frequency: "monthly" | "quarterly" | "yearly",
+  since: string,
+  endDate: string | null
+): Record<string, unknown>[] {
+  const sinceDate = new Date(since);
+  const today = new Date();
+  const endLimit = endDate ? new Date(endDate) : today;
+  const cap = endLimit < today ? endLimit : today;
+
+  const advance = (d: Date) => {
+    if (frequency === "monthly") return new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    if (frequency === "quarterly") return new Date(d.getFullYear(), d.getMonth() + 3, 1);
+    return new Date(d.getFullYear() + 1, d.getMonth(), 1);
+  };
+
+  const instances: Record<string, unknown>[] = [];
+  // Le parent est la première occurrence — on génère à partir de la suivante
+  let cursor = advance(new Date(sinceDate.getFullYear(), sinceDate.getMonth(), 1));
+  while (cursor <= cap) {
+    instances.push({
+      ...template,
+      occurred_at: cursor.toISOString().slice(0, 10),
+      recurrence_parent_id: parentId,
+      is_recurring: false,
+      recurrence_frequency: null,
+      recurrence_since: null,
+      recurrence_end_date: null,
+      updated_at: new Date().toISOString(),
+    });
+    cursor = advance(cursor);
+  }
+  return instances;
+}
+
 export function SectionFinance({ userId, leases, payments, receipts, propertyById, onRefresh }: Props) {
   // 🎨 lokt.fr
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
@@ -496,24 +540,53 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     [analysisPropertyId, activePropertyOptions]
   );
 
+  // Transactions récurrentes (parents uniquement, is_recurring=true), groupées par bien
+  const recurringParentTxByProperty = useMemo(() => {
+    const map = new Map<string, Transaction[]>();
+    for (const t of tx) {
+      if (!t.is_recurring) continue;
+      const pid = t.property_id || "";
+      const list = map.get(pid) || [];
+      list.push(t);
+      map.set(pid, list);
+    }
+    return map;
+  }, [tx]);
+
   const monthlyRecurringByProperty = useMemo(() => {
     const map = new Map<string, { loan: number; fixed: number; taxM: number; total: number }>();
     for (const propertyId of analysisPropertyIds) {
-      const fin = pf.get(propertyId) || null;
-      const loan = Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
-      const fixed =
-        Number(fin?.fixed_charges_monthly || 0) +
-        Number(fin?.pno_insurance_monthly || 0) +
-        Number(fin?.copro_charges_monthly || 0) +
-        Number(fin?.bank_fees_monthly || 0) +
-        Number(fin?.maintenance_monthly || 0) +
-        Number(fin?.rental_tax_monthly || 0);
-      const taxM = Number(fin?.property_tax_yearly || 0) / 12;
-      const cfeM = Number(fin?.cfe_yearly || 0) / 12;
-      map.set(propertyId, { loan, fixed, taxM: taxM + cfeM, total: loan + fixed + taxM + cfeM });
+      const recurringTxs = recurringParentTxByProperty.get(propertyId) || [];
+
+      if (recurringTxs.length > 0) {
+        // Nouvelle source : transactions récurrentes du grand livre
+        let loan = 0, fixed = 0, taxM = 0;
+        for (const tx of recurringTxs) {
+          const divisor = tx.recurrence_frequency === "quarterly" ? 3 : tx.recurrence_frequency === "yearly" ? 12 : 1;
+          const monthlyAmt = (tx.amount / divisor) * (tx.direction === "out" ? 1 : -1);
+          if (tx.category === "loan") loan += monthlyAmt;
+          else if (tx.category === "tax") taxM += monthlyAmt;
+          else fixed += monthlyAmt;
+        }
+        map.set(propertyId, { loan, fixed, taxM, total: loan + fixed + taxM });
+      } else {
+        // Fallback : anciens champs property_finance (rétrocompatibilité)
+        const fin = pf.get(propertyId) || null;
+        const loan = Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
+        const fixed =
+          Number(fin?.fixed_charges_monthly || 0) +
+          Number(fin?.pno_insurance_monthly || 0) +
+          Number(fin?.copro_charges_monthly || 0) +
+          Number(fin?.bank_fees_monthly || 0) +
+          Number(fin?.maintenance_monthly || 0) +
+          Number(fin?.rental_tax_monthly || 0);
+        const taxM = Number(fin?.property_tax_yearly || 0) / 12;
+        const cfeM = Number(fin?.cfe_yearly || 0) / 12;
+        map.set(propertyId, { loan, fixed, taxM: taxM + cfeM, total: loan + fixed + taxM + cfeM });
+      }
     }
     return map;
-  }, [analysisPropertyIds, pf]);
+  }, [analysisPropertyIds, pf, recurringParentTxByProperty]);
 
   // Form ajout manuel
   const [form, setForm] = useState({
@@ -526,6 +599,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     label: "",
     amount: "",
     notes: "",
+    // Charge récurrente
+    is_recurring: false,
+    recurrence_frequency: "monthly" as "monthly" | "quarterly" | "yearly",
+    recurrence_since: toISODate(new Date()),
+    recurrence_end_date: "",
   });
   const selectableFormPropertyOptions = useMemo(
     () => includeSelected(activePropertyOptions, propertyOptions, form.property_id),
@@ -1072,12 +1150,13 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Montant invalide.");
       if (!form.property_id) throw new Error("Le champ Bien est obligatoire.");
 
-      const payload = {
+      const isRecurring = form.is_recurring && !!form.recurrence_since;
+
+      const basePayload = {
         user_id: userId,
         property_id: form.property_id || null,
         lease_id: form.lease_id || null,
         receipt_id: null,
-        occurred_at: form.occurred_at,
         direction: form.direction,
         status: form.status,
         category: form.category,
@@ -1087,16 +1166,50 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         updated_at: new Date().toISOString(),
       };
 
+      const payload = isRecurring
+        ? {
+            ...basePayload,
+            occurred_at: form.recurrence_since,
+            is_recurring: true,
+            recurrence_frequency: form.recurrence_frequency,
+            recurrence_since: form.recurrence_since,
+            recurrence_end_date: form.recurrence_end_date || null,
+          }
+        : { ...basePayload, occurred_at: form.occurred_at };
+
       const { data: inserted, error } = await supabase.from("transactions").insert(payload).select("id,property_id").single();
       if (error) throw error;
+
+      // Générer les instances passées si récurrent
+      if (isRecurring && inserted?.id) {
+        const instances = buildRecurringInstances(
+          inserted.id,
+          { ...basePayload, recurrence_parent_id: inserted.id, is_recurring: false },
+          form.recurrence_frequency,
+          form.recurrence_since,
+          form.recurrence_end_date || null
+        );
+        if (instances.length > 0) {
+          await supabase.from("transactions").insert(instances);
+        }
+      }
 
       if (invoiceFile && inserted?.id) {
         await attachDocumentToTransaction({ id: inserted.id, property_id: inserted.property_id || null }, invoiceFile);
       }
 
-      setOk(invoiceFile ? "Écriture ajoutée avec facture ✅" : "Écriture ajoutée ✅");
+      const instanceCount = isRecurring
+        ? buildRecurringInstances(inserted!.id, basePayload as any, form.recurrence_frequency, form.recurrence_since, form.recurrence_end_date || null).length
+        : 0;
+      setOk(
+        isRecurring
+          ? `Charge récurrente créée + ${instanceCount} écriture${instanceCount > 1 ? "s" : ""} passée${instanceCount > 1 ? "s" : ""} ✅`
+          : invoiceFile
+          ? "Écriture ajoutée avec facture ✅"
+          : "Écriture ajoutée ✅"
+      );
       setTxWizardOpen(false);
-      setForm((s) => ({ ...s, amount: "", label: "", notes: "" }));
+      setForm((s) => ({ ...s, amount: "", label: "", notes: "", is_recurring: false }));
       setInvoiceFile(null);
 
       await loadFinance();
@@ -1324,14 +1437,28 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const accountingChartRows = useMemo(() => {
     const { start, end } = selectedPeriod;
 
-    // Calcule le récurrent pour un mois donné en tenant compte de recurring_since par bien
+    // Calcule le récurrent pour un mois donné, en respectant les dates par transaction
     const recurringForMonth = (monthStart: Date) => {
       let total = 0;
       for (const propertyId of analysisPropertyIds) {
-        const fin = pf.get(propertyId);
-        const since = fin?.recurring_since ? new Date(fin.recurring_since) : null;
-        if (since && monthStart < new Date(since.getFullYear(), since.getMonth(), 1)) continue;
-        total += monthlyRecurringByProperty.get(propertyId)?.total ?? 0;
+        const recurringTxs = recurringParentTxByProperty.get(propertyId) || [];
+        if (recurringTxs.length > 0) {
+          // Nouvelle source : transactions récurrentes
+          for (const tx of recurringTxs) {
+            const since = tx.recurrence_since ? new Date(tx.recurrence_since) : null;
+            const end = tx.recurrence_end_date ? new Date(tx.recurrence_end_date) : null;
+            if (since && monthStart < new Date(since.getFullYear(), since.getMonth(), 1)) continue;
+            if (end && monthStart > new Date(end.getFullYear(), end.getMonth(), 1)) continue;
+            const divisor = tx.recurrence_frequency === "quarterly" ? 3 : tx.recurrence_frequency === "yearly" ? 12 : 1;
+            total += (tx.amount / divisor) * (tx.direction === "out" ? 1 : -1);
+          }
+        } else {
+          // Fallback : property_finance avec recurring_since global
+          const fin = pf.get(propertyId);
+          const since = fin?.recurring_since ? new Date(fin.recurring_since) : null;
+          if (since && monthStart < new Date(since.getFullYear(), since.getMonth(), 1)) continue;
+          total += monthlyRecurringByProperty.get(propertyId)?.total ?? 0;
+        }
       }
       return total;
     };
@@ -2122,6 +2249,74 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                 placeholder="Optionnel : facture, période, précision comptable"
               />
             </div>
+          </div>
+
+          {/* Charge récurrente */}
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+            <button
+              type="button"
+              onClick={() => setForm((s) => ({ ...s, is_recurring: !s.is_recurring }))}
+              className="flex w-full items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <span className={cx(
+                  "flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
+                  form.is_recurring ? "bg-indigo-600" : "bg-slate-300"
+                )}>
+                  <span className={cx(
+                    "h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+                    form.is_recurring ? "translate-x-4" : "translate-x-0.5"
+                  )} />
+                </span>
+                <span className="text-sm font-semibold text-slate-900">Charge récurrente</span>
+              </div>
+              <span className="text-xs text-slate-500">
+                {form.is_recurring ? "Se répète automatiquement" : "Ponctuelle"}
+              </span>
+            </button>
+
+            {form.is_recurring && (
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Fréquence</label>
+                  <select
+                    value={form.recurrence_frequency}
+                    onChange={(e) => setForm((s) => ({ ...s, recurrence_frequency: e.target.value as "monthly" | "quarterly" | "yearly" }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="monthly">Mensuelle</option>
+                    <option value="quarterly">Trimestrielle</option>
+                    <option value="yearly">Annuelle</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Depuis le</label>
+                  <input
+                    type="date"
+                    value={form.recurrence_since}
+                    onChange={(e) => setForm((s) => ({ ...s, recurrence_since: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700">Jusqu'au (optionnel)</label>
+                  <input
+                    type="date"
+                    value={form.recurrence_end_date}
+                    onChange={(e) => setForm((s) => ({ ...s, recurrence_end_date: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    placeholder="Indéfini"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <p className="rounded-xl bg-indigo-50 px-3 py-2 text-xs leading-5 text-indigo-800">
+                    lokt.fr va créer une écriture pour chaque période passée depuis le{" "}
+                    <strong>{form.recurrence_since}</strong> et projeter les prochaines dans le graphe Finance.
+                    Vous pouvez joindre une pièce justificative à l'écriture de référence ci-dessous.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
