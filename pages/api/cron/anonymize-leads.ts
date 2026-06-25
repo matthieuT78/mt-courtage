@@ -4,28 +4,44 @@
 // - sans consentement contact  → 12 mois
 // - avec consentement contact  → 36 mois
 //
-// Les colonnes conservées (stats) : id, tool, created_at, status,
-// consent_analysis, consent_contact, postal_code, anonymized_at.
-// Les colonnes effacées (PII) : email, phone, payload, user_id, city,
-// source, utm, project_*.
+// Colonnes CONSERVÉES (données métier agrégées, non identifiantes) :
+//   id, tool, created_at, status, consent_*, postal_code,
+//   project_usage        ("résidence_principale" / "investissement" / …)
+//   project_property_kind ("ancien" / "neuf" / "terrain")
+//   project_timeline     ("maintenant" / "6-mois" / "1-an" / …)
+//
+// Colonnes EFFACÉES (PII ou quasi-identifiants) :
+//   email, phone, payload (montants exacts revenus/charges/emprunt),
+//   user_id, city, source, utm,
+//   lead_age             (âge exact → risque combiné à code postal),
+//   project_budget_target (montant exact calculé → risque croisé).
+//
+// Note : pour conserver des tranches de budget (< 150 k / 150-300 k / …)
+// sans exposer de montant exact, ajouter une colonne `budget_bucket` text
+// en base et la peupler avant anonymisation.
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
 
 const ANON_FIELDS = {
+  // PII directes
   email: null,
   phone: null,
-  payload: null,
   user_id: null,
+  // Données financières détaillées (revenus, charges, montants exacts)
+  payload: null,
+  // Localisation fine (ville) — on garde postal_code qui reste dans la table
   city: null,
+  // Tracking marketing (inutile sans email)
   source: null,
   utm: null,
-  project_property_kind: null,
-  project_usage: null,
-  project_timeline: null,
-  project_budget_target: null,
+  // Quasi-identifiants numériques
   lead_age: null,
+  project_budget_target: null,
+  // Marqueur d'anonymisation
   anonymized_at: new Date().toISOString(),
+  // NE SONT PAS NULLÉS (données métier catégorielles, non identifiantes) :
+  // project_usage, project_property_kind, project_timeline, postal_code
 };
 
 function cutoff(months: number) {
