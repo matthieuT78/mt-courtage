@@ -1,5 +1,5 @@
 // pages/mon-compte/securite.tsx
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import AccountLayout from "../../components/account/AccountLayout";
 import { supabase } from "../../lib/supabaseClient";
@@ -23,6 +23,13 @@ export default function MonCompteSecuritePage() {
   const [prefsLoading, setPrefsLoading] = useState(false);
   const [prefsError, setPrefsError] = useState<string | null>(null);
   const [prefsOk, setPrefsOk] = useState<string | null>(null);
+
+  // suppression de compte
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const deleteInputRef = useRef<HTMLInputElement>(null);
 
   const isLoggedIn = !!user?.email;
 
@@ -72,6 +79,36 @@ export default function MonCompteSecuritePage() {
       setPwdError(err?.message || "Erreur mise à jour mot de passe.");
     } finally {
       setPwdLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!supabase) return setDeleteError("Auth indisponible.");
+    if (deleteConfirm.trim().toLowerCase() !== "supprimer") {
+      return setDeleteError("Tapez exactement « supprimer » pour confirmer.");
+    }
+
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error("Session expirée, reconnectez-vous.");
+
+      const res = await fetch("/api/account/delete", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || "Erreur lors de la suppression.");
+
+      await signOutAll();
+      router.push("/?compte=supprime");
+    } catch (err: any) {
+      setDeleteError(err?.message || "Erreur inattendue.");
+      setDeleteLoading(false);
     }
   };
 
@@ -204,6 +241,79 @@ export default function MonCompteSecuritePage() {
                 {prefsLoading ? "Enregistrement..." : "Enregistrer"}
               </button>
             </form>
+          </div>
+          {/* Zone danger : suppression de compte */}
+          <div className="rounded-3xl border border-red-200 bg-white shadow-sm p-5">
+            <p className="text-sm font-semibold text-red-700">Zone dangereuse</p>
+            <p className="mt-1 text-sm text-slate-600">
+              La suppression est <strong>irréversible</strong> : toutes vos données bailleur, baux,
+              locataires et documents seront effacés. L&apos;abonnement payant en cours est résilié
+              immédiatement.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setShowDeleteModal(true); setDeleteConfirm(""); setDeleteError(null); }}
+              className="mt-4 rounded-full border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+            >
+              Supprimer mon compte
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modale de confirmation */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}
+        >
+          <div className="w-full max-w-md rounded-3xl border border-red-200 bg-white p-6 shadow-2xl">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-red-600 mb-1">Action irréversible</p>
+            <h2 className="text-base font-semibold text-slate-900">Supprimer mon compte</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Cette action supprime définitivement votre compte, vos données et résilie votre abonnement
+              Stripe s&apos;il est actif. Les données de facturation sont conservées pour obligation légale.
+            </p>
+
+            <div className="mt-4 space-y-2">
+              <label className="text-xs font-medium text-slate-700">
+                Tapez <span className="font-mono font-bold text-red-700">supprimer</span> pour confirmer
+              </label>
+              <input
+                ref={deleteInputRef}
+                type="text"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                autoFocus
+                placeholder="supprimer"
+                className="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
+              />
+            </div>
+
+            {deleteError && (
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="mt-4 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleteLoading}
+                className="flex-1 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading || deleteConfirm.trim().toLowerCase() !== "supprimer"}
+                className="flex-1 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40"
+              >
+                {deleteLoading ? "Suppression…" : "Supprimer définitivement"}
+              </button>
+            </div>
           </div>
         </div>
       )}
