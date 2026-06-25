@@ -1075,15 +1075,21 @@ export function SectionDashboard({
         weatherAlerts.length > 0 ? (
           /* ── État alerte ── */
           <div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 shadow-sm">
-            <div className="flex items-center gap-2.5 border-b border-amber-200/70 px-4 py-2.5">
-              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
+            <div className="flex items-center gap-3 border-b border-amber-200/70 px-4 py-3">
+              {/* Icône météo composée — nuage + éclair */}
+              <span className="relative shrink-0">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"/>
+                    <polyline points="13 11 9 17 15 17 11 23"/>
+                  </svg>
+                </span>
+              </span>
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-amber-900">Risques climatiques sur vos biens</p>
                 <p className="text-[0.65rem] text-amber-700">Événements pouvant affecter vos logements dans les 3 prochains jours</p>
               </div>
-              <span className="ml-auto shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
+              <span className="ml-auto shrink-0 rounded-full bg-amber-200 px-2.5 py-0.5 text-[0.65rem] font-bold text-amber-800">
                 {weatherAlerts.length} risque{weatherAlerts.length > 1 ? "s" : ""}
               </span>
             </div>
@@ -1113,15 +1119,29 @@ export function SectionDashboard({
         ) : (
           /* ── État calme ── */
           <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm">
-            <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
-            </svg>
+            {/* Icône composée : soleil + bouclier en badge */}
+            <span className="relative shrink-0">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
+                <svg viewBox="0 0 24 24" className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="4"/>
+                  <line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+              </span>
+              <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-emerald-50">
+                <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 text-white" fill="currentColor" aria-hidden="true">
+                  <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1.5 13.5l-3-3 1.06-1.06 1.94 1.94 4.44-4.44 1.06 1.06-5.5 5.5z"/>
+                </svg>
+              </span>
+            </span>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-emerald-900">Risques climatiques sur vos biens</p>
               <p className="text-[0.68rem] text-emerald-700">Aucun événement à risque détecté sur vos logements dans les 3 prochains jours</p>
             </div>
-            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[0.62rem] font-semibold text-emerald-700">
-              Aucun risque
+            <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.62rem] font-semibold text-emerald-700">
+              Protégé ✓
             </span>
           </div>
         )
