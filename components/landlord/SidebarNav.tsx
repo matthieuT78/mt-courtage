@@ -1,15 +1,43 @@
-import React from "react";
-import { ChevronLeftIcon, ChevronRightIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, MagnifyingGlassIcon, MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { Pill } from "./UiBits";
 import { getLandlordNavItems, type LandlordSectionKey } from "./navigation";
 
 export type { LandlordSectionKey } from "./navigation";
+
+export type SearchItem = {
+  id: string;
+  label: string;
+  sublabel?: string;
+  category: "section" | "bail" | "bien" | "locataire" | "fonction";
+  icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  onSelect: () => void;
+};
 
 type Item = {
   key: LandlordSectionKey;
   label: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   badge?: React.ReactNode;
+};
+
+function normalize(s: string) {
+  return (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+const CAT_LABEL: Record<SearchItem["category"], string> = {
+  section: "Section",
+  bail: "Bail",
+  bien: "Bien",
+  locataire: "Locataire",
+  fonction: "Fonction",
+};
+const CAT_COLOR: Record<SearchItem["category"], string> = {
+  section: "bg-indigo-100 text-indigo-700",
+  bail: "bg-violet-100 text-violet-700",
+  bien: "bg-emerald-100 text-emerald-700",
+  locataire: "bg-blue-100 text-blue-700",
+  fonction: "bg-amber-100 text-amber-700",
 };
 
 export function SidebarNav({
@@ -22,6 +50,8 @@ export function SidebarNav({
   collapsed = false,
   onToggleCollapse,
   onContactClick,
+  searchItems,
+  searchInputRef,
   className = "",
 }: {
   active: LandlordSectionKey;
@@ -34,8 +64,48 @@ export function SidebarNav({
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   onContactClick?: () => void;
+  searchItems?: SearchItem[];
+  searchInputRef?: React.RefObject<HTMLInputElement>;
   className?: string;
 }) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen]   = useState(false);
+  const [cursor, setCursor] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const results = useMemo(() => {
+    if (!query.trim() || !searchItems?.length) return [];
+    const q = normalize(query);
+    return searchItems
+      .filter((item) => normalize(item.label + " " + (item.sublabel || "")).includes(q))
+      .slice(0, 8);
+  }, [query, searchItems]);
+
+  useEffect(() => { setCursor(0); }, [results]);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!open || results.length === 0) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); setCursor((c) => Math.min(c + 1, results.length - 1)); }
+    if (e.key === "ArrowUp")   { e.preventDefault(); setCursor((c) => Math.max(c - 1, 0)); }
+    if (e.key === "Enter")     { e.preventDefault(); selectItem(results[cursor]); }
+    if (e.key === "Escape")    { setOpen(false); setQuery(""); }
+  }
+
+  function selectItem(item: SearchItem) {
+    item.onSelect();
+    setQuery("");
+    setOpen(false);
+  }
   // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]";
   const brandText = "text-white";
@@ -162,6 +232,55 @@ export function SidebarNav({
             <ChevronLeftIcon className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
           </button>
         </div>
+
+        {/* Barre de recherche */}
+        {searchItems && searchItems.length > 0 && (
+          <div ref={containerRef} className="relative mb-1 shrink-0">
+            <div className="relative">
+              <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+                onFocus={() => setOpen(true)}
+                onKeyDown={handleKeyDown}
+                placeholder="Rechercher…"
+                aria-label="Recherche"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-8 pr-3 text-[0.8rem] text-slate-800 placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-1 focus:ring-indigo-100"
+              />
+            </div>
+
+            {open && results.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                {results.map((item, i) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); selectItem(item); }}
+                      onMouseEnter={() => setCursor(i)}
+                      className={`flex w-full items-center gap-2.5 px-3 py-2 text-left transition ${i === cursor ? "bg-indigo-50" : "hover:bg-slate-50"}`}
+                    >
+                      {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-hidden="true" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[0.8rem] font-semibold text-slate-800">{item.label}</p>
+                        {item.sublabel && <p className="truncate text-[0.68rem] text-slate-400">{item.sublabel}</p>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {open && query.trim().length > 0 && results.length === 0 && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-slate-200 bg-white px-3 py-3 text-[0.78rem] text-slate-400 shadow-lg">
+                Aucun résultat pour « {query} »
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Nav items — flex-1 par item pour s'adapter à la hauteur disponible */}
         <div className="mt-1 min-h-0 flex-1 flex flex-col gap-px">

@@ -1,5 +1,5 @@
 // components/landlord/DashboardShell.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -11,7 +11,7 @@ import {
   SunIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { SidebarNav, LandlordSectionKey } from "./SidebarNav";
+import { SidebarNav, LandlordSectionKey, type SearchItem } from "./SidebarNav";
 import { supabase } from "../../lib/supabaseClient";
 import {
   DEFAULT_LANDLORD_NAV_ORDER,
@@ -255,6 +255,7 @@ export function DashboardShell(props: any) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarPad, setSidebarPad] = useState("0px");
   const [contactOpen, setContactOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const updatePad = () => {
@@ -410,6 +411,123 @@ export function DashboardShell(props: any) {
     setActive(k);
     setMobileMoreOpen(false);
   };
+
+  // ── Index de recherche ────────────────────────────────────────────────────
+  const searchItems = useMemo<SearchItem[]>(() => {
+    const items: SearchItem[] = [];
+
+    // Sections nav — avec synonymes dans sublabel
+    const NAV_SUBLABELS: Partial<Record<LandlordSectionKey, string>> = {
+      dashboard:      "accueil, vue d'ensemble, synthèse, résumé",
+      locataires:     "locataire, résident, occupant, contact",
+      biens:          "logement, appartement, studio, maison, immeuble, lot",
+      baux:           "contrat, location, loyer, bail, révision",
+      quittances:     "loyer, paiement, reçu, quittance, justificatif",
+      finance:        "argent, compte, dépenses, recettes, comptabilité",
+      performance:    "rentabilité, rendement, cash-flow, investissement",
+      outils:         "simulateur, calculateur, outil, estimer",
+      etat_des_lieux: "visite, clés, entrée, sortie, état du logement",
+      messagerie:     "message, email, courrier, contacter",
+      alertes:        "notification, rappel, alerte, mail automatique",
+      inventaire:     "meubles, mobilier, équipement, meublé",
+      declaration:    "impôts, fiscal, revenus, déclaration, 2044",
+      parametres:     "compte, profil, réglages, configuration",
+      documents:      "fichiers, PDF, pièces jointes, documents",
+      modeles:        "lettre, courrier, modèle, template",
+    };
+    for (const key of navOrder) {
+      const nav = LANDLORD_NAV_ITEMS[key];
+      if (!nav) continue;
+      items.push({ id: `s:${key}`, label: nav.label, sublabel: NAV_SUBLABELS[key], category: "section", icon: nav.icon, onSelect: () => onChangeTab(key) });
+    }
+
+    // Fonctionnalités intégrées — sublabels = mots-clés utilisateur (pas de jargon technique)
+    const FEATURES: Array<{ label: string; sublabel: string; section: LandlordSectionKey }> = [
+      // Baux
+      { label: "Révision du loyer",         sublabel: "augmenter loyer, IRL, indice INSEE, indexation, révision annuelle", section: "baux" },
+      { label: "Dépôt de garantie",          sublabel: "caution, remboursement, restitution, sortie locataire", section: "baux" },
+      { label: "Renouvellement de bail",     sublabel: "reconduction, fin de bail, préavis, congé propriétaire", section: "baux" },
+      { label: "Contrat de bail",            sublabel: "rédiger contrat, location, bail PDF, signature", section: "baux" },
+      { label: "Encadrement des loyers",     sublabel: "zone tendue, plafond loyer, loyer de référence, Paris, Lyon", section: "baux" },
+      // Quittances
+      { label: "Quittance de loyer",         sublabel: "envoyer quittance, PDF, reçu, récépissé, justificatif paiement", section: "quittances" },
+      { label: "Valider un paiement",        sublabel: "confirmer paiement, loyer reçu, encaisser, virement, prélèvement", section: "quittances" },
+      { label: "Impayé / retard de loyer",  sublabel: "loyer non payé, relance, retard, impayé, recouvrement, dette", section: "quittances" },
+      // Finance
+      { label: "Grand livre",                sublabel: "comptabilité, écritures, transactions, historique, virements", section: "finance" },
+      { label: "Charges récurrentes",        sublabel: "crédit, emprunt, assurance, copropriété, taxe foncière, frais fixes", section: "finance" },
+      { label: "Trésorerie",                 sublabel: "graphique loyers, flux argent, entrées sorties, bilan mensuel", section: "finance" },
+      // Performance
+      { label: "Rentabilité",                sublabel: "rendement, cash-flow, ratio, bénéfice, calcul investissement, gain", section: "performance" },
+      { label: "Plan d'action",              sublabel: "améliorer gestion, conseils, score, optimiser loyer, priorités", section: "performance" },
+      // Outils
+      { label: "Simulateur rentabilité",     sublabel: "calculer rendement, brut net, investir, retour sur investissement", section: "outils" },
+      { label: "Simulateur révision IRL",    sublabel: "estimer nouveau loyer, calcul IRL, simulation augmentation loyer", section: "outils" },
+      { label: "Vendre ou louer",            sublabel: "arbitrage, plus-value, comparateur, revendre, stratégie", section: "outils" },
+      { label: "Calcul charges locatives",   sublabel: "répartition charges, eau, chauffage, TEOM, récupérer charges", section: "outils" },
+      // Déclaration
+      { label: "Déclaration fiscale",        sublabel: "impôts, revenus fonciers, 2044, réduction impôt, déductible", section: "declaration" },
+      { label: "LMNP",                       sublabel: "meublé, amortissement, bilan comptable, BIC réel, non professionnel", section: "declaration" },
+      { label: "Micro-foncier",              sublabel: "abattement 30%, nu, revenus fonciers, régime micro", section: "declaration" },
+      // État des lieux
+      { label: "État des lieux d'entrée",   sublabel: "entrer locataire, remise clés, photos, inventaire état, signature", section: "etat_des_lieux" },
+      { label: "État des lieux de sortie",  sublabel: "sortir locataire, rendre clés, dégradations, retenue caution", section: "etat_des_lieux" },
+      // Documents & Modèles
+      { label: "Modèles de lettres",         sublabel: "courrier, lettre révision, congé, relance, mise en demeure, LRAR", section: "modeles" },
+      { label: "Documents locataire",        sublabel: "partager fichiers, PDF, pièces jointes, attestation assurance", section: "documents" },
+      // Alertes
+      { label: "Alertes & rappels",          sublabel: "notification, rappel échéance, automatique, mail, loyer manquant", section: "alertes" },
+      // Messagerie
+      { label: "Envoyer un message",         sublabel: "contacter locataire, messagerie, email, courrier, notification", section: "messagerie" },
+      // Inventaire
+      { label: "Inventaire mobilier",        sublabel: "liste meubles, meublé, équipement, cuisine, literie, électroménager", section: "inventaire" },
+      // Dashboard
+      { label: "Score bailleur",             sublabel: "santé portefeuille, indicateur, performance globale, tableau de bord", section: "dashboard" },
+      { label: "Risque climatique",          sublabel: "inondation, sécheresse, aléas naturels, DPE, passoire, zone risque", section: "dashboard" },
+    ];
+    for (const f of FEATURES) {
+      items.push({ id: `fn:${f.label}`, label: f.label, sublabel: f.sublabel, category: "fonction", onSelect: () => onChangeTab(f.section) });
+    }
+
+    // Baux actifs
+    for (const l of leases) {
+      if (["archived", "ended"].includes(String((l as any).status || ""))) continue;
+      const prop = propertyById.get((l as any).property_id);
+      const ten  = tenantById.get((l as any).tenant_id);
+      const name = ten?.full_name || (l as any).tenant_name;
+      if (!name) continue;
+      items.push({ id: `bail:${(l as any).id}`, label: name, sublabel: (prop as any)?.label || (prop as any)?.city, category: "bail", onSelect: () => onChangeTab("baux") });
+    }
+
+    // Biens
+    for (const p of properties) {
+      const label = (p as any).label || (p as any).city;
+      if (!label) continue;
+      items.push({ id: `bien:${(p as any).id}`, label, sublabel: (p as any).city !== label ? (p as any).city : undefined, category: "bien", onSelect: () => onChangeTab("biens") });
+    }
+
+    // Locataires
+    for (const t of tenants) {
+      if (!(t as any).full_name) continue;
+      items.push({ id: `loc:${(t as any).id}`, label: (t as any).full_name, sublabel: (t as any).email || undefined, category: "locataire", onSelect: () => onChangeTab("locataires") });
+    }
+
+    return items;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navOrder, leases, properties, tenants, propertyById, tenantById]);
+
+  // ── Cmd+K → focus barre de recherche ─────────────────────────────────────
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        if (sidebarCollapsed) setSidebarCollapsed(false);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [sidebarCollapsed]);
 
   const lockedSection = useMemo<LockedSectionConfig | null>(() => {
     if (permissionsLoading) return null;
@@ -686,6 +804,8 @@ export function DashboardShell(props: any) {
           collapsed={sidebarCollapsed}
           onToggleCollapse={toggleSidebar}
           onContactClick={() => setContactOpen(true)}
+          searchItems={searchItems}
+          searchInputRef={searchInputRef}
         />
       </aside>
 
