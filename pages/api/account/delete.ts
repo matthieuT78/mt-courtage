@@ -1,13 +1,46 @@
 // pages/api/account/delete.ts
 //
 // Suppression complète du compte utilisateur (RGPD art. 17 — droit à l'effacement).
-// - Anonymise les leads liés (conserve les stats, efface l'email)
-// - Supprime le profil
-// - Supprime l'utilisateur auth (cascade côté Supabase)
-// Les données de facturation (subscriptions) sont conservées pour obligations légales.
+// Ordre des opérations :
+//   1. Résiliation immédiate de l'abonnement Stripe actif (si existant)
+//   2. Mise à jour du statut subscription en base → "canceled"
+//   3. Anonymisation des leads liés (conserve les stats métier, efface les PII)
+//   4. Suppression du profil
+//   5. Suppression de l'utilisateur auth Supabase
+// Les lignes de facturation (subscriptions) sont conservées (obligation légale 10 ans).
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser } from "../../../lib/apiAuth";
+
+function budgetBucket(amount: number | null): string | null {
+  if (!amount || amount <= 0) return null;
+  if (amount < 150_000) return "<150k";
+  if (amount < 250_000) return "150-250k";
+  if (amount < 400_000) return "250-400k";
+  if (amount < 600_000) return "400-600k";
+  return ">600k";
+}
+
+async function cancelStripeSubscription(subscriptionId: string): Promise<{ ok: boolean; error?: string }> {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) return { ok: false, error: "STRIPE_SECRET_KEY manquant" };
+
+  const res = await fetch(`https://api.stripe.com/v1/subscriptions/${subscriptionId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const msg = data?.error?.message || `Stripe ${res.status}`;
+    return { ok: false, error: msg };
+  }
+
+  return { ok: true };
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "DELETE" && req.method !== "POST") {
@@ -27,39 +60,88 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const userId = auth.userId;
   const now = new Date().toISOString();
 
-  // 1. Anonymiser les leads liés à cet utilisateur
-  await supabaseAdmin
+  // 1. Chercher un abonnement Stripe actif
+  const { data: sub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("stripe_subscription_id, status")
+    .eq("user_id", userId)
+    .not("stripe_subscription_id", "is", null)
+    .in("status", ["active", "trialing"])
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const stripeSubId = (sub as any)?.stripe_subscription_id as string | null;
+
+  // 2. Résilier l'abonnement Stripe immédiatement
+  if (stripeSubId) {
+    const cancelResult = await cancelStripeSubscription(stripeSubId);
+    if (!cancelResult.ok) {
+      console.error("[account/delete] Stripe cancel error:", cancelResult.error);
+      return res.status(500).json({
+        ok: false,
+        error: `Impossible de résilier l'abonnement Stripe : ${cancelResult.error}`,
+      });
+    }
+
+    // Mettre à jour le statut en base (le webhook Stripe le fera aussi,
+    // mais on anticipe pour que la suppression du compte reste cohérente)
+    await supabaseAdmin
+      .from("subscriptions")
+      .update({ status: "canceled", updated_at: now })
+      .eq("user_id", userId)
+      .eq("stripe_subscription_id", stripeSubId);
+
+    console.log(`[account/delete] abonnement Stripe résilié : ${stripeSubId}`);
+  }
+
+  // 3. Anonymiser les leads liés (même logique que le cron anonymize-leads)
+  const { data: leads } = await supabaseAdmin
     .from("leads")
-    .update({
-      email: null,
-      phone: null,
-      payload: null,
-      user_id: null,
-      city: null,
-      source: null,
-      utm: null,
-      project_property_kind: null,
-      project_usage: null,
-      project_timeline: null,
-      project_budget_target: null,
-      lead_age: null,
-      anonymized_at: now,
-    })
+    .select("id, project_budget_target")
     .eq("user_id", userId)
     .is("anonymized_at", null);
 
-  // 2. Supprimer le profil (les biens, baux, locataires, etc. sont liés au profil
-  //    via FK — la suppression en cascade dépend des règles Supabase configurées)
+  if (leads && leads.length > 0) {
+    // Grouper par tranche de budget pour minimiser les requêtes
+    const byBucket = new Map<string, string[]>();
+    for (const lead of leads as any[]) {
+      const bucket = budgetBucket(lead.project_budget_target ?? null) ?? "__null__";
+      if (!byBucket.has(bucket)) byBucket.set(bucket, []);
+      byBucket.get(bucket)!.push(lead.id);
+    }
+
+    for (const [bucketKey, ids] of byBucket) {
+      await supabaseAdmin
+        .from("leads")
+        .update({
+          email: null,
+          phone: null,
+          payload: null,
+          user_id: null,
+          city: null,
+          source: null,
+          utm: null,
+          lead_age: null,
+          project_budget_target: null,
+          budget_bucket: bucketKey === "__null__" ? null : bucketKey,
+          anonymized_at: now,
+          // project_usage, project_property_kind, project_timeline conservés
+        })
+        .in("id", ids);
+    }
+  }
+
+  // 4. Supprimer le profil
   await supabaseAdmin.from("profiles").delete().eq("id", userId);
 
-  // 3. Supprimer l'utilisateur auth Supabase (désactive la session + supprime auth.users)
+  // 5. Supprimer l'utilisateur auth Supabase
   const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-
   if (deleteError) {
     console.error("[account/delete] deleteUser error:", deleteError);
     return res.status(500).json({ ok: false, error: "Erreur lors de la suppression du compte." });
   }
 
-  console.log(`[account/delete] compte supprimé userId=${userId}`);
-  return res.status(200).json({ ok: true });
+  console.log(`[account/delete] compte supprimé userId=${userId} (stripe: ${stripeSubId ?? "aucun"})`);
+  return res.status(200).json({ ok: true, stripe_canceled: !!stripeSubId });
 }
