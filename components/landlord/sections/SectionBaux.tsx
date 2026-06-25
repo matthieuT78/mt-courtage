@@ -24,6 +24,7 @@ import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { usePermissions } from "../../PermissionProvider";
 import { LeaseContractWizard } from "../LeaseContractWizard";
+import { IrlRevisionPanel } from "./SectionRevision";
 import type { RentPayment, RentReceipt } from "../../../lib/landlord/types";
 import { includeSelected, isActivePropertyLike, isActiveTenantLike } from "../../../lib/landlord/archiveFilters";
 
@@ -1879,6 +1880,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             </>
           ) : null}
         </div>
+
+        <IrlRevisionPanel lease={l} property={p || null} tenant={t || null} />
       </div>
     );
   };

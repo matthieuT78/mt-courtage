@@ -1,7 +1,6 @@
 import type React from "react";
 import {
   ArchiveBoxIcon,
-  ArrowTrendingUpIcon,
   BanknotesIcon,
   BellAlertIcon,
   ChartBarIcon,
@@ -29,7 +28,6 @@ export type LandlordSectionKey =
   | "quittances"
   | "finance"
   | "performance"
-  | "revision"
   | "outils"
   | "inventaire"
   | "documents"
@@ -54,7 +52,6 @@ export const DEFAULT_LANDLORD_NAV_ORDER: LandlordSectionKey[] = [
   "quittances",
   "finance",
   "performance",
-  "revision",
   "outils",
   "etat_des_lieux",
   "messagerie",
@@ -72,7 +69,6 @@ export const LANDLORD_NAV_ITEMS: Record<LandlordSectionKey, LandlordNavItem> = {
   quittances: { key: "quittances", label: "Quittances", icon: ReceiptPercentIcon },
   finance: { key: "finance", label: "Finance", icon: BanknotesIcon },
   performance: { key: "performance", label: "Performance", icon: ChartBarIcon },
-  revision: { key: "revision", label: "Révision IRL", shortLabel: "Révision", icon: ArrowTrendingUpIcon },
   outils: { key: "outils", label: "Boîte à outils", shortLabel: "Outils", icon: WrenchScrewdriverIcon },
   etat_des_lieux: { key: "etat_des_lieux", label: "États des lieux", icon: ClipboardDocumentCheckIcon },
   messagerie: { key: "messagerie", label: "Messages", icon: ChatBubbleLeftRightIcon },

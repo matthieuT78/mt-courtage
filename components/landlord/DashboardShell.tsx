@@ -29,7 +29,6 @@ import { SectionAlertes } from "./sections/SectionAlertes";
 import { SectionQuittances } from "./sections/SectionQuittances";
 import { SectionFinance } from "./sections/SectionFinance";
 import { SectionPerformance } from "./sections/SectionPerformance";
-import { SectionRevision } from "./sections/SectionRevision";
 import { SectionEtatDesLieux } from "./sections/SectionEtatDesLieux";
 import { SectionInventaire } from "./sections/SectionInventaire";
 import { SectionDeclaration } from "./sections/SectionDeclaration";
@@ -572,9 +571,6 @@ export function DashboardShell(props: any) {
 
       case "performance":
         return <SectionPerformance userId={userId} leases={leases} payments={payments} propertyById={propertyById} />;
-
-      case "revision":
-        return <SectionRevision userId={userId} leases={leases} properties={properties} tenants={tenants} />;
 
       case "outils":
         return <SectionOutils userId={userId} properties={properties} leases={leases} plan={plan} onRefresh={refresh} />;
