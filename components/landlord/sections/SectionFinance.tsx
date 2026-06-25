@@ -2767,131 +2767,74 @@ function PropertyFinanceForm({
   const fixedChargesDisplay = displayAmountFromMonthly(s.fixed_charges_monthly, fixedChargesFrequency);
 
   return (
-    <form onSubmit={save} className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-      <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-3 py-3 text-sm text-cyan-900">
-        <p className="font-semibold">Charges récurrentes automatiques du bien</p>
-        <p className="mt-1 text-xs leading-5">
-          À remplir une seule fois. lokt.fr les applique automatiquement aux périodes analysées : taxe foncière, CFE, assurance, copropriété,
-          frais bancaires, entretien et crédit. Les intérêts sont isolés pour le dossier comptable LMNP.
+    <form onSubmit={save} className="mt-3 rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
+
+      {/* Bandeau : charges → grand livre */}
+      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+        <p className="text-xs font-semibold text-indigo-900">Charges récurrentes → Grand livre</p>
+        <p className="mt-1 text-[0.72rem] leading-5 text-indigo-800">
+          Crédit, assurance, copropriété, taxe foncière… se saisissent désormais via{" "}
+          <strong>Nouvelle écriture &gt; Charge récurrente</strong>. Vous pouvez y joindre vos documents
+          (appel de fonds, avis d’assurance) et lokt.fr reconstruit l’historique automatiquement.
         </p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <Field label="Prix d’achat" value={s.purchase_price} onChange={(v) => setS((p) => ({ ...p, purchase_price: v }))} />
-        <Field label="Frais notaire" value={s.notary_fees} onChange={(v) => setS((p) => ({ ...p, notary_fees: v }))} />
-        <Field label="Frais agence" value={s.agency_fees} onChange={(v) => setS((p) => ({ ...p, agency_fees: v }))} />
-        <Field label="Travaux" value={s.works} onChange={(v) => setS((p) => ({ ...p, works: v }))} />
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-4">
-        <Field label="Crédit mensuel récurrent" value={s.loan_monthly} onChange={(v) => setS((p) => ({ ...p, loan_monthly: v }))} />
-        <Field
-          label="Assurance crédit mensuelle"
-          value={s.loan_insurance_monthly}
-          onChange={(v) => setS((p) => ({ ...p, loan_insurance_monthly: v }))}
-        />
-        <Field label="Taux crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} />
-        <Field
-          label="Année de fin du crédit"
-          value={s.loan_end_year ?? null}
-          integer
-          placeholder="Ex. 2043"
-          onChange={(v) => setS((p) => ({ ...p, loan_end_year: v == null ? null : Math.round(v) }))}
-        />
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="space-y-1">
-          <label className="text-xs text-slate-600">Autres charges fixes</label>
-          <div className="grid grid-cols-[minmax(0,1fr),132px] gap-2">
-            <Field
-              label=""
-              value={fixedChargesDisplay}
-              placeholder="Montant"
-              onChange={(v) => setS((p) => ({ ...p, fixed_charges_monthly: normalizeMonthlyAmount(v, fixedChargesFrequency) }))}
-            />
-            <select
-              value={fixedChargesFrequency}
-              onChange={(e) => {
-                const nextFrequency = e.target.value as NonNullable<PropertyFinance["fixed_charges_frequency"]>;
-                setS((p) => ({
-                  ...p,
-                  fixed_charges_frequency: nextFrequency,
-                }));
-              }}
-              className="h-[38px] rounded-lg border border-slate-300 bg-white px-2 text-sm text-slate-800"
-            >
-              <option value="monthly">/ mois</option>
-              <option value="quarterly">/ trimestre</option>
-              <option value="yearly">/ an</option>
-            </select>
-          </div>
-          <p className="text-[0.68rem] leading-4 text-slate-500">Exemples : frais récurrents non classés ailleurs. La synthèse les ramène automatiquement au mois.</p>
-        </div>
-        <Field
-          label="Taxe foncière annuelle"
-          value={s.property_tax_yearly}
-          onChange={(v) => setS((p) => ({ ...p, property_tax_yearly: v }))}
-        />
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-slate-700">Régime fiscal suivi</label>
-          <select
-            value={s.tax_regime || ""}
-            onChange={(e) => setS((p) => ({ ...p, tax_regime: e.target.value || null }))}
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-          >
-            <option value="">Non renseigné</option>
-            <option value="lmnp_micro">LMNP micro-BIC</option>
-            <option value="lmnp_real">LMNP réel</option>
-            <option value="nu_micro">Location nue micro-foncier</option>
-            <option value="nu_real">Location nue réel</option>
-            <option value="pinel">Pinel</option>
-          </select>
+      {/* Investissement */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Coût d’acquisition</p>
+        <div className="grid gap-3 md:grid-cols-4">
+          <Field label="Prix d’achat" value={s.purchase_price} onChange={(v) => setS((p) => ({ ...p, purchase_price: v }))} />
+          <Field label="Frais notaire" value={s.notary_fees} onChange={(v) => setS((p) => ({ ...p, notary_fees: v }))} />
+          <Field label="Frais agence" value={s.agency_fees} onChange={(v) => setS((p) => ({ ...p, agency_fees: v }))} />
+          <Field label="Travaux" value={s.works} onChange={(v) => setS((p) => ({ ...p, works: v }))} />
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <Field label="Assurance PNO / GLI mensuelle" value={s.pno_insurance_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, pno_insurance_monthly: v }))} />
-        <Field label="Copropriété mensuelle" value={s.copro_charges_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, copro_charges_monthly: v }))} />
-        <Field label="CFE annuelle" value={s.cfe_yearly ?? null} onChange={(v) => setS((p) => ({ ...p, cfe_yearly: v }))} />
-        <Field
-          label="Intérêts d’emprunt mensuels (fiscal, facultatif)"
-          value={s.loan_interest_monthly ?? null}
-          onChange={(v) => setS((p) => ({ ...p, loan_interest_monthly: v }))}
-          hint="À renseigner depuis le tableau d’amortissement si vous préparez une déclaration au réel. Laissez vide pour le cashflow : la mensualité de crédit suffit."
-        />
-        <Field label="Frais bancaires mensuels" value={s.bank_fees_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, bank_fees_monthly: v }))} />
-        <Field label="Entretien provisionné mensuel" value={s.maintenance_monthly ?? null} onChange={(v) => setS((p) => ({ ...p, maintenance_monthly: v }))} />
-        <Field
-          label="Impôts locatifs estimés mensuels"
-          value={s.rental_tax_monthly ?? null}
-          onChange={(v) => setS((p) => ({ ...p, rental_tax_monthly: v }))}
-          hint="Pour l'impôt sur les revenus locatifs et prélèvements sociaux. Ne pas y mettre la taxe foncière, qui a son champ annuel dédié."
-        />
-      </div>
-
-      {/* Date de début des charges récurrentes */}
-      <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 space-y-2">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
-            <p className="text-xs font-semibold text-amber-900">Ces charges s'appliquent depuis…</p>
-            <p className="mt-0.5 text-[0.72rem] leading-4 text-amber-700">
-              Si vous gérez un bail déjà en cours, indiquez la date de début réelle. Le graphe Finance reconstruira
-              l'historique sans projeter les charges sur des mois antérieurs.
-            </p>
-          </div>
-          <input
-            type="date"
-            value={s.recurring_since ?? ""}
-            onChange={(e) => setS((p) => ({ ...p, recurring_since: e.target.value || null }))}
-            className="shrink-0 rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400/40"
+      {/* Crédit — analytique uniquement */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Crédit (analytique)</p>
+        <div className="grid gap-3 md:grid-cols-3">
+          <Field label="Apport personnel" value={s.down_payment} onChange={(v) => setS((p) => ({ ...p, down_payment: v }))} />
+          <Field label="Taux crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} />
+          <Field
+            label="Année de fin du crédit"
+            value={s.loan_end_year ?? null}
+            integer
+            placeholder="Ex. 2043"
+            onChange={(v) => setS((p) => ({ ...p, loan_end_year: v == null ? null : Math.round(v) }))}
           />
         </div>
-        {!s.recurring_since && (
-          <p className="text-[0.68rem] text-amber-600">
-            Non renseigné — les charges sont projetées sur toute la période affichée.
-          </p>
-        )}
+        <p className="mt-1.5 text-[0.68rem] text-slate-400">
+          La mensualité de crédit se saisit dans le grand livre (Nouvelle écriture &gt; Charge récurrente &gt; catégorie Crédit).
+        </p>
+      </div>
+
+      {/* Fiscal */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Fiscal</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-slate-700">Régime fiscal suivi</label>
+            <select
+              value={s.tax_regime || ""}
+              onChange={(e) => setS((p) => ({ ...p, tax_regime: e.target.value || null }))}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+            >
+              <option value="">Non renseigné</option>
+              <option value="lmnp_micro">LMNP micro-BIC</option>
+              <option value="lmnp_real">LMNP réel</option>
+              <option value="nu_micro">Location nue micro-foncier</option>
+              <option value="nu_real">Location nue réel</option>
+              <option value="pinel">Pinel</option>
+            </select>
+          </div>
+          <Field
+            label="Intérêts d’emprunt mensuels (LMNP réel)"
+            value={s.loan_interest_monthly ?? null}
+            onChange={(v) => setS((p) => ({ ...p, loan_interest_monthly: v }))}
+            hint="Depuis votre tableau d’amortissement, pour la déclaration au réel. Pas nécessaire pour le cashflow."
+          />
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
