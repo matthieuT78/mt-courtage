@@ -121,11 +121,29 @@ export default function ConfidentialitePage() {
               <Section title="6. Durées de conservation">
                 <p>Les données sont conservées pendant des durées proportionnées à leur finalité :</p>
                 <ul className="list-disc space-y-1 pl-5">
-                  <li>données de compte : pendant la durée d’existence du compte, puis suppression ou archivage limité ;</li>
-                  <li>données bailleur et documents : tant que le compte est actif ou jusqu’à suppression demandée par l’utilisateur ;</li>
-                  <li>données de paiement et facturation : pendant les durées nécessaires aux obligations comptables et légales ;</li>
-                  <li>logs techniques et sécurité : pendant une durée limitée nécessaire au diagnostic, à la sécurité et à la prévention des abus ;</li>
-                  <li>données anonymisées ou agrégées : peuvent être conservées sans limite lorsqu’elles ne permettent plus d’identifier une personne.</li>
+                  <li>
+                    <strong>Données de simulation (leads calculettes) :</strong> les données personnelles (email, résultats de simulation, données financières) sont
+                    automatiquement anonymisées selon le consentement donné — 12 mois pour les simulations sans consentement au contact, 36 mois pour celles avec
+                    consentement. Les statistiques agrégées (outil utilisé, date, localisation approximative) sont conservées sans limite pour améliorer le service.
+                  </li>
+                  <li>
+                    <strong>Données de compte :</strong> conservées pendant toute la durée d’activité du compte. En cas de suppression du compte, les données
+                    personnelles sont effacées ou anonymisées sous 30 jours.
+                  </li>
+                  <li>
+                    <strong>Données bailleur et documents :</strong> tant que le compte est actif ou jusqu’à suppression demandée par l’utilisateur. Les données
+                    relatives aux locataires et baux peuvent être conservées jusqu’à 3 ans après la fin du bail à des fins de preuve.
+                  </li>
+                  <li>
+                    <strong>Données de paiement et facturation :</strong> 10 ans à compter de l’émission de la facture, conformément aux obligations comptables légales
+                    (article L. 123-22 du Code de commerce). Seuls les identifiants techniques Stripe sont conservés ; les numéros de carte ne sont jamais stockés.
+                  </li>
+                  <li>
+                    <strong>Logs techniques et sécurité :</strong> 30 jours à 12 mois selon la nature, nécessaires au diagnostic, à la sécurité et à la prévention des abus.
+                  </li>
+                  <li>
+                    <strong>Données anonymisées ou agrégées :</strong> conservées sans limite lorsqu’elles ne permettent plus d’identifier une personne.
+                  </li>
                 </ul>
               </Section>
 
@@ -175,8 +193,20 @@ export default function ConfidentialitePage() {
 
               <Section title="10. Suppression du compte">
                 <p>
-                  Vous pouvez demander la suppression de votre compte et des données associées. Certaines informations peuvent être conservées lorsque
-                  cela est nécessaire pour respecter une obligation légale, établir une preuve ou gérer un litige.
+                  Vous pouvez supprimer votre compte directement depuis vos paramètres (section « Mon compte »). La suppression entraîne :
+                </p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>la désactivation immédiate de l'accès ;</li>
+                  <li>l'effacement de votre profil et de vos données bailleur sous 30 jours ;</li>
+                  <li>l'anonymisation des simulations liées à votre compte.</li>
+                </ul>
+                <p>
+                  Certaines informations sont conservées malgré la suppression lorsque cela est nécessaire pour respecter une obligation légale
+                  (données de facturation — 10 ans), établir une preuve ou gérer un litige.
+                </p>
+                <p>
+                  Vous pouvez également faire une demande de suppression par email à{" "}
+                  <a href="mailto:contact@lokt.fr" className="underline">contact@lokt.fr</a>.
                 </p>
               </Section>
 
@@ -189,7 +219,7 @@ export default function ConfidentialitePage() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">Dernière mise à jour : 22 juin 2026</p>
+              <p className="text-xs text-slate-500">Dernière mise à jour : 25 juin 2026</p>
               <Link href="/cgu" className="text-sm font-semibold text-slate-700 underline">
                 Voir les CGU/CGV
               </Link>
