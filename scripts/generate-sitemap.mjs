@@ -29,6 +29,7 @@ const staticPagesV1 = [
   "/capacite",
   "/pret-relais",
   "/investissement",
+  "/investissement-locatif",
   "/plus-value-vente-immobiliere",
   "/parc-immobilier",
   "/gestion-locative-lmnp",

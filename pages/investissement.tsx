@@ -316,167 +316,20 @@ export default function InvestissementPage() {
             </p>
           </section>
 
-          {/* ── SECTION ÉDITORIALE ── */}
-          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-
-            {/* Intro */}
-            <div className="border-b border-slate-100 bg-gradient-to-br from-[#635bff]/5 to-[#00b4d8]/5 px-6 py-8 sm:px-8">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-[#635bff]">Ce que les simulateurs ne montrent pas</p>
-              <h2 className="mt-2 text-xl font-bold leading-snug text-slate-950 sm:text-2xl">
-                Investir dans l&apos;immobilier locatif :<br className="hidden sm:block" /> la réalité derrière les chiffres
-              </h2>
-              <p className="mt-3 max-w-2xl text-[0.95rem] leading-relaxed text-slate-600">
-                Un simulateur calcule le rendement. Il ne dit pas pourquoi 60 % des primo-investisseurs sous-estiment les charges, pourquoi certains revendent à perte après 3 ans — et pourquoi d&apos;autres construisent un patrimoine solide avec un cash-flow légèrement négatif. Voici la réalité du terrain.
-              </p>
+          {/* Teaser → guide investissement */}
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-[#635bff]/20 bg-[#635bff]/5 px-5 py-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#635bff]">Guide complet</p>
+              <p className="mt-0.5 text-sm font-semibold text-slate-900">Les 5 étapes, les erreurs classiques, deux profils réels</p>
+              <p className="mt-0.5 text-xs text-slate-500">Ce que les chiffres ne disent pas sur l&apos;investissement locatif</p>
             </div>
-
-            <div className="space-y-12 px-6 py-8 sm:px-8">
-
-              {/* ── 5 ÉTAPES ── */}
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Les 5 étapes d&apos;un investissement locatif — et où ça coince vraiment</h3>
-                <div className="mt-6 space-y-0">
-                  {[
-                    {
-                      step: "01",
-                      title: "Trouver le bien",
-                      color: "bg-[#635bff]",
-                      body: "C'est l'étape la plus sous-estimée. On visite 10 appartements, on tombe sur le 11e un vendredi soir, et on fait une offre le samedi matin. L'erreur classique : acheter avec ses émotions plutôt qu'avec ses chiffres. Un bien « coup de cœur » dans une rue peu dynamique peut avoir un rendement brut séduisant (8 %) et un cash-flow catastrophique une fois la vacance et les travaux intégrés.",
-                      lesson: "Règle : sortez le simulateur avant la visite, pas après. Si les chiffres ne tiennent pas à froid, ils ne tiendront pas à chaud.",
-                    },
-                    {
-                      step: "02",
-                      title: "Financer",
-                      color: "bg-[#00b4d8]",
-                      body: "La banque finance le prix — pas les imprévus. Les primo-investisseurs oublient systématiquement de budgéter : frais de notaire (7-8 % dans l'ancien), travaux de mise aux normes, ameublement si meublé, 3 mois de charges sans locataire pendant la transition. Sur un bien à 180 000 €, le coût total réel dépasse souvent 205 000 €.",
-                      lesson: "Règle : le vrai coût d'acquisition = prix + notaire + travaux + ameublement + 3 mois de charges. Entrez ce chiffre dans le simulateur, pas juste le prix.",
-                    },
-                    {
-                      step: "03",
-                      title: "Louer",
-                      color: "bg-[#00a97b]",
-                      body: "Trois semaines de vacance, et la pression monte. On accepte le premier dossier qui se présente. C'est souvent là que les problèmes commencent. Un locataire avec des revenus insuffisants ou un historique de loyers impayés coûte bien plus cher qu'un mois de vacance supplémentaire.",
-                      lesson: "Règle : le loyer à 33 % des revenus nets, un garant ou une GLI, un EDL photographié pièce par pièce. Ces 2 heures valent des mois de procédure.",
-                    },
-                    {
-                      step: "04",
-                      title: "Gérer",
-                      color: "bg-[#f59e0b]",
-                      body: "La gestion quotidienne, c'est 1 heure par mois — si on est organisé. La majorité des bailleurs y passent 4 à 5 heures parce qu'ils gèrent dans leur tête : quittances oubliées, révision IRL ratée, loyer non révisé pendant 3 ans. Sur 900 €/mois avec 2 % d'IRL, 3 ans sans révision = 54 € perdus par mois, soit 648 €/an donnés au locataire.",
-                      lesson: "Règle : automatisez tout ce qui peut l'être. Quittances, alertes de paiement, révision IRL. Ce que vous ne mesurez pas, vous le perdez.",
-                    },
-                    {
-                      step: "05",
-                      title: "Optimiser",
-                      color: "bg-[#8b5cf6]",
-                      body: "Le régime fiscal choisi à l'achat n'est pas forcément le meilleur 3 ans plus tard. Un bailleur passé du micro-foncier au régime réel après des travaux a économisé 3 200 € d'impôts la première année. Un propriétaire qui a switché en LMNP après un départ de locataire a réduit sa fiscalité à zéro pendant 8 ans. Ces décisions se prennent avec des chiffres — pas à l'instinct.",
-                      lesson: "Règle : réévaluez votre régime fiscal tous les 2 ans. Les abattements et amortissements disponibles changent votre cash-flow réel plus que n'importe quel autre levier.",
-                    },
-                  ].map(({ step, title, color, body, lesson }, i) => (
-                    <div key={step} className="relative flex gap-4 pb-8 last:pb-0">
-                      {/* Ligne verticale */}
-                      {i < 4 && <div className="absolute left-5 top-10 bottom-0 w-px bg-slate-100" />}
-                      {/* Numéro */}
-                      <div className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${color} text-xs font-bold text-white shadow-sm`}>
-                        {step}
-                      </div>
-                      <div className="pt-1.5">
-                        <h4 className="font-semibold text-slate-900">{title}</h4>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-600">{body}</p>
-                        <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-xs leading-relaxed text-slate-700">
-                          <span className="font-semibold text-slate-900">À retenir : </span>{lesson}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── DEUX PROFILS ── */}
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Deux investisseurs, deux trajectoires</h3>
-                <p className="mt-2 text-sm text-slate-500">Scénarios fictifs basés sur des situations courantes.</p>
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-
-                  {/* Profil positif */}
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-base">🏠</div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">Thomas, 34 ans · Lyon 7e</p>
-                        <p className="text-xs text-slate-500">Studio 28 m² · acheté 145 000 € en 2022</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-2 text-sm text-slate-700">
-                      <p>Thomas a simulé 4 biens avant de visiter. Il a acheté un studio étudiant près de la fac, loué 680 €/mois. Cash-flow : <strong className="text-emerald-700">−95 €/mois</strong> après crédit et charges.</p>
-                      <p>Il aurait pu se décourager. Mais en 3 ans : 14 400 € de capital remboursé, bien valorisé à ~165 000 €. Patrimoine créé : <strong className="text-emerald-700">+34 000 €</strong> pour un effort de 3 420 €.</p>
-                      <p>Il gère seul — quittances en 5 min par mois, zéro impayé. Il cherche son deuxième bien.</p>
-                    </div>
-                    <div className="mt-4 rounded-xl bg-emerald-100 px-3 py-2 text-xs font-medium text-emerald-800">
-                      Ce qui a marché : les chiffres d&apos;abord, le bien ensuite. Et un locataire sélectionné rigoureusement.
-                    </div>
-                  </div>
-
-                  {/* Profil négatif */}
-                  <div className="rounded-2xl border border-red-100 bg-red-50/50 p-5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-base">🏚️</div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">Julie, 41 ans · Marseille 13e</p>
-                        <p className="text-xs text-slate-500">T3 62 m² · acheté 178 000 € en 2021</p>
-                      </div>
-                    </div>
-                    <div className="mt-4 space-y-2 text-sm text-slate-700">
-                      <p>Julie a acheté un T3 « parce que le quartier allait se valoriser ». Elle a loué au premier candidat pour éviter la vacance. Résultat : 4 mois d&apos;impayés, procédure à 8 mois.</p>
-                      <p>Elle a délégué à une agence (8 % des loyers) pour ne plus gérer. Cash-flow réel : <strong className="text-red-600">−380 €/mois</strong>. Elle envisage de vendre — mais la plus-value est faible après frais.</p>
-                    </div>
-                    <div className="mt-4 rounded-xl bg-red-100 px-3 py-2 text-xs font-medium text-red-800">
-                      Ce qui a coincé : aucune simulation avant l&apos;achat, sélection du locataire bâclée, gestion réactive plutôt que proactive.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── CE QUE LES CHIFFRES NE MONTRENT PAS ── */}
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Ce que les chiffres ne diront jamais</h3>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  {[
-                    { icon: "😤", label: "Le premier impayé", body: "Même petit (150 €), il crée une anxiété disproportionnée. La plupart des bailleurs apprennent à cette occasion l'importance d'avoir 3 mois de réserve et une procédure de relance prête." },
-                    { icon: "✅", label: "La première quittance envoyée", body: "Il y a une vraie satisfaction à envoyer le premier document officiel en tant que propriétaire-bailleur. C'est le moment où l'investissement devient concret, pas juste un chiffre sur un simulateur." },
-                    { icon: "📈", label: "L'effet boule de neige", body: "Le deuxième bien est presque toujours plus facile que le premier. Vous connaissez la procédure, les banques vous font davantage confiance, et vous savez ce que vous cherchez vraiment." },
-                    { icon: "🧠", label: "La charge mentale de gestion", body: "Gérer seul sans outil dédié crée une charge mentale diffuse — \"est-ce que le loyer est arrivé ?\", \"quand réviser le loyer ?\". Automatiser ces vérifications change radicalement l'expérience." },
-                  ].map(({ icon, label, body }) => (
-                    <div key={label} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                      <p className="text-xl">{icon}</p>
-                      <p className="mt-2 text-sm font-semibold text-slate-900">{label}</p>
-                      <p className="mt-1.5 text-xs leading-relaxed text-slate-600">{body}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── LIENS BLOG ── */}
-              <div className="border-t border-slate-100 pt-6">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Pour aller plus loin</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {[
-                    { label: "Calculer la rentabilité nette réelle", href: "/blog/rentabilite-locative-comment-calculer" },
-                    { label: "Cash-flow négatif : garder ou vendre ?", href: "/blog/cashflow-negatif-garder-ou-vendre" },
-                    { label: "Investir sans (gros) apport", href: "/blog/investir-sans-apport-immobilier" },
-                    { label: "LMNP ou location nue : quelle fiscalité ?", href: "/blog/lmnp-vs-location-nue" },
-                    { label: "Loyer impayé : que faire ?", href: "/blog/loyer-impaye-que-faire" },
-                    { label: "Gestion locative sans agence", href: "/blog/gestion-locative-sans-agence" },
-                  ].map(({ label, href }) => (
-                    <Link key={href} href={href} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-medium text-slate-700 shadow-sm transition hover:border-[#635bff]/30 hover:text-[#635bff]">
-                      {label} →
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          </section>
+            <Link
+              href="/investissement-locatif"
+              className="shrink-0 rounded-full border border-[#635bff] px-4 py-2 text-xs font-semibold text-[#635bff] transition hover:bg-[#635bff] hover:text-white"
+            >
+              Lire le guide →
+            </Link>
+          </div>
 
         </div>
       </main>
