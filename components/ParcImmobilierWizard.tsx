@@ -1141,7 +1141,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
         </div>
 
         {/* Résultats */}
-        {hasSimulation && <div className="flex flex-col gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
+        <div className="flex flex-col gap-3 rounded-[1.35rem] border border-slate-200 bg-white p-4 shadow-md sm:rounded-2xl sm:p-5">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-indigo-600 mb-1">Résultats</p>
@@ -1232,22 +1232,32 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
               </div>
             </>
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5">
-              <p className="text-sm font-semibold text-slate-900">Votre cockpit apparaîtra ici.</p>
-              <p className="mt-1 text-sm text-slate-600">
-                Après calcul, vous verrez le score du parc, le bien à traiter en priorité, une matrice rendement/risque,
-                la dette face à la valeur et un stress test.
-              </p>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {["Cash-flow par bien", "Rendement vs LTV", "Dette vs valeur", "Stress test"].map((label) => (
-                  <div key={label} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
-                    {label}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                  <BuildingOffice2Icon className="h-6 w-6" />
+                </span>
+                <p className="mt-3 text-sm font-semibold text-slate-900">Saisissez vos biens et lancez le calcul</p>
+                <p className="mt-1 text-xs text-slate-500 max-w-[240px]">
+                  Votre cockpit s&apos;affichera ici&nbsp;: score patrimonial, classement des biens, matrice rendement/risque et stress test.
+                </p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  { label: "Cash-flow par bien", hint: "Du meilleur au bien à traiter" },
+                  { label: "Rendement vs LTV", hint: "Matrice rendement / risque dette" },
+                  { label: "Dette vs valeur", hint: "Équité disponible bien par bien" },
+                  { label: "Stress test", hint: "Simulation de chocs loyer ou taux" },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                    <p className="text-xs font-semibold text-slate-700">{s.label}</p>
+                    <p className="mt-0.5 text-[0.7rem] text-slate-400">{s.hint}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
-        </div>}
+        </div>
       </section>
 
       {renderRecapTable()}
