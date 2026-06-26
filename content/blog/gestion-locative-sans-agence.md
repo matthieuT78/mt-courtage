@@ -5,7 +5,7 @@ date: "2026-06-26"
 category: "Investissement locatif"
 tags: ["gestion locative", "sans agence", "bailleur particulier", "quittances", "loyer", "LMNP"]
 relatedCalculators: ["investissement", "parc-immobilier"]
-coverImage: "/blog/Gestion locative sans agence .PNG"
+coverImage: "/blog/gestion-locative-sans-agence.png"
 ---
 
 # Gestion locative sans agence : mode d'emploi complet 2026

@@ -5,7 +5,7 @@ date: "2026-06-05"
 category: "Achat immobilier"
 tags: ["frais de notaire", "achat immobilier", "frais d'acquisition", "droits de mutation"]
 relatedCalculators: ["capacite", "acheter-ou-louer", "plus-value"]
-coverImage: "/blog/Frais de notaire 2026.PNG"
+coverImage: "/blog/frais-de-notaire-2026.png"
 ---
 
 # Frais de notaire 2026 : calcul exact, composition et comment les réduire

@@ -5,7 +5,7 @@ date: "2026-06-26"
 category: "Investissement locatif"
 tags: ["investissement locatif", "rendement locatif", "cash-flow", "LMNP", "fiscalité immobilière"]
 relatedCalculators: ["investissement", "parc-immobilier"]
-coverImage: "/blog/Investissement locatif calculer la rentabilite.PNG"
+coverImage: "/blog/investissement-locatif.png"
 ---
 
 # Investissement locatif : calculer la rentabilité et le cash-flow en 2026

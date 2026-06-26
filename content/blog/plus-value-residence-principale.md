@@ -5,7 +5,7 @@ date: "2026-06-10"
 category: "Plus-value immobilière"
 tags: ["plus-value", "résidence principale", "exonération", "vente immobilière", "impôt"]
 relatedCalculators: ["plus-value", "acheter-ou-louer"]
-coverImage: "/blog/Plus-value résidence principale .PNG"
+coverImage: "/blog/plus-value-residence-principale.png"
 ---
 
 # Plus-value résidence principale : êtes-vous vraiment exonéré ?

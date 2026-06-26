@@ -5,7 +5,7 @@ date: "2026-06-23"
 category: "Investissement locatif"
 tags: ["SCI familiale", "SCI", "investissement immobilier", "transmission patrimoine", "impôt"]
 relatedCalculators: ["investissement", "parc-immobilier"]
-coverImage: "/blog/SCI familiale.PNG"
+coverImage: "/blog/sci-familiale.png"
 ---
 
 # SCI familiale : avantages, inconvénients et quand la créer

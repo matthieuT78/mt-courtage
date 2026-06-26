@@ -5,7 +5,7 @@ date: "2026-06-25"
 category: "Investissement locatif"
 tags: ["studio investissement", "T2 locatif", "rendement locatif", "primo-investisseur", "immobilier"]
 relatedCalculators: ["investissement", "parc-immobilier"]
-coverImage: "/blog/Investir dans un studio ou un T2.PNG"
+coverImage: "/blog/investir-studio-t2.png"
 ---
 
 # Investir dans un studio ou un T2 : ce que disent les chiffres

@@ -5,7 +5,7 @@ date: "2026-06-18"
 category: "Investissement locatif"
 tags: ["rentabilité locative", "rendement brut", "cashflow", "investissement immobilier"]
 relatedCalculators: ["investissement", "parc-immobilier"]
-coverImage: "/blog/Rentabilité locative.PNG"
+coverImage: "/blog/rentabilite-locative.png"
 ---
 
 # Rentabilité locative : comment calculer le vrai rendement de votre bien

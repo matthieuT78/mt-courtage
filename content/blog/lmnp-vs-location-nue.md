@@ -5,7 +5,7 @@ date: "2026-06-08"
 category: "Investissement locatif"
 tags: ["LMNP", "location nue", "fiscalité locative", "amortissement", "régime réel"]
 relatedCalculators: ["investissement", "parc-immobilier"]
-coverImage: "/blog/LMNP ou location nue.PNG"
+coverImage: "/blog/lmnp-location-nue.png"
 ---
 
 # LMNP ou location nue : quelle fiscalité choisir en 2026 ?

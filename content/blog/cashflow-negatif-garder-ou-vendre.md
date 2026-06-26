@@ -5,7 +5,7 @@ date: "2026-06-15"
 category: "Investissement locatif"
 tags: ["cashflow négatif", "investissement locatif", "rentabilité", "vendre ou garder"]
 relatedCalculators: ["investissement", "plus-value", "parc-immobilier"]
-coverImage: "/blog/Bien locatif en cashflow négatif.PNG"
+coverImage: "/blog/cashflow-negatif.png"
 ---
 
 # Bien locatif en cashflow négatif : garder ou vendre ?
