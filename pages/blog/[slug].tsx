@@ -2,6 +2,8 @@ import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
 import type { GetStaticPaths, GetStaticProps } from "next";
+import AppHeader from "../../components/AppHeader";
+import AppFooter from "../../components/AppFooter";
 import { getAllBlogSlugs, getAllPostsMeta, getPostBySlug, type BlogPost, type BlogFrontmatter } from "../../lib/blog";
 
 const CATEGORY_CONFIG: Record<string, { color: string; bg: string; gradient: string }> = {
@@ -106,6 +108,7 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
         ))}
       </Head>
 
+      <AppHeader />
       {/* ── COVER IMAGE / GRADIENT HERO ── */}
       <div className="relative w-full overflow-hidden" style={{ minHeight: 280 }}>
         {frontmatter.coverImage ? (
@@ -286,6 +289,7 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
           )}
         </div>
       </main>
+      <AppFooter />
     </>
   );
 }
