@@ -3,10 +3,15 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AdjustmentsHorizontalIcon,
   BanknotesIcon,
+  CheckCircleIcon,
   CreditCardIcon,
+  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
   HomeModernIcon,
+  LightBulbIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
+import type { ComponentType, SVGProps } from "react";
 import { supabase } from "../lib/supabaseClient";
 import LeadGate from "./LeadGate";
 import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
@@ -95,6 +100,119 @@ type BankabilityAssessment = {
   label: string;
   comment: string;
 };
+
+type ActionPlanItemType = "blocking" | "warning" | "positive" | "tip";
+type ActionPlanItem = { type: ActionPlanItemType; title: string; body: string };
+
+const ACTION_ITEM_CONFIG: Record<
+  ActionPlanItemType,
+  { Icon: ComponentType<SVGProps<SVGSVGElement>>; badge: string; bg: string; border: string; iconBg: string; iconText: string; titleText: string; badgeCls: string }
+> = {
+  blocking: { Icon: ExclamationTriangleIcon, badge: "Bloquant",     bg: "bg-red-50",     border: "border-red-200",     iconBg: "bg-red-100",     iconText: "text-red-600",     titleText: "text-red-900",     badgeCls: "bg-red-100 text-red-700" },
+  warning:  { Icon: ExclamationCircleIcon,  badge: "A surveiller",  bg: "bg-amber-50",   border: "border-amber-200",   iconBg: "bg-amber-100",   iconText: "text-amber-600",   titleText: "text-amber-900",   badgeCls: "bg-amber-100 text-amber-700" },
+  positive: { Icon: CheckCircleIcon,        badge: "Atout",         bg: "bg-emerald-50", border: "border-emerald-200", iconBg: "bg-emerald-100", iconText: "text-emerald-600", titleText: "text-emerald-900", badgeCls: "bg-emerald-100 text-emerald-700" },
+  tip:      { Icon: LightBulbIcon,          badge: "Conseil",       bg: "bg-indigo-50",  border: "border-indigo-200",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  titleText: "text-indigo-900",  badgeCls: "bg-indigo-100 text-indigo-700" },
+};
+
+function buildRelaisActionPlan(
+  resume: ResumeRelais,
+  assessment: BankabilityAssessment,
+  tauxEndettementCible: number,
+  ctx: {
+    pctRetenu: number; tauxRelais: number; prixCible: number;
+    timelineDb: ProjectTimelineDB; proStatus: ProStatus;
+    ageEmprunteur: number; ageCoEmprunteur: number; nbAdultes: number; dureeNouveau: number;
+  }
+): ActionPlanItem[] {
+  const { pctRetenu, tauxRelais, prixCible, timelineDb, proStatus, ageEmprunteur, ageCoEmprunteur, nbAdultes, dureeNouveau } = ctx;
+  const items: ActionPlanItem[] = [];
+
+  const depassement = resume.tauxEndettementAvecProjet - tauxEndettementCible;
+  const marge = tauxEndettementCible - resume.tauxEndettementAvecProjet;
+  const ageFin = ageEmprunteur > 0 ? ageEmprunteur + dureeNouveau : 0;
+  const interetsRelaisMensuels = resume.montantRelais * (tauxRelais / 100) / 12;
+  const margeVsPrixCible = prixCible > 0 ? resume.budgetMax - prixCible : null;
+
+  // ── BLOCKING ───────────────────────────────────────────────────────
+  if (resume.montantRelais === 0) {
+    items.push({ type: "blocking", title: "Aucun relais disponible",
+      body: `Le capital restant dû est supérieur ou égal à la valeur retenue par la banque (${pctRetenu}% de l'estimation). Il ne reste rien pour financer le relais. Leviers : réévaluer le bien à la hausse, réduire le CRD, ou augmenter le % retenu si la banque l'accepte.` });
+  }
+  if (margeVsPrixCible !== null && margeVsPrixCible < 0) {
+    items.push({ type: "blocking", title: "Budget max insuffisant pour le prix visé",
+      body: `Votre budget max est de ${formatEuro(resume.budgetMax)}, soit ${formatEuro(Math.abs(margeVsPrixCible))} en dessous du prix cible (${formatEuro(prixCible)}). Ce montage ne permet pas d'atteindre ce bien. Leviers : allonger la durée, augmenter l'apport, revoir le prix visé ou négocier le % retenu avec la banque.` });
+  }
+
+  // ── WARNINGS ───────────────────────────────────────────────────────
+  if (depassement > 2) {
+    items.push({ type: "warning", title: "Endettement au-dessus de la cible bancaire",
+      body: `Avec le projet, votre taux d'endettement atteint ~${formatPct(resume.tauxEndettementAvecProjet)}, soit ${formatPct(depassement)} au-dessus de la cible à ${tauxEndettementCible}%. Pour revenir dans les clous : allonger la durée du nouveau prêt, revoir le prix visé à la baisse, ou renforcer l'apport personnel.` });
+  } else if (marge < 3 && marge >= 0) {
+    items.push({ type: "warning", title: "Vous êtes à la limite — les détails comptent",
+      body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) frôle la cible de ${tauxEndettementCible}%. Dans cette configuration, la qualité du dossier est décisive : tenue de compte irréprochable, épargne résiduelle après projet, stabilité des revenus démontrée.` });
+  }
+
+  if (margeVsPrixCible !== null && margeVsPrixCible >= 0 && margeVsPrixCible < prixCible * 0.05) {
+    items.push({ type: "warning", title: "Peu de marge entre budget max et prix visé",
+      body: `Votre budget max dépasse le prix cible de seulement ${formatEuro(margeVsPrixCible)}. Si les frais de notaire, travaux ou une négociation vendeur s'ajoutent, le montage peut se fragiliser. Prévoyez une réserve ou revoyez légèrement le prix cible.` });
+  }
+
+  if (resume.montantRelais > 0 && resume.tauxEndettementActuel > 20) {
+    items.push({ type: "warning", title: "Endettement actuel déjà élevé avant projet",
+      body: `Avant même le projet, vos charges représentent ~${formatPct(resume.tauxEndettementActuel)} de vos revenus. Les banques analysent ce ratio de base pour juger votre gestion habituelle — un endettement pré-projet élevé peut alerter l'analyste crédit.` });
+  }
+
+  if (proStatus === "independant") {
+    items.push({ type: "warning", title: "Statut indépendant — anticipez le dossier",
+      body: `Les banques exigent les 3 derniers bilans ou déclarations + avis d'imposition. Des revenus en progression régulière sur 3 ans sont le signal le plus fort. Rassemblez ces pièces maintenant et faites valider votre dossier par un courtier avant de prospecter.` });
+  }
+
+  if (ageFin > 0 && ageFin > 80) {
+    items.push({ type: "warning", title: "Âge en fin de prêt à surveiller",
+      body: `Avec une durée de ${dureeNouveau} ans, vous auriez ~${ageFin} ans à l'échéance. Certaines banques ou assureurs plafonnent à 75-80 ans ou appliquent une surprime. Une durée plus courte peut être plus bankable, même si la mensualité augmente.` });
+  }
+
+  // ── POSITIFS ───────────────────────────────────────────────────────
+  if (marge >= 5) {
+    items.push({ type: "positive", title: "Bonne marge d'endettement",
+      body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) reste ${formatPct(marge)} sous la cible. La banque dispose d'une marge de sécurité confortable. Concentrez-vous sur la qualité de présentation du dossier plutôt que sur les chiffres.` });
+  }
+
+  if (resume.montantRelais > 0 && resume.budgetMax > 0 && resume.montantRelais / resume.budgetMax >= 0.35) {
+    const pctRelais = Math.round((resume.montantRelais / resume.budgetMax) * 100);
+    items.push({ type: "positive", title: "Le relais couvre une bonne part du financement",
+      body: `Le prêt relais (${formatEuro(resume.montantRelais)}) représente ${pctRelais}% de votre budget total. Cela réduit significativement le capital du nouveau prêt et donc la pression sur votre taux d'endettement à long terme.` });
+  }
+
+  if (margeVsPrixCible !== null && margeVsPrixCible >= prixCible * 0.10) {
+    items.push({ type: "positive", title: "Budget max largement au-dessus du prix visé",
+      body: `Vous disposez de ${formatEuro(margeVsPrixCible)} de marge au-dessus du prix cible. Vous pouvez négocier sereinement, intégrer des travaux ou viser un bien légèrement plus grand sans compromettre le montage.` });
+  }
+
+  // ── CONSEILS ───────────────────────────────────────────────────────
+  if (timelineDb === "0_3_mois" || timelineDb === "3_6_mois") {
+    items.push({ type: "tip", title: "Projet imminent — sécurisez le montage avant de signer",
+      body: `Avec un horizon aussi court, ne signez pas de compromis sans confirmation bancaire sur le relais. Consultez un courtier pour une pré-validation : durée du relais, % retenu accepté par la banque, et conditions de sortie du crédit-relais à la vente.` });
+  }
+
+  if (interetsRelaisMensuels > 100) {
+    const interetsAnnuels = Math.round(interetsRelaisMensuels * 12);
+    items.push({ type: "tip", title: "Anticipez les intérêts intercalaires du relais",
+      body: `Pendant la période entre l'achat et la vente, le relais génère ~${formatEuro(Math.round(interetsRelaisMensuels))}/mois d'intérêts, soit ${formatEuro(interetsAnnuels)}/an (taux ${formatPct(tauxRelais)}). Ce coût n'est pas inclus dans la mensualité simulée — intégrez-le dans votre budget de trésorerie.` });
+  }
+
+  if (pctRetenu < 75 && resume.montantRelais > 0 && resume.montantRelais < resume.budgetMax * 0.30) {
+    items.push({ type: "tip", title: "Négocier un % retenu plus élevé augmenterait le relais",
+      body: `Vous avez saisi ${pctRetenu}% de valeur retenue. Certains établissements acceptent jusqu'à 75-80%. Chaque point supplémentaire augmente le montant du relais et donc votre budget d'achat — demandez à votre banquier sa marge de manœuvre.` });
+  }
+
+  if (ageCoEmprunteur === 0 && nbAdultes <= 1 && assessment.score < 75) {
+    items.push({ type: "tip", title: "Un co-emprunteur pourrait changer la donne",
+      body: `Vous simulez seul. Intégrer un co-emprunteur cumule les revenus, réduit le taux d'endettement projeté, et rassure la banque sur le risque global. C'est l'un des leviers les plus puissants pour améliorer la solidité du dossier.` });
+  }
+
+  return items;
+}
 
 /**
  * ⚠️ NE PAS MODIFIER : logique de score IA conservée telle quelle
@@ -199,19 +317,17 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   // Étapes (cliquables)
   // ---------------------------
   const [step, setStep] = useState<number>(1);
-  const TOTAL_STEPS = 5;
+  const TOTAL_STEPS = 4;
 
   const goToStep = (n: number) => setStep(Math.min(Math.max(n, 1), TOTAL_STEPS));
   const goNext = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS));
   const goPrev = () => setStep((s) => Math.max(s - 1, 1));
 
-  const STEP_LABELS = ["Votre projet", "Votre profil", "Vos revenus", "Charges & crédits", "Paramètres du prêt"];
   const progressSteps = [
-    { label: STEP_LABELS[0], icon: HomeModernIcon },
-    { label: STEP_LABELS[1], icon: UserGroupIcon },
-    { label: STEP_LABELS[2], icon: BanknotesIcon },
-    { label: STEP_LABELS[3], icon: CreditCardIcon },
-    { label: STEP_LABELS[4], icon: AdjustmentsHorizontalIcon },
+    { label: "Votre projet",        icon: HomeModernIcon },
+    { label: "Profil & Revenus",    icon: UserGroupIcon },
+    { label: "Bien actuel & Apport", icon: CreditCardIcon },
+    { label: "Nouveau pret",        icon: AdjustmentsHorizontalIcon },
   ];
 
   // ---------------------------
@@ -264,6 +380,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   // ---------------------------
   const [resume, setResume] = useState<ResumeRelais | null>(null);
   const [texteDetail, setTexteDetail] = useState<string>("");
+  const [actionItems, setActionItems] = useState<ActionPlanItem[]>([]);
 
   // ✅ Score lokt.fr™
   const [bankabilityScore, setBankabilityScore] = useState<number | null>(null);
@@ -271,6 +388,14 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   const [bankabilityComment, setBankabilityComment] = useState<string>("");
 
   const hasResult = !!resume;
+
+  useEffect(() => {
+    if (!resume) return;
+    const t = setTimeout(() => {
+      document.getElementById("resultats-pret-relais")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [resume]);
 
   // ---------------------------
   // Gate / lead
@@ -606,6 +731,12 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
     setBankabilityLabel(computed.assessment?.label ?? "");
     setBankabilityComment(computed.assessment?.comment ?? "");
 
+    const items = buildRelaisActionPlan(computed.resume, computed.assessment, tauxEndettement, {
+      pctRetenu, tauxRelais, prixCible, timelineDb, proStatus,
+      ageEmprunteur, ageCoEmprunteur, nbAdultes, dureeNouveau,
+    });
+    setActionItems(items);
+
     if (typeof window !== "undefined") {
       const payload = {
         projectUsageDb,
@@ -633,9 +764,6 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
     }
 
     // ✅ ne pas relocker ici
-
-    const el = document.getElementById("resultats-pret-relais");
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   // ---------------------------
@@ -1029,22 +1157,13 @@ const renderAnalysisBlocks = (text: string) => {
 
           {step === 2 && (
             <>
-              <h2 className="text-sm font-semibold text-slate-900">Votre profil</h2>
-              <p className="text-[0.75rem] text-slate-600">
-                Ces infos aident à contextualiser (durée, stabilité, reste à vivre).
-              </p>
-
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
                   <label className={labelBase}>
-                    Statut principal
+                    Statut professionnel
                     <InfoBadge text="Le statut aide à interpréter la stabilité des revenus (ex : CDI, fonctionnaire, indépendant…)." />
                   </label>
-                  <select
-                    value={proStatus}
-                    onChange={(e) => setProStatus(e.target.value as ProStatus)}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  >
+                  <select value={proStatus} onChange={(e) => setProStatus(e.target.value as ProStatus)} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
                     <option value="cdi">CDI</option>
                     <option value="fonctionnaire">Fonctionnaire</option>
                     <option value="independant">Indépendant / société</option>
@@ -1052,56 +1171,39 @@ const renderAnalysisBlocks = (text: string) => {
                     <option value="autre">Autre</option>
                   </select>
                 </div>
-
                 <div className="space-y-1">
-                  <label className={labelBase}>Âge emprunteur (ans)</label>
-                  <input
-                    inputMode="decimal"
-                    min={18}
-                    max={95}
-                    value={editableNumberValue(ageEmprunteur)}
-                    onChange={(e) => setAgeEmprunteur(parseEditableNumber(e.target.value))}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  />
+                  <label className={labelBase}>Âge emprunteur</label>
+                  <input inputMode="decimal" min={18} max={95} value={editableNumberValue(ageEmprunteur)} onChange={(e) => setAgeEmprunteur(parseEditableNumber(e.target.value))} placeholder="ex: 38" className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
                 </div>
-
                 <div className="space-y-1">
-                  <label className={labelBase}>Âge co-emprunteur (optionnel)</label>
-                  <input
-                    inputMode="decimal"
-                    min={0}
-                    max={95}
-                    value={editableNumberValue(ageCoEmprunteur)}
-                    onChange={(e) => setAgeCoEmprunteur(parseEditableNumber(e.target.value))}
-                    placeholder="0 = non renseigné"
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  />
+                  <label className={labelBase}>Âge co-emprunteur <span className="text-slate-400 font-normal">optionnel</span></label>
+                  <input inputMode="decimal" min={0} max={95} value={editableNumberValue(ageCoEmprunteur)} onChange={(e) => setAgeCoEmprunteur(parseEditableNumber(e.target.value))} placeholder="si concerné" className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid items-end gap-3 sm:grid-cols-3">
+                <div className="space-y-1 sm:col-span-2">
+                  <label className={labelBase}>Revenus nets mensuels (€) *</label>
+                  <input required inputMode="numeric" value={revMensuels} onChange={(e) => { setRevMensuels(onlyDigits(e.target.value)); setRevError(null); }} className={"w-full min-w-0 rounded-xl border bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 " + (revError ? "border-red-400 focus:ring-red-500" : "border-slate-300 focus:ring-amber-500")} aria-invalid={!!revError} />
+                  {revError && <p className="text-[0.7rem] text-red-600">{revError}</p>}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                    Endettement cible (%)
+                    <InfoBadge text="La part maximale de vos revenus que la banque accepte en mensualités (souvent 35%)." />
+                  </label>
+                  <input inputMode="decimal" value={editableNumberValue(tauxEndettement)} onChange={(e) => setTauxEndettement(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700">Adultes dans le foyer</label>
-                  <input
-                    inputMode="decimal"
-                    min={1}
-                    max={10}
-                    value={editableNumberValue(nbAdultes)}
-                    onChange={(e) => setNbAdultes(parseEditableNumber(e.target.value))}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  />
+                  <input inputMode="decimal" min={1} max={10} value={editableNumberValue(nbAdultes)} onChange={(e) => setNbAdultes(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700">Enfants à charge</label>
-                  <input
-                    inputMode="decimal"
-                    min={0}
-                    max={10}
-                    value={editableNumberValue(nbEnfants)}
-                    onChange={(e) => setNbEnfants(parseEditableNumber(e.target.value))}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  />
+                  <input inputMode="decimal" min={0} max={10} value={editableNumberValue(nbEnfants)} onChange={(e) => setNbEnfants(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
                 </div>
               </div>
             </>
@@ -1109,53 +1211,6 @@ const renderAnalysisBlocks = (text: string) => {
 
           {step === 3 && (
             <>
-              <h2 className="text-sm font-semibold text-slate-900">Vos revenus</h2>
-              <p className="text-[0.75rem] text-slate-600">
-                On estime la mensualité disponible pour le nouveau prêt à partir de vos revenus.
-              </p>
-
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <label className={labelBase}>Revenus nets mensuels du foyer (€)</label>
-                  <input
-                    required
-                    inputMode="numeric"
-                    value={revMensuels}
-                    onChange={(e) => {
-                      setRevMensuels(onlyDigits(e.target.value));
-                      setRevError(null);
-                    }}
-                    className={
-                      "w-full min-w-0 rounded-xl border bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 " +
-                      (revError ? "border-red-400 focus:ring-red-500" : "border-slate-300 focus:ring-amber-500")
-                    }
-                    aria-invalid={!!revError}
-                  />
-                  {revError && <p className="text-[0.7rem] text-red-600">{revError}</p>}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Taux d’endettement cible (%)
-                    <InfoBadge text="C’est la part maximale de vos revenus que la banque accepte en mensualités (souvent autour de 35%)." />
-                  </label>
-                  <input
-                    inputMode="decimal"
-                    value={editableNumberValue(tauxEndettement)}
-                    onChange={(e) => setTauxEndettement(parseEditableNumber(e.target.value))}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          {step === 4 && (
-            <>
-              <h2 className="text-sm font-semibold text-slate-900">Charges & crédits</h2>
-              <p className="text-[0.75rem] text-slate-600">
-                On recense vos autres mensualités, puis les infos du bien actuel (pour estimer le relais).
-              </p>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
@@ -1254,12 +1309,8 @@ const renderAnalysisBlocks = (text: string) => {
             </>
           )}
 
-          {step === 5 && (
+          {step === 4 && (
             <>
-              <h2 className="text-sm font-semibold text-slate-900">Paramètres du prêt</h2>
-              <p className="text-[0.75rem] text-slate-600">
-                Ces paramètres servent à estimer le capital du nouveau prêt à partir de la mensualité disponible.
-              </p>
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
@@ -1315,7 +1366,7 @@ const renderAnalysisBlocks = (text: string) => {
             <button
               type="button"
                 onClick={() => {
-                  if (step === 3) {
+                  if (step === 2) {
                     const rn = toInt(revMensuels, 0);
                     if (!revMensuels || rn <= 0) {
                       setRevError("Revenus obligatoires (montant > 0).");
@@ -1430,20 +1481,29 @@ const renderAnalysisBlocks = (text: string) => {
   />
 ) : null}
 
-            {/* Analyse */}
-            {texteDetail ? (
-              <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-4">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">Analyse détaillée</p>
-
-                <div className={canShowFullAnalysis ? "" : "blur-sm select-none"}>{renderAnalysisBlocks(texteDetail)}</div>
-
-                {!canShowFullAnalysis ? (
-                  <p className="mt-3 text-[0.75rem] text-slate-500">Débloquez l’analyse pour afficher le détail.</p>
-                ) : (
-                  <p className="mt-3 text-[0.65rem] text-slate-500">
-                    Résultats indicatifs. Ne constitue pas une offre de prêt.
-                  </p>
-                )}
+            {/* Plan d’action lokt */}
+            {canShowFullAnalysis && actionItems.length > 0 ? (
+              <div className="mt-4 space-y-2">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Plan d&apos;action lokt
+                </p>
+                {actionItems.map((item, i) => {
+                  const cfg = ACTION_ITEM_CONFIG[item.type];
+                  return (
+                    <div key={i} className={`flex gap-3 rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}>
+                      <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${cfg.iconBg} ${cfg.iconText}`}>
+                        <cfg.Icon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-[0.8rem] font-semibold leading-tight ${cfg.titleText}`}>{item.title}</p>
+                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${cfg.badgeCls}`}>{cfg.badge}</span>
+                        </div>
+                        <p className="mt-1 text-[0.75rem] leading-5 text-slate-600">{item.body}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : null}
           </>
