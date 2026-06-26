@@ -65,46 +65,45 @@ export default function BlogIndex({ posts }: any) {
 
       <div className="bg-[#f6f9fc]">
         {/* ── HERO ── */}
-        <section className="relative overflow-hidden bg-slate-950 px-6 py-14 text-white sm:px-10 sm:py-20">
-          <div aria-hidden className="pointer-events-none absolute -left-40 -top-40 h-[500px] w-[500px] rounded-full bg-[#635bff]/20 blur-3xl" />
-          <div aria-hidden className="pointer-events-none absolute right-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#635bff]/70 to-transparent" />
-          <div aria-hidden className="pointer-events-none absolute bottom-0 right-0 h-px w-2/3 bg-gradient-to-l from-transparent via-[#00b4d8]/40 to-transparent" />
+        <section className="relative overflow-hidden border-b border-slate-200 bg-white px-6 py-12 sm:px-10 sm:py-16">
+          <div aria-hidden className="pointer-events-none absolute -right-40 -top-40 h-[420px] w-[420px] rounded-full bg-[#635bff]/6 blur-3xl" />
+          <div aria-hidden className="pointer-events-none absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#635bff]/30 to-transparent" />
 
           <div className="relative mx-auto max-w-6xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#635bff]/15 px-3 py-1 text-[0.72rem] font-semibold text-[#a5b4fc] ring-1 ring-[#635bff]/30">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#635bff]/8 px-3 py-1 text-[0.72rem] font-semibold text-[#635bff] ring-1 ring-[#635bff]/20">
               <span className="h-1.5 w-1.5 rounded-full bg-[#635bff]" />
               Blog &amp; Guides immobilier
             </div>
 
-            <h1 className="mt-4 max-w-2xl text-3xl font-semibold leading-tight sm:text-5xl">
+            <h1 className="mt-4 max-w-2xl text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">
               Comprendre l&apos;immobilier,{" "}
               <span className="bg-gradient-to-r from-[#635bff] to-[#00b4d8] bg-clip-text text-transparent">
                 décider mieux.
               </span>
             </h1>
 
-            <p className="mt-4 max-w-xl text-sm leading-7 text-slate-400 sm:text-base">
+            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
               Guides actionnables sur le crédit, l&apos;investissement locatif et la fiscalité — avec des liens directs vers les simulateurs lokt.
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link href="/calculettes" className="inline-flex items-center rounded-full bg-[#635bff] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#635bff]/30 hover:bg-[#4f46e5]">
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/calculettes" className="inline-flex items-center rounded-full bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
                 Voir les simulateurs →
               </Link>
-              <Link href="/guides" className="inline-flex items-center rounded-full border border-white/20 bg-white/8 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur hover:bg-white/15">
+              <Link href="/guides" className="inline-flex items-center rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 Guides pratiques
               </Link>
             </div>
 
-            <div className="mt-10 flex flex-wrap gap-4">
+            <div className="mt-8 flex flex-wrap gap-3">
               {[
                 { label: "Articles", value: posts.length },
                 { label: "Simulateurs", value: "6" },
                 { label: "Lecture moy.", value: `${Math.round(posts.reduce((s: number, p: any) => s + (p.readingTime || 5), 0) / Math.max(posts.length, 1))} min` },
               ].map((s) => (
-                <div key={s.label} className="rounded-xl border border-white/15 bg-white/8 px-4 py-2.5 backdrop-blur">
+                <div key={s.label} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
                   <p className="text-[0.65rem] uppercase tracking-wide text-slate-400">{s.label}</p>
-                  <p className="mt-0.5 text-xl font-semibold">{s.value}</p>
+                  <p className="mt-0.5 text-xl font-semibold text-slate-900">{s.value}</p>
                 </div>
               ))}
             </div>
