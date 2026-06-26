@@ -5,6 +5,7 @@ date: "2026-06-12"
 category: "Crédit immobilier"
 tags: ["prêt relais", "crédit immobilier", "vente achat simultané", "intérêts intercalaires"]
 relatedCalculators: ["pret-relais", "capacite"]
+coverImage: "/blog/Prêt relais.PNG"
 ---
 
 # Prêt relais : fonctionnement, coûts réels et pièges à éviter
