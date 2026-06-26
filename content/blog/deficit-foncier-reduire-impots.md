@@ -5,6 +5,7 @@ date: "2026-06-24"
 category: "Investissement locatif"
 tags: ["déficit foncier", "travaux déductibles", "fiscalité immobilière", "impôts", "location nue"]
 relatedCalculators: ["investissement"]
+coverImage: "/blog/Déficit foncier 2026.PNG"
 ---
 
 # Déficit foncier 2026 : réduire ses impôts avec l'immobilier
