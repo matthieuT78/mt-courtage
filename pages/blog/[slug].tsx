@@ -201,7 +201,29 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
             </header>
 
             <article
-              className="prose prose-slate max-w-none prose-headings:scroll-mt-24 prose-a:text-indigo-600 prose-a:no-underline hover:prose-a:underline"
+              className={[
+                "prose prose-slate max-w-none",
+                // headings
+                "prose-headings:scroll-mt-24 prose-headings:font-semibold prose-headings:text-slate-900",
+                "prose-h2:mt-10 prose-h2:text-xl prose-h2:border-b prose-h2:border-slate-100 prose-h2:pb-2",
+                "prose-h3:mt-6 prose-h3:text-base",
+                // body text
+                "prose-p:text-slate-600 prose-p:leading-7",
+                // links
+                "prose-a:text-[#635bff] prose-a:font-medium prose-a:no-underline hover:prose-a:underline",
+                // blockquote
+                "prose-blockquote:border-l-[#635bff] prose-blockquote:bg-[#635bff]/5 prose-blockquote:rounded-r-xl prose-blockquote:py-1 prose-blockquote:not-italic prose-blockquote:text-slate-700",
+                // tables
+                "prose-table:text-sm prose-thead:bg-slate-50 prose-th:text-slate-700 prose-th:font-semibold prose-td:text-slate-600",
+                // lists
+                "prose-li:text-slate-600 prose-li:marker:text-[#635bff]",
+                // hr
+                "prose-hr:border-slate-200",
+                // strong
+                "prose-strong:text-slate-800 prose-strong:font-semibold",
+                // code
+                "prose-code:text-[#635bff] prose-code:bg-[#635bff]/8 prose-code:rounded prose-code:px-1 prose-code:font-medium prose-code:before:content-none prose-code:after:content-none",
+              ].join(" ")}
               dangerouslySetInnerHTML={{ __html: contentHtml }}
             />
 
