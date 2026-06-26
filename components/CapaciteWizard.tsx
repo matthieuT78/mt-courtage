@@ -709,11 +709,10 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
   }, []);
 
   const isLoggedIn = !!sessionUserId;
-  const quickMode = !isLoggedIn;
 
   /* ======================== Wizard steps ======================== */
   const [step, setStep] = useState<number>(1);
-  const TOTAL_STEPS = quickMode ? 3 : 4;
+  const TOTAL_STEPS = 4;
   const [maxStepReached, setMaxStepReached] = useState<number>(1);
   useEffect(() => setMaxStepReached((m) => Math.max(m, step)), [step]);
 
@@ -732,28 +731,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       icon: ComponentType<SVGProps<SVGSVGElement>>;
     }>
   >(
-    () => quickMode
-      ? [
-          {
-            label: "Vos revenus",
-            shortLabel: "Revenus",
-            description: "Les ressources mensuelles et votre apport disponible.",
-            icon: BanknotesIcon,
-          },
-          {
-            label: "Charges & prêt",
-            shortLabel: "Situation",
-            description: "Vos charges, crédits et hypothèses de financement.",
-            icon: CreditCardIcon,
-          },
-          {
-            label: "Profil (optionnel)",
-            shortLabel: "Profil",
-            description: "Pour affiner le score et la lecture bancaire.",
-            icon: UserGroupIcon,
-          },
-        ]
-      : [
+    () => [
           {
             label: "Votre projet",
             shortLabel: "Projet",
@@ -779,7 +757,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             icon: AdjustmentsHorizontalIcon,
           },
         ],
-    [quickMode]
+    []
   );
   const activeStepMeta = wizardSteps[step - 1];
   const ActiveStepIcon = activeStepMeta.icon;
@@ -1722,157 +1700,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             {/* Contenu */}
             <div className="flex-1 space-y-5 py-6">
 
-          {/* ===== MODE RAPIDE (anonyme) ===== */}
-          {quickMode && step === 1 ? (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <label className={labelBase}>Revenus nets mensuels du foyer (€) *</label>
-                  <input
-                    required
-                    inputMode="numeric"
-                    value={revenusNetMensuels}
-                    onChange={(e) => { setRevenusNetMensuels(onlyDigits(e.target.value)); setRevenusError(null); }}
-                    className={"w-full min-w-0 rounded-xl border bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm transition focus:outline-none focus:ring-4 " + (revenusError ? "border-red-400 focus:ring-red-100" : "border-slate-200 focus:border-cyan-400 focus:ring-cyan-100")}
-                    aria-invalid={!!revenusError}
-                  />
-                  {revenusError ? <p className="text-[0.7rem] text-red-600">{revenusError}</p> : null}
-                </div>
-                <div className="space-y-1">
-                  <label className={labelBase}>Apport personnel (€) <span className="text-slate-400 font-normal text-xs">optionnel</span></label>
-                  <input inputMode="numeric" value={apportPersonnel} onChange={(e) => setApportPersonnel(onlyDigits(e.target.value))} placeholder="ex: 20000" className={inputBase} />
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <label className={labelBase}>Horizon d'achat *</label>
-                  <select value={projectTimelineUI} onChange={(e) => setProjectTimelineUI(e.target.value as ProjectTimelineUI)} className={selectBase}>
-                    <option value="0_3m">Dans les 3 mois</option>
-                    <option value="3_6m">3 à 6 mois</option>
-                    <option value="6_12m">6 à 12 mois</option>
-                    <option value="12m_plus">Plus de 12 mois</option>
-                    <option value="juste_info">Je me renseigne</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className={labelBase}>Statut professionnel</label>
-                  <select value={proStatus} onChange={(e) => setProStatus(e.target.value as ProStatus)} className={selectBase}>
-                    <option value="cdi">CDI</option>
-                    <option value="fonctionnaire">Fonctionnaire</option>
-                    <option value="independant">Indépendant / société</option>
-                    <option value="retraite">Retraité</option>
-                    <option value="autre">Autre</option>
-                  </select>
-                </div>
-              </div>
-            </>
-          ) : null}
-
-          {quickMode && step === 2 ? (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <label className={labelBase}>Charges fixes hors crédits (€)</label>
-                  <input inputMode="numeric" value={chargesMensuellesHorsCredits} onChange={(e) => setChargesMensuellesHorsCredits(onlyDigits(e.target.value))} placeholder="pension alimentaire, garde…" className={inputBase} />
-                  <p className="text-[0.7rem] leading-4 text-slate-500">Ne pas inclure le loyer actuel — il disparaît avec l'achat.</p>
-                </div>
-                <div className="space-y-1">
-                  <label className={labelBase}>Nombre de crédits en cours</label>
-                  <select value={nbCredits} onChange={(e) => handleNbCreditsChange(Number(e.target.value))} className={selectBase}>
-                    {[0, 1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
-              </div>
-              {nbCredits > 0 ? (
-                <div className="space-y-3">
-                  {Array.from({ length: nbCredits }).map((_, index) => (
-                    <div key={index} className="rounded-xl border border-slate-200 bg-white p-3 space-y-3">
-                      <p className="text-xs font-semibold text-slate-900">Crédit {index + 1}</p>
-                      <div className="grid gap-3 sm:grid-cols-4">
-                        <div className="space-y-1">
-                          <label className="text-xs text-slate-700">Type</label>
-                          <select value={typesCredits[index] || "immo"} onChange={(e) => handleTypeCreditChange(index, e.target.value as TypeCredit)} className={selectBase}>
-                            <option value="immo">Immobilier</option>
-                            <option value="perso">Personnel</option>
-                            <option value="auto">Auto</option>
-                            <option value="conso">Conso</option>
-                          </select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-slate-700">Mensualité (€)</label>
-                          <input inputMode="numeric" value={mensualitesCredits[index] || ""} onChange={(e) => handleMensualiteChange(index, onlyDigits(e.target.value))} className={inputSmall} />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-slate-700">Reste (années)</label>
-                          <input inputMode="numeric" value={resteAnneesCredits[index] || ""} onChange={(e) => handleResteAnneesChange(index, onlyDigits(e.target.value))} className={inputSmall} />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-slate-700">Loyer mensuel (€)</label>
-                          <input inputMode="numeric" value={revenusLocatifs[index] || ""} onChange={(e) => handleRevenuLocatifChange(index, onlyDigits(e.target.value))} disabled={(typesCredits[index] || "immo") !== "immo"} placeholder={(typesCredits[index] || "immo") === "immo" ? "si locatif" : "—"} className={inputSmall + " disabled:bg-slate-100 disabled:text-slate-400"} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-semibold text-slate-700 mb-3">Paramètres du prêt <span className="font-normal text-slate-500">(modifiables, valeurs par défaut)</span></p>
-                <div className="grid gap-3 sm:grid-cols-4">
-                  <div className="space-y-1">
-                    <label className={labelBase}>Taux d'endettement cible (%)</label>
-                    <input inputMode="decimal" value={tauxEndettementCible} onChange={(e) => setTauxEndettementCible(onlyNumberLike(e.target.value))} className={inputBase} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className={labelBase}>Taux crédit indicatif (%)</label>
-                    <input inputMode="decimal" value={tauxCreditCible} onChange={(e) => setTauxCreditCible(onlyNumberLike(e.target.value))} className={inputBase} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className={labelBase}>Assurance (%/an)</label>
-                    <input inputMode="decimal" value={tauxAssuranceCible} onChange={(e) => setTauxAssuranceCible(onlyNumberLike(e.target.value))} className={inputBase} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className={labelBase}>Durée souhaitée (ans)</label>
-                    <input inputMode="numeric" value={dureeCreditCible} onChange={(e) => setDureeCreditCible(onlyDigits(e.target.value))} className={inputBase} />
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : null}
-
-          {quickMode && step === 3 ? (
-            <>
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-800">
-                Vos résultats sont déjà calculés. Ces informations affinent le score de finançabilité — elles sont optionnelles.
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="space-y-1">
-                  <label className={labelBase}>Statut professionnel</label>
-                  <select value={proStatus} onChange={(e) => setProStatus(e.target.value as ProStatus)} className={selectBase}>
-                    <option value="cdi">CDI</option>
-                    <option value="fonctionnaire">Fonctionnaire</option>
-                    <option value="independant">Indépendant / société</option>
-                    <option value="retraite">Retraité</option>
-                    <option value="autre">Autre</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className={labelBase}>Âge emprunteur</label>
-                  <input inputMode="numeric" value={ageEmprunteur} onChange={(e) => setAgeEmprunteur(onlyDigits(e.target.value))} className={inputBase} />
-                </div>
-                <div className="space-y-1">
-                  <label className={labelBase}>Usage du bien</label>
-                  <select value={projectUsageUI} onChange={(e) => setProjectUsageUI(e.target.value as ProjectUsageUI)} className={selectBase}>
-                    <option value="rp">Résidence principale</option>
-                    <option value="rs">Résidence secondaire</option>
-                    <option value="invest">Investissement locatif</option>
-                  </select>
-                </div>
-              </div>
-            </>
-          ) : null}
-
-          {/* ===== MODE COMPLET (connecté) ===== */}
-          {!quickMode && step === 1 ? (
+          {step === 1 ? (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
@@ -1952,7 +1780,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             </>
           ) : null}
 
-          {!quickMode && step === 2 ? (
+          {step === 2 ? (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
@@ -2017,7 +1845,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             </>
           ) : null}
 
-          {!quickMode && step === 3 ? (
+          {step === 3 ? (
             <>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
@@ -2096,7 +1924,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             </>
           ) : null}
 
-          {!quickMode && step === 4 ? (
+          {step === 4 ? (
             <>
               <div className="grid gap-3 sm:grid-cols-4">
                 <div className="space-y-1">
@@ -2150,36 +1978,11 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             Précédent
           </button>
 
-          {/* Quick mode step 2 : Calculer + option affiner */}
-          {quickMode && step === 2 ? (
-            <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
-              <button
-                type="button"
-                onClick={async () => {
-                  setRevenusError(null);
-                  setMaxStepReached(TOTAL_STEPS);
-                  await handleCalculCapacite();
-                }}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#00a97b] to-[#008db8] px-6 text-sm font-semibold text-white shadow-lg shadow-cyan-600/20 transition hover:shadow-xl active:scale-[0.99]"
-              >
-                Calculer ma capacité d&apos;emprunt
-                <ArrowRightIcon className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMaxStepReached((m) => Math.max(m, 3)); goNext(); }}
-                className="text-xs font-semibold text-slate-500 hover:text-slate-700 underline underline-offset-2"
-              >
-                Affiner mon profil →
-              </button>
-            </div>
-          ) : step < TOTAL_STEPS ? (
+          {step < TOTAL_STEPS ? (
             <button
               type="button"
               onClick={() => {
-                // Validation revenus : step 1 en quick mode, step 3 en mode complet
-                const revenusStep = quickMode ? 1 : 2;
-                if (step === revenusStep) {
+                if (step === 2) {
                   const rn = toInt(revenusNetMensuels, 0);
                   if (!revenusNetMensuels || rn <= 0) {
                     setRevenusError("Revenus obligatoires (montant > 0).");
@@ -2204,7 +2007,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
               }}
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#00a97b] to-[#008db8] px-6 text-sm font-semibold text-white shadow-lg shadow-cyan-600/20 transition hover:shadow-xl active:scale-[0.99]"
             >
-              {quickMode ? "Recalculer avec ces données" : "Calculer ma capacité d'emprunt"}
+              Calculer ma capacité d&apos;emprunt
               <ArrowRightIcon className="h-4 w-4" />
             </button>
           )}
