@@ -1342,9 +1342,15 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       window.localStorage.setItem(CAPACITE_STORAGE_KEY, JSON.stringify(payload));
     }
 
-    const el = document.getElementById("resultats-capacite");
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  useEffect(() => {
+    if (!resumeCapacite) return;
+    const t = setTimeout(() => {
+      document.getElementById("resultats-capacite")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [resumeCapacite]);
 
   /* ======================== Restore inputs ======================== */
   useEffect(() => {
