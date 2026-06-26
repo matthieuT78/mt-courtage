@@ -90,6 +90,9 @@ export default function AppFooter() {
         <Link href="/a-propos" className="underline hover:text-slate-700">
           À propos
         </Link>
+        <Link href="/blog" className="underline hover:text-slate-700">
+          Blog immobilier
+        </Link>
         <Link href="/guides" className="underline hover:text-slate-700">
           Ressources bailleurs
         </Link>
