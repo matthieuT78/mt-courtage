@@ -18,7 +18,7 @@ L'investissement locatif reste l'un des rares placements qui combine **effet de 
 
 Le réflexe classique : diviser le loyer annuel par le prix d'achat. On obtient 5, 6, voire 8 % — et on croit faire une bonne affaire.
 
-C'est le **rendement brut**. Il ignore les charges, la fiscalité, la vacance et le coût du crédit. En pratique, un bien affiché à 6 % brut peut générer un cash-flow négatif de 300 €/mois une fois tout intégré.
+C'est le **rendement brut**. Il ignore les charges, la fiscalité, la vacance et le coût du crédit. En pratique, un bien affiché à 6 % brut peut générer un [cash-flow négatif](/blog/cashflow-negatif-garder-ou-vendre) de 300 €/mois une fois tout intégré.
 
 La bonne analyse se fait en 3 niveaux.
 
@@ -119,7 +119,7 @@ Le crédit est votre meilleur allié en investissement locatif. Vous contrôlez 
 
 Sur notre exemple : gain patrimonial ≈ 800 €/an (66 €/mois × 12) pour 18 000 € d'apport = **4,4 %** de rendement sur fonds propres.
 
-Ajoutez un avantage fiscal (LMNP), et ce chiffre monte. C'est cet indicateur qui compte pour comparer avec d'autres placements.
+Ajoutez un avantage fiscal ([LMNP](/blog/lmnp-vs-location-nue)), et ce chiffre monte. C'est cet indicateur qui compte pour comparer avec d'autres placements.
 
 ---
 
@@ -129,7 +129,7 @@ Le régime fiscal impacte directement votre cash-flow. Deux options principales 
 
 ### Location nue — Régime réel foncier
 
-Vous déduisez les charges réelles + les **intérêts d'emprunt**. Si les charges dépassent les loyers : **déficit foncier** imputable sur votre revenu global (jusqu'à 10 700 €/an).
+Vous déduisez les charges réelles + les **intérêts d'emprunt**. Si les charges dépassent les loyers : **[déficit foncier](/blog/deficit-foncier-reduire-impots)** imputable sur votre revenu global (jusqu'à 10 700 €/an).
 
 Idéal pour les premières années d'un bien avec des travaux importants.
 
@@ -211,7 +211,7 @@ Le studio offre le meilleur rendement brut au m², mais un turnover plus élevé
 
 ### Peut-on investir sans apport ?
 
-Difficile en 2026. Les banques exigent généralement au moins 10 % d'apport (pour couvrir les frais de notaire). Sans apport, le taux d'endettement dépasse presque toujours 35 %. Certains profils très solides (CDI ancienneté, patrimoine existant) peuvent obtenir du 100 % financement — mais c'est l'exception.
+Difficile en 2026. Les banques exigent généralement au moins 10 % d'apport (pour couvrir les frais de notaire). Sans apport, le taux d'endettement dépasse presque toujours 35 %. Certains profils très solides (CDI ancienneté, patrimoine existant) peuvent obtenir du 100 % financement — mais c'est l'exception. [Voir les stratégies pour investir avec peu d'apport →](/blog/investir-sans-apport-immobilier)
 
 ### LMNP ou location nue : comment choisir ?
 

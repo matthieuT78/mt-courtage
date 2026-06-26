@@ -34,7 +34,7 @@ Chaque mensualité comprend des intérêts ET du remboursement de capital. Ce ca
 
 ### 2. L'appréciation du bien
 
-Si le bien prend de la valeur, la plus-value latente compense l'effort mensuel. Sur un bien à 200 000 € avec une hausse de 2 %/an, vous gagnez **4 000 €/an** en valeur patrimoniale.
+Si le bien prend de la valeur, la [plus-value latente](/blog/plus-value-residence-principale) compense l'effort mensuel. Sur un bien à 200 000 € avec une hausse de 2 %/an, vous gagnez **4 000 €/an** en valeur patrimoniale.
 
 ### 3. L'effet de levier
 
@@ -44,7 +44,7 @@ Vous contrôlez un actif de 200 000 € avec une mise de 20 000 € (apport). Si
 
 ## Calcul du vrai coût de l'investissement
 
-Pour juger si un cashflow négatif est acceptable, calculez le **rendement patrimonial global** :
+Pour juger si un cashflow négatif est acceptable, calculez le **rendement patrimonial global** (voir aussi notre [guide complet sur la rentabilité locative](/blog/investissement-locatif)) :
 
 | Poste | Valeur annuelle (exemple) |
 |-------|--------------------------|

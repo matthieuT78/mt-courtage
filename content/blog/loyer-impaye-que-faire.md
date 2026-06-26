@@ -188,7 +188,7 @@ La meilleure procédure d'impayé est celle qu'on n'a jamais à déclencher. Que
 
 **À la signature du bail** : vérifiez sérieusement le dossier (revenus, stabilité, références). Exigez une caution solidaire ou souscrivez une GLI si le profil est fragile.
 
-**Chaque mois** : ne laissez jamais passer un mois sans réagir à un retard. Une relance rapide à J+3 règle 80 % des cas. lokt.fr vous envoie une alerte automatique dès qu'un loyer attendu n'est pas enregistré.
+**Chaque mois** : ne laissez jamais passer un mois sans réagir à un retard. Une relance rapide à J+3 règle 80 % des cas. lokt.fr vous envoie une alerte automatique dès qu'un loyer attendu n'est pas enregistré. Si vous gérez votre bien sans agence, consultez notre [guide complet de la gestion locative en solo](/blog/gestion-locative-sans-agence).
 
 **En cas de difficulté du locataire** : proposez un échéancier dès que possible. Un locataire qui communique et régularise progressivement vaut mieux qu'une procédure d'expulsion de 12 mois.
 

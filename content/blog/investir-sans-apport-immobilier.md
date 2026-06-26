@@ -33,7 +33,7 @@ Un cadre en CDI avec 5 ans d'ancienneté, sans crédit en cours et un projet dan
 
 ## Ce que veut dire "financement à 100 %" ou "à 110 %"
 
-**Financement à 100 %** : la banque finance le prix d'achat du bien, mais pas les frais de notaire (7 à 8 % dans l'ancien, 2 à 3 % dans le neuf). Vous payez les frais de notaire sur vos fonds propres.
+**Financement à 100 %** : la banque finance le prix d'achat du bien, mais pas les [frais de notaire](/blog/frais-de-notaire-calcul) (7 à 8 % dans l'ancien, 2 à 3 % dans le neuf). Vous payez les frais de notaire sur vos fonds propres.
 
 **Financement à 110 %** : la banque finance le bien ET les frais de notaire. Vous n'apportez rien — ou presque. C'est le Graal de l'investisseur sans épargne.
 
@@ -65,7 +65,7 @@ Vous avez déjà un bien (résidence principale ou locatif) mais peu de liquidit
 
 ### Profil 4 — Le porteur d'un projet LMNP bien documenté
 
-Un dossier LMNP solide (loyer estimé par une agence locale, analyse de marché, simulation de rentabilité avec amortissements) montre à la banque que vous maîtrisez votre sujet. Ça compense partiellement un apport faible.
+Un dossier [LMNP](/blog/lmnp-vs-location-nue) solide (loyer estimé par une agence locale, analyse de marché, simulation de rentabilité avec amortissements) montre à la banque que vous maîtrisez votre sujet. Ça compense partiellement un apport faible.
 
 ---
 
@@ -99,7 +99,7 @@ Le PTZ finance jusqu'à 40 % du projet pour une résidence principale dans le ne
 
 ### Stratégie 4 — Mettre en avant la rentabilité du projet
 
-Une banque prête plus facilement à quelqu'un qui lui montre un tableau de rentabilité complet : loyer de marché justifié, charges réelles estimées, cashflow, fiscalité LMNP, simulation sur 20 ans. C'est ce que font les investisseurs aguerris — et ce que vous pouvez faire avec le simulateur lokt.fr.
+Une banque prête plus facilement à quelqu'un qui lui montre un [tableau de rentabilité complet](/blog/investissement-locatif) : loyer de marché justifié, charges réelles estimées, cashflow, fiscalité LMNP, simulation sur 20 ans. C'est ce que font les investisseurs aguerris — et ce que vous pouvez faire avec le simulateur lokt.fr.
 
 > Présenter un dossier avec une simulation complète, c'est signaler à la banque que vous avez réfléchi le risque — pas juste que vous voulez de l'argent.
 

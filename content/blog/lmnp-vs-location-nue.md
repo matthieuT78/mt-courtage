@@ -51,7 +51,7 @@ Vous déduisez les charges réelles :
 
 **Ce que vous ne pouvez PAS déduire :** le remboursement du capital, les travaux de construction/reconstruction, l'amortissement du bien.
 
-Si les charges > loyers → **déficit foncier**, imputable sur votre revenu global dans la limite de 10 700 €/an. L'excédent est reporté 10 ans sur les revenus fonciers.
+Si les charges > loyers → **[déficit foncier](/blog/deficit-foncier-reduire-impots)**, imputable sur votre revenu global dans la limite de 10 700 €/an. L'excédent est reporté 10 ans sur les revenus fonciers.
 
 ---
 

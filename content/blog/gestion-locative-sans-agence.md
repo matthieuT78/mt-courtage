@@ -31,7 +31,7 @@ Avant de tout gérer seul, il est utile de comprendre ce pour quoi vous payiez l
 | Déclaration fiscale | Modérée — régime réel = comptable | Expert-comptable |
 | Recherche de locataire | Variable — selon la ville et le bien | SeLoger, PAP, LeBonCoin |
 
-**Ce que l'agence fait vraiment mieux** : trouver un locataire dans un marché tendu, grâce à son réseau et ses vitrines. Pour tout le reste, un bailleur organisé peut gérer seul avec les bons outils.
+**Ce que l'agence fait vraiment mieux** : trouver un locataire dans un marché tendu, grâce à son réseau et ses vitrines. Pour tout le reste, un bailleur organisé peut gérer seul avec [les bons outils](/comparatif-logiciel-gestion-locative).
 
 ---
 
@@ -149,7 +149,7 @@ lokt.fr vous envoie une alerte avant la date d'anniversaire du bail pour ne jama
 
 ## Étape 5 — Les relances en cas de retard
 
-Un loyer impayé se gère dans les premières 48 heures, pas après un mois de silence.
+Un [loyer impayé](/blog/loyer-impaye-que-faire) se gère dans les premières 48 heures, pas après un mois de silence.
 
 ### Le protocole en 4 temps
 
@@ -181,7 +181,7 @@ Deux régimes au choix :
 
 **Régime réel foncier** : vous déduisez les charges réelles (taxe foncière, intérêts d'emprunt, travaux, assurances, frais de gestion...). Si les charges dépassent les loyers → **déficit foncier** imputable sur votre revenu global jusqu'à 10 700 €/an.
 
-### Location meublée (LMNP)
+### [Location meublée (LMNP)](/blog/lmnp-vs-location-nue)
 
 **Micro-BIC** (revenus < 77 700 €/an) : abattement de 50 %, vous déclarez la moitié. Depuis 2024, l'abattement Airbnb a été réduit à 30 % pour les meublés de tourisme classés.
 
