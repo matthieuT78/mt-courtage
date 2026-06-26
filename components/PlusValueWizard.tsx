@@ -1,9 +1,14 @@
 // components/PlusValueWizard.tsx
 import { useEffect, useMemo, useState } from "react";
+import type { ComponentType, SVGProps } from "react";
 import {
   BanknotesIcon,
   BuildingOffice2Icon,
+  CheckCircleIcon,
   CreditCardIcon,
+  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
+  LightBulbIcon,
   ScaleIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
@@ -268,6 +273,108 @@ export type PlusValueWizardProps = {
   showSaveButton?: boolean;
 };
 
+/* ------------------------ Plan d'action lokt ------------------------ */
+type ActionPlanItemType = "blocking" | "warning" | "positive" | "tip";
+type ActionPlanItem = { type: ActionPlanItemType; title: string; body: string };
+
+const ACTION_ITEM_CONFIG: Record<
+  ActionPlanItemType,
+  { Icon: ComponentType<SVGProps<SVGSVGElement>>; badge: string; bg: string; border: string; iconBg: string; iconText: string; titleText: string; badgeCls: string }
+> = {
+  blocking: { Icon: ExclamationTriangleIcon, badge: "Bloquant",    bg: "bg-red-50",     border: "border-red-200",     iconBg: "bg-red-100",     iconText: "text-red-600",     titleText: "text-red-900",     badgeCls: "bg-red-100 text-red-700" },
+  warning:  { Icon: ExclamationCircleIcon,  badge: "A surveiller", bg: "bg-amber-50",   border: "border-amber-200",   iconBg: "bg-amber-100",   iconText: "text-amber-600",   titleText: "text-amber-900",   badgeCls: "bg-amber-100 text-amber-700" },
+  positive: { Icon: CheckCircleIcon,        badge: "Atout",        bg: "bg-emerald-50", border: "border-emerald-200", iconBg: "bg-emerald-100", iconText: "text-emerald-600", titleText: "text-emerald-900", badgeCls: "bg-emerald-100 text-emerald-700" },
+  tip:      { Icon: LightBulbIcon,          badge: "Conseil",      bg: "bg-indigo-50",  border: "border-indigo-200",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  titleText: "text-indigo-900",  badgeCls: "bg-indigo-100 text-indigo-700" },
+};
+
+function buildPlusValueActionPlan(
+  r: PVResult,
+  ctx: { residenceType: ResidenceType; yearsHeld: number; applySurtax: string }
+): ActionPlanItem[] {
+  const { residenceType, yearsHeld } = ctx;
+  const items: ActionPlanItem[] = [];
+
+  // ── BLOCKING ──────────────────────────────────────────────────
+  if (r.netCashSeller < 0) {
+    const manque = Math.abs(r.netCashSeller);
+    items.push({ type: "blocking", title: "Vente à perte nette : le prix ne suffit pas",
+      body: `Après impôts (${formatEuro(r.totalTax)}) et remboursement bancaire (${formatEuro(r.loanPayoff)}), il vous manque ${formatEuro(manque)} pour solder l'opération. Soit vous relevez le prix de vente, soit vous apportez des fonds propres à la vente.` });
+  }
+
+  // ── WARNINGS ──────────────────────────────────────────────────
+  if (!r.isExempt && r.totalTax > r.netSalePriceForPV * 0.10) {
+    items.push({ type: "warning", title: "Fiscalité significative — plus de 10% du prix net",
+      body: `L'impôt estimé (${formatEuro(r.totalTax)}) représente ${Math.round((r.totalTax / r.netSalePriceForPV) * 100)}% de votre prix net vendeur. Avant de signer, vérifiez avec un notaire si des abattements supplémentaires ou un report de cession peuvent alléger cette charge.` });
+  }
+
+  if (r.loanPayoff > r.netSalePriceForPV * 0.50) {
+    items.push({ type: "warning", title: "Le prêt absorbe plus de la moitié du prix net",
+      body: `Le remboursement bancaire (CRD + IRA = ${formatEuro(r.loanPayoff)}) représente ${Math.round((r.loanPayoff / r.netSalePriceForPV) * 100)}% de votre prix net. Confirmez le CRD exact auprès de votre banque avant de fixer le prix — une erreur de quelques milliers d'euros peut retourner l'opération.` });
+  }
+
+  if (!r.isExempt && yearsHeld < 5 && r.grossGain > 0) {
+    items.push({ type: "warning", title: "Détention courte — aucun abattement applicable",
+      body: `Avec ${yearsHeld} an(s) de détention, les abattements IR/PS démarrent à partir de la 6e année. La plus-value brute (${formatEuro(r.grossGain)}) est donc taxée à plein régime (IR 19% + PS 17,2%).` });
+  }
+
+  if (!r.isExempt && r.surtax > 0) {
+    items.push({ type: "warning", title: "Surtaxe applicable — plus-value > 50 000€",
+      body: `Votre gain taxable IR (${formatEuro(r.taxableIR)}) dépasse le seuil de 50 000€ déclenchant la surtaxe (${formatEuro(r.surtax)} estimée). Ce barème progressif peut aller jusqu'à 6% du gain. Un notaire peut valider ce calcul avant la signature.` });
+  }
+
+  if (r.grossGain < 0) {
+    items.push({ type: "warning", title: "Moins-value : perte sur le capital investi",
+      body: `Vous vendez ${formatEuro(Math.abs(r.grossGain))} en dessous de votre coût d'acquisition (${formatEuro(r.totalPurchaseCost)}). Bonne nouvelle : aucun impôt sur plus-value n'est dû. Mais cette perte n'est pas déductible d'autres revenus en France.` });
+  }
+
+  // ── POSITIFS ──────────────────────────────────────────────────
+  if (r.isExempt) {
+    items.push({ type: "positive", title: "Résidence principale — exonération totale d'impôt",
+      body: `La vente d'une résidence principale est exonérée d'IR et de prélèvements sociaux en France, quelle que soit la durée de détention. L'impôt estimé ici est donc nul — votre cash net vendeur est maximisé.` });
+  }
+
+  if (!r.isExempt && r.netCashSeller >= 0 && r.netCashSeller > r.netSalePriceForPV * 0.15) {
+    items.push({ type: "positive", title: "Cash net confortable après impôts et banque",
+      body: `Vous récupérez ${formatEuro(r.netCashSeller)} net, soit ${Math.round((r.netCashSeller / r.netSalePriceForPV) * 100)}% de votre prix net vendeur. Cette réserve couvre aisément les frais de transition (notaire achat suivant, déménagement, fonds propres).` });
+  } else if (r.isExempt && r.netCashSeller > 0) {
+    items.push({ type: "positive", title: "Cash net positif — opération rentable",
+      body: `Vous récupérez ${formatEuro(r.netCashSeller)} net après remboursement bancaire. Sans impôt à payer (résidence principale), cette somme est intégralement disponible pour votre prochain projet.` });
+  }
+
+  if (!r.isExempt && yearsHeld >= 22 && residenceType !== "principale") {
+    items.push({ type: "positive", title: "Exonération IR totale atteinte — 22 ans de détention",
+      body: `Après 22 ans, la plus-value est totalement exonérée d'impôt sur le revenu (IR). Vous ne payez plus que les prélèvements sociaux (PS), dont l'exonération totale intervient à 30 ans.` });
+  } else if (!r.isExempt && r.abIR >= 60 && r.abIR < 100) {
+    items.push({ type: "positive", title: `Abattement IR de ${Math.round(r.abIR)}% — détention favorable`,
+      body: `Votre durée de détention (${yearsHeld} ans) vous donne droit à un abattement IR de ${Math.round(r.abIR)}%. Plus vous attendez (jusqu'à 22 ans), plus l'impôt IR diminue.` });
+  }
+
+  // ── CONSEILS ──────────────────────────────────────────────────
+  if (!r.isExempt && yearsHeld >= 18 && yearsHeld < 22) {
+    const restant = 22 - yearsHeld;
+    items.push({ type: "tip", title: `Exonération IR totale dans ${restant} an(s) — vaut-il attendre ?`,
+      body: `À 22 ans de détention, la plus-value sera totalement exonérée d'IR. Si vous pouvez reporter la vente de ${restant} an(s), l'économie fiscale serait de ${formatEuro(r.taxIR)}. Comparez cet avantage avec le coût de portage du bien (crédit, charges, fiscalité foncière).` });
+  }
+
+  if (!r.isExempt && yearsHeld >= 26 && yearsHeld < 30) {
+    const restant = 30 - yearsHeld;
+    items.push({ type: "tip", title: `Exonération PS totale dans ${restant} an(s) — dernière ligne droite`,
+      body: `À 30 ans, les prélèvements sociaux (PS) seront totalement exonérés. Il vous reste ${restant} an(s). L'économie en jeu est de ${formatEuro(r.taxPS)}. À peser selon votre situation et le marché actuel.` });
+  }
+
+  if (r.crd > 0) {
+    items.push({ type: "tip", title: "Demandez le CRD exact à votre banque avant de signer",
+      body: `Le capital restant dû fluctue chaque mois. Demandez un tableau d'amortissement ou un relevé de CRD à date de vente estimée à votre banque — une erreur de quelques milliers d'euros peut modifier significativement votre cash net.` });
+  }
+
+  if (!r.isExempt && r.lmnpAmortizationReintegration > 0) {
+    items.push({ type: "tip", title: "LMNP : amortissements réintégrés dans la base taxable",
+      body: `En LMNP, les amortissements déduits fiscalement (${formatEuro(r.lmnpAmortizationReintegration)}) sont réintégrés dans le calcul de la plus-value. Cela augmente la base imposable par rapport à une location nue. Un expert-comptable peut valider ce montant.` });
+  }
+
+  return items;
+}
+
 /* ------------------------ Analysis rendering (PretRelais style) ------------------------ */
 const renderAnalysisBlocks = (text: string) => {
   if (!text) return null;
@@ -413,6 +520,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
   /* ======================== Résultats ======================== */
   const [result, setResult] = useState<PVResult | null>(null);
+  const [actionItems, setActionItems] = useState<ActionPlanItem[]>([]);
 
   /* ======================== Gate (par calculette) ======================== */
   const [unlocked, setUnlocked] = useState<boolean>(false);
@@ -617,6 +725,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
     const r = computeAll();
     setResult(r);
+    setActionItems(buildPlusValueActionPlan(r, { residenceType, yearsHeld: toFloat(yearsHeld, 0), applySurtax }));
 
     if (typeof window !== "undefined") {
       const payload = {
@@ -647,9 +756,15 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       window.localStorage.setItem(PLUSVALUE_STORAGE_KEY, JSON.stringify(payload));
     }
 
-    const el = document.getElementById("resultats-plusvalue");
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  useEffect(() => {
+    if (!result) return;
+    const t = setTimeout(() => {
+      document.getElementById("resultats-plusvalue")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [result]);
 
   /* ======================== Restore inputs ======================== */
   useEffect(() => {
@@ -1671,27 +1786,40 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
               </div>
             ) : null}
 
-            {/* Analyse détaillée (blur si non débloqué) */}
-            {(() => {
-              const text = buildPlusValueTextDetail(displayResult);
-              return (
-                <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-4">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">Analyse détaillée</p>
-
-                  <div className={canShowFullAnalysis ? "" : "blur-sm select-none"}>{renderAnalysisBlocks(text)}</div>
-
-                  {!canShowFullAnalysis ? (
-                    <p className="mt-3 text-[0.75rem] text-slate-500">
-                      Débloquez l’analyse pour afficher le détail (bases taxables, IR/PS, CRD/IRA, repère d’équilibre, scénario).
-                    </p>
-                  ) : (
-                    <p className="mt-3 text-[0.65rem] text-slate-500">
-                      Résultats indicatifs. Validation notaire recommandée.
-                    </p>
-                  )}
+            {/* Plan d’action lokt */}
+            {canShowFullAnalysis && actionItems.length > 0 ? (
+              <div className="mt-4 space-y-2">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Plan d&apos;action lokt
+                </p>
+                {actionItems.map((item, i) => {
+                  const cfg = ACTION_ITEM_CONFIG[item.type];
+                  return (
+                    <div key={i} className={`flex gap-3 rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}>
+                      <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${cfg.iconBg} ${cfg.iconText}`}>
+                        <cfg.Icon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-[0.8rem] font-semibold leading-tight ${cfg.titleText}`}>{item.title}</p>
+                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${cfg.badgeCls}`}>{cfg.badge}</span>
+                        </div>
+                        <p className="mt-1 text-[0.75rem] leading-5 text-slate-600">{item.body}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : !canShowFullAnalysis ? (
+              <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-4 relative overflow-hidden">
+                <div className="blur-sm select-none space-y-2">
+                  {[1,2,3].map(n => <div key={n} className={`h-16 rounded-xl border ${n===1?"bg-red-50 border-red-200":n===2?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} />)}
                 </div>
-              );
-            })()}
+                <p className="absolute inset-0 flex items-center justify-center text-[0.75rem] font-semibold text-slate-600 text-center px-6">
+                  Débloquez l’analyse pour afficher le plan d’action personnalisé (bases taxables, IR/PS, CRD/IRA, scénario).
+                </p>
+              </div>
+            ) : null}
 
             {/* Gate (PretRelais style) */}
             {!canShowFullAnalysis ? (

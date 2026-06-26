@@ -1,11 +1,16 @@
 // components/InvestissementWizard.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ComponentType, SVGProps } from "react";
 import dynamic from "next/dynamic";
 import {
   BanknotesIcon,
   BuildingOffice2Icon,
   ChartBarIcon,
+  CheckCircleIcon,
   CreditCardIcon,
+  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
+  LightBulbIcon,
   ReceiptPercentIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
@@ -97,7 +102,7 @@ type GraphData = {
   dureeCredLoc: number;
 };
 
-type StepKey = "couts" | "revenus" | "charges" | "credit" | "resultats";
+type StepKey = "couts" | "revenus" | "charges" | "credit";
 
 type MarketBenchmarks = {
   inseeCode: string;
@@ -112,6 +117,20 @@ type CitySuggestion = {
   name: string;
   postalCode: string;
   inseeCode: string;
+};
+
+/* ======================== Plan d'action ======================== */
+type ActionPlanItemType = "blocking" | "warning" | "positive" | "tip";
+type ActionPlanItem = { type: ActionPlanItemType; title: string; body: string };
+
+const ACTION_ITEM_CONFIG: Record<
+  ActionPlanItemType,
+  { Icon: ComponentType<SVGProps<SVGSVGElement>>; badge: string; bg: string; border: string; iconBg: string; iconText: string; titleText: string; badgeCls: string }
+> = {
+  blocking: { Icon: ExclamationTriangleIcon, badge: "Bloquant",    bg: "bg-red-50",     border: "border-red-200",     iconBg: "bg-red-100",     iconText: "text-red-600",     titleText: "text-red-900",     badgeCls: "bg-red-100 text-red-700" },
+  warning:  { Icon: ExclamationCircleIcon,  badge: "A surveiller", bg: "bg-amber-50",   border: "border-amber-200",   iconBg: "bg-amber-100",   iconText: "text-amber-600",   titleText: "text-amber-900",   badgeCls: "bg-amber-100 text-amber-700" },
+  positive: { Icon: CheckCircleIcon,        badge: "Atout",        bg: "bg-emerald-50", border: "border-emerald-200", iconBg: "bg-emerald-100", iconText: "text-emerald-600", titleText: "text-emerald-900", badgeCls: "bg-emerald-100 text-emerald-700" },
+  tip:      { Icon: LightBulbIcon,          badge: "Conseil",      bg: "bg-indigo-50",  border: "border-indigo-200",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  titleText: "text-indigo-900",  badgeCls: "bg-indigo-100 text-indigo-700" },
 };
 
 /* ======================== Small UI ======================== */
@@ -213,15 +232,14 @@ export default function InvestissementWizard({
   const DEFAULT_AIRBNB_OCCUPATION = 60; // % si champ vide
 
   /* ======================== Steps ======================== */
-  const steps: StepKey[] = ["couts", "revenus", "charges", "credit", "resultats"];
+  const steps: StepKey[] = ["couts", "revenus", "charges", "credit"];
   const [step, setStep] = useState<StepKey>("couts");
   const stepIndex = steps.indexOf(step);
   const progressSteps = [
-    { label: "Projet", icon: BuildingOffice2Icon },
-    { label: "Revenus", icon: BanknotesIcon },
-    { label: "Charges", icon: ReceiptPercentIcon },
+    { label: "Projet",      icon: BuildingOffice2Icon },
+    { label: "Revenus",     icon: BanknotesIcon },
+    { label: "Charges",     icon: ReceiptPercentIcon },
     { label: "Financement", icon: CreditCardIcon },
-    { label: "Résultats", icon: ChartBarIcon },
   ];
 
   const goNext = () => setStep(steps[clamp(stepIndex + 1, 0, steps.length - 1)]);
@@ -284,6 +302,7 @@ export default function InvestissementWizard({
   const [opportunityScore, setOpportunityScore] = useState<number | null>(null);
   const [opportunityComment, setOpportunityComment] = useState<string>("");
   const [opportunityImprovements, setOpportunityImprovements] = useState<string[]>([]);
+  const [actionItems, setActionItems] = useState<ActionPlanItem[]>([]);
 
   const [marketPriceM2, setMarketPriceM2] = useState<number | null>(null);
   const [marketRentM2, setMarketRentM2] = useState<number | null>(null);
@@ -352,15 +371,14 @@ export default function InvestissementWizard({
   const canShowFullDetails = (canSeeCalcDetails && isLoggedIn) || unlocked;
 
   const resultSectionRef = useRef<HTMLDivElement | null>(null);
-  const didAutoCalcRef = useRef(false);
 
   useEffect(() => {
-    if (step !== "resultats") return;
-    if (!hasSimulation && !didAutoCalcRef.current) {
-      didAutoCalcRef.current = true;
-      void handleCalculRendement();
-    }
-  }, [step, hasSimulation]);
+    if (!graphData) return;
+    const t = setTimeout(() => {
+      resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [graphData]);
 
   /* ======================== Handlers ======================== */
   const handlePrixBienChange = (raw: string) => {
@@ -843,6 +861,78 @@ export default function InvestissementWizard({
     setOpportunityComment(comment);
     setOpportunityImprovements(improvements);
 
+    // Plan d'action lokt
+    const planItems: ActionPlanItem[] = [];
+
+    // BLOCKING
+    if (rendementBrut < 1.5) {
+      planItems.push({ type: "blocking", title: "Rendement brut anormalement bas",
+        body: `Avec ${formatPct(rendementBrut)} brut, le projet ne dégage quasiment pas de revenu par rapport à son coût (${formatEuro(coutTotal)}). Vérifiez le loyer saisi ou le prix d'acquisition — ce niveau rend le financement très difficile à justifier auprès d'une banque.` });
+    }
+    if (ecartPrixPourcent !== null && ecartPrixPourcent > 30) {
+      planItems.push({ type: "blocking", title: "Prix d'acquisition très au-dessus du marché",
+        body: `Le prix au m² de cette annonce dépasse d'environ ${Math.round(ecartPrixPourcent)}% le prix médian local. À ce niveau, la valorisation future du bien et la sortie de crédit deviennent risquées. Négociez fortement ou ciblez un autre bien.` });
+    }
+
+    // WARNING
+    if (cashflowMensuel < -500) {
+      planItems.push({ type: "warning", title: "Effort d'épargne mensuel élevé",
+        body: `Le projet génère un cash-flow de ${formatEuro(cashflowMensuel)}/mois. C'est un effort d'épargne significatif à supporter chaque mois pendant ${toFloat(dureeCredLoc, 0)} ans. Assurez-vous que votre trésorerie personnelle l'absorbe sans fragilité.` });
+    } else if (cashflowMensuel < 0) {
+      planItems.push({ type: "warning", title: "Cash-flow légèrement négatif",
+        body: `Le projet vous coûte ~${formatEuro(Math.abs(cashflowMensuel))}/mois après charges et crédit. Ce n'est pas bloquant si votre capacité d'épargne le permet, mais cela laisse peu de marge en cas de vacance locative ou de travaux imprévus.` });
+    }
+
+    if (rendementNetAvantCredit < 3 && rendementBrut >= 1.5) {
+      planItems.push({ type: "warning", title: "Rendement net avant crédit faible",
+        body: `Votre rendement net avant crédit est de ${formatPct(rendementNetAvantCredit)}. En dessous de 3%, les charges et frais grignotent une trop grande part des loyers. Leviers : négocier les charges de copropriété, optimiser les frais de gestion, ou revoir le prix d'achat.` });
+    }
+
+    if (ecartPrixPourcent !== null && ecartPrixPourcent > 10 && ecartPrixPourcent <= 30) {
+      planItems.push({ type: "warning", title: "Prix au-dessus du marché local",
+        body: `Le prix au m² de ce bien dépasse d'environ ${Math.round(ecartPrixPourcent)}% le prix médian local. Cela réduit le rendement et le potentiel de plus-value à la revente. Tentez une négociation sur le prix ou les conditions.` });
+    }
+
+    if (toFloat(tauxGestion, 0) === 0 && nbApparts > 0) {
+      planItems.push({ type: "warning", title: "Frais de gestion non pris en compte",
+        body: `Vous avez saisi 0% de frais de gestion. Si vous faites appel à un gestionnaire (agence, conciergerie), comptez 7-10% des loyers. Ne pas l'intégrer peut conduire à surestimer votre cash-flow réel.` });
+    }
+
+    // POSITIF
+    if (cashflowMensuel >= 0) {
+      planItems.push({ type: "positive", title: "Cash-flow neutre ou positif",
+        body: `Le bien génère ${cashflowMensuel > 0 ? formatEuro(cashflowMensuel) + "/mois d'excédent" : "un cash-flow neutre"} après toutes les charges et le remboursement du crédit. Il s'autofinance — votre épargne personnelle n'est pas sollicitée.` });
+    }
+
+    if (rendementNetAvantCredit >= 5) {
+      planItems.push({ type: "positive", title: "Bon rendement net avant crédit",
+        body: `${formatPct(rendementNetAvantCredit)} net avant crédit, c'est un bon niveau. Cela signifie que les loyers couvrent largement les charges avant même de rembourser l'emprunt — le projet est robuste aux aléas (vacance, travaux imprévus).` });
+    }
+
+    if (ecartPrixPourcent !== null && ecartPrixPourcent < -5) {
+      planItems.push({ type: "positive", title: "Prix en dessous du marché local",
+        body: `Le prix au m² est ${Math.abs(Math.round(ecartPrixPourcent))}% sous le prix médian local. C'est un signal positif : marge de négociation réelle, potentiel de plus-value à la revente, et meilleur rapport rendement/risque.` });
+    }
+
+    // CONSEIL
+    if (ecartLoyerPourcent !== null && ecartLoyerPourcent < -10 && market?.referenceRentM2) {
+      const loyerMarche = Math.round(market.referenceRentM2 * surfaceNum);
+      planItems.push({ type: "tip", title: "Loyer en dessous du marché — potentiel de revalorisation",
+        body: `Votre loyer est ~${Math.abs(Math.round(ecartLoyerPourcent))}% sous le loyer médian local. Le marché suggère un loyer autour de ${formatEuro(loyerMarche)}/mois. En vous alignant progressivement, vous améliorerez le rendement et le cash-flow.` });
+    }
+
+    if (cashflowMensuel < 0 && toFloat(dureeCredLoc, 0) < 25) {
+      planItems.push({ type: "tip", title: "Allonger la durée réduirait l'effort mensuel",
+        body: `En passant de ${toFloat(dureeCredLoc, 0)} à ${toFloat(dureeCredLoc, 0) + 5} ans, la mensualité crédit baisserait et le cash-flow s'améliorerait. Le coût total des intérêts augmenterait, mais la pression mensuelle serait moins forte. À simuler selon votre situation.` });
+    }
+
+    if (nbApparts === 1 && locationTypes[0] === "longue" && rendementNetAvantCredit < 5) {
+      planItems.push({ type: "tip", title: "La location courte durée pourrait booster le rendement",
+        body: `Pour ce bien, envisagez une simulation en mode saisonnier (Airbnb). Si le marché local le permet, les revenus peuvent être significativement plus élevés — parfois 2 à 3× la location longue durée. Testez l'onglet Airbnb dans l'étape Revenus.` });
+    }
+
+    setActionItems(planItems);
+
     const texte = [
       `Structure du projet : ${nbApparts} lot(s) combinant vos choix de location (longue durée ou saisonnière). Le coût total du projet (prix d’acquisition, frais de notaire, frais d’agence et travaux) ressort à ${formatEuro(
         coutTotal
@@ -907,15 +997,7 @@ export default function InvestissementWizard({
     }
   };
 
-  const handleGoToResults = async () => {
-    await handleCalculRendement();
-    setStep("resultats");
-    setTimeout(() => {
-      if (resultSectionRef.current) {
-        resultSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }, 80);
-  };
+  const handleGoToResults = () => void handleCalculRendement();
 
   const handlePrintPDF = () => {
     if (typeof window !== "undefined") window.print();
@@ -1191,29 +1273,10 @@ const canClickUnlock =
       {/* STEP: Coûts */}
       {step === "couts" && (
         <section className="calculator-premium-form space-y-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 1</p>
-              <h2 className="text-lg font-semibold text-slate-900">Coût global du projet</h2>
-              <p className="text-xs text-slate-500">Prix, notaire, agence, travaux (+ localité & surface optionnelles).</p>
-            </div>
-            <div className="grid grid-cols-1 gap-2 sm:flex">
-              <button
-              type="button"
-              onClick={() => {
-                const prix = toFloat(prixBien, 0);
-                if (!prixBien.trim() || prix <= 0) {
-                  setPrixBienError("Prix du bien obligatoire (montant > 0).");
-                  return;
-                }
-                setPrixBienError(null);
-                goNext();
-              }}
-              className={primaryNavButtonClass}
-            >
-              Suivant
-            </button>
-            </div>
+          <div>
+            <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 1</p>
+            <h2 className="text-lg font-semibold text-slate-900">Coût global du projet</h2>
+            <p className="text-xs text-slate-500">Prix, notaire, agence, travaux (+ localité & surface optionnelles).</p>
           </div>
 
           <div className="space-y-3">
@@ -1358,26 +1421,24 @@ const canClickUnlock =
               )}</span>
             </div>
           </div>
+          <div className="flex justify-end pt-2">
+            <button type="button" onClick={() => {
+              const prix = toFloat(prixBien, 0);
+              if (!prixBien.trim() || prix <= 0) { setPrixBienError("Prix du bien obligatoire (montant > 0)."); return; }
+              setPrixBienError(null);
+              goNext();
+            }} className={primaryNavButtonClass}>Suivant →</button>
+          </div>
         </section>
       )}
 
       {/* STEP: Revenus */}
       {step === "revenus" && (
         <section className="calculator-premium-form space-y-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 2</p>
-              <h2 className="text-lg font-semibold text-slate-900">Revenus locatifs : longue durée & saisonnière</h2>
-              <p className="text-xs text-slate-500">Configurez le nombre de lots et le mode de location.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex">
-              <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>
-              Précédent
-            </button>
-            <button type="button" onClick={goNext} className={primaryNavButtonClass}>
-              Suivant
-            </button>
-            </div>
+          <div>
+            <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 2</p>
+            <h2 className="text-lg font-semibold text-slate-900">Revenus locatifs : longue durée & saisonnière</h2>
+            <p className="text-xs text-slate-500">Configurez le nombre de lots et le mode de location.</p>
           </div>
 
           <div className="space-y-3">
@@ -1463,26 +1524,20 @@ const canClickUnlock =
               })}
             </div>
           </div>
+          <div className="flex justify-between pt-2">
+            <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>← Retour</button>
+            <button type="button" onClick={goNext} className={primaryNavButtonClass}>Suivant →</button>
+          </div>
         </section>
       )}
 
       {/* STEP: Charges */}
       {step === "charges" && (
         <section className="calculator-premium-form space-y-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 3</p>
-              <h2 className="text-lg font-semibold text-slate-900">Charges récurrentes & gestion</h2>
-              <p className="text-xs text-slate-500">Copro, taxe foncière, assurance, gestion / conciergerie.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex">
-              <button onClick={goPrev} className={secondaryNavButtonClass}>
-                Précédent
-              </button>
-              <button onClick={goNext} className={primaryNavButtonClass}>
-                Suivant
-              </button>
-            </div>
+          <div>
+            <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 3</p>
+            <h2 className="text-lg font-semibold text-slate-900">Charges récurrentes & gestion</h2>
+            <p className="text-xs text-slate-500">Copro, taxe foncière, assurance, gestion / conciergerie.</p>
           </div>
 
           <div className="space-y-3">
@@ -1533,26 +1588,20 @@ const canClickUnlock =
               />
             </div>
           </div>
+          <div className="flex justify-between pt-2">
+            <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>← Retour</button>
+            <button type="button" onClick={goNext} className={primaryNavButtonClass}>Suivant →</button>
+          </div>
         </section>
       )}
 
       {/* STEP: Crédit */}
       {step === "credit" && (
         <section className="calculator-premium-form space-y-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 4</p>
-              <h2 className="text-lg font-semibold text-slate-900">Paramètres du financement</h2>
-              <p className="text-xs text-slate-500">Apport, taux, durée du crédit et assurance.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex">
-              <button onClick={goPrev} className={secondaryNavButtonClass}>
-                Précédent
-              </button>
-              <button onClick={handleGoToResults} className={primaryNavButtonClass}>
-                Aller aux résultats
-              </button>
-            </div>
+          <div>
+            <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Étape 4</p>
+            <h2 className="text-lg font-semibold text-slate-900">Paramètres du financement</h2>
+            <p className="text-xs text-slate-500">Apport, taux, durée du crédit et assurance.</p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-4 mt-2">
@@ -1612,11 +1661,17 @@ const canClickUnlock =
     />
   </div>
 </div>
+          <div className="flex justify-between pt-2">
+            <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>← Retour</button>
+            <button type="button" onClick={handleGoToResults} className={primaryNavButtonClass}>
+              Calculer ma rentabilité →
+            </button>
+          </div>
         </section>
       )}
 
-      {/* STEP: Résultats */}
-      {step === "resultats" && hasSimulation && (
+      {/* Résultats */}
+      {hasSimulation && (
         <section
           ref={resultSectionRef}
           className="calculator-premium-form space-y-4"
@@ -1813,79 +1868,71 @@ const canClickUnlock =
                 </>
               )}
 
-              {/* Analyse narrative */}
-              <div className="relative rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4 overflow-hidden">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">Analyse détaillée</p>
-
-                <div className={canShowFullDetails ? "" : "blur-sm select-none pointer-events-none"}>
-                  {renderAnalysisBlocks(resultRendementTexte)}
-                </div>
-
-                {!canShowFullDetails && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm">
-                    <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
-                      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
-                      <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
-
-                      <div className="relative space-y-3">
-                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE COMPLÈTE</p>
-                        <h3 className="text-lg font-semibold">Recevoir mon rapport personnalisé</h3>
-                        <p className="text-sm text-slate-200">L’analyse détaillée est masquée tant que vous n’êtes pas connecté ou débloqué.</p>
-
-                        <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4">
-                          <div className="grid gap-3 sm:grid-cols-2 items-start">
-                            <div className="space-y-1 sm:col-span-2">
-                              <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
-                              <input
-                                type="email"
-                                value={leadEmail}
-                                onChange={(e) => setLeadEmail(e.target.value)}
-                                placeholder="ex: prenom.nom@gmail.com"
-                                className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white sm:rounded-lg sm:py-2 sm:text-sm placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
-                              />
-                              <p className="text-[0.7rem] text-slate-300">
-                                Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}
-                                <a href="/confidentialite" className="underline hover:text-white">En savoir plus sur vos données personnelles</a>.
-                              </p>
-                            </div>
-
-                            <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
-                              <label className="flex items-start gap-3 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={consentContact}
-                                  onChange={(e) => setConsentContact(e.target.checked)}
-                                  className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
-                                />
-                                <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                                  <span className="font-semibold">Optionnel :</span> j’accepte que lokt.fr me recontacte pour m’aider à analyser mon projet.
-                                  <span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span>
-                                </span>
-                              </label>
-                            </div>
-
-                            <div className="sm:col-span-2 flex items-end">
-                              <button
-                                type="button"
-                                onClick={handleUnlock}
-                                disabled={!canClickUnlock}
-                                className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60"
-                              >
-                                {unlocking ? "Préparation..." : "Recevoir mon rapport"}
-                              </button>
-                            </div>
+              {/* Plan d’action lokt */}
+              {canShowFullDetails && actionItems.length > 0 ? (
+                <div className="mt-4 space-y-2">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Plan d&apos;action lokt
+                  </p>
+                  {actionItems.map((item, i) => {
+                    const cfg = ACTION_ITEM_CONFIG[item.type];
+                    return (
+                      <div key={i} className={`flex gap-3 rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}>
+                        <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${cfg.iconBg} ${cfg.iconText}`}>
+                          <cfg.Icon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className={`text-[0.8rem] font-semibold leading-tight ${cfg.titleText}`}>{item.title}</p>
+                            <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${cfg.badgeCls}`}>{cfg.badge}</span>
                           </div>
-
-                          {unlockMsg && <p className="mt-3 text-[0.75rem] text-slate-200">{unlockMsg}</p>}
-                          {sendingEmail ? <p className="mt-3 text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
-                          {sendEmailMsg ? <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
-
+                          <p className="mt-1 text-[0.75rem] leading-5 text-slate-600">{item.body}</p>
                         </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : !canShowFullDetails ? (
+              <div className="relative rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4 overflow-hidden">
+                <div className="blur-sm select-none pointer-events-none space-y-2">
+                  {[1,2,3].map(n => <div key={n} className={`h-16 rounded-xl border ${n===1?"bg-red-50 border-red-200":n===2?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} />)}
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+                  <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
+                    <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
+                    <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
+                    <div className="relative space-y-3">
+                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE COMPLÈTE</p>
+                      <h3 className="text-lg font-semibold">Recevoir mon rapport personnalisé</h3>
+                      <p className="text-sm text-slate-200">Le plan d’action est masqué tant que vous n’êtes pas connecté ou débloqué.</p>
+                      <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4">
+                        <div className="grid gap-3 sm:grid-cols-2 items-start">
+                          <div className="space-y-1 sm:col-span-2">
+                            <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
+                            <input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="ex: prenom.nom@gmail.com" className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white sm:rounded-lg sm:py-2 sm:text-sm placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300" />
+                            <p className="text-[0.7rem] text-slate-300">Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}<a href="/confidentialite" className="underline hover:text-white">En savoir plus</a>.</p>
+                          </div>
+                          <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                              <input type="checkbox" checked={consentContact} onChange={(e) => setConsentContact(e.target.checked)} className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10" />
+                              <span className="text-[0.75rem] text-slate-200 leading-relaxed"><span className="font-semibold">Optionnel :</span> j’accepte que lokt.fr me recontacte pour m’aider à analyser mon projet.<span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span></span>
+                            </label>
+                          </div>
+                          <div className="sm:col-span-2 flex items-end">
+                            <button type="button" onClick={handleUnlock} disabled={!canClickUnlock} className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60">
+                              {unlocking ? "Préparation..." : "Recevoir mon rapport"}
+                            </button>
+                          </div>
+                        </div>
+                        {unlockMsg && <p className="mt-3 text-[0.75rem] text-slate-200">{unlockMsg}</p>}
+                        {sendingEmail ? <p className="mt-3 text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
+                        {sendEmailMsg ? <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
+              ) : null}
 
               <p className="mt-2 text-[0.7rem] text-slate-500">
                 Ces calculs sont fournis à titre indicatif, hors fiscalité et évolution future des loyers, taux, charges et réglementation.
