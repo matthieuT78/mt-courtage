@@ -1,5 +1,6 @@
 // components/AcheterOuLouerWizard.tsx
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import type { ComponentType, SVGProps } from "react";
 import LeadGate from "./LeadGate";
 import { supabase } from "../lib/supabaseClient";
 import {
@@ -8,7 +9,9 @@ import {
   MapPinIcon,
   ScaleIcon,
   CheckCircleIcon,
+  ExclamationCircleIcon,
   ExclamationTriangleIcon,
+  LightBulbIcon,
   ArrowRightIcon,
   ArrowLeftIcon,
   XMarkIcon,
@@ -23,6 +26,124 @@ import Link from "next/link";
 
 const UNLOCK_KEY = "acheter_ou_louer_unlock_v1";
 const EMAIL_KEY  = "acheter_ou_louer_email_v1";
+
+/* ─────────── plan d'action ─────────── */
+type ActionPlanItemType = "blocking" | "warning" | "positive" | "tip";
+type ActionPlanItem = { type: ActionPlanItemType; title: string; body: string };
+
+const ACTION_ITEM_CONFIG: Record<
+  ActionPlanItemType,
+  { Icon: ComponentType<SVGProps<SVGSVGElement>>; badge: string; bg: string; border: string; iconBg: string; iconText: string; titleText: string; badgeCls: string }
+> = {
+  blocking: { Icon: ExclamationTriangleIcon, badge: "Bloquant",    bg: "bg-red-50",     border: "border-red-200",     iconBg: "bg-red-100",     iconText: "text-red-600",     titleText: "text-red-900",     badgeCls: "bg-red-100 text-red-700" },
+  warning:  { Icon: ExclamationCircleIcon,  badge: "A surveiller", bg: "bg-amber-50",   border: "border-amber-200",   iconBg: "bg-amber-100",   iconText: "text-amber-600",   titleText: "text-amber-900",   badgeCls: "bg-amber-100 text-amber-700" },
+  positive: { Icon: CheckCircleIcon,        badge: "Atout",        bg: "bg-emerald-50", border: "border-emerald-200", iconBg: "bg-emerald-100", iconText: "text-emerald-600", titleText: "text-emerald-900", badgeCls: "bg-emerald-100 text-emerald-700" },
+  tip:      { Icon: LightBulbIcon,          badge: "Conseil",      bg: "bg-indigo-50",  border: "border-indigo-200",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  titleText: "text-indigo-900",  badgeCls: "bg-indigo-100 text-indigo-700" },
+};
+
+function buildAcheterOuLouerActionPlan(
+  verdict: "rp" | "locatif" | "attendre",
+  scores: { rp: { score: number }; locatif: { score: number } },
+  monthly: Monthly,
+  form: Form,
+  includesLocatif: boolean
+): ActionPlanItem[] {
+  const items: ActionPlanItem[] = [];
+  const apport = toNum(form.apport);
+  const revenus = toNum(form.revenus);
+  const prixRp = toNum(form.prix_rp);
+  const apportPctRp = prixRp > 0 ? (apport / prixRp) * 100 : null;
+  const tauxEndettRp = revenus > 0 && monthly.mensualite_rp > 0 ? (monthly.mensualite_rp / revenus) * 100 : null;
+
+  // ── WARNINGS ──────────────────────────────────────────────────
+  if (verdict === "attendre") {
+    items.push({ type: "warning", title: "Les conditions ne sont pas encore réunies pour acheter",
+      body: `Votre profil actuel (statut, apport, horizon ou marché) rend un achat immobilier risqué à court terme. Chaque élément amélioré (apport, stabilité professionnelle, horizon) augmentera significativement vos chances d'obtenir un crédit et de rentabiliser l'opération.` });
+  }
+
+  if (monthly.extra_rp > 400 && form.objectif !== "locatif") {
+    items.push({ type: "warning", title: "Surcoût mensuel important vs louer",
+      body: `Acheter cette résidence principale vous coûterait ~${fmtEuro(monthly.extra_rp)}/mois de plus que votre loyer actuel (mensualité + charges + taxe foncière). Assurez-vous que votre budget absorbe ce surcoût sans fragilité en cas d'imprévu.` });
+  }
+
+  if (includesLocatif && monthly.cashflow_net < -200) {
+    items.push({ type: "warning", title: "Cashflow locatif déficitaire",
+      body: `Avec ce loyer et ce prix, le bien locatif génère un déficit de ${fmtEuro(Math.abs(monthly.cashflow_net))}/mois (après mensualité, charges, taxe foncière et frais de gestion ~7%). Vous devrez compléter sur vos revenus chaque mois.` });
+  }
+
+  if (form.contrat === "cdd" || form.contrat === "independant") {
+    items.push({ type: "warning", title: "Statut professionnel à risque pour le crédit",
+      body: `En ${form.contrat === "cdd" ? "CDD" : "statut indépendant"}, les banques exigent des preuves de revenus stables sur 2-3 ans minimum. Certains prêteurs sont plus ouverts (banques en ligne, courtiers spécialisés), mais attendez-vous à un dossier plus exigeant et un taux éventuellement majoré.` });
+  }
+
+  if (apportPctRp !== null && apportPctRp < 10 && prixRp > 0) {
+    items.push({ type: "warning", title: "Apport faible — moins de 10% du prix",
+      body: `Votre apport représente ~${apportPctRp.toFixed(0)}% du prix. En dessous de 10%, la banque couvre les frais de notaire et d'agence sur ses fonds, ce qui est moins courant. Un apport de ${fmtEuro(Math.round(prixRp * 0.10))} (10%) serait le seuil minimum recommandé.` });
+  }
+
+  if (form.horizon === "moins_3_ans") {
+    items.push({ type: "warning", title: "Horizon court — l'achat est rarement rentable en moins de 3 ans",
+      body: `Sur un horizon inférieur à 3 ans, les frais de notaire (~7-8%) et les intérêts du début de crédit ne sont pas encore amortis. Une revente rapide implique souvent une moins-value nette. Sauf exception (marché très haussier), louer reste plus souple.` });
+  }
+
+  // ── POSITIFS ──────────────────────────────────────────────────
+  if (verdict === "rp" && scores.rp.score >= 65) {
+    items.push({ type: "positive", title: "Profil favorable à l'achat de votre résidence principale",
+      body: `Votre score RP (${scores.rp.score}/100) reflète un profil bien positionné : situation pro, apport, horizon et marché sont alignés. C'est le bon moment pour avancer sur votre dossier de financement.` });
+  }
+
+  if (includesLocatif && monthly.cashflow_net > 0) {
+    items.push({ type: "positive", title: "Cashflow locatif positif",
+      body: `Le bien locatif génère un cashflow net de +${fmtEuro(monthly.cashflow_net)}/mois après toutes charges. Votre "loyer réel" tombe à ${fmtEuro(Math.max(0, monthly.cout_net_locatif))}/mois — le bien se finance partiellement tout seul.` });
+  }
+
+  if (monthly.rendement_brut >= 5.5 && includesLocatif) {
+    items.push({ type: "positive", title: "Rendement brut attractif pour l'investissement",
+      body: `${fmtPct(monthly.rendement_brut)} de rendement brut, c'est au-dessus du seuil de 5.5% souvent recommandé pour viser un cashflow équilibré (après charges et crédit). Ce niveau permet d'absorber la vacance locative et les imprévus.` });
+  }
+
+  if (apportPctRp !== null && apportPctRp >= 20 && prixRp > 0) {
+    items.push({ type: "positive", title: "Apport solide — vous négociez en position de force",
+      body: `${apportPctRp.toFixed(0)}% d'apport sur le prix de la RP. Les banques réservent leurs meilleurs taux aux dossiers avec apport >= 20%. Vous avez un levier de négociation réel sur le taux et les conditions du crédit.` });
+  }
+
+  if (monthly.extra_rp < 0 && form.objectif !== "locatif") {
+    items.push({ type: "positive", title: "L'achat coûte moins cher que votre loyer actuel",
+      body: `Mensualité + charges + taxe foncière = ${fmtEuro(monthly.mensualite_rp)}/mois, soit ${fmtEuro(Math.abs(monthly.extra_rp))}/mois moins cher que votre loyer actuel. Acheter est ici une décision immédiatement favorable sur le plan mensuel.` });
+  }
+
+  // ── CONSEILS ──────────────────────────────────────────────────
+  if (verdict === "attendre" && apportPctRp !== null && apportPctRp < 10 && prixRp > 0) {
+    const objectifApport = Math.round(prixRp * 0.10);
+    const manque = Math.max(0, objectifApport - apport);
+    if (manque > 0) {
+      items.push({ type: "tip", title: "Objectif épargne : atteignez 10% d'apport",
+        body: `Il vous manque ${fmtEuro(manque)} pour atteindre 10% du prix (${fmtEuro(objectifApport)}). En épargnant ${fmtEuro(Math.round(manque / 24))}/mois, vous y seriez en 2 ans.` });
+    }
+  }
+
+  if (tauxEndettRp !== null && tauxEndettRp > 35) {
+    items.push({ type: "tip", title: "Taux d'endettement au-delà de 35% — simulez votre capacité",
+      body: `La mensualité estimée (${fmtEuro(monthly.mensualite_rp)}/mois) représente ~${tauxEndettRp.toFixed(0)}% de vos revenus déclarés. Les banques plafonnent généralement à 35%. Utilisez notre calculette capacité d'emprunt pour ajuster prix ou durée.` });
+  }
+
+  if (verdict === "locatif" && includesLocatif) {
+    items.push({ type: "tip", title: "Simulez la rentabilité détaillée avec notre calculette",
+      body: `Notre calculette rentabilité locative intègre les charges réelles, la fiscalité, la gestion locative et des benchmarks marché pour affiner cette simulation. Cliquez sur "Calculer la rentabilité" pour aller plus loin.` });
+  }
+
+  if (form.mobilite === "tres_probable") {
+    items.push({ type: "tip", title: "Mobilité probable — anticipez la mise en location",
+      body: `Si vous devenez propriétaire et devez déménager, vous pourrez louer votre RP plutôt que la vendre. Vérifiez à l'avance si le loyer marché couvre la mensualité et les charges — cela sécurise votre sortie sans perte.` });
+  }
+
+  if (form.horizon === "3_5_ans") {
+    items.push({ type: "tip", title: "Horizon 3-5 ans — l'achat peut être rentable si vous ne revendez pas vite",
+      body: `Sur 3-5 ans, les frais d'entrée (notaire, agence) sont à peine amortis. Pour que l'achat soit gagnant, il faut soit un marché haussier, soit une mensualité inférieure à votre loyer, soit un horizon qui peut s'étirer. Gardez de la flexibilité.` });
+  }
+
+  return items;
+}
 
 /* ─────────── helpers ─────────── */
 function fmtEuro(n: number, decimals = 0) {
@@ -591,6 +712,15 @@ export default function AcheterOuLouerWizard() {
 
   const canShowDetails = isLoggedIn || unlocked;
 
+  const resultRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (step !== 5) return;
+    const t = setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [step]);
+
   const go  = (n: number) => { setStep(n); setMaxReached((p) => Math.max(p, n)); };
   const set = <K extends keyof Form>(key: K, val: Form[K]) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -606,6 +736,10 @@ export default function AcheterOuLouerWizard() {
 
   const { scores, monthly } = useMemo(() => computeAll(form), [form]);
   const verdict = useMemo(() => getVerdict(scores, form), [scores, form]);
+  const actionItems = useMemo(
+    () => buildAcheterOuLouerActionPlan(verdict, scores, monthly, form, includesLocatif),
+    [verdict, scores, monthly, form, includesLocatif]
+  );
 
   const handleUnlock = useCallback(async () => {
     const email = leadEmail.trim().toLowerCase();
@@ -836,7 +970,7 @@ export default function AcheterOuLouerWizard() {
       {step === 5 && (() => {
         const showLocatif = includesLocatif && monthly.mensualite_locatif > 0;
         return (
-          <div>
+          <div ref={resultRef}>
             <StepHeader
               title={form.villeNom ? `Votre analyse — ${form.villeNom}` : "Votre analyse"}
               desc="Comparaison chiffrée des trois scénarios selon votre profil."
@@ -976,6 +1110,30 @@ export default function AcheterOuLouerWizard() {
                       </div>
                     )}
                   </div>
+
+                  {/* Plan d'action lokt */}
+                  {actionItems.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Plan d&apos;action lokt</p>
+                      {actionItems.map((item, i) => {
+                        const cfg = ACTION_ITEM_CONFIG[item.type];
+                        return (
+                          <div key={i} className={`flex gap-3 rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}>
+                            <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${cfg.iconBg} ${cfg.iconText}`}>
+                              <cfg.Icon className="h-4 w-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className={`text-[0.8rem] font-semibold leading-tight ${cfg.titleText}`}>{item.title}</p>
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${cfg.badgeCls}`}>{cfg.badge}</span>
+                              </div>
+                              <p className="mt-1 text-[0.75rem] leading-5 text-slate-600">{item.body}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {/* CTA */}
                   <div className="grid gap-3 sm:grid-cols-2">
