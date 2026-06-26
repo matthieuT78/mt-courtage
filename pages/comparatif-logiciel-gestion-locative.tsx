@@ -5,27 +5,30 @@ import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 
 const siteUrl = "https://lokt.fr";
-const metaTitle = "Comparatif logiciel gestion locative : pourquoi choisir lokt.fr | lokt.fr";
+const metaTitle = "Comparatif logiciels gestion locative 2026 : Rentila, Smovin, lokt.fr | lokt.fr";
 const metaDesc =
-  "Tableur, agence, logiciel généraliste ou lokt.fr ? Comparez les approches et choisissez l'outil de gestion locative adapté aux propriétaires bailleurs indépendants.";
+  "Comparatif complet des meilleurs logiciels de gestion locative en 2026 : Rentila, Smovin, lokt.fr. Tableau de fonctionnalités, tarifs, points forts et limites de chaque outil pour les bailleurs indépendants.";
 const pageUrl = `${siteUrl}/comparatif-logiciel-gestion-locative`;
+const updatedAt = "Juin 2026";
 
 type Mark = "yes" | "no" | "partial";
 
 const criteria: { label: string; marks: [Mark, Mark, Mark, Mark] }[] = [
-  { label: "Gratuit ou sans abonnement élevé",          marks: ["yes",     "no",      "partial", "yes"]     },
-  { label: "Pensé pour 1 à 10 biens",                   marks: ["partial", "no",      "no",      "yes"]     },
-  { label: "Quittances générées automatiquement",        marks: ["no",      "yes",     "partial", "yes"]     },
-  { label: "Suivi des paiements et retards",             marks: ["partial", "yes",     "partial", "yes"]     },
-  { label: "Relances et alertes loyers",                 marks: ["no",      "yes",     "partial", "yes"]     },
-  { label: "Baux et documents stockés",                  marks: ["no",      "yes",     "partial", "yes"]     },
-  { label: "Simulateurs (rentabilité, capacité…)",       marks: ["partial", "no",      "no",      "yes"]     },
-  { label: "Mise en place en moins de 10 min",           marks: ["yes",     "no",      "no",      "yes"]     },
-  { label: "Sans intermédiaire entre bailleur/locataire",marks: ["yes",     "no",      "yes",     "yes"]     },
+  { label: "Gratuit pour démarrer",                    marks: ["yes",     "yes",     "no",      "yes"]     },
+  { label: "Pensé pour 1 à 10 biens",                  marks: ["partial", "yes",     "partial", "yes"]     },
+  { label: "Quittances PDF automatiques",               marks: ["no",      "yes",     "yes",     "yes"]     },
+  { label: "Suivi des paiements et retards",            marks: ["partial", "yes",     "yes",     "yes"]     },
+  { label: "Relances loyers impayés",                   marks: ["no",      "partial", "yes",     "yes"]     },
+  { label: "Baux et documents stockés",                 marks: ["no",      "yes",     "yes",     "yes"]     },
+  { label: "Révision IRL automatique",                  marks: ["no",      "partial", "yes",     "yes"]     },
+  { label: "Simulateurs (rentabilité, capacité…)",      marks: ["partial", "no",      "no",      "yes"]     },
   { label: "LMNP : inventaire, charges, suivi",         marks: ["no",      "partial", "partial", "yes"]     },
+  { label: "Mise en place en moins de 10 min",          marks: ["yes",     "yes",     "no",      "yes"]     },
+  { label: "Interface claire pour particuliers",        marks: ["yes",     "yes",     "partial", "yes"]     },
+  { label: "Zéro commission sur les loyers",            marks: ["yes",     "yes",     "yes",     "yes"]     },
 ];
 
-const columns = ["Tableur Excel / Sheets", "Agence locative", "Logiciel généraliste", "lokt.fr"];
+const columns = ["Tableur Excel", "Rentila", "Smovin", "lokt.fr"];
 const isLokt = (i: number) => i === 3;
 
 function MarkIcon({ mark, lokt }: { mark: Mark; lokt: boolean }) {
@@ -36,66 +39,103 @@ function MarkIcon({ mark, lokt }: { mark: Mark; lokt: boolean }) {
   return <MinusIcon className="h-5 w-5 text-amber-400" aria-label="Partiel" />;
 }
 
-const whyNot = [
+const tools = [
   {
-    label: "Tableur Excel ou Google Sheets",
+    name: "Tableur Excel / Google Sheets",
     icon: "📊",
-    pros: ["Gratuit", "Flexible", "Familier"],
+    price: "Gratuit",
+    ideal: "Propriétaire d'un seul bien, à l'aise avec les formules",
+    pros: ["Aucun coût", "Entière liberté de personnalisation", "Pas de dépendance à un éditeur"],
     cons: [
-      "Aucune automatisation : quittances, relances, alertes à faire à la main",
-      "Pas de génération PDF ou d'envoi au locataire",
-      "Fragile : une formule cassée ou un fichier mal partagé, tout s'effondre",
-      "Ne scale pas au-delà de 2 biens sans devenir ingérable",
+      "Zéro automatisation : quittances, relances et suivi à refaire chaque mois à la main",
+      "Pas de génération PDF ni d'envoi directement au locataire",
+      "Fragile : une formule cassée ou un mauvais partage, tout s'effondre",
+      "Ingérable dès 2-3 biens sans y passer plusieurs heures par mois",
     ],
+    verdict: "Acceptable pour un seul bien si vous avez du temps. Dépasse rapidement ses limites dès que vous gérez plusieurs locations ou souhaitez des documents professionnels.",
   },
   {
-    label: "Une agence de gestion locative",
-    icon: "🏢",
-    pros: ["Délégation totale", "Réseau de locataires"],
-    cons: [
-      "6 à 10 % des loyers prélevés chaque mois — sur 10 ans, ça représente une année de loyer offerte",
-      "Vous perdez le lien direct avec votre locataire",
-      "Peu de visibilité sur ce qui se passe réellement",
-      "Inadapté si vous gérez vous-même et souhaitez juste un outil d'appui",
+    name: "Rentila",
+    icon: "🏠",
+    price: "Gratuit (limité) · ~9 €/mois au-delà",
+    ideal: "Bailleur débutant souhaitant un outil simple et gratuit",
+    pros: [
+      "Offre gratuite pour démarrer avec 1 à 2 biens",
+      "Interface claire et accessible sans formation",
+      "Génération de quittances et gestion des baux incluse",
+      "Bonne notoriété, communauté d'utilisateurs active",
     ],
+    cons: [
+      "Fonctionnalités avancées (relances automatiques, révision IRL) limitées ou absentes sur le plan gratuit",
+      "Aucun simulateur d'investissement : vous devez sortir de l'outil pour analyser un achat",
+      "Suivi LMNP (inventaire, charges meublées) limité",
+      "Interface web vieillissante, peu optimisée mobile",
+      "Pas d'indicateurs de performance du parc (taux d'occupation, score de gestion)",
+    ],
+    verdict: "Bon point d'entrée gratuit pour un premier bien. Les limites se font sentir dès que vous avez 2-3 locations ou un profil LMNP, ou quand vous cherchez à analyser un nouvel investissement.",
   },
   {
-    label: "Un logiciel de gestion généraliste",
-    icon: "💻",
-    pros: ["Fonctionnalités complètes", "Support client"],
-    cons: [
-      "Conçu pour les professionnels (agences, syndics) : interface surdimensionnée pour un particulier",
-      "Abonnement mensuel souvent élevé pour 1 à 5 biens",
-      "Pas de simulateurs pour décider d'un investissement",
-      "Aucune cohérence entre l'avant-achat et la gestion quotidienne",
+    name: "Smovin",
+    icon: "💼",
+    price: "À partir de ~15 €/mois · Pas d'offre gratuite",
+    ideal: "Propriétaire de 3 biens et plus cherchant un outil professionnel complet",
+    pros: [
+      "Fonctionnalités complètes : quittances, révision IRL, relances, signature électronique",
+      "Interface moderne et bien pensée pour la gestion multi-biens",
+      "Exports comptables et suivi financier avancé",
+      "Application mobile correcte",
     ],
+    cons: [
+      "Aucun plan gratuit : engagement mensuel immédiat",
+      "Onboarding long, prise en main de plusieurs heures",
+      "Conçu pour des bailleurs professionnels ou semi-professionnels — surdimensionné pour 1 à 3 biens",
+      "Pas de simulateurs immobiliers (rentabilité, capacité d'emprunt, plus-value)",
+      "Tarif mensuel fixe même en période sans activité",
+    ],
+    verdict: "Excellent outil si vous gérez 5 biens ou plus et cherchez une solution professionnelle. Pour un particulier avec 1 à 4 biens, la complexité et le coût mensuel sont difficiles à justifier.",
   },
 ];
 
 const faq = [
   {
+    q: "Quelle est la différence entre Rentila et lokt.fr ?",
+    a: "Rentila est un logiciel de gestion locative pure : quittances, baux, suivi des loyers. lokt.fr couvre la même gestion quotidienne ET intègre des simulateurs d'aide à la décision (rentabilité, capacité d'emprunt, prêt relais, plus-value). Concrètement : avec lokt.fr, vous analysez un investissement et le gérez depuis le même outil, sans jongler entre plusieurs plateformes.",
+  },
+  {
+    q: "Lokt.fr est-il mieux que Smovin ?",
+    a: "Ça dépend de votre profil. Smovin est plus complet pour des bailleurs professionnels gérant 10+ biens. lokt.fr est plus adapté aux propriétaires particuliers avec 1 à 10 biens : mise en place en moins de 10 minutes, gratuit pour commencer, et les simulateurs immobiliers sont intégrés — ce que Smovin n'a pas. Pour la grande majorité des bailleurs indépendants, lokt.fr est suffisant et moins coûteux.",
+  },
+  {
+    q: "Peut-on migrer depuis Rentila vers lokt.fr ?",
+    a: "Oui. La migration se fait manuellement en quelques minutes : vous créez vos biens, ajoutez vos locataires et renseignez les informations de bail. Il n'y a pas d'import automatique depuis Rentila, mais la simplicité de lokt.fr fait que la saisie initiale prend moins de 15 minutes par bien.",
+  },
+  {
+    q: "Quel logiciel choisir pour la location meublée (LMNP) ?",
+    a: "lokt.fr est conçu pour la location meublée et nue. Il intègre la gestion de l'inventaire obligatoire en meublé, le suivi des charges LMNP et les quittances adaptées. Rentila a un support LMNP partiel. Smovin couvre le LMNP mais avec une complexité supérieure. Pour un bailleur LMNP particulier, lokt.fr offre le meilleur rapport fonctionnalités / simplicité.",
+  },
+  {
     q: "Est-ce que lokt.fr est gratuit ?",
-    a: "lokt.fr propose une offre gratuite pour démarrer avec 1 logement : quittances, bail, suivi des loyers et simulateurs inclus. Les plans payants débloquent plusieurs biens et des fonctionnalités avancées.",
+    a: "lokt.fr propose une offre gratuite pour démarrer avec 1 logement : quittances PDF, bail, suivi des loyers et accès aux simulateurs inclus. Les plans payants débloquent plusieurs biens, les relances automatiques et des fonctionnalités avancées — à un tarif fixe sans commission sur les loyers.",
   },
   {
-    q: "Lokt.fr convient-il aux propriétaires LMNP ?",
-    a: "Oui. lokt.fr est pensé pour la location meublée et nue. Il gère l'inventaire, les quittances LMNP, les charges et le suivi mensuel — sans nécessiter de comptable pour les opérations courantes.",
+    q: "Lokt.fr remplace-t-il une agence de gestion locative ?",
+    a: "Pour les propriétaires qui veulent garder la main sur leur patrimoine, oui. lokt.fr automatise les tâches répétitives (quittances, relances, suivi des paiements) sans prélever 6 à 10 % sur vos loyers comme le ferait une agence. Vous gardez le lien direct avec votre locataire et la visibilité complète sur vos flux.",
   },
   {
-    q: "Puis-je utiliser lokt.fr si j'ai déjà un tableur Excel ?",
-    a: "Oui, la transition est rapide. Vous importez vos biens, locataires et baux en quelques minutes. Vos données Excel deviennent inutiles dès que lokt.fr génère vos premières quittances et relances automatiquement.",
+    q: "Lokt.fr fonctionne-t-il sur mobile ?",
+    a: "Oui. lokt.fr est accessible depuis n'importe quel navigateur mobile. Vous pouvez consulter votre tableau de bord, suivre les paiements et accéder aux simulateurs depuis votre téléphone sans installer d'application.",
   },
   {
-    q: "Lokt.fr remplace-t-il une agence de gestion ?",
-    a: "Pour les propriétaires qui veulent garder la main sur leur patrimoine, oui. Lokt.fr automatise les tâches répétitives (quittances, relances, suivi) sans vous retirer le contrôle ni prélever un pourcentage sur les loyers.",
+    q: "Quelle est la différence entre un logiciel de gestion locative et un tableur ?",
+    a: "Un tableur vous donne une feuille vierge — à vous de construire les formules, de générer les quittances manuellement et de gérer les relances à la main. Un logiciel dédié comme lokt.fr automatise tout ça : les quittances PDF sont générées en un clic, les retards de paiement déclenchent des alertes, et les documents sont stockés et accessibles à tout moment.",
   },
   {
-    q: "Quelle est la différence entre lokt.fr et un logiciel classique ?",
-    a: "Lokt.fr est conçu exclusivement pour les bailleurs indépendants gérant 1 à 10 biens. Il combine les simulateurs d'aide à la décision (rentabilité, capacité, prêt relais) et la gestion quotidienne (loyers, quittances, baux) dans un seul outil — sans la complexité des logiciels professionnels.",
+    q: "Peut-on utiliser lokt.fr si on a déjà un tableur Excel ?",
+    a: "Oui. La transition est rapide : vous importez vos biens et locataires en quelques minutes. Votre tableur devient inutile dès que lokt.fr génère vos premières quittances et déclenche vos premières relances automatiquement.",
   },
   {
-    q: "Est-ce que lokt.fr propose des simulateurs immobiliers ?",
-    a: "Oui. Lokt.fr inclut un simulateur de rentabilité locative, de capacité d'emprunt, de prêt relais, de plus-value et de parc immobilier. C'est ce qui le distingue : vous décidez d'investir avec les bons chiffres, puis vous gérez depuis le même outil.",
+    q: "Gererseul, Homii ou Bighands : comment se comparent-ils ?",
+    a: "Ces outils ciblent des profils similaires. Gererseul est fonctionnel mais l'interface a vieilli. Homii est récent et bien conçu mais avec moins de recul utilisateur. Bighands se positionne sur la délégation partielle (hybride entre agence et logiciel). lokt.fr se distingue par l'intégration des simulateurs immobiliers et une prise en main immédiate sans formation.",
   },
 ];
 
@@ -106,6 +146,7 @@ const schemas = [
     name: metaTitle,
     description: metaDesc,
     url: pageUrl,
+    dateModified: "2026-06-26",
   },
   {
     "@context": "https://schema.org",
@@ -113,7 +154,7 @@ const schemas = [
     name: "lokt.fr",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
-    description: "Outil de gestion locative gratuit pour propriétaire bailleur indépendant.",
+    description: "Outil de gestion locative gratuit pour propriétaire bailleur indépendant avec simulateurs immobiliers intégrés.",
     url: siteUrl,
     offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
   },
@@ -147,6 +188,7 @@ export default function ComparatifPage() {
         <meta property="og:description" content={metaDesc} />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:type" content="website" />
+        <meta name="robots" content="index, follow" />
         {schemas.map((s, i) => (
           <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />
         ))}
@@ -155,6 +197,7 @@ export default function ComparatifPage() {
       <AppHeader />
 
       <main className="mx-auto max-w-5xl px-4 pb-24 pt-10 sm:px-6 lg:px-8">
+
         {/* Breadcrumb */}
         <nav className="mb-6 text-xs text-slate-500" aria-label="Fil d'Ariane">
           <ol className="flex flex-wrap items-center gap-1">
@@ -165,40 +208,53 @@ export default function ComparatifPage() {
         </nav>
 
         {/* Hero */}
-        <header className="mb-12">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-indigo-600">Comparatif</p>
-          <h1 className="mt-2 text-3xl font-bold leading-tight text-slate-950 sm:text-4xl">
-            Quel outil de gestion locative choisir ?
+        <header className="mb-10">
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-[#635bff]">Comparatif 2026</p>
+            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[0.68rem] text-slate-400">
+              Mis à jour : {updatedAt}
+            </span>
+          </div>
+          <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 sm:text-4xl">
+            Meilleur logiciel de gestion locative en 2026 :<br className="hidden sm:block" /> Rentila, Smovin ou lokt.fr ?
           </h1>
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-slate-600">
-            Tableur, agence, logiciel généraliste ou solution dédiée : chaque approche a ses limites.
-            Voici pourquoi les propriétaires bailleurs indépendants choisissent lokt.fr.
+            Nous avons testé et comparé les principaux outils utilisés par les bailleurs indépendants en France. Voici ce que chaque solution fait bien, ses limites, et pour quel profil elle convient vraiment.
           </p>
+          {/* Réponse courte */}
+          <div className="mt-6 rounded-2xl border border-[#635bff]/20 bg-[#635bff]/5 p-5">
+            <p className="text-sm font-semibold text-slate-900">En résumé</p>
+            <p className="mt-1.5 text-sm leading-6 text-slate-600">
+              Pour un bailleur particulier gérant 1 à 10 biens, <strong>lokt.fr</strong> est l'option la plus complète : gestion quotidienne + simulateurs immobiliers intégrés, sans frais d'agence ni abonnement élevé. <strong>Rentila</strong> est une alternative gratuite correcte si vous n'avez qu'un bien et pas besoin de simulateurs. <strong>Smovin</strong> vise les bailleurs professionnels gérant plus de 5 biens.
+            </p>
+          </div>
         </header>
 
-        {/* Comparison table */}
-        <section className="mb-16 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        {/* Tableau comparatif */}
+        <section className="mb-14 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h2 className="text-base font-bold text-slate-900">Tableau comparatif des fonctionnalités</h2>
+            <p className="mt-0.5 text-xs text-slate-400">Tableur Excel · Rentila · Smovin · lokt.fr</p>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="px-5 py-4 text-left text-[0.75rem] font-semibold uppercase tracking-wide text-slate-500 w-2/5">
-                    Critère
+                  <th className="w-2/5 px-5 py-4 text-left text-[0.75rem] font-semibold uppercase tracking-wide text-slate-500">
+                    Fonctionnalité
                   </th>
                   {columns.map((col, i) => (
                     <th
                       key={col}
                       className={
                         "px-3 py-4 text-center text-[0.75rem] font-semibold uppercase tracking-wide " +
-                        (isLokt(i)
-                          ? "bg-indigo-50 text-indigo-700"
-                          : "text-slate-500")
+                        (isLokt(i) ? "bg-[#635bff]/8 text-[#635bff]" : "text-slate-500")
                       }
                     >
                       {isLokt(i) ? (
-                        <span className="inline-flex items-center gap-1">
+                        <span className="inline-flex flex-col items-center gap-1">
                           {col}
-                          <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[0.6rem] font-bold text-indigo-700 normal-case tracking-normal">
+                          <span className="rounded-full bg-[#635bff] px-2 py-0.5 text-[0.6rem] font-bold text-white normal-case tracking-normal">
                             Notre choix
                           </span>
                         </span>
@@ -209,13 +265,10 @@ export default function ComparatifPage() {
               </thead>
               <tbody>
                 {criteria.map((row, ri) => (
-                  <tr key={row.label} className={"border-b border-slate-50 " + (ri % 2 === 0 ? "bg-white" : "bg-slate-50/50")}>
+                  <tr key={row.label} className={"border-b border-slate-50 " + (ri % 2 === 0 ? "bg-white" : "bg-slate-50/40")}>
                     <td className="px-5 py-3 font-medium text-slate-800">{row.label}</td>
                     {row.marks.map((mark, ci) => (
-                      <td
-                        key={ci}
-                        className={"px-3 py-3 text-center " + (isLokt(ci) ? "bg-indigo-50/60" : "")}
-                      >
+                      <td key={ci} className={"px-3 py-3 text-center " + (isLokt(ci) ? "bg-[#635bff]/5" : "")}>
                         <div className="flex justify-center">
                           <MarkIcon mark={mark} lokt={isLokt(ci)} />
                         </div>
@@ -229,92 +282,81 @@ export default function ComparatifPage() {
           <div className="flex flex-wrap items-center gap-5 border-t border-slate-100 bg-slate-50 px-5 py-3 text-xs text-slate-500">
             <span className="flex items-center gap-1.5"><CheckIcon className="h-4 w-4 text-emerald-500" /> Oui / Inclus</span>
             <span className="flex items-center gap-1.5"><XMarkIcon className="h-4 w-4 text-red-400" /> Non / Absent</span>
-            <span className="flex items-center gap-1.5"><MinusIcon className="h-4 w-4 text-amber-400" /> Partiel / À configurer</span>
+            <span className="flex items-center gap-1.5"><MinusIcon className="h-4 w-4 text-amber-400" /> Partiel ou limité</span>
           </div>
         </section>
 
-        {/* Why not sections */}
-        <section className="mb-16 space-y-6">
-          <h2 className="text-2xl font-bold text-slate-950">Pourquoi les autres approches atteignent leurs limites</h2>
-          <div className="grid gap-6 sm:grid-cols-3">
-            {whyNot.map(({ label, icon, pros, cons }) => (
-              <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <p className="text-2xl">{icon}</p>
-                <h3 className="mt-2 text-sm font-bold text-slate-900">{label}</h3>
-                <div className="mt-3 space-y-1">
-                  {pros.map((p) => (
-                    <p key={p} className="flex items-start gap-1.5 text-xs text-emerald-700">
-                      <CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                      {p}
-                    </p>
-                  ))}
+        {/* Fiches détaillées par outil */}
+        <section className="mb-14">
+          <h2 className="mb-6 text-2xl font-bold text-slate-950">Analyse détaillée de chaque outil</h2>
+          <div className="space-y-5">
+            {tools.map(({ name, icon, price, ideal, pros, cons, verdict }) => (
+              <div key={name} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-wrap items-start gap-4 border-b border-slate-100 px-6 py-5">
+                  <span className="text-3xl">{icon}</span>
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-slate-900">{name}</h3>
+                    <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
+                      <span className="font-medium text-slate-700">{price}</span>
+                      <span>·</span>
+                      <span>Idéal pour : {ideal}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
-                  {cons.map((c) => (
-                    <p key={c} className="flex items-start gap-1.5 text-xs text-slate-600">
-                      <XMarkIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-400" />
-                      {c}
-                    </p>
-                  ))}
+                <div className="grid gap-5 px-6 py-5 sm:grid-cols-2">
+                  <div>
+                    <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-wide text-emerald-700">Points forts</p>
+                    <ul className="space-y-1.5">
+                      {pros.map((p) => (
+                        <li key={p} className="flex items-start gap-2 text-sm text-slate-600">
+                          <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                          {p}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-wide text-red-600">Limites</p>
+                    <ul className="space-y-1.5">
+                      {cons.map((c) => (
+                        <li key={c} className="flex items-start gap-2 text-sm text-slate-600">
+                          <XMarkIcon className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div className="border-t border-slate-100 bg-slate-50 px-6 py-3">
+                  <p className="text-[0.8rem] leading-relaxed text-slate-600">
+                    <span className="font-semibold text-slate-800">Notre verdict : </span>
+                    {verdict}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Why lokt.fr */}
-        <section className="mb-16 overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-white p-8 shadow-sm">
+        {/* Pourquoi lokt.fr */}
+        <section className="mb-14 overflow-hidden rounded-3xl border border-[#635bff]/15 bg-gradient-to-br from-[#635bff]/5 to-white p-8 shadow-sm">
           <h2 className="text-2xl font-bold text-slate-950">Ce que lokt.fr apporte de différent</h2>
-          <p className="mt-3 text-slate-600 leading-relaxed max-w-2xl">
-            Lokt.fr est conçu pour le bailleur qui veut gérer lui-même, sans déléguer à une agence et sans se noyer dans un tableur.
-            L'idée de départ : une seule plateforme couvre toute la vie d'un investissement locatif.
+          <p className="mt-3 max-w-2xl leading-relaxed text-slate-600">
+            La plupart des outils de gestion locative s'arrêtent à la gestion quotidienne. lokt.fr couvre aussi la phase d'avant-achat : vous analysez un investissement avec les bons chiffres, puis vous gérez depuis le même outil.
           </p>
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              {
-                title: "Décision avant achat",
-                body: "Simulateurs intégrés : rentabilité nette, capacité d'emprunt, prêt relais, plus-value. Vous investissez avec les bons chiffres.",
-                href: "/calculettes",
-                cta: "Voir les calculettes",
-              },
-              {
-                title: "Gestion après mise en location",
-                body: "Baux, quittances PDF, suivi des loyers, relances, dépôt de garantie, documents — tout depuis un tableau de bord.",
-                href: "/outil-gestion-locative",
-                cta: "Voir l'outil",
-              },
-              {
-                title: "Taillé pour les particuliers",
-                body: "Pas de jargon professionnel. Mise en place en moins de 10 minutes. Gratuit jusqu'à 1 bien, sans engagement.",
-                href: "/espace-bailleur",
-                cta: "Essayer gratuitement",
-              },
-              {
-                title: "LMNP intégré",
-                body: "Inventaire obligatoire, charges, suivi des recettes — adapté aussi bien à la location meublée qu'à la location nue.",
-                href: "/gestion-locative-lmnp",
-                cta: "En savoir plus",
-              },
-              {
-                title: "Zéro commission",
-                body: "Contrairement à une agence, lokt.fr ne prélève rien sur vos loyers. Un abonnement fixe, prévisible.",
-                href: "/tarifs",
-                cta: "Voir les tarifs",
-              },
-              {
-                title: "Données structurées",
-                body: "Score de gestion, taux d'encaissement, occupation du parc, retards — vous pilotez avec des indicateurs réels.",
-                href: "/espace-bailleur",
-                cta: "Accéder au cockpit",
-              },
+              { title: "Simulateurs intégrés", body: "Rentabilité nette, capacité d'emprunt, prêt relais, plus-value — pour décider d'investir avec les bons chiffres, sans quitter la plateforme.", href: "/calculettes", cta: "Voir les simulateurs" },
+              { title: "Gestion quotidienne complète", body: "Baux, quittances PDF, suivi des loyers, relances automatiques, dépôt de garantie, révision IRL — tout depuis un tableau de bord.", href: "/outil-gestion-locative", cta: "Voir l'outil" },
+              { title: "Taillé pour les particuliers", body: "Mise en place en moins de 10 minutes. Pas de jargon professionnel. Gratuit jusqu'à 1 bien, sans engagement ni carte bancaire.", href: "/espace-bailleur", cta: "Essayer gratuitement" },
+              { title: "LMNP complet", body: "Inventaire obligatoire, charges meublées, suivi des recettes — adapté à la location meublée comme à la location nue.", href: "/gestion-locative-lmnp", cta: "En savoir plus" },
+              { title: "Zéro commission", body: "Contrairement à une agence, lokt.fr ne prélève rien sur vos loyers. Un abonnement fixe et prévisible.", href: "/tarifs", cta: "Voir les tarifs" },
+              { title: "Cockpit parc immobilier", body: "Score de gestion, taux d'encaissement, occupation du parc, retards — des indicateurs réels pour piloter votre patrimoine.", href: "/parc-immobilier", cta: "Voir le cockpit" },
             ].map(({ title, body, href, cta }) => (
-              <div key={title} className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm">
+              <div key={title} className="rounded-2xl border border-[#635bff]/15 bg-white p-5 shadow-sm">
                 <h3 className="text-sm font-bold text-slate-900">{title}</h3>
                 <p className="mt-2 text-[0.82rem] leading-relaxed text-slate-600">{body}</p>
-                <Link
-                  href={href}
-                  className="mt-3 inline-flex items-center gap-1 text-[0.78rem] font-semibold text-indigo-600 hover:text-indigo-800"
-                >
+                <Link href={href} className="mt-3 inline-flex items-center gap-1 text-[0.78rem] font-semibold text-[#635bff] hover:text-[#4f46e5]">
                   {cta} →
                 </Link>
               </div>
@@ -323,23 +365,17 @@ export default function ComparatifPage() {
         </section>
 
         {/* CTA */}
-        <section className="mb-16 rounded-3xl bg-slate-950 px-8 py-10 text-center shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-widest text-white/40">Essai gratuit</p>
+        <section className="mb-14 rounded-3xl bg-slate-950 px-8 py-10 text-center shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-widest text-white/40">Essai gratuit · Sans carte bancaire</p>
           <h2 className="mt-3 text-2xl font-bold text-white">Gérez votre patrimoine locatif depuis un seul endroit</h2>
           <p className="mt-3 text-[0.9rem] text-white/60">
-            Commencez avec 1 bien, sans carte bancaire. Quittances, suivi des loyers et simulateurs inclus dès le départ.
+            Commencez avec 1 bien. Quittances, suivi des loyers, relances et simulateurs inclus dès le départ.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/espace-bailleur"
-              className="rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:opacity-90"
-            >
-              Accéder à l'espace bailleur →
+            <Link href="/espace-bailleur" className="rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:opacity-90">
+              Accéder à l&apos;espace bailleur →
             </Link>
-            <Link
-              href="/tarifs"
-              className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white/70 transition hover:border-white/40 hover:text-white"
-            >
+            <Link href="/tarifs" className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white/70 transition hover:border-white/40 hover:text-white">
               Voir les tarifs
             </Link>
           </div>
@@ -350,11 +386,8 @@ export default function ComparatifPage() {
           <h2 className="mb-6 text-2xl font-bold text-slate-950">Questions fréquentes</h2>
           <div className="space-y-3">
             {faq.map(({ q, a }) => (
-              <details
-                key={q}
-                className="group rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm open:border-indigo-200"
-              >
-                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 group-open:text-indigo-700">
+              <details key={q} className="group rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm open:border-[#635bff]/30">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 group-open:text-[#635bff]">
                   {q}
                 </summary>
                 <p className="mt-3 text-[0.85rem] leading-relaxed text-slate-600">{a}</p>
@@ -363,7 +396,7 @@ export default function ComparatifPage() {
           </div>
         </section>
 
-        {/* Internal links */}
+        {/* Maillage interne */}
         <section>
           <h2 className="mb-5 text-base font-bold text-slate-950">Pour aller plus loin</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -375,11 +408,7 @@ export default function ComparatifPage() {
               { label: "Simulateur rentabilité locative", href: "/investissement" },
               { label: "Gestion locative pour particulier", href: "/gestion-locative-proprietaire-particulier" },
             ].map(({ label, href }) => (
-              <Link
-                key={href}
-                href={href}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-700"
-              >
+              <Link key={href} href={href} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-[#635bff]/30 hover:text-[#635bff]">
                 {label} →
               </Link>
             ))}
