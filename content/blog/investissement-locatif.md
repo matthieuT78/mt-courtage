@@ -1,7 +1,10 @@
 ---
-title: "Investissement locatif : calculer la rentabilité et le cash-flow en 2025"
+title: "Investissement locatif : calculer la rentabilité et le cash-flow en 2026"
 description: "Guide complet pour réussir un investissement locatif rentable : cash-flow, rendement, crédit, fiscalité et simulateur gratuit."
-slug: investissement-locatif
+date: "2026-01-10"
+category: "Investissement locatif"
+tags: ["rendement", "cash-flow", "fiscalité", "LMNP"]
+relatedCalculators: ["investissement", "parc-immobilier"]
 ---
 
 # Investissement locatif : le guide complet pour investir rentable en 2025
