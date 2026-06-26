@@ -5,9 +5,13 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   BanknotesIcon,
+  CheckCircleIcon,
   CheckIcon,
   CreditCardIcon,
+  ExclamationCircleIcon,
+  ExclamationTriangleIcon,
   HomeModernIcon,
+  LightBulbIcon,
   SparklesIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
@@ -155,12 +159,30 @@ type BankabilityAssessment = {
   };
 };
 
+type ActionPlanItemType = "blocking" | "warning" | "positive" | "tip";
+type ActionPlanItem = { type: ActionPlanItemType; title: string; body: string };
+
+const ACTION_ITEM_CONFIG: Record<
+  ActionPlanItemType,
+  { Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; badge: string; bg: string; border: string; iconBg: string; iconText: string; titleText: string; badgeCls: string }
+> = {
+  blocking: { Icon: ExclamationTriangleIcon, badge: "Bloquant", bg: "bg-red-50", border: "border-red-200", iconBg: "bg-red-100", iconText: "text-red-600", titleText: "text-red-900", badgeCls: "bg-red-100 text-red-700" },
+  warning:  { Icon: ExclamationCircleIcon,  badge: "À surveiller", bg: "bg-amber-50", border: "border-amber-200", iconBg: "bg-amber-100", iconText: "text-amber-600", titleText: "text-amber-900", badgeCls: "bg-amber-100 text-amber-700" },
+  positive: { Icon: CheckCircleIcon,        badge: "Atout", bg: "bg-emerald-50", border: "border-emerald-200", iconBg: "bg-emerald-100", iconText: "text-emerald-600", titleText: "text-emerald-900", badgeCls: "bg-emerald-100 text-emerald-700" },
+  tip:      { Icon: LightBulbIcon,          badge: "Conseil", bg: "bg-indigo-50", border: "border-indigo-200", iconBg: "bg-indigo-100", iconText: "text-indigo-600", titleText: "text-indigo-900", badgeCls: "bg-indigo-100 text-indigo-700" },
+};
+
+function actionItemsToString(items: ActionPlanItem[]): string {
+  return items.map((it) => `### [${it.type.toUpperCase()}] ${it.title}\n${it.body}`).join("\n\n");
+}
+
 type ComputedAll = {
   resume: ResumeCapacite;
   scenarios: ScenarioCapacite[];
   texte: string;
   assessment: BankabilityAssessment;
   actionPlan: string;
+  actionItems: ActionPlanItem[];
   parsed: {
     revenusNet: number;
     autresRev: number;
@@ -569,13 +591,16 @@ function buildActionPlan(
     tauxCredits: number[];
     tauxCreditCible: number;
     dureeCreditCible: number;
+    proStatus: string;
+    ageEmprunteur: number;
+    ageCoEmprunteur: number;
+    nbAdultes: number;
+    projectTimelineUI: string;
   }
-): string {
-  const chargesActuelles = resume.mensualitesExistantes + resume.chargesHorsCredits;
+): ActionPlanItem[] {
   const margeSousCible = tauxEndettementCible - resume.tauxEndettementAvecProjet;
   const depassementCible = resume.tauxEndettementAvecProjet - tauxEndettementCible;
-
-  const { nbCredits, typesCredits, mensualitesCredits } = context;
+  const { nbCredits, typesCredits, mensualitesCredits, dureeCreditCible, proStatus, ageEmprunteur, ageCoEmprunteur, nbAdultes, projectTimelineUI } = context;
 
   const consoIdxs: number[] = [];
   for (let i = 0; i < nbCredits; i++) {
@@ -583,92 +608,126 @@ function buildActionPlan(
     if (t === "perso" || t === "auto" || t === "conso") consoIdxs.push(i);
   }
   const totalMensuConso = consoIdxs.reduce((s, idx) => s + (mensualitesCredits[idx] || 0), 0);
+  const ageFin = ageEmprunteur > 0 ? ageEmprunteur + dureeCreditCible : 0;
+  const apportPct = resume.budgetTotalMax > 0 ? resume.apport / resume.budgetTotalMax : 0;
 
-  let n = 0;
-  const blocks: string[] = [];
-  const push = (title: string, body: string) => {
-    n += 1;
-    blocks.push(`### ${n}) ${title}\n${body}`);
-  };
+  const items: ActionPlanItem[] = [];
 
-  push(
-    "Le point de départ",
-    `Avec ${formatEuro(resume.revenusPrisEnCompte)} de revenus mensuels pris en compte, vos charges récurrentes tournent autour de ${formatEuro(
-      chargesActuelles
-    )}. Aujourd’hui, votre endettement est à ~${formatPct(resume.tauxEndettementActuel)}.`
-  );
-
+  // ── BLOCKING ─────────────────────────────────────────────────────────
   if (assessment.details.hardCapsApplied.ravNegative) {
-    push(
-      "Signal rouge : votre reste à vivre devient négatif",
-      `Après projet, votre reste à vivre estimé est négatif (${formatEuro(assessment.details.resteApresProjet)}). Dans cette situation, une banque refusera très souvent.\n` +
-        `Le levier prioritaire : baisser la mensualité (durée / budget), réduire certaines charges/crédits, ou augmenter l’apport.`
-    );
+    items.push({
+      type: "blocking",
+      title: "Reste à vivre négatif — risque de refus",
+      body: `Après projet, votre reste à vivre estimé est négatif (${formatEuro(assessment.details.resteApresProjet)}). Une banque refusera très probablement dans cette configuration. Leviers prioritaires : réduire le budget du bien, allonger la durée, ou rembourser certains crédits avant le projet.`,
+    });
+  }
+
+  // ── WARNINGS ─────────────────────────────────────────────────────────
+  if (depassementCible > 0.02) {
+    items.push({
+      type: "warning",
+      title: "Endettement au-dessus de la cible bancaire",
+      body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) dépasse la cible à ${formatPct(tauxEndettementCible)}. Pour y revenir : allonger légèrement la durée, réduire le budget du bien, ou renforcer l’apport pour diminuer le capital emprunté.`,
+    });
+  } else if (margeSousCible < 0.03) {
+    items.push({
+      type: "warning",
+      title: "Vous êtes à la limite — les détails comptent",
+      body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) est très proche de la cible (${formatPct(tauxEndettementCible)}). Ici c’est la qualité du dossier qui fait la différence : tenue des comptes irréprochable, justificatifs clairs, apport couvrant les frais.`,
+    });
   }
 
   if (!resume.apportCouvreFrais && resume.apportMinRecommande > 0) {
-    push(
-      "L’apport : ce que les banques aiment voir",
-      `Votre apport (${formatEuro(resume.apport)}) est inférieur aux frais estimés (~${formatEuro(
-        resume.apportMinRecommande
-      )}). Dans la plupart des dossiers, couvrir au moins les frais (notaire + garantie) facilite l’accord.`
-    );
+    items.push({
+      type: "warning",
+      title: "Apport inférieur aux frais estimés",
+      body: `Votre apport (${formatEuro(resume.apport)}) est en dessous des frais estimés (~${formatEuro(resume.apportMinRecommande)}). Couvrir au moins le notaire et la garantie est souvent requis par les banques — sans quoi elles peuvent demander une caution renforcée ou refuser.`,
+    });
   }
 
-  if (depassementCible > 0.2) {
-    push(
-      "Revenir dans la zone “ok banque”",
-      `Votre endettement projeté ressort à ~${formatPct(resume.tauxEndettementAvecProjet)} pour une cible à ${formatPct(
-        tauxEndettementCible
-      )}. C’est au-dessus : il faut réduire la mensualité visée (durée / budget) ou renforcer l’apport.`
-    );
-  } else if (margeSousCible > 0.01) {
-    push(
-      "Vous avez de la marge (zone de sécurité)",
-      `Votre endettement projeté ressort à ~${formatPct(resume.tauxEndettementAvecProjet)} pour une cible à ${formatPct(
-        tauxEndettementCible
-      )}. Vous gardez une marge d’environ ${formatPct(margeSousCible)}.`
-    );
-  } else {
-    push(
-      "Ça passe, mais vous êtes sur la limite",
-      `Vous êtes très proche de la cible : ~${formatPct(resume.tauxEndettementAvecProjet)} pour ${formatPct(
-        tauxEndettementCible
-      )}. Ici, ce sont les détails qui font la différence (reste à vivre, tenue des comptes, apport, stabilité).`
-    );
+  if (resume.tauxEndettementActuel > 0.20 && nbCredits > 0) {
+    items.push({
+      type: "warning",
+      title: "Endettement de base déjà élevé",
+      body: `Même sans ce projet, vos charges existantes représentent déjà ~${formatPct(resume.tauxEndettementActuel)} de vos revenus. Les banques regardent ce ratio avant projet. Réduire certaines mensualités avant de déposer le dossier peut améliorer significativement la lecture bancaire.`,
+    });
   }
-
-  push(
-    "Le levier le plus simple : ajuster la mensualité",
-    `Si vous êtes juste à la limite, le plus efficace est souvent de jouer sur la mensualité :\n` +
-      `- allonger un peu la durée (si l’âge en fin de prêt le permet)\n` +
-      `- ou viser un budget de bien légèrement inférieur\n` +
-      `L’objectif : retrouver une petite marge sous la cible d’endettement.`
-  );
 
   if (consoIdxs.length > 0) {
-    push(
-      "Les crédits conso : le frein le plus fréquent",
-      `Vous avez ${consoIdxs.length} crédit(s) conso/auto pour une mensualité totale d’environ ${formatEuro(
-        totalMensuConso
-      )}. C’est souvent un levier fort pour améliorer l’accord.\n\n` +
-        `Deux options simples :\n` +
-        `- Remboursement ciblé (prioriser la mensualité la plus élevée)\n` +
-        `- Regroupement (réduire la mensualité globale avant de relancer le projet)`
-    );
-  } else {
-    push(
-      "Bonne nouvelle : pas de crédits conso pénalisants",
-      `Votre dossier n’est pas pénalisé par des mensualités conso. On peut se concentrer sur le projet et la qualité de présentation du dossier.`
-    );
+    items.push({
+      type: "warning",
+      title: "Crédits conso/auto — un frein courant",
+      body: `Vous avez ${consoIdxs.length} crédit(s) conso pour ~${formatEuro(totalMensuConso)}/mois. Rembourser en priorité le plus chargé avant de déposer votre dossier est le levier le plus rapide. Autre option : regrouper vos crédits pour réduire la mensualité globale avant le projet.`,
+    });
   }
 
-  push(
-    "La “forme” qui fait gagner du temps",
-    `Avant même de parler chiffres, la banque regarde la tenue des comptes : pas de découverts récurrents, dépenses cohérentes, justificatifs clairs, et un dossier bien présenté.`
-  );
+  if (proStatus === "independant") {
+    items.push({
+      type: "warning",
+      title: "Statut indépendant — anticipez le dossier",
+      body: `Les banques exigent en général les 3 derniers bilans comptables + avis d’imposition. Plus vos revenus sont stables et en progression, plus le dossier est solide. Commencez à rassembler ces pièces maintenant, même si le projet n’est pas immédiat.`,
+    });
+  }
 
-  return blocks.join("\n\n");
+  if (ageFin > 0 && ageFin > 80) {
+    items.push({
+      type: "warning",
+      title: "Âge en fin de prêt à surveiller",
+      body: `À ${dureeCreditCible} ans de durée, vous auriez ~${ageFin} ans à l’échéance. Certaines banques plafonnent à 75-80 ans ou majorent l’assurance emprunteur significativement. Une durée légèrement plus courte peut être plus réaliste et moins coûteuse en assurance.`,
+    });
+  }
+
+  // ── POSITIFS ─────────────────────────────────────────────────────────
+  if (margeSousCible >= 0.05) {
+    items.push({
+      type: "positive",
+      title: "Bon niveau d’endettement",
+      body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) laisse une marge confortable de ${formatPct(margeSousCible)} sous la cible. Votre dossier présente un bon équilibre — concentrez-vous sur la qualité de présentation.`,
+    });
+  }
+
+  if (apportPct >= 0.20 && resume.budgetTotalMax > 0) {
+    items.push({
+      type: "positive",
+      title: "Apport solide — un vrai atout",
+      body: `Votre apport représente ${Math.round(apportPct * 100)}% du projet. C’est un signal fort pour les banques : risque perçu plus faible, parfois accès à de meilleures conditions de taux. Mettez-le en avant dans votre présentation de dossier.`,
+    });
+  }
+
+  if (consoIdxs.length === 0) {
+    items.push({
+      type: "positive",
+      title: "Pas de crédits conso",
+      body: `Votre dossier n’est pas alourdi par des mensualités conso ou auto. On peut se concentrer sur la solidité du projet, la présentation et les conditions de financement.`,
+    });
+  }
+
+  // ── CONSEILS ─────────────────────────────────────────────────────────
+  if (projectTimelineUI === "0_3m" || projectTimelineUI === "3_6m") {
+    items.push({
+      type: "tip",
+      title: "Votre projet est imminent — pré-validez maintenant",
+      body: `Avec un horizon aussi court, le moment est venu de contacter un courtier pour une pré-validation. Avoir une capacité confirmée avant de visiter évite les déceptions et renforce votre position en négociation.`,
+    });
+  }
+
+  if (ageCoEmprunteur === 0 && nbAdultes <= 1 && assessment.score < 80) {
+    items.push({
+      type: "tip",
+      title: "Un co-emprunteur pourrait changer la donne",
+      body: `Vous simulez seul. Avec un co-emprunteur, les revenus se cumulent et la banque perçoit un risque partagé. Si votre situation le permet, cela peut augmenter significativement votre capacité d’emprunt et améliorer la lecture bancaire.`,
+    });
+  }
+
+  if (depassementCible > 0 || margeSousCible < 0.04) {
+    items.push({
+      type: "tip",
+      title: "La présentation du dossier fait la différence",
+      body: `Quand un dossier est serré, les banques regardent aussi la tenue des comptes : pas de découverts récurrents sur 3 mois, épargne résiduelle visible, justificatifs complets et bien ordonnés. Un courtier peut optimiser la mise en forme pour maximiser vos chances.`,
+    });
+  }
+
+  return items;
 }
 
 export type CapaciteWizardProps = {
@@ -814,7 +873,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
   const [resumeCapacite, setResumeCapacite] = useState<ResumeCapacite | null>(null);
   const [resultCapaciteTexte, setResultCapaciteTexte] = useState<string>("");
   const [bankability, setBankability] = useState<BankabilityAssessment | null>(null);
-  const [actionPlanText, setActionPlanText] = useState<string>("");
+  const [actionItems, setActionItems] = useState<ActionPlanItem[]>([]);
 
   // ✅ FIX: on stocke le computeAll (sinon computedAll restait null → synthèse jamais visible)
   const [computedAll, setComputedAll] = useState<ComputedAll | null>(null);
@@ -1136,7 +1195,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         chargesActuelles
       )} par mois, soit un taux d’endettement actuel d’environ ${formatPct(tauxActuel)}.`,
       capaciteMensuelle > 0
-        ? `Votre capacité mensuelle “max” (cible ${formatPct(tauxEndettement)}) est ${formatEuro(
+        ? `Votre capacité mensuelle "max" (cible ${formatPct(tauxEndettement)}) est ${formatEuro(
             capaciteMensuelle
           )}. Sur ${dureeCredit} ans à ~${tauxCredit.toLocaleString(
             "fr-FR",
@@ -1165,7 +1224,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         apportMinRecommande > 0 ? (apportCouvreFrais ? "✅ Apport ≥ frais." : "⚠️ Apport < frais : souvent bloquant.") : ""
       }`,
       prixBienMax > 0
-        ? `Budget max estimatif (apport inclus) : ${formatEuro(budgetTotalMax)}. Prix de bien “envisageable” ~${formatEuro(
+        ? `Budget max estimatif (apport inclus) : ${formatEuro(budgetTotalMax)}. Prix de bien "envisageable" ~${formatEuro(
             prixBienMax
           )} (coût total projet ~${formatEuro(coutTotalProjetMax)}).`
         : `La projection d’un budget max n’est pas pertinente avec ces paramètres : retravaillez durée, taux ou charges.`,
@@ -1188,7 +1247,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       mensualitesCredits: mensualitesNums,
     });
 
-    const actionPlan = buildActionPlan(resume, assessment, tauxEndettement, {
+    const actionItems = buildActionPlan(resume, assessment, tauxEndettement, {
       nbCredits,
       typesCredits,
       mensualitesCredits: mensualitesNums,
@@ -1196,6 +1255,11 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       tauxCredits: tauxCreditsNums,
       tauxCreditCible: tauxCredit,
       dureeCreditCible: dureeCredit,
+      proStatus,
+      ageEmprunteur: age1,
+      ageCoEmprunteur: age2,
+      nbAdultes: adultes,
+      projectTimelineUI,
     });
 
     return {
@@ -1203,7 +1267,8 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       scenarios,
       texte,
       assessment,
-      actionPlan,
+      actionPlan: actionItemsToString(actionItems),
+      actionItems,
       parsed: {
         revenusNet,
         autresRev,
@@ -1245,7 +1310,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     setResumeCapacite(computed.resume);
     setResultCapaciteTexte(computed.texte);
     setBankability(computed.assessment);
-    setActionPlanText(computed.actionPlan);
+    setActionItems(computed.actionItems);
 
     if (typeof window !== "undefined") {
       const payload = {
@@ -2030,7 +2095,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
               Votre capacité d&apos;emprunt et votre budget indicatif
             </h2>
             <p className="text-[0.75rem] text-slate-600">
-              Chiffres “bruts” pour vous positionner. Le Score lokt.fr™ et le plan d’action sont débloqués ensuite.
+              Chiffres "bruts" pour vous positionner. Le Score lokt.fr™ et le plan d’action sont débloqués ensuite.
             </p>
           </div>
         </div>
@@ -2183,7 +2248,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
                         <div className="rounded-lg border border-slate-200 bg-white px-2 py-2">
                           <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-                            Reste à vivre (par “part”)
+                            Reste à vivre (par "part")
                           </p>
                           <p className="text-[0.8rem] text-slate-900 mt-0.5">
                             ~{formatEuro(bankability.details.resteAVivreParUC)}
@@ -2205,7 +2270,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                           </p>
                           {bankability.details.resteApresProjet < 0 ? (
                             <p className="text-[0.7rem] text-red-700 mt-1">
-                              Un reste à vivre négatif est généralement un “non” bancaire.
+                              Un reste à vivre négatif est généralement un "non" bancaire.
                             </p>
                           ) : null}
                         </div>
@@ -2257,25 +2322,29 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                   </div>
                 </div>
 
-                {actionPlanText ? (
-                  <div className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
-                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600 mb-2">
-                      Plan d&apos;action lokt.fr™
+                {actionItems.length > 0 ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Plan d&apos;action lokt
                     </p>
-                    {renderRichText(actionPlanText)}
+                    {actionItems.map((item, i) => {
+                      const cfg = ACTION_ITEM_CONFIG[item.type];
+                      return (
+                        <div key={i} className={`flex gap-3 rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}>
+                          <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${cfg.iconBg} ${cfg.iconText}`}>
+                            <cfg.Icon className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className={`text-[0.8rem] font-semibold leading-tight ${cfg.titleText}`}>{item.title}</p>
+                              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${cfg.badgeCls}`}>{cfg.badge}</span>
+                            </div>
+                            <p className="mt-1 text-[0.75rem] leading-5 text-slate-600">{item.body}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ) : null}
-
-                {resultCapaciteTexte ? (
-                  <details className="mt-4 rounded-xl border border-slate-200 bg-white px-3 py-3">
-                    <summary className="cursor-pointer text-[0.75rem] font-semibold text-slate-900">
-                      Voir l’analyse complète (texte)
-                    </summary>
-                    <div className="mt-3">{renderRichText(resultCapaciteTexte)}</div>
-                    <p className="mt-2 text-[0.65rem] text-slate-500">
-                      Calculs indicatifs. Ne constitue pas une offre de prêt.
-                    </p>
-                  </details>
                 ) : null}
               </>
             ) : null}
