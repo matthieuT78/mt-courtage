@@ -1926,24 +1926,24 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
           {step === 4 ? (
             <>
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid items-end gap-3 sm:grid-cols-4">
                 <div className="space-y-1">
-                  <label className={labelBase}>Taux d'endettement cible (%)</label>
+                  <label className={labelBase}>Endettement cible (%)</label>
                   <input inputMode="decimal" value={tauxEndettementCible} onChange={(e) => setTauxEndettementCible(onlyNumberLike(e.target.value))} className={inputBase} />
                 </div>
                 <div className="space-y-1">
-                  <label className={labelBase}>Taux crédit indicatif (%)</label>
+                  <label className={labelBase}>Taux crédit (%)</label>
                   <input inputMode="decimal" value={tauxCreditCible} onChange={(e) => setTauxCreditCible(onlyNumberLike(e.target.value))} className={inputBase} />
                 </div>
                 <div className="space-y-1">
                   <label className={labelBase}>
-                    Assurance emprunteur (%/an)
+                    Assurance (%/an)
                     <InfoBadge text="Hypothèse annuelle appliquée au capital emprunté. Elle est intégrée dans la mensualité, comme dans la lecture bancaire." />
                   </label>
                   <input inputMode="decimal" value={tauxAssuranceCible} onChange={(e) => setTauxAssuranceCible(onlyNumberLike(e.target.value))} className={inputBase} />
                 </div>
                 <div className="space-y-1">
-                  <label className={labelBase}>Durée souhaitée (années)</label>
+                  <label className={labelBase}>Durée (années)</label>
                   <input inputMode="numeric" value={dureeCreditCible} onChange={(e) => setDureeCreditCible(onlyDigits(e.target.value))} className={inputBase} />
                 </div>
               </div>
