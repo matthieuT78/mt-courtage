@@ -33,6 +33,7 @@ const staticPagesV1 = [
   "/parc-immobilier",
   "/gestion-locative-lmnp",
   "/outil-gestion-locative",
+  "/comparatif-logiciel-gestion-locative",
   "/etats-des-lieux-documents",
   "/cautions-loyers",
   "/blog",
