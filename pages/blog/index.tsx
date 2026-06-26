@@ -69,7 +69,7 @@ export default function BlogIndex({ posts }: any) {
           className="relative overflow-hidden border-b border-slate-200 px-6 py-12 sm:px-10 sm:py-16"
           style={{ backgroundImage: "url('/blog/background-image2.PNG')", backgroundSize: "cover", backgroundPosition: "center" }}
         >
-          <div aria-hidden className="pointer-events-none absolute inset-0 bg-white/80 backdrop-blur-[2px]" />
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-white/55 backdrop-blur-[2px]" />
           <div aria-hidden className="pointer-events-none absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#635bff]/30 to-transparent" />
 
           <div className="relative mx-auto max-w-6xl">
