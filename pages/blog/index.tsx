@@ -65,7 +65,9 @@ export default function BlogIndex({ posts }: any) {
         <meta name="twitter:image" content={ogImage} />
 
         {/* JSON-LD */}
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        {jsonLd.map((schema, i) => (
+          <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+        ))}
       </Head>
 
       <main className="mx-auto max-w-6xl px-4 py-10">

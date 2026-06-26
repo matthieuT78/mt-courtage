@@ -90,7 +90,9 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
         <meta name="twitter:title" content={frontmatter.title || "lokt.fr"} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImage} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        {jsonLd.map((schema, i) => (
+          <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+        ))}
       </Head>
 
       <main className="mx-auto max-w-6xl px-4 py-10">
