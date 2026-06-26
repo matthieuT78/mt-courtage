@@ -68,42 +68,38 @@ export default function BlogIndex({ posts }: any) {
       <AppHeader />
       <div className="bg-[#f6f9fc]">
         {/* ── HERO ── */}
-        <section className="relative overflow-hidden border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-6xl flex-col lg:flex-row">
-            {/* Texte */}
-            <div className="flex flex-col justify-center px-6 py-10 sm:px-10 sm:py-12 lg:w-[55%]">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Blog &amp; Guides immobilier</p>
-              <h1 className="mt-3 text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">
-                Comprendre l&apos;immobilier,{" "}
-                <span className="bg-gradient-to-r from-[#635bff] to-[#00b4d8] bg-clip-text text-transparent">
-                  décider mieux.
-                </span>
-              </h1>
-              <p className="mt-3 max-w-md text-sm leading-7 text-slate-500">
-                Guides actionnables sur le crédit, l&apos;investissement locatif et la fiscalité — avec des liens directs vers les simulateurs lokt.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/calculettes" className="inline-flex items-center rounded-full bg-[#635bff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#635bff]/25 hover:bg-[#4f46e5]">
-                  Voir les simulateurs →
-                </Link>
-              </div>
-              <div className="mt-6 flex flex-wrap gap-3">
-                {[
-                  { label: "Articles", value: posts.length },
-                  { label: "Simulateurs", value: "6" },
-                  { label: "Lecture moy.", value: `${Math.round(posts.reduce((s: number, p: any) => s + (p.readingTime || 5), 0) / Math.max(posts.length, 1))} min` },
-                ].map((s) => (
-                  <div key={s.label} className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5">
-                    <p className="text-[0.65rem] uppercase tracking-wide text-slate-400">{s.label}</p>
-                    <p className="mt-0.5 text-xl font-semibold text-slate-900">{s.value}</p>
-                  </div>
-                ))}
-              </div>
+        <section
+          className="relative overflow-hidden border-b border-slate-200 px-6 py-12 sm:px-10 sm:py-16"
+          style={{ backgroundImage: "url('/blog/background-image2.PNG')", backgroundSize: "cover", backgroundPosition: "center" }}
+        >
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-white/55 backdrop-blur-[2px]" />
+          <div className="relative mx-auto max-w-6xl">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Blog &amp; Guides immobilier</p>
+            <h1 className="mt-3 max-w-2xl text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">
+              Comprendre l&apos;immobilier,{" "}
+              <span className="bg-gradient-to-r from-[#635bff] to-[#00b4d8] bg-clip-text text-transparent">
+                décider mieux.
+              </span>
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
+              Guides actionnables sur le crédit, l&apos;investissement locatif et la fiscalité — avec des liens directs vers les simulateurs lokt.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/calculettes" className="inline-flex items-center rounded-full bg-[#635bff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#635bff]/25 hover:bg-[#4f46e5]">
+                Voir les simulateurs →
+              </Link>
             </div>
-            {/* Image */}
-            <div className="relative hidden lg:block lg:w-[45%]">
-              <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-white to-transparent" />
-              <div className="h-full min-h-[280px] w-full" style={{ backgroundImage: "url('/blog/background-image2.PNG')", backgroundSize: "cover", backgroundPosition: "center" }} />
+            <div className="mt-6 flex flex-wrap gap-3">
+              {[
+                { label: "Articles", value: posts.length },
+                { label: "Simulateurs", value: "6" },
+                { label: "Lecture moy.", value: `${Math.round(posts.reduce((s: number, p: any) => s + (p.readingTime || 5), 0) / Math.max(posts.length, 1))} min` },
+              ].map((s) => (
+                <div key={s.label} className="rounded-xl border border-slate-200 bg-white/70 px-4 py-2.5 backdrop-blur-sm">
+                  <p className="text-[0.65rem] uppercase tracking-wide text-slate-400">{s.label}</p>
+                  <p className="mt-0.5 text-xl font-semibold text-slate-900">{s.value}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
