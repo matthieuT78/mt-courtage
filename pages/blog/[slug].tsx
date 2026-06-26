@@ -1,7 +1,18 @@
 import Head from "next/head";
 import Link from "next/link";
+import Image from "next/image";
 import type { GetStaticPaths, GetStaticProps } from "next";
 import { getAllBlogSlugs, getAllPostsMeta, getPostBySlug, type BlogPost, type BlogFrontmatter } from "../../lib/blog";
+
+const CATEGORY_CONFIG: Record<string, { color: string; bg: string; gradient: string }> = {
+  "Capacité d'emprunt":    { color: "text-[#635bff]",  bg: "bg-[#635bff]/10", gradient: "from-[#635bff]/50 via-[#007ba7]/30 to-[#00a97b]/10" },
+  "Investissement locatif":{ color: "text-emerald-700", bg: "bg-emerald-50",   gradient: "from-emerald-800/60 via-emerald-600/30 to-transparent" },
+  "Plus-value immobilière":{ color: "text-amber-700",   bg: "bg-amber-50",     gradient: "from-amber-800/60 via-amber-600/25 to-transparent" },
+  "Achat immobilier":      { color: "text-sky-700",     bg: "bg-sky-50",       gradient: "from-sky-800/60 via-sky-600/25 to-transparent" },
+  "Crédit immobilier":     { color: "text-indigo-700",  bg: "bg-indigo-50",    gradient: "from-indigo-800/60 via-indigo-600/25 to-transparent" },
+};
+const DEFAULT_CAT = { color: "text-[#635bff]", bg: "bg-[#635bff]/10", gradient: "from-[#635bff]/50 via-[#007ba7]/30 to-[#00a97b]/15" };
+function getCat(category?: string) { return (category && CATEGORY_CONFIG[category]) || DEFAULT_CAT; }
 
 type RelatedPost = { slug: string; frontmatter: BlogFrontmatter };
 type Props = { post: BlogPost; slug: string; related: RelatedPost[] };
@@ -95,41 +106,83 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
         ))}
       </Head>
 
-      <main className="mx-auto max-w-6xl px-4 py-10">
-        <Link href="/blog" className="text-sm text-slate-500 hover:text-slate-900 hover:underline">
-          ← Retour au blog
+      {/* ── COVER IMAGE / GRADIENT HERO ── */}
+      <div className="relative w-full overflow-hidden" style={{ minHeight: 280 }}>
+        {frontmatter.coverImage ? (
+          <>
+            <div className="relative h-[320px] w-full sm:h-[400px]">
+              <Image src={frontmatter.coverImage} alt={frontmatter.title} fill priority className="object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/40 to-transparent" />
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 px-4 pb-8 sm:px-8">
+              <div className="mx-auto max-w-6xl">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-white/70">
+                  {frontmatter.category && (
+                    <span className="rounded-full bg-[#635bff] px-2.5 py-1 font-semibold text-white">
+                      {frontmatter.category}
+                    </span>
+                  )}
+                  <span>{readingTime} min de lecture</span>
+                  {frontmatter.date && <span>{formatDateFR(frontmatter.date)}</span>}
+                </div>
+                <h1 className="mt-2 max-w-3xl text-2xl font-bold leading-tight text-white sm:text-4xl">
+                  {frontmatter.title}
+                </h1>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className={`relative flex min-h-[280px] items-end bg-gradient-to-br ${getCat(frontmatter.category).gradient} bg-slate-950`}>
+            <div aria-hidden className="pointer-events-none absolute -left-20 -top-20 h-80 w-80 rounded-full bg-[#635bff]/15 blur-3xl" />
+            <div aria-hidden className="pointer-events-none absolute right-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#635bff]/60 to-transparent" />
+            <div className="relative mx-auto w-full max-w-6xl px-4 pb-8 sm:px-8">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                {frontmatter.category && (
+                  <span className="rounded-full bg-[#635bff] px-2.5 py-1 font-semibold text-white">
+                    {frontmatter.category}
+                  </span>
+                )}
+                <span className="text-slate-400">{readingTime} min de lecture</span>
+                {frontmatter.date && <span className="text-slate-400">{formatDateFR(frontmatter.date)}</span>}
+              </div>
+              <h1 className="mt-3 max-w-3xl text-2xl font-bold leading-tight text-white sm:text-4xl">
+                {frontmatter.title}
+              </h1>
+              {frontmatter.description && (
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">{frontmatter.description}</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+          Retour au blog
         </Link>
 
         <div className="mt-6 lg:grid lg:grid-cols-[1fr_260px] lg:gap-10">
           {/* ── Contenu principal ── */}
           <div className="min-w-0">
             <header className="mb-8">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                {frontmatter.category && (
-                  <span className="rounded-full bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700">
-                    {frontmatter.category}
-                  </span>
-                )}
-                {frontmatter.tags?.map((tag) => (
-                  <span key={tag} className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
-                    {tag}
-                  </span>
-                ))}
-                {frontmatter.date && (
-                  <span className="text-slate-400">{formatDateFR(frontmatter.date)}</span>
-                )}
-                <span className="text-slate-400">{readingTime} min de lecture</span>
-              </div>
-
-              <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">
-                {frontmatter.title}
-              </h1>
-
-              {frontmatter.description && (
-                <p className="mt-3 text-lg text-slate-600 leading-relaxed">{frontmatter.description}</p>
+              {/* Description (si pas affichée dans le hero gradient) */}
+              {frontmatter.coverImage && frontmatter.description && (
+                <p className="text-lg leading-relaxed text-slate-600">{frontmatter.description}</p>
               )}
 
-              {/* CTAs dynamiques selon le sujet de l'article */}
+              {/* Tags */}
+              {frontmatter.tags && frontmatter.tags.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {frontmatter.tags.map((tag) => (
+                    <span key={tag} className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] text-slate-500">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* CTAs dynamiques */}
               <div className="mt-5 flex flex-wrap gap-2">
                 {ctaLinks.map((c, i) => (
                   <Link
@@ -137,7 +190,7 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
                     href={c.href}
                     className={
                       i === 0
-                        ? "inline-flex items-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+                        ? "inline-flex items-center rounded-full bg-[#635bff] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#635bff]/25 hover:bg-[#4f46e5]"
                         : "inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                     }
                   >
