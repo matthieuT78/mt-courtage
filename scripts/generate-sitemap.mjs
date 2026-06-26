@@ -4,6 +4,20 @@ import path from "path";
 // ⚠️ adapte si besoin
 const siteUrl = "https://lokt.fr";
 
+// Articles de blog : lecture automatique depuis content/blog/
+const BLOG_DIR = path.join(process.cwd(), "content", "blog");
+const blogEntries = fs.existsSync(BLOG_DIR)
+  ? fs.readdirSync(BLOG_DIR)
+      .filter((f) => f.endsWith(".md"))
+      .map((f) => {
+        const slug = f.replace(/\.md$/, "");
+        const content = fs.readFileSync(path.join(BLOG_DIR, f), "utf8");
+        const dateMatch = content.match(/^date:\s*"?([^"\n]+)"?/m);
+        const date = dateMatch ? dateMatch[1].trim() : null;
+        return { slug, date };
+      })
+  : [];
+
 const seoLandingSource = fs.readFileSync(path.join(process.cwd(), "lib/seoLandingPages.ts"), "utf8");
 const seoLandingPages = Array.from(seoLandingSource.matchAll(/slug:\s*"([^"]+)"/g), (match) => `/${match[1]}`);
 
@@ -77,13 +91,18 @@ function sitemapMeta(pathname) {
 for (const p of staticPagesV1) urls.push({ loc: `${siteUrl}${p}`, pathname: p });
 for (const slug of GUIDE_SLUGS) urls.push({ loc: `${siteUrl}/guides/${slug}`, pathname: `/guides/${slug}` });
 
+// Articles de blog (auto-inclus)
+for (const { slug, date } of blogEntries) {
+  urls.push({ loc: `${siteUrl}/blog/${slug}`, pathname: `/blog/${slug}`, date: date || null });
+}
+
 if (INCLUDE_SIMULATEUR) {
   for (const r of REVENUS) urls.push({ loc: `${siteUrl}/simulateur/capacite-emprunt/${r}`, pathname: `/simulateur/capacite-emprunt/${r}` });
   for (const v of VALEURS) urls.push({ loc: `${siteUrl}/simulateur/pret-relais/${v}`, pathname: `/simulateur/pret-relais/${v}` });
   for (const p of PRIX) urls.push({ loc: `${siteUrl}/simulateur/investissement/${p}`, pathname: `/simulateur/investissement/${p}` });
 }
 
-const lastmod = new Date().toISOString();
+const buildDate = new Date().toISOString();
 
 const xml =
   `<?xml version="1.0" encoding="UTF-8"?>\n` +
@@ -91,6 +110,7 @@ const xml =
   urls
     .map((u) => {
       const meta = sitemapMeta(u.pathname);
+      const lastmod = u.date ? new Date(u.date).toISOString() : buildDate;
       return `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${meta.changefreq}</changefreq>\n    <priority>${meta.priority}</priority>\n  </url>`;
     })
     .join("\n") +
@@ -100,5 +120,5 @@ const outPath = path.join(process.cwd(), "public", "sitemap.xml");
 fs.writeFileSync(outPath, xml, "utf8");
 
 console.log(`✅ sitemap généré: ${outPath}`);
-console.log(`✅ ${urls.length} URLs`);
+console.log(`✅ ${urls.length} URLs (dont ${blogEntries.length} articles de blog)`);
 console.log(`ℹ️ simulateur inclus: ${INCLUDE_SIMULATEUR ? "oui" : "non"}`);
