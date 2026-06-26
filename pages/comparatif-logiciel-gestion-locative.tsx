@@ -18,7 +18,8 @@ const criteria: { label: string; marks: [Mark, Mark, Mark, Mark] }[] = [
   { label: "Pensé pour 1 à 10 biens",                  marks: ["partial", "yes",     "partial", "yes"]     },
   { label: "Quittances PDF automatiques",               marks: ["no",      "yes",     "yes",     "yes"]     },
   { label: "Suivi des paiements et retards",            marks: ["partial", "yes",     "yes",     "yes"]     },
-  { label: "Relances loyers impayés",                   marks: ["no",      "partial", "yes",     "yes"]     },
+  { label: "Alertes bailleur (retard, IRL, rappels)",   marks: ["no",      "no",      "partial", "yes"]     },
+  { label: "Relances locataires automatiques",          marks: ["no",      "partial", "yes",     "yes"]     },
   { label: "Baux et documents stockés",                 marks: ["no",      "yes",     "yes",     "yes"]     },
   { label: "Révision IRL automatique",                  marks: ["no",      "partial", "yes",     "yes"]     },
   { label: "Simulateurs (rentabilité, capacité…)",      marks: ["partial", "no",      "no",      "yes"]     },
@@ -132,6 +133,10 @@ const faq = [
   {
     q: "Peut-on utiliser lokt.fr si on a déjà un tableur Excel ?",
     a: "Oui. La transition est rapide : vous importez vos biens et locataires en quelques minutes. Votre tableur devient inutile dès que lokt.fr génère vos premières quittances et déclenche vos premières relances automatiquement.",
+  },
+  {
+    q: "Quelles alertes lokt.fr envoie-t-il au bailleur ?",
+    a: "lokt.fr envoie des alertes automatiques dans trois situations : (1) loyer en retard — vous êtes notifié dès le lendemain de la date d'échéance si le paiement n'est pas enregistré ; (2) révision IRL — vous êtes alerté avant la date d'anniversaire du bail pour ne pas rater la revalorisation annuelle ; (3) rappels de quittances — lokt.fr vous indique quelles quittances du mois sont à envoyer. Ces alertes remplacent le travail de surveillance manuelle que vous faisiez sur un tableur.",
   },
   {
     q: "Gererseul, Homii ou Bighands : comment se comparent-ils ?",
@@ -347,7 +352,8 @@ export default function ComparatifPage() {
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               { title: "Simulateurs intégrés", body: "Rentabilité nette, capacité d'emprunt, prêt relais, plus-value — pour décider d'investir avec les bons chiffres, sans quitter la plateforme.", href: "/calculettes", cta: "Voir les simulateurs" },
-              { title: "Gestion quotidienne complète", body: "Baux, quittances PDF, suivi des loyers, relances automatiques, dépôt de garantie, révision IRL — tout depuis un tableau de bord.", href: "/outil-gestion-locative", cta: "Voir l'outil" },
+              { title: "Alertes bailleur automatiques", body: "lokt.fr vous alerte dès qu'un loyer est en retard, avant chaque échéance de révision IRL et lors de chaque quittance à envoyer. Plus rien ne passe entre les mailles.", href: "/outil-gestion-locative", cta: "Voir les alertes" },
+              { title: "Relances locataires intégrées", body: "Relances automatiques par e-mail au locataire en cas d'impayé ou de retard. Vous n'avez pas à rédiger, envoyer ou suivre manuellement.", href: "/outil-gestion-locative", cta: "Voir l'outil" },
               { title: "Taillé pour les particuliers", body: "Mise en place en moins de 10 minutes. Pas de jargon professionnel. Gratuit jusqu'à 1 bien, sans engagement ni carte bancaire.", href: "/espace-bailleur", cta: "Essayer gratuitement" },
               { title: "LMNP complet", body: "Inventaire obligatoire, charges meublées, suivi des recettes — adapté à la location meublée comme à la location nue.", href: "/gestion-locative-lmnp", cta: "En savoir plus" },
               { title: "Zéro commission", body: "Contrairement à une agence, lokt.fr ne prélève rien sur vos loyers. Un abonnement fixe et prévisible.", href: "/tarifs", cta: "Voir les tarifs" },
