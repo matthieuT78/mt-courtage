@@ -3,6 +3,7 @@ import path from "path";
 import matter from "gray-matter";
 import { remark } from "remark";
 import html from "remark-html";
+import remarkGfm from "remark-gfm";
 
 export type BlogFrontmatter = {
   title: string;
@@ -78,7 +79,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
   const file = fs.readFileSync(filePath, "utf8");
   const { data, content } = matter(file);
 
-  const processed = await remark().use(html).process(content);
+  const processed = await remark().use(remarkGfm).use(html, { sanitize: false }).process(content);
   const rawHtml = processed.toString();
   const contentHtml = addHeadingIds(rawHtml);
   const toc = extractToc(contentHtml);
