@@ -9,4 +9,9 @@ Disallow: /mon-compte
 Disallow: /projets
 Disallow: /test-quittance
 
+# URLs dynamiques des simulateurs (évite le crawl de milliers d'URLs noindex)
+Disallow: /simulateur/investissement/
+Disallow: /simulateur/capacite-emprunt/
+Disallow: /simulateur/pret-relais/
+
 Sitemap: https://lokt.fr/sitemap.xml
