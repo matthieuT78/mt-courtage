@@ -20,7 +20,7 @@ import { useScrollReveal } from "../hooks/useScrollReveal";
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/outil-gestion-locative`;
 const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
-const title = "Outil de gestion locative gratuit pour propriétaire bailleur | lokt.fr";
+const title = "Outil de gestion locative gratuit pour propriétaire bailleur 2026 | lokt.fr";
 const description =
   "Outil gratuit de gestion locative pour propriétaire bailleur : baux, locataires, quittances PDF, envoi automatique, états des lieux, inventaire, finance et alertes. Pour location nue, meublée ou LMNP.";
 
@@ -109,6 +109,26 @@ export default function OutilGestionLocativePage() {
     {
       q: "Les actions se font-elles depuis cette page publique ?",
       a: "Non. Cette page explique le produit. Les actions métier se font dans l’espace bailleur privé après connexion.",
+    },
+    {
+      q: "Combien de temps faut-il pour mettre en place lokt.fr ?",
+      a: "Environ 10 à 15 minutes pour créer un compte, saisir le logement, le bail et le locataire. La première quittance peut être générée dans la foulée. Il n’y a pas de période de formation — l’outil guide chaque étape.",
+    },
+    {
+      q: "Est-ce que lokt.fr fonctionne pour une location meublée (LMNP) ?",
+      a: "Oui. lokt.fr gère les deux régimes : location nue (bail 3 ans, revenus fonciers) et location meublée LMNP (bail 1 an, BIC). L’inventaire mobilier, les règles de renouvellement de bail et les exports adaptés à chaque régime sont inclus.",
+    },
+    {
+      q: "Vaut-il mieux gérer soi-même avec un outil ou déléguer à une agence ?",
+      a: "Une agence de gestion coûte en moyenne 7 à 10 % des loyers, soit 700 à 1 000 € par an pour un loyer de 800 €/mois. Sur 10 ans, c’est 7 000 à 10 000 € donnés à l’agence pour des tâches qu’un outil comme lokt.fr automatise en grande partie. La gestion en direct est pertinente dès lors que vous avez un peu d’organisation et les bons outils.",
+    },
+    {
+      q: "Comment lokt.fr gère-t-il la révision de loyer IRL ?",
+      a: "lokt.fr calcule automatiquement la date de révision et le nouveau loyer à partir de l’indice IRL publié par l’INSEE. Une alerte vous prévient avant l’échéance pour que vous puissiez notifier le locataire dans les délais légaux. La révision est ensuite intégrée dans les quittances suivantes.",
+    },
+    {
+      q: "Que se passe-t-il en cas de loyer impayé ?",
+      a: "lokt.fr envoie une alerte automatique dès qu’un loyer attendu n’est pas enregistré. Vous pouvez déclencher une relance e-mail au locataire depuis l’outil. L’historique des paiements est conservé et exportable — utile si la situation évolue vers une procédure formelle.",
     },
   ];
 
@@ -430,6 +450,99 @@ export default function OutilGestionLocativePage() {
               </div>
             </section>
 
+            {/* ── SECTION ÉDITORIALE 1 : coûts cachés de la désorganisation ── */}
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
+              <div className="border-b border-slate-100 bg-gradient-to-br from-[#635bff]/5 to-[#00b4d8]/5 px-6 py-7 sm:px-8">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-[#635bff]">Ce que ça coûte vraiment</p>
+                <h2 className="mt-2 text-xl font-bold text-slate-950">Gérer sans outil : les pertes invisibles</h2>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600 max-w-2xl">
+                  La plupart des bailleurs gèrent avec un fichier Excel, un dossier de mails et une pile de PDFs. Voici ce que ça coûte réellement.
+                </p>
+              </div>
+              <div className="grid gap-4 p-6 sm:grid-cols-2 sm:p-8 lg:grid-cols-4">
+                {[
+                  {
+                    value: "648 €/an",
+                    label: "perdus en loyer non révisé",
+                    detail: "Sur 900 €/mois, 3 ans sans révision IRL à 2 %/an = 54 €/mois oubliés.",
+                    color: "text-red-600",
+                  },
+                  {
+                    value: "3–5 h/mois",
+                    label: "passées à chercher des infos",
+                    detail: "Mails, tableurs, PDFs éparpillés : localiser une quittance ou un bail prend du temps.",
+                    color: "text-amber-600",
+                  },
+                  {
+                    value: "30 j",
+                    label: "délai de déclaration GLI oublié",
+                    detail: "La plupart des assurances GLI exigent une déclaration dans les 30-45 jours. Passé ce délai, vous perdez la garantie.",
+                    color: "text-red-600",
+                  },
+                  {
+                    value: "0 €",
+                    label: "de traçabilité en cas de litige",
+                    detail: "Sans historique structuré, prouver les paiements passés ou les relances effectuées est quasi impossible devant un tribunal.",
+                    color: "text-slate-500",
+                  },
+                ].map(({ value, label, detail, color }) => (
+                  <div key={label} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{label}</p>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">{detail}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* ── SECTION ÉDITORIALE 2 : profils ── */}
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
+              <div className="border-b border-slate-100 px-6 py-7 sm:px-8">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-[#635bff]">À qui s&apos;adresse lokt.fr</p>
+                <h2 className="mt-2 text-xl font-bold text-slate-950">Votre profil de bailleur</h2>
+              </div>
+              <div className="grid gap-4 p-6 sm:grid-cols-2 sm:p-8">
+                {[
+                  {
+                    icon: "🏠",
+                    title: "1 bien, premier investissement",
+                    body: "Vous venez d’acheter votre premier logement locatif. Vous voulez gérer proprement sans payer une agence. lokt.fr est gratuit pour un logement actif — quittances, bail, état des lieux inclus.",
+                    link: null,
+                  },
+                  {
+                    icon: "🏘️",
+                    title: "2 à 5 biens en location nue",
+                    body: "Vous avez plusieurs logements vides et gérez plusieurs locataires. Le cockpit centralise tous vos loyers attendus, retards et quittances à générer chaque mois, sans jongler entre plusieurs fichiers.",
+                    link: null,
+                  },
+                  {
+                    icon: "🛋️",
+                    title: "Location meublée LMNP",
+                    body: "Bail d’un an, inventaire mobilier obligatoire, régime BIC — le meublé a ses propres règles. lokt.fr intègre l’inventaire, les renouvellements et les exports adaptés au LMNP.",
+                    link: { label: "En savoir plus sur le LMNP", href: "/gestion-locative-lmnp" },
+                  },
+                  {
+                    icon: "📊",
+                    title: "Bailleur qui veut optimiser sa fiscalité",
+                    body: "Vous gérez déjà vos biens mais perdez de vue les charges déductibles, les révisions IRL et la rentabilité réelle. La vue finance de lokt.fr classe recettes et dépenses par logement, prêtes pour votre déclaration.",
+                    link: { label: "Calculer la rentabilité", href: "/investissement" },
+                  },
+                ].map(({ icon, title, body, link }) => (
+                  <div key={title} className="flex flex-col rounded-2xl border border-slate-100 bg-slate-50 p-5">
+                    <p className="text-2xl">{icon}</p>
+                    <p className="mt-3 font-semibold text-slate-900">{title}</p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600 flex-1">{body}</p>
+                    {link && (
+                      <Link href={link.href} className="mt-4 text-sm font-semibold text-[#635bff] hover:underline">
+                        {link.label} →
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* ── FAQ étendue ── */}
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
               <div className="grid gap-6 lg:grid-cols-[0.8fr,1.2fr]">
                 <div>
@@ -450,6 +563,25 @@ export default function OutilGestionLocativePage() {
                     </details>
                   ))}
                 </div>
+              </div>
+            </section>
+
+            {/* ── Maillage interne ── */}
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Pour aller plus loin</p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  { label: "Gestion locative sans agence : le guide", href: "/blog/gestion-locative-sans-agence" },
+                  { label: "Loyer impayé : que faire étape par étape ?", href: "/blog/loyer-impaye-que-faire" },
+                  { label: "LMNP vs location nue : quelle fiscalité ?", href: "/blog/lmnp-vs-location-nue" },
+                  { label: "Comparer les logiciels de gestion locative", href: "/comparatif-logiciel-gestion-locative" },
+                  { label: "Calculer la rentabilité locative", href: "/investissement" },
+                  { label: "Investissement locatif : le guide complet", href: "/investissement-locatif" },
+                ].map(({ label, href }) => (
+                  <Link key={href} href={href} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-[#635bff]/30 hover:text-[#635bff]">
+                    {label} →
+                  </Link>
+                ))}
               </div>
             </section>
           </div>
