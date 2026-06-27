@@ -1893,41 +1893,35 @@ const canClickUnlock =
                   })}
                 </div>
               ) : !canShowFullDetails ? (
-              <div className="relative rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4 overflow-hidden min-h-[500px] sm:min-h-0">
-                <div className="blur-sm select-none pointer-events-none space-y-2">
-                  {[1,2,3].map(n => <div key={n} className={`h-16 rounded-xl border ${n===1?"bg-red-50 border-red-200":n===2?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} />)}
+              <div className="mt-4 space-y-3">
+                <div className="blur-sm select-none pointer-events-none space-y-2 rounded-xl overflow-hidden">
+                  {[1,2,3].map(n => <div key={n} className={`h-12 rounded-xl border ${n===1?"bg-red-50 border-red-200":n===2?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} />)}
                 </div>
-                <div className="absolute inset-0 flex items-start sm:items-center justify-center overflow-y-auto bg-white/70 backdrop-blur-sm py-4 sm:py-0">
-                  <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
-                    <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
-                    <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
-                    <div className="relative space-y-3">
-                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE COMPLÈTE</p>
-                      <h3 className="text-lg font-semibold">Recevoir mon rapport personnalisé</h3>
-                      <p className="text-sm text-slate-200">Le plan d’action est masqué tant que vous n’êtes pas connecté ou débloqué.</p>
-                      <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4">
-                        <div className="grid gap-3 sm:grid-cols-2 items-start">
-                          <div className="space-y-1 sm:col-span-2">
-                            <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
-                            <input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="ex: prenom.nom@gmail.com" className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white sm:rounded-lg sm:py-2 sm:text-sm placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300" />
-                            <p className="text-[0.7rem] text-slate-300">Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}<a href="/confidentialite" className="underline hover:text-white">En savoir plus</a>.</p>
-                          </div>
-                          <div className="sm:col-span-2 rounded-lg bg-white/5 border border-white/10 p-3">
-                            <label className="flex items-start gap-3 cursor-pointer">
-                              <input type="checkbox" checked={consentContact} onChange={(e) => setConsentContact(e.target.checked)} className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10" />
-                              <span className="text-[0.75rem] text-slate-200 leading-relaxed"><span className="font-semibold">Optionnel :</span> j’accepte que lokt.fr me recontacte pour m’aider à analyser mon projet.<span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span></span>
-                            </label>
-                          </div>
-                          <div className="sm:col-span-2 flex items-end">
-                            <button type="button" onClick={handleUnlock} disabled={!canClickUnlock} className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60">
-                              {unlocking ? "Préparation..." : "Recevoir mon rapport"}
-                            </button>
-                          </div>
-                        </div>
-                        {unlockMsg && <p className="mt-3 text-[0.75rem] text-slate-200">{unlockMsg}</p>}
-                        {sendingEmail ? <p className="mt-3 text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
-                        {sendEmailMsg ? <p className="mt-2 text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
+                <div className="w-full rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
+                  <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
+                  <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
+                  <div className="relative space-y-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE COMPLÈTE</p>
+                    <h3 className="text-lg font-semibold">Recevoir mon rapport personnalisé</h3>
+                    <p className="text-sm text-slate-200">Le plan d’action est masqué tant que vous n’êtes pas connecté ou débloqué.</p>
+                    <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
+                        <input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="ex: prenom.nom@gmail.com" className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300" />
+                        <p className="text-[0.7rem] text-slate-300">Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}<a href="/confidentialite" className="underline hover:text-white">En savoir plus</a>.</p>
                       </div>
+                      <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input type="checkbox" checked={consentContact} onChange={(e) => setConsentContact(e.target.checked)} className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10" />
+                          <span className="text-[0.75rem] text-slate-200 leading-relaxed"><span className="font-semibold">Optionnel :</span> j’accepte que lokt.fr me recontacte pour m’aider à analyser mon projet.<span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span></span>
+                        </label>
+                      </div>
+                      <button type="button" onClick={handleUnlock} disabled={!canClickUnlock} className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60">
+                        {unlocking ? "Préparation..." : "Recevoir mon rapport"}
+                      </button>
+                      {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
+                      {sendingEmail ? <p className="text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
+                      {sendEmailMsg ? <p className="text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
                     </div>
                   </div>
                 </div>
