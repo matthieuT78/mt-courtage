@@ -1893,11 +1893,11 @@ const canClickUnlock =
                   })}
                 </div>
               ) : !canShowFullDetails ? (
-              <div className="relative rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4 overflow-hidden">
+              <div className="relative rounded-xl bg-slate-50 border border-slate-200 p-4 mt-4 overflow-hidden min-h-[500px] sm:min-h-0">
                 <div className="blur-sm select-none pointer-events-none space-y-2">
                   {[1,2,3].map(n => <div key={n} className={`h-16 rounded-xl border ${n===1?"bg-red-50 border-red-200":n===2?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} />)}
                 </div>
-                <div className="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+                <div className="absolute inset-0 flex items-start sm:items-center justify-center overflow-y-auto bg-white/70 backdrop-blur-sm py-4 sm:py-0">
                   <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
                     <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
                     <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
