@@ -30,6 +30,26 @@ const nextConfig = {
         destination: "/outil-gestion-locative",
         permanent: true,
       },
+      {
+        source: "/simulateur/capacite-emprunt/:revenu",
+        destination: "/capacite",
+        permanent: true,
+      },
+      {
+        source: "/simulateur/capacite-emprunt-3000",
+        destination: "/capacite",
+        permanent: true,
+      },
+      {
+        source: "/simulateur/investissement/:prix",
+        destination: "/investissement",
+        permanent: true,
+      },
+      {
+        source: "/simulateur/pret-relais/:valeur",
+        destination: "/pret-relais",
+        permanent: true,
+      },
     ];
   },
 };
