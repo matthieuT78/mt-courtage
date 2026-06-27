@@ -1913,7 +1913,7 @@ const canClickUnlock =
                       <div className="rounded-lg bg-white/5 border border-white/10 p-3">
                         <label className="flex items-start gap-3 cursor-pointer">
                           <input type="checkbox" checked={consentContact} onChange={(e) => setConsentContact(e.target.checked)} className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10" />
-                          <span className="text-[0.75rem] text-slate-200 leading-relaxed"><span className="font-semibold">Optionnel :</span> j’accepte que lokt.fr me recontacte pour m’aider à analyser mon projet.<span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span></span>
+                          <span className="text-[0.75rem] text-slate-200 leading-relaxed"><span className="font-semibold">Optionnel :</span> j’accepte d’être mis en relation avec un conseiller partenaire pour aller plus loin sur mon projet.<span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span></span>
                         </label>
                       </div>
                       <button type="button" onClick={handleUnlock} disabled={!canClickUnlock} className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60">

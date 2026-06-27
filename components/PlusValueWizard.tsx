@@ -1857,7 +1857,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                           className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
                         />
                         <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                          <span className="font-semibold">Optionnel :</span> j’accepte que lokt.fr me recontacte pour m’aider à analyser mon projet.
+                          <span className="font-semibold">Optionnel :</span> j’accepte d’être mis en relation avec un conseiller partenaire pour aller plus loin sur mon projet.
                           <span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span>
                         </span>
                       </label>
