@@ -188,14 +188,14 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
             </p>
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               {[
-                { label: "Studio", surface: 25 },
-                { label: "T2", surface: 45 },
-              ].map(({ label, surface }) => {
+                { label: "Studio", surface: 25, loyerCoeff: 1.18, netDecote: 2.3 },
+                { label: "T2", surface: 45, loyerCoeff: 1.00, netDecote: 1.8 },
+              ].map(({ label, surface, loyerCoeff, netDecote }) => {
                 const prix = ville.prixM2 * surface;
-                const loyer = ville.loyerM2 * surface;
+                const loyer = Math.round(ville.loyerM2 * surface * loyerCoeff);
                 const loyerAn = loyer * 12;
                 const rdtBrut = ((loyerAn / prix) * 100).toFixed(1);
-                const rdtNetEst = Math.max(ville.rendementBrut - 1.8, 1.2).toFixed(1);
+                const rdtNetEst = Math.max(parseFloat(rdtBrut) - netDecote, 1.2).toFixed(1);
                 const budgetTotal = prix * 1.08;
                 const apport10 = prix * 0.1;
                 return (
@@ -238,8 +238,8 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
               })}
             </div>
             <p className="mt-3 text-xs text-slate-400">
-              Rendement net estimé : déduction forfaitaire de ~1,8 point pour charges, taxe foncière et vacance (2 semaines/an). La fiscalité LMNP ou revenus fonciers peut modifier ce résultat.
-              <Link href="/investissement" className="ml-1 text-[#635bff] hover:underline">Calculer avec vos données →</Link>
+              Loyer estimé : les studios affichent un loyer au m² supérieur (~+18 %) aux T2, conforme aux données de marché locales. Rendement net : déduction de ~2,3 pts pour le studio (turnover plus fréquent) et ~1,8 pt pour le T2 (charges, taxe foncière, vacance). La fiscalité réelle peut modifier ces résultats.{" "}
+              <Link href="/investissement" className="text-[#635bff] hover:underline">Calculer avec vos données →</Link>
             </p>
           </section>
 
