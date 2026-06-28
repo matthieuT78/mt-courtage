@@ -1,38 +1,32 @@
 import Link from "next/link";
 
-function BadgeGDPR() {
+function BadgeStripe() {
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
-      <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0" aria-hidden>
-        <circle cx="10" cy="10" r="9" fill="#003399" />
-        {Array.from({ length: 12 }).map((_, i) => {
-          const angle = (i * 30 * Math.PI) / 180;
-          const x = 10 + 5.5 * Math.sin(angle);
-          const y = 10 - 5.5 * Math.cos(angle);
-          return <circle key={i} cx={x} cy={y} r="1.1" fill="#FFCC00" />;
-        })}
-        <path d="M10 6.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm0 1.5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="#FFCC00" />
-        <path d="M9 9.5h2v3.5H9z" fill="#FFCC00" />
+    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
+      <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-[#635bff]" fill="none" aria-hidden>
+        <rect x="4" y="9" width="12" height="8" rx="2" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M7 9V7a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <circle cx="10" cy="13" r="1.2" fill="currentColor" />
       </svg>
       <div className="leading-none">
-        <p className="text-[0.55rem] font-bold tracking-wide text-slate-700">GDPR</p>
-        <p className="text-[0.5rem] text-slate-500">COMPLIANT</p>
+        <p className="text-[0.6rem] font-bold tracking-wide text-slate-800">PAIEMENT SÉCURISÉ</p>
+        <p className="mt-0.5 text-[0.55rem] text-slate-400">par Stripe</p>
       </div>
     </div>
   );
 }
 
-function BadgeSSL() {
+function BadgeSources() {
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
       <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-emerald-600" fill="none" aria-hidden>
-        <rect x="4" y="9" width="12" height="8" rx="2" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M7 9V7a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        <circle cx="10" cy="13" r="1.2" fill="currentColor" />
+        <path d="M5 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M7 9l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7 14h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.45" />
       </svg>
       <div className="leading-none">
-        <p className="text-[0.55rem] font-bold tracking-wide text-slate-700">SSL</p>
-        <p className="text-[0.5rem] text-slate-500">SECURE</p>
+        <p className="text-[0.6rem] font-bold tracking-wide text-slate-800">SOURCES OFFICIELLES</p>
+        <p className="mt-0.5 text-[0.55rem] text-slate-400">Légifrance · Service-Public · INSEE</p>
       </div>
     </div>
   );
@@ -40,35 +34,15 @@ function BadgeSSL() {
 
 function BadgeFrance() {
   return (
-    <div className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
-      <svg viewBox="0 0 20 14" className="h-3.5 w-5 shrink-0 rounded-sm overflow-hidden" aria-hidden>
+    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
+      <svg viewBox="0 0 20 14" className="h-3.5 w-5 shrink-0 overflow-hidden rounded-sm" aria-hidden>
         <rect width="7" height="14" fill="#002395" />
         <rect x="7" width="6" height="14" fill="#fff" />
         <rect x="13" width="7" height="14" fill="#ED2939" />
       </svg>
       <div className="leading-none">
-        <p className="text-[0.55rem] font-bold tracking-wide text-slate-700">CONÇU EN</p>
-        <p className="text-[0.5rem] text-slate-500">FRANCE</p>
-      </div>
-    </div>
-  );
-}
-
-function BadgeEU() {
-  return (
-    <div className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
-      <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0" aria-hidden>
-        <circle cx="10" cy="10" r="9" fill="#003399" />
-        {Array.from({ length: 12 }).map((_, i) => {
-          const angle = (i * 30 * Math.PI) / 180;
-          const x = 10 + 5.5 * Math.sin(angle);
-          const y = 10 - 5.5 * Math.cos(angle);
-          return <circle key={i} cx={x} cy={y} r="1.1" fill="#FFCC00" />;
-        })}
-      </svg>
-      <div className="leading-none">
-        <p className="text-[0.55rem] font-bold tracking-wide text-slate-700">DONNÉES</p>
-        <p className="text-[0.5rem] text-slate-500">EN EUROPE</p>
+        <p className="text-[0.6rem] font-bold tracking-wide text-slate-800">ÉDITEUR FRANÇAIS</p>
+        <p className="mt-0.5 text-[0.55rem] text-slate-400">Indépendant</p>
       </div>
     </div>
   );
@@ -79,9 +53,9 @@ export default function AppFooter() {
     <footer className="border-t border-slate-200 bg-white py-8 text-center text-xs text-slate-500">
       {/* Badges de confiance */}
       <div className="flex flex-wrap items-center justify-center gap-2 px-4">
-        <BadgeSSL />
+        <BadgeStripe />
+        <BadgeSources />
         <BadgeFrance />
-        <BadgeEU />
       </div>
 
       <p className="mt-5">© {new Date().getFullYear()} lokt.fr</p>
