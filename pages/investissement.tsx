@@ -228,7 +228,7 @@ export default function InvestissementPage() {
         <div className="mx-auto -mt-12 max-w-6xl space-y-5 px-3 pb-8 sm:-mt-16 sm:space-y-6 sm:px-4 sm:pb-12">
 
           {/* Calculette */}
-          <InvestissementWizard showSaveButton={isLoggedIn} />
+          <InvestissementWizard />
 
           {/* ✅ Micro bloc confiance (UX + SEO) */}
           <section data-scroll-reveal data-reveal-delay="0" className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">

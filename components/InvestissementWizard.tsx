@@ -190,11 +190,7 @@ function getSourceLabel(): string {
 }
 
 /* ======================== Component ======================== */
-export default function InvestissementWizard({
-  showSaveButton,
-}: {
-  showSaveButton?: boolean;
-}) {
+export default function InvestissementWizard() {
   const { canSeeCalcDetails, isLoggedIn } = usePermissions();
 
   /* ======================== Session (pré-remplir email) ======================== */
@@ -309,10 +305,6 @@ export default function InvestissementWizard({
   const [marketSource, setMarketSource] = useState<string | null>(null);
   const [marketError, setMarketError] = useState<string | null>(null);
   const [marketLoading, setMarketLoading] = useState(false);
-
-  /* ======================== Save ======================== */
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   /* ======================== Gate states ======================== */
   const [unlocked, setUnlocked] = useState<boolean>(false);
@@ -665,7 +657,6 @@ export default function InvestissementWizard({
 
   /* ======================== Calcul principal ======================== */
   const handleCalculRendement = async () => {
-    setSaveMessage(null);
     setOpportunityScore(null);
     setOpportunityComment("");
     setOpportunityImprovements([]);
@@ -1039,79 +1030,6 @@ export default function InvestissementWizard({
     window.location.href = `mailto:mtcourtage@gmail.com?subject=${subject}&body=${body}`;
   };
 
-  const handleSaveProject = async () => {
-    if (!resumeRendement || !graphData) return;
-    setSaving(true);
-    setSaveMessage(null);
-
-    try {
-      if (!supabase) throw new Error("Supabase non configuré.");
-
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-
-      const session = sessionData?.session;
-      if (!session) {
-        if (typeof window !== "undefined") {
-          window.location.href = "/mon-compte?mode=login&redirect=/investissement";
-        }
-        return;
-      }
-
-      const { error } = await supabase.from("projects").insert({
-        user_id: session.user.id,
-        type: "investissement",
-        title: "Simulation investissement locatif",
-        data: {
-          inputs: {
-            prixBien,
-            fraisNotaire,
-            fraisAgence,
-            travaux,
-            nbApparts,
-            loyersApparts,
-            locationTypes,
-            airbnbNuitees,
-            airbnbOccupation,
-            chargesCopro,
-            taxeFonc,
-            assurance,
-            tauxGestion,
-            apport,
-            tauxCredLoc,
-            dureeCredLoc,
-            tauxAssuranceEmp,
-            listingUrl,
-            localite: selectedCityLabel,
-            surfaceM2,
-            city: selectedCity
-              ? { name: selectedCity.name, postalCode: selectedCity.postalCode, inseeCode: selectedCity.inseeCode }
-              : null,
-          },
-          resume: resumeRendement,
-          graphData,
-          analyse: resultRendementTexte,
-          market: {
-            referencePriceM2Sale: marketPriceM2,
-            referenceRentM2: marketRentM2,
-            source: marketSource,
-          },
-          opportunity: {
-            score: opportunityScore,
-            comment: opportunityComment,
-            improvements: opportunityImprovements,
-          },
-        },
-      });
-
-      if (error) throw error;
-      setSaveMessage("✅ Projet sauvegardé dans votre espace.");
-    } catch (err: any) {
-      setSaveMessage("❌ Erreur lors de la sauvegarde : " + (err?.message || "erreur inconnue"));
-    } finally {
-      setSaving(false);
-    }
-  };
 
     const handleUnlock = async () => {
       setUnlockMsg(null);
@@ -1685,24 +1603,6 @@ const canClickUnlock =
               {marketLoading && <p className="mt-1 text-[0.7rem] text-slate-500">Récupération des données marché…</p>}
             </div>
 
-            {hasSimulation && (
-              <div className="flex flex-col items-end gap-1">
-                {(showSaveButton ?? true) && (
-                  <button
-                    onClick={handleSaveProject}
-                    disabled={saving}
-                    className="inline-flex items-center justify-center rounded-full border border-emerald-500/80 bg-emerald-500 px-3 py-1.5 text-[0.7rem] font-semibold text-white shadow-sm hover:bg-emerald-400 disabled:opacity-60"
-                  >
-                    {saving ? "Sauvegarde..." : "Sauvegarder le projet"}
-                  </button>
-                )}
-
-              
-                {saveMessage && (
-                  <p className="text-[0.65rem] text-slate-500 text-right max-w-[240px]">{saveMessage}</p>
-                )}
-              </div>
-            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 mt-3">

@@ -124,7 +124,7 @@ export default function CapaciteEmpruntPage() {
       },
       {
         q: "Dois-je créer un compte ?",
-        a: "Non pour la V1 : vous pouvez utiliser la calculette librement. Certaines fonctionnalités à venir pourront nécessiter un compte.",
+        a: "Non. La calculette est totalement libre d'accès, sans inscription.",
       },
     ],
     []

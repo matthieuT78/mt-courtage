@@ -21,6 +21,9 @@ const blogEntries = fs.existsSync(BLOG_DIR)
 const seoLandingSource = fs.readFileSync(path.join(process.cwd(), "lib/seoLandingPages.ts"), "utf8");
 const seoLandingPages = Array.from(seoLandingSource.matchAll(/slug:\s*"([^"]+)"/g), (match) => `/${match[1]}`);
 
+const villesSource = fs.readFileSync(path.join(process.cwd(), "lib/villesRendement.ts"), "utf8");
+const villesSlugs = Array.from(villesSource.matchAll(/slug:\s*"([^"]+)"/g), (match) => match[1]);
+
 // Pages SEO publiques V1 (marketing + calculettes)
 const staticPagesV1 = [
   "/",
@@ -86,12 +89,19 @@ function sitemapMeta(pathname) {
     return { changefreq: "yearly", priority: "0.3" };
   }
   if (pathname.startsWith("/guides/")) return { changefreq: "monthly", priority: "0.7" };
+  if (pathname.startsWith("/rendement-locatif")) return { changefreq: "monthly", priority: "0.8" };
   return { changefreq: "monthly", priority: "0.75" };
 }
 
 // pages statiques V1
 for (const p of staticPagesV1) urls.push({ loc: `${siteUrl}${p}`, pathname: p });
 for (const slug of GUIDE_SLUGS) urls.push({ loc: `${siteUrl}/guides/${slug}`, pathname: `/guides/${slug}` });
+
+// Pages villes rendement locatif
+urls.push({ loc: `${siteUrl}/rendement-locatif`, pathname: "/rendement-locatif" });
+for (const slug of villesSlugs) {
+  urls.push({ loc: `${siteUrl}/rendement-locatif/${slug}`, pathname: `/rendement-locatif/${slug}` });
+}
 
 // Articles de blog (auto-inclus)
 for (const { slug, date } of blogEntries) {
