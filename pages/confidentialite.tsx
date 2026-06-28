@@ -107,6 +107,9 @@ export default function ConfidentialitePage() {
                   <li>
                     <strong>API Adresse — data.gouv.fr</strong> — géocodage des villes françaises (localité → coordonnées GPS). API publique gérée par l’État français ; aucune donnée personnelle n’est transmise.
                   </li>
+                  <li>
+                    <strong>Anthropic, PBC</strong> (États-Unis) — modèles de langage utilisés pour certaines fonctionnalités d’assistance dans l’espace bailleur. Seules les données strictement nécessaires à la fonctionnalité concernée sont transmises ; aucune donnée n’est utilisée pour entraîner les modèles d’Anthropic. Transfert encadré par les clauses contractuelles types de la Commission européenne.
+                  </li>
                 </ul>
                 <p>lokt.fr ne revend pas les données personnelles et ne les partage pas avec des partenaires commerciaux tiers à des fins de prospection.</p>
               </Section>
@@ -219,7 +222,7 @@ export default function ConfidentialitePage() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">Dernière mise à jour : 25 juin 2026</p>
+              <p className="text-xs text-slate-500">Dernière mise à jour : 28 juin 2026</p>
               <Link href="/cgu" className="text-sm font-semibold text-slate-700 underline">
                 Voir les CGU/CGV
               </Link>

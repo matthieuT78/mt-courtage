@@ -118,14 +118,15 @@ export default function AProposPage() {
                 Un bailleur n’a pas seulement besoin d’un simulateur ou d’un modèle de document. Il a besoin de comprendre ce qu’il fait, puis de retrouver les bonnes informations au bon moment.
               </p>
             </div>
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[
               ["Décider", "Capacité d’emprunt, rentabilité, prêt relais, plus-value et vision du parc : les calculettes donnent un ordre de grandeur avant de s’engager."],
               ["Gérer", "Biens, baux, locataires, loyers, quittances, états des lieux, inventaire, finance et historique restent reliés au bon logement."],
               ["Documenter", "Les événements importants du bail doivent laisser une trace : paiement, relance, travaux, départ, dépôt de garantie et justificatifs."],
+              ["Se former", "25 articles de blog et 8 guides pratiques couvrent la fiscalité (LMNP, régime réel, IRL), les contrats, les diagnostics et les procédures du quotidien."],
             ].map(([heading, text], index) => (
               <article key={heading} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className={["mb-4 h-1.5 w-12 rounded-full bg-cyan-500", "mb-4 h-1.5 w-12 rounded-full bg-indigo-500", "mb-4 h-1.5 w-12 rounded-full bg-emerald-500"][index]} />
+                <div className={["mb-4 h-1.5 w-12 rounded-full bg-cyan-500", "mb-4 h-1.5 w-12 rounded-full bg-indigo-500", "mb-4 h-1.5 w-12 rounded-full bg-emerald-500", "mb-4 h-1.5 w-12 rounded-full bg-violet-500"][index]} />
                 <h2 className="text-lg font-semibold text-slate-950">{heading}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
               </article>
@@ -189,7 +190,10 @@ export default function AProposPage() {
                   Outil de gestion locative →
                 </Link>
                 <Link href="/guides" className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm font-semibold text-indigo-950 hover:border-indigo-300 hover:bg-indigo-100">
-                  Ressources bailleurs →
+                  Guides bailleurs →
+                </Link>
+                <Link href="/blog" className="rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm font-semibold text-violet-950 hover:border-violet-300 hover:bg-violet-100">
+                  Blog & articles →
                 </Link>
                 <Link href="/modele-quittance-loyer-pdf" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-950 hover:border-emerald-300 hover:bg-emerald-100">
                   Quittance de loyer →
