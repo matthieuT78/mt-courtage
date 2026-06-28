@@ -256,7 +256,7 @@ export default function RendementLocatifIndex() {
               {[
                 { href: "/investissement-locatif", label: "Guide complet de l'investissement locatif 2026" },
                 { href: "/investissement", label: "Simulateur de rentabilité locative" },
-                { href: "/blog/rentabilite-locative-comment-calculer", label: "Comment calculer le rendement net" },
+                { href: "/blog/investissement-locatif", label: "Comment calculer le rendement net" },
                 { href: "/blog/lmnp-vs-location-nue", label: "LMNP vs location nue : quel régime choisir ?" },
               ].map((link) => (
                 <Link

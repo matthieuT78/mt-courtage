@@ -311,7 +311,7 @@ export default function InvestissementLocatifPage() {
           <h2 className="mb-5 text-base font-bold text-slate-950">Articles liés</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { label: "Calculer la rentabilité nette réelle", href: "/blog/rentabilite-locative-comment-calculer" },
+              { label: "Calculer la rentabilité nette réelle", href: "/blog/investissement-locatif" },
               { label: "Cash-flow négatif : garder ou vendre ?", href: "/blog/cashflow-negatif-garder-ou-vendre" },
               { label: "Investir sans (gros) apport", href: "/blog/investir-sans-apport-immobilier" },
               { label: "LMNP ou location nue : quelle fiscalité ?", href: "/blog/lmnp-vs-location-nue" },
