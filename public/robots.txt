@@ -9,5 +9,4 @@ Disallow: /mon-compte
 Disallow: /projets
 Disallow: /test-quittance
 
-
 Sitemap: https://lokt.fr/sitemap.xml
