@@ -89,18 +89,6 @@ export default function BlogIndex({ posts }: any) {
                 Voir les simulateurs →
               </Link>
             </div>
-            <div className="mt-6 flex flex-wrap gap-3">
-              {[
-                { label: "Articles", value: posts.length },
-                { label: "Simulateurs", value: "6" },
-                { label: "Lecture moy.", value: `${Math.round(posts.reduce((s: number, p: any) => s + (p.readingTime || 5), 0) / Math.max(posts.length, 1))} min` },
-              ].map((s) => (
-                <div key={s.label} className="rounded-xl border border-slate-200 bg-white/70 px-4 py-2.5 backdrop-blur-sm">
-                  <p className="text-[0.65rem] uppercase tracking-wide text-slate-400">{s.label}</p>
-                  <p className="mt-0.5 text-xl font-semibold text-slate-900">{s.value}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
