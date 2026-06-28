@@ -56,7 +56,7 @@ const faq = [
   },
   {
     q: "Faut-il créer un compte pour utiliser les calculettes ?",
-    a: "Non. Toutes les calculettes sont accessibles immédiatement, sans inscription. Un compte gratuit permet de retrouver vos simulations passées et d'accéder à l'espace bailleur pour gérer un bien loué.",
+    a: "Non. Toutes les calculettes sont accessibles immédiatement, sans inscription et sans création de compte.",
   },
   {
     q: "Quelle différence entre rendement brut et rendement net ?",
@@ -399,7 +399,7 @@ export default function CalculettesPage() {
                   {checking
                     ? "Vérification de la session..."
                     : isLoggedIn
-                    ? "Compte connecté : vos analyses peuvent être retrouvées plus facilement."
+                    ? ""
                     : "Aucun compte nécessaire pour lancer une simulation."}
                 </p>
               </div>
@@ -501,7 +501,7 @@ export default function CalculettesPage() {
                     </div>
                     <p className="mt-4 flex-1 text-sm leading-6 text-slate-600">{tool.desc}</p>
                     <div className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
-                      {tool.access === "free" ? "✓ Accès libre, sans compte" : "✓ Gratuit — compte conseillé pour sauvegarder"}
+                      ✓ Accès libre, sans compte
                     </div>
                   </Link>
                 );
