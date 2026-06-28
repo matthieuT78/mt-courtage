@@ -100,6 +100,12 @@ type GraphData = {
   rendementBrut: number;
   rendementNetAvantCredit: number;
   dureeCredLoc: number;
+  // projection patrimoniale
+  montantEmprunte: number;
+  tauxAnnuelCred: number;
+  mensualiteCreditNue: number;
+  prixBienSeul: number;
+  apportVal: number;
 };
 
 type StepKey = "couts" | "revenus" | "charges" | "credit";
@@ -299,6 +305,8 @@ export default function InvestissementWizard() {
   const [opportunityComment, setOpportunityComment] = useState<string>("");
   const [opportunityImprovements, setOpportunityImprovements] = useState<string[]>([]);
   const [actionItems, setActionItems] = useState<ActionPlanItem[]>([]);
+
+  const [revaloToggle, setRevaloToggle] = useState<boolean>(false);
 
   const [marketPriceM2, setMarketPriceM2] = useState<number | null>(null);
   const [marketRentM2, setMarketRentM2] = useState<number | null>(null);
@@ -971,6 +979,11 @@ export default function InvestissementWizard() {
       rendementBrut,
       rendementNetAvantCredit,
       dureeCredLoc: toFloat(dureeCredLoc, 0),
+      montantEmprunte,
+      tauxAnnuelCred: tAnnuelCred,
+      mensualiteCreditNue,
+      prixBienSeul: prix,
+      apportVal,
     });
 
     // auto-capture si déjà consenti
@@ -1136,9 +1149,12 @@ const canClickUnlock =
 
   /* ======================== Charts data ======================== */
   const charts = useMemo(() => {
-    if (!graphData) return { barData: null as any, lineData: null as any };
+    if (!graphData) return { barData: null as any, lineData: null as any, triPct: null as number | null };
 
-    const { loyersAnnuels, chargesTotales, annuiteCredit, resultatNetAnnuel, dureeCredLoc } = graphData;
+    const {
+      loyersAnnuels, chargesTotales, annuiteCredit, resultatNetAnnuel, dureeCredLoc,
+      montantEmprunte, tauxAnnuelCred, mensualiteCreditNue, prixBienSeul, apportVal,
+    } = graphData;
 
     const barData = {
       labels: ["Loyers bruts", "Charges", "Crédit + assurance", "Résultat net"],
@@ -1151,32 +1167,75 @@ const canClickUnlock =
       ],
     };
 
-    const horizon = clamp(dureeCredLoc, 5, 30);
-    const annualCF = resultatNetAnnuel;
+    const horizon = clamp(Math.round(dureeCredLoc), 5, 30);
+    const revalorisation = revaloToggle ? 0.01 : 0;
+    const tMensuel = tauxAnnuelCred / 12;
+
     const labels: string[] = [];
-    const data: number[] = [];
+    const cashflowCumulData: number[] = [];
+    const patrimoineData: number[] = [];
+
     let cumul = 0;
+    let crd = montantEmprunte;
+    const irrFlows: number[] = [-apportVal];
+
     for (let year = 1; year <= horizon; year++) {
-      cumul += annualCF;
-      labels.push(`Année ${year}`);
-      data.push(cumul);
+      for (let m = 0; m < 12; m++) {
+        const interet = crd * tMensuel;
+        const principal = tMensuel === 0 ? mensualiteCreditNue : mensualiteCreditNue - interet;
+        crd = Math.max(crd - principal, 0);
+      }
+
+      cumul += resultatNetAnnuel;
+      const valeurBien = prixBienSeul * Math.pow(1 + revalorisation, year);
+      const equity = valeurBien - crd;
+
+      labels.push(`A.${year}`);
+      cashflowCumulData.push(Math.round(cumul));
+      patrimoineData.push(Math.round(equity));
+
+      irrFlows.push(year < horizon ? resultatNetAnnuel : resultatNetAnnuel + equity);
     }
+
+    // TRI via bisection
+    let triPct: number | null = null;
+    try {
+      if (apportVal > 0 && irrFlows.some((f) => f > 0)) {
+        let lo = -0.99, hi = 20.0;
+        for (let iter = 0; iter < 300; iter++) {
+          const mid = (lo + hi) / 2;
+          const npv = irrFlows.reduce((s, cf, t) => s + cf / Math.pow(1 + mid, t), 0);
+          if (Math.abs(hi - lo) < 0.00005) { triPct = mid * 100; break; }
+          if (npv > 0) lo = mid; else hi = mid;
+        }
+      }
+    } catch { /* ignore */ }
 
     const lineData = {
       labels,
       datasets: [
         {
-          label: "Cash-flow cumulé (€)",
-          data,
-          borderColor: "#0f172a",
-          backgroundColor: "rgba(15, 23, 42, 0.08)",
+          label: "Patrimoine constitué (€)",
+          data: patrimoineData,
+          borderColor: "#635bff",
+          backgroundColor: "rgba(99, 91, 255, 0.06)",
           tension: 0.25,
+          pointRadius: 2,
+        },
+        {
+          label: "Cash-flow cumulé (€)",
+          data: cashflowCumulData,
+          borderColor: "#22c55e",
+          backgroundColor: "rgba(34, 197, 94, 0.06)",
+          borderDash: [5, 4],
+          tension: 0.25,
+          pointRadius: 2,
         },
       ],
     };
 
-    return { barData, lineData };
-  }, [graphData]);
+    return { barData, lineData, triPct };
+  }, [graphData, revaloToggle]);
 
   /* ======================== Render ======================== */
   return (
@@ -1408,6 +1467,19 @@ const canClickUnlock =
                           className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-1.5 sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                           placeholder="Loyer mensuel (€)"
                         />
+                        {marketRentM2 !== null && surfaceNum > 0 && (
+                          <p className="text-[0.7rem] text-slate-500">
+                            Loyer médian local estimé :{" "}
+                            <button
+                              type="button"
+                              onClick={() => handleLoyerAppartChange(idx, String(Math.round(marketRentM2! * surfaceNum)))}
+                              className="font-semibold text-emerald-600 underline underline-offset-2 hover:text-emerald-800"
+                            >
+                              {formatEuro(Math.round(marketRentM2! * surfaceNum))}/mois
+                            </button>
+                            {" "}· Utiliser
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <div className="mt-2 space-y-2">
@@ -1708,7 +1780,30 @@ const canClickUnlock =
                 </div>
 
                 <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                  <p className="text-xs text-slate-600 mb-2">Cash-flow cumulé année par année.</p>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="text-xs font-medium text-slate-700">Projection patrimoniale sur {graphData!.dureeCredLoc} ans</p>
+                      {charts.triPct !== null && (
+                        <p className="text-[0.7rem] text-slate-500 mt-0.5">
+                          TRI estimé :{" "}
+                          <span className="font-semibold text-slate-800">{formatPct(charts.triPct)}/an</span>
+                          <span className="ml-1 text-[0.65rem] text-slate-400">(apport + revente fin de crédit)</span>
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRevaloToggle((t) => !t)}
+                      className={
+                        "shrink-0 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold border transition-colors " +
+                        (revaloToggle
+                          ? "bg-violet-100 border-violet-300 text-violet-700"
+                          : "bg-slate-100 border-slate-300 text-slate-600 hover:bg-slate-200")
+                      }
+                    >
+                      {revaloToggle ? "Revalorisation +1%/an" : "Prix stable"}
+                    </button>
+                  </div>
                   {charts.lineData && (
                     <Line
                       data={charts.lineData}
