@@ -220,3 +220,7 @@ Si votre bien peut être meublé sans difficulté (studio, T2, appartement en vi
 ### Comment calculer la rentabilité nette réelle ?
 
 Revenu net = Loyers − charges − taxe foncière − vacance − frais de gestion − impôts. Divisez par le prix d'acquisition total (bien + frais de notaire + travaux). C'est le seul chiffre qui compte.
+
+---
+
+*Comparez le rendement locatif brut et net dans [15 grandes villes françaises](/rendement-locatif) — Lyon, Bordeaux, Toulouse, Lille, Marseille et plus — avec prix m², loyer médian et analyse de marché 2026.*

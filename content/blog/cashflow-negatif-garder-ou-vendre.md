@@ -157,3 +157,7 @@ Si vous avez plusieurs biens, **la calculette parc immobilier lokt** vous permet
 ### Faut-il garder un bien si la zone se dépeuple ?
 
 Difficilement. Sans appréciation du capital et avec un risque de vacance croissant, l'effort mensuel n'est pas compensé. C'est un des rares cas où vendre en légère moins-value peut être rationnel.
+
+---
+
+*Avant de décider, comparez votre marché local à d'autres villes : notre page [rendement locatif par ville](/rendement-locatif) vous donne les données de tension locative, prix m² et rendement brut pour Lyon, Toulouse, Bordeaux, Lille et 11 autres marchés.*

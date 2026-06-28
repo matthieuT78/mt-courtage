@@ -177,3 +177,7 @@ Le régime LMNP a été visé par plusieurs projets de réforme ces dernières a
 ### Peut-on avoir un bien en LMNP et un autre en location nue ?
 
 Oui, et c'est courant. Chaque bien est traité séparément selon son régime fiscal. Cela peut être une stratégie intéressante selon les profils de biens.
+
+---
+
+*Le choix LMNP vs location nue dépend aussi du marché local. Consultez notre analyse [rendement locatif par ville](/rendement-locatif) pour comparer les niveaux de tension locative et les loyers médians dans 15 villes françaises.*

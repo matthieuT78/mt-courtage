@@ -87,14 +87,25 @@ export default function AppFooter() {
       <p className="mt-5">© {new Date().getFullYear()} lokt.fr</p>
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-        <Link href="/a-propos" className="underline hover:text-slate-700">
-          À propos
+        <Link href="/rendement-locatif" className="underline hover:text-slate-700">
+          Rendement locatif par ville
+        </Link>
+        <Link href="/investissement-locatif" className="underline hover:text-slate-700">
+          Investissement locatif
+        </Link>
+        <Link href="/calculettes" className="underline hover:text-slate-700">
+          Calculettes
         </Link>
         <Link href="/blog" className="underline hover:text-slate-700">
           Blog immobilier
         </Link>
         <Link href="/guides" className="underline hover:text-slate-700">
-          Ressources bailleurs
+          Guides bailleurs
+        </Link>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        <Link href="/a-propos" className="underline hover:text-slate-700">
+          À propos
         </Link>
         <Link href="/cgu" className="underline hover:text-slate-700">
           CGU / CGV

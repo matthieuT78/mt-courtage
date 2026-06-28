@@ -156,3 +156,7 @@ Oui, c'est même l'approche la plus courante. Un studio meublé loué à un étu
 ### Le T2 se loue-t-il aussi facilement qu'un studio dans une ville étudiante ?
 
 Généralement oui, mais les profils diffèrent : un T2 attire les couples ou colocataires à 2. Si vous louez en colocation, vérifiez que votre contrat est adapté (bail individuel ou bail unique avec clause de solidarité).
+
+---
+
+*Le rendement d'un studio ou d'un T2 varie fortement selon la ville. Consultez notre comparatif [rendement locatif par ville](/rendement-locatif) pour voir les données marché 2026 de Lyon, Toulouse, Bordeaux, Lille et 11 autres marchés.*

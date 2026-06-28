@@ -308,14 +308,14 @@ export default function InvestissementLocatifPage() {
 
         {/* Maillage interne */}
         <section>
-          <h2 className="mb-5 text-base font-bold text-slate-950">Articles liés</h2>
+          <h2 className="mb-5 text-base font-bold text-slate-950">Articles et outils liés</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[
+              { label: "Rendement locatif par ville — Lyon, Bordeaux, Toulouse…", href: "/rendement-locatif" },
               { label: "Calculer la rentabilité nette réelle", href: "/blog/investissement-locatif" },
               { label: "Cash-flow négatif : garder ou vendre ?", href: "/blog/cashflow-negatif-garder-ou-vendre" },
               { label: "Investir sans (gros) apport", href: "/blog/investir-sans-apport-immobilier" },
               { label: "LMNP ou location nue : quelle fiscalité ?", href: "/blog/lmnp-vs-location-nue" },
-              { label: "Loyer impayé : que faire ?", href: "/blog/loyer-impaye-que-faire" },
               { label: "Gestion locative sans agence", href: "/blog/gestion-locative-sans-agence" },
             ].map(({ label, href }) => (
               <Link key={href} href={href} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-[#635bff]/30 hover:text-[#635bff]">
