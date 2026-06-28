@@ -19,7 +19,7 @@ Un locataire qui n'est pas assuré expose le propriétaire à des risques majeur
 
 Cette obligation concerne :
 - La **location nue** (bail 3 ans)
-- La **location meublée** (bail 1 an)
+- La **location meublée** (bail 1 an) — voir [Bail meublé vs bail vide : toutes les différences](/blog/bail-meuble-vs-bail-vide)
 - La **colocation** (chaque colocataire doit être assuré ou couvert par un contrat commun)
 
 **Exception** : le locataire peut être dispensé de cette obligation si le bailleur souscrit lui-même une assurance couvrant les risques locatifs et en répercute le coût dans les charges.

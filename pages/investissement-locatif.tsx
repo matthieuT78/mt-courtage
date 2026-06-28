@@ -316,6 +316,9 @@ export default function InvestissementLocatifPage() {
               { label: "Cash-flow négatif : garder ou vendre ?", href: "/blog/cashflow-negatif-garder-ou-vendre" },
               { label: "Investir sans (gros) apport", href: "/blog/investir-sans-apport-immobilier" },
               { label: "LMNP ou location nue : quelle fiscalité ?", href: "/blog/lmnp-vs-location-nue" },
+              { label: "Bail meublé vs bail vide : comment choisir ?", href: "/blog/bail-meuble-vs-bail-vide" },
+              { label: "Charges déductibles LMNP réel 2026", href: "/blog/charges-deductibles-lmnp-regime-reel" },
+              { label: "GLI : assurance loyers impayés 2026", href: "/blog/assurance-loyers-impayes-gli-2026" },
               { label: "Gestion locative sans agence", href: "/blog/gestion-locative-sans-agence" },
             ].map(({ label, href }) => (
               <Link key={href} href={href} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-[#635bff]/30 hover:text-[#635bff]">

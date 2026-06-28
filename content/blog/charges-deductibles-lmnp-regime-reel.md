@@ -57,7 +57,7 @@ Seules les charges **non récupérables** sur le locataire sont déductibles. Le
 
 ### 4. L'assurance PNO (Propriétaire Non Occupant)
 
-La prime d'assurance du propriétaire est intégralement déductible. Si vous avez également souscrit une **GLI (garantie loyers impayés)**, sa prime est aussi déductible.
+La prime d'assurance du propriétaire est intégralement déductible. Si vous avez également souscrit une **[GLI (garantie loyers impayés)](/blog/assurance-loyers-impayes-gli-2026)**, sa prime est aussi déductible.
 
 ---
 
@@ -218,3 +218,10 @@ Techniquement oui, mais c'est complexe. Les plans d'amortissement par composants
 ---
 
 *Simulez le rendement net de votre investissement LMNP avec et sans amortissements grâce à notre [calculette d'investissement locatif](/investissement).*
+
+---
+
+**Articles liés :**
+- [Bail meublé vs bail vide : différences, avantages et comment choisir en 2026](/blog/bail-meuble-vs-bail-vide)
+- [GLI 2026 : assurance loyers impayés — fonctionnement, coût et comparatif](/blog/assurance-loyers-impayes-gli-2026)
+- [LMNP ou location nue : quelle fiscalité choisir en 2026 ?](/blog/lmnp-vs-location-nue)

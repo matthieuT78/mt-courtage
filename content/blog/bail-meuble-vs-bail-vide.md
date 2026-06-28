@@ -25,7 +25,7 @@ Le choix entre bail meublé et bail vide n'est pas qu'une question de mobilier. 
 | Préavis du locataire (zone tendue) | 1 mois | 1 mois |
 | Préavis du locataire (hors zone tendue) | 3 mois | 1 mois |
 | Préavis du bailleur | 6 mois | 3 mois |
-| Révision du loyer | IRL annuel | IRL annuel |
+| Révision du loyer | [IRL annuel](/blog/irl-indice-reference-loyers-2026) | [IRL annuel](/blog/irl-indice-reference-loyers-2026) |
 | Catégorie fiscale | Revenus fonciers | BIC (Bénéfices Industriels et Commerciaux) |
 | Régime simplifié | Micro-foncier (30 % abattement) | Micro-BIC (50 % abattement) |
 | Amortissement du bien | Non | Oui (régime réel) |
@@ -189,3 +189,10 @@ Oui, uniquement dans une situation très spécifique : si le bailleur justifie d
 ---
 
 *Comparez la rentabilité nette de vos biens en bail vide et meublé avec notre [simulateur investissement locatif](/investissement) — il intègre la fiscalité LMNP et les charges déductibles.*
+
+---
+
+**Articles liés :**
+- [IRL 2026 : calcul et révision annuelle du loyer](/blog/irl-indice-reference-loyers-2026)
+- [Charges déductibles en LMNP réel 2026 : liste complète et amortissements](/blog/charges-deductibles-lmnp-regime-reel)
+- [GLI 2026 : assurance loyers impayés — fonctionnement, coût et comparatif](/blog/assurance-loyers-impayes-gli-2026)

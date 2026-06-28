@@ -22,7 +22,7 @@ La catégorie "revenus fonciers" concerne exclusivement la **location nue** (app
 
 > **Résumé rapide :**
 > - Location nue → revenus fonciers → formulaires 2042 + éventuellement 2044
-> - Location meublée → BIC → régime micro-BIC ou liasse 2031
+> - Location meublée → BIC → régime micro-BIC ou liasse 2031 — voir [Charges déductibles en LMNP réel 2026](/blog/charges-deductibles-lmnp-regime-reel)
 
 ---
 
@@ -273,3 +273,10 @@ Oui, même à un proche. Si le loyer est significativement inférieur au marché
 ---
 
 *Pour simuler l'impact fiscal de votre investissement locatif avec vos données réelles, utilisez notre [calculette investissement locatif](/investissement).*
+
+---
+
+**Articles liés :**
+- [Charges déductibles en LMNP réel 2026 : liste complète et amortissements](/blog/charges-deductibles-lmnp-regime-reel)
+- [IRL 2026 : indice de référence des loyers, calcul et révision du loyer](/blog/irl-indice-reference-loyers-2026)
+- [GLI 2026 : assurance loyers impayés — fonctionnement, coût et comparatif](/blog/assurance-loyers-impayes-gli-2026)

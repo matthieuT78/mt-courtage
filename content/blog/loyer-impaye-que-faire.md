@@ -82,6 +82,8 @@ C'est l'étape que beaucoup de bailleurs oublient ou retardent — à tort.
 
 Déclarez le sinistre **immédiatement**. La plupart des contrats GLI imposent un délai de déclaration court (souvent 30 à 45 jours après le premier impayé). Passé ce délai, vous perdez le droit à indemnisation.
 
+> Vous n'avez pas encore de GLI ? Comparez les garanties, coûts et conditions dans notre guide [GLI 2026 : assurance loyers impayés — fonctionnement, coût et comparatif](/blog/assurance-loyers-impayes-gli-2026).
+
 Votre assureur prend ensuite le relais pour la procédure et vous indemnise pendant la durée du litige (généralement jusqu'à l'expulsion + 3 mois).
 
 ### Si vous avez un garant (caution solidaire)
