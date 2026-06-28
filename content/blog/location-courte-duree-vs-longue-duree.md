@@ -5,7 +5,7 @@ date: "2026-06-22"
 category: "Investissement locatif"
 tags: ["location courte durée", "Airbnb", "location longue durée", "rentabilité locative", "LMNP"]
 relatedCalculators: ["investissement", "parc-immobilier"]
-coverImage: "/blog/location-courte-longue-duree.png"
+coverImage: "/blog/location-courte-longue-duree.jpg"
 ---
 
 # Location courte durée vs longue durée : le comparatif chiffré 2026

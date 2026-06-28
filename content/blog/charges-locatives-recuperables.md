@@ -4,7 +4,7 @@ description: "Quelles charges peut-on récupérer sur le locataire ? Liste compl
 date: "2026-06-27"
 category: "Gestion locative"
 tags: ["charges récupérables", "charges locatives", "provision sur charges", "régularisation charges", "décret 87-713"]
-coverImage: "/blog/charges-locatives-recuperables.png"
+coverImage: "/blog/charges-locatives-recuperables.jpg"
 ---
 
 # Charges locatives récupérables : liste complète et régularisation 2026

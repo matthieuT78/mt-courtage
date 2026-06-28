@@ -4,7 +4,7 @@ description: "Calendrier des interdictions DPE G, F et E, gel des loyers, MaPrim
 date: "2026-06-27"
 category: "Investissement locatif"
 tags: ["DPE", "passoire thermique", "DPE G interdiction", "rénovation énergétique", "MaPrimeRénov"]
-coverImage: "/blog/dpe-passoire-thermique.png"
+coverImage: "/blog/dpe-passoire-thermique.jpg"
 ---
 
 # DPE et passoires thermiques : ce que les bailleurs doivent faire avant l'interdiction

@@ -4,7 +4,7 @@ description: "Comment réaliser un état des lieux d'entrée et de sortie irrép
 date: "2026-06-27"
 category: "Gestion locative"
 tags: ["état des lieux", "état des lieux entrée sortie", "dépôt de garantie", "litige état des lieux", "état des lieux huissier"]
-coverImage: "/blog/etat-des-lieux.png"
+coverImage: "/blog/etat-des-lieux.jpg"
 ---
 
 # État des lieux : guide complet entrée, sortie et litiges 2026

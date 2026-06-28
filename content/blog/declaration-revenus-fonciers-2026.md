@@ -5,7 +5,7 @@ date: "2026-06-28"
 category: "Fiscalité locative"
 tags: ["revenus fonciers", "déclaration impôts", "micro-foncier", "régime réel", "déficit foncier", "fiscalité locative"]
 relatedCalculators: ["investissement"]
-coverImage: "/blog/declaration-revenus-fonciers.png"
+coverImage: "/blog/declaration-revenus-fonciers.jpg"
 ---
 
 # Déclaration des revenus fonciers 2026 : guide complet

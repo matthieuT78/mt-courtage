@@ -5,7 +5,7 @@ date: "2026-06-26"
 category: "Investissement locatif"
 tags: ["loyer impayé", "impayé locataire", "expulsion locataire", "GLI", "procédure loyer impayé"]
 relatedCalculators: ["parc-immobilier"]
-coverImage: "/blog/loyer-impaye.png"
+coverImage: "/blog/loyer-impaye.jpg"
 ---
 
 # Loyer impayé : que faire étape par étape en 2026 ?

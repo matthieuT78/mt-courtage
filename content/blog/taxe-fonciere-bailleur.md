@@ -4,7 +4,7 @@ description: "La taxe foncière est à la charge du propriétaire, pas du locata
 date: "2026-06-27"
 category: "Investissement locatif"
 tags: ["taxe foncière", "taxe foncière 2026", "déduction taxe foncière", "contester taxe foncière", "TEOM"]
-coverImage: "/blog/taxe-fonciere.png"
+coverImage: "/blog/taxe-fonciere.jpg"
 ---
 
 # Taxe foncière 2026 : qui paye, comment la déduire et comment la contester

@@ -4,7 +4,7 @@ description: "Tout ce que le bailleur doit savoir sur le préavis : durée selon
 date: "2026-06-27"
 category: "Gestion locative"
 tags: ["préavis locataire", "préavis 1 mois", "zone tendue", "départ locataire", "fin de bail"]
-coverImage: "/blog/preavis-locataire.png"
+coverImage: "/blog/preavis-locataire.jpg"
 ---
 
 # Préavis de départ locataire : durée, zones tendues et lettre type 2026

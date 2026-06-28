@@ -4,7 +4,7 @@ description: "Le locataire est obligé d'assurer le logement. Que faire s'il ne 
 date: "2026-06-27"
 category: "Gestion locative"
 tags: ["assurance habitation locataire", "assurance PNO", "locataire sans assurance", "garantie locative", "assurance multirisque"]
-coverImage: "/blog/assurance-habitation-locataire.png"
+coverImage: "/blog/assurance-habitation-locataire.jpg"
 ---
 
 # Assurance habitation locataire : obligations, défaut et recours du bailleur 2026

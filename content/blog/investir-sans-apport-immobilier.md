@@ -5,7 +5,7 @@ date: "2026-06-26"
 category: "Investissement locatif"
 tags: ["investissement locatif", "apport", "financement immobilier", "crédit immobilier", "sans apport"]
 relatedCalculators: ["investissement", "capacite"]
-coverImage: "/blog/investir-sans-apport.png"
+coverImage: "/blog/investir-sans-apport.jpg"
 ---
 
 # Investir dans l'immobilier sans (gros) apport : ce qui est vraiment possible en 2026

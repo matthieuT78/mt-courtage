@@ -5,7 +5,7 @@ date: "2026-06-20"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "3000 euros", "budget achat immobilier"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
-coverImage: "/blog/combien-emprunter-3000.png"
+coverImage: "/blog/combien-emprunter-3000.jpg"
 ---
 
 # Combien puis-je emprunter avec 3 000 € par mois ?
