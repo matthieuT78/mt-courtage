@@ -40,10 +40,33 @@ type Tool = {
 
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/calculettes`;
+
+const faq = [
+  {
+    q: "Quels simulateurs immobiliers sont disponibles gratuitement sur lokt.fr ?",
+    a: "lokt.fr propose 6 calculettes entièrement gratuites : capacité d'emprunt, rentabilité locative (rendement brut, net et cash-flow), prêt relais, parc immobilier, plus-value immobilière et arbitrage acheter ou louer. Toutes sont accessibles sans création de compte.",
+  },
+  {
+    q: "Comment calculer ma capacité d'emprunt ?",
+    a: "Renseignez vos revenus nets mensuels, vos charges en cours (crédits, pensions alimentaires) et votre apport disponible. Le simulateur applique la règle des 35 % de taux d'endettement imposée par le HCSF et calcule votre mensualité maximale, le montant empruntable et votre budget d'achat (frais de notaire inclus).",
+  },
+  {
+    q: "Comment calculer la rentabilité d'un investissement locatif ?",
+    a: "Entrez le prix d'achat, les frais (notaire, agence, travaux), les loyers envisagés et les charges annuelles (copropriété, taxe foncière, assurance, gestion). Le simulateur calcule le rendement brut, le rendement net avant crédit et le cash-flow mensuel après remboursement du prêt. Il compare aussi le prix au m² et le loyer au marché local si vous renseignez la ville.",
+  },
+  {
+    q: "Faut-il créer un compte pour utiliser les calculettes ?",
+    a: "Non. Toutes les calculettes sont accessibles immédiatement, sans inscription. Un compte gratuit permet de retrouver vos simulations passées et d'accéder à l'espace bailleur pour gérer un bien loué.",
+  },
+  {
+    q: "Quelle différence entre rendement brut et rendement net ?",
+    a: "Le rendement brut rapporte les loyers annuels au coût total d'acquisition. Le rendement net soustrait les charges réelles (taxe foncière, copropriété, assurance, frais de gestion). En pratique, l'écart est de 1,5 à 2 points. C'est le rendement net — avant remboursement du crédit — qui permet de comparer objectivement deux biens.",
+  },
+];
 const ogImage = `${siteUrl}/screenCALCULETTE.png`;
-const title = "Calculettes immobilières gratuites | Capacité, rentabilité, prêt relais | lokt.fr";
+const title = "Calculettes immobilières gratuites 2026 | Capacité d’emprunt, rentabilité locative, prêt relais | lokt.fr";
 const description =
-  "Simulez votre capacité d’emprunt, votre rentabilité locative, votre prêt relais et votre parc immobilier avec les calculettes gratuites lokt.fr.";
+  "6 simulateurs immobiliers gratuits : capacité d’emprunt, rentabilité locative (rendement net + cash-flow), prêt relais, plus-value et arbitrage acheter/louer. Résultats immédiats, sans inscription.";
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -208,56 +231,56 @@ export default function CalculettesPage() {
       {
         key: "capacite",
         title: "Capacité d’emprunt",
-        desc: "Budget, mensualité max, taux d’endettement et reste à vivre avant de visiter.",
+        desc: "Entrez vos revenus et charges : obtenez votre budget d’achat, la mensualité maximale et votre reste à vivre. Résultat en 2 minutes, avant même de visiter.",
         href: "/capacite",
         icon: CalculatorIcon,
         access: "free",
-        metric: "Achat résidence ou investissement",
+        metric: "Achat résidence principale ou investissement",
       },
       {
         key: "invest",
         title: "Rentabilité locative",
-        desc: "Cash-flow, rendement net, charges, fiscalité simplifiée et plan d’action.",
+        desc: "Rendement brut, rendement net, cash-flow mensuel — avec comparaison au prix du marché local. Idéal pour savoir si un bien tient la route avant de faire une offre.",
         href: "/investissement",
         icon: ArrowTrendingUpIcon,
         access: "analysis_after_login",
-        metric: "Décision investisseur",
+        metric: "Investissement locatif",
       },
       {
         key: "relais",
         title: "Prêt relais",
-        desc: "Prêt relais, apport disponible, budget de rachat et marge de sécurité.",
+        desc: "Vous avez un bien à vendre et un à acheter. Simulez l’apport libéré par la vente, votre budget net disponible et les mensualités du crédit relais.",
         href: "/pret-relais",
         icon: BanknotesIcon,
         access: "analysis_after_login",
-        metric: "Projet avec bien à vendre",
+        metric: "Projet avec bien existant à vendre",
       },
       {
         key: "parc",
         title: "Parc immobilier",
-        desc: "Vision consolidée des loyers, crédits, cash-flow et performance globale.",
+        desc: "Vue consolidée de tous vos biens : loyers encaissés, crédits en cours, cash-flow cumulé et performance globale du patrimoine. Pour les bailleurs multi-biens.",
         href: "/parc-immobilier",
         icon: BuildingOffice2Icon,
         access: "analysis_after_login",
-        metric: "Plusieurs logements",
+        metric: "Propriétaires de plusieurs logements",
       },
       {
         key: "plus-value",
         title: "Plus-value immobilière",
-        desc: "Cash net vendeur, impôts, CRD, frais et arbitrage avant de vendre.",
+        desc: "Estimez l’impôt sur la plus-value, le capital restant dû, les frais d’agence et votre net vendeur réel avant de signer un compromis de vente.",
         href: "/plus-value-vente-immobiliere",
         icon: ScaleIcon,
         access: "analysis_after_login",
-        metric: "Vente d’un bien",
+        metric: "Vente d’un bien immobilier",
       },
       {
         key: "acheter-ou-louer",
         title: "Acheter ou louer ?",
-        desc: "Recommandation personnalisée selon votre profil pro, votre projet et le marché local.",
+        desc: "Renseignez votre durée de séjour envisagée, votre loyer actuel et votre apport disponible : l’outil calcule à quel horizon l’achat devient plus rentable que la location.",
         href: "/acheter-ou-louer",
         icon: QuestionMarkCircleIcon,
         access: "free",
-        metric: "Décision d’achat",
+        metric: "Arbitrage résidence principale",
       },
     ],
     []
@@ -290,6 +313,14 @@ export default function CalculettesPage() {
             { "@type": "ListItem", position: 1, name: "Accueil", item: siteUrl },
             { "@type": "ListItem", position: 2, name: "Calculettes immobilières", item: pageUrl },
           ],
+        },
+        {
+          "@type": "FAQPage",
+          mainEntity: faq.map(({ q, a }) => ({
+            "@type": "Question",
+            name: q,
+            acceptedAnswer: { "@type": "Answer", text: a },
+          })),
         },
       ],
     }),
@@ -447,10 +478,9 @@ export default function CalculettesPage() {
               {tools.map((tool, index) => {
                 const Icon = tool.icon;
                 return (
-                  <button
+                  <Link
                     key={tool.key}
-                    type="button"
-                    onClick={() => go(tool.href)}
+                    href={tool.href}
                     data-scroll-reveal
                     data-reveal-delay={`${index * 70}`}
                     className="group flex h-full flex-col rounded-[1.5rem] border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md sm:rounded-[1.75rem] sm:p-5"
@@ -466,14 +496,14 @@ export default function CalculettesPage() {
                         </div>
                       </div>
                       <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-white transition group-hover:bg-[#635bff]">
-                        Ouvrir
+                        Lancer →
                       </span>
                     </div>
                     <p className="mt-4 flex-1 text-sm leading-6 text-slate-600">{tool.desc}</p>
                     <div className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
-                      {tool.access === "free" ? "Accès libre" : "Compte gratuit conseillé pour sauvegarder et approfondir"}
+                      {tool.access === "free" ? "✓ Accès libre, sans compte" : "✓ Gratuit — compte conseillé pour sauvegarder"}
                     </div>
-                  </button>
+                  </Link>
                 );
               })}
             </section>
@@ -482,6 +512,19 @@ export default function CalculettesPage() {
               <div data-scroll-reveal data-reveal-delay="0"><StatCard label="01" value="Simuler" text="Vous renseignez les hypothèses clés du projet immobilier." /></div>
               <div data-scroll-reveal data-reveal-delay="80"><StatCard label="02" value="Comparer" text="lokt.fr met les résultats en perspective avec des seuils simples." /></div>
               <div data-scroll-reveal data-reveal-delay="160"><StatCard label="03" value="Gérer" text="Si le projet devient un bien loué, l’espace bailleur prend la suite." /></div>
+            </section>
+
+            {/* FAQ */}
+            <section data-scroll-reveal data-reveal-delay="0">
+              <h2 className="mb-5 text-xl font-semibold text-slate-950">Questions fréquentes</h2>
+              <div className="space-y-2">
+                {faq.map(({ q, a }) => (
+                  <details key={q} className="group rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm open:border-[#635bff]/30">
+                    <summary className="cursor-pointer list-none text-sm font-semibold text-slate-900 group-open:text-[#635bff]">{q}</summary>
+                    <p className="mt-3 text-[0.85rem] leading-relaxed text-slate-600">{a}</p>
+                  </details>
+                ))}
+              </div>
             </section>
 
             <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-6">
