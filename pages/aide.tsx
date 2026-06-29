@@ -32,7 +32,7 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
       {
         question: "Combien de logements puis-je gérer sur le plan Gratuit ?",
         answer:
-          "Le plan Gratuit vous permet de gérer 1 logement actif. Pour gérer jusqu'à 3 logements, passez au plan Starter (4,90 €/mois). Le plan Essentiel (9,90 €/mois) permet de gérer jusqu'à 10 logements.",
+          "Le plan Gratuit vous permet de gérer 1 logement actif. Pour gérer jusqu'à 3 logements, passez au plan lokt·one (4,90 €/mois). Le plan lokt·plus (9,90 €/mois) permet de gérer jusqu'à 10 logements.",
       },
       {
         question: "Comment changer de plan tarifaire ?",
@@ -63,7 +63,7 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
             puis sur « Inviter au portail ». Un e-mail d'invitation lui est envoyé. Il
             peut alors créer son accès et consulter ses documents (quittances, bail,
             EDL) en autonomie. Cette fonctionnalité est disponible à partir du plan{" "}
-            <strong>Starter</strong>.
+            <strong>lokt·one</strong>.
           </>
         ),
       },
@@ -86,7 +86,7 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
       {
         question: "Comment confirmer un paiement de loyer ?",
         answer:
-          "Depuis la section Loyers, cliquez sur le loyer concerné puis sur « Confirmer le paiement ». Une fois confirmé, la quittance est automatiquement générée et envoyée au locataire (plans Starter et Essentiel). Sur le plan Gratuit, vous pouvez générer et envoyer la quittance manuellement.",
+          "Depuis la section Loyers, cliquez sur le loyer concerné puis sur « Confirmer le paiement ». Une fois confirmé, la quittance est automatiquement générée et envoyée au locataire (plans lokt·one et lokt·plus). Sur le plan Gratuit, vous pouvez générer et envoyer la quittance manuellement.",
       },
       {
         question: "Que faire si j'ai confirmé un paiement par erreur ?",
@@ -102,7 +102,7 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
         question: "Comment envoyer les rappels de loyer aux locataires ?",
         answer: (
           <>
-            Sur les plans <strong>Starter</strong> et <strong>Essentiel</strong>, des
+            Sur les plans <strong>lokt·one</strong> et <strong>lokt·plus</strong>, des
             rappels automatiques sont envoyés au locataire à la date d'échéance, puis
             des relances si le paiement n'est pas confirmé. Vous pouvez configurer la
             fréquence et le message depuis Paramètres &gt; Rappels. Vous pouvez aussi
@@ -168,7 +168,7 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
       {
         question: "Que montre la section Finance ?",
         answer:
-          "La section Finance affiche un graphique de trésorerie sur 6 mois glissants (encaissements vs dépenses), le cash-flow par bien et le total des dépenses par catégorie. Sur le plan Essentiel, vous pouvez exporter ces données en CSV ou PDF pour votre comptable.",
+          "La section Finance affiche un graphique de trésorerie sur 6 mois glissants (encaissements vs dépenses), le cash-flow par bien et le total des dépenses par catégorie. Sur le plan lokt·plus, vous pouvez exporter ces données en CSV ou PDF pour votre comptable.",
       },
       {
         question: "Comment saisir une dépense ?",
@@ -179,7 +179,7 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
         question: "lokt.fr aide-t-il pour la déclaration fiscale ?",
         answer: (
           <>
-            Sur le plan <strong>Essentiel</strong>, la section Déclaration récapitule
+            Sur le plan <strong>lokt·plus</strong>, la section Déclaration récapitule
             les loyers encaissés et les charges déductibles pour l'année fiscale. Vous
             pouvez exporter le récapitulatif en PDF pour faciliter votre déclaration de
             revenus fonciers (formulaire 2044). lokt.fr n'est pas un logiciel de
@@ -197,7 +197,7 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
       {
         question: "Quelles alertes sont disponibles sur le plan Gratuit ?",
         answer:
-          "Sur le plan Gratuit, vous bénéficiez de 4 types d'alertes : loyers en retard, révision IRL disponible, renouvellement de bail imminent, et EDL de sortie à planifier. Les plans Starter et Essentiel débloquent toutes les alertes automatiques.",
+          "Sur le plan Gratuit, vous bénéficiez de 4 types d'alertes : loyers en retard, révision IRL disponible, renouvellement de bail imminent, et EDL de sortie à planifier. Les plans lokt·one et lokt·plus débloquent toutes les alertes automatiques.",
       },
       {
         question: "Qu'est-ce que le score bailleur ?",
@@ -497,11 +497,11 @@ export default function AidePage() {
                     <span className="text-slate-500">1 logement</span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-slate-100">
-                    <span className="font-semibold text-blue-700">Starter</span>
+                    <span className="font-semibold text-blue-700">lokt·one</span>
                     <span className="text-slate-500">3 logements · 4,90 €/mois</span>
                   </div>
                   <div className="flex justify-between items-center py-2">
-                    <span className="font-semibold text-violet-700">Essentiel</span>
+                    <span className="font-semibold text-violet-700">lokt·plus</span>
                     <span className="text-slate-500">10 logements · 9,90 €/mois</span>
                   </div>
                 </div>

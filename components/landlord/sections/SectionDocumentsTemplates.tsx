@@ -827,7 +827,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
           <p className="font-semibold">Fonction premium</p>
           <p className="mt-1">
-            Le plan gratuit garde la gestion manuelle du premier logement. Le coffre documentaire complet est inclus dans les abonnements Starter et Essentiel.
+            Le plan gratuit garde la gestion manuelle du premier logement. Le coffre documentaire complet est inclus dans les abonnements lokt·one et lokt·plus.
           </p>
           <Link
             href="/mon-compte/abonnement"

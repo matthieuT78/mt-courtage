@@ -44,7 +44,7 @@ type LockedSectionConfig = {
   eyebrow: string;
   title: string;
   desc: string;
-  requiredPlan: "Starter" | "Essentiel";
+  requiredPlan: "lokt·one" | "lokt·plus";
   href: string;
   cta: string;
   features: string[];
@@ -538,25 +538,25 @@ export function DashboardShell(props: any) {
     if (permissionsLoading) return null;
     if (active === "performance" && !canUsePerformance) {
       return {
-        eyebrow: "Fonctionnalité Essentiel",
-        title: "Pilotage performance réservé au plan Essentiel",
+        eyebrow: "Fonctionnalité lokt·plus",
+        title: "Pilotage performance réservé au plan lokt·plus",
         desc:
           "La section Performance transforme vos données de loyers, charges et crédit en lecture de rentabilité par logement, cash-flow et plan d’action priorisé.",
-        requiredPlan: "Essentiel",
+        requiredPlan: "lokt·plus",
         href: "/mon-compte/abonnement?source=performance",
-        cta: "Upgrade vers Essentiel",
+        cta: "Upgrade vers lokt·plus",
         features: ["Rentabilité et cash-flow par logement", "Analyse des charges et du crédit", "Actions prioritaires pour améliorer la gestion", "Jusqu’à 10 logements actifs"],
       };
     }
     if (active === "outils" && !canUseTools) {
       return {
-        eyebrow: "Fonctionnalité Essentiel",
-        title: "Boîte à outils bailleur réservée au plan Essentiel",
+        eyebrow: "Fonctionnalité lokt·plus",
+        title: "Boîte à outils bailleur réservée au plan lokt·plus",
         desc:
           "Les outils avancés traitent les cas métier qui demandent de l’historique, des justificatifs et des calculs de répartition : eau, charges, TEOM, régularisation et simulateurs bailleur.",
-        requiredPlan: "Essentiel",
+        requiredPlan: "lokt·plus",
         href: "/mon-compte/abonnement?source=outils",
-        cta: "Upgrade vers Essentiel",
+        cta: "Upgrade vers lokt·plus",
         features: ["Répartition de facture d’eau au prorata des relevés", "Répartition des charges par tantièmes", "TEOM et régularisation locative", "Simulateurs bailleur intégrés"],
       };
     }

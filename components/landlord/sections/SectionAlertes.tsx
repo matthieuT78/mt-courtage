@@ -284,7 +284,7 @@ export function SectionAlertes({ userId, plan }: Props) {
                         {!allowed ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-[#635bff]/20 bg-[#635bff]/5 px-2 py-0.5 text-[0.65rem] font-semibold text-[#4f46e5]">
                             <LockClosedIcon className="h-3 w-3" aria-hidden="true" />
-                            Starter
+                            lokt·one
                           </span>
                         ) : null}
                       </div>
@@ -295,7 +295,7 @@ export function SectionAlertes({ userId, plan }: Props) {
                       </div>
                       {!allowed ? (
                         <Link href="/mon-compte/abonnement?source=alertes" className="mt-1 inline-flex text-xs font-semibold text-[#4f46e5] hover:underline">
-                          Débloquer avec Starter
+                          Débloquer avec lokt·one
                         </Link>
                       ) : null}
                     </div>

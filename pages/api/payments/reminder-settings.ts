@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userCheck = requireMatchingUser(auth, userId);
     if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
     if (!(await userCanUseReceiptAutomation(userId))) {
-      return res.status(403).json({ error: "Les relances locataire sont réservées aux abonnements Starter et Essentiel." });
+      return res.status(403).json({ error: "Les relances locataire sont réservées aux abonnements lokt·one et lokt·plus." });
     }
 
     if (req.method === "GET") {

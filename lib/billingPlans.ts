@@ -21,7 +21,7 @@ export type BillingInterval = "monthly" | "yearly";
 export const PAID_BILLING_PLANS: PaidBillingPlan[] = [
   {
     id: "landlord_5",
-    name: "Starter",
+    name: "lokt·one",
     description: "Pour ne plus oublier les quittances, rappels et validations de paiement.",
     priceLabel: "4,90 € / mois",
     monthlyPrice: 4.9,
@@ -48,7 +48,7 @@ export const PAID_BILLING_PLANS: PaidBillingPlan[] = [
   },
   {
     id: "landlord_15",
-    name: "Essentiel",
+    name: "lokt·plus",
     description: "Pour piloter la rentabilité, préparer la fiscalité et travailler proprement.",
     priceLabel: "9,90 € / mois",
     monthlyPrice: 9.9,
@@ -56,7 +56,7 @@ export const PAID_BILLING_PLANS: PaidBillingPlan[] = [
     limitLabel: "Jusqu’à 10 logements actifs",
     audience: "Pilotage & déclaration",
     features: [
-      "Tout le plan Starter",
+      "Tout le plan lokt·one",
       "Boîte à outils bailleur : eau, charges, TEOM et régularisation",
       "Simulateurs bailleur : LMNP, IRL et arbitrages",
       "Performance et rentabilité par logement",

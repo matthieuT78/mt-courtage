@@ -393,7 +393,7 @@ function StarterUpgradeLink({ className = "" }: { className?: string }) {
         className
       )}
     >
-      Upgrade vers Starter
+      Upgrade vers lokt·one
       <ArrowUpRightIcon className="h-4 w-4" aria-hidden="true" />
     </Link>
   );
@@ -2220,9 +2220,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="font-semibold">Quittances auto disponibles avec Starter</p>
+                <p className="font-semibold">Quittances auto disponibles avec lokt·one</p>
                 <p className="mt-1 text-amber-950/85">
-                  En gratuit, vous gardez le mode manuel : confirmer le paiement, générer le PDF et consulter l’archive. Le plan Starter débloque
+                  En gratuit, vous gardez le mode manuel : confirmer le paiement, générer le PDF et consulter l’archive. Le plan lokt·one débloque
                   les emails bailleur, relances, génération automatique et envoi au locataire.
                 </p>
               </div>
@@ -2248,7 +2248,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               description={
                 canUseReceiptAutomation
                   ? "Email bailleur, puis PDF et envoi après confirmation du paiement."
-                  : "Disponible avec Starter ou Essentiel."
+                  : "Disponible avec lokt·one ou lokt·plus."
               }
               icon={ShieldCheckIcon}
               tone="emerald"
@@ -2280,7 +2280,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs leading-5 text-slate-600">
-                  Le plan Starter suffit pour activer les quittances automatiques. Le plan Essentiel les inclut aussi, avec Performance et Déclaration.
+                  Le plan lokt·one suffit pour activer les quittances automatiques. Le plan lokt·plus les inclut aussi, avec Performance et Déclaration.
                 </p>
                 <StarterUpgradeLink className="shrink-0" />
               </div>

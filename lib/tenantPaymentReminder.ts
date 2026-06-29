@@ -31,7 +31,7 @@ export async function getTenantPaymentReminderContext(params: {
 }) {
   if (!supabaseAdmin) throw new Error("Supabase admin non configuré.");
   if (!(await userCanUseReceiptAutomation(params.userId))) {
-    throw new Error("Les relances locataire sont réservées aux abonnements Starter et Essentiel.");
+    throw new Error("Les relances locataire sont réservées aux abonnements lokt·one et lokt·plus.");
   }
 
   const { data: lease, error: leaseError } = await supabaseAdmin.from("leases").select("*").eq("id", params.leaseId).single();

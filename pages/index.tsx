@@ -852,7 +852,7 @@ export default function Home() {
                   ))}
                 </div>
                 <div className="mt-5 flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                  <p className="text-xs text-emerald-700">Disponible en plan <span className="font-semibold">Starter</span></p>
+                  <p className="text-xs text-emerald-700">Disponible en plan <span className="font-semibold">lokt·one</span></p>
                   <Link href="/tarifs" className="text-xs font-semibold text-emerald-800 underline underline-offset-2">4,90 € / mois →</Link>
                 </div>
               </div>
@@ -930,7 +930,7 @@ export default function Home() {
             </div>
 
             <div data-scroll-reveal className="mt-5 flex flex-col gap-3 rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-600">Gratuit pour 1 logement. Starter débloque quittances auto, alertes complètes, messagerie et portail locataire.</p>
+              <p className="text-sm text-slate-600">Gratuit pour 1 logement. lokt·one débloque quittances auto, alertes complètes, messagerie et portail locataire.</p>
               <Link href="/espace-bailleur" className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800">
                 Essayer l’espace bailleur →
               </Link>
@@ -1045,7 +1045,7 @@ export default function Home() {
                   ctaClass: "bg-emerald-700 text-white hover:bg-emerald-600",
                 },
                 {
-                  name: "Starter",
+                  name: "lokt·one",
                   price: "4,90 €",
                   cadence: "/ mois · 3 logements",
                   desc: "Automatisation complète + portail locataire + partage de documents.",
@@ -1057,7 +1057,7 @@ export default function Home() {
                   ctaClass: "bg-gradient-to-r from-[#635bff] to-[#00d4ff] text-white hover:opacity-90",
                 },
                 {
-                  name: "Essentiel",
+                  name: "lokt·plus",
                   price: "9,90 €",
                   cadence: "/ mois · 10 logements",
                   desc: "Pilotage investisseur : rentabilité, outils bailleur, exports, déclaration.",

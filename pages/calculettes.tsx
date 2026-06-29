@@ -539,7 +539,7 @@ export default function CalculettesPage() {
                     l’inventaire et la finance simple. Les abonnements ajoutent l’automatisation des quittances, les emails, les rappels et l’aide à la déclaration.
                   </p>
                   <p className="mt-3 text-sm font-semibold text-slate-900">
-                    Offre Starter : {formatPrice(starter?.monthlyPrice)} € / mois, jusqu’à 3 logements actifs.
+                    Offre lokt·one : {formatPrice(starter?.monthlyPrice)} € / mois, jusqu’à 3 logements actifs.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">

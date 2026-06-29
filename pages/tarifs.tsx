@@ -126,7 +126,7 @@ export default function TarifsPage() {
   const router = useRouter();
   const title = "Tarifs gestion locative propriétaire bailleur | lokt.fr";
   const description =
-    "Comparez les offres lokt.fr : gestion locative gratuite pour un logement actif, Starter pour automatiser les quittances, Essentiel pour le pilotage et les outils bailleur.";
+    "Comparez les offres lokt.fr : gestion locative gratuite pour un logement actif, lokt·one pour automatiser les quittances, lokt·plus pour le pilotage et les outils bailleur.";
   const pageUrl = "https://lokt.fr/tarifs";
   const ogImage = "https://lokt.fr/lokt-logo.jpg";
   const pricingJsonLd = {
@@ -139,9 +139,9 @@ export default function TarifsPage() {
     description,
     offers: [
       { "@type": "Offer", name: "Gratuit", price: "0", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
-      { "@type": "Offer", name: "Starter", price: "4.90", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
-      { "@type": "Offer", name: "Essentiel", price: "9.90", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
-      { "@type": "Offer", name: "Pro / Agence", priceCurrency: "EUR", availability: "https://schema.org/PreOrder" },
+      { "@type": "Offer", name: "lokt·one", price: "4.90", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
+      { "@type": "Offer", name: "lokt·plus", price: "9.90", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
+      { "@type": "Offer", name: "lokt·pro", priceCurrency: "EUR", availability: "https://schema.org/PreOrder" },
     ],
   };
   useScrollReveal();
@@ -225,7 +225,7 @@ export default function TarifsPage() {
                   <span className="mt-1 block text-[2rem] bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] sm:text-5xl">Payant quand lokt.fr automatise.</span>
                 </h1>
                 <p className="mt-5 max-w-3xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
-                  Un logement gratuit pour démarrer. Starter automatise les quittances, active le portail locataire et le partage de documents. Essentiel ajoute le pilotage financier et la boîte à outils bailleur.
+                  Un logement gratuit pour démarrer. lokt·one automatise les quittances, active le portail locataire et le partage de documents. lokt·plus ajoute le pilotage financier et la boîte à outils bailleur.
                 </p>
               </div>
 
@@ -321,7 +321,7 @@ export default function TarifsPage() {
                 <span className="mt-1 block text-lg text-[#635bff]">Réellement.</span>
               </h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Tous les plans sont sans engagement. Starter automatise le quotidien ; Essentiel ajoute le pilotage financier et les outils métier.
+                Tous les plans sont sans engagement. lokt·one automatise le quotidien ; lokt·plus ajoute le pilotage financier et les outils métier.
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -330,8 +330,8 @@ export default function TarifsPage() {
                   <tr className="bg-[#f6f9fc] text-slate-900">
                     <th className="px-4 py-3 font-semibold sm:px-5">Fonctionnalité</th>
                     <th className="px-4 py-3 font-semibold">Gratuit</th>
-                    <th className="px-4 py-3 font-semibold">Starter</th>
-                    <th className="px-4 py-3 font-semibold">Essentiel</th>
+                    <th className="px-4 py-3 font-semibold">lokt·one</th>
+                    <th className="px-4 py-3 font-semibold">lokt·plus</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-700">
@@ -374,17 +374,17 @@ export default function TarifsPage() {
             <div data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">Gratuit = gestion manuelle</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Un propriétaire peut tester un vrai usage : créer son logement, rattacher un bail, générer une quittance PDF, tenir ses archives et recevoir quatre alertes essentielles. Le partage avec le locataire et le portail en ligne nécessitent le plan Starter.
+                Un propriétaire peut tester un vrai usage : créer son logement, rattacher un bail, générer une quittance PDF, tenir ses archives et recevoir quatre alertes essentielles. Le partage avec le locataire et le portail en ligne nécessitent le plan lokt·one.
               </p>
             </div>
             <div data-scroll-reveal data-reveal-delay="80" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
-              <p className="text-sm font-semibold text-slate-900">Starter = candidatures + automatisation</p>
+              <p className="text-sm font-semibold text-slate-900">lokt·one = candidatures + automatisation</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le propriétaire paie quand lokt.fr enlève les tâches répétitives et active la relation locataire : validation paiement, quittances auto, relances, alertes avancées, portail locataire, partage des documents et accusés de réception.
               </p>
             </div>
             <div data-scroll-reveal data-reveal-delay="160" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
-              <p className="text-sm font-semibold text-slate-900">Essentiel = pilotage</p>
+              <p className="text-sm font-semibold text-slate-900">lokt·plus = pilotage</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le palier supérieur ajoute la vision investisseur et les outils métier : rentabilité, exports finance, aide à la déclaration, répartitions d’eau, charges, TEOM, régularisation et simulateurs bailleur.
               </p>
@@ -410,9 +410,9 @@ export default function TarifsPage() {
           <section data-scroll-reveal data-reveal-delay="0" className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-sm font-semibold text-amber-950">Pro / Agence arrive ensuite</p>
+                <p className="text-sm font-semibold text-amber-950">lokt·pro arrive ensuite</p>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-amber-900">
-                  L’offre Pro / Agence n’est pas encore commercialisée. Elle sera construite autour de la gestion documentaire : dossiers
+                  L’offre lokt·pro n’est pas encore commercialisée. Elle sera construite autour de la gestion documentaire : dossiers
                   locataires, justificatifs, assurances, diagnostics, accès équipe et traçabilité. Les agences intéressées peuvent déjà nous
                   contacter pour cadrer le besoin.
                 </p>

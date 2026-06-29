@@ -201,9 +201,9 @@ export default function MonCompteAbonnementPage() {
 
   const planLabel =
     plan === "landlord_5"
-      ? "Starter"
+      ? "lokt·one"
       : plan === "landlord_15"
-      ? "Essentiel"
+      ? "lokt·plus"
       : plan === "landlord_unlimited"
       ? "Pro / agence"
       : plan === "calc_full"
