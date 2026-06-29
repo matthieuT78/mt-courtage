@@ -938,6 +938,70 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ─── SCREENSHOTS ─────────────────────────────────────────── */}
+        <section className="border-b border-slate-200 bg-white px-4 py-16 sm:py-20">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-10">
+              <p data-scroll-reveal className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">L'outil en vrai</p>
+              <h2 data-scroll-reveal data-reveal-delay="100" className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
+                Pas un tableur. Un cockpit.
+              </h2>
+              <p data-scroll-reveal data-reveal-delay="200" className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
+                Voici deux vues de l'espace bailleur — les loyers du mois et la finance — telles qu'elles apparaissent dans l'outil.
+              </p>
+            </div>
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Quittances */}
+              <div data-scroll-reveal data-reveal-delay="0">
+                <div className="mb-3 flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-100">
+                    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-emerald-700" aria-hidden><path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd"/></svg>
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">Loyers & quittances</p>
+                    <p className="text-[0.68rem] text-slate-500">Confirmation, PDF, envoi — tout en un clic</p>
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-[1rem] border border-slate-200 shadow-xl shadow-slate-900/10 sm:rounded-[1.25rem]">
+                  <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+                    <span className="h-2 w-2 rounded-full bg-[#ff5f57]" />
+                    <span className="h-2 w-2 rounded-full bg-[#ffbd2e]" />
+                    <span className="h-2 w-2 rounded-full bg-[#28c840]" />
+                    <span className="ml-3 rounded-full bg-slate-200 px-3 py-0.5 text-[0.6rem] font-medium text-slate-500">Loyers du mois</span>
+                  </div>
+                  <img src="/blog/quittance.png" alt="Section loyers et quittances lokt.fr" className="w-full h-auto block" loading="lazy" />
+                </div>
+              </div>
+              {/* Finance */}
+              <div data-scroll-reveal data-reveal-delay="120">
+                <div className="mb-3 flex items-center gap-2.5">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-100">
+                    <svg viewBox="0 0 20 20" className="h-4 w-4 fill-indigo-700" aria-hidden><path d="M15.5 2A1.5 1.5 0 0 0 14 3.5v13a1.5 1.5 0 0 0 3 0v-13A1.5 1.5 0 0 0 15.5 2zM9.5 6A1.5 1.5 0 0 0 8 7.5v9a1.5 1.5 0 0 0 3 0v-9A1.5 1.5 0 0 0 9.5 6zM3.5 10A1.5 1.5 0 0 0 2 11.5v5a1.5 1.5 0 0 0 3 0v-5A1.5 1.5 0 0 0 3.5 10z"/></svg>
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">Finance & trésorerie</p>
+                    <p className="text-[0.68rem] text-slate-500">Cash-flow mensuel, dépenses classées, exports</p>
+                  </div>
+                </div>
+                <div className="overflow-hidden rounded-[1rem] border border-slate-200 shadow-xl shadow-slate-900/10 sm:rounded-[1.25rem]">
+                  <div className="flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-4 py-2.5">
+                    <span className="h-2 w-2 rounded-full bg-[#ff5f57]" />
+                    <span className="h-2 w-2 rounded-full bg-[#ffbd2e]" />
+                    <span className="h-2 w-2 rounded-full bg-[#28c840]" />
+                    <span className="ml-3 rounded-full bg-slate-200 px-3 py-0.5 text-[0.6rem] font-medium text-slate-500">Vue finance</span>
+                  </div>
+                  <img src="/blog/finance.png" alt="Section finance lokt.fr" className="w-full h-auto block" loading="lazy" />
+                </div>
+              </div>
+            </div>
+            <div data-scroll-reveal className="mt-6 flex justify-center">
+              <Link href="/espace-bailleur" className="inline-flex h-11 items-center gap-2 rounded-full bg-slate-950 px-6 text-sm font-semibold text-white hover:bg-slate-800">
+                Ouvrir l'espace bailleur →
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* ─── SIMULATEURS + SCORE ─────────────────────────────────── */}
         <section className="border-b border-slate-200 bg-white px-4 py-16 sm:py-24">
           <div className="mx-auto max-w-7xl">

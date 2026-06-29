@@ -281,69 +281,30 @@ export default function OutilGestionLocativePage() {
               </div>
 
               <div>
-                <div className="relative rounded-[1.5rem] border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/15 shadow-[#635bff]/10 sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-slate-900/20">
-                  <div className="overflow-hidden rounded-[1.25rem] border border-white/60 bg-white sm:rounded-[1.55rem]">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-[#ff5f57] sm:h-2.5 sm:w-2.5" />
-                        <span className="h-2 w-2 rounded-full bg-[#ffbd2e] sm:h-2.5 sm:w-2.5" />
-                        <span className="h-2 w-2 rounded-full bg-[#28c840] sm:h-2.5 sm:w-2.5" />
-                      </div>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.68rem] font-semibold text-slate-600">Cockpit bailleur</span>
-                    </div>
-                    <div className="p-3 sm:p-6">
-                      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Cockpit du mois</p>
-                      <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Tout ce qui compte, au même endroit</h2>
-                      <div className="mt-4 grid gap-2 sm:mt-5 sm:grid-cols-3 sm:gap-3">
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:p-4">
-                          <p className="text-sm font-semibold text-amber-950">2 loyers attendus</p>
-                          <p className="mt-1 text-xs leading-5 text-amber-800">1 complet, 1 incomplet à relancer.</p>
-                        </div>
-                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
-                          <p className="text-sm font-semibold text-emerald-950">Quittances suivies</p>
-                          <p className="mt-1 text-xs leading-5 text-emerald-800">PDF, archive et envoi locataire.</p>
-                        </div>
-                        <div className="rounded-2xl border border-sky-200 bg-sky-50 p-3 sm:p-4">
-                          <p className="text-sm font-semibold text-sky-950">Bail à surveiller</p>
-                          <p className="mt-1 text-xs leading-5 text-sky-800">Renouvellement et état des lieux.</p>
-                        </div>
-                      </div>
-                      <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-[1fr,0.9fr] sm:gap-3">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4">
-                          <p className="text-sm font-semibold text-slate-950">Vue finance</p>
-                          <div className="mt-3 space-y-2 text-xs">
-                            <div className="flex justify-between gap-3"><span className="text-slate-500">Revenus encaissés</span><span className="font-semibold text-emerald-700">2 480 €</span></div>
-                            <div className="flex justify-between gap-3"><span className="text-slate-500">Dépenses classées</span><span className="font-semibold text-red-700">-640 €</span></div>
-                            <div className="flex justify-between gap-3 border-t border-slate-100 pt-2"><span className="text-slate-500">Résultat mensuel</span><span className="font-semibold text-slate-950">1 840 €</span></div>
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
-                          <p className="text-sm font-semibold text-slate-950">Dossier logement</p>
-                          <div className="mt-3 grid gap-2 text-xs text-slate-600">
-                            <span className="rounded-full bg-white px-3 py-1.5">Bail actif</span>
-                            <span className="rounded-full bg-white px-3 py-1.5">Inventaire LMNP</span>
-                            <span className="rounded-full bg-white px-3 py-1.5">État des lieux</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3 grid gap-2 sm:mt-4 sm:gap-3">
-                        <IncludedLine
-                          icon={BuildingOffice2Icon}
-                          title="Un logement actif gratuit"
-                          text="Créez votre premier bien, son bail, son locataire et son suivi sans tableur."
-                        />
-                        <IncludedLine
-                          icon={EnvelopeIcon}
-                          title="Quittances automatiques"
-                          text="Confirmez le paiement, générez le PDF et envoyez-le au locataire."
-                        />
-                        <IncludedLine
-                          icon={ShieldCheckIcon}
-                          title="Suivi métier guidé"
-                          text="L’outil remonte les loyers à encaisser, les baux à surveiller et les documents à garder."
-                        />
+                {/* Screenshot hero — browser frame SaaS */}
+                <div className="relative">
+                  <div className="overflow-hidden rounded-[1.25rem] border border-slate-200 shadow-2xl shadow-slate-900/20 shadow-[#635bff]/10 sm:rounded-[1.75rem]">
+                    <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3">
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#ffbd2e]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+                      <div className="ml-4 flex-1 max-w-[220px] rounded-full bg-slate-200 px-3 py-1 text-[0.62rem] font-medium text-slate-500">
+                        app.lokt.fr/espace-bailleur
                       </div>
                     </div>
+                    <img
+                      src="/blog/acceuil.png"
+                      alt="Tableau de bord espace bailleur lokt.fr — cockpit du mois"
+                      className="w-full h-auto block"
+                      loading="eager"
+                    />
+                  </div>
+                  {/* Badge flottant */}
+                  <div className="absolute -bottom-3 -right-3 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-white px-3 py-2 shadow-lg sm:-bottom-4 sm:-right-4">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100">
+                      <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 fill-emerald-700" aria-hidden><path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd"/></svg>
+                    </span>
+                    <p className="text-xs font-semibold text-slate-950">Gratuit pour 1 logement</p>
                   </div>
                 </div>
               </div>
@@ -378,6 +339,61 @@ export default function OutilGestionLocativePage() {
                   <FeatureCard {...feature} />
                 </div>
               ))}
+            </section>
+
+            {/* ── Screenshots ── */}
+            <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-950 shadow-xl sm:rounded-[2rem]">
+              <div className="border-b border-white/10 px-6 py-7 sm:px-8">
+                <p data-scroll-reveal className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-cyan-400">Aperçu de l'outil</p>
+                <h2 data-scroll-reveal data-reveal-delay="100" className="mt-2 text-2xl font-semibold text-white">Deux vues clés. Le vrai produit.</h2>
+                <p data-scroll-reveal data-reveal-delay="200" className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
+                  Les sections Loyers et Finance, telles qu'elles apparaissent dans votre espace bailleur.
+                </p>
+              </div>
+              <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-2">
+                {/* Quittances screenshot */}
+                <div data-scroll-reveal data-reveal-delay="0">
+                  <div className="mb-4 flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/20">
+                      <svg viewBox="0 0 20 20" className="h-4 w-4 fill-emerald-400" aria-hidden><path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5z" clipRule="evenodd"/></svg>
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Loyers & quittances</p>
+                      <p className="text-xs text-slate-400">Confirmation, PDF automatique, envoi locataire</p>
+                    </div>
+                  </div>
+                  <div className="overflow-hidden rounded-[0.875rem] border border-white/10 shadow-2xl shadow-black/40">
+                    <div className="flex items-center gap-1.5 border-b border-white/10 bg-slate-800 px-4 py-2.5">
+                      <span className="h-2 w-2 rounded-full bg-[#ff5f57]" />
+                      <span className="h-2 w-2 rounded-full bg-[#ffbd2e]" />
+                      <span className="h-2 w-2 rounded-full bg-[#28c840]" />
+                      <span className="ml-3 rounded-full bg-slate-700 px-3 py-0.5 text-[0.6rem] font-medium text-slate-400">Loyers du mois</span>
+                    </div>
+                    <img src="/blog/quittance.png" alt="Section loyers et quittances lokt.fr" className="w-full h-auto block" loading="lazy" />
+                  </div>
+                </div>
+                {/* Finance screenshot */}
+                <div data-scroll-reveal data-reveal-delay="120">
+                  <div className="mb-4 flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#635bff]/30">
+                      <svg viewBox="0 0 20 20" className="h-4 w-4 fill-[#a5b4fc]" aria-hidden><path d="M15.5 2A1.5 1.5 0 0 0 14 3.5v13a1.5 1.5 0 0 0 3 0v-13A1.5 1.5 0 0 0 15.5 2zM9.5 6A1.5 1.5 0 0 0 8 7.5v9a1.5 1.5 0 0 0 3 0v-9A1.5 1.5 0 0 0 9.5 6zM3.5 10A1.5 1.5 0 0 0 2 11.5v5a1.5 1.5 0 0 0 3 0v-5A1.5 1.5 0 0 0 3.5 10z"/></svg>
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Finance & trésorerie</p>
+                      <p className="text-xs text-slate-400">Cash-flow mensuel, dépenses classées, exports CSV</p>
+                    </div>
+                  </div>
+                  <div className="overflow-hidden rounded-[0.875rem] border border-white/10 shadow-2xl shadow-black/40">
+                    <div className="flex items-center gap-1.5 border-b border-white/10 bg-slate-800 px-4 py-2.5">
+                      <span className="h-2 w-2 rounded-full bg-[#ff5f57]" />
+                      <span className="h-2 w-2 rounded-full bg-[#ffbd2e]" />
+                      <span className="h-2 w-2 rounded-full bg-[#28c840]" />
+                      <span className="ml-3 rounded-full bg-slate-700 px-3 py-0.5 text-[0.6rem] font-medium text-slate-400">Vue finance</span>
+                    </div>
+                    <img src="/blog/finance.png" alt="Section finance lokt.fr" className="w-full h-auto block" loading="lazy" />
+                  </div>
+                </div>
+              </div>
             </section>
 
             <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm sm:rounded-[2rem]">
