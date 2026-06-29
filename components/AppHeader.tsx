@@ -35,7 +35,6 @@ const CALCULATOR_LINKS = [
   { href: "/capacite", label: "Capacité d'emprunt", description: "Déterminer votre budget d'achat", icon: BanknotesIcon },
   { href: "/pret-relais", label: "Prêt relais", description: "Acheter avant d'avoir vendu", icon: HomeModernIcon },
   { href: "/investissement", label: "Rentabilité locative", description: "Comparer rendement et cash-flow", icon: ArrowTrendingUpIcon },
-  { href: "/rendement-locatif", label: "Rendement par ville", description: "Lyon, Bordeaux, Toulouse… comparer les marchés", icon: MapPinIcon },
   { href: "/plus-value-vente-immobiliere", label: "Plus-value immobilière", description: "Estimer votre cash net vendeur", icon: ChartBarIcon },
   { href: "/acheter-ou-louer", label: "Acheter ou louer ?", description: "RP, locatif ou attendre — la bonne stratégie", icon: ScaleIcon },
   { href: "/parc-immobilier", label: "Parc immobilier", description: "Consolider vos biens locatifs", icon: BuildingOffice2Icon },
@@ -161,9 +160,14 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                             </div>
                           </div>
                         ))}
-                        <Link href="/guides" className="col-span-2 border-t border-slate-200 pt-3 text-xs font-bold text-slate-950 hover:text-indigo-700">
-                          Voir tous les guides →
-                        </Link>
+                        <div className="col-span-2 flex items-center justify-between border-t border-slate-200 pt-3">
+                          <Link href="/rendement-locatif" className="text-xs font-semibold text-slate-500 hover:text-indigo-700">
+                            Rendement locatif par ville →
+                          </Link>
+                          <Link href="/guides" className="text-xs font-bold text-slate-950 hover:text-indigo-700">
+                            Voir tous les guides →
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>
