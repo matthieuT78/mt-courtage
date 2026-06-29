@@ -1,0 +1,38 @@
+import type { NextApiRequest, NextApiResponse } from "next";
+import { requireApiUser } from "../../../lib/apiAuth";
+import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin non configuré." });
+
+  const auth = await requireApiUser(req);
+  if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
+  const { title, address, rent_amount, charges_amount, property_type, surface_m2, available_at, income_ratio, property_id } = req.body || {};
+
+  if (!title || !rent_amount) {
+    return res.status(400).json({ error: "Titre et loyer obligatoires." });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("rental_listings")
+    .insert({
+      user_id: auth.userId,
+      property_id: property_id || null,
+      title,
+      address: address || null,
+      rent_amount: Number(rent_amount),
+      charges_amount: Number(charges_amount || 0),
+      property_type: property_type || "vide",
+      surface_m2: surface_m2 ? Number(surface_m2) : null,
+      available_at: available_at || null,
+      income_ratio: Number(income_ratio || 3),
+      status: "active",
+    })
+    .select("*")
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  return res.status(200).json({ listing: data });
+}

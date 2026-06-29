@@ -34,6 +34,7 @@ import { SectionInventaire } from "./sections/SectionInventaire";
 import { SectionOutils } from "./sections/SectionOutils";
 import { SectionParametres } from "./sections/SectionParametres";
 import { SectionDocumentsTemplates } from "./sections/SectionDocumentsTemplates";
+import { SectionCandidatures } from "./sections/SectionCandidatures";
 import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing } from "../../lib/permissions";
@@ -693,6 +694,9 @@ export function DashboardShell(props: any) {
 
       case "inventaire":
         return <SectionInventaire userId={userId} properties={properties} />;
+
+      case "candidatures":
+        return <SectionCandidatures userId={userId} onNavigate={setActive} onRefresh={refresh} />;
 
       case "documents":
         return <SectionDocumentsTemplates userId={userId} userEmail={userEmail} properties={properties} tenants={tenants} leases={leases} />;

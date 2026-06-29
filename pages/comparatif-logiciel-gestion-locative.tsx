@@ -22,6 +22,7 @@ const criteria: { label: string; marks: [Mark, Mark, Mark, Mark] }[] = [
   { label: "Relances locataires automatiques",          marks: ["no",      "partial", "yes",     "yes"]     },
   { label: "Baux et documents stockés",                 marks: ["no",      "yes",     "yes",     "yes"]     },
   { label: "Révision IRL automatique",                  marks: ["no",      "partial", "yes",     "yes"]     },
+  { label: "Dossier de candidature en ligne (lien, scoring, RGPD)", marks: ["no", "no", "no", "yes"] },
   { label: "Simulateurs (rentabilité, capacité…)",      marks: ["partial", "no",      "no",      "yes"]     },
   { label: "LMNP : inventaire, charges, suivi",         marks: ["no",      "partial", "partial", "yes"]     },
   { label: "Mise en place en moins de 10 min",          marks: ["yes",     "yes",     "no",      "yes"]     },
@@ -100,7 +101,11 @@ const tools = [
 const faq = [
   {
     q: "Quelle est la différence entre Rentila et lokt.fr ?",
-    a: "Rentila est un logiciel de gestion locative pure : quittances, baux, suivi des loyers. lokt.fr couvre la même gestion quotidienne ET intègre des simulateurs d'aide à la décision (rentabilité, capacité d'emprunt, prêt relais, plus-value). Concrètement : avec lokt.fr, vous analysez un investissement et le gérez depuis le même outil, sans jongler entre plusieurs plateformes.",
+    a: "Rentila est un logiciel de gestion locative pure : quittances, baux, suivi des loyers. lokt.fr couvre la même gestion quotidienne ET intègre des simulateurs d'aide à la décision (rentabilité, capacité d'emprunt, prêt relais, plus-value) ainsi qu'un module de candidature en ligne. Concrètement : avec lokt.fr, vous sélectionnez vos locataires, analysez un investissement et gérez le quotidien depuis le même outil, sans jongler entre plusieurs plateformes.",
+  },
+  {
+    q: "lokt.fr permet-il de recevoir des dossiers de candidature en ligne ?",
+    a: "Oui. À partir du plan Starter (4,90 €/mois), lokt.fr génère un lien dédié pour chaque annonce. Les candidats remplissent leur dossier à leur rythme — le brouillon est sauvegardé automatiquement. Vous recevez les dossiers dans votre tableau de bord avec un scoring règle-par-règle (revenus, stabilité professionnelle, garant) pour comparer les profils objectivement. Les données des candidats non retenus sont supprimées à la clôture de l'annonce, conformément au RGPD. Rentila et Smovin ne proposent pas de module équivalent.",
   },
   {
     q: "Lokt.fr est-il mieux que Smovin ?",

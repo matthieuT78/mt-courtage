@@ -343,6 +343,7 @@ export default function TarifsPage() {
                     ["Finance simple", "Inclus", "Inclus", "Inclus"],
                     ["4 alertes essentielles (retard, quittance, email manquant)", "Inclus", "Inclus", "Inclus"],
                     ["Stockage documentaire sécurisé", "25 Mo", "150 Mo", "500 Mo"],
+                    ["Dossier de candidature en ligne (lien dédié, scoring, RGPD)", "Non inclus", "Inclus", "Inclus"],
                     ["Alertes IRL, fin de bail et EDL", "Non inclus", "Inclus", "Inclus"],
                     ["Validation loyer par email", "Non inclus", "Inclus", "Inclus"],
                     ["Relance bailleur automatique à J+1", "Non inclus", "Inclus", "Inclus"],
@@ -377,7 +378,7 @@ export default function TarifsPage() {
               </p>
             </div>
             <div data-scroll-reveal data-reveal-delay="80" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
-              <p className="text-sm font-semibold text-slate-900">Starter = automatisation</p>
+              <p className="text-sm font-semibold text-slate-900">Starter = candidatures + automatisation</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Le propriétaire paie quand lokt.fr enlève les tâches répétitives et active la relation locataire : validation paiement, quittances auto, relances, alertes avancées, portail locataire, partage des documents et accusés de réception.
               </p>

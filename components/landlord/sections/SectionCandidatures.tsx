@@ -1,0 +1,1155 @@
+import { useEffect, useState } from "react";
+import {
+  ArrowRightIcon,
+  ArrowTopRightOnSquareIcon,
+  CheckCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ClipboardDocumentIcon,
+  DevicePhoneMobileIcon,
+  EnvelopeIcon,
+  LockClosedIcon,
+  MegaphoneIcon,
+  PlusIcon,
+  ShareIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  TrashIcon,
+  UserGroupIcon,
+  UserPlusIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
+import { supabase } from "../../../lib/supabaseClient";
+import { SectionTitle } from "../UiBits";
+import type { LandlordSectionKey } from "../navigation";
+
+type Props = {
+  userId: string;
+  onNavigate?: (section: LandlordSectionKey) => void;
+  onRefresh?: () => void;
+};
+
+type Candidature = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  birth_date: string | null;
+  professional_situation: string | null;
+  employer_name: string | null;
+  net_monthly_income: number | null;
+  has_guarantor: boolean;
+  guarantor_first_name: string | null;
+  guarantor_last_name: string | null;
+  guarantor_income: number | null;
+  docs_identity: boolean;
+  docs_payslips: boolean;
+  docs_tax: boolean;
+  docs_address: boolean;
+  status: string;
+  submitted_at: string | null;
+  landlord_note: string | null;
+};
+
+type Listing = {
+  id: string;
+  token: string;
+  title: string;
+  address: string | null;
+  rent_amount: number;
+  charges_amount: number;
+  property_type: string;
+  surface_m2: number | null;
+  income_ratio: number;
+  status: string;
+  created_at: string;
+  candidatures: Candidature[];
+};
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  submitted: { label: "En attente", color: "bg-amber-100 text-amber-800" },
+  accepted: { label: "Retenu", color: "bg-emerald-100 text-emerald-800" },
+  rejected: { label: "Refusé", color: "bg-red-100 text-red-700" },
+  waitlist: { label: "Liste d'attente", color: "bg-slate-100 text-slate-600" },
+};
+
+const SITUATION_LABELS: Record<string, string> = {
+  CDI: "CDI",
+  CDI_essai: "CDI (essai)",
+  CDD: "CDD",
+  fonctionnaire: "Fonctionnaire",
+  independant: "Indépendant",
+  etudiant: "Étudiant",
+  retraite: "Retraité",
+  autre: "Autre",
+};
+
+const euro = (n: number) =>
+  n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+
+// ── Scoring ──────────────────────────────────────────────────────────────────
+
+const SITUATION_SCORE: Record<string, number> = {
+  fonctionnaire: 30, CDI: 25, retraite: 24,
+  CDI_essai: 18, CDD: 14, independant: 10,
+  etudiant: 6, autre: 5,
+};
+
+function scoreProfile(c: Candidature, listing: Listing): number {
+  const totalRent = listing.rent_amount + listing.charges_amount;
+  const required = totalRent * listing.income_ratio;
+  const income = c.net_monthly_income ?? 0;
+  const ratio = required > 0 ? income / required : 0;
+
+  // Revenus : 40 pts
+  const incomeScore =
+    ratio >= 4 ? 40 : ratio >= 3.5 ? 35 : ratio >= 3 ? 28 :
+    ratio >= 2.5 ? 18 : ratio >= 2 ? 8 : 0;
+
+  // Stabilité pro : 30 pts
+  const situScore = SITUATION_SCORE[c.professional_situation ?? ""] ?? 0;
+
+  // Dossier : 20 pts (5 par doc)
+  const docs = [c.docs_identity, c.docs_payslips, c.docs_tax, c.docs_address];
+  const docsScore = docs.filter(Boolean).length * 5;
+
+  // Garant : 10 pts bonus
+  const guarantorScore = c.has_guarantor ? 10 : 0;
+
+  return Math.min(100, incomeScore + situScore + docsScore + guarantorScore);
+}
+
+function profileBadge(score: number): { label: string; color: string; dot: string } {
+  if (score >= 72) return { label: "Profil solide", color: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-500" };
+  if (score >= 48) return { label: "Profil acceptable", color: "bg-amber-100 text-amber-800", dot: "bg-amber-400" };
+  return { label: "Profil risqué", color: "bg-red-100 text-red-700", dot: "bg-red-400" };
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+async function getHeaders() {
+  const { data } = await supabase!.auth.getSession();
+  const token = data.session?.access_token;
+  return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+}
+
+function formatDate(iso: string | null) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+}
+
+// ── DocsCompleteness ──────────────────────────────────────────────────────────
+
+function DocsCompleteness({ c }: { c: Candidature }) {
+  const docs = [
+    { key: "docs_identity", label: "CNI" },
+    { key: "docs_payslips", label: "Fiche de paie" },
+    { key: "docs_tax", label: "Avis impo." },
+    { key: "docs_address", label: "Justif. domicile" },
+  ];
+  const done = docs.filter((d) => c[d.key as keyof Candidature]).length;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {docs.map((d) => (
+        <span
+          key={d.key}
+          className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium ${
+            c[d.key as keyof Candidature] ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"
+          }`}
+        >
+          {d.label}
+        </span>
+      ))}
+      <span className="text-[0.65rem] text-slate-400 ml-1 self-center">{done}/4</span>
+    </div>
+  );
+}
+
+// ── SynthesisPanel ────────────────────────────────────────────────────────────
+
+function SynthesisPanel({ candidatures, listing }: { candidatures: Candidature[]; listing: Listing }) {
+  const submitted = candidatures.filter((c) => c.status === "submitted");
+  if (submitted.length < 2) return null;
+
+  const scored = submitted
+    .map((c) => ({ c, score: scoreProfile(c, listing) }))
+    .sort((a, b) => b.score - a.score);
+
+  const best = scored[0];
+  const badge = profileBadge(best.score);
+  const totalRent = listing.rent_amount + listing.charges_amount;
+  const ratio = best.c.net_monthly_income
+    ? (best.c.net_monthly_income / (totalRent * listing.income_ratio)).toFixed(1)
+    : null;
+
+  const reasons: string[] = [];
+  if (best.c.professional_situation) {
+    reasons.push(SITUATION_LABELS[best.c.professional_situation] ?? best.c.professional_situation);
+  }
+  if (ratio) reasons.push(`revenus à ${ratio}× le seuil`);
+  const docsCount = [best.c.docs_identity, best.c.docs_payslips, best.c.docs_tax, best.c.docs_address].filter(Boolean).length;
+  if (docsCount === 4) reasons.push("dossier complet");
+  if (best.c.has_guarantor) reasons.push("avec garant");
+
+  const isClose = scored.length >= 2 && scored[0].score - scored[1].score <= 8;
+
+  return (
+    <div className="rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 p-4 space-y-2">
+      <div className="flex items-center gap-2">
+        <SparklesIcon className="h-4 w-4 text-[#635bff]" />
+        <p className="text-xs font-semibold text-[#635bff] uppercase tracking-wider">Analyse lokt</p>
+      </div>
+      <p className="text-sm text-slate-800">
+        Sur <strong>{submitted.length} dossiers</strong>, le profil le plus sécurisé est{" "}
+        <strong>{best.c.first_name} {best.c.last_name}</strong>
+        {reasons.length > 0 && (
+          <> — {reasons.join(", ")}</>
+        )}.
+        {" "}Score : <strong>{best.score}/100</strong>.
+      </p>
+      {isClose && (
+        <p className="text-xs text-slate-500">
+          Attention : {scored[1].c.first_name} {scored[1].c.last_name} est proche ({scored[1].score}/100) — les deux profils sont comparables.
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2 pt-1">
+        {scored.map(({ c, score }, i) => {
+          const b = profileBadge(score);
+          return (
+            <div key={c.id} className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1">
+              <span className="text-xs font-semibold text-slate-500">#{i + 1}</span>
+              <span className="text-xs font-medium text-slate-800">{c.first_name} {c.last_name}</span>
+              <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold ${b.color}`}>{score}/100</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[0.65rem] text-slate-400 border-t border-[#635bff]/10 pt-2 mt-1">
+        L'analyse lokt est un outil d'aide à la décision basé sur les informations <em>déclarées</em> par les candidats. Elle ne constitue pas une garantie de solvabilité ni un avis juridique. La décision finale vous appartient.
+      </p>
+    </div>
+  );
+}
+
+// ── SharePanel ────────────────────────────────────────────────────────────────
+
+function SharePanel({ listing, copied, onCopy }: {
+  listing: Listing;
+  copied: string | null;
+  onCopy: (token: string) => void;
+}) {
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://lokt.fr";
+  const url = `${origin}/candidature/${listing.token}`;
+  const totalRent = listing.rent_amount + listing.charges_amount;
+  const subject = encodeURIComponent(`Dossier de candidature — ${listing.title}`);
+  const body = encodeURIComponent(
+    `Bonjour,\n\nJe vous invite à déposer votre dossier de candidature en ligne pour le logement suivant :\n\n${listing.title} — ${euro(totalRent)} charges comprises / mois\n\nLien de candidature :\n${url}\n\nBonne journée.`
+  );
+  const smsBody = encodeURIComponent(`Candidature pour "${listing.title}" (${euro(totalRent)} cc/mois) : ${url}`);
+
+  const canShare = typeof navigator !== "undefined" && !!navigator.share;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Lien à partager</p>
+          <p className="mt-0.5 truncate font-mono text-sm text-slate-700">{url}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onCopy(listing.token)}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+        >
+          {copied === listing.token ? (
+            <><CheckCircleIcon className="h-4 w-4 text-emerald-500" />Copié !</>
+          ) : (
+            <><ClipboardDocumentIcon className="h-4 w-4" />Copier</>
+          )}
+        </button>
+        <a
+          href={`/candidature/${listing.token}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+        >
+          <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+          Voir
+        </a>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+        <span className="text-xs text-slate-400">Envoyer par :</span>
+        <a
+          href={`mailto:?subject=${subject}&body=${body}`}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+        >
+          <EnvelopeIcon className="h-3.5 w-3.5" />
+          Email
+        </a>
+        <a
+          href={`sms:?body=${smsBody}`}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+        >
+          <DevicePhoneMobileIcon className="h-3.5 w-3.5" />
+          SMS
+        </a>
+        {canShare && (
+          <button
+            type="button"
+            onClick={() => navigator.share({ title: `Candidature — ${listing.title}`, url }).catch(() => {})}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#635bff]/30 bg-[#635bff]/5 px-3 py-1.5 text-xs font-semibold text-[#635bff] hover:bg-[#635bff]/10"
+          >
+            <ShareIcon className="h-3.5 w-3.5" />
+            Partager
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── WorkflowOnboarding ────────────────────────────────────────────────────────
+
+const STEPS = [
+  {
+    n: "01",
+    icon: MegaphoneIcon,
+    title: "Créez une annonce",
+    desc: "Renseignez le logement, le loyer et le ratio de revenus souhaité. Un lien unique est généré instantanément.",
+  },
+  {
+    n: "02",
+    icon: ShareIcon,
+    title: "Partagez le lien",
+    desc: "Envoyez-le par email, SMS ou copiez-le dans votre annonce LeBonCoin. Aucune inscription requise pour les candidats.",
+  },
+  {
+    n: "03",
+    icon: UserGroupIcon,
+    title: "Recevez les dossiers",
+    desc: "Les candidats remplissent leur dossier à leur rythme. Vous voyez qui a postulé et l'état de chaque dossier en temps réel.",
+  },
+  {
+    n: "04",
+    icon: SparklesIcon,
+    title: "Comparez et choisissez",
+    desc: "Chaque profil est scoré automatiquement (revenus, stabilité, garant). Retenez le meilleur et convertissez-le en locataire.",
+  },
+];
+
+function WorkflowOnboarding({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {/* Header */}
+      <div className="border-b border-slate-100 bg-gradient-to-r from-[#635bff]/5 via-white to-white px-6 py-5">
+        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#635bff]">Comment ça marche</p>
+        <h2 className="mt-1 text-lg font-semibold text-slate-950">Dossier de candidature numérique</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Un lien, des dossiers structurés, un scoring automatique — tout en moins de 2 minutes.
+        </p>
+      </div>
+
+      {/* Steps */}
+      <div className="grid gap-0 sm:grid-cols-4">
+        {STEPS.map((step, i) => {
+          const Icon = step.icon;
+          const isLast = i === STEPS.length - 1;
+          return (
+            <div
+              key={step.n}
+              className={`relative flex flex-col gap-3 p-5 ${!isLast ? "border-b border-slate-100 sm:border-b-0 sm:border-r" : ""}`}
+            >
+              {/* Number + connector */}
+              <div className="flex items-center gap-3">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#635bff]/10 text-[0.68rem] font-bold text-[#635bff]">
+                  {step.n}
+                </span>
+                {!isLast && (
+                  <div className="hidden sm:block flex-1 border-t border-dashed border-[#635bff]/20" />
+                )}
+              </div>
+              {/* Icon */}
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
+                <Icon className="h-4.5 w-4.5 text-slate-500" />
+              </div>
+              {/* Text */}
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{step.title}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{step.desc}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer */}
+      <div className="flex flex-col items-start gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          {[
+            { icon: ShieldCheckIcon, label: "RGPD — données supprimées automatiquement" },
+            { icon: CheckCircleIcon, label: "Scoring transparent, sans IA" },
+          ].map(({ icon: Icon, label }) => (
+            <span key={label} className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+              <Icon className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+              {label}
+            </span>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={onStart}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#635bff] px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+        >
+          <PlusIcon className="h-4 w-4" />
+          Créer ma première annonce
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── SectionCandidatures ───────────────────────────────────────────────────────
+
+export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeListing, setActiveListing] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createErr, setCreateErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
+  const [closingId, setClosingId] = useState<string | null>(null);
+  const [closeConfirm, setCloseConfirm] = useState<string | null>(null);
+  const [closeResult, setCloseResult] = useState<{ listingId: string; deleted: number } | null>(null);
+  const [convertingId, setConvertingId] = useState<string | null>(null);
+  const [convertResult, setConvertResult] = useState<{ candidatureId: string; tenantName: string; alreadyExists: boolean } | null>(null);
+
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [expandedArchive, setExpandedArchive] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    title: "", address: "", rent_amount: "", charges_amount: "",
+    property_type: "vide", surface_m2: "", income_ratio: "3",
+  });
+  const setF = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function load() {
+    try {
+      const headers = await getHeaders();
+      const res = await fetch("/api/candidature/list", { headers });
+      const json = await res.json();
+      if (!res.ok) {
+        setLoadErr(json.error ?? "Erreur lors du chargement.");
+      } else if (json.listings) {
+        setListings(json.listings);
+        const firstActive = json.listings.find((l: Listing) => l.status === "active");
+        if (!activeListing && firstActive) setActiveListing(firstActive.id);
+      }
+    } catch (e) {
+      setLoadErr(e instanceof Error ? e.message : "Erreur inattendue.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function createListing() {
+    if (!form.title || !form.rent_amount) { setCreateErr("Titre et loyer requis."); return; }
+    setCreating(true);
+    setCreateErr(null);
+    const headers = await getHeaders();
+    const res = await fetch("/api/candidature/create-listing", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        ...form,
+        rent_amount: parseFloat(form.rent_amount),
+        charges_amount: parseFloat(form.charges_amount || "0"),
+        surface_m2: form.surface_m2 ? parseFloat(form.surface_m2) : null,
+        income_ratio: parseFloat(form.income_ratio || "3"),
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) { setCreateErr(json.error); setCreating(false); return; }
+    setShowCreate(false);
+    setCreating(false);
+    setForm({ title: "", address: "", rent_amount: "", charges_amount: "", property_type: "vide", surface_m2: "", income_ratio: "3" });
+    await load();
+    setActiveListing(json.listing.id);
+  }
+
+  async function closeListing(listing_id: string) {
+    setClosingId(listing_id);
+    setCloseConfirm(null);
+    const headers = await getHeaders();
+    const res = await fetch("/api/candidature/close-listing", {
+      method: "POST", headers,
+      body: JSON.stringify({ listing_id }),
+    });
+    const json = await res.json();
+    setClosingId(null);
+    if (res.ok) {
+      setCloseResult({ listingId: listing_id, deleted: json.deleted_count });
+      await load();
+    }
+  }
+
+  async function convertToTenant(candidature_id: string, tenantName: string) {
+    setConvertingId(candidature_id);
+    const headers = await getHeaders();
+    const res = await fetch("/api/candidature/convert-to-tenant", {
+      method: "POST", headers,
+      body: JSON.stringify({ candidature_id }),
+    });
+    const json = await res.json();
+    setConvertingId(null);
+    if (res.ok) {
+      setConvertResult({ candidatureId: candidature_id, tenantName, alreadyExists: json.already_exists });
+      onRefresh?.();
+    }
+  }
+
+  async function updateStatus(candidature_id: string, status: string) {
+    setUpdatingId(candidature_id);
+    const headers = await getHeaders();
+    await fetch("/api/candidature/update-status", {
+      method: "POST", headers,
+      body: JSON.stringify({ candidature_id, status }),
+    });
+    await load();
+    setUpdatingId(null);
+  }
+
+  function copyLink(token: string) {
+    const url = `${window.location.origin}/candidature/${token}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(token);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  }
+
+  const activeListings = listings.filter((l) => l.status === "active");
+  const closedListings = listings.filter((l) => l.status !== "active");
+  const currentListing = listings.find((l) => l.id === activeListing);
+  const isClosed = currentListing?.status !== "active";
+  const submitted = currentListing?.candidatures.filter((c) => c.status === "submitted") ?? [];
+  const others = currentListing?.candidatures.filter((c) => c.status !== "submitted") ?? [];
+
+  const inp = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#635bff] focus:outline-none focus:ring-1 focus:ring-[#635bff]/30";
+
+  if (loading) {
+    return <div className="flex items-center justify-center py-12"><div className="h-6 w-6 animate-spin rounded-full border-4 border-slate-200 border-t-[#635bff]" /></div>;
+  }
+
+  if (loadErr) {
+    return (
+      <div className="space-y-5">
+        <SectionTitle title="Dossiers de candidature" desc="Partagez un lien, les candidats déposent leur dossier en ligne et joignent leurs justificatifs." />
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <strong>Erreur de chargement :</strong> {loadErr}
+          {loadErr.includes("does not exist") && (
+            <p className="mt-1 text-xs text-red-500">La migration SQL n'a pas encore été appliquée dans Supabase. Exécutez le fichier <code>supabase/migrations/20260628100000_candidatures.sql</code> dans l'éditeur SQL de votre projet Supabase.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-3">
+        <SectionTitle
+          title="Dossiers de candidature"
+          desc="Partagez un lien, les candidats déposent leur dossier en ligne et joignent leurs justificatifs."
+        />
+        <button
+          type="button"
+          onClick={() => setShowCreate(true)}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#635bff] px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+        >
+          <PlusIcon className="h-4 w-4" />
+          Nouvelle annonce
+        </button>
+      </div>
+
+      {/* Formulaire de création */}
+      {showCreate && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+          <h2 className="text-base font-semibold text-slate-950">Créer une annonce de candidature</h2>
+          {createErr && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{createErr}</p>}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1 text-xs font-semibold text-slate-700 sm:col-span-2">
+              Titre de l'annonce
+              <input className={inp} value={form.title} onChange={(e) => setF("title", e.target.value)} placeholder="Studio 25m² Paris 11e — Disponible juillet 2026" />
+            </label>
+            <label className="block space-y-1 text-xs font-semibold text-slate-700 sm:col-span-2">
+              Adresse
+              <input className={inp} value={form.address} onChange={(e) => setF("address", e.target.value)} placeholder="12 rue des Lilas, 75011 Paris" />
+            </label>
+            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+              Loyer HC (€)
+              <input type="number" className={inp} value={form.rent_amount} onChange={(e) => setF("rent_amount", e.target.value)} placeholder="900" />
+            </label>
+            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+              Charges (€)
+              <input type="number" className={inp} value={form.charges_amount} onChange={(e) => setF("charges_amount", e.target.value)} placeholder="50" />
+            </label>
+            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+              Type
+              <select className={inp} value={form.property_type} onChange={(e) => setF("property_type", e.target.value)}>
+                <option value="vide">Location vide</option>
+                <option value="meuble">Location meublée</option>
+              </select>
+            </label>
+            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+              Surface (m²)
+              <input type="number" className={inp} value={form.surface_m2} onChange={(e) => setF("surface_m2", e.target.value)} placeholder="25" />
+            </label>
+            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+              Ratio revenus requis
+              <select className={inp} value={form.income_ratio} onChange={(e) => setF("income_ratio", e.target.value)}>
+                <option value="2.5">2,5× le loyer CC</option>
+                <option value="3">3× le loyer CC (standard)</option>
+                <option value="3.5">3,5× le loyer CC</option>
+                <option value="4">4× le loyer CC</option>
+              </select>
+            </label>
+          </div>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setShowCreate(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+              Annuler
+            </button>
+            <button type="button" onClick={createListing} disabled={creating} className="rounded-xl bg-[#635bff] px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
+              {creating ? "Création…" : "Créer l'annonce"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Onboarding : visible uniquement sans annonce active ── */}
+      {activeListings.length === 0 && !showCreate && (
+        <WorkflowOnboarding onStart={() => setShowCreate(true)} />
+      )}
+
+      {/* ── Annonces actives : 2 colonnes ── */}
+      {activeListings.length > 0 && (
+        <div className="grid gap-5 lg:grid-cols-[280px,1fr]">
+          {/* Liste */}
+          <div className="space-y-2">
+            {activeListings.map((l) => {
+              const total = l.candidatures.length;
+              const waiting = l.candidatures.filter((c) => c.status === "submitted").length;
+              return (
+                <button
+                  key={l.id}
+                  type="button"
+                  onClick={() => setActiveListing(l.id)}
+                  className={`w-full rounded-xl border p-4 text-left transition ${
+                    l.id === activeListing
+                      ? "border-[#635bff]/40 bg-[#635bff]/5 shadow-sm"
+                      : "border-slate-200 bg-white hover:border-[#635bff]/20"
+                  }`}
+                >
+                  <p className="truncate text-sm font-semibold text-slate-950">{l.title}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    {euro(l.rent_amount + l.charges_amount)} cc · {l.property_type === "meuble" ? "Meublé" : "Vide"}
+                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-slate-500">{total} candidat{total !== 1 ? "s" : ""}</span>
+                    {waiting > 0 && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-semibold text-amber-700">
+                        {waiting} à traiter
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Détail */}
+          {currentListing ? (
+            <div className="space-y-4">
+
+              {/* Bannière clôture réussie */}
+              {closeResult?.listingId === currentListing.id && (
+                <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                  <CheckCircleIcon className="h-5 w-5 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Annonce clôturée</p>
+                    <p className="text-xs mt-0.5">
+                      {closeResult.deleted} dossier{closeResult.deleted > 1 ? "s" : ""} supprimé{closeResult.deleted > 1 ? "s" : ""} (refusés + brouillons) — données personnelles effacées conformément au RGPD.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Bannière conversion locataire réussie */}
+              {convertResult && (
+                <div className="flex items-start gap-3 rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 p-4 text-sm">
+                  <UserPlusIcon className="h-5 w-5 shrink-0 mt-0.5 text-[#635bff]" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-slate-900">
+                      {convertResult.alreadyExists
+                        ? `${convertResult.tenantName} existe déjà dans vos locataires`
+                        : `${convertResult.tenantName} ajouté à vos locataires`}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">Créez maintenant le bail pour finaliser la location.</p>
+                    <button
+                      type="button"
+                      onClick={() => { setConvertResult(null); onNavigate?.("baux"); }}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#635bff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+                    >
+                      Créer le bail <ArrowRightIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Modal de confirmation clôture */}
+              {closeConfirm === currentListing.id && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <TrashIcon className="h-5 w-5 shrink-0 text-red-500 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-red-900">Clôturer cette annonce ?</p>
+                      <p className="text-xs text-red-700 mt-1">
+                        Cette action supprimera définitivement les données personnelles de tous les candidats <strong>refusés, en liste d'attente et brouillons</strong>. Les candidats retenus ne sont pas affectés. Action irréversible.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCloseConfirm(null)}
+                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      disabled={closingId === currentListing.id}
+                      onClick={() => closeListing(currentListing.id)}
+                      className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {closingId === currentListing.id ? "Suppression…" : "Confirmer la clôture"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isClosed ? (
+                /* ── Vue annonce clôturée ── */
+                <>
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                    <LockClosedIcon className="h-4 w-4 shrink-0" />
+                    <div>
+                      <span className="font-semibold text-slate-700">Annonce clôturée</span>
+                      <span className="ml-2">· Les données des candidats non retenus ont été supprimées (RGPD).</span>
+                    </div>
+                  </div>
+                  {others.filter((c) => c.status === "accepted").length > 0 && (
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                      <div className="border-b border-slate-100 px-5 py-3">
+                        <p className="text-sm font-semibold text-slate-950">Candidat retenu</p>
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {others.filter((c) => c.status === "accepted").map((c) => (
+                          <CandidatureRow
+                            key={c.id}
+                            c={c}
+                            listing={currentListing}
+                            updating={false}
+                            converting={convertingId === c.id}
+                            onUpdateStatus={() => {}}
+                            onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim())}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {currentListing.candidatures.length === 0 && (
+                    <p className="text-xs text-slate-400 text-center py-4">Aucun dossier conservé.</p>
+                  )}
+                </>
+              ) : (
+                /* ── Vue annonce active ── */
+                <>
+                  <SharePanel listing={currentListing} copied={copied} onCopy={copyLink} />
+
+                  <SynthesisPanel candidatures={currentListing.candidatures} listing={currentListing} />
+
+                  {submitted.length > 0 && (
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                      <div className="border-b border-slate-100 px-5 py-3">
+                        <p className="text-sm font-semibold text-slate-950">À traiter ({submitted.length})</p>
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {submitted
+                          .slice()
+                          .sort((a, b) => scoreProfile(b, currentListing) - scoreProfile(a, currentListing))
+                          .map((c) => (
+                            <CandidatureRow
+                              key={c.id}
+                              c={c}
+                              listing={currentListing}
+                              updating={updatingId === c.id}
+                              converting={convertingId === c.id}
+                              onUpdateStatus={(status) => updateStatus(c.id, status)}
+                              onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim())}
+                            />
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {others.length > 0 && (
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                      <div className="border-b border-slate-100 px-5 py-3">
+                        <p className="text-sm font-semibold text-slate-950">Traités ({others.length})</p>
+                      </div>
+                      <div className="divide-y divide-slate-100">
+                        {others.map((c) => (
+                          <CandidatureRow
+                            key={c.id}
+                            c={c}
+                            listing={currentListing}
+                            updating={updatingId === c.id}
+                            converting={convertingId === c.id}
+                            onUpdateStatus={(status) => updateStatus(c.id, status)}
+                            onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim())}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {currentListing.candidatures.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+                      <p className="text-sm text-slate-400">Aucun dossier reçu pour l'instant.</p>
+                      <p className="mt-1 text-xs text-slate-400">Partagez le lien ci-dessus aux candidats.</p>
+                    </div>
+                  )}
+
+                  {closeConfirm !== currentListing.id && closeResult?.listingId !== currentListing.id && (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setCloseConfirm(currentListing.id)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition"
+                      >
+                        <LockClosedIcon className="h-3.5 w-3.5" />
+                        Clôturer l'annonce et supprimer les données
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center">
+              <UserGroupIcon className="h-8 w-8 text-slate-200" />
+              <p className="mt-3 text-sm font-medium text-slate-400">Sélectionnez une annonce</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Archives : accordion séparé, détail inline ── */}
+      {closedListings.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            className="flex w-full items-center justify-between px-5 py-3.5 text-sm font-semibold text-slate-500 hover:bg-slate-50 transition"
+          >
+            <span className="flex items-center gap-2">
+              <LockClosedIcon className="h-4 w-4 text-slate-400" />
+              Annonces clôturées ({closedListings.length})
+            </span>
+            {showArchived ? <ChevronUpIcon className="h-4 w-4" /> : <ChevronDownIcon className="h-4 w-4" />}
+          </button>
+
+          {showArchived && (
+            <div className="divide-y divide-slate-100 border-t border-slate-100">
+              {closedListings.map((l) => {
+                const isOpen = expandedArchive === l.id;
+                const accepted = l.candidatures.filter((c) => c.status === "accepted");
+                return (
+                  <div key={l.id}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedArchive(isOpen ? null : l.id)}
+                      className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-slate-50 transition"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700">{l.title}</p>
+                        <p className="text-xs text-slate-400">
+                          {euro(l.rent_amount + l.charges_amount)} cc · {l.property_type === "meuble" ? "Meublé" : "Vide"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {accepted.length > 0 && (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-700">
+                            {accepted.length} retenu{accepted.length > 1 ? "s" : ""}
+                          </span>
+                        )}
+                        {isOpen ? <ChevronUpIcon className="h-4 w-4 text-slate-400" /> : <ChevronDownIcon className="h-4 w-4 text-slate-400" />}
+                      </div>
+                    </button>
+
+                    {isOpen && (
+                      <div className="border-t border-slate-100 bg-slate-50/60 px-5 pb-5 pt-4 space-y-4">
+                        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+                          <LockClosedIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                          <span>
+                            <span className="font-semibold text-slate-700">Annonce clôturée</span>
+                            {" · "}Les données des candidats non retenus ont été supprimées (RGPD).
+                          </span>
+                        </div>
+
+                        {accepted.length > 0 ? (
+                          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                            <div className="border-b border-slate-100 px-5 py-3">
+                              <p className="text-sm font-semibold text-slate-950">
+                                Candidat{accepted.length > 1 ? "s" : ""} retenu{accepted.length > 1 ? "s" : ""}
+                              </p>
+                            </div>
+                            <div className="divide-y divide-slate-100">
+                              {accepted.map((c) => (
+                                <CandidatureRow
+                                  key={c.id}
+                                  c={c}
+                                  listing={l}
+                                  updating={false}
+                                  converting={convertingId === c.id}
+                                  onUpdateStatus={() => {}}
+                                  onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim())}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 text-center py-2">Aucun dossier conservé.</p>
+                        )}
+
+                        {convertResult && accepted.some((c) => c.id === convertResult.candidatureId) && (
+                          <div className="flex items-start gap-3 rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 p-4 text-sm">
+                            <UserPlusIcon className="h-5 w-5 shrink-0 mt-0.5 text-[#635bff]" />
+                            <div className="flex-1">
+                              <p className="font-semibold text-slate-900">
+                                {convertResult.alreadyExists
+                                  ? `${convertResult.tenantName} existe déjà dans vos locataires`
+                                  : `${convertResult.tenantName} ajouté à vos locataires`}
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => { setConvertResult(null); onNavigate?.("baux"); }}
+                                className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#635bff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+                              >
+                                Créer le bail <ArrowRightIcon className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── CandidatureRow ────────────────────────────────────────────────────────────
+
+function CandidatureRow({ c, listing, updating, converting, onUpdateStatus, onConvert }: {
+  c: Candidature;
+  listing: Listing;
+  updating: boolean;
+  converting: boolean;
+  onUpdateStatus: (status: string) => void;
+  onConvert: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const totalRent = listing.rent_amount + listing.charges_amount;
+  const requiredIncome = totalRent * listing.income_ratio;
+  const income = c.net_monthly_income ?? 0;
+  const isEligible = income >= requiredIncome;
+  const ratio = income > 0 ? (income / requiredIncome).toFixed(1) : null;
+  const statusInfo = STATUS_LABELS[c.status] ?? { label: c.status, color: "bg-slate-100 text-slate-500" };
+  const score = scoreProfile(c, listing);
+  const badge = profileBadge(score);
+
+  return (
+    <div className="px-5 py-4 space-y-3">
+      {/* Ligne principale */}
+      <div className="flex items-start gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-slate-950">
+              {c.first_name} {c.last_name}
+            </p>
+            <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${statusInfo.color}`}>
+              {statusInfo.label}
+            </span>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${badge.color}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
+              {badge.label} · {score}/100
+            </span>
+            {c.has_guarantor && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[0.65rem] font-semibold text-indigo-700">
+                <ShieldCheckIcon className="h-3 w-3" />
+                Avec garant
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {c.email}
+            {c.professional_situation && ` · ${SITUATION_LABELS[c.professional_situation] ?? c.professional_situation}`}
+            {c.employer_name && ` — ${c.employer_name}`}
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className={`text-sm font-semibold ${isEligible ? "text-emerald-700" : "text-red-600"}`}>
+            {income > 0 ? `${income.toLocaleString("fr-FR")} €/mois` : "—"}
+          </p>
+          <p className="text-[0.65rem] text-slate-400">
+            {isEligible
+              ? `✓ ${ratio}× le loyer requis`
+              : `✗ requis ${Math.round(requiredIncome)} €`}
+          </p>
+        </div>
+      </div>
+
+      <DocsCompleteness c={c} />
+
+      {/* Détails dépliables */}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600"
+      >
+        {expanded ? <ChevronUpIcon className="h-3.5 w-3.5" /> : <ChevronDownIcon className="h-3.5 w-3.5" />}
+        {expanded ? "Moins de détails" : "Plus de détails"}
+      </button>
+
+      {expanded && (
+        <div className="grid gap-x-6 gap-y-1.5 rounded-xl bg-slate-50 px-4 py-3 text-xs sm:grid-cols-2">
+          {c.phone && <Detail label="Téléphone" value={c.phone} />}
+          {c.birth_date && <Detail label="Date de naissance" value={formatDate(c.birth_date) ?? ""} />}
+          {c.submitted_at && <Detail label="Déposé le" value={formatDate(c.submitted_at) ?? ""} />}
+          {c.has_guarantor && (
+            <>
+              <Detail label="Garant" value={[c.guarantor_first_name, c.guarantor_last_name].filter(Boolean).join(" ") || "—"} />
+              {c.guarantor_income && <Detail label="Revenus garant" value={`${c.guarantor_income.toLocaleString("fr-FR")} €/mois`} />}
+            </>
+          )}
+          <div className="sm:col-span-2 mt-1 pt-2 border-t border-slate-200">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400 mb-1">Détail du score</p>
+            <ScoreBreakdown c={c} listing={listing} />
+          </div>
+        </div>
+      )}
+
+      {/* Actions */}
+      {c.status === "submitted" && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={updating}
+            onClick={() => onUpdateStatus("accepted")}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+          >
+            <CheckCircleIcon className="h-3.5 w-3.5" />
+            Retenir
+          </button>
+          <button
+            type="button"
+            disabled={updating}
+            onClick={() => onUpdateStatus("waitlist")}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+          >
+            Liste d'attente
+          </button>
+          <button
+            type="button"
+            disabled={updating}
+            onClick={() => onUpdateStatus("rejected")}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
+          >
+            <XCircleIcon className="h-3.5 w-3.5" />
+            Refuser
+          </button>
+        </div>
+      )}
+
+      {c.status === "accepted" && (
+        <button
+          type="button"
+          disabled={converting}
+          onClick={onConvert}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#635bff]/30 bg-[#635bff]/5 px-3 py-1.5 text-xs font-semibold text-[#635bff] hover:bg-[#635bff]/10 disabled:opacity-50"
+        >
+          <UserPlusIcon className="h-3.5 w-3.5" />
+          {converting ? "Création…" : "Convertir en locataire"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span className="text-slate-400">{label} : </span>
+      <span className="font-medium text-slate-700">{value}</span>
+    </div>
+  );
+}
+
+function ScoreBreakdown({ c, listing }: { c: Candidature; listing: Listing }) {
+  const totalRent = listing.rent_amount + listing.charges_amount;
+  const required = totalRent * listing.income_ratio;
+  const income = c.net_monthly_income ?? 0;
+  const ratio = required > 0 ? income / required : 0;
+
+  const incomeScore = ratio >= 4 ? 40 : ratio >= 3.5 ? 35 : ratio >= 3 ? 28 : ratio >= 2.5 ? 18 : ratio >= 2 ? 8 : 0;
+  const situScore = SITUATION_SCORE[c.professional_situation ?? ""] ?? 0;
+  const docsScore = [c.docs_identity, c.docs_payslips, c.docs_tax, c.docs_address].filter(Boolean).length * 5;
+  const guarantorScore = c.has_guarantor ? 10 : 0;
+
+  const items = [
+    { label: "Revenus", score: incomeScore, max: 40 },
+    { label: "Stabilité pro", score: situScore, max: 30 },
+    { label: "Dossier", score: docsScore, max: 20 },
+    { label: "Garant", score: guarantorScore, max: 10 },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1">
+      {items.map(({ label, score, max }) => (
+        <div key={label} className="flex items-center gap-1.5">
+          <span className="text-slate-500">{label}</span>
+          <span className="font-semibold text-slate-800">{score}/{max}</span>
+          <div className="h-1.5 w-12 rounded-full bg-slate-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[#635bff]"
+              style={{ width: `${(score / max) * 100}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

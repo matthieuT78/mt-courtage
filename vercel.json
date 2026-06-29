@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/anonymize-leads",
       "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/cron/purge-candidature-drafts",
+      "schedule": "0 3 * * *"
     }
   ]
 }

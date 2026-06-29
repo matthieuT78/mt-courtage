@@ -121,7 +121,7 @@ export default function AProposPage() {
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[
               ["Décider", "Capacité d’emprunt, rentabilité, prêt relais, plus-value et vision du parc : les calculettes donnent un ordre de grandeur avant de s’engager."],
-              ["Gérer", "Biens, baux, locataires, loyers, quittances, états des lieux, inventaire, finance et historique restent reliés au bon logement."],
+              ["Gérer", "Biens, baux, locataires, loyers, quittances, candidatures, états des lieux, inventaire, finance et historique restent reliés au bon logement."],
               ["Documenter", "Les événements importants du bail doivent laisser une trace : paiement, relance, travaux, départ, dépôt de garantie et justificatifs."],
               ["Se former", "25 articles de blog et 8 guides pratiques couvrent la fiscalité (LMNP, régime réel, IRL), les contrats, les diagnostics et les procédures du quotidien."],
             ].map(([heading, text], index) => (
@@ -159,7 +159,7 @@ export default function AProposPage() {
                   {
                     title: "Un produit qui suit la vie réelle du bail",
                     text:
-                      "Le tableau de bord ne doit pas seulement afficher des données. Il doit montrer ce qui mérite attention : paiement manquant, quittance bloquée, bail à clôturer, dépôt de garantie à traiter ou document à conserver.",
+                      "Le tableau de bord ne doit pas seulement afficher des données. Il doit montrer ce qui mérite attention : dossiers de candidature reçus, paiement manquant, quittance bloquée, bail à clôturer, dépôt de garantie à traiter ou document à conserver.",
                     icon: CheckCircleIcon,
                   },
                 ].map(({ title: cardTitle, text, icon: Icon }) => (

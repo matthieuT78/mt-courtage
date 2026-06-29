@@ -30,6 +30,7 @@ export const PAID_BILLING_PLANS: PaidBillingPlan[] = [
     audience: "Automatisation quittances",
     features: [
       "Tout le plan Gratuit",
+      "Dossier de candidature en ligne : lien dédié, scoring automatique, suppression RGPD",
       "Quittances PDF envoyées automatiquement au locataire",
       "Validation du paiement par email avant génération",
       "Toutes les alertes métier : échéances, IRL, baux et états des lieux",

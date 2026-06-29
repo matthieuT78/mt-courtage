@@ -8,6 +8,7 @@ import {
   ClipboardDocumentCheckIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
+  FolderOpenIcon,
   HomeIcon,
   ReceiptPercentIcon,
   Squares2X2Icon,
@@ -29,6 +30,7 @@ export type LandlordSectionKey =
   | "outils"
   | "inventaire"
   | "documents"
+  | "candidatures"
   | "parametres";
 
 export type LandlordNavItem = {
@@ -40,6 +42,7 @@ export type LandlordNavItem = {
 
 export const DEFAULT_LANDLORD_NAV_ORDER: LandlordSectionKey[] = [
   "dashboard",
+  "candidatures",
   "locataires",
   "biens",
   "baux",
@@ -57,6 +60,7 @@ export const DEFAULT_LANDLORD_NAV_ORDER: LandlordSectionKey[] = [
 
 export const LANDLORD_NAV_ITEMS: Record<LandlordSectionKey, LandlordNavItem> = {
   dashboard: { key: "dashboard", label: "Accueil", icon: Squares2X2Icon },
+  candidatures: { key: "candidatures", label: "Candidatures", icon: FolderOpenIcon },
   locataires: { key: "locataires", label: "Locataires", icon: UserGroupIcon },
   biens: { key: "biens", label: "Logements", shortLabel: "Biens", icon: HomeIcon },
   baux: { key: "baux", label: "Baux", shortLabel: "Baux", icon: DocumentTextIcon },

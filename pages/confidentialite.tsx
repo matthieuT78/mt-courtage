@@ -59,6 +59,7 @@ export default function ConfidentialitePage() {
                   <li>données de simulation : revenus, charges, montants, hypothèses de financement, prix, loyers, fiscalité estimée ;</li>
                   <li>données bailleur : biens, adresses ou localisations, surfaces, montants de loyers, charges, dépôts de garantie ;</li>
                   <li>données locataires et contacts : noms, emails, téléphones, informations utiles à la gestion locative ;</li>
+                  <li>données de candidature locative : informations déclarées par les candidats à un logement (prénom, nom, email, téléphone, date de naissance, situation professionnelle, revenus nets mensuels) et pièces justificatives jointes (CNI, fiche de paie, avis d’imposition, justificatif de domicile) — collectées uniquement dans le cadre d’une annonce active et transmises au bailleur concerné ;</li>
                   <li>données de documents : quittances, états des lieux, inventaires, fichiers PDF, photos ou notes ajoutées par l’utilisateur ;</li>
                   <li>données financières de gestion : recettes, dépenses, exports, périodes analysées ;</li>
                   <li>données d’emailing opérationnel : destinataires, objet, statut d’envoi, erreurs techniques ;</li>
@@ -75,6 +76,7 @@ export default function ConfidentialitePage() {
                   <li>exécuter les abonnements, paiements, limites d’usage et facturation ;</li>
                   <li>envoyer les emails opérationnels demandés ou configurés : quittances, alertes, rappels, confirmations ;</li>
                   <li>assurer le support, la maintenance, la sécurité et la prévention des abus ;</li>
+                  <li>permettre aux bailleurs de recevoir et d’analyser les dossiers de candidature locative via un lien dédié, sans conservation prolongée des données des candidats non retenus ;</li>
                   <li>améliorer le produit à partir de statistiques agrégées ou anonymisées lorsque c’est possible.</li>
                 </ul>
                 <p>
@@ -133,6 +135,9 @@ export default function ConfidentialitePage() {
                   <li>
                     <strong>Données bailleur et documents :</strong> tant que le compte est actif ou jusqu’à suppression demandée par l’utilisateur. Les données
                     relatives aux locataires et baux peuvent être conservées jusqu’à 3 ans après la fin du bail à des fins de preuve.
+                  </li>
+                  <li>
+                    <strong>Données de candidature locative :</strong> les brouillons non soumis sont supprimés automatiquement après 30 jours d’inactivité. Les dossiers refusés, en liste d’attente ou abandonnés sont supprimés par le bailleur à la clôture de l’annonce. Le dossier du candidat retenu est conservé tant que le bail correspondant est actif, puis soumis aux mêmes règles que les données de gestion locative.
                   </li>
                   <li>
                     <strong>Données de paiement et facturation :</strong> 10 ans à compter de l’émission de la facture, conformément aux obligations comptables légales
