@@ -58,6 +58,13 @@ export const TEMPLATES: Template[] = [
     status: "available",
     seoPath: "/modele-restitution-depot-garantie",
   },
+  {
+    id: "signature-electronique",
+    title: "Signature électronique du bail",
+    subtitle: "Envoi par email, signature en ligne des deux parties, PDF signé conservé",
+    category: "bail",
+    status: "soon",
+  },
 ];
 
 const CATEGORY_LABEL: Record<Template["category"], string> = {

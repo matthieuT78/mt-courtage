@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   ArrowRightIcon,
   ArrowTopRightOnSquareIcon,
+  BookOpenIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -783,6 +784,24 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
                   <SharePanel listing={currentListing} copied={copied} onCopy={copyLink} />
 
                   <SynthesisPanel candidatures={currentListing.candidatures} listing={currentListing} />
+
+                  {submitted.length > 0 && (
+                    <a
+                      href="/guides/choisir-son-locataire"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm transition hover:border-indigo-200 hover:bg-indigo-100"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-100">
+                        <BookOpenIcon className="h-4 w-4 text-indigo-600" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-indigo-900">Guide : choisir son locataire</p>
+                        <p className="text-xs text-indigo-500">Critères légaux, vérification des pièces, taux d'effort, garant, GLI — lire le guide</p>
+                      </div>
+                      <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0 text-indigo-400" />
+                    </a>
+                  )}
 
                   {submitted.length > 0 && (
                     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">

@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     professional_situation, employer_name, net_monthly_income,
     has_guarantor, guarantor_first_name, guarantor_last_name,
     guarantor_email, guarantor_situation, guarantor_income,
-    docs_identity, docs_payslips, docs_tax, docs_address,
+    docs_identity, docs_payslip_1, docs_payslip_2, docs_payslip_3, docs_tax, docs_address,
   } = req.body || {};
 
   if (!listing_token) return res.status(400).json({ error: "listing_token requis." });
@@ -44,7 +44,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     guarantor_situation: guarantor_situation || null,
     guarantor_income: guarantor_income ? Number(guarantor_income) : null,
     docs_identity: Boolean(docs_identity),
-    docs_payslips: Boolean(docs_payslips),
+    docs_payslip_1: Boolean(docs_payslip_1),
+    docs_payslip_2: Boolean(docs_payslip_2),
+    docs_payslip_3: Boolean(docs_payslip_3),
+    docs_payslips: Boolean(docs_payslip_1) || Boolean(docs_payslip_2) || Boolean(docs_payslip_3),
     docs_tax: Boolean(docs_tax),
     docs_address: Boolean(docs_address),
     updated_at: new Date().toISOString(),

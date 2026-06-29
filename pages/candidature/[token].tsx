@@ -43,7 +43,7 @@ const STORAGE_KEY = (listingToken: string) => `lokt_draft_${listingToken}`;
 const REQUIRED_FOR_SUBMIT = [
   "first_name", "last_name", "email", "phone", "birth_date",
   "professional_situation", "net_monthly_income",
-  "docs_identity", "docs_payslips",
+  "docs_identity", "docs_payslip_1",
 ] as const;
 
 const REQUIRED_LABELS: Record<string, string> = {
@@ -55,8 +55,16 @@ const REQUIRED_LABELS: Record<string, string> = {
   professional_situation: "Situation professionnelle",
   net_monthly_income: "Revenus nets",
   docs_identity: "Pièce d'identité",
-  docs_payslips: "Fiche de paie",
+  docs_payslip_1: "Fiche de paie (mois récent)",
 };
+
+function payslipMonths(): [string, string, string] {
+  const now = new Date();
+  return [1, 2, 3].map((n) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - n, 1);
+    return d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }) as [string, string, string];
+}
 
 function isFilled(form: Record<string, any>, key: string): boolean {
   const v = form[key];
@@ -87,7 +95,9 @@ export default function CandidaturePage() {
     has_guarantor: false,
     guarantor_first_name: "", guarantor_last_name: "", guarantor_email: "",
     guarantor_situation: "", guarantor_income: "",
-    docs_identity: false, docs_payslips: false, docs_tax: false, docs_address: false,
+    docs_identity: false,
+    docs_payslip_1: false, docs_payslip_2: false, docs_payslip_3: false,
+    docs_tax: false, docs_address: false,
     consent: false,
   });
 
@@ -131,7 +141,9 @@ export default function CandidaturePage() {
             guarantor_situation: c.guarantor_situation ?? "",
             guarantor_income: c.guarantor_income != null ? String(c.guarantor_income) : "",
             docs_identity: c.docs_identity ?? false,
-            docs_payslips: c.docs_payslips ?? false,
+            docs_payslip_1: c.docs_payslip_1 ?? (c.docs_payslips ?? false),
+            docs_payslip_2: c.docs_payslip_2 ?? false,
+            docs_payslip_3: c.docs_payslip_3 ?? false,
             docs_tax: c.docs_tax ?? false,
             docs_address: c.docs_address ?? false,
             consent: false,
@@ -400,10 +412,11 @@ export default function CandidaturePage() {
                 <p className="mt-1 text-sm text-slate-500">
                   Joignez les documents demandés. Ils sont transmis au bailleur pour vérification.
                 </p>
+
+                {/* Docs fixes */}
                 <div className="mt-4 grid gap-3">
                   {[
                     { field: "docs_identity", label: "Pièce d'identité", hint: "CNI recto-verso ou passeport", required: true },
-                    { field: "docs_payslips", label: "Dernière fiche de paie", hint: "PDF ou photo lisible", required: true },
                     { field: "docs_tax", label: "Avis d'imposition", hint: "Dernier avis disponible (impots.gouv.fr)", required: false },
                     { field: "docs_address", label: "Justificatif de domicile", hint: "Facture ou quittance de moins de 3 mois", required: false },
                   ].map(({ label, hint, field, required }) => {
@@ -415,17 +428,10 @@ export default function CandidaturePage() {
                           uploaded ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:border-[#635bff]/30"
                         }`}
                       >
-                        <input
-                          type="file"
-                          className="sr-only"
-                          accept="image/*,application/pdf"
-                          onChange={(e) => { if (e.target.files?.[0]) set(field, true); }}
-                        />
+                        <input type="file" className="sr-only" accept="image/*,application/pdf"
+                          onChange={(e) => { if (e.target.files?.[0]) set(field, true); }} />
                         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${uploaded ? "bg-emerald-100" : "bg-slate-100"}`}>
-                          {uploaded
-                            ? <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
-                            : <DocumentArrowUpIcon className="h-5 w-5 text-slate-400" />
-                          }
+                          {uploaded ? <CheckCircleIcon className="h-5 w-5 text-emerald-600" /> : <DocumentArrowUpIcon className="h-5 w-5 text-slate-400" />}
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className={`text-sm font-medium ${uploaded ? "text-emerald-800" : "text-slate-800"}`}>
@@ -436,6 +442,47 @@ export default function CandidaturePage() {
                       </label>
                     );
                   })}
+                </div>
+
+                {/* Fiches de paie — 3 mois glissants */}
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-slate-700">
+                    3 dernières fiches de paie
+                    <span className="text-red-400 ml-1">*</span>
+                    <span className="ml-1.5 text-xs font-normal text-slate-400">(la plus récente est obligatoire)</span>
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                    {(["docs_payslip_1", "docs_payslip_2", "docs_payslip_3"] as const).map((field, i) => {
+                      const months = payslipMonths();
+                      const monthLabel = months[i];
+                      const uploaded = form[field];
+                      const isRequired = i === 0;
+                      return (
+                        <label
+                          key={field}
+                          className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border px-3 py-4 text-center transition ${
+                            uploaded ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:border-[#635bff]/30"
+                          }`}
+                        >
+                          <input type="file" className="sr-only" accept="image/*,application/pdf"
+                            onChange={(e) => { if (e.target.files?.[0]) set(field, true); }} />
+                          <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${uploaded ? "bg-emerald-100" : "bg-slate-100"}`}>
+                            {uploaded
+                              ? <CheckCircleIcon className="h-6 w-6 text-emerald-600" />
+                              : <DocumentArrowUpIcon className="h-6 w-6 text-slate-400" />}
+                          </span>
+                          <div>
+                            <p className={`text-xs font-semibold capitalize ${uploaded ? "text-emerald-800" : "text-slate-700"}`}>
+                              {monthLabel}{isRequired && <span className="text-red-400 ml-0.5">*</span>}
+                            </p>
+                            <p className="mt-0.5 text-[0.65rem] text-slate-400">
+                              {uploaded ? "Jointe ✓" : "PDF ou photo"}
+                            </p>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               </section>
 

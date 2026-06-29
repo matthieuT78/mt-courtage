@@ -48,6 +48,10 @@ const GUIDE_BLOG_LINKS: Record<string, Array<{ label: string; href: string }>> =
   "dpe-diagnostics-location": [
     { label: "Investir dans le locatif : guide complet 2026", href: "/blog/investissement-locatif" },
   ],
+  "choisir-son-locataire": [
+    { label: "GLI 2026 : assurance loyers impayés — fonctionnement, coût et comparatif", href: "/blog/assurance-loyers-impayes-gli-2026" },
+    { label: "Loyer impayé : que faire étape par étape en 2026 ?", href: "/blog/loyer-impaye-que-faire" },
+  ],
   "arrivee-locataire-remise-cles": [
     { label: "Assurance habitation locataire : obligations et recours du bailleur", href: "/blog/assurance-habitation-locataire" },
   ],
