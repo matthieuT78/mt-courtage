@@ -21,7 +21,7 @@ import {
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
-import { isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
+import { isEDLSelectableLease } from "../../../lib/landlord/archiveFilters";
 import RepairsGuideCard from "../RepairsGuideCard";
 
 /* ======================================================
@@ -520,7 +520,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     return m;
   }, [safeTenants]);
 
-  const activeLeases = useMemo(() => safeLeases.filter(isSelectableLeaseLike), [safeLeases]);
+  const activeLeases = useMemo(() => safeLeases.filter(isEDLSelectableLease), [safeLeases]);
 
   const leaseLabel = (l: Lease) => {
     const p = propertyById.get((l as any).property_id);
@@ -1695,7 +1695,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     return Math.round((okRooms / rooms.length) * 100);
   }, [rooms, itemsByRoomId]);
 
-  const leaseStarterCards = useMemo(() => activeLeases.slice(0, 4), [activeLeases]);
+  const activeOnlyLeases = useMemo(() => activeLeases.filter((l: any) => (l.status || "active") === "active"), [activeLeases]);
+  const endedPendingLeases = useMemo(() => activeLeases.filter((l: any) => l.status === "ended"), [activeLeases]);
+  const leaseStarterCards = useMemo(() => activeOnlyLeases.slice(0, 4), [activeOnlyLeases]);
 
   /* ======================================================
      VIEW (lecture seule)
@@ -3376,27 +3378,52 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     </div>
                   )}
                 </div>
-              ) : leaseStarterCards.length ? (
-                <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                  {leaseStarterCards.map((l: any) => (
-                    <button
-                      key={l.id}
-                      type="button"
-                      onClick={() => setSelectedLeaseId(l.id)}
-                      className="group min-h-[72px] rounded-2xl border border-slate-200 bg-white/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md"
-                    >
-                      <span className="block text-sm font-semibold text-slate-950">{leaseLabel(l)}</span>
-                      <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#635bff]">
-                        Ouvrir ce dossier
-                        <ArrowRightIcon className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
-                      </span>
-                    </button>
-                  ))}
-                </div>
+              ) : leaseStarterCards.length || endedPendingLeases.length ? (
+                <>
+                  {leaseStarterCards.length > 0 && (
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      {leaseStarterCards.map((l: any) => (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => setSelectedLeaseId(l.id)}
+                          className="group min-h-[72px] rounded-2xl border border-slate-200 bg-white/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md"
+                        >
+                          <span className="block text-sm font-semibold text-slate-950">{leaseLabel(l)}</span>
+                          <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#635bff]">
+                            Ouvrir ce dossier
+                            <ArrowRightIcon className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {endedPendingLeases.length > 0 && (
+                    <div className="mt-4">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">EDL de sortie à finaliser</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {endedPendingLeases.map((l: any) => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => setSelectedLeaseId(l.id)}
+                            className="group min-h-[72px] rounded-2xl border border-amber-200 bg-amber-50 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"
+                          >
+                            <span className="block text-sm font-semibold text-slate-950">{leaseLabel(l)}</span>
+                            <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-amber-700">
+                              Bail terminé — finaliser la sortie
+                              <ArrowRightIcon className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
                   {safeLeases.length
-                    ? "Aucun bail actif disponible. Les baux archivés restent dans les archives et ne sont plus proposés pour un nouvel état des lieux."
+                    ? "Aucun bail actif disponible. Les baux définitivement archivés ne sont plus proposés ici."
                     : "Aucun bail disponible. Crée d’abord un bail dans la section Baux pour préparer un état des lieux."}
                 </div>
               )}
