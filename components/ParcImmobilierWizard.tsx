@@ -1092,7 +1092,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                         <div className="space-y-1">
                           <label className="text-[0.7rem] text-slate-700 flex items-center gap-1">
                             Impôts (%)
-                            <InfoBadge text="Approximation simplifiée. Mets 0 si tu ne veux pas l’intégrer." />
+                            <InfoBadge text="Estimation de votre imposition sur les revenus locatifs. Laissez 0 si vous préférez ne pas l’inclure dans la simulation." />
                           </label>
                          <input
                           type="text"
@@ -1106,7 +1106,7 @@ const encoursCredit = updatedBiens.reduce((sum, b) => sum + toFloat(b.capitalRes
                         <div className="space-y-1">
                           <label className="text-[0.7rem] text-slate-700 flex items-center gap-1">
                             Frais vente (%)
-                            <InfoBadge text="Pour le break-even vente (agent + divers). Sert à estimer le prix mini pour solder le CRD." />
+                            <InfoBadge text="Frais d'agence et frais divers à la revente. Servent à estimer le prix de vente minimal pour rembourser votre crédit et sortir à l'équilibre." />
                           </label>
                           <input
                             type="text"

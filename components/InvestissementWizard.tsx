@@ -1639,7 +1639,7 @@ const canClickUnlock =
   <div className="space-y-1">
     <label className="min-h-[2.25rem] flex items-start gap-1 text-xs text-slate-700">
       <span>Taux assurance emprunteur (annuel, en %)</span>
-      <InfoBadge text="Approche simplifiée : taux annuel sur capital initial emprunté." />
+      <InfoBadge text="La mensualité est calculée sur la base d'un taux annuel appliqué au montant total emprunté, hors assurance." />
     </label>
     <input
       type="text"

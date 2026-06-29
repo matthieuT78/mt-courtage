@@ -1452,7 +1452,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     <div className="space-y-1">
                       <label className={labelBase}>
                         CRD (capital restant dû)
-                        <InfoBadge text="Saisissez le CRD exact (attestation banque) ou estimez-le. C’est la variable #1 du cash net." />
+                        <InfoBadge text="Le capital restant dû est visible sur votre dernier relevé bancaire ou tableau d’amortissement. C’est le principal montant à déduire de votre prix net." />
                       </label>
                       <select
                         value={crdMode}
@@ -1468,7 +1468,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                       <div className="space-y-1">
                         <label className={labelBase}>
                           CRD exact (€)
-                          <InfoBadge text="Attestation de remboursement anticipé / tableau d’amortissement à date." />
+                          <InfoBadge text="Montant disponible dans votre espace client bancaire ou sur votre tableau d’amortissement. Votre banque peut aussi vous l’envoyer sur demande." />
                         </label>
                         <input
                           inputMode="numeric"
@@ -1482,7 +1482,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Capital initial emprunté
-                            <InfoBadge text="On reconstruit un amortissement standard. Si votre prêt est atypique (différé/modulation/variable), l’estimation peut être moins précise." />
+                            <InfoBadge text="Montant emprunté à l’origine, tel qu’indiqué dans votre offre de prêt. Pour un prêt à taux variable ou modulable, le résultat sera une estimation." />
                           </label>
                           <input
                             inputMode="numeric"
@@ -1495,7 +1495,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Taux du prêt (%)
-                            <InfoBadge text="Taux nominal annuel. L’assurance n’est pas intégrée dans le CRD." />
+                            <InfoBadge text="Taux d’intérêt hors assurance, tel qu’indiqué dans votre offre de prêt." />
                           </label>
                           <input
                             inputMode="decimal"
@@ -1508,7 +1508,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Durée totale (années)
-                            <InfoBadge text="Durée initiale du prêt (convertie en mois pour le calcul)." />
+                            <InfoBadge text="Durée prévue dans votre offre de prêt, en années (ex : 20 ans)." />
                           </label>
                           <input
                             inputMode="numeric"
@@ -1521,7 +1521,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Années déjà écoulées
-                            <InfoBadge text="Approximation OK. Plus c’est précis, plus le CRD estimé est proche." />
+                            <InfoBadge text="Nombre d’années depuis le début du prêt. Plus cette valeur est précise, plus le capital restant dû estimé sera proche de la réalité." />
                           </label>
                           <input
                             inputMode="numeric"
@@ -1536,7 +1536,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     <div className="space-y-1">
                       <label className={labelBase}>
                         IRA (remboursement anticipé)
-                        <InfoBadge text="Certaines banques facturent des indemnités. Ici, on applique un % du CRD (repère)." />
+                        <InfoBadge text="Certaines banques facturent des pénalités en cas de remboursement anticipé. Vérifiez votre contrat de prêt pour savoir si vous êtes concerné." />
                       </label>
                         <select
                           value={iraMode}
@@ -1553,7 +1553,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Taux du prêt (%)
-                            <InfoBadge text="Utilisé pour estimer 6 mois d’intérêts et comparer avec 3% du CRD." />
+                            <InfoBadge text="Le taux sert à calculer le plafond légal des pénalités de remboursement anticipé (6 mois d’intérêts plafonné à 3 % du capital restant)." />
                           </label>
                           <input
                             inputMode="decimal"
@@ -1567,7 +1567,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Taux IRA contrat (% du CRD)
-                            <InfoBadge text="Exemple : CRD 120 000 € et 1% ⇒ 1 200 €. Si un taux du prêt est renseigné, on plafonne aussi par un repère légal indicatif." />
+                            <InfoBadge text="Taux de pénalité prévu dans votre contrat de prêt. Exemple : capital restant 120 000 € avec 1 % de pénalités = 1 200 €." />
                           </label>
                         <input
                           inputMode="decimal"
