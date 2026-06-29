@@ -74,21 +74,32 @@ export default function GuideArticlePage({ guide }: Props) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "HowTo",
-              name: guide.title,
-              description: guide.description,
-              dateModified: guide.updatedAt,
-              mainEntityOfPage: pageUrl,
-              step: guide.sections.map((s, i) => ({
-                "@type": "HowToStep",
-                position: i + 1,
-                name: s.title,
-                text: s.paragraphs?.[0] ?? s.bullets?.[0] ?? "",
-              })),
-              author: { "@type": "Organization", name: "lokt.fr" },
-            }),
+            __html: JSON.stringify([
+              {
+                "@context": "https://schema.org",
+                "@type": "HowTo",
+                name: guide.title,
+                description: guide.description,
+                dateModified: guide.updatedAt,
+                mainEntityOfPage: pageUrl,
+                step: guide.sections.map((s, i) => ({
+                  "@type": "HowToStep",
+                  position: i + 1,
+                  name: s.title,
+                  text: s.paragraphs?.[0] ?? s.bullets?.[0] ?? "",
+                })),
+                author: { "@type": "Organization", name: "lokt.fr" },
+              },
+              {
+                "@context": "https://schema.org",
+                "@type": "BreadcrumbList",
+                itemListElement: [
+                  { "@type": "ListItem", position: 1, name: "Accueil", item: "https://lokt.fr/" },
+                  { "@type": "ListItem", position: 2, name: "Guides", item: "https://lokt.fr/guides" },
+                  { "@type": "ListItem", position: 3, name: guide.title, item: pageUrl },
+                ],
+              },
+            ]),
           }}
         />
       </Head>

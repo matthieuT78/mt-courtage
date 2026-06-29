@@ -230,6 +230,42 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
               dangerouslySetInnerHTML={{ __html: contentHtml }}
             />
 
+            {/* Rendement par ville — maillage interne */}
+            {(frontmatter.category === "Investissement locatif" || frontmatter.relatedCalculators?.includes("investissement")) && (
+              <section className="mt-12 border-t border-slate-200 pt-8">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Rendement locatif par ville
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[
+                    { slug: "lyon", nom: "Lyon" },
+                    { slug: "bordeaux", nom: "Bordeaux" },
+                    { slug: "toulouse", nom: "Toulouse" },
+                    { slug: "marseille", nom: "Marseille" },
+                    { slug: "rennes", nom: "Rennes" },
+                    { slug: "nantes", nom: "Nantes" },
+                    { slug: "strasbourg", nom: "Strasbourg" },
+                    { slug: "lille", nom: "Lille" },
+                    { slug: "montpellier", nom: "Montpellier" },
+                    { slug: "grenoble", nom: "Grenoble" },
+                    { slug: "angers", nom: "Angers" },
+                    { slug: "clermont-ferrand", nom: "Clermont-Ferrand" },
+                    { slug: "nancy", nom: "Nancy" },
+                    { slug: "metz", nom: "Metz" },
+                    { slug: "nice", nom: "Nice" },
+                  ].map((v) => (
+                    <Link
+                      key={v.slug}
+                      href={`/rendement-locatif/${v.slug}`}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:border-indigo-300 hover:text-indigo-700 transition"
+                    >
+                      {v.nom}
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Articles liés */}
             {related.length > 0 && (
               <section className="mt-12 border-t border-slate-200 pt-8">

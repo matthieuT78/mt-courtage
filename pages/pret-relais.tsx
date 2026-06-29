@@ -97,9 +97,9 @@ export default function PretRelaisPage() {
   const pagePath = "/pret-relais";
   const pageUrl = `${siteUrl}${pagePath}`;
 
-  const title = "Simulateur prêt relais immobilier gratuit | lokt.fr";
+  const title = "Simulation Prêt Relais Immobilier — Calculette Gratuite 2026 | lokt.fr";
   const description =
-    "Simulateur prêt relais immobilier : calculez le montant du crédit relais, le budget d'achat avant vente, les intérêts et votre marge de financement.";
+    "Simulation prêt relais gratuite en ligne. Calculez le montant du crédit relais, les intérêts intercalaires et votre budget d'achat avant la vente de votre bien. Prêt relais sec ou adossé, résultat instantané.";
 
   // OG image (non transparent, OK WhatsApp)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
@@ -145,6 +145,26 @@ export default function PretRelaisPage() {
       {
         q: "Faut-il un compromis de vente pour obtenir un prêt relais ?",
         a: "Non, mais cela aide. Un compromis signé sur le bien à vendre rassure la banque sur la réalité et le délai de la transaction. Sans compromis, la banque appliquera généralement une décote plus importante sur la valeur du bien, par prudence.",
+      },
+      {
+        q: "Comment calculer les intérêts intercalaires d'un prêt relais ?",
+        a: "Les intérêts intercalaires correspondent aux intérêts que vous payez chaque mois sur le capital du relais, sans rembourser le capital lui-même. Formule : montant du relais × taux annuel ÷ 12. Exemple : 150 000 € × 4 % ÷ 12 = 500 €/mois. Ces intérêts s'accumulent jusqu'au remboursement total lors de la vente.",
+      },
+      {
+        q: "Prêt relais ou achat-revente : quelle différence ?",
+        a: "Le prêt achat-revente (ou prêt relais adossé) est une variante proposée par certaines banques qui regroupe en un seul contrat le relais et le nouveau prêt immobilier. Il simplifie la gestion mais implique une renégociation du crédit global. Le prêt relais classique reste plus courant et plus flexible.",
+      },
+      {
+        q: "Quel taux pour un prêt relais en 2026 ?",
+        a: "En 2026, les taux de prêt relais se situent généralement entre 3,5 % et 5 % selon les banques et le profil emprunteur. Ils sont typiquement 0,5 à 1 point au-dessus des taux de prêt classiques, car le risque est plus élevé pour la banque (durée courte, remboursement conditionné à la vente).",
+      },
+      {
+        q: "Peut-on faire une simulation prêt relais en ligne sans engagement ?",
+        a: "Oui. Notre simulateur est entièrement gratuit et sans inscription obligatoire. Il vous donne un ordre de grandeur du montant mobilisable, des intérêts indicatifs et de votre budget d'achat. Il ne constitue pas une offre de crédit et n'engage aucune banque.",
+      },
+      {
+        q: "Crédit relais : quelle banque choisir ?",
+        a: "Crédit Agricole, LCL, Crédit Mutuel, BNP Paribas et la plupart des grandes banques proposent des prêts relais. Les conditions varient significativement : décote appliquée (60 % à 80 %), taux, durée maximale (12 à 24 mois), franchise possible. Il est recommandé de comparer au moins 3 offres ou de passer par un courtier.",
       },
     ],
     []
@@ -282,9 +302,9 @@ export default function PretRelaisPage() {
 
       <main className="flex-1">
         <CalculatorHero
-          eyebrow="Calculette prêt relais lokt.fr"
-          title={isLoggedIn && displayName ? `${displayName}, simulez votre prêt relais.` : "Simulateur prêt relais immobilier gratuit"}
-          description="Calculez le crédit relais possible, les intérêts indicatifs et votre budget d'achat avant la vente du bien actuel."
+          eyebrow="Simulation prêt relais — lokt.fr"
+          title={isLoggedIn && displayName ? `${displayName}, simulez votre prêt relais.` : "Simulation prêt relais immobilier gratuite"}
+          description="Calculez le montant du crédit relais, les intérêts intercalaires et votre budget d'achat avant la vente du bien actuel. Prêt relais sec ou adossé."
           links={[
             { href: "/", label: "Accueil" },
             { href: "/capacite", label: "Capacité d'emprunt" },
@@ -352,10 +372,11 @@ export default function PretRelaisPage() {
 
           {/* ── Section 2 : prêt relais sec vs adossé ── */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
-            <h2 className="text-base font-semibold text-slate-900">Prêt relais sec ou adossé : quelle différence ?</h2>
+            <h2 className="text-base font-semibold text-slate-900">Simulation prêt relais sec ou adossé : quelle différence ?</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Il existe deux grandes formes de prêt relais. Le choix dépend de votre situation : avez-vous besoin d’un financement
+              Il existe deux grandes formes de crédit relais. Le choix dépend de votre situation : avez-vous besoin d’un financement
               complémentaire pour acheter le nouveau bien, ou le produit de la vente couvre-t-il l’intégralité du prix ?
+              Certaines banques proposent également un <strong>prêt achat-revente</strong>, qui regroupe relais et nouveau prêt en un seul contrat.
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-4">
