@@ -23,6 +23,13 @@ function formatEur(n: number) {
   return `${Math.round(n).toLocaleString("fr-FR")} €`;
 }
 
+// Mensualité crédit (capital × taux mensuel / (1 − (1 + taux)^−n))
+function mensualite(capital: number, tauxAnnuel = 0.037, dureeAns = 20) {
+  const t = tauxAnnuel / 12;
+  const n = dureeAns * 12;
+  return capital * (t / (1 - Math.pow(1 + t, -n)));
+}
+
 export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
   const pageUrl = `${SITE_URL}/rendement-locatif/${ville.slug}`;
   const metaTitle = `Rendement locatif ${ville.name} 2026 : prix du m², loyers et rentabilité | lokt.fr`;
@@ -48,6 +55,14 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
     {
       q: `Quelle est la tension locative à ${ville.name} ?`,
       a: `La tension locative à ${ville.name} est ${ville.tensionLocative}. ${ville.tensionLocative === "forte" ? `Cela signifie que la demande de logements locatifs dépasse l'offre disponible : les délais de relocation sont courts (parfois quelques jours) et la vacance locative est très limitée.` : `La demande locative est présente mais moins tendue que dans les grandes métropoles. Une sélection rigoureuse de l'emplacement et du bien reste importante pour minimiser la vacance.`}`,
+    },
+    {
+      q: `Est-ce le bon moment pour investir à ${ville.name} en 2026 ?`,
+      a: `Le marché immobilier à ${ville.name} a traversé une période de correction depuis 2022, ce qui a ramené les prix à des niveaux plus cohérents avec les fondamentaux locaux. En 2026, les taux d'intérêt se sont stabilisés autour de 3,5-4 %, ce qui reste élevé par rapport aux niveaux de 2019-2021, mais les prix d'achat ont baissé en proportion. Pour un investisseur ayant un horizon de 10 ans minimum, ${ville.name} présente un bon profil risque/rendement grâce à sa démographie, son bassin d'emploi et sa demande locative structurelle. La clé reste le choix du bien : évitez les passoires thermiques (DPE F/G, location interdite dès 2025 pour G et gelée pour F) et privilégiez les emplacements proches des transports.`,
+    },
+    {
+      q: `Comment gérer un bien à ${ville.name} depuis lokt.fr ?`,
+      a: `lokt.fr permet aux bailleurs de gérer leur bien locatif entièrement en ligne, quelle que soit leur localisation. Depuis le tableau de bord, vous pouvez envoyer les quittances de loyer, suivre les paiements, générer les révisions IRL, rédiger les baux, gérer les états des lieux et recevoir les candidatures en ligne via un lien dédié. La plateforme est conçue pour les bailleurs particuliers qui gèrent 1 à 5 biens — sans agence, sans frais fixes.`,
     },
   ];
 
@@ -178,18 +193,65 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
             </div>
           </section>
 
+          {/* ── LOYER PAR SURFACE ── */}
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">
+              Loyer médian estimé par surface à {ville.name}
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Sur la base d'un loyer médian de {ville.loyerM2} €/m²/mois. Les petites surfaces affichent un loyer au m² supérieur aux grandes.
+            </p>
+            <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left">
+                  <tr>
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500">Type</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500">Surface</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500">Loyer estimé</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500">Au m²</th>
+                    <th className="px-4 py-3 text-xs font-semibold text-slate-500 hidden sm:table-cell">Prix d'achat estimé</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {[
+                    { type: "Studio", surface: 22, coeff: 1.22 },
+                    { type: "T1 bis", surface: 32, coeff: 1.10 },
+                    { type: "T2", surface: 45, coeff: 1.00 },
+                    { type: "T3", surface: 65, coeff: 0.90 },
+                    { type: "T4", surface: 85, coeff: 0.83 },
+                  ].map(({ type, surface, coeff }) => {
+                    const loyerM2Eff = ville.loyerM2 * coeff;
+                    const loyer = Math.round(loyerM2Eff * surface);
+                    const prixAchat = ville.prixM2 * surface;
+                    return (
+                      <tr key={type} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium text-slate-800">{type}</td>
+                        <td className="px-4 py-3 text-slate-500">{surface} m²</td>
+                        <td className="px-4 py-3 font-semibold text-slate-900">{loyer} €/mois</td>
+                        <td className="px-4 py-3 text-slate-500">{loyerM2Eff.toFixed(1)} €/m²</td>
+                        <td className="px-4 py-3 text-slate-500 hidden sm:table-cell">{prixAchat.toLocaleString("fr-FR")} €</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-xs text-slate-400">Estimations indicatives 2026 basées sur les données de marché locales. La location meublée affiche généralement un loyer 10-15 % supérieur au loyer nu.</p>
+          </section>
+
           {/* ── SIMULATION CONCRÈTE ── */}
           <section>
             <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">
-              Simulation de rendement à {ville.name} : exemple concret
+              Simulation de rendement à {ville.name} : 3 scénarios
             </h2>
             <p className="mt-2 text-sm text-slate-500">
-              Basé sur les prix et loyers médians 2026. Ces calculs sont indicatifs — entrez vos données réelles dans le simulateur pour un résultat précis.
+              Basé sur les prix et loyers médians 2026. Crédit estimé à 3,7 % sur 20 ans avec 10 % d'apport. Ces calculs sont indicatifs.
             </p>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
               {[
                 { label: "Studio", surface: 25, loyerCoeff: 1.18, netDecote: 2.3 },
                 { label: "T2", surface: 45, loyerCoeff: 1.00, netDecote: 1.8 },
+                { label: "T3", surface: 65, loyerCoeff: 0.90, netDecote: 1.5 },
               ].map(({ label, surface, loyerCoeff, netDecote }) => {
                 const prix = ville.prixM2 * surface;
                 const loyer = Math.round(ville.loyerM2 * surface * loyerCoeff);
@@ -198,21 +260,26 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
                 const rdtNetEst = Math.max(parseFloat(rdtBrut) - netDecote, 1.2).toFixed(1);
                 const budgetTotal = prix * 1.08;
                 const apport10 = prix * 0.1;
+                const capitalEmprunte = prix * 0.9;
+                const mensual = mensualite(capitalEmprunte);
+                const chargesEst = loyer * 0.15;
+                const cashFlow = loyer - mensual - chargesEst;
+                const cfPositif = cashFlow >= 0;
                 return (
                   <div key={label} className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
                     <p className="font-semibold text-slate-900">{label} — {surface} m²</p>
                     <div className="space-y-1.5 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Prix d'achat estimé</span>
+                        <span className="text-slate-500">Prix d'achat</span>
                         <span className="font-medium text-slate-800">{formatEur(prix)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Loyer mensuel estimé</span>
+                        <span className="text-slate-500">Loyer estimé</span>
                         <span className="font-medium text-slate-800">{formatEur(loyer)}/mois</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Loyer annuel</span>
-                        <span className="font-medium text-slate-800">{formatEur(loyerAn)}/an</span>
+                        <span className="text-slate-500">Mensualité crédit</span>
+                        <span className="font-medium text-slate-600">{formatEur(mensual)}/mois</span>
                       </div>
                       <div className="my-1 border-t border-slate-100" />
                       <div className="flex justify-between">
@@ -220,16 +287,22 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
                         <span className="font-bold text-[#635bff]">~{rdtBrut} %</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Rendement net estimé</span>
+                        <span className="text-slate-500">Rendement net est.</span>
                         <span className="font-medium text-slate-600">~{rdtNetEst} %</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Cash-flow est.</span>
+                        <span className={`font-semibold ${cfPositif ? "text-emerald-600" : "text-amber-600"}`}>
+                          {cfPositif ? "+" : ""}{formatEur(cashFlow)}/mois
+                        </span>
                       </div>
                       <div className="my-1 border-t border-slate-100" />
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Budget total (+ frais notaire)</span>
+                        <span className="text-slate-500">Budget total (+8 % frais)</span>
                         <span className="font-medium text-slate-800">{formatEur(budgetTotal)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Apport min. recommandé (10 %)</span>
+                        <span className="text-slate-500">Apport 10 %</span>
                         <span className="font-medium text-slate-800">{formatEur(apport10)}</span>
                       </div>
                     </div>
@@ -238,7 +311,7 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
               })}
             </div>
             <p className="mt-3 text-xs text-slate-400">
-              Loyer estimé : les studios affichent un loyer au m² supérieur (~+18 %) aux T2, conforme aux données de marché locales. Rendement net : déduction de ~2,3 pts pour le studio (turnover plus fréquent) et ~1,8 pt pour le T2 (charges, taxe foncière, vacance). La fiscalité réelle peut modifier ces résultats.{" "}
+              Crédit : 90 % du prix, taux 3,7 % sur 20 ans. Charges estimées à 15 % du loyer (taxe foncière, copropriété, vacance). Le cash-flow réel dépend de votre apport, de votre taux et du régime fiscal.{" "}
               <Link href="/investissement" className="text-[#635bff] hover:underline">Calculer avec vos données →</Link>
             </p>
           </section>
@@ -345,6 +418,83 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
                   <div className="px-5 pb-5 pt-1 text-sm leading-6 text-slate-600">{a}</div>
                 </details>
               ))}
+            </div>
+          </section>
+
+          {/* ── COMMENT INVESTIR ── */}
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">
+              Comment investir à {ville.name} en 2026 : les 5 étapes
+            </h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Du calcul de capacité à la mise en location, voici le parcours type d'un investisseur qui achète à {ville.name}.
+            </p>
+            <div className="mt-5 space-y-3">
+              {[
+                {
+                  n: "01",
+                  title: "Définir son budget et sa capacité d'emprunt",
+                  body: `Avant de chercher un bien, calculez votre capacité de financement. À ${ville.name} avec un prix moyen de ${ville.prixM2.toLocaleString("fr-FR")} €/m², un studio de 25 m² coûte environ ${formatEur(ville.prixM2 * 25)}. Ajoutez 8 % de frais de notaire pour un bien ancien. Le simulateur lokt.fr calcule le rendement net et le cash-flow selon votre apport et votre taux.`,
+                },
+                {
+                  n: "02",
+                  title: "Choisir le type de bien et le secteur",
+                  body: `Les types de biens les plus performants à ${ville.name} sont : ${ville.biensPerformants.map((b) => b.type).join(", ")}. Concentrez-vous sur les quartiers bien desservis par les transports : ${ville.quartiers.slice(0, 2).map((q) => q.nom).join(" et ")}. Évitez les passoires thermiques (DPE F/G) : les G sont interdits à la location depuis 2025 et les F font l'objet d'un gel de loyer.`,
+                },
+                {
+                  n: "03",
+                  title: "Choisir le régime fiscal : LMNP ou revenus fonciers",
+                  body: `Pour les petites surfaces meublées, le LMNP réel est presque toujours plus avantageux. L'amortissement du bien et du mobilier efface généralement l'impôt sur les loyers pendant 10 à 15 ans. Pour les grandes surfaces nues (T3/T4), les revenus fonciers au régime réel permettent de déduire les charges et de créer un déficit foncier imputable sur le revenu global (jusqu'à 10 700 €/an).`,
+                },
+                {
+                  n: "04",
+                  title: "Sélectionner le locataire dans les règles",
+                  body: `Le décret du 5 novembre 2015 encadre les pièces que vous pouvez demander (identité, bulletins de salaire, avis d'imposition). Le critère de revenus habituellement retenu est 3 fois le loyer charges comprises. Vous ne pouvez pas cumuler garantie loyers impayés (GLI) et caution solidaire sauf si le locataire est étudiant ou apprenti.`,
+                },
+                {
+                  n: "05",
+                  title: "Gérer le bien efficacement",
+                  body: `La gestion locative représente l'essentiel du temps d'un bailleur : quittances, révisions IRL, suivi des paiements, déclaration fiscale. lokt.fr automatise ces tâches — quittances générées automatiquement, alertes de révision IRL, suivi des loyers et gestion des candidatures en ligne. La plateforme est gratuite jusqu'à 1 bien.`,
+                },
+              ].map(({ n, title, body }) => (
+                <div key={n} className="flex gap-4 rounded-xl border border-slate-200 bg-white p-5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#635bff]/10 text-sm font-bold text-[#635bff]">{n}</div>
+                  <div>
+                    <p className="font-semibold text-slate-900">{title}</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-500">{body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ── CTA GESTION ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Déjà propriétaire à {ville.name} ?</p>
+                <h2 className="mt-1.5 text-lg font-semibold text-slate-950">
+                  Gérez votre bien locatif sans agence avec lokt.fr
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-500">
+                  Quittances automatiques, révision IRL, suivi des loyers, baux en ligne et réception des candidatures — tout en un, à partir de 4,90 €/mois.
+                </p>
+                <ul className="mt-3 space-y-1">
+                  {["Quittances générées en 1 clic", "Candidatures en ligne avec scoring automatique", "Révisions IRL et alertes échéances", "Déclaration fiscale simplifiée"].map((item) => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-slate-600">
+                      <span className="text-[#635bff]">✓</span> {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex shrink-0 flex-col gap-3">
+                <Link href="/espace-bailleur" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#635bff] px-6 py-3 text-sm font-semibold text-white hover:opacity-90 transition">
+                  Essayer gratuitement →
+                </Link>
+                <Link href="/tarifs" className="text-center text-xs text-slate-400 hover:text-slate-600 hover:underline">
+                  Voir les tarifs
+                </Link>
+              </div>
             </div>
           </section>
 
