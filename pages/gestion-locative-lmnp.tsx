@@ -20,9 +20,9 @@ import AppFooter from "../components/AppFooter";
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/gestion-locative-lmnp`;
 const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
-const title = "Gestion locative LMNP : outil location meublée | lokt.fr";
+const title = "Logiciel Gestion Locative LMNP Gratuit — Location Meublée 2026 | lokt.fr";
 const description =
-  "Logiciel de gestion locative LMNP pour location meublée : bail, inventaire, état des lieux, quittances, loyers, charges, documents et finance.";
+  "Gérez votre location meublée LMNP sans tableur : bail, inventaire meublé, état des lieux, quittances, loyers et suivi financier. Logiciel de gestion locative meublée gratuit pour 1 logement.";
 
 const features = [
   {
@@ -48,6 +48,14 @@ const features = [
 ];
 
 const faq = [
+  {
+    q: "Qu'est-ce que la gestion LMNP ?",
+    a: "La gestion LMNP (Loueur en Meublé Non Professionnel) désigne l'ensemble des tâches administratives et financières liées à une location meublée : suivi du bail, encaissement des loyers, émission des quittances, gestion de l'inventaire, états des lieux, et suivi des charges déductibles. Contrairement à la location vide, le LMNP implique un inventaire détaillé du mobilier et une comptabilité spécifique (micro-BIC ou régime réel).",
+  },
+  {
+    q: "Quel logiciel pour gérer une location meublée LMNP ?",
+    a: "lokt.fr est un logiciel de gestion locative LMNP gratuit pour un premier logement. Il regroupe bail numérique, inventaire meublé, état des lieux, suivi des loyers, quittances PDF automatiques et tableau de bord financier. Pensé pour les bailleurs particuliers en LMNP qui veulent éviter les tableurs dispersés et les outils trop complexes.",
+  },
   {
     q: "Quel outil utiliser pour gérer une location meublée LMNP ?",
     a: "Un bailleur LMNP doit pouvoir suivre le bail, le locataire, les loyers, les quittances, l’inventaire du mobilier, les états des lieux, les charges et les justificatifs. lokt.fr regroupe ces éléments dans un espace bailleur pensé pour la gestion locative meublée.",
