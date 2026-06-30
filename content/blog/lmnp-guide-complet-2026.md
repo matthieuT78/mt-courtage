@@ -1,6 +1,6 @@
 ---
-title: "LMNP 2026 : guide complet du statut Loueur en Meublé Non Professionnel"
-description: "Tout comprendre sur le statut LMNP en 2026 : conditions, fiscalité micro-BIC vs régime réel, amortissements, déclaration, obligations du bailleur et gestion au quotidien."
+title: "LMNP 2026 : guide complet — statut, fiscalité et gestion"
+description: "Statut LMNP 2026 : conditions, micro-BIC vs régime réel, amortissements, déclaration et obligations du bailleur. Guide complet avec exemples chiffrés."
 date: "2026-06-30"
 category: "Investissement locatif"
 tags: ["LMNP", "location meublée", "fiscalité locative", "amortissement", "micro-BIC", "régime réel", "investissement locatif"]
