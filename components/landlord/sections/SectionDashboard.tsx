@@ -51,7 +51,7 @@ const monthLabel = (key: string) => {
 };
 const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 const hasPositiveAmount = (value?: number | null) => Number(value || 0) > 0;
-const DEPOSIT_CATEGORIES = new Set(["deposit_collected", "deposit_returned", "deposit_retained"]);
+const DEPOSIT_CATEGORIES = new Set(["deposit_collected", "deposit_returned"]);
 const isReceivedIncomeTransaction = (tx: TransactionRow) => {
   const status = String(tx.status || "").toLowerCase();
   if (DEPOSIT_CATEGORIES.has(tx.category || "")) return false;

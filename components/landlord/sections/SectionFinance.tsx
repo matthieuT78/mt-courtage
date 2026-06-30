@@ -324,7 +324,7 @@ const DEPOSIT_CATS = ["deposit_collected", "deposit_returned", "deposit_retained
 const isIncomeReceived = (row: Pick<Transaction, "direction" | "status" | "category">) =>
   row.direction === "in" &&
   (row.status === "received" || row.status === "paid") &&
-  !DEPOSIT_CATS.includes(row.category);
+  !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category);
 
 // Lignes déjà comptées dans les charges structurelles (récurrentes) : à exclure des sommes
 // "ponctuelles" (dépenses/recettes) pour éviter un double comptage avec le total récurrent.
