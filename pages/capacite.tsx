@@ -103,12 +103,36 @@ export default function CapaciteEmpruntPage() {
   const faqData = useMemo(
     () => [
       {
+        q: "Combien puis-je emprunter avec 2 000 € de salaire ?",
+        a: "Avec 2 000 € de revenus nets et sans autre charge, la mensualité soutenable à 35 % est d’environ 700 €. Cela correspond à une capacité d’emprunt indicative de 121 000 € sur 20 ans ou 140 000 € sur 25 ans (taux 3,5 %, hors assurance). Avec un apport de 20 000 €, le budget d’achat peut approcher 155 000 €.",
+      },
+      {
+        q: "Combien puis-je emprunter avec 3 000 € de salaire ?",
+        a: "Avec 3 000 € de revenus nets mensuels et sans charges, la mensualité disponible est d’environ 1 050 €. Soit une capacité indicative de 181 000 € sur 20 ans ou 210 000 € sur 25 ans à 3,5 %. Si vous avez des crédits à la consommation ou un loyer retenu, la mensualité disponible diminue en conséquence.",
+      },
+      {
+        q: "Combien puis-je emprunter avec 4 000 € de salaire ?",
+        a: "À 35 % d’endettement et sans charges, la mensualité disponible est d’environ 1 400 €. La capacité d’emprunt indicative est de 241 000 € sur 20 ans ou 280 000 € sur 25 ans à 3,5 %. Pour un ménage à deux revenus, c’est la somme des deux salaires qui est prise en compte.",
+      },
+      {
+        q: "Combien puis-je emprunter avec 5 000 € de salaire ?",
+        a: "Avec 5 000 € de revenus nets mensuels et sans autres charges, la mensualité soutenable est d’environ 1 750 €. Cela correspond à environ 302 000 € sur 20 ans ou 349 000 € sur 25 ans à 3,5 %. Utilisez le simulateur pour intégrer vos charges réelles.",
+      },
+      {
+        q: "Combien puis-je emprunter avec 6 000 € de salaire ?",
+        a: "La mensualité disponible à 35 % est d’environ 2 100 €. Capacité indicative : 362 000 € sur 20 ans ou 419 000 € sur 25 ans à 3,5 %. Ces montants varient selon les banques en fonction du reste à vivre, du type de revenus et des garanties exigées.",
+      },
+      {
+        q: "Combien puis-je emprunter avec 8 000 € de salaire ?",
+        a: "Avec 8 000 € de revenus nets et sans charges, la mensualité soutenable est d’environ 2 800 €. La capacité d’emprunt indicative est de 483 000 € sur 20 ans ou 559 000 € sur 25 ans à 3,5 %. À ce niveau de revenus, les banques regardent aussi le patrimoine, la stabilité de l’emploi et le reste à vivre.",
+      },
+      {
         q: "Comment savoir combien je peux emprunter ?",
         a: "Le simulateur estime une mensualité soutenable à partir de vos revenus et charges, puis la convertit en capital empruntable selon le taux, la durée et une hypothèse d’assurance.",
       },
       {
         q: "Quel taux d’endettement est pris en compte ?",
-        a: "La simulation s’appuie sur une logique bancaire courante (autour de 35% selon les profils). Certaines banques peuvent aussi regarder le reste à vivre et la stabilité des revenus.",
+        a: "La simulation s’appuie sur la norme HCSF de 35 % (taux d’endettement charges incluses). Certaines banques peuvent aussi regarder le reste à vivre et la stabilité des revenus.",
       },
       {
         q: "L’apport est-il obligatoire ?",
@@ -124,7 +148,7 @@ export default function CapaciteEmpruntPage() {
       },
       {
         q: "Dois-je créer un compte ?",
-        a: "Non. La calculette est totalement libre d'accès, sans inscription.",
+        a: "Non. La calculette est totalement libre d’accès, sans inscription.",
       },
     ],
     []
@@ -309,6 +333,50 @@ export default function CapaciteEmpruntPage() {
             <Link href="/plus-value-vente-immobiliere">Plus-value immobilière</Link>
             <Link href="/parc-immobilier">Parc immobilier</Link>
           </nav>
+
+          {/* Tableau par salaire */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
+            <h2 className="text-sm font-semibold text-slate-900">Combien puis-je emprunter selon mon salaire ?</h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Estimation indicative basée sur la règle des 35 % d’endettement, sans charges existantes, à un taux de 3,5 %.
+              En pratique, vos charges en cours (crédits, pension alimentaire…) réduisent la mensualité disponible.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left">
+                    <th className="pb-2 pr-4 font-semibold text-slate-700">Revenu net mensuel</th>
+                    <th className="pb-2 pr-4 font-semibold text-slate-700">Mensualité max (35 %)</th>
+                    <th className="pb-2 pr-4 font-semibold text-slate-700">Capital sur 20 ans</th>
+                    <th className="pb-2 font-semibold text-slate-700">Capital sur 25 ans</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-600">
+                  {[
+                    ["2 000 €", "700 €", "~121 000 €", "~140 000 €"],
+                    ["2 500 €", "875 €", "~151 000 €", "~175 000 €"],
+                    ["3 000 €", "1 050 €", "~181 000 €", "~210 000 €"],
+                    ["3 200 €", "1 120 €", "~193 000 €", "~224 000 €"],
+                    ["4 000 €", "1 400 €", "~241 000 €", "~280 000 €"],
+                    ["4 500 €", "1 575 €", "~272 000 €", "~315 000 €"],
+                    ["5 000 €", "1 750 €", "~302 000 €", "~349 000 €"],
+                    ["6 000 €", "2 100 €", "~362 000 €", "~419 000 €"],
+                    ["8 000 €", "2 800 €", "~483 000 €", "~559 000 €"],
+                  ].map(([sal, mens, c20, c25]) => (
+                    <tr key={sal} className="border-b border-slate-100">
+                      <td className="py-2 pr-4 font-medium text-slate-800">{sal}</td>
+                      <td className="py-2 pr-4">{mens}</td>
+                      <td className="py-2 pr-4">{c20}</td>
+                      <td className="py-2">{c25}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-slate-500">
+              Estimations hors charges et hors assurance, à titre indicatif. Taux utilisé : 3,5 %. Chaque dossier est analysé individuellement par la banque.
+            </p>
+          </section>
 
           {/* Bloc SEO principal */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">

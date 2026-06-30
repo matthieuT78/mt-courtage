@@ -450,7 +450,49 @@ export default function PretRelaisPage() {
             </div>
           </section>
 
-          {/* ── Section 4 : conditions et précautions ── */}
+          {/* ── Section 4 : tableau par montant ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
+            <h2 className="text-base font-semibold text-slate-900">Montant du prêt relais selon la valeur du bien à vendre</h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Le tableau ci-dessous donne une estimation rapide du prêt relais accessible selon la valeur du bien et le capital restant dû,
+              avec un taux de couverture bancaire de 70 %. Le montant réel accordé peut varier entre 60 % et 80 % selon la banque.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left">
+                    <th className="pb-2 pr-3 font-semibold text-slate-700">Valeur du bien</th>
+                    <th className="pb-2 pr-3 font-semibold text-slate-700">Capital restant dû</th>
+                    <th className="pb-2 pr-3 font-semibold text-slate-700">Relais estimé (70 %)</th>
+                    <th className="pb-2 font-semibold text-slate-700">Intérêts/mois (4 %)</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-600">
+                  {[
+                    ["200 000 €", "0 €",       "140 000 €", "467 €"],
+                    ["250 000 €", "0 €",       "175 000 €", "583 €"],
+                    ["250 000 €", "80 000 €",  "95 000 €",  "317 €"],
+                    ["300 000 €", "0 €",       "210 000 €", "700 €"],
+                    ["300 000 €", "100 000 €", "110 000 €", "367 €"],
+                    ["400 000 €", "120 000 €", "160 000 €", "533 €"],
+                    ["500 000 €", "150 000 €", "200 000 €", "667 €"],
+                  ].map(([val, crd, relais, int], i) => (
+                    <tr key={i} className="border-b border-slate-100">
+                      <td className="py-2 pr-3 font-medium text-slate-800">{val}</td>
+                      <td className="py-2 pr-3">{crd}</td>
+                      <td className="py-2 pr-3 font-semibold text-indigo-700">{relais}</td>
+                      <td className="py-2">{int}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-slate-500">
+              Estimations indicatives. Taux de couverture 70 %, taux d'intérêt 4 % annuel hors assurance. Chaque banque applique ses propres conditions.
+            </p>
+          </section>
+
+          {/* ── Section 5 : conditions et précautions ── */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
             <h2 className="text-base font-semibold text-slate-900">Conditions d’obtention et précautions</h2>
             <div className="grid gap-4 sm:grid-cols-2">
