@@ -465,7 +465,7 @@ export default function Home() {
   const pageUrl = `${siteUrl}/`;
 
   const title =
-    "Gestion locative gratuite et simulateurs immobiliers | lokt.fr";
+    "lokt.fr — Gestion locative gratuite et simulateurs immobiliers";
   const description =
     "lokt.fr aide les propriétaires à gérer gratuitement un logement locatif et à simuler leurs projets immobiliers : baux, quittances, états des lieux, loyers, finance, capacité d’emprunt et rentabilité.";
   const ogImage = `${siteUrl}/lokt-logo.jpg`;

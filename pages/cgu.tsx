@@ -21,7 +21,7 @@ export default function CGUPage() {
           name="description"
           content="Conditions générales d’utilisation et de vente de lokt.fr : simulateurs immobiliers, espace bailleur, abonnements, limites et responsabilités."
         />
-        <meta name="robots" content="index, follow" />
+        <meta name="robots" content="noindex, follow" />
         <link rel="canonical" href="https://lokt.fr/cgu" />
       </Head>
 
