@@ -5,7 +5,7 @@ date: "2026-06-30"
 category: "Investissement locatif"
 tags: ["LMNP", "location meublée", "fiscalité locative", "amortissement", "micro-BIC", "régime réel", "investissement locatif"]
 relatedCalculators: ["investissement", "parc-immobilier"]
-coverImage: "/blog/lmnp-location-nue.jpg"
+coverImage: "/blog/lmnp-guide-complet-2026.jpg"
 ---
 
 # LMNP 2026 : guide complet du statut Loueur en Meublé Non Professionnel
