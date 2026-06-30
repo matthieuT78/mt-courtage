@@ -26,6 +26,8 @@ type TransactionRow = {
   property_id?: string | null;
   status?: string | null;
   category?: string | null;
+  is_recurring?: boolean | null;
+  recurrence_parent_id?: string | null;
 };
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
@@ -55,6 +57,9 @@ const isReceivedIncomeTransaction = (tx: TransactionRow) => {
   if (DEPOSIT_CATEGORIES.has(tx.category || "")) return false;
   return tx.direction === "in" && (status === "received" || status === "paid");
 };
+
+const isRecurringFlowTransaction = (tx: TransactionRow) =>
+  Boolean(tx.is_recurring || tx.recurrence_parent_id);
 
 function hasFinanceSetup(finance?: PropertyFinance | null) {
   if (!finance) return false;
@@ -562,7 +567,7 @@ export function SectionDashboard({
       try {
         const { data, error } = await supabase
           .from("transactions")
-          .select("id, occurred_at, direction, amount, property_id, status, category")
+          .select("id, occurred_at, direction, amount, property_id, status, category, is_recurring, recurrence_parent_id")
           .eq("user_id", userId)
           .gte("occurred_at", toISODate(start))
           .order("occurred_at", { ascending: true });
@@ -622,6 +627,7 @@ export function SectionDashboard({
 
     for (const tx of transactions) {
       if (accountingPropertyId && (tx.property_id || "") !== accountingPropertyId) continue;
+      if (isRecurringFlowTransaction(tx)) continue; // charges récurrentes : exclues des flux ponctuels
       const d = normalizeDate(tx.occurred_at);
       if (!d) continue;
       const key = monthKey(d);
