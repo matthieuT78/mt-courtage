@@ -871,7 +871,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     }
   };
 
-  const markMonthCompensated = async (leaseId: string, month: { period_start: string; period_end: string; label: string }) => {
+  const markMonthCompensated = async (leaseId: string, month: { receipt_id?: string | null; period_start: string; period_end: string; label: string }) => {
     if (!supabase) return;
     setDepositLoadingByLease((p) => ({ ...p, [leaseId]: true }));
     setDepositErrByLease((p) => ({ ...p, [leaseId]: null }));
@@ -1756,7 +1756,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                           <button
                             type="button"
                             disabled={depositLoading}
-                            onClick={() => markMonthCompensated(l.id, { period_start: m.period_start, period_end: m.period_end, label: m.label })}
+                            onClick={() => markMonthCompensated(l.id, { receipt_id: m.receipt_id ?? null, period_start: m.period_start, period_end: m.period_end, label: m.label })}
                             className="inline-flex items-center rounded-lg bg-amber-700 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-800 disabled:opacity-60"
                           >
                             Compenser via caution

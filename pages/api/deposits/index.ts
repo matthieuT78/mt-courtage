@@ -212,41 +212,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ── mark_month_compensated ─────────────────────────────────────────────────
     if (action === "mark_month_compensated") {
       if (!lease.deposit_returned_at) return res.status(400).json({ error: "La restitution de caution doit être finalisée d'abord." });
-      const month = req.body.month as { period_start?: string; period_end?: string } | undefined;
+      const month = req.body.month as { receipt_id?: string | null; period_start?: string; period_end?: string } | undefined;
       if (!month?.period_start) return res.status(400).json({ error: "period_start requis." });
 
       const yyyymm = String(month.period_start).slice(0, 7);
       const returned_at_date = safeStr(lease.deposit_returned_at) || new Date().toISOString().slice(0, 10);
+      const updatePatch = { status: "closed_by_deposit", pdf_url: null, updated_at: new Date().toISOString() };
 
-      const { data: existingAll } = await supabaseAdmin
-        .from("rent_receipts")
-        .select("id")
-        .eq("lease_id", leaseId)
-        .gte("period_start", `${yyyymm}-01`)
-        .lte("period_start", `${yyyymm}-31`);
-
-      if (existingAll && existingAll.length > 0) {
-        await supabaseAdmin
+      if (month.receipt_id) {
+        // Fast path: update the exact receipt we already know about
+        const { error: updErr } = await supabaseAdmin
           .from("rent_receipts")
-          .update({ status: "closed_by_deposit", pdf_url: null, updated_at: new Date().toISOString() })
+          .update(updatePatch)
+          .eq("id", month.receipt_id);
+        if (updErr) return res.status(500).json({ error: `Mise à jour quittance échouée : ${updErr.message}` });
+      } else {
+        // Fallback: find any receipts for this lease/period
+        const { data: existingAll, error: findErr } = await supabaseAdmin
+          .from("rent_receipts")
+          .select("id")
           .eq("lease_id", leaseId)
           .gte("period_start", `${yyyymm}-01`)
           .lte("period_start", `${yyyymm}-31`);
-      } else {
-        await supabaseAdmin.from("rent_receipts").insert({
-          lease_id: leaseId,
-          owner_user_id: userId,
-          period_start: safeStr(month.period_start),
-          period_end: safeStr(month.period_end || month.period_start),
-          rent_amount: 0,
-          charges_amount: 0,
-          total_amount: 0,
-          issue_date: returned_at_date,
-          issued_at: new Date().toISOString(),
-          content_text: "Compensé par retenue sur dépôt de garantie",
-          status: "closed_by_deposit",
-          created_at: new Date().toISOString(),
-        });
+        if (findErr) return res.status(500).json({ error: `Recherche quittance échouée : ${findErr.message}` });
+
+        if (existingAll && existingAll.length > 0) {
+          const { error: updErr } = await supabaseAdmin
+            .from("rent_receipts")
+            .update(updatePatch)
+            .in("id", existingAll.map((r) => r.id));
+          if (updErr) return res.status(500).json({ error: `Mise à jour quittance échouée : ${updErr.message}` });
+        } else {
+          const { error: insErr } = await supabaseAdmin.from("rent_receipts").insert({
+            lease_id: leaseId,
+            owner_user_id: userId,
+            period_start: safeStr(month.period_start),
+            period_end: safeStr(month.period_end || month.period_start),
+            rent_amount: 0,
+            charges_amount: 0,
+            total_amount: 0,
+            issue_date: returned_at_date,
+            issued_at: new Date().toISOString(),
+            content_text: "Compensé par retenue sur dépôt de garantie",
+            status: "closed_by_deposit",
+            created_at: new Date().toISOString(),
+          });
+          if (insErr) return res.status(500).json({ error: `Création quittance échouée : ${insErr.message}` });
+        }
       }
 
       return res.status(200).json({ ok: true });
