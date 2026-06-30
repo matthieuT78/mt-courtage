@@ -51,7 +51,7 @@ const monthLabel = (key: string) => {
 };
 const clampPct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 const hasPositiveAmount = (value?: number | null) => Number(value || 0) > 0;
-const DEPOSIT_CATEGORIES = new Set(["deposit_collected", "deposit_returned"]);
+const DEPOSIT_CATEGORIES = new Set(["deposit_collected", "deposit_returned", "deposit_retained"]);
 const isReceivedIncomeTransaction = (tx: TransactionRow) => {
   const status = String(tx.status || "").toLowerCase();
   if (DEPOSIT_CATEGORIES.has(tx.category || "")) return false;
@@ -653,8 +653,30 @@ export function SectionDashboard({
       }
     }
 
+    // Ajout des charges structurelles (property_finance) pour chaque bien
+    // — ces montants ne figurent pas dans les transactions mais sortent chaque mois.
+    const structuralMonthly = (propertyFinance || [])
+      .filter((fin) => !accountingPropertyId || fin.property_id === accountingPropertyId)
+      .reduce((sum, fin) => sum +
+        Number(fin.loan_monthly || 0) +
+        Number(fin.loan_insurance_monthly || 0) +
+        Number(fin.fixed_charges_monthly || 0) +
+        Number(fin.pno_insurance_monthly || 0) +
+        Number(fin.copro_charges_monthly || 0) +
+        Number(fin.loan_interest_monthly || 0) +
+        Number(fin.bank_fees_monthly || 0) +
+        Number(fin.maintenance_monthly || 0) +
+        Number(fin.rental_tax_monthly || 0) +
+        Number(fin.property_tax_yearly || 0) / 12 +
+        Number(fin.cfe_yearly || 0) / 12
+      , 0);
+
+    if (structuralMonthly > 0) {
+      for (const row of byMonth.values()) row.expense += structuralMonthly;
+    }
+
     return Array.from(byMonth.values());
-  }, [accountingMonths, accountingPropertyId, activeLeases, payments, transactions]);
+  }, [accountingMonths, accountingPropertyId, activeLeases, payments, propertyFinance, transactions]);
 
   const accountingTotals = useMemo(() => {
     const income = accountingSeries.reduce((sum, row) => sum + row.income, 0);
