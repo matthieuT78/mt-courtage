@@ -5,7 +5,7 @@ date: "2026-06-30"
 category: "Plus-value immobilière"
 tags: ["plus-value immobilière", "calcul plus-value", "abattement", "impôt sur la plus-value", "vente immobilière 2026"]
 relatedCalculators: ["plus-value", "acheter-ou-louer"]
-coverImage: "/blog/plus-value-residence-principale.jpg"
+coverImage: "/blog/calcul-plus-value-immobiliere-2026.jpg"
 ---
 
 # Plus-value immobilière 2026 : comment la calculer, quels abattements et quel impôt ?
