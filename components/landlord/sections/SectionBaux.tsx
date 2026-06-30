@@ -739,6 +739,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const [imputedMonthsByLease, setImputedMonthsByLease] = useState<Record<string, ImputedMonthRow[]>>({});
   const [damageItemsByLease, setDamageItemsByLease] = useState<Record<string, DamageItem[]>>({});
   const [unpaidLoadingByLease, setUnpaidLoadingByLease] = useState<Record<string, boolean>>({});
+  const [unpaidAfterReturnByLease, setUnpaidAfterReturnByLease] = useState<Record<string, any[] | null>>({});
 
   const openDepositForm = async (leaseId: string, action: DepositAction, lease: Lease) => {
     const today = todayISO();
@@ -847,6 +848,44 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       });
       const json = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(json?.error || "Erreur serveur.");
+      await onRefresh();
+    } catch (e: any) {
+      setDepositErrByLease((p) => ({ ...p, [leaseId]: e?.message || "Erreur." }));
+    } finally {
+      setDepositLoadingByLease((p) => ({ ...p, [leaseId]: false }));
+    }
+  };
+
+  const loadUnpaidAfterReturn = async (leaseId: string) => {
+    if (!supabase) return;
+    setUnpaidLoadingByLease((p) => ({ ...p, [leaseId]: true }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch(`/api/deposits/unpaid-summary?userId=${encodeURIComponent(userId)}&leaseId=${encodeURIComponent(leaseId)}`, {
+        headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
+      });
+      const json = await resp.json().catch(() => ({}));
+      setUnpaidAfterReturnByLease((p) => ({ ...p, [leaseId]: json.months || [] }));
+    } finally {
+      setUnpaidLoadingByLease((p) => ({ ...p, [leaseId]: false }));
+    }
+  };
+
+  const markMonthCompensated = async (leaseId: string, month: { period_start: string; period_end: string; label: string }) => {
+    if (!supabase) return;
+    setDepositLoadingByLease((p) => ({ ...p, [leaseId]: true }));
+    setDepositErrByLease((p) => ({ ...p, [leaseId]: null }));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch("/api/deposits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ action: "mark_month_compensated", userId, leaseId, month }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(json?.error || "Erreur serveur.");
+      // Reload unpaid months for this lease
+      await loadUnpaidAfterReturn(leaseId);
       await onRefresh();
     } catch (e: any) {
       setDepositErrByLease((p) => ({ ...p, [leaseId]: e?.message || "Erreur." }));
@@ -1690,6 +1729,41 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                       {retainedAmt > 0 ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">Retenu : {formatEuro(retainedAmt)}</span> : null}
                       {l.deposit_retained_reason ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">{l.deposit_retained_reason}</span> : null}
                     </>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Unpaid months after return */}
+              {isReturned && !depositAction ? (
+                <div className="mt-1">
+                  {unpaidAfterReturnByLease[l.id] == null ? (
+                    <button
+                      type="button"
+                      disabled={!!unpaidLoadingByLease[l.id]}
+                      onClick={() => loadUnpaidAfterReturn(l.id)}
+                      className="text-xs text-slate-500 underline hover:text-slate-700 disabled:opacity-60"
+                    >
+                      {unpaidLoadingByLease[l.id] ? "Chargement…" : "Vérifier les loyers non compensés"}
+                    </button>
+                  ) : unpaidAfterReturnByLease[l.id]!.length === 0 ? (
+                    <p className="text-xs text-emerald-600">Tous les loyers sont compensés.</p>
+                  ) : (
+                    <div className="space-y-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-xs font-semibold text-amber-800">Loyers non encore compensés par la caution :</p>
+                      {unpaidAfterReturnByLease[l.id]!.map((m: any) => (
+                        <div key={m.yyyymm} className="flex items-center justify-between gap-3">
+                          <span className="text-xs text-amber-900">{m.label} — <span className="font-semibold">{formatEuro(m.missing_amount)}</span></span>
+                          <button
+                            type="button"
+                            disabled={depositLoading}
+                            onClick={() => markMonthCompensated(l.id, { period_start: m.period_start, period_end: m.period_end, label: m.label })}
+                            className="inline-flex items-center rounded-lg bg-amber-700 px-2.5 py-1 text-xs font-semibold text-white hover:bg-amber-800 disabled:opacity-60"
+                          >
+                            Compenser via caution
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               ) : null}

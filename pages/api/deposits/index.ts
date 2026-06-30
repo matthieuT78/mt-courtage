@@ -209,6 +209,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ ok: true, lease: updated });
     }
 
+    // ── mark_month_compensated ─────────────────────────────────────────────────
+    if (action === "mark_month_compensated") {
+      if (!lease.deposit_returned_at) return res.status(400).json({ error: "La restitution de caution doit être finalisée d'abord." });
+      const month = req.body.month as { period_start?: string; period_end?: string } | undefined;
+      if (!month?.period_start) return res.status(400).json({ error: "period_start requis." });
+
+      const yyyymm = String(month.period_start).slice(0, 7);
+      const returned_at_date = safeStr(lease.deposit_returned_at) || new Date().toISOString().slice(0, 10);
+
+      const { data: existingAll } = await supabaseAdmin
+        .from("rent_receipts")
+        .select("id")
+        .eq("lease_id", leaseId)
+        .gte("period_start", `${yyyymm}-01`)
+        .lte("period_start", `${yyyymm}-31`);
+
+      if (existingAll && existingAll.length > 0) {
+        await supabaseAdmin
+          .from("rent_receipts")
+          .update({ status: "closed_by_deposit", pdf_url: null, updated_at: new Date().toISOString() })
+          .eq("lease_id", leaseId)
+          .gte("period_start", `${yyyymm}-01`)
+          .lte("period_start", `${yyyymm}-31`);
+      } else {
+        await supabaseAdmin.from("rent_receipts").insert({
+          lease_id: leaseId,
+          owner_user_id: userId,
+          period_start: safeStr(month.period_start),
+          period_end: safeStr(month.period_end || month.period_start),
+          rent_amount: 0,
+          charges_amount: 0,
+          total_amount: 0,
+          issue_date: returned_at_date,
+          issued_at: new Date().toISOString(),
+          content_text: "Compensé par retenue sur dépôt de garantie",
+          status: "closed_by_deposit",
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(400).json({ error: "Action inconnue." });
   } catch (e: any) {
     console.error("[api/deposits] error:", e);

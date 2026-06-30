@@ -150,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await removeTrackedPartialPaymentTransactions({ leaseId, periodStart, periodEnd });
 
-    if (receipt?.id) {
+    if (receipt?.id && String(receipt?.status || "") !== "closed_by_deposit") {
       const receiptUpdate = await supabaseAdmin
         .from("rent_receipts")
         .update({
