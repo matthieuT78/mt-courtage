@@ -14,6 +14,16 @@ const withoutRenewalColumns = (payload: Record<string, any>) => {
   return rest;
 };
 
+const isMissingTrackingSchema = (error: any) => {
+  const message = String(error?.message || error?.details || error || "").toLowerCase();
+  return message.includes("tracking_from_date");
+};
+
+const withoutTrackingColumns = (payload: Record<string, any>) => {
+  const { tracking_from_date, ...rest } = payload;
+  return rest;
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Json>) {
   try {
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -50,6 +60,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const inserted = await supabaseAdmin.from("leases").insert(leasePayload).select("id").single();
     if (!inserted.error) return res.status(200).json({ ok: true, id: inserted.data?.id });
+
+    if (isMissingTrackingSchema(inserted.error)) {
+      const noTracking = withoutTrackingColumns(leasePayload);
+      const fallback2 = await supabaseAdmin.from("leases").insert(noTracking).select("id").single();
+      if (!fallback2.error) return res.status(200).json({ ok: true, id: fallback2.data?.id });
+      if (!isMissingRenewalSchema(fallback2.error)) return res.status(500).json({ error: fallback2.error.message });
+      const fallback3 = await supabaseAdmin.from("leases").insert(withoutRenewalColumns(noTracking)).select("id").single();
+      if (fallback3.error) return res.status(500).json({ error: fallback3.error.message });
+      return res.status(200).json({ ok: true, id: fallback3.data?.id, renewalSchemaSkipped: true });
+    }
 
     if (!isMissingRenewalSchema(inserted.error)) {
       return res.status(500).json({ error: inserted.error.message });

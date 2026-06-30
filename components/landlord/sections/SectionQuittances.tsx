@@ -181,6 +181,8 @@ function isLeaseExpectedForMonth(lease: Lease, yyyymm: string) {
   if ((status === "archived" || status === "ended") && !lease.end_date) return false;
   if (lease.start_date && dateOnlyTime(lease.start_date) > end.getTime()) return false;
   if (lease.end_date && dateOnlyTime(lease.end_date) < start.getTime()) return false;
+  // respect tracking start date set at import for existing leases
+  if (lease.tracking_from_date && yyyymm < lease.tracking_from_date.slice(0, 7)) return false;
   return ["active", "ended", "archived"].includes(status) || (!status && !!lease.start_date);
 }
 

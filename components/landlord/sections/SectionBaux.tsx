@@ -66,6 +66,7 @@ export type Lease = {
   reminder_email: string | null;
   tenant_receipt_email: string | null;
   timezone: string | null;
+  tracking_from_date?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -1032,6 +1033,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     return rest;
   };
 
+  const isMissingTrackingSchema = (error: any) => {
+    const message = String(error?.message || error?.details || error || "").toLowerCase();
+    return message.includes("tracking_from_date");
+  };
+
+  const withoutTrackingColumns = (payload: Record<string, any>) => {
+    const { tracking_from_date, ...rest } = payload;
+    return rest;
+  };
+
   const authJsonHeaders = async () => {
     if (!supabase) throw new Error("Supabase non initialisé.");
     const { data, error } = await supabase.auth.getSession();
@@ -1081,6 +1092,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     reminder_email: userEmail || "",
     tenant_receipt_email: "",
     timezone: "Europe/Paris",
+    tracking_from: "now" as "now" | "start",
   });
 
   const selectableProps = useMemo(
@@ -1114,6 +1126,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       reminder_email: userEmail || "",
       tenant_receipt_email: "",
       timezone: "Europe/Paris",
+      tracking_from: "now" as "now" | "start",
     });
   };
 
@@ -1152,6 +1165,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       reminder_email: lease.reminder_email || "",
       tenant_receipt_email: lease.tenant_receipt_email || "",
       timezone: lease.timezone || "Europe/Paris",
+      tracking_from: lease.tracking_from_date ? "now" : "start",
     });
   };
 
@@ -1172,6 +1186,15 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     const payload: any = { ...patch, updated_at: new Date().toISOString() };
     const { error } = await supabase.from("leases").update(payload).eq("id", leaseId).eq("user_id", userId);
     if (!error) return;
+    if (isMissingTrackingSchema(error)) {
+      const noTracking = withoutTrackingColumns(payload);
+      const { error: e2 } = await supabase.from("leases").update(noTracking).eq("id", leaseId).eq("user_id", userId);
+      if (!e2) return;
+      if (!isMissingRenewalSchema(e2)) throw e2;
+      const { error: e3 } = await supabase.from("leases").update(withoutRenewalColumns(noTracking)).eq("id", leaseId).eq("user_id", userId);
+      if (e3) throw e3;
+      return;
+    }
     if (!isMissingRenewalSchema(error)) throw error;
 
     const { error: fallbackError } = await supabase.from("leases").update(withoutRenewalColumns(payload)).eq("id", leaseId).eq("user_id", userId);
@@ -1261,6 +1284,15 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       if (rent <= 0) throw new Error("Le loyer doit être supérieur à 0 €.");
       if (charges < 0) throw new Error("Les charges ne peuvent pas être négatives.");
 
+      const startDaysAgo = form.start_date
+        ? Math.floor((Date.now() - new Date(form.start_date + "T00:00:00").getTime()) / 86400000)
+        : 0;
+      const now = new Date();
+      const trackingFromDate =
+        mode === "create" && startDaysAgo > 30 && form.tracking_from === "now"
+          ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`
+          : null;
+
       const payload: any = {
         user_id: userId,
         property_id: form.property_id,
@@ -1283,6 +1315,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         reminder_email: ownerEmail || null,
         tenant_receipt_email: receiptEmail || null,
         timezone: form.timezone || "Europe/Paris",
+        tracking_from_date: trackingFromDate,
         updated_at: new Date().toISOString(),
       };
 
@@ -1292,10 +1325,21 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         if (!editingId) throw new Error("Aucun bail en cours d’édition.");
         const { error } = await supabase.from("leases").update(payload).eq("id", editingId).eq("user_id", userId);
         if (error) {
-          if (!isMissingRenewalSchema(error)) throw error;
-          const { error: fallbackError } = await supabase.from("leases").update(withoutRenewalColumns(payload)).eq("id", editingId).eq("user_id", userId);
-          if (fallbackError) throw fallbackError;
-          renewalSchemaSkipped = true;
+          if (isMissingTrackingSchema(error)) {
+            const noTracking = withoutTrackingColumns(payload);
+            const { error: e2 } = await supabase.from("leases").update(noTracking).eq("id", editingId).eq("user_id", userId);
+            if (e2) {
+              if (!isMissingRenewalSchema(e2)) throw e2;
+              const { error: e3 } = await supabase.from("leases").update(withoutRenewalColumns(noTracking)).eq("id", editingId).eq("user_id", userId);
+              if (e3) throw e3;
+              renewalSchemaSkipped = true;
+            }
+          } else {
+            if (!isMissingRenewalSchema(error)) throw error;
+            const { error: fallbackError } = await supabase.from("leases").update(withoutRenewalColumns(payload)).eq("id", editingId).eq("user_id", userId);
+            if (fallbackError) throw fallbackError;
+            renewalSchemaSkipped = true;
+          }
         }
         setOk(
           renewalSchemaSkipped
@@ -2034,6 +2078,53 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             />
           </div>
         </div>
+
+        {/* Prompt suivi historique — bail existant importé */}
+        {mode === "create" && form.start_date && (() => {
+          const daysAgo = Math.floor((Date.now() - new Date(form.start_date + "T00:00:00").getTime()) / 86400000);
+          if (daysAgo <= 30) return null;
+          const monthsAgo = Math.round(daysAgo / 30);
+          return (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-indigo-900">Bail existant — depuis quand suivre les paiements ?</p>
+                <p className="text-xs text-indigo-700 mt-1">
+                  Ce bail a démarré il y a {monthsAgo} mois. Si vous l&apos;importez dans lokt.fr, vous n&apos;avez probablement pas besoin de confirmer les paiements passés un par un.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm((s) => ({ ...s, tracking_from: "now" }))}
+                  className={`rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${
+                    form.tracking_from === "now"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "border border-indigo-200 bg-white text-indigo-800 hover:bg-indigo-100"
+                  }`}
+                >
+                  <div className="font-bold">À partir d&apos;aujourd&apos;hui</div>
+                  <div className={`mt-0.5 font-normal ${form.tracking_from === "now" ? "text-white/75" : "text-indigo-500"}`}>
+                    Recommandé — pas de backlog
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((s) => ({ ...s, tracking_from: "start" }))}
+                  className={`rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${
+                    form.tracking_from === "start"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "border border-indigo-200 bg-white text-indigo-800 hover:bg-indigo-100"
+                  }`}
+                >
+                  <div className="font-bold">Depuis le début du bail</div>
+                  <div className={`mt-0.5 font-normal ${form.tracking_from === "start" ? "text-white/75" : "text-indigo-500"}`}>
+                    Importer l&apos;historique complet
+                  </div>
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
           <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">

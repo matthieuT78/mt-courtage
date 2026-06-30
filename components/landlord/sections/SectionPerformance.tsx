@@ -6,6 +6,7 @@ import {
   ExclamationTriangleIcon,
   HomeModernIcon,
   SparklesIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import {
   ArcElement,
@@ -41,6 +42,8 @@ type Transaction = {
   category: string;
   amount: number;
   status?: string | null;
+  is_recurring?: boolean | null;
+  recurrence_frequency?: "monthly" | "quarterly" | "yearly" | null;
 };
 
 type PropertyFinance = {
@@ -85,6 +88,43 @@ const normalizeDate = (value?: string | null) => {
 
 const sum = (values: number[]) => values.reduce((total, value) => total + (Number.isFinite(value) ? value : 0), 0);
 const money = (value: number) => formatEuro(value).replace(",00", "");
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
+type PeriodMode = "month" | "last6" | "year" | "custom";
+
+function monthStartEnd(yyyymm: string) {
+  const [y, m] = yyyymm.split("-").map(Number);
+  return { start: new Date(y, m - 1, 1), end: new Date(y, m, 0, 23, 59, 59) };
+}
+
+function periodRange(mode: PeriodMode, anchorMonth: string, customStart?: string, customEnd?: string) {
+  if (mode === "custom" && customStart && customEnd) {
+    const { start } = monthStartEnd(customStart);
+    const { end } = monthStartEnd(customEnd);
+    return start <= end ? { start, end } : { start: monthStartEnd(customEnd).start, end: monthStartEnd(customStart).end };
+  }
+  const { start: anchorStart, end: anchorEnd } = monthStartEnd(anchorMonth);
+  if (mode === "year") {
+    const year = anchorStart.getFullYear();
+    return { start: new Date(year, 0, 1), end: new Date(year, 11, 31, 23, 59, 59) };
+  }
+  if (mode === "last6") return { start: addMonths(anchorStart, -5), end: anchorEnd };
+  return { start: anchorStart, end: anchorEnd };
+}
+
+function fmtMonthFR(yyyymm: string) {
+  const [y, m] = yyyymm.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
+
+function fmtPeriodFR(mode: PeriodMode, anchorMonth: string, customStart?: string, customEnd?: string) {
+  const { start, end } = periodRange(mode, anchorMonth, customStart, customEnd);
+  if (mode === "month") return fmtMonthFR(anchorMonth);
+  if (mode === "year") return String(start.getFullYear());
+  return `${fmtMonthFR(monthKey(start))} → ${fmtMonthFR(monthKey(end))}`;
+}
 const daysBetween = (start: Date, end: Date) => Math.max(0, Math.ceil((end.getTime() - start.getTime()) / 86400000));
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -483,17 +523,27 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
 
   const [propertyId, setPropertyId] = useState("");
   const [includeArchivedProperties, setIncludeArchivedProperties] = useState(false);
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("last6");
+  const [customStartMonth, setCustomStartMonth] = useState("");
+  const [customEndMonth, setCustomEndMonth] = useState("");
+  const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
   const [tx, setTx] = useState<Transaction[]>([]);
   const [finance, setFinance] = useState<Map<string, PropertyFinance>>(new Map());
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const months = useMemo(() => {
-    const start = addMonths(new Date(), -5);
-    return Array.from({ length: 6 }, (_, index) => addMonths(start, index));
-  }, []);
-
   const currentMonth = monthKey(new Date());
+
+  const selectedPeriod = useMemo(() => {
+    const { start, end } = periodRange(periodMode, currentMonth, customStartMonth || undefined, customEndMonth || undefined);
+    const months: Date[] = [];
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cursor <= end) {
+      months.push(new Date(cursor));
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return { start, end, months, monthCount: months.length, label: fmtPeriodFR(periodMode, currentMonth, customStartMonth || undefined, customEndMonth || undefined) };
+  }, [periodMode, currentMonth, customStartMonth, customEndMonth]);
   const activeLeases = useMemo(
     () => safeLeases.filter(isSelectableLeaseLike),
     [safeLeases]
@@ -528,7 +578,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       try {
         const { data: txData, error: txError } = await supabase
           .from("transactions")
-          .select("id,property_id,lease_id,occurred_at,direction,category,amount,status")
+          .select("id,property_id,lease_id,occurred_at,direction,category,amount,status,is_recurring,recurrence_frequency")
           .eq("user_id", userId)
           .order("occurred_at", { ascending: false })
           .limit(2000);
@@ -571,6 +621,19 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
     return map;
   }, [activeLeases]);
 
+  // Charges récurrentes enregistrées comme transactions (même logique que SectionFinance)
+  const recurringParentTxByProperty = useMemo(() => {
+    const map = new Map<string, Transaction[]>();
+    for (const t of tx) {
+      if (!t.is_recurring) continue;
+      const pid = t.property_id || "";
+      const list = map.get(pid) || [];
+      list.push(t);
+      map.set(pid, list);
+    }
+    return map;
+  }, [tx]);
+
   const propertyRows = useMemo<PropertyRow[]>(() => {
     const ids = new Set<string>();
     for (const option of propertyOptions) ids.add(option.id);
@@ -589,24 +652,48 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
             .filter((lease) => lease.property_id === id)
             .map((lease) => monthlyLeaseAmount(lease))
         );
+        const { start: pStart, end: pEnd, monthCount } = selectedPeriod;
         const received = sum(
           safePayments
             .filter((payment) => {
               const lease = leaseById.get(payment.lease_id);
-              return lease?.property_id === id && !!payment.paid_at && monthKey(normalizeDate(payment.period_start) || new Date()) === currentMonth;
+              if (!lease || lease.property_id !== id || !payment.paid_at) return false;
+              const d = normalizeDate(payment.period_start);
+              return d != null && d >= pStart && d <= pEnd;
             })
             .map((payment) => Number(payment.total_amount || 0))
         );
-        const monthTx = tx.filter((row) => row.property_id === id && monthKey(normalizeDate(row.occurred_at) || new Date()) === currentMonth);
-        const ledgerIncome = sum(monthTx.filter(isReceivedIncome).map((row) => Number(row.amount || 0)));
-        const expense = sum(monthTx.filter((row) => row.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category)).map((row) => Number(row.amount || 0)));
+        const periodTx = tx.filter((row) => {
+          if (row.property_id !== id) return false;
+          const d = normalizeDate(row.occurred_at);
+          return d != null && d >= pStart && d <= pEnd;
+        });
+        const ledgerIncome = sum(periodTx.filter(isReceivedIncome).map((row) => Number(row.amount || 0)));
+        const expense = sum(periodTx.filter((row) => row.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(row.category)).map((row) => Number(row.amount || 0)));
         const fin = finance.get(id) || null;
-        const recurring = recurringMonthly(fin);
-        const loanMonthly = Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
+        const recurringTxs = recurringParentTxByProperty.get(id) || [];
+        let recurring: number;
+        let loanMonthly: number;
+        if (recurringTxs.length > 0) {
+          let loan = 0, other = 0;
+          for (const t of recurringTxs) {
+            const divisor = t.recurrence_frequency === "quarterly" ? 3 : t.recurrence_frequency === "yearly" ? 12 : 1;
+            const monthlyAmt = t.amount / divisor;
+            if (t.category === "loan") loan += monthlyAmt;
+            else other += monthlyAmt;
+          }
+          recurring = loan + other;
+          loanMonthly = loan;
+        } else {
+          recurring = recurringMonthly(fin);
+          loanMonthly = Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
+        }
         const incomeBase = Math.max(received, ledgerIncome);
-        const cashflow = incomeBase - expense - recurring;
+        const incomeMonthly = monthCount > 1 ? incomeBase / monthCount : incomeBase;
+        const expenseMonthly = monthCount > 1 ? expense / monthCount : expense;
+        const cashflow = incomeMonthly - expenseMonthly - recurring;
         const investment = investmentAmount(fin);
-        const netYield = investment > 0 ? ((incomeBase - recurring) * 12 * 100) / investment : null;
+        const netYield = investment > 0 ? ((incomeMonthly - recurring) * 12 * 100) / investment : null;
         const occupancy = computeOccupancySignals(safeLeases, id);
 
         return {
@@ -631,10 +718,10 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         };
       })
       .sort((a, b) => b.cashflow - a.cashflow);
-  }, [activeLeases, currentMonth, finance, includeArchivedProperties, leaseById, propertyId, propertyOptions, propsById, safeLeases, safePayments, tx]);
+  }, [activeLeases, selectedPeriod, finance, includeArchivedProperties, leaseById, propertyId, propertyOptions, propsById, recurringParentTxByProperty, safeLeases, safePayments, tx]);
 
   const series = useMemo(() => {
-    return months.map((date) => {
+    return selectedPeriod.months.map((date) => {
       const key = monthKey(date);
       const rows = tx.filter((row) => {
         if (propertyId && row.property_id !== propertyId) return false;
@@ -659,14 +746,14 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       const recurring = sum(propertyRows.map((row) => row.recurring));
       return {
         key,
-        label: date.toLocaleDateString("fr-FR", { month: "short" }).replace(".", ""),
+        label: date.toLocaleDateString("fr-FR", { month: "short", year: selectedPeriod.monthCount > 12 ? "2-digit" : undefined }).replace(".", ""),
         income,
         expense,
         recurring,
         net: income - expense - recurring,
       };
     });
-  }, [leaseById, months, propertyId, propertyRows, safePayments, tx]);
+  }, [leaseById, selectedPeriod, propertyId, propertyRows, safePayments, tx]);
 
   const totals = useMemo(() => {
     const expected = sum(propertyRows.map((row) => row.expected));
@@ -815,16 +902,16 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       if (row.direction !== "out") continue;
       if (DEPOSIT_TRANSIT_CATEGORIES.includes(row.category)) continue;
       const rowDate = normalizeDate(row.occurred_at);
-      if (!rowDate || monthKey(rowDate) !== currentMonth) continue;
+      if (!rowDate || rowDate < selectedPeriod.start || rowDate > selectedPeriod.end) continue;
       byCategory.set(row.category || "other", (byCategory.get(row.category || "other") || 0) + Number(row.amount || 0));
     }
-    const recurring = totals.recurring;
+    const recurring = totals.recurring * selectedPeriod.monthCount;
     if (recurring > 0) byCategory.set("Charges récurrentes", (byCategory.get("Charges récurrentes") || 0) + recurring);
     return Array.from(byCategory.entries())
       .map(([category, amount]) => ({ category, label: CATEGORY_LABELS[category] || category, amount }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 6);
-  }, [currentMonth, propertyId, totals.recurring, tx]);
+  }, [selectedPeriod, propertyId, totals.recurring, tx]);
 
   const expenseChartData = useMemo(
     () => ({
@@ -910,7 +997,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         <SectionTitle
           kicker="Performance"
           title="Cashflow & rentabilité"
-          desc="Les cartes affichent la lecture mensuelle du mois en cours. Le graphique garde le recul sur 6 mois pour voir la tendance."
+          desc="Analysez vos revenus, charges et rentabilité sur la période de votre choix."
         />
 
         <div className="w-full rounded-3xl border border-slate-200 bg-slate-50 p-3 lg:w-[320px]">
@@ -944,14 +1031,14 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       {err ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{err}</div> : null}
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={<BanknotesIcon className="h-5 w-5" />} label="Cashflow mensuel" value={money(totals.cashflow)} sub="loyers encaissés moins sorties du mois" />
-        <Metric icon={<HomeModernIcon className="h-5 w-5" />} label="Loyers mensuels" value={money(totals.expected)} sub="montant attendu sur les baux actifs" />
+        <Metric icon={<BanknotesIcon className="h-5 w-5" />} label="Cashflow mensuel" value={money(totals.cashflow)} sub="loyers encaissés moins charges du mois" />
+        <Metric icon={<HomeModernIcon className="h-5 w-5" />} label="Loyers mensuels" value={money(totals.expected)} sub="montant mensuel attendu sur les baux actifs" />
         <Metric icon={<ChartBarIcon className="h-5 w-5" />} label="Charges mensuelles" value={money(totals.recurring)} sub="crédit, PNO, copro, fiscalité, frais" />
         <Metric icon={<SparklesIcon className="h-5 w-5" />} label="À regarder" value={String(priorityRows.length)} sub="biens qui méritent une action" />
       </div>
 
       <div className="rounded-3xl border border-cyan-100 bg-white px-4 py-3 text-sm leading-6 text-slate-600 shadow-sm">
-        <span className="font-semibold text-slate-950">Lecture simple :</span> la mensualité reste la base. Les chiffres du haut parlent du mois en cours, puis les graphiques montrent comment ce mois se compare aux 5 précédents.
+        <span className="font-semibold text-slate-950">Lecture simple :</span> les cartes du haut donnent la base mensuelle. Le graphique ci-dessous s'adapte à la période choisie.
       </div>
 
       <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
@@ -977,13 +1064,47 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">Tendance 6 mois</p>
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-cyan-700">Tendance</p>
             <h3 className="text-lg font-semibold text-slate-950">Encaissements, dépenses et résultat net</h3>
           </div>
           <p className="text-xs text-slate-500">Chaque barre est rattachée au mois concerné. Les charges récurrentes sont ajoutées automatiquement.</p>
         </div>
 
-        <div className="mt-5 h-[320px] rounded-3xl border border-slate-100 bg-slate-50 p-3">
+        {/* Period selector */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="flex rounded-xl bg-slate-100 p-0.5 gap-px">
+            {([
+              { key: "month" as const, label: "Ce mois" },
+              { key: "last6" as const, label: "6 mois" },
+              { key: "year" as const, label: "Année" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setPeriodMode(opt.key)}
+                className={cx(
+                  "rounded-[0.6rem] px-3 py-1.5 text-xs font-semibold transition",
+                  periodMode === opt.key ? "bg-white shadow-sm text-slate-900" : "text-slate-600 hover:text-slate-800"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => { setPeriodPickerOpen(true); if (periodMode !== "custom") setPeriodMode("custom"); }}
+              className={cx(
+                "rounded-[0.6rem] px-3 py-1.5 text-xs font-semibold transition",
+                periodMode === "custom" ? "bg-white shadow-sm text-slate-900" : "text-slate-600 hover:text-slate-800"
+              )}
+            >
+              {periodMode === "custom" ? selectedPeriod.label : "Personnalisé"}
+            </button>
+          </div>
+          <span className="text-xs text-slate-500">{selectedPeriod.label}</span>
+        </div>
+
+        <div className="mt-4 h-[320px] rounded-3xl border border-slate-100 bg-slate-50 p-3">
           <Chart type="bar" data={trendChartData as any} options={chartOptions as any} />
         </div>
       </section>
@@ -1126,6 +1247,68 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       </section>
 
       {loading ? <p className="text-xs text-slate-500">Chargement de la performance…</p> : null}
+
+      {/* Period picker modal */}
+      {periodPickerOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
+          <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => setPeriodPickerOpen(false)} />
+          <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Choisir une période</p>
+                <p className="mt-1 text-sm text-slate-600">Sélectionnez un mois de début et un mois de fin.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPeriodPickerOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                aria-label="Fermer"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-semibold text-slate-700">Début</label>
+                <input
+                  type="month"
+                  value={customStartMonth}
+                  onChange={(e) => setCustomStartMonth(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-700">Fin</label>
+                <input
+                  type="month"
+                  value={customEndMonth}
+                  onChange={(e) => setCustomEndMonth(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              Période sélectionnée : <span className="font-semibold text-slate-900">{fmtPeriodFR("custom", currentMonth, customStartMonth || undefined, customEndMonth || undefined)}</span>
+            </div>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPeriodPickerOpen(false)}
+                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPeriodMode("custom"); setPeriodPickerOpen(false); }}
+                className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                Appliquer
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

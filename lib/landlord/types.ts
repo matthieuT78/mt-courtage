@@ -104,6 +104,7 @@ export type Lease = {
   reminder_email: string | null;
   tenant_receipt_email: string | null;
   timezone: string | null;
+  tracking_from_date?: string | null;
   created_at: string;
   updated_at: string;
 };
