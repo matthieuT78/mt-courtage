@@ -48,7 +48,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const receiptByMonth = new Map<string, any>();
   for (const r of receipts.data || []) {
     const yyyymm = String(r.period_start || "").slice(0, 7);
-    if (yyyymm) receiptByMonth.set(yyyymm, r);
+    if (!yyyymm) continue;
+    const existing = receiptByMonth.get(yyyymm);
+    // closed_by_deposit always wins — a single receipt with this status skips the whole month
+    const rStatus = String(r?.status || "").toLowerCase();
+    const existingStatus = String(existing?.status || "").toLowerCase();
+    if (!existing || (rStatus === "closed_by_deposit" && existingStatus !== "closed_by_deposit")) {
+      receiptByMonth.set(yyyymm, r);
+    }
   }
 
   // Iterate all months in the lease period

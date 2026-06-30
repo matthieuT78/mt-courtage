@@ -519,7 +519,22 @@ export function SectionQuittances({
       const leaseId = String(r?.lease_id || "");
       const yyyymm = yyyymmFromReceipt(r);
       if (!leaseId || !yyyymm) continue;
-      map.set(periodKey(leaseId, yyyymm), r);
+      const key = periodKey(leaseId, yyyymm);
+      const existing = map.get(key);
+      if (!existing) {
+        map.set(key, r);
+      } else {
+        const rStatus = String(r?.status || "").toLowerCase();
+        const existingStatus = String(existing?.status || "").toLowerCase();
+        // closed_by_deposit always wins; otherwise keep the most recently updated
+        if (rStatus === "closed_by_deposit" && existingStatus !== "closed_by_deposit") {
+          map.set(key, r);
+        } else if (existingStatus !== "closed_by_deposit") {
+          const rDate = String(r?.updated_at || r?.created_at || "");
+          const existingDate = String(existing?.updated_at || existing?.created_at || "");
+          if (rDate.localeCompare(existingDate) > 0) map.set(key, r);
+        }
+      }
     }
     return map;
   }, [safeReceipts]);

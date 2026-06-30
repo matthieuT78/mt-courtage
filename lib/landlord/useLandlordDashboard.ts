@@ -350,11 +350,13 @@ export function useLandlordDashboard() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const currentMonth = monthRange.startISO.slice(0, 7);
+    const activeLeaseIds = new Set(activeLeases.map((l) => l.id));
 
-    // Mois passés : tout paiement enregistré mais non payé
+    // Mois passés : paiements non payés sur baux actifs uniquement (baux archivés/clôturés exclus)
     const pastOverdueLeaseIds = new Set(
       (payments || [])
         .filter((p) => {
+          if (!activeLeaseIds.has(String(p.lease_id || ""))) return false;
           const period = String(p.period_start || "").slice(0, 7);
           return period < currentMonth && !p.paid_at;
         })

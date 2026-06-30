@@ -136,22 +136,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       for (const month of imputedMonths) {
         if (!month.period_start) continue;
         const yyyymm = String(month.period_start).slice(0, 7);
-        const { data: existing } = await supabaseAdmin
-          .from("rent_receipts")
-          .select("id, status")
-          .eq("lease_id", leaseId)
-          .eq("period_start", safeStr(month.period_start))
-          .gte("period_end", `${yyyymm}-01`)
-          .lte("period_end", `${yyyymm}-31`)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
 
-        if (existing?.id) {
+        // Update ALL existing receipts for this lease month (handles multiple receipts, e.g. full-month + prorated)
+        const { data: existingAll } = await supabaseAdmin
+          .from("rent_receipts")
+          .select("id")
+          .eq("lease_id", leaseId)
+          .gte("period_start", `${yyyymm}-01`)
+          .lte("period_start", `${yyyymm}-31`);
+
+        if (existingAll && existingAll.length > 0) {
           await supabaseAdmin
             .from("rent_receipts")
             .update({ status: "closed_by_deposit", pdf_url: null, updated_at: new Date().toISOString() })
-            .eq("id", existing.id);
+            .eq("lease_id", leaseId)
+            .gte("period_start", `${yyyymm}-01`)
+            .lte("period_start", `${yyyymm}-31`);
         } else {
           await supabaseAdmin.from("rent_receipts").insert({
             lease_id: leaseId,
