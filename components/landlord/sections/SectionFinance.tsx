@@ -2881,9 +2881,15 @@ function PropertyFinanceForm({
               placeholder="Ex. 2043"
               onChange={(v) => setS((p) => ({ ...p, loan_end_year: v == null ? null : Math.round(v) }))}
             />
+            <Field
+              label="Mensualité crédit + assurance (€)"
+              value={s.loan_monthly ?? null}
+              placeholder="Ex. 762.96"
+              onChange={(v) => setS((p) => ({ ...p, loan_monthly: v }))}
+            />
           </div>
           <p className="mt-2 text-[0.68rem] leading-4 text-slate-400">
-            Mensualité et assurance crédit → Nouvelle écriture &gt; Charge récurrente &gt; Crédit.
+            Utilisé pour le calcul de rentabilité. Pour le suivi des paiements mois par mois, créez aussi une Charge récurrente dans le grand livre.
           </p>
         </div>
 
