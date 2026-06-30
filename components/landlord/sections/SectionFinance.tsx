@@ -2047,22 +2047,29 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           ) : (
             activePropertyOptions.map((property) => {
               const existing = pf.get(property.id) || null;
-              const loanMonthly = Number(existing?.loan_monthly || 0) + Number(existing?.loan_insurance_monthly || 0);
-              const taxesMonthly = Number(existing?.property_tax_yearly || 0) / 12 + Number(existing?.cfe_yearly || 0) / 12;
-              const operatingMonthly =
-                Number(existing?.fixed_charges_monthly || 0) +
-                Number(existing?.pno_insurance_monthly || 0) +
-                Number(existing?.copro_charges_monthly || 0) +
-                Number(existing?.bank_fees_monthly || 0) +
-                Number(existing?.maintenance_monthly || 0) +
-                Number(existing?.rental_tax_monthly || 0);
+              const recurringData = monthlyRecurringByProperty.get(property.id);
+              const hasRecurring = (recurringParentTxByProperty.get(property.id) || []).length > 0;
+              const loanMonthly = hasRecurring
+                ? (recurringData?.loan || 0)
+                : Number(existing?.loan_monthly || 0) + Number(existing?.loan_insurance_monthly || 0);
+              const taxesMonthly = hasRecurring
+                ? (recurringData?.taxM || 0)
+                : Number(existing?.property_tax_yearly || 0) / 12 + Number(existing?.cfe_yearly || 0) / 12;
+              const operatingMonthly = hasRecurring
+                ? (recurringData?.fixed || 0)
+                : Number(existing?.fixed_charges_monthly || 0) +
+                  Number(existing?.pno_insurance_monthly || 0) +
+                  Number(existing?.copro_charges_monthly || 0) +
+                  Number(existing?.bank_fees_monthly || 0) +
+                  Number(existing?.maintenance_monthly || 0) +
+                  Number(existing?.rental_tax_monthly || 0);
               const monthlyTotal = loanMonthly + taxesMonthly + operatingMonthly;
               const missing = [
                 !existing?.purchase_price ? "prix d'achat" : "",
                 !existing?.loan_rate_percent ? "taux crédit" : "",
               ].filter(Boolean);
               const optionalMissing = [
-                !existing?.loan_monthly ? "crédit" : "",
+                !hasRecurring && !existing?.loan_monthly ? "crédit" : "",
                 !existing?.tax_regime ? "régime" : "",
               ].filter(Boolean);
 
