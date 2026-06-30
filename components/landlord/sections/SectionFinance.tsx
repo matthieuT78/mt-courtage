@@ -498,6 +498,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [tx, setTx] = useState<Transaction[]>([]);
   const [txDocuments, setTxDocuments] = useState<TransactionDocument[]>([]);
   const [pf, setPf] = useState<Map<string, PropertyFinance>>(new Map());
+  const [openFinanceProps, setOpenFinanceProps] = useState<Set<string>>(new Set());
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -2096,10 +2097,19 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               ].filter(Boolean);
 
               return (
-                <details key={property.id} className="group">
-                  <summary className="cursor-pointer list-none px-4 py-3 hover:bg-slate-50">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                <div key={property.id}>
+                  <button
+                    type="button"
+                    className="w-full px-4 py-3 text-left hover:bg-slate-50"
+                    onClick={() => setOpenFinanceProps((prev) => {
+                      const next = new Set(prev);
+                      next.has(property.id) ? next.delete(property.id) : next.add(property.id);
+                      return next;
+                    })}
+                  >
+                    <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
+                        <svg className={cx("h-3 w-3 shrink-0 text-slate-400 transition-transform", openFinanceProps.has(property.id) && "rotate-90")} viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 1l4 4-4 4"/></svg>
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700">
                           {(property.label || property.address_line1 || "B").slice(0, 1).toUpperCase()}
                         </span>
@@ -2114,27 +2124,28 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                           </p>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex gap-4 text-xs text-slate-600">
+                      <div className="flex items-center gap-4">
+                        <div className="hidden grid-cols-[5.5rem_5rem_4rem_3.5rem_7rem] gap-x-4 text-xs text-slate-600 sm:grid">
                           <LineMetric label="Total/mois" value={formatEuro(monthlyTotal)} strong />
                           <LineMetric label="Crédit" value={formatEuro(loanMonthly)} />
                           <LineMetric label="Taxes" value={formatEuro(taxesMonthly)} />
-                          <LineMetric
-                            label="Taux"
-                            value={existing?.loan_rate_percent ? `${Number(existing.loan_rate_percent).toLocaleString("fr-FR")} %` : "—"}
-                          />
+                          <LineMetric label="Taux" value={existing?.loan_rate_percent ? `${Number(existing.loan_rate_percent).toLocaleString("fr-FR")} %` : "—"} />
                           <LineMetric label="Régime" value={existing?.tax_regime ? taxRegimeLabel(existing.tax_regime) : "—"} />
                         </div>
-                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 group-open:hidden">
-                          Modifier
-                        </span>
+                        {!openFinanceProps.has(property.id) && (
+                          <span className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                            Modifier
+                          </span>
+                        )}
                       </div>
                     </div>
-                  </summary>
-                  <div className="border-t border-slate-100 bg-slate-50 px-4 pb-4">
-                    <PropertyFinanceForm propertyId={property.id} existing={existing} onSave={upsertPropertyFinance} />
-                  </div>
-                </details>
+                  </button>
+                  {openFinanceProps.has(property.id) && (
+                    <div className="border-t border-slate-100 bg-slate-50 px-4 pb-4">
+                      <PropertyFinanceForm propertyId={property.id} existing={existing} onSave={upsertPropertyFinance} />
+                    </div>
+                  )}
+                </div>
               );
             })
           )}
@@ -2728,9 +2739,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function LineMetric({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
-    <div className="min-w-0">
+    <div>
       <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
-      <p className={cx("mt-0.5 truncate text-sm font-semibold", strong ? "text-slate-950" : "text-slate-700")}>{value}</p>
+      <p className={cx("mt-0.5 text-sm font-semibold", strong ? "text-slate-950" : "text-slate-700")}>{value}</p>
     </div>
   );
 }

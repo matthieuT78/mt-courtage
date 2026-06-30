@@ -825,7 +825,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
 
                 return (
                   <div key={row.property.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
-                    <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1.4fr_auto] lg:items-center">
+                    <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr_1.4fr_10rem] lg:items-center">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
