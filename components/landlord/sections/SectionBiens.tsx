@@ -27,6 +27,7 @@ type Props = {
   tenants?: any[];
   photos?: any[];
   onRefresh: () => Promise<void>;
+  deepLink?: { key: number; openCreate?: boolean } | null;
 };
 
 const CREATE_ID = "__create__";
@@ -161,7 +162,7 @@ function rowSignal(row: { currentLease: any; vacancyDays12m: number; turnover12m
   return { tone: "sky" as const, label: "Correct", detail: "Suivi normal du bien." };
 }
 
-export function SectionBiens({ userId, properties, leases, tenants, photos, onRefresh }: Props) {
+export function SectionBiens({ userId, properties, leases, tenants, photos, onRefresh, deepLink }: Props) {
   const { loading: permissionsLoading, maxActiveProperties } = usePermissions();
   const safeProperties = Array.isArray(properties) ? properties : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -278,6 +279,17 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
 
   const [createForm, setCreateForm] = useState(EMPTY);
   const [editForms, setEditForms] = useState<Record<string, typeof EMPTY>>({});
+  const [highlightCreate, setHighlightCreate] = useState(false);
+
+  useEffect(() => {
+    if (!deepLink?.openCreate) return;
+    setExpandedId(CREATE_ID);
+    setHighlightCreate(true);
+    setTimeout(() => {
+      document.getElementById("biens-create-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    setTimeout(() => setHighlightCreate(false), 2500);
+  }, [deepLink]);
 
   const validate = (f: typeof EMPTY, formId: string): boolean => {
     const label = (f.label || "").trim();
@@ -874,6 +886,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
 
       <div className="grid gap-4">
         {/* ✅ LIGNE CRÉER (pas de section) */}
+        <div id="biens-create-form" className={highlightCreate ? "rounded-2xl ring-2 ring-red-400 ring-offset-2 transition-shadow duration-500" : ""}>
         <ExpandableRow
           id={CREATE_ID}
           expandedId={expandedId}
@@ -942,6 +955,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             </button>
           </div>
         </ExpandableRow>
+        </div>
 
         {/* ✅ ACTIFS */}
         <ExpandableSection

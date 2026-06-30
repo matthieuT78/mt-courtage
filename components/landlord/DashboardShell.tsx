@@ -256,7 +256,7 @@ export function DashboardShell(props: any) {
   const [contactOpen, setContactOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const deepLinkKeyRef = useRef(0);
-  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" } | null>(null);
+  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl"; openCreate?: boolean } | null>(null);
 
   useEffect(() => {
     const updatePad = () => {
@@ -608,7 +608,7 @@ export function DashboardShell(props: any) {
         );
 
       case "biens":
-        return <SectionBiens userId={userId} properties={properties} leases={leases} tenants={tenants} photos={photos} onRefresh={refresh} />;
+        return <SectionBiens userId={userId} properties={properties} leases={leases} tenants={tenants} photos={photos} onRefresh={refresh} deepLink={deepLink} />;
 
       case "locataires":
         return (
@@ -619,6 +619,7 @@ export function DashboardShell(props: any) {
             properties={properties}
             payments={payments}
             onRefresh={refresh}
+            deepLink={deepLink}
             initialDepartureTenantId={departureTenantId}
             onDepartureOpened={() => setDepartureTenantId(null)}
             onOpenExitInventory={() => setActive("etat_des_lieux")}
@@ -680,6 +681,7 @@ export function DashboardShell(props: any) {
             propertyById={propertyById}
             properties={properties}
             onRefresh={refresh}
+            deepLink={deepLink}
           />
         );
 

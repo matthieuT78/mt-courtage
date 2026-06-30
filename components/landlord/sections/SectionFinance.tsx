@@ -138,6 +138,7 @@ type Props = {
   propertyById?: Map<string, Property>;
   properties?: Property[];
   onRefresh?: () => Promise<void> | void;
+  deepLink?: { key: number; openCreate?: boolean } | null;
 };
 
 const toMonthISO = (d: Date) => d.toISOString().slice(0, 7); // YYYY-MM
@@ -462,7 +463,7 @@ function buildRecurringInstances(
   return instances;
 }
 
-export function SectionFinance({ userId, leases, payments, receipts, propertyById, properties, onRefresh }: Props) {
+export function SectionFinance({ userId, leases, payments, receipts, propertyById, properties, onRefresh, deepLink }: Props) {
   const [tab, setTab] = useState<FinanceTab>("finance");
 
   // 🎨 lokt.fr
@@ -492,7 +493,18 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [ok, setOk] = useState<string | null>(null);
   const [syncState, setSyncState] = useState<"idle" | "syncing" | "error">("idle");
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [highlightFinanceConfig, setHighlightFinanceConfig] = useState(false);
   const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!deepLink?.openCreate) return;
+    setTab("finance");
+    setHighlightFinanceConfig(true);
+    setTimeout(() => {
+      document.getElementById("finance-pilotage")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    setTimeout(() => setHighlightFinanceConfig(false), 2500);
+  }, [deepLink]);
 
   // Filtres liste
   const [filterPropertyId, setFilterPropertyId] = useState<string>("");
@@ -2022,7 +2034,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       </div>
 
       {/* Paramètres financiers par bien */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div id="finance-pilotage" className={`overflow-hidden rounded-2xl border bg-white transition-shadow duration-500 ${highlightFinanceConfig ? "border-red-400 ring-2 ring-red-400 ring-offset-2" : "border-slate-200"}`}>
         <div className="border-b border-slate-200 px-4 py-3">
           <p className="text-sm font-semibold text-slate-900">Paramètres financiers</p>
           <p className="mt-0.5 text-xs text-slate-500">

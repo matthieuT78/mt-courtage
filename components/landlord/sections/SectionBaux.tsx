@@ -97,7 +97,7 @@ type Props = {
   onRefresh: () => Promise<void>;
   onPrepareDeparture?: (tenantId: string) => void;
   canShareWithTenant?: boolean;
-  deepLink?: { key: number; leaseId?: string; openPanel?: "irl" } | null;
+  deepLink?: { key: number; leaseId?: string; openPanel?: "irl"; openCreate?: boolean } | null;
 };
 
 /* ======================================================
@@ -708,6 +708,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const [highlightCreate, setHighlightCreate] = useState(false);
+
   useEffect(() => {
     if (!deepLink?.leaseId) return;
     setExpandedId(deepLink.leaseId);
@@ -1137,6 +1139,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     setEditingId(null);
     resetForm();
   };
+
+  useEffect(() => {
+    if (!deepLink?.openCreate) return;
+    openCreate();
+    setHighlightCreate(true);
+    setTimeout(() => {
+      document.getElementById("baux-create-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    setTimeout(() => setHighlightCreate(false), 2500);
+  }, [deepLink]);
 
   const openEdit = async (lease: Lease) => {
     setErr(null);
@@ -2532,6 +2544,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
       <div className="grid gap-4">
         {/* ✅ LIGNE CRÉER */}
+        <div id="baux-create-form" className={highlightCreate ? "rounded-2xl ring-2 ring-red-400 ring-offset-2 transition-shadow duration-500" : ""}>
         <ExpandableRow
           id={CREATE_ID}
           expandedId={expandedId}
@@ -2554,6 +2567,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         >
           {renderLeaseForm()}
         </ExpandableRow>
+        </div>
 
         {/* ✅ ACTIFS */}
         <ExpandableSection

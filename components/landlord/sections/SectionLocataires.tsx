@@ -73,6 +73,7 @@ type Props = {
   initialDepartureTenantId?: string | null;
   onDepartureOpened?: () => void;
   onOpenExitInventory?: () => void;
+  deepLink?: { key: number; openCreate?: boolean } | null;
 };
 
 const fmt = (v?: string | null) => (v ? v : "—");
@@ -194,6 +195,7 @@ export function SectionLocataires({
   initialDepartureTenantId,
   onDepartureOpened,
   onOpenExitInventory,
+  deepLink,
 }: Props) {
   const safeTenants = Array.isArray(tenants) ? tenants : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -298,6 +300,17 @@ export function SectionLocataires({
 
   const [createForm, setCreateForm] = useState(emptyForm);
   const [editForms, setEditForms] = useState<Record<string, typeof emptyForm>>({});
+  const [highlightCreate, setHighlightCreate] = useState(false);
+
+  useEffect(() => {
+    if (!deepLink?.openCreate) return;
+    setExpandedId(CREATE_ID);
+    setHighlightCreate(true);
+    setTimeout(() => {
+      document.getElementById("locataires-create-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    setTimeout(() => setHighlightCreate(false), 2500);
+  }, [deepLink]);
 
   const formFromTenant = (t: Tenant) => {
     const fromCols = { first_name: (t.first_name || "").trim(), last_name: (t.last_name || "").trim() };
@@ -749,6 +762,7 @@ export function SectionLocataires({
 
       <div className="grid gap-4">
         {/* ✅ LIGNE CRÉER (pas de section) */}
+        <div id="locataires-create-form" className={highlightCreate ? "rounded-2xl ring-2 ring-red-400 ring-offset-2 transition-shadow duration-500" : ""}>
         <ExpandableRow
           id={CREATE_ID}
           expandedId={expandedId}
@@ -840,6 +854,7 @@ export function SectionLocataires({
             </button>
           </div>
         </ExpandableRow>
+        </div>
 
         {/* 1) ACTIFS */}
         <ExpandableSection

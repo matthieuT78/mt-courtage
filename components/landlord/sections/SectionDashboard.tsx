@@ -189,7 +189,7 @@ export function SectionDashboard({
   tenantsCount: number;
   leasesCount: number;
   onGo: (k: LandlordSectionKey) => void;
-  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" }) => void;
+  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl"; openCreate?: boolean }) => void;
   onPrepareDeparture?: (tenantId: string) => void;
   userId?: string;
   planLabel?: string;
@@ -1530,24 +1530,24 @@ export function SectionDashboard({
                   <button
                     key={step.key}
                     type="button"
-                    onClick={() => onGo(step.key)}
+                    onClick={() => step.done ? onGo(step.key) : (onNavigateDeep ? onNavigateDeep(step.key, { openCreate: true }) : onGo(step.key))}
                     className={
                       "flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition " +
                       (step.done
                         ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
-                        : "border-amber-200 bg-amber-50 hover:bg-amber-100")
+                        : "border-red-200 bg-red-50 hover:bg-red-100")
                     }
                   >
-                    <span className={"mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full " + (step.done ? "bg-emerald-500" : "bg-amber-300")}>
+                    <span className={"mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full " + (step.done ? "bg-emerald-500" : "bg-red-400")}>
                       {step.done
                         ? <CheckCircleIcon className="h-4 w-4 text-white" aria-hidden="true" />
                         : <span className="h-2 w-2 rounded-full bg-white" />}
                     </span>
                     <div className="min-w-0">
-                      <p className={"text-[0.78rem] font-semibold " + (step.done ? "text-emerald-800" : "text-amber-900")}>
+                      <p className={"text-[0.78rem] font-semibold " + (step.done ? "text-emerald-800" : "text-red-800")}>
                         {step.label}
                       </p>
-                      <p className={"text-[0.7rem] " + (step.done ? "text-emerald-600" : "text-amber-700")}>
+                      <p className={"text-[0.7rem] " + (step.done ? "text-emerald-600" : "text-red-600")}>
                         {step.key === "biens" ? "Adresse, infos, statut"
                           : step.key === "locataires" ? "Nom, email, contact"
                           : step.key === "baux" ? "Bien, locataire et loyer"
@@ -1561,8 +1561,8 @@ export function SectionDashboard({
                 <div className="mt-3 flex justify-end">
                   <button
                     type="button"
-                    onClick={() => onGo(onboarding.next!.key)}
-                    className="rounded-full bg-amber-500 px-4 py-1.5 text-[0.73rem] font-semibold text-white transition hover:bg-amber-600"
+                    onClick={() => onNavigateDeep ? onNavigateDeep(onboarding.next!.key, { openCreate: true }) : onGo(onboarding.next!.key)}
+                    className="rounded-full bg-red-500 px-4 py-1.5 text-[0.73rem] font-semibold text-white transition hover:bg-red-600"
                   >
                     Continuer : {onboarding.next.label} →
                   </button>
