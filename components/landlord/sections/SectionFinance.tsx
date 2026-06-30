@@ -935,8 +935,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       return ms >= s && ms <= e;
     });
 
-    const income = sum(rows.filter(isIncomeReceived).map((r) => Number(r.amount || 0)));
-    const expense = sum(rows.filter((r) => r.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(r.category)).map((r) => Number(r.amount || 0)));
+    const income = sum(rows.filter((r) => !isRecurringFlow(r) && isIncomeReceived(r)).map((r) => Number(r.amount || 0)));
+    const expense = sum(rows.filter((r) => !isRecurringFlow(r) && r.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(r.category)).map((r) => Number(r.amount || 0)));
     return { rows, income, expense, net: income - expense };
   }, [activePropertyIdSet, analysisPropertyId, tx, selectedPeriod]);
 
