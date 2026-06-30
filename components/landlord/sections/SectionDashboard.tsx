@@ -28,6 +28,9 @@ type TransactionRow = {
   category?: string | null;
   is_recurring?: boolean | null;
   recurrence_parent_id?: string | null;
+  recurrence_frequency?: string | null;
+  recurrence_since?: string | null;
+  recurrence_end_date?: string | null;
 };
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
@@ -567,7 +570,7 @@ export function SectionDashboard({
       try {
         const { data, error } = await supabase
           .from("transactions")
-          .select("id, occurred_at, direction, amount, property_id, status, category, is_recurring, recurrence_parent_id")
+          .select("id, occurred_at, direction, amount, property_id, status, category, is_recurring, recurrence_parent_id, recurrence_frequency, recurrence_since, recurrence_end_date")
           .eq("user_id", userId)
           .gte("occurred_at", toISODate(start))
           .order("occurred_at", { ascending: true });
@@ -632,10 +635,10 @@ export function SectionDashboard({
       const key = monthKey(d);
       const row = byMonth.get(key);
       if (!row) continue;
-      if (isReceivedIncomeTransaction(tx)) {
+      if (!isRecurringFlowTransaction(tx) && isReceivedIncomeTransaction(tx)) {
         row.income += Number(tx.amount || 0);
         scopedReceivedIncomeCount += 1;
-      } else if (tx.direction === "out") {
+      } else if (!isRecurringFlowTransaction(tx) && tx.direction === "out") {
         row.expense += Number(tx.amount || 0);
       }
     }
@@ -653,26 +656,48 @@ export function SectionDashboard({
       }
     }
 
-    // Ajout des charges structurelles (property_finance) pour chaque bien
-    // — ces montants ne figurent pas dans les transactions mais sortent chaque mois.
-    const structuralMonthly = (propertyFinance || [])
-      .filter((fin) => !accountingPropertyId || fin.property_id === accountingPropertyId)
-      .reduce((sum, fin) => sum +
-        Number(fin.loan_monthly || 0) +
-        Number(fin.loan_insurance_monthly || 0) +
-        Number(fin.fixed_charges_monthly || 0) +
-        Number(fin.pno_insurance_monthly || 0) +
-        Number(fin.copro_charges_monthly || 0) +
-        Number(fin.loan_interest_monthly || 0) +
-        Number(fin.bank_fees_monthly || 0) +
-        Number(fin.maintenance_monthly || 0) +
-        Number(fin.rental_tax_monthly || 0) +
-        Number(fin.property_tax_yearly || 0) / 12 +
-        Number(fin.cfe_yearly || 0) / 12
-      , 0);
+    // Charges structurelles par mois, identique à Finance/Performance :
+    // les récurrents parents (is_recurring) remplacent property_finance par catégorie (loan),
+    // les autres s'ajoutent. Filtre date-aware via recurrence_since/end_date.
+    const scopedFinance = (propertyFinance || []).filter((fin) => !accountingPropertyId || fin.property_id === accountingPropertyId);
+    const recurringParentsByProperty = new Map<string, TransactionRow[]>();
+    for (const tx of transactions) {
+      if (!tx.is_recurring || !tx.property_id) continue;
+      if (accountingPropertyId && tx.property_id !== accountingPropertyId) continue;
+      const list = recurringParentsByProperty.get(tx.property_id) || [];
+      list.push(tx);
+      recurringParentsByProperty.set(tx.property_id, list);
+    }
+    const recurringForMonth = (monthStart: Date) => {
+      let total = 0;
+      for (const fin of scopedFinance) {
+        const activeTxs = (recurringParentsByProperty.get(fin.property_id) || []).filter((t) => {
+          const since = t.recurrence_since ? normalizeDate(t.recurrence_since) : null;
+          const end = t.recurrence_end_date ? normalizeDate(t.recurrence_end_date) : null;
+          if (since && monthStart < new Date(since.getFullYear(), since.getMonth(), 1)) return false;
+          if (end && monthStart > new Date(end.getFullYear(), end.getMonth(), 1)) return false;
+          return true;
+        });
+        let hasLoanTx = false, hasTaxTx = false, loanTx = 0, taxTx = 0, fixedTx = 0;
+        for (const t of activeTxs) {
+          const divisor = t.recurrence_frequency === "quarterly" ? 3 : t.recurrence_frequency === "yearly" ? 12 : 1;
+          const amt = (Number(t.amount || 0) / divisor) * (t.direction === "out" ? 1 : -1);
+          if (t.category === "loan") { loanTx += amt; hasLoanTx = true; }
+          else if (t.category === "tax") { taxTx += amt; hasTaxTx = true; }
+          else fixedTx += amt;
+        }
+        total += hasLoanTx ? loanTx : Number(fin.loan_monthly || 0) + Number(fin.loan_insurance_monthly || 0);
+        total += hasTaxTx ? taxTx : Number(fin.property_tax_yearly || 0) / 12 + Number(fin.cfe_yearly || 0) / 12;
+        total += fixedTx + Number(fin.fixed_charges_monthly || 0) + Number(fin.pno_insurance_monthly || 0) +
+          Number(fin.copro_charges_monthly || 0) + Number(fin.loan_interest_monthly || 0) +
+          Number(fin.bank_fees_monthly || 0) + Number(fin.maintenance_monthly || 0) + Number(fin.rental_tax_monthly || 0);
+      }
+      return total;
+    };
 
-    if (structuralMonthly > 0) {
-      for (const row of byMonth.values()) row.expense += structuralMonthly;
+    for (const row of byMonth.values()) {
+      const monthStart = new Date(row.key + "-01T00:00:00");
+      row.expense += recurringForMonth(monthStart);
     }
 
     return Array.from(byMonth.values());

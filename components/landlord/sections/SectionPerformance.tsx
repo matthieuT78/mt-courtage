@@ -1,10 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
-  BanknotesIcon,
-  ChartBarIcon,
   ExclamationTriangleIcon,
-  HomeModernIcon,
   SparklesIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -110,8 +107,7 @@ function periodRange(mode: PeriodMode, anchorMonth: string, customStart?: string
   }
   const { start: anchorStart, end: anchorEnd } = monthStartEnd(anchorMonth);
   if (mode === "year") {
-    const year = anchorStart.getFullYear();
-    return { start: new Date(year, 0, 1), end: new Date(year, 11, 31, 23, 59, 59) };
+    return { start: addMonths(anchorStart, -11), end: anchorEnd };
   }
   if (mode === "last6") return { start: addMonths(anchorStart, -5), end: anchorEnd };
   return { start: anchorStart, end: anchorEnd };
@@ -125,7 +121,7 @@ function fmtMonthFR(yyyymm: string) {
 function fmtPeriodFR(mode: PeriodMode, anchorMonth: string, customStart?: string, customEnd?: string) {
   const { start, end } = periodRange(mode, anchorMonth, customStart, customEnd);
   if (mode === "month") return fmtMonthFR(anchorMonth);
-  if (mode === "year") return String(start.getFullYear());
+  if (mode === "year") return `${fmtMonthFR(monthKey(start))} → ${fmtMonthFR(monthKey(end))}`;
   return `${fmtMonthFR(monthKey(start))} → ${fmtMonthFR(monthKey(end))}`;
 }
 const daysBetween = (start: Date, end: Date) => Math.max(0, Math.ceil((end.getTime() - start.getTime()) / 86400000));
@@ -541,7 +537,14 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const currentMonth = monthKey(new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => monthKey(new Date()));
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const m = monthKey(new Date());
+      setCurrentMonth((prev) => (prev !== m ? m : prev));
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const selectedPeriod = useMemo(() => {
     const { start, end } = periodRange(periodMode, currentMonth, customStartMonth || undefined, customEndMonth || undefined);
@@ -647,7 +650,8 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
     const ids = new Set<string>();
     for (const option of propertyOptions) ids.add(option.id);
     for (const lease of activeLeases) if (lease.property_id) ids.add(lease.property_id);
-    for (const row of tx) if (row.property_id) ids.add(row.property_id);
+    // N'ajouter que les property_id de transactions connus dans propsById (évite les lignes fantômes pour biens supprimés)
+    for (const row of tx) if (row.property_id && propsById.has(row.property_id)) ids.add(row.property_id);
 
     return Array.from(ids)
       .filter((id) => {
@@ -1082,16 +1086,12 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
 
       {err ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{err}</div> : null}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <Metric icon={<BanknotesIcon className="h-5 w-5" />} label="Cashflow mensuel" value={money(totals.cashflow)} sub="loyers encaissés moins charges du mois" />
-        <Metric icon={<HomeModernIcon className="h-5 w-5" />} label="Loyers mensuels" value={money(totals.expected)} sub="montant mensuel attendu sur les baux actifs" />
-        <Metric icon={<ChartBarIcon className="h-5 w-5" />} label="Charges mensuelles" value={money(totals.recurring)} sub="crédit, PNO, copro, fiscalité, frais" />
-        <Metric icon={<SparklesIcon className="h-5 w-5" />} label="À regarder" value={String(priorityRows.length)} sub="biens qui méritent une action" />
-      </div>
-
-      <div className="rounded-3xl border border-cyan-100 bg-white px-4 py-3 text-sm leading-6 text-slate-600 shadow-sm">
-        <span className="font-semibold text-slate-950">Lecture simple :</span> les cartes du haut donnent la base mensuelle. Le graphique ci-dessous s'adapte à la période choisie.
-      </div>
+      {priorityRows.length > 0 && (
+        <div className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <SparklesIcon className="h-5 w-5 shrink-0 text-amber-500" />
+          <span><span className="font-semibold">{priorityRows.length} bien{priorityRows.length > 1 ? "s" : ""} à regarder</span> — des actions peuvent améliorer la performance.</span>
+        </div>
+      )}
 
       <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-1">
@@ -1361,17 +1361,6 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
           </div>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function Metric({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub: string }) {
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">{icon}</span>
-      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-slate-950">{value}</p>
-      <p className="mt-1 text-xs leading-5 text-slate-600">{sub}</p>
     </div>
   );
 }

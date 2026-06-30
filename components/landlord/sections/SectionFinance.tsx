@@ -141,7 +141,7 @@ type Props = {
   deepLink?: { key: number; openCreate?: boolean } | null;
 };
 
-const toMonthISO = (d: Date) => d.toISOString().slice(0, 7); // YYYY-MM
+const toMonthISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 const toISODate = (d: Date) => d.toISOString().slice(0, 10); // YYYY-MM-DD
 
 const monthStartEnd = (yyyymm: string) => {
@@ -163,8 +163,7 @@ const periodRange = (mode: PeriodMode, anchorMonth: string, customStart?: string
 
   const { start: anchorStart, end: anchorEnd } = monthStartEnd(anchorMonth);
   if (mode === "year") {
-    const year = anchorStart.getFullYear();
-    return { start: new Date(year, 0, 1), end: new Date(year, 11, 31) };
+    return { start: addMonths(anchorStart, -11), end: anchorEnd };
   }
   if (mode === "last6") {
     return { start: addMonths(anchorStart, -5), end: anchorEnd };
@@ -190,7 +189,7 @@ const fmtMonthFR = (yyyymm: string) => {
 const fmtPeriodFR = (mode: PeriodMode, anchorMonth: string, customStart?: string, customEnd?: string) => {
   const { start, end } = periodRange(mode, anchorMonth, customStart, customEnd);
   if (mode === "month") return fmtMonthFR(anchorMonth);
-  if (mode === "year") return String(start.getFullYear());
+  if (mode === "year") return `${fmtMonthFR(monthKey(start))} -> ${fmtMonthFR(monthKey(end))}`;
   return `${fmtMonthFR(monthKey(start))} -> ${fmtMonthFR(monthKey(end))}`;
 };
 
@@ -481,7 +480,14 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const safeReceipts = Array.isArray(receipts) ? receipts : [];
   const propsById = propertyById instanceof Map ? propertyById : new Map<string, Property>();
 
-  const currentMonth = useMemo(() => toMonthISO(new Date()), []);
+  const [currentMonth, setCurrentMonth] = useState(() => toMonthISO(new Date()));
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const m = toMonthISO(new Date());
+      setCurrentMonth((prev) => (prev !== m ? m : prev));
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, []);
   const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
   const [customStartMonth, setCustomStartMonth] = useState<string>(toMonthISO(addMonths(new Date(), -2)));
   const [customEndMonth, setCustomEndMonth] = useState<string>(toMonthISO(new Date()));
@@ -1797,9 +1803,9 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           { label: "Recettes", value: formatEuro(periodLedger.income), cls: "text-emerald-700" },
           { label: "Dépenses", value: formatEuro(periodLedger.expense), cls: "text-rose-700" },
           {
-            label: "Net",
-            value: formatEuro(periodLedger.net),
-            cls: periodLedger.net >= 0 ? "text-emerald-700" : "text-rose-700",
+            label: "Cashflow",
+            value: formatEuro(sum(accountingChartRows.map((r) => r.net))),
+            cls: sum(accountingChartRows.map((r) => r.net)) >= 0 ? "text-emerald-700" : "text-rose-700",
           },
           { label: "Écritures", value: String(filteredLedgerSummary.count), cls: "text-slate-900" },
         ] as const).map((kpi) => (
@@ -1834,9 +1840,9 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               )}
               <span className={cx(
                 "flex items-center gap-1.5 rounded-full border px-2.5 py-1",
-                periodLedger.net >= 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"
+                sum(accountingChartRows.map((r) => r.net)) >= 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-800"
               )}>
-                Net {formatEuro(periodLedger.net)}
+                Net {formatEuro(sum(accountingChartRows.map((r) => r.net)))}
               </span>
             </div>
           </div>
