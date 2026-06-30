@@ -217,7 +217,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const yyyymm = String(month.period_start).slice(0, 7);
       const returned_at_date = safeStr(lease.deposit_returned_at) || new Date().toISOString().slice(0, 10);
-      const updatePatch = { status: "closed_by_deposit", pdf_url: null, updated_at: new Date().toISOString() };
+      const updatePatch = { status: "closed_by_deposit", pdf_url: null };
 
       if (month.receipt_id) {
         // Fast path: update the exact receipt we already know about
