@@ -399,6 +399,10 @@ export function SectionQuittances({
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [confirmProgress, setConfirmProgress] = useState<{
+    visible: boolean;
+    steps: { label: string; status: "pending" | "loading" | "done" | "error" }[];
+  } | null>(null);
   const [reminderSettings, setReminderSettings] = useState<Map<string, ReminderSetting>>(new Map());
   const [reminderDraft, setReminderDraft] = useState<ReminderDraft | null>(null);
   const [snoozedReceiptKeys, setSnoozedReceiptKeys] = useState<Set<string>>(new Set());
@@ -719,9 +723,25 @@ export function SectionQuittances({
     setErr(null);
     setOk(null);
 
+    const steps = [
+      { label: "Enregistrement du paiement", status: "loading" as const },
+      { label: "Mise à jour Finance", status: "pending" as const },
+      { label: "Génération de la quittance PDF", status: "pending" as const },
+    ];
+    setConfirmProgress({ visible: true, steps });
+
+    const updateStep = (index: number, status: "loading" | "done" | "error") => {
+      setConfirmProgress((prev) => {
+        if (!prev) return prev;
+        const next = prev.steps.map((s, i) => (i === index ? { ...s, status } : s));
+        return { ...prev, steps: next };
+      });
+    };
+
     try {
-      setLoading(true);
       const headers = await authJsonHeaders();
+
+      // Étape 1 : confirmer le paiement (rapide, ~200ms)
       const resp = await fetch("/api/payments/confirm", {
         method: "POST",
         headers,
@@ -735,10 +755,16 @@ export function SectionQuittances({
           ...(paymentMethodOverride ? { paymentMethodOverride } : {}),
         }),
       });
-
       const { raw, json } = await safeJson(resp);
       throwApiError(resp, raw, json, "Erreur confirmation paiement.");
+      updateStep(0, "done");
 
+      // Étape 2 : refresh des données (en parallèle avec la génération PDF)
+      updateStep(1, "loading");
+      const refreshPromise = onRefresh().then(() => updateStep(1, "done")).catch(() => updateStep(1, "done"));
+
+      // Étape 3 : génération PDF (lente, 3-8s) — démarre sans attendre le refresh
+      updateStep(2, "loading");
       const genResp = await fetch("/api/receipts/generate", {
         method: "POST",
         headers,
@@ -749,17 +775,24 @@ export function SectionQuittances({
           periodEnd: row.periodEnd,
         }),
       });
-
       const generated = await safeJson(genResp);
-      throwApiError(genResp, generated.raw, generated.json, "Paiement confirmé, mais la génération de la quittance a échoué.");
 
-      setOk("Paiement confirmé ✅ Quittance générée automatiquement.");
-      await onRefresh();
-      if (generated.json?.receipt_id) setSelectedReceiptId(generated.json.receipt_id);
+      // Attendre que le refresh soit aussi terminé avant de fermer
+      await refreshPromise;
+
+      if (!genResp.ok) {
+        updateStep(2, "error");
+        setOk("Paiement confirmé ✅ (la génération PDF a échoué, réessayez depuis la liste).");
+      } else {
+        updateStep(2, "done");
+        if (generated.json?.receipt_id) setSelectedReceiptId(generated.json.receipt_id);
+      }
+
+      // Fermeture automatique après 900ms
+      setTimeout(() => setConfirmProgress(null), 900);
     } catch (e: any) {
+      setConfirmProgress(null);
       setErr(e?.message || "Erreur confirmation paiement.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -2024,6 +2057,53 @@ export function SectionQuittances({
                 {loading ? "Envoi…" : "Envoyer la relance"}
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Popup progression confirmation paiement */}
+      {confirmProgress?.visible ? (
+        <div className="fixed bottom-6 right-6 z-[90] w-80 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
+          {/* Barre de progression globale */}
+          <div className="mb-3 h-1 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 transition-all duration-500"
+              style={{
+                width: `${Math.round(
+                  (confirmProgress.steps.filter((s) => s.status === "done" || s.status === "error").length /
+                    confirmProgress.steps.length) *
+                    100
+                )}%`,
+              }}
+            />
+          </div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Validation en cours…</p>
+          <div className="space-y-2">
+            {confirmProgress.steps.map((step, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full">
+                  {step.status === "done" ? (
+                    <svg className="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  ) : step.status === "error" ? (
+                    <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  ) : step.status === "loading" ? (
+                    <svg className="h-4 w-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-slate-200" />
+                  )}
+                </span>
+                <p className={`text-sm ${step.status === "done" ? "text-emerald-700 font-medium" : step.status === "error" ? "text-red-600 font-medium" : step.status === "loading" ? "text-slate-900 font-semibold" : "text-slate-400"}`}>
+                  {step.label}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       ) : null}
