@@ -627,7 +627,6 @@ export function SectionDashboard({
 
     for (const tx of transactions) {
       if (accountingPropertyId && (tx.property_id || "") !== accountingPropertyId) continue;
-      if (isRecurringFlowTransaction(tx)) continue; // charges récurrentes : exclues des flux ponctuels
       const d = normalizeDate(tx.occurred_at);
       if (!d) continue;
       const key = monthKey(d);

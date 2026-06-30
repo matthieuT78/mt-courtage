@@ -189,7 +189,7 @@ function monthlyLeaseAmount(lease: Lease) {
   return Number((lease as any).rent_amount || 0) + Number((lease as any).charges_amount || 0);
 }
 
-const DEPOSIT_TRANSIT_CATEGORIES = ["deposit_collected", "deposit_returned"];
+const DEPOSIT_TRANSIT_CATEGORIES = ["deposit_collected", "deposit_returned", "deposit_retained"];
 
 function isReceivedIncome(row: Transaction) {
   const status = String(row.status || "").toLowerCase();
