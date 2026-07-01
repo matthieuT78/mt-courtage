@@ -568,6 +568,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const [reports, setReports] = useState<InventoryReport[]>([]);
   const [standaloneReports, setStandaloneReports] = useState<InventoryReport[]>([]);
+  const [completedExitLeaseIds, setCompletedExitLeaseIds] = useState<Set<string>>(new Set());
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   const [rooms, setRooms] = useState<InventoryRoom[]>([]);
@@ -708,14 +709,25 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     if (!supabase || !userId) return;
 
     try {
-      const { data, error } = await supabase
-        .from("inventory_reports")
-        .select("*")
-        .eq("user_id", userId)
-        .is("lease_id", null)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setStandaloneReports(((data || []) as InventoryReport[]) || []);
+      const [{ data: standalone, error: e1 }, { data: exitDone, error: e2 }] = await Promise.all([
+        supabase
+          .from("inventory_reports")
+          .select("*")
+          .eq("user_id", userId)
+          .is("lease_id", null)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("inventory_reports")
+          .select("lease_id")
+          .eq("user_id", userId)
+          .eq("report_type", "exit")
+          .in("status", ["signed", "archived"])
+          .not("lease_id", "is", null),
+      ]);
+      if (e1) throw e1;
+      if (e2) throw e2;
+      setStandaloneReports(((standalone || []) as InventoryReport[]) || []);
+      setCompletedExitLeaseIds(new Set((exitDone || []).map((r: any) => r.lease_id)));
     } catch (e: any) {
       setErr(e?.message || "Impossible de charger les états des lieux libres.");
     }
@@ -1696,7 +1708,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   }, [rooms, itemsByRoomId]);
 
   const activeOnlyLeases = useMemo(() => activeLeases.filter((l: any) => (l.status || "active") === "active"), [activeLeases]);
-  const endedPendingLeases = useMemo(() => activeLeases.filter((l: any) => l.status === "ended"), [activeLeases]);
+  const endedPendingLeases = useMemo(
+    () => activeLeases.filter((l: any) => l.status === "ended" && !completedExitLeaseIds.has(l.id)),
+    [activeLeases, completedExitLeaseIds]
+  );
   const leaseStarterCards = useMemo(() => activeOnlyLeases.slice(0, 4), [activeOnlyLeases]);
 
   /* ======================================================
@@ -3214,6 +3229,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         desc="Choisissez le contexte, complétez la visite, puis conservez un document finalisé et verrouillé."
       />
 
+      {!selectedLeaseId && !selectedReportId && (
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="relative overflow-hidden rounded-2xl bg-indigo-50 p-5">
           <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-indigo-100">1</span>
@@ -3240,6 +3256,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
           <p className="mt-1 text-xs leading-5 text-emerald-900/60">Générez ou importez le PDF. Une fois signé ou archivé, il est verrouillé.</p>
         </div>
       </div>
+      )}
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="relative">
@@ -3306,14 +3323,26 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                               <p className="text-xs text-slate-500">Le {new Date((entryReport as any).performed_at).toLocaleDateString("fr-FR")}</p>
                             )}
                             {entryReport.document_source === "external" && (
-                              <p className="mt-0.5 text-xs text-slate-500">PDF externe</p>
+                              <span className="mt-0.5 inline-block text-xs text-slate-500">PDF externe</span>
                             )}
-                            {entryReport.status !== "signed" && entryReport.status !== "archived" && (
-                              <button type="button" onClick={() => setSelectedReportId(entryReport.id)}
-                                className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
-                                Reprendre →
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {entryReport.status !== "signed" && entryReport.status !== "archived" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => { setSelectedReportId(entryReport.id); openWizard(entryReport.id, (entryReport.status === "ready" || !!entryReport.pdf_url) ? "finalize" : undefined); }}
+                                  className="inline-flex items-center rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                                >
+                                  {(entryReport.status === "ready" || !!entryReport.pdf_url) ? "Finaliser →" : "Reprendre la saisie →"}
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => { setSelectedReportId(entryReport.id); setViewOpen(true); }}
+                                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                              >
+                                Consulter
                               </button>
-                            )}
+                            </div>
                           </>
                         ) : (
                           <>
@@ -3342,12 +3371,27 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                             {(exitReport as any).performed_at && (
                               <p className="text-xs text-slate-500">Le {new Date((exitReport as any).performed_at).toLocaleDateString("fr-FR")}</p>
                             )}
-                            {exitReport.status !== "signed" && exitReport.status !== "archived" && (
-                              <button type="button" onClick={() => setSelectedReportId(exitReport.id)}
-                                className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
-                                Reprendre →
-                              </button>
+                            {exitReport.document_source === "external" && (
+                              <span className="mt-0.5 inline-block text-xs text-slate-500">PDF externe</span>
                             )}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {exitReport.status !== "signed" && exitReport.status !== "archived" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => { setSelectedReportId(exitReport.id); openWizard(exitReport.id, (exitReport.status === "ready" || !!exitReport.pdf_url) ? "finalize" : undefined); }}
+                                  className="inline-flex items-center rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                                >
+                                  {(exitReport.status === "ready" || !!exitReport.pdf_url) ? "Finaliser →" : "Reprendre la saisie →"}
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => { setSelectedReportId(exitReport.id); setViewOpen(true); }}
+                                className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                              >
+                                Consulter
+                              </button>
+                            </div>
                           </>
                         ) : !entryReport ? (
                           <p className="mt-1 text-xs text-slate-400">Entrée requise d'abord</p>
@@ -3615,40 +3659,66 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                           </button>
                         </div>
                       )}
-                      <div className="grid gap-2">
-                        <button
-                          type="button"
-                          disabled={loading}
-                          onClick={() => {
-                            if (creationMode === "lease" && creationWizardReportType) {
-                              void createReport(creationWizardReportType);
-                            } else {
-                              setStandaloneForm((prev) => ({ ...prev, reportType: creationWizardReportType ?? "entry" }));
-                              void createStandaloneReport();
-                            }
-                            resetCreationWizard();
-                          }}
-                          className="inline-flex min-h-[46px] w-full items-center gap-3 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
-                        >
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-base">📝</span>
-                          <div className="text-left">
-                            <p>Saisir dans lokt.fr</p>
-                            <p className="text-[0.72rem] font-normal text-white/60">Guidé pièce par pièce, photos, signature</p>
+
+                      {/* Sortie après entrée PDF externe : import uniquement */}
+                      {creationMode === "lease" && creationWizardReportType === "exit" && entryReport?.document_source === "external" ? (
+                        <>
+                          <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                            <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+                            <p className="text-xs leading-5 text-amber-800">
+                              L’entrée a été gérée par une agence (PDF importé). La sortie doit aussi être importée en PDF — la saisie guidée n’est pas disponible.
+                            </p>
                           </div>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={loading}
-                          onClick={() => externalCreationWizardFileInputRef.current?.click()}
-                          className="inline-flex min-h-[46px] w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
-                        >
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-base">📄</span>
-                          <div className="text-left">
-                            <p>{loading ? "Import en cours…" : "Importer un PDF existant"}</p>
-                            <p className="text-[0.72rem] font-normal text-slate-500">PDF finalisé, 10 Mo max — archivé et verrouillé</p>
-                          </div>
-                        </button>
-                      </div>
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => externalCreationWizardFileInputRef.current?.click()}
+                            className="inline-flex min-h-[46px] w-full items-center gap-3 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                          >
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-base">📄</span>
+                            <div className="text-left">
+                              <p>{loading ? "Import en cours…" : "Importer le PDF de sortie"}</p>
+                              <p className="text-[0.72rem] font-normal text-white/60">PDF finalisé, 10 Mo max — archivé et verrouillé</p>
+                            </div>
+                          </button>
+                        </>
+                      ) : (
+                        <div className="grid gap-2">
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => {
+                              if (creationMode === "lease" && creationWizardReportType) {
+                                void createReport(creationWizardReportType);
+                              } else {
+                                setStandaloneForm((prev) => ({ ...prev, reportType: creationWizardReportType ?? "entry" }));
+                                void createStandaloneReport();
+                              }
+                              resetCreationWizard();
+                            }}
+                            className="inline-flex min-h-[46px] w-full items-center gap-3 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                          >
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-base">📝</span>
+                            <div className="text-left">
+                              <p>Saisir dans lokt.fr</p>
+                              <p className="text-[0.72rem] font-normal text-white/60">Guidé pièce par pièce, photos, signature</p>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => externalCreationWizardFileInputRef.current?.click()}
+                            className="inline-flex min-h-[46px] w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-base">📄</span>
+                            <div className="text-left">
+                              <p>{loading ? "Import en cours…" : "Importer un PDF existant"}</p>
+                              <p className="text-[0.72rem] font-normal text-slate-500">PDF finalisé, 10 Mo max — archivé et verrouillé</p>
+                            </div>
+                          </button>
+                        </div>
+                      )}
+
 
                       {/* Standalone form (only when no lease) */}
                       {creationMode === "standalone" && (
@@ -3727,234 +3797,132 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         </div>
       ) : null}
 
-      {/* Résumé / Actions */}
+      {/* Résumé — contexte + PDF + caution */}
       {selectedReportId ? (
-      <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white" style={{ overflowAnchor: "none" }}>
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-[#f6f9fc]" />
-          <div className="relative p-4 sm:p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Résumé</p>
-                <div className={cx("mt-2 inline-flex rounded-2xl border px-4 py-3", reportTypeTone)}>
-                  <div>
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] opacity-75">Document sélectionné</p>
-                    <p className="mt-1 text-base font-extrabold sm:text-lg">{reportLabel}</p>
-                  </div>
-                </div>
-                <p className="mt-2 text-sm sm:text-base font-semibold text-slate-900 truncate">
-                  {selectedContextLabel}
-                </p>
-
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {!selectedLeaseId ? <Badge tone="amber">Non rattaché</Badge> : null}
-                  <Badge tone={selectedWorkflow.tone}>{selectedWorkflow.label}</Badge>
-                  {isExternalReport ? <Badge tone="slate">Import agence / prestataire</Badge> : null}
-                </div>
-                <p className="mt-2 max-w-xl text-sm leading-5 text-slate-600">{selectedWorkflow.desc}</p>
-              </div>
-
-              <div className="flex flex-col gap-2 sm:items-end">
-                {!selectedLeaseId && selectedReportId && !isLocked ? (
-                  <div className="grid w-full gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 sm:w-80">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-900">Rattacher à un bail</p>
-                    <select
-                      value={attachLeaseId}
-                      onChange={(e) => setAttachLeaseId(e.target.value)}
-                      className="min-h-[40px] rounded-xl border border-amber-200 bg-white px-3 text-sm font-semibold text-slate-900"
-                    >
-                      <option value="">Choisir un bail actif</option>
-                      {activeLeases.map((lease: any) => (
-                        <option key={lease.id} value={lease.id}>
-                          {leaseLabel(lease)}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      disabled={loading || !attachLeaseId}
-                      onClick={() => selectedReportId && attachStandaloneReportToLease(selectedReportId, attachLeaseId)}
-                      className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-amber-900 px-3 text-sm font-semibold text-white hover:bg-amber-800 disabled:opacity-50"
-                    >
-                      Rattacher ce document
-                    </button>
-                  </div>
-                ) : null}
-
-                {!isLocked ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-600">Complétude {completeness}%</span>
-                  <div className="h-2 w-32 rounded-full bg-slate-200 overflow-hidden">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4" style={{ overflowAnchor: "none" }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={cx("inline-flex rounded-xl border px-3 py-1.5 text-sm font-bold", reportTypeTone)}>{reportLabel}</span>
+              <span className="text-sm font-semibold text-slate-900 truncate">{selectedContextLabel}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Badge tone={selectedWorkflow.tone}>{selectedWorkflow.label}</Badge>
+              {isExternalReport ? <Badge tone="slate">PDF externe</Badge> : null}
+              {!selectedLeaseId ? <Badge tone="amber">Non rattaché</Badge> : null}
+              {!isLocked ? (
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                  <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-200">
                     <div className="h-full bg-emerald-500" style={{ width: `${completeness}%` }} />
                   </div>
-                  </div>
-                ) : null}
-
-                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
-                  <button
-                    type="button"
-                    disabled={loading || !selectedReportId || !hasPdf}
-                    onClick={openPdf}
-                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs"
-                    title={!hasPdf ? "Le PDF sera créé lors de la finalisation." : selectedReport?.status === "signed" ? "Ouvrir le PDF signé" : "Ouvrir le PDF"}
-                  >
-                    {isExternalReport ? "Ouvrir le PDF externe" : selectedReport?.status === "signed" ? "Ouvrir PDF signé" : "Ouvrir le PDF"}
-                  </button>
-
-                  {/* Upload PDF signé */}
-                  <input
-                    ref={signedFileInputRef}
-                    type="file"
-                    accept="application/pdf"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) uploadSignedPdf(f);
-                    }}
-                  />
-                  {!isLocked ? (
-                    <button
-                      type="button"
-                      disabled={loading || !selectedReportId || !hasPdf}
-                      onClick={() => signedFileInputRef.current?.click()}
-                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs"
-                      title={!hasPdf ? "Génère d’abord le PDF (finaliser)." : "Importer le PDF signé pour archiver"}
-                    >
-                      <DocumentArrowUpIcon className="h-5 w-5 sm:h-4 sm:w-4" aria-hidden="true" />
-                      {loading ? "Import en cours…" : "Importer le PDF signé"}
-                    </button>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    disabled={loading || !selectedReportId}
-                    onClick={() => setViewOpen(true)}
-                    className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs"
-                  >
-                    Consulter (lecture)
-                  </button>
-
-                  {!isLocked ? (
-                    <button
-                      type="button"
-                      disabled={loading || !selectedReportId}
-                      onClick={() =>
-                        selectedReportId && openWizard(selectedReportId, selectedReport?.status === "ready" || hasPdf ? "finalize" : undefined)
-                      }
-                      className="col-span-2 inline-flex min-h-[48px] items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50 sm:col-span-1 sm:min-h-0 sm:rounded-full sm:text-xs"
-                      title="Ouvrir l’assistant"
-                    >
-                      {primaryReportActionLabel}
-                    </button>
-                  ) : null}
-
-                  {isLocked && hasPdf && selectedReport?.occupant_email ? (
-                    <button
-                      type="button"
-                      disabled={sendingTenant || !!tenantEmailSent}
-                      onClick={handleSendToTenant}
-                      className="col-span-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-900 hover:bg-indigo-100 disabled:opacity-60 sm:col-span-1 sm:min-h-0 sm:rounded-full sm:text-xs"
-                      title={tenantEmailSent ? `Envoyé à ${tenantEmailSent}` : `Envoyer le PDF à ${selectedReport.occupant_email}`}
-                    >
-                      {sendingTenant ? "Envoi…" : tenantEmailSent ? "Email envoyé ✓" : "Envoyer au locataire"}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
+                  {completeness}% complété
+                </span>
+              ) : null}
             </div>
+          </div>
 
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={loading || !hasPdf}
+              onClick={openPdf}
+              className="inline-flex min-h-[36px] items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+              title={!hasPdf ? "Le PDF sera créé lors de la finalisation." : undefined}
+            >
+              {isExternalReport ? "Ouvrir le PDF externe" : selectedReport?.status === "signed" ? "Ouvrir PDF signé" : "Ouvrir le PDF"}
+            </button>
+
+            <input
+              ref={signedFileInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSignedPdf(f); }}
+            />
             {!isLocked ? (
-              <p className="mt-3 text-xs text-slate-600">
-                {selectedLeaseId
-                  ? entryReport?.document_source === "external"
-                    ? "L’entrée a été importée en PDF : la sortie sera créée vierge. Ajoutez les pièces manuellement."
-                    : "L’état des lieux de sortie reprend automatiquement les pièces et éléments de l’entrée lorsqu’elle existe."
-                  : "Ce document est libre : il peut être finalisé tel quel ou rattaché à un bail actif plus tard."}
-              </p>
+              <button
+                type="button"
+                disabled={loading || !hasPdf}
+                onClick={() => signedFileInputRef.current?.click()}
+                className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
+                title={!hasPdf ? "Génère d’abord le PDF (finaliser)." : "Importer le PDF signé pour archiver"}
+              >
+                <DocumentArrowUpIcon className="h-4 w-4" aria-hidden="true" />
+                {loading ? "Import en cours…" : "Importer le PDF signé"}
+              </button>
             ) : null}
 
-            {isLocked && selectedReport?.report_type === "exit" && onNavigateToBaux ? (
-              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <p className="text-xs font-semibold text-amber-900">
-                  EDL de sortie archivé — des dégradations à retenir sur le dépôt de garantie ?
-                </p>
-                <button
-                  type="button"
-                  onClick={onNavigateToBaux}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-amber-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800"
-                >
-                  Gérer la caution
-                  <ArrowRightIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-              </div>
+            {isLocked && hasPdf && selectedReport?.occupant_email ? (
+              <button
+                type="button"
+                disabled={sendingTenant || !!tenantEmailSent}
+                onClick={handleSendToTenant}
+                className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-4 text-xs font-semibold text-indigo-900 hover:bg-indigo-100 disabled:opacity-60"
+                title={tenantEmailSent ? `Envoyé à ${tenantEmailSent}` : `Envoyer le PDF à ${selectedReport.occupant_email}`}
+              >
+                {sendingTenant ? "Envoi…" : tenantEmailSent ? "Email envoyé ✓" : "Envoyer au locataire"}
+              </button>
             ) : null}
           </div>
         </div>
+
+        {!selectedLeaseId && !isLocked ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+            <select
+              value={attachLeaseId}
+              onChange={(e) => setAttachLeaseId(e.target.value)}
+              className="min-h-[36px] flex-1 rounded-xl border border-amber-200 bg-white px-3 text-sm font-semibold text-slate-900"
+            >
+              <option value="">Rattacher à un bail actif…</option>
+              {activeLeases.map((lease: any) => (
+                <option key={lease.id} value={lease.id}>{leaseLabel(lease)}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={loading || !attachLeaseId}
+              onClick={() => selectedReportId && attachStandaloneReportToLease(selectedReportId, attachLeaseId)}
+              className="inline-flex min-h-[36px] items-center justify-center rounded-xl bg-amber-900 px-3 text-sm font-semibold text-white hover:bg-amber-800 disabled:opacity-50"
+            >
+              Rattacher
+            </button>
+          </div>
+        ) : null}
+
+        {!isLocked ? (
+          <p className="mt-3 text-xs text-slate-600">
+            {selectedLeaseId
+              ? entryReport?.document_source === "external"
+                ? "L’entrée a été importée en PDF : la sortie sera créée vierge. Ajoutez les pièces manuellement."
+                : "L’état des lieux de sortie reprend automatiquement les pièces et éléments de l’entrée lorsqu’elle existe."
+              : "Ce document est libre : il peut être finalisé tel quel ou rattaché à un bail actif plus tard."}
+          </p>
+        ) : null}
+
+        {isLocked && selectedReport?.report_type === "exit" && onNavigateToBaux ? (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-xs font-semibold text-amber-900">
+              EDL de sortie archivé — des dégradations à retenir sur le dépôt de garantie ?
+            </p>
+            <button
+              type="button"
+              onClick={onNavigateToBaux}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-amber-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800"
+            >
+              Gérer la caution
+              <ArrowRightIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
       </div>
       ) : null}
 
       {/* Contenu */}
       {selectedLeaseId || selectedReportId ? (
-      <div className="grid gap-4 lg:grid-cols-[420px,1fr]" style={{ overflowAnchor: "none" }}>
-        {/* LEFT */}
-        <aside className="flex flex-col gap-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
-            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">2) États des lieux</p>
-
-            {reports.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
-                {selectedLeaseId ? "Aucun état des lieux pour ce bail." : "Choisis un bail ou ouvre un état des lieux libre."}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {reports.map((r) => {
-                  const active = r.id === selectedReportId;
-                  const title = reportTypeLabel(r.report_type);
-                  const actionLabel =
-                    r.status === "signed" || r.status === "archived"
-                      ? "Lecture"
-                      : r.status === "ready" || r.pdf_url
-                      ? "Finaliser"
-                      : "Saisir";
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => setSelectedReportId(r.id)}
-                      className={cx(
-                        "w-full text-left rounded-2xl border px-3 py-3 transition",
-                        active ? "border-slate-400 bg-slate-100" : "border-slate-200 bg-white hover:bg-slate-50"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900">{title}</p>
-                          <p className="mt-1 text-xs text-slate-600">Créé le {new Date(r.created_at).toLocaleDateString("fr-FR")}</p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <Badge tone={workflowUi(r).tone}>{workflowUi(r).label}</Badge>
-                            {r.document_source === "external" ? <Badge tone="slate">PDF externe</Badge> : null}
-                          </div>
-                        </div>
-
-                        <span className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800">
-                          {active ? "Sélectionné" : `${actionLabel} →`}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-        </aside>
-
-        {/* RIGHT */}
+      <div style={{ overflowAnchor: "none" }}>
         <section className="space-y-4">
           {!selectedReportId ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-700">
-              Sélectionne un bail puis ouvre un état des lieux.
-            </div>
+            null
           ) : isExternalReport && isLocked ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Document externe archivé</p>
@@ -3988,7 +3956,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               ) : (
                 <div className="space-y-3">
                   {filteredRoomsWithItems.map(({ room, items }) => (
-                    <details key={room.id} className="rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden" open={false}>
+                    <details key={room.id} className="rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden" open>
                       <summary className="cursor-pointer list-none p-4 flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900">
