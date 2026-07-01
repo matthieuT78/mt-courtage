@@ -508,6 +508,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [syncState, setSyncState] = useState<"idle" | "syncing" | "error">("idle");
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [highlightFinanceConfig, setHighlightFinanceConfig] = useState(false);
+  const [chartDrillKey, setChartDrillKey] = useState<string | null>(null);
   const autoRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -1540,6 +1541,66 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     return months;
   }, [monthlyRecurringByProperty, periodLedger.rows, selectedPeriod]);
 
+  const chartDrillRows = useMemo(
+    () =>
+      chartDrillKey
+        ? periodLedger.rows.filter((r) => {
+            if (isRecurringFlow(r)) return false;
+            const d = normalizeDate(r.occurred_at);
+            return d ? monthKey(d) === chartDrillKey : false;
+          })
+        : [],
+    [chartDrillKey, periodLedger.rows]
+  );
+
+  const chartDrillStructuralRows = useMemo(() => {
+    if (!chartDrillKey) return [];
+    const monthStart = new Date(chartDrillKey + "-01");
+    const rows: Array<{ id: string; label: string; category: string; amount: number; direction: "in" | "out" }> = [];
+
+    for (const pid of analysisPropertyIds) {
+      const recurringTxs = recurringParentTxByProperty.get(pid) || [];
+      let hasLoanTx = false, hasTaxTx = false;
+
+      const activeTxs = recurringTxs.filter((t) => {
+        const since = t.recurrence_since ? new Date(t.recurrence_since) : null;
+        const end = t.recurrence_end_date ? new Date(t.recurrence_end_date) : null;
+        if (since && monthStart < new Date(since.getFullYear(), since.getMonth(), 1)) return false;
+        if (end && monthStart > new Date(end.getFullYear(), end.getMonth(), 1)) return false;
+        return true;
+      });
+
+      for (const t of activeTxs) {
+        const divisor = t.recurrence_frequency === "quarterly" ? 3 : t.recurrence_frequency === "yearly" ? 12 : 1;
+        rows.push({ id: t.id, label: t.label || categoryLabel(t.category), category: t.category, amount: t.amount / divisor, direction: t.direction });
+        if (t.category === "loan") hasLoanTx = true;
+        else if (t.category === "tax") hasTaxTx = true;
+      }
+
+      const fin = pf.get(pid);
+      if (fin) {
+        if (!hasLoanTx) {
+          const amt = Number(fin.loan_monthly || 0) + Number(fin.loan_insurance_monthly || 0);
+          if (amt > 0) rows.push({ id: `pf-loan-${pid}`, label: "Crédit + assurance", category: "loan", amount: amt, direction: "out" });
+        }
+        if (!hasTaxTx) {
+          const amt = Number(fin.property_tax_yearly || 0) / 12 + Number(fin.cfe_yearly || 0) / 12;
+          if (amt > 0) rows.push({ id: `pf-tax-${pid}`, label: "Taxes (foncière/CFE)", category: "tax", amount: amt, direction: "out" });
+        }
+        const fixed =
+          Number(fin.fixed_charges_monthly || 0) +
+          Number(fin.pno_insurance_monthly || 0) +
+          Number(fin.copro_charges_monthly || 0) +
+          Number(fin.bank_fees_monthly || 0) +
+          Number(fin.maintenance_monthly || 0) +
+          Number(fin.rental_tax_monthly || 0);
+        if (fixed > 0) rows.push({ id: `pf-fixed-${pid}`, label: "Charges fixes", category: "fees", amount: fixed, direction: "out" });
+      }
+    }
+
+    return rows;
+  }, [chartDrillKey, analysisPropertyIds, recurringParentTxByProperty, pf]);
+
   const chartMax = useMemo(
     () => Math.max(1, ...accountingChartRows.flatMap((row) => [row.income, row.expense, row.recurring, Math.abs(row.net)])),
     [accountingChartRows]
@@ -1607,6 +1668,10 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     () => ({
       responsive: true,
       maintainAspectRatio: false,
+      onClick: (_event: any, elements: any[]) => {
+        const idx = elements[0]?.index;
+        if (idx !== undefined) setChartDrillKey(accountingChartRows[idx]?.key ?? null);
+      },
       interaction: { mode: "index" as const, intersect: false },
       plugins: {
         legend: {
@@ -1849,7 +1914,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               </span>
             </div>
           </div>
-          <div className="h-[200px]">
+          <div className="h-[200px] cursor-pointer" title="Cliquer une barre pour voir le détail du mois">
             <Chart type="bar" data={accountingChartData as any} options={accountingChartOptions as any} />
           </div>
         </div>
@@ -2710,6 +2775,100 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           </div>
         </div>
       ) : null}
+
+      {/* Chart drill-down modal */}
+      {chartDrillKey && (() => {
+        const drillRow = accountingChartRows.find((r) => r.key === chartDrillKey);
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setChartDrillKey(null)}
+          >
+            <div
+              className="flex w-full max-w-lg flex-col rounded-2xl bg-white shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Détail mensuel</p>
+                  <h3 className="capitalize text-lg font-bold text-slate-900">
+                    {drillRow?.label ?? chartDrillKey}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setChartDrillKey(null)}
+                  className="rounded-full p-1.5 text-slate-500 hover:bg-slate-100"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="max-h-[60vh] overflow-y-auto">
+                {chartDrillRows.length === 0 && chartDrillStructuralRows.length === 0 ? (
+                  <p className="px-5 py-8 text-center text-sm text-slate-500">Aucune écriture sur ce mois.</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-white">
+                      <tr className="border-b border-slate-100 text-left text-xs text-slate-500">
+                        <th className="px-4 pb-2 pt-3 font-semibold">Date</th>
+                        <th className="px-3 pb-2 pt-3 font-semibold">Libellé</th>
+                        <th className="px-4 pb-2 pt-3 text-right font-semibold">Montant</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {chartDrillRows.map((r) => (
+                        <tr key={r.id} className="border-b border-slate-100 last:border-0">
+                          <td className="whitespace-nowrap px-4 py-2.5 text-xs text-slate-500">{r.occurred_at}</td>
+                          <td className="px-3 py-2.5">
+                            <p className="font-medium text-slate-900">{r.label || categoryLabel(r.category)}</p>
+                            <p className="text-xs text-slate-400">{categoryLabel(r.category)}</p>
+                          </td>
+                          <td className={cx("whitespace-nowrap px-4 py-2.5 text-right font-semibold", r.direction === "out" ? "text-rose-600" : "text-emerald-600")}>
+                            {r.direction === "out" ? "−" : "+"}{formatEuro(Number(r.amount || 0))}
+                          </td>
+                        </tr>
+                      ))}
+                      {chartDrillStructuralRows.length > 0 && (
+                        <>
+                          <tr>
+                            <td colSpan={3} className="bg-amber-50 px-4 py-1.5 text-[0.68rem] font-semibold uppercase tracking-widest text-amber-700">
+                              Charges structurelles (au prorata mois)
+                            </td>
+                          </tr>
+                          {chartDrillStructuralRows.map((r) => (
+                            <tr key={r.id} className="border-b border-amber-100 bg-amber-50/50 last:border-0">
+                              <td className="whitespace-nowrap px-4 py-2 text-xs text-slate-400">—</td>
+                              <td className="px-3 py-2">
+                                <p className="font-medium text-slate-700">{r.label}</p>
+                                <p className="text-xs text-slate-400">{categoryLabel(r.category)}</p>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-2 text-right font-semibold text-amber-700">
+                                −{formatEuro(r.amount)}
+                              </td>
+                            </tr>
+                          ))}
+                        </>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              {drillRow && (
+                <div className="flex flex-wrap gap-3 border-t border-slate-100 px-5 py-3 text-xs">
+                  <span className="font-semibold text-emerald-700">Revenus {formatEuro(drillRow.income)}</span>
+                  <span className="font-semibold text-rose-600">Dépenses {formatEuro(drillRow.expense)}</span>
+                  {drillRow.recurring > 0 && (
+                    <span className="font-semibold text-amber-700">Structurel {formatEuro(drillRow.recurring)}</span>
+                  )}
+                  <span className={cx("ml-auto font-bold", drillRow.net >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                    Net {formatEuro(drillRow.net)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
       </>}
     </div>
   );
