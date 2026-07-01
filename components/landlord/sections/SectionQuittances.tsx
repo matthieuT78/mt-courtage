@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, fmtDate } from "../UiBits";
-import { EyeIcon, BanknotesIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, EyeIcon, BanknotesIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import type { RentReceipt, Lease, Property, Tenant, LandlordSettings } from "../../../lib/landlord/types";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { usePermissions } from "../../PermissionProvider";
@@ -1357,22 +1357,22 @@ export function SectionQuittances({
         <button
           type="button"
           disabled={loading}
+          title="Rafraîchir"
           onClick={async () => {
             setErr(null);
             setOk(null);
             setLoading(true);
             try {
               await onRefresh();
-              setOk("Données rafraîchies ✅");
             } catch (e: any) {
               setErr(e?.message || "Erreur rafraîchissement.");
             } finally {
               setLoading(false);
             }
           }}
-          className={cx("rounded-full px-4 py-2 text-sm font-semibold text-white", "bg-slate-900 hover:bg-slate-800", loading && "opacity-60")}
+          className={cx("rounded-full border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-700", loading && "opacity-50")}
         >
-          {loading ? "…" : "Rafraîchir"}
+          <ArrowPathIcon className={cx("h-4 w-4", loading && "animate-spin")} />
         </button>
       </div>
 
