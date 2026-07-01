@@ -2678,11 +2678,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                       setExpandedId={(id) => openRow(id)}
                       left={
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate">
-                            {meta.propertyLabel}{" "}
-                            <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
-                            {isNew(l.created_at) && <em className="ml-1.5 text-[0.65rem] font-medium text-indigo-400">new</em>}
-                          </p>
+                          <div className="flex items-baseline gap-1.5 min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate min-w-0">
+                              {meta.propertyLabel}{" "}
+                              <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
+                            </p>
+                            {isNew(l.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
+                          </div>
                           <p className="mt-0.5 text-xs text-slate-500 truncate">
                             {meta.startDateFR ? `depuis le ${meta.startDateFR}` : ""}
                             {meta.endDateFR ? ` → ${meta.endDateFR}` : ""}

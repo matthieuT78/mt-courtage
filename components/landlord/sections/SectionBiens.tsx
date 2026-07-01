@@ -1004,10 +1004,10 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                     }}
                     left={
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">
-                          {p.label || "Bien"}
-                          {isNew(p.created_at) && <em className="ml-1.5 text-[0.65rem] font-medium text-indigo-400">new</em>}
-                        </p>
+                        <div className="flex items-baseline gap-1.5 min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate min-w-0">{p.label || "Bien"}</p>
+                          {isNew(p.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
+                        </div>
                         <p className="mt-0.5 text-xs text-slate-600 truncate">
                           {(p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
                         </p>
@@ -1105,10 +1105,10 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                     }}
                     left={
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">
-                          {p.label || "Bien"}
-                          {isNew(p.created_at) && <em className="ml-1.5 text-[0.65rem] font-medium text-indigo-400">new</em>}
-                        </p>
+                        <div className="flex items-baseline gap-1.5 min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate min-w-0">{p.label || "Bien"}</p>
+                          {isNew(p.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
+                        </div>
                         <p className="mt-0.5 text-xs text-slate-600 truncate">
                           {(p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
                         </p>

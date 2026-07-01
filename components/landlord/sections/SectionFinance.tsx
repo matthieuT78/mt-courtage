@@ -2000,10 +2000,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                       <td className="truncate px-3 py-2 text-slate-700">{p?.label || "—"}</td>
                       <td className="px-3 py-2">
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-slate-900">
-                            {r.label || categoryLabel(r.category)}
-                            {isNew(r.created_at) && <em className="ml-1.5 text-[0.65rem] font-medium text-indigo-400">new</em>}
-                          </p>
+                          <div className="flex items-baseline gap-1.5 min-w-0">
+                            <p className="truncate font-medium text-slate-900 min-w-0">
+                              {r.label || categoryLabel(r.category)}
+                            </p>
+                            {isNew(r.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
+                          </div>
                           <p className="truncate text-xs text-slate-500">
                             {directionLabel(r.direction)} · {categoryLabel(r.category)} · {sourceLabel(r)}
                           </p>
