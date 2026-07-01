@@ -252,8 +252,8 @@ export default function OutilGestionLocativePage() {
                   Gratuit pour un logement actif
                 </div>
                 <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-slate-950 sm:mt-6">
-                  <span className="block text-[2.55rem] sm:text-6xl">Un espace bailleur simple.</span>
-                  <span className="mt-1 block bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] text-[2rem] sm:text-5xl">Clair, prêt à piloter.</span>
+                  <span className="block text-[2.55rem] sm:text-6xl">Outil de gestion locative gratuit.</span>
+                  <span className="mt-1 block bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] text-[2rem] sm:text-5xl">Simple et complet pour propriétaire bailleur.</span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
                   La page produit générale pour gérer une location nue, meublée ou LMNP : baux, loyers, quittances, états des lieux, inventaire, finance et alertes.

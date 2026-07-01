@@ -145,7 +145,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "gestion-locative-proprietaire-particulier",
     title: "Gestion locative pour propriétaire particulier",
-    metaTitle: "Gestion locative propriétaire particulier | lokt.fr",
+    metaTitle: "Gestion locative propriétaire particulier — Sans agence 2026 | lokt.fr",
     description:
       "Gérer soi-même une location sans agence : bail, locataire, loyer, quittance, charges, documents, travaux, départ et alertes pour propriétaire particulier.",
     eyebrow: "Propriétaire bailleur",
@@ -289,11 +289,11 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "suivi-loyers-impayes",
     title: "Suivi des loyers et impayés",
-    metaTitle: "Suivi loyers impayés et relances | lokt.fr",
+    metaTitle: "Suivi loyers impayés : relances et procédure 2026 | lokt.fr",
     description:
-      "Mettre en place un suivi des loyers et impayés : échéances, paiements partiels, retards, relances, quittances, garant et historique bailleur.",
+      "Suivre les loyers impayés et agir au bon moment : détecter tôt le retard, relancer par écrit, documenter les échanges, constituer un dossier solide.",
     eyebrow: "Loyers et relances",
-    h1: "Suivi des loyers impayés : passer du tableau au pilotage",
+    h1: "Suivi des loyers impayés : détection, relances et documentation",
     intro:
       "Un impayé se traite mieux lorsqu’il est détecté tôt. Le suivi doit distinguer paiement attendu, paiement reçu, paiement partiel, retard, relance, garant éventuel et quittance générable. L’objectif n’est pas d’empiler des colonnes : il faut savoir quelle action mener aujourd’hui, et garder une preuve de ce qui a déjà été fait.",
     primaryCta: "Suivre mes loyers",

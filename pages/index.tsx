@@ -682,7 +682,7 @@ export default function Home() {
                 <h1 className="anim-fadeUp d-1 mt-5 max-w-3xl text-[2.55rem] font-semibold leading-[0.96] tracking-tight text-white sm:mt-6 sm:text-6xl">
                   {isLoggedIn && displayName
                     ? `Bonjour ${displayName}. Votre gestion vous attend.`
-                    : "Simulez votre projet. Gérez votre location."}
+                    : "Gestion locative gratuite et simulateurs immobiliers."}
                 </h1>
 
                 <p className="anim-fadeUp d-2 mt-5 max-w-xl text-[0.98rem] leading-7 text-white/90 sm:mt-6 sm:text-lg">
