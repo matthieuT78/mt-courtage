@@ -22,7 +22,7 @@ const pageUrl = `${siteUrl}/outil-gestion-locative`;
 const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
 const title = "Outil de gestion locative gratuit pour propriétaire bailleur 2026 | lokt.fr";
 const description =
-  "Outil gratuit de gestion locative pour propriétaire bailleur : baux, locataires, quittances PDF, envoi automatique, états des lieux, inventaire, finance et alertes. Pour location nue, meublée ou LMNP.";
+  "Gérez vos baux, loyers et locataires sans agence ni tableur. lokt.fr automatise les quittances, les relances et la révision IRL — gratuit pour 1 logement, prêt en 10 minutes.";
 
 type Feature = {
   title: string;

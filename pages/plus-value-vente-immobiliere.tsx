@@ -81,9 +81,9 @@ export default function PlusValueVenteImmobilierePage() {
   const pageUrl = `${siteUrl}${pagePath}`;
 
   // ✅ CTR-first
-  const title = "Calcul plus-value immobilière gratuit – Cash net, CRD, LMNP et impôts | lokt.fr";
+  const title = "Plus-value immobilière : calculateur gratuit — combien récupérez-vous après la vente ? | lokt.fr";
   const description =
-    "Calculez gratuitement votre plus-value immobilière et le cash net après vente : prix net vendeur, frais, travaux, CRD, IRA, LMNP/amortissements et impôts.";
+    "Simulez votre plus-value en 2 minutes : entrez le prix de vente, le prix d'achat et les travaux. lokt.fr calcule le cash net après remboursement du crédit et impôts.";
 
   // OG image (non transparent)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
