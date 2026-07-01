@@ -334,6 +334,26 @@ export default function PlusValueVenteImmobilierePage() {
           </div>
         </div>
       </div>
+
+      {/* Articles liés — maillage blog */}
+      <div className="border-t border-slate-100 bg-white py-10">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">À lire aussi</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {[
+              { href: "/blog/plus-value-residence-principale", cat: "Plus-value immobilière", title: "Plus-value résidence principale : exonération et cas particuliers" },
+              { href: "/blog/calcul-plus-value-immobiliere-2026", cat: "Plus-value immobilière", title: "Calcul plus-value immobilière 2026 : méthode et abattements" },
+              { href: "/blog/deficit-foncier-reduire-impots", cat: "Investissement locatif", title: "Déficit foncier : comment réduire ses impôts légalement" },
+            ].map((a) => (
+              <a key={a.href} href={a.href} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-indigo-200 hover:bg-indigo-50">
+                <span className="text-[0.68rem] font-semibold text-indigo-500">{a.cat}</span>
+                <p className="mt-1 text-sm font-semibold leading-snug text-slate-900 group-hover:text-indigo-700">{a.title}</p>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <AppFooter />
     </div>
   );

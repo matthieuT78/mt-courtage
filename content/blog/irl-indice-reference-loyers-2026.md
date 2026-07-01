@@ -6,6 +6,17 @@ category: "Gestion locative"
 tags: ["IRL", "révision loyer", "indice référence loyers", "encadrement loyers", "bailleur"]
 relatedCalculators: ["parc-immobilier"]
 coverImage: "/blog/irl-revision-loyer.jpg"
+faq:
+  - q: "L'IRL peut-il être négatif et entraîner une baisse des loyers ?"
+    a: "En théorie oui, si l'inflation est négative. En pratique, l'IRL n'a jamais été négatif depuis sa création en 2006. La période Covid a vu des valeurs très faibles (+0,06 % en 2020), mais jamais de baisse."
+  - q: "Mon locataire refuse la révision de loyer : que faire ?"
+    a: "La clause de révision dans le bail est un droit légal du bailleur. Si le locataire refuse de payer le nouveau montant, il est en impayé partiel. Vous pouvez engager une procédure de mise en demeure, puis une procédure judiciaire si nécessaire."
+  - q: "Puis-je appliquer la révision IRL si je n'ai pas notifié à temps ?"
+    a: "Oui, mais elle s'applique à compter de la date de notification, pas rétroactivement depuis la date anniversaire. Si vous notifiez en octobre pour un bail dont la date anniversaire était en mars, la révision s'applique à partir d'octobre seulement."
+  - q: "L'IRL s'applique-t-il aux baux mobilité et aux locations saisonnières ?"
+    a: "Non. Les baux mobilité (1 à 10 mois) et les contrats de location saisonnière ne sont pas soumis à la révision IRL. Il s'applique uniquement aux locations à usage de résidence principale (vides ou meublées)."
+  - q: "Que se passe-t-il si la clause de révision est absente du bail ?"
+    a: "Sans clause de révision écrite dans le bail, vous ne pouvez pas réviser le loyer. Si cette clause est absente, le loyer reste figé pendant toute la durée du bail, quel que soit le niveau de l'IRL."
 ---
 
 # IRL 2026 : indice de référence des loyers, calcul et révision du loyer

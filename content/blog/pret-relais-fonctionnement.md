@@ -6,6 +6,15 @@ category: "Crédit immobilier"
 tags: ["prêt relais", "crédit immobilier", "vente achat simultané", "intérêts intercalaires"]
 relatedCalculators: ["pret-relais", "capacite"]
 coverImage: "/blog/pret-relais.jpg"
+faq:
+  - q: "Peut-on obtenir un prêt relais avec peu d'ancienneté en CDI ?"
+    a: "Oui, mais c'est plus difficile. Les banques vérifient la stabilité professionnelle pour s'assurer de votre capacité à tenir la double charge si la vente prend du temps. Avec moins de 2 ans d'ancienneté, prévoyez une épargne de sécurité solide."
+  - q: "Le prêt relais est-il limité à 24 mois ?"
+    a: "En général, les banques accordent 12 à 24 mois. Au-delà, certaines peuvent prolonger une fois si la vente est en cours mais pas encore finalisée. Ce n'est pas systématique et dépend de la banque."
+  - q: "Que se passe-t-il si le bien ne se vend pas dans le délai imparti ?"
+    a: "En général : renégociation du relais (prolongation), vente forcée à un prix bas pour sortir de l'impasse, ou restructuration de la dette. C'est le scénario à anticiper, notamment sur des marchés qui ralentissent."
+  - q: "Le prêt relais est-il une bonne idée en 2026 ?"
+    a: "Avec des taux autour de 4 à 4,5 % sur les prêts relais, le coût est notable. C'est pertinent si votre vente est rapide (marché tendu, bien bien placé) et si votre taux d'endettement reste sain pendant la période de double charge."
 ---
 
 # Prêt relais : fonctionnement, coûts réels et pièges à éviter

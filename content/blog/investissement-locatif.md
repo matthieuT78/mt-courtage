@@ -6,6 +6,17 @@ category: "Investissement locatif"
 tags: ["investissement locatif", "rendement locatif", "cash-flow", "LMNP", "fiscalité immobilière"]
 relatedCalculators: ["investissement", "parc-immobilier"]
 coverImage: "/blog/investissement-locatif.jpg"
+faq:
+  - q: "Faut-il absolument chercher un bien à cash-flow positif ?"
+    a: "Pas nécessairement. Un cash-flow légèrement négatif dans une ville dynamique avec forte plus-value potentielle peut être plus intéressant qu'un cash-flow positif dans une zone en déclin. Ce qui compte, c'est le bilan patrimonial global, pas uniquement le cash mensuel."
+  - q: "Quelle surface choisir pour un premier investissement locatif ?"
+    a: "Le studio offre le meilleur rendement brut au m², mais un turnover plus élevé. Le T2 a moins de rotation et une meilleure liquidité à la revente. En ville étudiante, privilégiez studio ou T2. En marché résidentiel classique, T2 ou T3."
+  - q: "Peut-on investir dans l'immobilier locatif sans apport en 2026 ?"
+    a: "Difficile. Les banques exigent généralement au moins 10 % d'apport pour couvrir les frais de notaire. Sans apport, le taux d'endettement dépasse presque toujours 35 %. Certains profils très solides (CDI, patrimoine existant) peuvent obtenir un financement à 100 %, mais c'est l'exception."
+  - q: "LMNP ou location nue : comment choisir ?"
+    a: "Si votre bien peut être meublé sans difficulté (studio, T2 en ville), le LMNP au réel est presque toujours plus avantageux fiscalement sur le long terme grâce aux amortissements. La location nue est pertinente si vous avez des travaux importants à déduire en déficit foncier dès les premières années."
+  - q: "Comment calculer la rentabilité nette réelle d'un investissement locatif ?"
+    a: "Revenu net = Loyers annuels moins charges, taxe foncière, vacance locative, frais de gestion et impôts. Divisez par le prix d'acquisition total (bien + frais de notaire + travaux). C'est le seul chiffre qui compte pour comparer deux investissements."
 ---
 
 # Investissement locatif : calculer la rentabilité et le cash-flow en 2026

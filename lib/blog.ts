@@ -9,10 +9,12 @@ export type BlogFrontmatter = {
   title: string;
   description?: string;
   date?: string;
+  updatedAt?: string;
   category?: string;
   tags?: string[];
   relatedCalculators?: string[]; // e.g. ["capacite", "investissement"]
   coverImage?: string;
+  faq?: Array<{ q: string; a: string }>;
 };
 
 export type TocEntry = { id: string; text: string; level: number };

@@ -6,6 +6,15 @@ category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "3000 euros", "budget achat immobilier"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
 coverImage: "/blog/combien-emprunter-3000.jpg"
+faq:
+  - q: "Peut-on acheter seul avec 3 000 € de revenus par mois ?"
+    a: "Oui, dans la plupart des villes françaises hors Paris et grandes métropoles. À 3 000 €/mois seul avec 25 ans de durée et 10 % d'apport, vous accédez à un budget d'environ 240 000 €, suffisant pour un T2 ou T3 dans beaucoup de marchés."
+  - q: "Le taux d'endettement à 35 % est-il une règle absolue ?"
+    a: "Non, c'est un plafond réglementaire avec une marge de dérogation de 20 % des dossiers accordés par chaque banque. Pour un primo-accédant achetant sa résidence principale avec un reste à vivre confortable, certaines banques acceptent jusqu'à 37-38 % d'endettement."
+  - q: "Mon salaire variable est-il pris en compte dans la capacité d'emprunt ?"
+    a: "Les primes contractuelles régulières sur 3 ans ou plus sont parfois intégrées partiellement. Les bonus discrétionnaires ne le sont généralement pas. Les commissions sur un poste commercial peuvent être prises en compte si elles sont documentées sur plusieurs années."
+  - q: "Faut-il consulter plusieurs banques pour son crédit immobilier ?"
+    a: "Oui, systématiquement. L'écart de taux entre la meilleure et la moins bonne offre peut atteindre 0,30 à 0,40 % sur un même profil. Sur 187 000 € sur 20 ans, c'est environ 12 000 € d'intérêts de différence."
 ---
 
 # Combien puis-je emprunter avec 3 000 € par mois ?

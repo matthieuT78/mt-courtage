@@ -2,10 +2,22 @@
 title: "Gestion locative sans agence : mode d'emploi complet 2026"
 description: "Gérer son bien locatif sans agence, c'est possible et rentable. Voici la méthode complète : trouver un locataire, rédiger le bail, quittances, révision IRL, relances — sans intermédiaire."
 date: "2026-06-26"
+updatedAt: "2026-07-01"
 category: "Investissement locatif"
 tags: ["gestion locative", "sans agence", "bailleur particulier", "quittances", "loyer", "LMNP"]
 relatedCalculators: ["investissement", "parc-immobilier"]
 coverImage: "/blog/gestion-locative-sans-agence.jpg"
+faq:
+  - q: "Peut-on gérer son bien locatif sans agence ?"
+    a: "Oui, totalement. Un bailleur organisé peut gérer seul : trouver un locataire, rédiger le bail, émettre les quittances, réviser le loyer à l'IRL et gérer les relances. Les outils en ligne (lokt.fr, modèles CERFA) rendent la démarche accessible même sans expérience préalable. L'économie est de l'ordre de 1 500 à 2 000 €/an par bien."
+  - q: "Quelles réparations sont à la charge du locataire ?"
+    a: "Les petites réparations locatives listées par le décret de 1987 : remplacement des joints, ampoules, petites pièces de robinetterie, entretien des serrures, nettoyage des équipements. Tout ce qui relève de la vétusté normale, des équipements défectueux ou des gros travaux reste à la charge du propriétaire."
+  - q: "La GLI (garantie loyers impayés) vaut-elle le coût ?"
+    a: "Pour un locataire au profil solide (CDI, revenus > 3× le loyer, caution), la GLI est souvent surdimensionnée. Elle est pertinente pour un profil fragile (CDD, étudiant sans garant solide, revenus proches du seuil). La garantie Visale est gratuite et couvre les mêmes risques pour les profils éligibles."
+  - q: "Comment fixer le bon loyer de marché ?"
+    a: "Comparez les annonces actives sur SeLoger, PAP et LeBonCoin pour des biens similaires dans le même quartier. En zone tendue (Paris, Lille, Lyon, Bordeaux, Montpellier...), le loyer est encadré par plafond : vérifiez le plafond applicable sur le site de la préfecture. Un loyer trop élevé allonge la vacance ; trop bas, il est difficile à relever légalement en cours de bail."
+  - q: "Combien de temps faut-il pour gérer un bien soi-même ?"
+    a: "Environ 1 heure par mois pour un bien stable : quittance, vérification du virement, suivi des charges. En cas de changement de locataire, comptez 5 à 10 heures supplémentaires (annonce, visites, état des lieux, bail). Avec un outil dédié comme lokt.fr, le temps mensuel tombe à 15-20 minutes."
 ---
 
 # Gestion locative sans agence : mode d'emploi complet 2026
@@ -50,7 +62,7 @@ Une bonne annonce contient :
 
 ### Sélectionner le dossier
 
-La loi encadre ce que vous pouvez demander ([décret du 5 novembre 2015](https://www.legifrance.gouv.fr)). Vous pouvez demander :
+La loi encadre ce que vous pouvez demander (décret du 5 novembre 2015). Vous pouvez demander :
 
 - Pièce d'identité
 - 3 derniers bulletins de salaire ou justificatifs de revenus
@@ -59,6 +71,12 @@ La loi encadre ce que vous pouvez demander ([décret du 5 novembre 2015](https:/
 - Contrat de travail ou attestation employeur
 
 **Règle empirique** : le loyer ne doit pas dépasser 33 % des revenus nets du locataire (ou du foyer). C'est le seuil utilisé par la majorité des propriétaires et des banques.
+
+**Red flags à surveiller dans un dossier :**
+- Revenus impossibles à vérifier (indépendants sans bilan, auto-entrepreneurs débutants sans déclarations)
+- Avis d'imposition trop récent pour l'année demandée (peut être falsifié — vérifiez via le service de vérification des impôts sur impots.gouv.fr)
+- Ruptures d'emploi récurrentes sans explication
+- Dernier quittancement manquant
 
 ### Organiser les visites
 
@@ -76,7 +94,7 @@ Regroupez les visites sur un créneau unique (samedi matin par exemple). Cela cr
 | Bail meublé | 1 an (9 mois si étudiant) | Logement équipé selon la liste légale |
 | Bail mobilité | 1 à 10 mois | Locataire en formation, mission, études |
 
-> En meublé, vous devez respecter la [liste légale des équipements obligatoires](https://www.legifrance.gouv.fr) (décret du 31 juillet 2015) : literie, plaques de cuisson, réfrigérateur, vaisselle, etc. Oubli d'un équipement obligatoire = bail requalifiable en bail vide.
+> En meublé, vous devez respecter la liste légale des équipements obligatoires (décret du 31 juillet 2015) : literie, plaques de cuisson, réfrigérateur, vaisselle, etc. L'oubli d'un équipement obligatoire rend le bail requalifiable en bail vide.
 
 ### Ce que le bail doit obligatoirement contenir
 
@@ -147,6 +165,54 @@ lokt.fr vous envoie une alerte avant la date d'anniversaire du bail pour ne jama
 
 ---
 
+## Qui paie quoi ? Répartition des réparations entre bailleur et locataire
+
+C'est l'une des sources de litiges les plus fréquentes. La répartition est encadrée par le décret du 26 août 1987.
+
+**À la charge du locataire (réparations locatives) :**
+
+| Équipement | Ce qui est à sa charge |
+|-----------|----------------------|
+| Robinetterie | Remplacement des joints, clapets, aérateurs |
+| Serrures et poignées | Remplacement des clés, graissage, petites réparations |
+| Revêtements | Petites réparations de moquette, entretien du parquet (cirage) |
+| Équipements sanitaires | Nettoyage et débouchage des siphons, entretien des joints silicone |
+| Électricité | Remplacement des ampoules, fusibles, interrupteurs défectueux par usure |
+| Chaudière individuelle | Entretien annuel obligatoire (contrat d'entretien) |
+| Jardin privatif | Tonte, taille des haies, entretien courant |
+
+**À la charge du bailleur (tout le reste) :**
+
+- Vétusté normale des équipements (une chaudière de 15 ans qui tombe en panne)
+- Gros travaux de structure (toiture, ravalement, étanchéité)
+- Mise aux normes électriques ou de sécurité
+- Remplacement des équipements défectueux non imputable au locataire
+- Réparations liées à un vice caché ou à une malfaçon initiale
+
+**La règle de base :** si la dégradation résulte de l'usure normale du temps, c'est le bailleur. Si elle résulte d'un manque d'entretien ou d'une mauvaise utilisation, c'est le locataire. En cas de litige, la vétusté s'apprécie selon des grilles de vétusté conventionnelles (disponibles sur le site du ministère du Logement).
+
+---
+
+## Les garanties de paiement : GLI, Visale ou caution solidaire ?
+
+Avant de signer le bail, décidez comment vous protéger contre les impayés.
+
+| Garantie | Coût | Plafond | Profils couverts | Délai de déclaration |
+|----------|------|---------|-----------------|---------------------|
+| **Caution solidaire** (garant personne physique) | Gratuit | Illimité | Tout locataire | Variable |
+| **Visale** (Action Logement) | Gratuit | 36 mois d'impayés | Locataires éligibles (< 30 ans, salariés < 6 mois, etc.) | Dès le 1er mois impayé |
+| **GLI** (assurance privée) | 2,5 à 4 % du loyer annuel | Selon contrat | Locataires solvables (CDI, revenus 3× le loyer) | Souvent 30 à 90 jours |
+
+**Quelle garantie choisir ?**
+
+- **Profil solide avec CDI** : caution solidaire d'un parent suffit souvent. La GLI est inutile.
+- **Profil étudiant ou salarié récent** : Visale est la solution idéale — gratuite pour le bailleur, puissante pour le locataire.
+- **Profil fragile sans garant** : GLI si le locataire passe les critères de solvabilité du contrat d'assurance.
+
+> Attention : vous ne pouvez pas cumuler GLI et caution solidaire d'un particulier (sauf locataire étudiant ou apprenti). La loi interdit le double filet pour éviter les abus de sélection.
+
+---
+
 ## Étape 5 — Les relances en cas de retard
 
 Un [loyer impayé](/blog/loyer-impaye-que-faire) se gère dans les premières 48 heures, pas après un mois de silence.
@@ -163,8 +229,8 @@ Si aucune réponse : e-mail formel demandant la régularisation sous 8 jours, av
 Mise en demeure par LRAR. Conservez l'accusé de réception. C'est la première étape formelle.
 
 **J+30 et au-delà — Activation des garanties**
-- **GLI (Garantie Loyers Impayés)** : si vous avez souscrit une assurance GLI, déclarez le sinistre sans attendre (délai de déclaration souvent court).
-- **Visale** : garantie gratuite proposée par Action Logement, disponible pour certains profils locataires (moins de 30 ans, salariés précaires).
+- **GLI** : si vous avez souscrit une assurance GLI, déclarez le sinistre sans attendre (délai de déclaration souvent court).
+- **Visale** : garantie gratuite proposée par Action Logement, disponible pour certains profils locataires.
 - **Caution solidaire** : contactez le garant par LRAR.
 
 > La trêve hivernale (du 1er novembre au 31 mars) interdit les expulsions, mais pas les procédures. Entamez les démarches sans attendre le printemps.
@@ -179,21 +245,40 @@ Deux régimes au choix :
 
 **Micro-foncier** (revenus < 15 000 €/an) : abattement forfaitaire de 30 %, vous déclarez 70 % des loyers. Simple, mais pas toujours optimal.
 
-**Régime réel foncier** : vous déduisez les charges réelles (taxe foncière, intérêts d'emprunt, travaux, assurances, frais de gestion...). Si les charges dépassent les loyers → **déficit foncier** imputable sur votre revenu global jusqu'à 10 700 €/an.
+**Régime réel foncier** : vous déduisez les charges réelles (taxe foncière, intérêts d'emprunt, travaux, assurances, frais de gestion...). Si les charges dépassent les loyers → **[déficit foncier](/blog/deficit-foncier-reduire-impots)** imputable sur votre revenu global jusqu'à 10 700 €/an.
 
-### [Location meublée (LMNP)](/blog/lmnp-vs-location-nue)
+### Location meublée (LMNP)
 
-**Micro-BIC** (revenus < 77 700 €/an) : abattement de 50 %, vous déclarez la moitié. Depuis 2024, l'abattement Airbnb a été réduit à 30 % pour les meublés de tourisme classés.
+**Micro-BIC** (revenus < 77 700 €/an) : abattement de 50 %, vous déclarez la moitié. Depuis 2024, l'abattement pour les meublés de tourisme non classés est réduit à 30 %.
 
-**Régime réel BIC** : vous déduisez les charges ET **amortissez le bien** (sur 25-30 ans) et le mobilier (sur 5-7 ans). Résultat : vos revenus locatifs imposables sont souvent proches de zéro pendant 10 à 15 ans. C'est le régime le plus avantageux pour la grande majorité des LMNP.
+**Régime réel BIC** : vous déduisez les charges ET **amortissez le bien** (sur 25-30 ans) et le mobilier (sur 5-7 ans). Résultat : vos revenus locatifs imposables sont souvent proches de zéro pendant 10 à 15 ans. C'est le régime le plus avantageux pour la grande majorité des [LMNP](/blog/lmnp-guide-complet-2026).
 
 > Le régime réel en LMNP nécessite un expert-comptable ou un logiciel spécialisé. Le coût (200-400 €/an) est lui-même déductible et largement amorti par l'économie fiscale.
 
 ---
 
+## Documents à conserver : combien de temps ?
+
+La gestion locative génère des documents. Voici les durées légales de conservation :
+
+| Document | Durée de conservation |
+|----------|----------------------|
+| Bail signé | Durée du bail + 3 ans après la fin |
+| Quittances de loyer | 3 ans après la fin du bail |
+| États des lieux (entrée + sortie) | 3 ans après la fin du bail |
+| Inventaire du mobilier (meublé) | 3 ans après la fin du bail |
+| Justificatifs de charges (copropriété, eau, etc.) | 3 ans |
+| Relevés bancaires liés aux loyers | 3 ans |
+| Déclarations fiscales | 3 ans (délai de reprise fiscal standard) |
+| Factures de travaux | 10 ans (garantie décennale) |
+
+**Conseil pratique :** numérisez tous les documents à la signature et classez-les par bien et par locataire. Un scanner de smartphone (Adobe Scan, Microsoft Lens) suffit. Un sinistre, un dégât des eaux ou un déménagement ne doit pas vous faire perdre vos justificatifs.
+
+---
+
 ## Ce que ça coûte réellement : agence vs gestion en solo
 
-Prenons un bien loué 900 €/mois à Paris :
+Prenons un bien loué 900 €/mois :
 
 | Poste | Avec agence (8 %) | En solo avec lokt.fr |
 |-------|------------------|----------------------|
@@ -216,7 +301,7 @@ Gérer seul n'est pas toujours la bonne décision. Une agence reste justifiée s
 - **Vous habitez loin du bien** (autre région ou pays) : interventions, visites, états des lieux sont complexes à distance
 - **Vous manquez de temps** ou de disponibilité pour les urgences locatives
 - **Vous gérez un parc de 10+ biens** : la charge administrative devient un métier à part entière
-- **Le marché est tendu** et l'agence a un réseau de locataires qualifiés que vous n'avez pas
+- **Le marché est très tendu** et l'agence a un réseau de locataires qualifiés que vous n'avez pas
 
 Dans les autres cas — un ou deux biens, bailleur résidant dans la même ville, locataire stable — la gestion en direct est très accessible.
 
@@ -244,12 +329,16 @@ La GLI coûte entre 2,5 et 4 % du loyer annuel. Elle est pertinente si votre loc
 
 ### Comment fixer le bon loyer ?
 
-Consultez les annonces actuelles sur SeLoger, PAP et LeBonCoin pour des biens comparables dans le même quartier. En zone tendue, le loyer est encadré : vérifiez le plafond applicable sur le site de la préfecture (Paris, Lille, Lyon, etc.). Un loyer trop élevé allonge la vacance ; trop bas, il est difficile à remonter.
+Consultez les annonces actuelles sur SeLoger, PAP et LeBonCoin pour des biens comparables dans le même quartier. En zone tendue, le loyer est encadré : vérifiez le plafond applicable sur le site de la préfecture (Paris, Lille, Lyon, Montpellier, Bordeaux…). Un loyer trop élevé allonge la vacance ; trop bas, il est difficile à remonter légalement.
 
 ### Est-ce qu'on peut faire un état des lieux seul ?
 
-Oui, si bailleur et locataire sont d'accord. S'il y a un désaccord, un huissier peut être mandaté (frais partagés selon barème légal). L'état des lieux fait par huissier est opposable en justice — c'est la seule option vraiment "blindée" en cas de locataire difficile.
+Oui, si bailleur et locataire sont d'accord. S'il y a un désaccord, un huissier peut être mandaté (frais partagés selon barème légal). L'état des lieux fait par huissier est opposable en justice — c'est la seule option vraiment sécurisée en cas de locataire difficile.
 
 ### Combien de temps faut-il pour gérer un bien soi-même ?
 
 Environ 1 heure par mois pour un bien en bonne marche : quittance, vérification du virement, suivi des charges. En cas de changement de locataire, comptez 5 à 10 heures supplémentaires (annonce, visites, EDL, bail). Avec un outil comme lokt.fr, le temps de gestion mensuel tombe à 15-20 minutes.
+
+---
+
+*Gérez vos biens, vos locataires et vos quittances depuis un seul tableau de bord avec [lokt.fr](/outil-gestion-locative) — conçu pour les bailleurs qui gèrent en direct.*

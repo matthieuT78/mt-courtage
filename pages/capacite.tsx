@@ -453,6 +453,26 @@ export default function CapaciteEmpruntPage() {
           </div>
         </div>
       </div>
+
+      {/* Articles liés — maillage blog */}
+      <div className="border-t border-slate-100 bg-white py-10">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">À lire aussi</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {[
+              { href: "/blog/combien-emprunter-3000", cat: "Crédit immobilier", title: "Combien emprunter avec 3 000 € de revenus ?" },
+              { href: "/blog/investir-sans-apport-immobilier", cat: "Investissement locatif", title: "Investir sans apport : est-ce vraiment possible ?" },
+              { href: "/blog/frais-de-notaire-calcul", cat: "Achat immobilier", title: "Frais de notaire : calcul et simulation 2026" },
+            ].map((a) => (
+              <a key={a.href} href={a.href} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-indigo-200 hover:bg-indigo-50">
+                <span className="text-[0.68rem] font-semibold text-indigo-500">{a.cat}</span>
+                <p className="mt-1 text-sm font-semibold leading-snug text-slate-900 group-hover:text-indigo-700">{a.title}</p>
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <AppFooter />
     </div>
   );

@@ -2,17 +2,29 @@
 title: "LMNP 2026 : guide complet — statut, fiscalité et gestion"
 description: "Statut LMNP 2026 : conditions, micro-BIC vs régime réel, amortissements, déclaration et obligations du bailleur. Guide complet avec exemples chiffrés."
 date: "2026-06-30"
+updatedAt: "2026-07-01"
 category: "Investissement locatif"
 tags: ["LMNP", "location meublée", "fiscalité locative", "amortissement", "micro-BIC", "régime réel", "investissement locatif"]
 relatedCalculators: ["investissement", "parc-immobilier"]
 coverImage: "/blog/lmnp-guide-complet-2026.jpg"
+faq:
+  - q: "Quelles sont les conditions pour être LMNP en 2026 ?"
+    a: "Il faut louer un logement meublé (conforme au décret de 2015) ET soit que les recettes locatives annuelles soient inférieures à 23 000 €, soit qu'elles représentent moins de 50 % des revenus professionnels du foyer. Il suffit de satisfaire l'une des deux conditions."
+  - q: "Vaut-il mieux choisir le micro-BIC ou le régime réel en LMNP ?"
+    a: "Dès qu'il y a un crédit immobilier en cours, le régime réel est presque toujours plus favorable. L'amortissement du bien (25-30 ans) et la déduction des intérêts permettent d'annuler la base imposable pendant 10 à 20 ans. Le micro-BIC (abattement 50 %) n'est pertinent que si vous n'avez pas de crédit et peu de charges réelles."
+  - q: "Comment déclarer le début d'activité LMNP ?"
+    a: "Via le guichet unique des formalités d'entreprise (formalites.entreprises.gouv.fr) dans les 15 jours suivant la première mise en location. Vous obtenez un numéro SIRET, indispensable pour la déclaration fiscale. La déclaration est gratuite."
+  - q: "Que se passe-t-il lors de la revente d'un bien LMNP ?"
+    a: "La plus-value est calculée selon le régime des particuliers (pas des professionnels), ce qui est très favorable : exonération totale après 22 ans de détention pour l'impôt sur le revenu, et après 30 ans pour les prélèvements sociaux. L'amortissement déduit pendant les années de location n'est pas réintégré dans la plus-value imposable."
+  - q: "Peut-on faire du LMNP dans une SCI ?"
+    a: "Techniquement oui, mais c'est rarement optimal. Une SCI qui loue des meublés bascule automatiquement à l'impôt sur les sociétés (IS), ce qui change la fiscalité de la revente et supprime les avantages du régime des plus-values des particuliers. Le LMNP en nom propre reste le cadre standard."
 ---
 
 # LMNP 2026 : guide complet du statut Loueur en Meublé Non Professionnel
 
 Le statut LMNP (Loueur en Meublé Non Professionnel) est l'un des dispositifs fiscaux les plus utilisés par les investisseurs immobiliers particuliers. Il permet de louer un bien meublé tout en bénéficiant d'une fiscalité souvent bien plus douce que la location nue — à condition de le comprendre et de le gérer correctement.
 
-Ce guide couvre tout ce qu'il faut savoir en 2026 : conditions d'accès, choix du régime fiscal, amortissements, déclaration, obligations pratiques et gestion locative.
+Ce guide couvre tout ce qu'il faut savoir en 2026 : conditions d'accès, choix du régime fiscal, amortissements par composants, exemples chiffrés, déclaration, obligations pratiques et fiscalité à la revente.
 
 ---
 
@@ -26,15 +38,25 @@ Cette différence de catégorie est fondamentale. Elle ouvre l'accès à des out
 
 ## Conditions pour être LMNP en 2026
 
-Deux conditions cumulatives définissent le statut LMNP :
+Deux conditions définissent le statut LMNP — il suffit d'en satisfaire **une** :
 
-**1. Les recettes locatives annuelles sont inférieures à 23 000 €**
-ou
-**2. Les recettes locatives représentent moins de 50 % des revenus professionnels du foyer fiscal**
+**Condition 1 :** Les recettes locatives annuelles sont inférieures à **23 000 €**
+**Condition 2 :** Les recettes locatives représentent moins de **50 % des revenus professionnels** du foyer fiscal
 
-Il suffit de satisfaire **l'une des deux** pour être LMNP. Si les deux seuils sont dépassés simultanément, le bailleur bascule en **LMP (Loueur en Meublé Professionnel)**, régime plus contraignant socialement et comptablement.
+Si les deux seuils sont dépassés simultanément, le bailleur bascule en **LMP (Loueur en Meublé Professionnel)**, régime plus contraignant socialement et comptablement.
 
-**Le logement doit être meublé** conformément au décret du 31 juillet 2015, qui liste le mobilier minimum obligatoire : literie complète, plaques de cuisson, four ou micro-ondes, réfrigérateur, vaisselle, table, sièges, étagères, luminaires et matériel d'entretien. L'absence d'un élément peut suffire à requalifier le bail en location vide, avec des conséquences fiscales et juridiques.
+**Le logement doit être meublé** conformément au décret du 31 juillet 2015, qui liste le mobilier minimum obligatoire :
+
+| Catégorie | Éléments obligatoires |
+|-----------|----------------------|
+| Couchage | Literie complète avec couette ou couverture |
+| Cuisine | Plaques de cuisson, four ou micro-ondes, réfrigérateur, vaisselle, ustensiles |
+| Rangement | Étagères de rangement |
+| Luminaires | Dans chaque pièce principale |
+| Mobilier | Table, chaises, bureau ou espace de travail |
+| Entretien | Matériel d'entretien ménager adapté |
+
+L'absence d'un élément peut suffire à requalifier le bail en location vide, avec des conséquences fiscales et juridiques.
 
 ---
 
@@ -43,10 +65,10 @@ Il suffit de satisfaire **l'une des deux** pour être LMNP. Si les deux seuils s
 | Critère | LMNP | LMP |
 |---------|------|-----|
 | Seuils de recettes | < 23 000 € **ou** < 50 % des revenus | > 23 000 € **et** > 50 % des revenus |
-| Régime social | Pas de cotisations sociales (sauf exception) | Cotisations SSI (ex-RSI) |
-| Déficit imputable | Sur les revenus LMNP uniquement | Sur le revenu global |
-| Plus-value à la revente | Régime des particuliers (exonération après 22 ans) | Régime des professionnels (moins favorable) |
-| Inscription | RCS facultative | RCS obligatoire |
+| Régime social | Pas de cotisations sociales (sauf exception) | Cotisations SSI obligatoires |
+| Déficit imputable | Sur les revenus BIC LMNP uniquement | Sur le revenu global sans plafond |
+| Plus-value à la revente | Régime des particuliers (très favorable) | Régime des professionnels |
+| Inscription | SIRET obligatoire (pas RCS) | RCS obligatoire |
 
 Pour la très grande majorité des investisseurs particuliers, le **LMNP est le statut optimal** : fiscalité douce, pas de charges sociales, plus-values dans le régime favorable des particuliers.
 
@@ -56,7 +78,7 @@ Pour la très grande majorité des investisseurs particuliers, le **LMNP est le 
 
 ### Le micro-BIC
 
-S'applique automatiquement si les recettes annuelles restent sous **77 700 €** (ou 15 000 € pour les meublés de tourisme non classés depuis 2024).
+S'applique automatiquement si les recettes annuelles restent sous **77 700 €** (ou **15 000 €** pour les meublés de tourisme non classés depuis la loi Le Meur de fin 2024).
 
 **Principe :** abattement forfaitaire de **50 %** sur les recettes brutes. Vous déclarez 50 % de vos loyers, l'autre moitié est censée couvrir vos charges.
 
@@ -74,12 +96,27 @@ C'est là que le LMNP devient réellement puissant.
 
 ## L'amortissement LMNP : le vrai avantage fiscal
 
-L'amortissement est la comptabilisation de la dépréciation théorique du bien dans le temps. En LMNP réel, vous pouvez amortir :
+L'amortissement est la comptabilisation de la dépréciation théorique du bien dans le temps. En LMNP réel, vous amortissez :
 
 - **Le bien immobilier** (hors terrain) : sur 25 à 40 ans selon les composants
 - **Le mobilier** : sur 5 à 10 ans
 - **Les travaux et équipements** : sur leur durée de vie estimée
 - **Les frais d'acquisition** (honoraires notaire, frais d'agence) : sur 5 ans en option
+
+### L'amortissement par composants
+
+En LMNP réel, l'amortissement ne s'applique pas au bien de façon uniforme. Il est décomposé par **composants**, chacun avec sa propre durée :
+
+| Composant | Part du prix | Durée d'amortissement |
+|-----------|-------------|----------------------|
+| Structure / gros œuvre | 50 % | 40-50 ans |
+| Toiture | 10 % | 25 ans |
+| Façade | 10 % | 30 ans |
+| Installations électriques et plomberie | 10 % | 20-25 ans |
+| Agencements intérieurs | 10 % | 15 ans |
+| Terrain (non amortissable) | 10-20 % | — |
+
+En pratique, un expert-comptable spécialisé LMNP établit ce tableau d'amortissement lors de la première déclaration. Il servira de référence pendant toute la durée de détention du bien.
 
 **Exemple concret :**
 
@@ -92,11 +129,44 @@ Appartement acheté 200 000 € (dont 20 000 € de terrain non amortissable) av
 | Frais de notaire | 12 000 € | 5 ans | 2 400 € |
 | **Total** | | | **10 543 €/an** |
 
-Pour un loyer de 800 €/mois (9 600 €/an), l'amortissement seul efface la quasi-totalité de la base imposable — avant même de déduire les autres charges (intérêts, taxe foncière, assurance, charges de copropriété…).
+Pour un loyer de 800 €/mois (9 600 €/an), l'amortissement seul efface la quasi-totalité de la base imposable — avant même de déduire les autres charges.
 
-Résultat : **revenu imposable proche de zéro pendant de nombreuses années**, sans que cela crée une perte réelle de trésorerie — l'amortissement est une charge comptable, pas un décaissement.
+---
+
+## Comparatif chiffré : micro-BIC vs régime réel
+
+Prenons un appartement loué meublé 850 €/mois (10 200 €/an), acheté 220 000 € avec un crédit à 3,4 % sur 20 ans.
+
+**Charges réelles annuelles :**
+- Intérêts d'emprunt : 6 800 €
+- Taxe foncière : 900 €
+- Charges de copropriété récupérables : 480 €
+- Assurance PNO : 200 €
+- Entretien et petites réparations : 320 €
+- **Total charges réelles : 8 700 €**
+- **Amortissement : 9 500 €/an** (bien + mobilier + frais)
+
+| | Micro-BIC | Régime réel |
+|--|-----------|-------------|
+| Recettes | 10 200 € | 10 200 € |
+| Abattement / charges déduites | − 5 100 € (50 %) | − 8 700 € |
+| Amortissement déduit | — | − 9 500 € |
+| **Base imposable** | **5 100 €** | **0 € (déficit de 8 000 €)** |
+| Impôt (TMI 30 % + PS 17,2 %) | ~2 407 € | **0 €** |
+
+**Économie en faveur du régime réel : 2 407 €/an.** Sur 15 ans de crédit, c'est plus de **36 000 € d'impôts économisés** par rapport au micro-BIC.
 
 > Pour aller plus loin sur les charges déductibles au régime réel, consultez notre article [Charges déductibles en LMNP réel 2026](/blog/charges-deductibles-lmnp-regime-reel).
+
+---
+
+## Le déficit BIC reportable
+
+Si vos charges + amortissements dépassent vos recettes, vous êtes en **déficit BIC**. Contrairement au déficit foncier (location nue), le déficit LMNP ne s'impute **pas** sur votre revenu global. Il est reporté sur vos **revenus BIC LMNP des 10 années suivantes**.
+
+En pratique, cela signifie que si vous avez plusieurs biens en LMNP, leur résultat global se compense. Un bien déficitaire réduit l'imposition des autres biens LMNP bénéficiaires.
+
+L'amortissement non utilisé une année (quand les charges seules suffisent déjà à annuler le résultat) est **reporté sans limite de durée**. C'est une réserve d'amortissement qui s'accumule et servira à neutraliser l'imposition des années où les charges seront plus faibles.
 
 ---
 
@@ -104,10 +174,10 @@ Résultat : **revenu imposable proche de zéro pendant de nombreuses années**, 
 
 La règle est simple : **comparez vos charges réelles (+ amortissements) avec 50 % de vos recettes**.
 
-- Si charges réelles + amortissements **< 50 % des loyers** → micro-BIC suffit (rare)
-- Si charges réelles + amortissements **> 50 % des loyers** → régime réel obligatoire pour optimiser
+- Si charges réelles + amortissements **< 50 % des loyers** → micro-BIC suffit (rare avec un crédit)
+- Si charges réelles + amortissements **> 50 % des loyers** → régime réel pour optimiser
 
-En pratique, dès qu'il y a un crédit immobilier en cours, le régime réel est presque toujours plus favorable. Les intérêts du prêt + l'amortissement du bien dépassent largement l'abattement forfaitaire de 50 %.
+En pratique, dès qu'il y a un crédit immobilier en cours, le régime réel est presque toujours plus favorable.
 
 > Notre comparatif [LMNP ou location nue](/blog/lmnp-vs-location-nue) détaille les cas où chaque statut est préférable.
 
@@ -121,19 +191,19 @@ La durée minimale est d'**un an**, reconductible tacitement. Exceptions :
 - **Bail étudiant** : 9 mois, non reconductible
 - **Bail mobilité** : 1 à 10 mois, pour personnes en mobilité professionnelle, formation ou mission temporaire
 
-Le bail doit obligatoirement mentionner la liste des meubles fournis, la durée, le loyer, les conditions de révision et le dépôt de garantie (maximum 2 mois hors charges).
-
 ### L'inventaire et l'état des lieux
 
-L'inventaire du mobilier est **obligatoire** et doit être établi contradictoirement à l'entrée du locataire. Il constitue la référence en cas de litige à la sortie. Un état des lieux d'entrée et de sortie doit être réalisé et conservé.
+L'inventaire du mobilier est **obligatoire** et doit être établi contradictoirement à l'entrée. Il constitue la référence en cas de litige à la sortie.
 
 ### Le dépôt de garantie
 
-Maximum **2 mois** de loyer hors charges (contre 1 mois en location vide). Il doit être restitué dans le **mois suivant la restitution des clés** si aucune dégradation n'est constatée, ou dans les **2 mois** si des retenues sont justifiées.
+Maximum **2 mois** de loyer hors charges. Il doit être restitué dans le mois suivant la restitution des clés si aucune dégradation n'est constatée, ou dans les 2 mois si des retenues sont justifiées.
 
-### Les quittances de loyer
+### La déclaration de début d'activité (SIRET)
 
-Le bailleur est obligé de fournir une quittance au locataire qui en fait la demande. Une bonne gestion implique de les générer systématiquement après chaque paiement confirmé.
+Souvent oubliée : le LMNP implique une **déclaration de début d'activité** via le guichet unique (formalites.entreprises.gouv.fr) dans les **15 jours** suivant la première mise en location. Elle permet d'obtenir un numéro SIRET, obligatoire pour la déclaration fiscale. La démarche est gratuite et entièrement en ligne.
+
+Sans SIRET, vous ne pouvez pas déposer la liasse fiscale 2031 ni adhérer à un CGA. L'oubli expose à une majoration fiscale.
 
 ---
 
@@ -141,73 +211,75 @@ Le bailleur est obligé de fournir une quittance au locataire qui en fait la dem
 
 ### Au micro-BIC
 
-Vous déclarez vos recettes brutes en **case 5ND** (ou 5OD, 5PD selon le déclarant) sur votre déclaration 2042-C-PRO. L'abattement de 50 % est calculé automatiquement par l'administration.
+Vous déclarez vos recettes brutes en **case 5ND** (ou 5OD, 5PD selon le déclarant) sur votre déclaration **2042-C-PRO**. L'abattement de 50 % est calculé automatiquement.
 
 ### Au régime réel
 
 La déclaration est plus complexe :
 
-1. **Liasse fiscale 2031** avec annexes (bilan simplifié 2033-A à 2033-G)
-2. Report du résultat sur la **2042-C-PRO** (case 5NA ou 5NK selon le résultat)
-3. Adhésion recommandée à un **centre de gestion agréé (CGA)** pour éviter la majoration de 25 % sur le bénéfice imposable (supprimée depuis 2023, mais l'adhésion reste utile pour la validation comptable)
+1. **Liasse fiscale 2031** avec annexes (bilan simplifié 2033-A à 2033-G) : à déposer au service des impôts des entreprises
+2. Report du résultat sur la **2042-C-PRO** (case 5NA si bénéfice, 5NY si déficit)
+3. Adhésion recommandée à un **Centre de Gestion Agréé (CGA)** : permet de valider la comptabilité et évite certains redressements. La réduction d'impôt pour adhésion a été supprimée en 2023, mais le CGA reste utile pour sécuriser la déduction des amortissements.
 
-La première déclaration au réel nécessite généralement l'aide d'un expert-comptable spécialisé en LMNP, notamment pour établir le tableau d'amortissement initial.
+La première déclaration au réel nécessite généralement l'aide d'un **expert-comptable spécialisé LMNP** pour établir le tableau d'amortissement initial (composants, durées, valeurs). Ce tableau servira de référence pendant toute la durée de détention. Son coût (300 à 600 €) est lui-même déductible comme charge de gestion.
+
+---
+
+## Fiscalité à la revente d'un bien LMNP
+
+C'est l'un des avantages les moins connus et les plus puissants du LMNP : la **plus-value est calculée selon le régime des particuliers**, pas des professionnels.
+
+**Ce que ça signifie concrètement :**
+- Abattement pour durée de détention : **6 % par an** à partir de la 6e année pour l'IR, **1,65 %** par an pour les PS
+- Exonération totale d'IR après **22 ans** de détention
+- Exonération totale de PS après **30 ans** de détention
+
+**Et les amortissements déduits ?** Contrairement à ce qu'on pourrait craindre, les amortissements comptables déduits pendant les années de location **ne sont pas réintégrés dans la plus-value imposable**. C'est une différence fondamentale avec le régime LMP, où les amortissements viennent en déduction du prix d'acquisition, augmentant mécaniquement la plus-value.
+
+Exemple : un bien acheté 200 000 €, revendu 260 000 € après 12 ans de LMNP. Plus-value brute : 60 000 €. Après abattement de 42 % (6 % × 7 années au-delà de la 5e), la plus-value imposable est réduite à ~34 800 €. Les amortissements déduits (disons 70 000 € sur 12 ans) ne sont pas ajoutés à cette base.
+
+---
+
+## LMNP en résidences services : avantages et risques
+
+Le LMNP s'applique aussi aux **résidences gérées** : résidences étudiantes, résidences seniors, EHPAD, résidences de tourisme classées. Dans ce cas, vous signez un **bail commercial avec l'exploitant** (et non directement avec le locataire). L'exploitant vous verse un loyer fixe et gère l'immeuble.
+
+**Avantages :**
+- Gestion totalement déléguée
+- Loyer garanti par bail commercial (souvent 9 ans)
+- Récupération de la TVA sur le prix d'achat (si résidence de services avec TVA)
+
+**Risques :**
+- Dépendance totale à la solidité financière de l'exploitant
+- En cas de défaillance de l'exploitant, les loyers s'arrêtent et la revente est difficile
+- Marché secondaire illiquide (difficile de revendre si l'exploitant change)
+- Rendements souvent surestimés dans la brochure commerciale
+
+Plusieurs faillites d'exploitants ont laissé des investisseurs sans loyer pendant des mois. La résidence gérée reste pertinente dans des réseaux solides (grands groupes) et des localisations fortes — avec une due diligence rigoureuse sur la santé financière de l'exploitant.
 
 ---
 
 ## Types de biens éligibles au LMNP
 
-Le LMNP s'applique à une large gamme de biens, à condition qu'ils soient loués meublés :
-
 - **Appartements meublés classiques** — le cas le plus courant
-- **Studios étudiants** — forte demande, baux courts
-- **Résidences services** (étudiantes, seniors, EHPAD, tourisme) — bail commercial avec l'exploitant, gestion déléguée
-- **Chambres meublées** dans une maison (sous conditions de surface)
-- **Meublés de tourisme** (Airbnb, Abritel) — mais la fiscalité a évolué en 2024-2025, plafond micro ramené à 15 000 € pour les non classés
+- **Studios étudiants** — forte demande, baux courts (9 mois)
+- **Résidences services** (étudiantes, seniors, EHPAD, tourisme) — bail commercial, gestion déléguée
+- **Chambres meublées** dans une maison (sous conditions de surface et d'équipement)
+- **Meublés de tourisme** (Airbnb, Abritel) — mais le plafond micro-BIC est désormais 15 000 € pour les non classés
 
 ---
 
 ## Les pièges courants à éviter
 
-**1. Sous-meubler le logement**
-Un logement insuffisamment meublé peut être requalifié en location vide par l'administration ou le tribunal. Vérifiez la liste obligatoire du décret de 2015 avant la première mise en location.
+**Sous-meubler le logement.** Un logement insuffisamment meublé peut être requalifié en location vide. Vérifiez la liste du décret de 2015 avant la première mise en location.
 
-**2. Choisir le micro-BIC par défaut**
-Beaucoup de bailleurs optent pour le micro-BIC par simplicité sans comparer avec le régime réel. Sur un bien avec crédit, c'est souvent une erreur qui coûte plusieurs centaines d'euros d'impôts en trop par an.
+**Choisir le micro-BIC par défaut.** Sur un bien avec crédit, c'est souvent une erreur qui coûte plusieurs centaines d'euros d'impôts par an. Faites toujours la simulation avant de choisir.
 
-**3. Oublier la déclaration d'activité**
-Le LMNP implique une déclaration de début d'activité en ligne via le guichet unique (infogreffe.fr ou guichet-entreprises.fr) dans les 15 jours suivant la première mise en location. Elle permet d'obtenir un numéro SIRET, obligatoire pour la déclaration fiscale.
+**Oublier la déclaration d'activité.** Le SIRET doit être obtenu dans les 15 jours suivant la première mise en location. Pas de SIRET = pas de liasse 2031 possible = majoration fiscale.
 
-**4. Ne pas conserver les justificatifs**
-En régime réel, toutes les charges déduites doivent être justifiées (factures, relevés, quittances). En cas de contrôle, l'absence de pièces entraîne le rejet des déductions.
+**Ne pas conserver les justificatifs.** En régime réel, toutes les charges déduites doivent être justifiées. En cas de contrôle, l'absence de pièces entraîne le rejet des déductions.
 
-**5. Confondre amortissement et cash-flow**
-L'amortissement réduit l'impôt mais ne représente pas une sortie d'argent. Ne confondez pas revenu imposable nul et cash-flow positif : les mensualités de crédit, elles, impactent bien votre trésorerie.
-
----
-
-## Gestion locative LMNP au quotidien
-
-La gestion d'un meublé LMNP est plus exigeante qu'une location vide sur plusieurs points :
-
-- **Baux plus courts** : renouvellements plus fréquents, plus de rotations de locataires
-- **Inventaire obligatoire** : à refaire à chaque entrée et sortie
-- **Mobilier à entretenir** : remplacement des équipements défectueux à la charge du bailleur (hors dégradations imputables au locataire)
-- **Suivi comptable** : au réel, un tableau d'amortissement, un suivi des charges et une liasse fiscale annuelle
-
-Pour structurer ce suivi sans multiplier les tableurs, [lokt.fr propose un espace bailleur dédié à la gestion locative LMNP](/gestion-locative-lmnp) : bail numérique, inventaire meublé, suivi des loyers, quittances PDF et tableau de bord financier — gratuit pour un premier logement.
-
----
-
-## Faut-il investir en LMNP en 2026 ?
-
-Le LMNP reste un dispositif fiscalement attractif en 2026, mais quelques évolutions récentes méritent attention :
-
-- **Meublés de tourisme** : la loi Le Meur (fin 2024) a durci les règles pour les locations type Airbnb : plafond micro-BIC à 15 000 €, possibilité pour les communes de restreindre les meublés touristiques. Le LMNP classique (résidence principale du locataire) n'est pas concerné.
-- **DPE** : les logements classés G ne peuvent plus faire l'objet de nouveaux baux depuis janvier 2025. Un DPE à jour est indispensable avant toute mise en location meublée.
-- **Encadrement des loyers** : dans les zones tendues, le loyer d'un bail meublé est soumis aux mêmes règles d'encadrement que la location vide.
-
-Pour les investisseurs dans des résidences classiques, le statut reste pleinement valide. La combinaison **régime réel + amortissement** continue d'offrir une des meilleures optimisations fiscales disponibles pour un particulier en immobilier.
+**Confondre amortissement et cash-flow.** L'amortissement réduit l'impôt mais ne représente pas une sortie d'argent. Les mensualités de crédit, elles, impactent bien votre trésorerie — un revenu imposable nul ne signifie pas un cash-flow positif.
 
 ---
 
@@ -216,17 +288,33 @@ Pour les investisseurs dans des résidences classiques, le statut reste pleineme
 | | Micro-BIC | Régime réel |
 |--|-----------|-------------|
 | Abattement | 50 % forfaitaire | Non (charges réelles) |
-| Amortissement | Non | Oui |
-| Complexité | Faible | Moyenne (liasse 2031) |
-| Optimal si | Peu de charges, pas de crédit | Crédit en cours, charges élevées |
-| Résultat fiscal | Souvent supérieur | Souvent proche de zéro |
+| Amortissement | Non | Oui (25-40 ans par composants) |
+| Complexité | Faible | Moyenne (liasse 2031 + expert-comptable) |
+| Optimal si | Pas de crédit, peu de charges | Crédit en cours, charges élevées |
+| Résultat fiscal | Souvent positif | Souvent proche de zéro pendant 10-20 ans |
+| Plus-value à la revente | Régime des particuliers | Régime des particuliers |
 
-Le LMNP au régime réel est l'un des rares dispositifs légaux permettant de percevoir des revenus locatifs réguliers sans payer d'impôt dessus pendant 10 à 20 ans — grâce à l'amortissement. C'est sa force principale, et la raison pour laquelle il reste très populaire malgré la complexité administrative du régime réel.
+Le LMNP au régime réel est l'un des rares dispositifs légaux permettant de percevoir des revenus locatifs réguliers sans payer d'impôt dessus pendant de nombreuses années — grâce à l'amortissement. C'est sa force principale, et la raison pour laquelle il reste très populaire malgré la complexité administrative du régime réel.
+
+---
+
+## Questions fréquentes
+
+### Quelles sont les conditions pour être LMNP ?
+
+Louer un logement meublé (conforme au décret de 2015) ET satisfaire l'une des deux conditions : recettes < 23 000 €/an, ou recettes < 50 % des revenus professionnels du foyer.
+
+### Peut-on faire du LMNP dans une SCI ?
+
+Techniquement oui, mais rarement optimal. Une SCI qui loue des meublés bascule à l'impôt sur les sociétés (IS), ce qui change la fiscalité de la revente et supprime les avantages du régime des plus-values des particuliers. Le LMNP en nom propre reste le cadre standard.
+
+### Que se passe-t-il si on dépasse 23 000 € de recettes ?
+
+Si vous dépassez à la fois 23 000 € de recettes ET 50 % de vos revenus professionnels, vous basculez en LMP. Sinon (l'une des deux conditions seulement), vous restez LMNP.
 
 ---
 
 *Pour aller plus loin :*
 - [Charges déductibles en LMNP réel 2026 : liste complète](/blog/charges-deductibles-lmnp-regime-reel)
 - [LMNP ou location nue : quelle fiscalité choisir ?](/blog/lmnp-vs-location-nue)
-- [Checklist LMNP : mettre en location un meublé](/guides/lmnp-checklist-location-meublee)
 - [Gérer votre location meublée avec lokt.fr](/gestion-locative-lmnp)

@@ -65,9 +65,11 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
       headline: frontmatter.title || "Article lokt.fr",
       description,
       url: pageUrl,
+      image: frontmatter.coverImage ? `${SITE_URL}${frontmatter.coverImage}` : `${SITE_URL}/logo-transparent-Lokt.jpg`,
       inLanguage: "fr-FR",
       datePublished: frontmatter.date || undefined,
-      dateModified: frontmatter.date || undefined,
+      dateModified: frontmatter.updatedAt || frontmatter.date || undefined,
+      wordCount: Math.round(contentHtml.replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length),
       author: { "@type": "Organization", name: "lokt.fr", url: SITE_URL },
       publisher: { "@type": "Organization", name: "lokt.fr", url: SITE_URL },
       mainEntityOfPage: pageUrl,
@@ -81,6 +83,15 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
         { "@type": "ListItem", position: 3, name: frontmatter.title || "Article", item: pageUrl },
       ],
     },
+    ...(frontmatter.faq?.length ? [{
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: frontmatter.faq.map(({ q, a }) => ({
+        "@type": "Question",
+        name: q,
+        acceptedAnswer: { "@type": "Answer", text: a },
+      })),
+    }] : []),
   ];
 
   return (
@@ -261,6 +272,24 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
                     >
                       {v.nom}
                     </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* FAQ accordion — only rendered when FAQ is NOT already in the markdown body */}
+            {frontmatter.faq && frontmatter.faq.length > 0 && !toc.some(e => /fréquentes|questions/i.test(e.text)) && (
+              <section className="mt-12 border-t border-slate-200 pt-8">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Questions fréquentes</p>
+                <div className="mt-4 space-y-4">
+                  {frontmatter.faq.map(({ q, a }, i) => (
+                    <details key={i} className="group rounded-2xl border border-slate-200 bg-white">
+                      <summary className="flex cursor-pointer items-center justify-between px-5 py-4 text-sm font-semibold text-slate-900 marker:content-none hover:text-indigo-700">
+                        {q}
+                        <svg className="h-4 w-4 shrink-0 text-slate-400 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                      </summary>
+                      <p className="px-5 pb-4 text-sm leading-6 text-slate-600">{a}</p>
+                    </details>
                   ))}
                 </div>
               </section>
