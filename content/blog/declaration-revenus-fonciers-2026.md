@@ -280,3 +280,5 @@ Oui, même à un proche. Si le loyer est significativement inférieur au marché
 - [Charges déductibles en LMNP réel 2026 : liste complète et amortissements](/blog/charges-deductibles-lmnp-regime-reel)
 - [IRL 2026 : indice de référence des loyers, calcul et révision du loyer](/blog/irl-indice-reference-loyers-2026)
 - [GLI 2026 : assurance loyers impayés — fonctionnement, coût et comparatif](/blog/assurance-loyers-impayes-gli-2026)
+- [Gestion locative pour propriétaire particulier — méthode complète sans agence](/gestion-locative-proprietaire-particulier)
+- [Outil de gestion locative gratuit — baux, loyers, quittances et finance](/outil-gestion-locative)

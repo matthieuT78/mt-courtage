@@ -142,6 +142,8 @@ Le bien doit être "meublé" au sens légal du décret du 31 juillet 2015. La li
 
 Côté comptabilité, le LMNP au réel nécessite de tenir une comptabilité et de déposer une **liasse fiscale 2031** chaque année. La plupart des investisseurs passent par un expert-comptable (~300 à 600 €/an) ou un service en ligne spécialisé (~150 à 300 €/an).
 
+> Pour piloter votre LMNP au quotidien (baux, loyers, inventaire, états des lieux, quittances), voir l'[outil de gestion locative LMNP](/gestion-locative-lmnp) de lokt.fr.
+
 > Pour le détail complet des charges déductibles et le calcul des amortissements par composants, voir notre guide [Charges déductibles en LMNP réel 2026](/blog/charges-deductibles-lmnp-regime-reel).
 
 > Pour comparer bail meublé et bail vide sur tous les critères (durée, préavis, fiscalité, meubles obligatoires), voir [Bail meublé vs bail vide : différences et comment choisir en 2026](/blog/bail-meuble-vs-bail-vide).

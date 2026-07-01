@@ -37,8 +37,8 @@ Avant de tout gérer seul, il est utile de comprendre ce pour quoi vous payiez l
 | Rédaction du bail | Faible — modèles gratuits disponibles | Notaires.fr, lokt.fr |
 | Quittances mensuelles | Très faible — 2 min par bien | lokt.fr, modèles PDF |
 | Encaissement des loyers | Nul — virement direct | Votre banque |
-| Révision IRL | Faible — calcul annuel | Calculateur IRL lokt |
-| Relances impayés | Modérée — nécessite du suivi | lokt.fr alertes |
+| Révision IRL | Faible — calcul annuel | [Calculateur IRL lokt](/revision-loyer-irl) |
+| Relances impayés | Modérée — nécessite du suivi | [Suivi loyers et alertes lokt.fr](/suivi-loyers-impayes) |
 | État des lieux | Modérée — nécessite rigueur | Application EDL |
 | Déclaration fiscale | Modérée — régime réel = comptable | Expert-comptable |
 | Recherche de locataire | Variable — selon la ville et le bien | SeLoger, PAP, LeBonCoin |
@@ -351,5 +351,7 @@ Environ 1 heure par mois pour un bien en bonne marche : quittance, vérification
 - [ANIL — L'agence nationale pour l'information sur le logement](https://www.anil.org)
 
 ---
+
+*Vous êtes propriétaire bailleur particulier ? Retrouvez notre [guide complet de gestion locative pour particulier](/gestion-locative-proprietaire-particulier) — méthode, documents et alertes pour tout gérer en solo.*
 
 *Gérez vos biens, vos locataires et vos quittances depuis un seul tableau de bord avec [lokt.fr](/outil-gestion-locative) — conçu pour les bailleurs qui gèrent en direct.*
