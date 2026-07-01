@@ -547,6 +547,21 @@ export default function PretRelaisPage() {
             </div>
           </section>
 
+          {/* ── Articles connexes ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
+            <h2 className="text-base font-semibold text-slate-900">Aller plus loin sur le prêt relais</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link href="/blog/pret-relais-fonctionnement" className="group flex flex-col gap-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 hover:border-indigo-200 hover:bg-indigo-50">
+                <p className="text-sm font-semibold text-slate-900 group-hover:text-indigo-700">Prêt relais : fonctionnement, coûts réels et pièges à éviter</p>
+                <p className="text-xs text-slate-500">Comment ça marche concrètement, ce que ça coûte vraiment et les erreurs classiques des vendeurs-acheteurs.</p>
+              </Link>
+              <Link href="/blog/pret-relais-guide-complet-2026" className="group flex flex-col gap-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 hover:border-indigo-200 hover:bg-indigo-50">
+                <p className="text-sm font-semibold text-slate-900 group-hover:text-indigo-700">Calcul prêt relais 2026 : formule et exemples chiffrés</p>
+                <p className="text-xs text-slate-500">Formule étape par étape, exemples de 200 k à 500 k €, taux 2026, différence sec / adossé et démarches pour l'obtenir.</p>
+              </Link>
+            </div>
+          </section>
+
           {/* FAQ */}
           <section id="faq" className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="h-1.5 w-full bg-gradient-to-r from-amber-50 to-white" />
