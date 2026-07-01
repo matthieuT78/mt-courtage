@@ -108,6 +108,8 @@ const CREATE_ID = "__create__";
 type LeaseKind = "furnished_primary" | "furnished_student" | "mobility" | "empty_primary" | "other";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
+const isNew = (createdAt?: string | null) =>
+  !!createdAt && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
 
 const clampInt = (v: string, min: number, max: number, fallback: number) => {
   const n = parseInt(v || "", 10);
@@ -2679,6 +2681,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                           <p className="text-sm font-semibold text-slate-900 truncate">
                             {meta.propertyLabel}{" "}
                             <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
+                            {isNew(l.created_at) && <em className="ml-1.5 text-[0.65rem] font-medium text-indigo-400">new</em>}
                           </p>
                           <p className="mt-0.5 text-xs text-slate-500 truncate">
                             {meta.startDateFR ? `depuis le ${meta.startDateFR}` : ""}

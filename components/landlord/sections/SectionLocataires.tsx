@@ -77,6 +77,8 @@ type Props = {
 };
 
 const fmt = (v?: string | null) => (v ? v : "—");
+const isNew = (createdAt?: string | null) =>
+  !!createdAt && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const formatEuro = (value: number) => value.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 
@@ -915,7 +917,10 @@ export function SectionLocataires({
                             {initials(t.first_name, t.last_name, t.full_name)}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-slate-900 truncate">{displayName(t)}</p>
+                            <p className="text-sm font-semibold text-slate-900 truncate">
+                              {displayName(t)}
+                              {isNew(t.created_at) && <em className="ml-1.5 text-[0.65rem] font-medium text-indigo-400">new</em>}
+                            </p>
                             <div className="mt-0.5 flex items-center gap-1.5">
                               <p className="text-[0.75rem] text-slate-600 truncate">
                                 {t.email || "—"}{t.phone ? ` · ${t.phone}` : ""}

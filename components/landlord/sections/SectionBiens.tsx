@@ -32,6 +32,8 @@ type Props = {
 
 const CREATE_ID = "__create__";
 const FREE_PROPERTY_LIMIT = 1;
+const isNew = (createdAt?: string | null) =>
+  !!createdAt && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
 const SUBSCRIPTION_URL = "/mon-compte/abonnement";
 
 const EMPTY = {
@@ -1002,7 +1004,10 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                     }}
                     left={
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{p.label || "Bien"}</p>
+                        <p className="text-sm font-semibold text-slate-900 truncate">
+                          {p.label || "Bien"}
+                          {isNew(p.created_at) && <em className="ml-1.5 text-[0.65rem] font-medium text-indigo-400">new</em>}
+                        </p>
                         <p className="mt-0.5 text-xs text-slate-600 truncate">
                           {(p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
                         </p>
@@ -1100,7 +1105,10 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                     }}
                     left={
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{p.label || "Bien"}</p>
+                        <p className="text-sm font-semibold text-slate-900 truncate">
+                          {p.label || "Bien"}
+                          {isNew(p.created_at) && <em className="ml-1.5 text-[0.65rem] font-medium text-indigo-400">new</em>}
+                        </p>
                         <p className="mt-0.5 text-xs text-slate-600 truncate">
                           {(p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
                         </p>
