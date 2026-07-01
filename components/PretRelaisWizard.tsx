@@ -269,13 +269,14 @@ function computeBankabilityScore(
 
 export type PretRelaisWizardProps = {
   showSaveButton?: boolean;
+  initialValeur?: number;
 };
 
 function safeEmail(v: string) {
   return (v || "").trim().toLowerCase();
 }
 
-export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
+export default function PretRelaisWizard({ initialValeur }: PretRelaisWizardProps) {
   // ---------------------------
   // Session
   // ---------------------------
@@ -362,7 +363,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   // ---------------------------
   // Inputs — Bien actuel à vendre
   // ---------------------------
-  const [valeurBienActuel, setValeurBienActuel] = useState(400000);
+  const [valeurBienActuel, setValeurBienActuel] = useState(initialValeur ?? 400000);
   const [crdActuel, setCrdActuel] = useState(200000);
   const [pctRetenu, setPctRetenu] = useState(70);
   const [tauxRelais, setTauxRelais] = useState(4);

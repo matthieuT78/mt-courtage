@@ -45,11 +45,7 @@ const nextConfig = {
         destination: "/investissement",
         permanent: true,
       },
-      {
-        source: "/simulateur/pret-relais/:valeur",
-        destination: "/pret-relais",
-        permanent: true,
-      },
+
     ];
   },
 };
