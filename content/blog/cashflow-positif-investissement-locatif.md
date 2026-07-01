@@ -360,4 +360,13 @@ Le cashflow positif en immobilier n'est pas un mythe — mais il ne s'obtient pa
 
 ---
 
+## Sources et références
+
+- [INSEE — Indice de Référence des Loyers (IRL)](https://www.insee.fr/fr/statistiques/serie/001515333)
+- [impots.gouv.fr — La location meublée non professionnelle (LMNP)](https://www.impots.gouv.fr/particulier/la-location-meublee)
+- [Service-public.fr — Loueur en meublé non professionnel](https://www.service-public.fr/particuliers/vosdroits/F17905)
+- [ANIL — L'agence nationale pour l'information sur le logement](https://www.anil.org)
+
+---
+
 *Simulez le cashflow de votre prochain investissement — rendement brut, net et net-net selon votre régime fiscal — avec notre [calculateur de rendement locatif](/investissement).*

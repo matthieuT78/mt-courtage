@@ -27,7 +27,7 @@ Qui paye quoi entre propriétaire et locataire ? La frontière entre charges ré
 
 ## Qu'est-ce qu'une charge récupérable ?
 
-Une **charge récupérable** (ou charge locative) est une dépense payée par le propriétaire mais que la loi l'autorise à répercuter sur le locataire. Ces charges sont **limitativement listées** par le décret n° 87-713 du 26 août 1987 — le propriétaire ne peut pas y ajouter ses propres catégories.
+Une **charge récupérable** (ou charge locative) est une dépense payée par le propriétaire mais que la loi l'autorise à répercuter sur le locataire. Ces charges sont **limitativement listées** par le [décret n° 87-713 du 26 août 1987](https://www.legifrance.gouv.fr) — le propriétaire ne peut pas y ajouter ses propres catégories.
 
 Le locataire paye ces charges via une **provision mensuelle** (avance), ajustée chaque année lors de la **régularisation annuelle**.
 
@@ -255,6 +255,14 @@ Oui, après régularisation annuelle si les charges réelles ont augmenté. Pas 
 ### En copropriété, comment identifier les charges récupérables ?
 
 Le syndic établit chaque année un décompte distinguant charges récupérables et non récupérables. Demandez-le explicitement si ce n'est pas fait automatiquement.
+
+---
+
+## Sources et références
+
+- [Légifrance — Décret n° 87-713 du 26 août 1987 relatif aux charges récupérables](https://www.legifrance.gouv.fr)
+- [Service-public.fr — Charges locatives (récupérables)](https://www.service-public.fr/particuliers/vosdroits/F947)
+- [ANIL — Les charges locatives](https://www.anil.org)
 
 ---
 

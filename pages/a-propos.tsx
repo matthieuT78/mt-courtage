@@ -17,6 +17,7 @@ import AppHeader from "../components/AppHeader";
 
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/a-propos`;
+const ogImage = `${siteUrl}/lokt-logo.jpg`;
 const title = "À propos de lokt.fr : éditeur, mission et fiabilité";
 const description =
   "Découvrez lokt.fr, outil français pour aider les propriétaires bailleurs à simuler, décider et gérer leurs locations avec des contenus vérifiés et sourcés.";
@@ -33,6 +34,20 @@ export default function AProposPage() {
       name: "lokt.fr",
       url: siteUrl,
       email: "contact@lokt.fr",
+      logo: ogImage,
+      description:
+        "lokt.fr aide les bailleurs particuliers à simuler leur investissement locatif, décider avec des données claires et gérer leurs locations — quittances, baux, candidatures et suivi des loyers — depuis un seul outil en ligne.",
+      areaServed: "FR",
+      knowsAbout: [
+        "gestion locative",
+        "investissement locatif",
+        "LMNP",
+        "bail meublé",
+        "fiscalité immobilière",
+        "rendement locatif",
+        "capacité d'emprunt",
+        "quittance de loyer",
+      ],
     },
   };
 
@@ -43,6 +58,24 @@ export default function AProposPage() {
         <meta name="description" content={description} />
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href={pageUrl} />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="lokt.fr" />
+        <meta property="og:locale" content="fr_FR" />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:image:secure_url" content={ogImage} />
+        <meta property="og:image:alt" content="lokt.fr — gestion locative pour bailleurs particuliers" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={title} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={ogImage} />
+
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       </Head>
 

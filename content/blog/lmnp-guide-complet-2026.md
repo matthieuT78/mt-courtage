@@ -45,7 +45,7 @@ Deux conditions définissent le statut LMNP — il suffit d'en satisfaire **une*
 
 Si les deux seuils sont dépassés simultanément, le bailleur bascule en **LMP (Loueur en Meublé Professionnel)**, régime plus contraignant socialement et comptablement.
 
-**Le logement doit être meublé** conformément au décret du 31 juillet 2015, qui liste le mobilier minimum obligatoire :
+**Le logement doit être meublé** conformément au [décret du 31 juillet 2015](https://www.legifrance.gouv.fr), qui liste le mobilier minimum obligatoire :
 
 | Catégorie | Éléments obligatoires |
 |-----------|----------------------|
@@ -201,7 +201,7 @@ Maximum **2 mois** de loyer hors charges. Il doit être restitué dans le mois s
 
 ### La déclaration de début d'activité (SIRET)
 
-Souvent oubliée : le LMNP implique une **déclaration de début d'activité** via le guichet unique (formalites.entreprises.gouv.fr) dans les **15 jours** suivant la première mise en location. Elle permet d'obtenir un numéro SIRET, obligatoire pour la déclaration fiscale. La démarche est gratuite et entièrement en ligne.
+Souvent oubliée : le LMNP implique une **déclaration de début d'activité** via le [guichet unique des formalités](https://formalites.entreprises.gouv.fr) dans les **15 jours** suivant la première mise en location. Elle permet d'obtenir un numéro SIRET, obligatoire pour la déclaration fiscale. La démarche est gratuite et entièrement en ligne.
 
 Sans SIRET, vous ne pouvez pas déposer la liasse fiscale 2031 ni adhérer à un CGA. L'oubli expose à une majoration fiscale.
 
@@ -311,6 +311,15 @@ Techniquement oui, mais rarement optimal. Une SCI qui loue des meublés bascule 
 ### Que se passe-t-il si on dépasse 23 000 € de recettes ?
 
 Si vous dépassez à la fois 23 000 € de recettes ET 50 % de vos revenus professionnels, vous basculez en LMP. Sinon (l'une des deux conditions seulement), vous restez LMNP.
+
+---
+
+## Sources et références
+
+- [Service-public.fr — Loueur en meublé non professionnel (LMNP)](https://www.service-public.fr/particuliers/vosdroits/F17905)
+- [Légifrance — Décret n° 2015-981 du 31 juillet 2015 relatif aux logements meublés](https://www.legifrance.gouv.fr)
+- [impots.gouv.fr — La location meublée non professionnelle](https://www.impots.gouv.fr/particulier/la-location-meublee)
+- [Formalités entreprises — Déclaration de début d'activité LMNP](https://formalites.entreprises.gouv.fr)
 
 ---
 

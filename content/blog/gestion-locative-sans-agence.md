@@ -62,7 +62,7 @@ Une bonne annonce contient :
 
 ### Sélectionner le dossier
 
-La loi encadre ce que vous pouvez demander (décret du 5 novembre 2015). Vous pouvez demander :
+La loi encadre ce que vous pouvez demander ([décret du 5 novembre 2015](https://www.legifrance.gouv.fr)). Vous pouvez demander :
 
 - Pièce d'identité
 - 3 derniers bulletins de salaire ou justificatifs de revenus
@@ -154,7 +154,7 @@ Dès qu'un virement n'arrive pas à la date prévue, agissez rapidement — cf. 
 
 ### La révision annuelle du loyer (IRL)
 
-Vous pouvez réviser le loyer une fois par an, à la date anniversaire du bail, en fonction de l'Indice de Référence des Loyers (IRL) publié par l'INSEE chaque trimestre.
+Vous pouvez réviser le loyer une fois par an, à la date anniversaire du bail, en fonction de l'[Indice de Référence des Loyers (IRL)](https://www.insee.fr/fr/statistiques/serie/001515333) publié par l'INSEE chaque trimestre.
 
 **Formule :**
 > Nouveau loyer = Loyer actuel × (IRL du trimestre de référence / IRL du même trimestre de l'année précédente)
@@ -167,7 +167,7 @@ lokt.fr vous envoie une alerte avant la date d'anniversaire du bail pour ne jama
 
 ## Qui paie quoi ? Répartition des réparations entre bailleur et locataire
 
-C'est l'une des sources de litiges les plus fréquentes. La répartition est encadrée par le décret du 26 août 1987.
+C'est l'une des sources de litiges les plus fréquentes. La répartition est encadrée par le [décret du 26 août 1987](https://www.legifrance.gouv.fr).
 
 **À la charge du locataire (réparations locatives) :**
 
@@ -338,6 +338,17 @@ Oui, si bailleur et locataire sont d'accord. S'il y a un désaccord, un huissier
 ### Combien de temps faut-il pour gérer un bien soi-même ?
 
 Environ 1 heure par mois pour un bien en bonne marche : quittance, vérification du virement, suivi des charges. En cas de changement de locataire, comptez 5 à 10 heures supplémentaires (annonce, visites, EDL, bail). Avec un outil comme lokt.fr, le temps de gestion mensuel tombe à 15-20 minutes.
+
+---
+
+## Sources et références
+
+- [Service-public.fr — Location meublée : bail et obligations du bailleur](https://www.service-public.fr/particuliers/vosdroits/F920)
+- [Légifrance — Décret n° 2015-1437 du 5 novembre 2015 (pièces justificatives)](https://www.legifrance.gouv.fr)
+- [Légifrance — Décret n° 87-713 du 26 août 1987 (réparations locatives)](https://www.legifrance.gouv.fr)
+- [INSEE — Indice de Référence des Loyers (IRL)](https://www.insee.fr/fr/statistiques/serie/001515333)
+- [Action Logement — Garantie Visale](https://www.actionlogement.fr/la-garantie-visale)
+- [ANIL — L'agence nationale pour l'information sur le logement](https://www.anil.org)
 
 ---
 
