@@ -2,18 +2,24 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftIcon,
   ArrowPathIcon,
+  ArrowsRightLeftIcon,
   BanknotesIcon,
+  BeakerIcon,
   CalculatorIcon,
   CameraIcon,
+  ChartBarIcon,
+  ClockIcon,
   DocumentArrowUpIcon,
   DocumentTextIcon,
   EnvelopeIcon,
   EyeIcon,
   PlusIcon,
   PrinterIcon,
+  Squares2X2Icon,
   TrashIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import type { Tenant } from "../../../lib/landlord/types";
 import { supabase } from "../../../lib/supabaseClient";
 import type { Lease, Property } from "../../../lib/landlord/types";
 import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
@@ -28,7 +34,7 @@ const DEFAULT_GLOBAL_METER_LABEL = "Compteur général";
 const DEFAULT_PRINCIPAL_UNIT_LABEL = "Logement principal";
 const DEFAULT_ALLOCATION_TITLE = "Répartition facture d’eau";
 
-type ToolKey = "water" | "charges" | "teom" | "regularization" | "simulators";
+type ToolKey = "water" | "charges" | "teom" | "regularization" | "preavis" | "simulators";
 type AllocationMethod = "all_meters" | "principal_residual";
 type WaterWizardStep = "setup" | "invoice" | "readings" | "review";
 type FinanceDirection = "in" | "out";
@@ -273,6 +279,7 @@ function ToolTile({
   metric,
   status = "Calcul rapide",
   tone = "cyan",
+  icon,
   onOpen,
 }: {
   title: string;
@@ -281,7 +288,8 @@ function ToolTile({
   eyebrow: string;
   metric: string;
   status?: string;
-  tone?: "cyan" | "violet" | "emerald" | "amber";
+  tone?: "cyan" | "violet" | "emerald" | "amber" | "indigo" | "slate";
+  icon?: React.ReactNode;
   onOpen: () => void;
 }) {
   const toneClasses = {
@@ -321,6 +329,24 @@ function ToolTile({
       glow: "bg-amber-400/15",
       chip: "border-amber-100 bg-amber-50 text-amber-800",
     },
+    indigo: {
+      bar: "from-indigo-700 via-blue-400 to-violet-400",
+      panel: "from-indigo-50 via-white to-violet-50/60",
+      icon: "bg-indigo-950 text-indigo-50 ring-indigo-200",
+      link: "text-indigo-700",
+      hover: "hover:border-indigo-200",
+      glow: "bg-indigo-400/15",
+      chip: "border-indigo-100 bg-indigo-50 text-indigo-800",
+    },
+    slate: {
+      bar: "from-slate-700 via-slate-500 to-slate-400",
+      panel: "from-slate-50 via-white to-slate-50/60",
+      icon: "bg-slate-900 text-slate-50 ring-slate-200",
+      link: "text-slate-700",
+      hover: "hover:border-slate-300",
+      glow: "bg-slate-400/10",
+      chip: "border-slate-200 bg-slate-50 text-slate-700",
+    },
   }[tone];
 
   return (
@@ -328,7 +354,7 @@ function ToolTile({
       type="button"
       onClick={onOpen}
       className={
-        "group relative flex h-full min-h-[34rem] flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-gradient-to-br text-left shadow-[0_18px_50px_rgba(15,23,42,0.07)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)] " +
+        "group relative flex h-full min-h-[26rem] flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-gradient-to-br text-left shadow-[0_18px_50px_rgba(15,23,42,0.07)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)] " +
         toneClasses.panel +
         " " +
         toneClasses.hover
@@ -339,7 +365,7 @@ function ToolTile({
       <div className="relative flex h-full flex-col p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <span className={"flex h-12 w-12 items-center justify-center rounded-2xl shadow-lg ring-1 " + toneClasses.icon}>
-            <CalculatorIcon className="h-6 w-6" />
+            {icon ?? <CalculatorIcon className="h-6 w-6" />}
           </span>
           <span className={"rounded-full border px-3 py-1 text-xs font-semibold " + toneClasses.chip}>
             {status}
@@ -347,7 +373,7 @@ function ToolTile({
         </div>
         <p className="mt-5 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{eyebrow}</p>
         <h3 className="mt-2 min-h-[3.5rem] text-xl font-semibold tracking-tight text-slate-950">{title}</h3>
-        <p className="mt-2 min-h-[9rem] text-sm leading-6 text-slate-600">{description}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
         <div className="mt-5 rounded-2xl border border-white/70 bg-white/65 px-4 py-3 shadow-sm backdrop-blur">
           <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500">Sortie produite</p>
           <p className="mt-1 text-sm font-semibold text-slate-950">{metric}</p>
@@ -391,6 +417,7 @@ function FinanceValidationModal({
   userId,
   properties,
   leases,
+  tenants,
   draft,
   onClose,
   onSaved,
@@ -398,6 +425,7 @@ function FinanceValidationModal({
   userId: string;
   properties: Property[];
   leases: Lease[];
+  tenants: Tenant[];
   draft: FinanceTransactionDraft | null;
   onClose: () => void;
   onSaved: (message: string) => void;
@@ -416,6 +444,8 @@ function FinanceValidationModal({
     () => leases.filter((lease) => isSelectableLeaseLike(lease) && (!form?.propertyId || lease.property_id === form.propertyId)),
     [leases, form?.propertyId]
   );
+  const tenantById = useMemo(() => new Map(tenants.map((t) => [t.id, t])), [tenants]);
+  const propById = useMemo(() => new Map(properties.map((p) => [p.id, p])), [properties]);
 
   if (!draft || !form) return null;
   const amount = Number(form.amount || 0);
@@ -491,11 +521,17 @@ function FinanceValidationModal({
               className={toolInputClass}
             >
               <option value="">Aucun bail</option>
-              {availableLeases.map((lease) => (
-                <option key={lease.id} value={lease.id}>
-                  Bail {lease.start_date} · {lease.status || "statut non renseigné"}
-                </option>
-              ))}
+              {availableLeases.map((lease) => {
+                const prop = propById.get(lease.property_id);
+                const tenant = tenantById.get(lease.tenant_id);
+                const propLabel = prop?.label || prop?.address_line1 || "Bien";
+                const tenantLabel = tenant?.full_name || "Locataire inconnu";
+                return (
+                  <option key={lease.id} value={lease.id}>
+                    {propLabel} — {tenantLabel} (depuis {lease.start_date})
+                  </option>
+                );
+              })}
             </select>
           </label>
           <label className="space-y-1">
@@ -567,7 +603,7 @@ function CalculatorShell({
   onBack,
   children,
 }: {
-  tone: "violet" | "emerald" | "amber";
+  tone: "violet" | "emerald" | "amber" | "slate";
   eyebrow: string;
   title: string;
   description: string;
@@ -595,6 +631,12 @@ function CalculatorShell({
       result: "from-amber-950 to-slate-950 text-amber-50",
       badge: "border-amber-200 bg-amber-50 text-amber-800",
       ring: "ring-amber-200/70",
+    },
+    slate: {
+      bar: "from-slate-600 via-slate-400 to-slate-300",
+      result: "from-slate-900 to-slate-950 text-slate-50",
+      badge: "border-slate-200 bg-slate-50 text-slate-800",
+      ring: "ring-slate-200/70",
     },
   }[tone];
 
@@ -666,12 +708,28 @@ function FinanceImportActions({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ChargesAllocationTool({ onBack, onFinanceDraft }: { onBack: () => void; onFinanceDraft: (draft: FinanceTransactionDraft) => void }) {
-  const [periodLabel, setPeriodLabel] = useState(`${new Date().getFullYear()}`);
-  const [assetLabel, setAssetLabel] = useState("");
-  const [totalCharges, setTotalCharges] = useState("");
-  const [totalTantiemes, setTotalTantiemes] = useState("1000");
-  const [lines, setLines] = useState<SimpleShareLine[]>(() => [newShareLine(1), newShareLine(2)]);
+function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: string; onBack: () => void; onFinanceDraft: (draft: FinanceTransactionDraft) => void }) {
+  const storageKey = `lokt:charges-tool:draft:${userId}`;
+  const [periodLabel, setPeriodLabel] = useState(() => {
+    try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) return JSON.parse(s).periodLabel ?? `${new Date().getFullYear()}`; } catch {}
+    return `${new Date().getFullYear()}`;
+  });
+  const [assetLabel, setAssetLabel] = useState(() => {
+    try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) return JSON.parse(s).assetLabel ?? ""; } catch {} return "";
+  });
+  const [totalCharges, setTotalCharges] = useState(() => {
+    try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) return JSON.parse(s).totalCharges ?? ""; } catch {} return "";
+  });
+  const [totalTantiemes, setTotalTantiemes] = useState(() => {
+    try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) return JSON.parse(s).totalTantiemes ?? "1000"; } catch {} return "1000";
+  });
+  const [lines, setLines] = useState<SimpleShareLine[]>(() => {
+    try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) { const d = JSON.parse(s).lines; if (Array.isArray(d) && d.length) return d; } } catch {}
+    return [newShareLine(1), newShareLine(2)];
+  });
+  useEffect(() => {
+    try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ periodLabel, assetLabel, totalCharges, totalTantiemes, lines })); } catch {}
+  }, [storageKey, periodLabel, assetLabel, totalCharges, totalTantiemes, lines]);
   const total = num(totalCharges);
   const baseTantiemes = num(totalTantiemes);
   const usedTantiemes = lines.reduce((sum, line) => sum + num(line.tantiemes), 0);
@@ -864,16 +922,21 @@ function ChargesAllocationTool({ onBack, onFinanceDraft }: { onBack: () => void;
   );
 }
 
-function TeomTool({ onBack, onFinanceDraft }: { onBack: () => void; onFinanceDraft: (draft: FinanceTransactionDraft) => void }) {
-  const [assetLabel, setAssetLabel] = useState("");
-  const [occupantLabel, setOccupantLabel] = useState("");
-  const [propertyTax, setPropertyTax] = useState("");
-  const [teomAmount, setTeomAmount] = useState("");
-  const [periodStart, setPeriodStart] = useState(`${new Date().getFullYear()}-01-01`);
-  const [periodEnd, setPeriodEnd] = useState(`${new Date().getFullYear()}-12-31`);
-  const [occupancyStart, setOccupancyStart] = useState(`${new Date().getFullYear()}-01-01`);
-  const [occupancyEnd, setOccupancyEnd] = useState(`${new Date().getFullYear()}-12-31`);
-  const [lotShare, setLotShare] = useState("100");
+function TeomTool({ userId, onBack, onFinanceDraft }: { userId: string; onBack: () => void; onFinanceDraft: (draft: FinanceTransactionDraft) => void }) {
+  const storageKey = `lokt:teom-tool:draft:${userId}`;
+  const load = <T,>(key: string, fallback: T): T => { try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) { const v = JSON.parse(s)[key]; if (v !== undefined) return v as T; } } catch {} return fallback; };
+  const [assetLabel, setAssetLabel] = useState(() => load("assetLabel", ""));
+  const [occupantLabel, setOccupantLabel] = useState(() => load("occupantLabel", ""));
+  const [propertyTax, setPropertyTax] = useState(() => load("propertyTax", ""));
+  const [teomAmount, setTeomAmount] = useState(() => load("teomAmount", ""));
+  const [periodStart, setPeriodStart] = useState(() => load("periodStart", `${new Date().getFullYear()}-01-01`));
+  const [periodEnd, setPeriodEnd] = useState(() => load("periodEnd", `${new Date().getFullYear()}-12-31`));
+  const [occupancyStart, setOccupancyStart] = useState(() => load("occupancyStart", `${new Date().getFullYear()}-01-01`));
+  const [occupancyEnd, setOccupancyEnd] = useState(() => load("occupancyEnd", `${new Date().getFullYear()}-12-31`));
+  const [lotShare, setLotShare] = useState(() => load("lotShare", "100"));
+  useEffect(() => {
+    try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ assetLabel, occupantLabel, propertyTax, teomAmount, periodStart, periodEnd, occupancyStart, occupancyEnd, lotShare })); } catch {}
+  }, [storageKey, assetLabel, occupantLabel, propertyTax, teomAmount, periodStart, periodEnd, occupancyStart, occupancyEnd, lotShare]);
   const teom = num(teomAmount);
   const share = clampPercent(lotShare);
   const periodDays = daysInclusive(periodStart, periodEnd);
@@ -1028,18 +1091,23 @@ function TeomTool({ onBack, onFinanceDraft }: { onBack: () => void; onFinanceDra
   );
 }
 
-function ChargeRegularizationTool({ onBack, onFinanceDraft }: { onBack: () => void; onFinanceDraft: (draft: FinanceTransactionDraft) => void }) {
-  const [assetLabel, setAssetLabel] = useState("");
-  const [occupantLabel, setOccupantLabel] = useState("");
-  const [periodStart, setPeriodStart] = useState(`${new Date().getFullYear()}-01-01`);
-  const [periodEnd, setPeriodEnd] = useState(`${new Date().getFullYear()}-12-31`);
-  const [monthlyProvision, setMonthlyProvision] = useState("");
-  const [manualProvisions, setManualProvisions] = useState("");
-  const [useManualProvisions, setUseManualProvisions] = useState(false);
-  const [expenses, setExpenses] = useState<RegularizationExpenseLine[]>(() => [
-    newRegularizationExpenseLine("Charges de copropriété récupérables"),
-    newRegularizationExpenseLine("Eau / entretien / petites fournitures"),
-  ]);
+function ChargeRegularizationTool({ userId, onBack, onFinanceDraft }: { userId: string; onBack: () => void; onFinanceDraft: (draft: FinanceTransactionDraft) => void }) {
+  const storageKey = `lokt:regularization-tool:draft:${userId}`;
+  const load = <T,>(key: string, fallback: T): T => { try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) { const v = JSON.parse(s)[key]; if (v !== undefined) return v as T; } } catch {} return fallback; };
+  const [assetLabel, setAssetLabel] = useState(() => load("assetLabel", ""));
+  const [occupantLabel, setOccupantLabel] = useState(() => load("occupantLabel", ""));
+  const [periodStart, setPeriodStart] = useState(() => load("periodStart", `${new Date().getFullYear()}-01-01`));
+  const [periodEnd, setPeriodEnd] = useState(() => load("periodEnd", `${new Date().getFullYear()}-12-31`));
+  const [monthlyProvision, setMonthlyProvision] = useState(() => load("monthlyProvision", ""));
+  const [manualProvisions, setManualProvisions] = useState(() => load("manualProvisions", ""));
+  const [useManualProvisions, setUseManualProvisions] = useState(() => load("useManualProvisions", false));
+  const [expenses, setExpenses] = useState<RegularizationExpenseLine[]>(() => {
+    try { const s = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null; if (s) { const d = JSON.parse(s).expenses; if (Array.isArray(d) && d.length) return d; } } catch {}
+    return [newRegularizationExpenseLine("Charges de copropriété récupérables"), newRegularizationExpenseLine("Eau / entretien / petites fournitures")];
+  });
+  useEffect(() => {
+    try { if (typeof window !== "undefined") window.localStorage.setItem(storageKey, JSON.stringify({ assetLabel, occupantLabel, periodStart, periodEnd, monthlyProvision, manualProvisions, useManualProvisions, expenses })); } catch {}
+  }, [storageKey, assetLabel, occupantLabel, periodStart, periodEnd, monthlyProvision, manualProvisions, useManualProvisions, expenses]);
   const periodDays = daysInclusive(periodStart, periodEnd);
   const estimatedMonths = periodDays > 0 ? periodDays / 30.4375 : 0;
   const paid = useManualProvisions ? num(manualProvisions) : num(monthlyProvision) * estimatedMonths;
@@ -1199,16 +1267,140 @@ function ChargeRegularizationTool({ onBack, onFinanceDraft }: { onBack: () => vo
   );
 }
 
+type BailType = "vide" | "meuble";
+type CongeBy = "locataire" | "bailleur";
+type BailleurMotif = "vente" | "habiter" | "autre";
+
+function computePreavis(bail: BailType, by: CongeBy, motif: BailleurMotif, zoneTendue: boolean): { months: number; label: string; rule: string } {
+  if (by === "locataire") {
+    if (bail === "meuble") return { months: 1, label: "1 mois", rule: "Bail meublé : préavis locataire toujours 1 mois (art. 25-8 loi 89-462)." };
+    if (zoneTendue) return { months: 1, label: "1 mois", rule: "Bail vide, zone tendue : préavis réduit à 1 mois (art. 15 loi 89-462)." };
+    return { months: 3, label: "3 mois", rule: "Bail vide, hors zone tendue : préavis 3 mois (art. 15 loi 89-462). Réduction à 1 mois possible en cas de mutation, perte d'emploi ou raisons de santé." };
+  }
+  // bailleur
+  if (bail === "meuble") return { months: 3, label: "3 mois", rule: "Bail meublé : préavis bailleur 3 mois avant l'échéance (art. 25-8 loi 89-462)." };
+  if (motif === "vente") return { months: 6, label: "6 mois", rule: "Bail vide, congé pour vente : préavis 6 mois avant l'échéance (art. 15 loi 89-462). Droit de préemption du locataire." };
+  if (motif === "habiter") return { months: 6, label: "6 mois", rule: "Bail vide, congé pour habiter : préavis 6 mois avant l'échéance (art. 15 loi 89-462). Justificatif requis." };
+  return { months: 6, label: "6 mois", rule: "Bail vide, congé pour autre motif légitime et sérieux : préavis 6 mois avant l'échéance (art. 15 loi 89-462)." };
+}
+
+function addMonthsToDate(dateStr: string, months: number): string {
+  if (!dateStr) return "";
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (isNaN(d.getTime())) return "";
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
+function PreavisTool({ onBack }: { onBack: () => void }) {
+  const [bail, setBail] = useState<BailType>("vide");
+  const [by, setBy] = useState<CongeBy>("locataire");
+  const [motif, setMotif] = useState<BailleurMotif>("habiter");
+  const [zoneTendue, setZoneTendue] = useState(false);
+  const [notifDate, setNotifDate] = useState(todayISO());
+
+  const result = computePreavis(bail, by, motif, zoneTendue);
+  const endDate = addMonthsToDate(notifDate, result.months);
+  const fmtDate = (s: string) => {
+    if (!s) return "—";
+    const d = new Date(`${s}T00:00:00`);
+    return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  };
+
+  return (
+    <CalculatorShell
+      tone="slate"
+      eyebrow="Délai légal"
+      title="Calculateur de préavis"
+      description="Déterminez la durée de préavis applicable et calculez la date de fin selon le type de bail, la situation géographique et l'auteur du congé."
+      resultLabel="Durée de préavis"
+      resultValue={result.label}
+      resultHint={notifDate ? `Fin estimée : ${fmtDate(endDate)}` : "Saisissez une date de notification."}
+      onBack={onBack}
+    >
+      <ToolWorkflowNotice
+        title="Comment utiliser cet outil"
+        steps={[
+          "Sélectionnez le type de bail et qui donne le congé.",
+          "Précisez la zone et la date de notification.",
+          "Vérifiez la durée légale et la date de fin estimée.",
+        ]}
+      />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="space-y-1">
+          <span className="text-xs font-semibold text-slate-600">Type de bail</span>
+          <select value={bail} onChange={(e) => setBail(e.target.value as BailType)} className={toolInputClass}>
+            <option value="vide">Vide (non meublé)</option>
+            <option value="meuble">Meublé</option>
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="text-xs font-semibold text-slate-600">Qui donne congé ?</span>
+          <select value={by} onChange={(e) => setBy(e.target.value as CongeBy)} className={toolInputClass}>
+            <option value="locataire">Le locataire</option>
+            <option value="bailleur">Le bailleur</option>
+          </select>
+        </label>
+        {by === "bailleur" && bail === "vide" && (
+          <label className="space-y-1">
+            <span className="text-xs font-semibold text-slate-600">Motif du congé</span>
+            <select value={motif} onChange={(e) => setMotif(e.target.value as BailleurMotif)} className={toolInputClass}>
+              <option value="habiter">Pour habiter (reprise)</option>
+              <option value="vente">Pour vendre</option>
+              <option value="autre">Motif légitime et sérieux</option>
+            </select>
+          </label>
+        )}
+        {by === "locataire" && bail === "vide" && (
+          <label className="space-y-1">
+            <span className="text-xs font-semibold text-slate-600">Zone tendue ?</span>
+            <select value={String(zoneTendue)} onChange={(e) => setZoneTendue(e.target.value === "true")} className={toolInputClass}>
+              <option value="false">Non</option>
+              <option value="true">Oui — zone tendue</option>
+            </select>
+          </label>
+        )}
+        <label className="space-y-1">
+          <span className="text-xs font-semibold text-slate-600">Date de notification</span>
+          <input type="date" value={notifDate} onChange={(e) => setNotifDate(e.target.value)} className={toolInputClass} />
+        </label>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Notification</p>
+          <p className="mt-2 text-xl font-semibold text-slate-950">{fmtDate(notifDate)}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Durée</p>
+          <p className="mt-2 text-xl font-semibold text-slate-950">{result.label}</p>
+        </div>
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-indigo-700">Fin de préavis</p>
+          <p className="mt-2 text-xl font-semibold text-indigo-950">{fmtDate(endDate)}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Règle appliquée</p>
+        <p className="mt-2 text-sm leading-6 text-slate-700">{result.rule}</p>
+      </div>
+    </CalculatorShell>
+  );
+}
+
 export function SectionOutils({
   userId,
   properties = [],
   leases = [],
+  tenants = [],
   plan = "calc_full",
   onRefresh,
 }: {
   userId: string;
   properties?: Property[];
   leases?: Lease[];
+  tenants?: Tenant[];
   plan?: Plan;
   onRefresh?: () => Promise<void> | void;
 }) {
@@ -2130,6 +2322,7 @@ export function SectionOutils({
       userId={userId}
       properties={properties}
       leases={leases}
+      tenants={tenants}
       draft={financeDraft}
       onClose={() => setFinanceDraft(null)}
       onSaved={async (message) => {
@@ -2144,15 +2337,16 @@ export function SectionOutils({
     return (
       <>
         <section>
-          <div className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <div className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             <ToolTile
-              title="Gestion facturation eau"
+              title="Facturation eau"
               eyebrow="Outil historisé"
-              description="Répartissez une facture d’eau générale entre plusieurs compteurs individuels : part consommation au prorata des m³, abonnement à parts égales, justificatifs et historique."
+              description="Répartissez une facture d’eau générale entre compteurs individuels : consommation au prorata des m³, abonnement à parts égales, justificatifs et historique."
               metric="Montant dû par compteur"
-              tags={["Part fixe + m³", "Relevés individuels", "Historique + photos"]}
+              tags={["Part fixe + m³", "Relevés individuels", "Historique"]}
               tone="cyan"
               status="Avancé"
+              icon={<BeakerIcon className="h-6 w-6" />}
               onOpen={() => setActiveTool("water")}
             />
             <ToolTile
@@ -2162,15 +2356,17 @@ export function SectionOutils({
               metric="Quote-part par lot"
               tags={["Tantièmes", "Lots", "Quote-part"]}
               tone="violet"
+              icon={<Squares2X2Icon className="h-6 w-6" />}
               onOpen={() => setActiveTool("charges")}
             />
             <ToolTile
-              title="Ordures ménagères TEOM"
-              eyebrow="Taxe récupérable"
-              description="Isolez le montant de taxe d’enlèvement des ordures ménagères récupérable auprès du locataire depuis la taxe foncière."
+              title="TEOM récupérable"
+              eyebrow="Taxe ordures ménagères"
+              description="Isolez le montant de TEOM récupérable auprès du locataire depuis l’avis de taxe foncière, avec quote-part et prorata d’occupation."
               metric="TEOM à récupérer"
-              tags={["Taxe foncière", "TEOM", "Récupérable"]}
+              tags={["Taxe foncière", "TEOM", "Prorata"]}
               tone="emerald"
+              icon={<DocumentTextIcon className="h-6 w-6" />}
               onOpen={() => setActiveTool("teom")}
             />
             <ToolTile
@@ -2180,16 +2376,28 @@ export function SectionOutils({
               metric="Solde à payer ou rembourser"
               tags={["Provisions", "Dépenses", "Solde"]}
               tone="amber"
+              icon={<ArrowsRightLeftIcon className="h-6 w-6" />}
               onOpen={() => setActiveTool("regularization")}
+            />
+            <ToolTile
+              title="Calculateur de préavis"
+              eyebrow="Délai légal"
+              description="Calculez la durée de préavis applicable et la date de fin selon le type de bail, la zone et l’auteur du congé."
+              metric="Date de fin de préavis"
+              tags={["Bail vide / meublé", "Zone tendue", "Bailleur / locataire"]}
+              tone="slate"
+              icon={<ClockIcon className="h-6 w-6" />}
+              onOpen={() => setActiveTool("preavis")}
             />
             <ToolTile
               title="Simulateurs bailleur"
               eyebrow="Décision"
-              description="Arbitrez vos décisions de gestion avec les simulateurs bailleur : LMNP, location meublée ou nue, révision IRL, conserver ou vendre."
+              description="Arbitrez vos décisions de gestion : LMNP vs location nue, révision IRL, rentabilité, conserver ou vendre."
               metric="Aide à la décision"
-              tags={["LMNP", "IRL", "Louer ou vendre"]}
-              tone="violet"
+              tags={["LMNP", "IRL", "Rentabilité"]}
+              tone="indigo"
               status="Simulateurs"
+              icon={<ChartBarIcon className="h-6 w-6" />}
               onOpen={() => setActiveTool("simulators")}
             />
           </div>
@@ -2203,7 +2411,7 @@ export function SectionOutils({
   if (activeTool === "charges") {
     return (
       <>
-        <ChargesAllocationTool onBack={() => setActiveTool(null)} onFinanceDraft={openFinanceDraft} />
+        <ChargesAllocationTool userId={userId} onBack={() => setActiveTool(null)} onFinanceDraft={openFinanceDraft} />
         {financeModal}
         {financeFeedback}
       </>
@@ -2213,7 +2421,7 @@ export function SectionOutils({
   if (activeTool === "teom") {
     return (
       <>
-        <TeomTool onBack={() => setActiveTool(null)} onFinanceDraft={openFinanceDraft} />
+        <TeomTool userId={userId} onBack={() => setActiveTool(null)} onFinanceDraft={openFinanceDraft} />
         {financeModal}
         {financeFeedback}
       </>
@@ -2223,7 +2431,17 @@ export function SectionOutils({
   if (activeTool === "regularization") {
     return (
       <>
-        <ChargeRegularizationTool onBack={() => setActiveTool(null)} onFinanceDraft={openFinanceDraft} />
+        <ChargeRegularizationTool userId={userId} onBack={() => setActiveTool(null)} onFinanceDraft={openFinanceDraft} />
+        {financeModal}
+        {financeFeedback}
+      </>
+    );
+  }
+
+  if (activeTool === "preavis") {
+    return (
+      <>
+        <PreavisTool onBack={() => setActiveTool(null)} />
         {financeModal}
         {financeFeedback}
       </>
