@@ -1200,102 +1200,103 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1fr,1fr]">
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-indigo-700">Décision</p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-950">Matrice par bien</h3>
-
-          <div className="mt-4 space-y-3">
-            {propertyRows.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">
-                Aucun bien exploitable pour l’instant.
-              </div>
-            ) : (
-              propertyRows.map((row) => {
-                const decision = decisionFor(row);
-                return (
-                  <div key={row.propertyId} className="rounded-3xl border border-slate-200 bg-white p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <p className="text-base font-semibold text-slate-950">{row.label}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Loyers mensuels {money(row.expected)} · charges mensuelles {money(row.recurring)}
-                        </p>
-                      </div>
-                      <span className={`self-start rounded-full border px-3 py-1 text-xs font-semibold ${decision.tone}`}>{decision.label}</span>
-                    </div>
-
-                    <div className="mt-3 grid gap-2 sm:grid-cols-4">
-                      <Stat label="Encaissé ce mois" value={money(Math.max(row.received, row.ledgerIncome))} />
-                      <Stat label="Dépenses ce mois" value={money(row.expense)} />
-                      <Stat label="Cashflow mensuel" value={money(row.cashflow)} strong={row.cashflow >= 0 ? "good" : "bad"} />
-                      <Stat label="Rendement net" value={row.netYield == null ? "À compléter" : pct(row.netYield)} />
-                      <Stat label="Taux crédit" value={row.loanRate == null ? "À renseigner" : `${row.loanRate.toLocaleString("fr-FR")} %`} />
-                      <Stat label="Fin crédit" value={row.loanEndYear == null ? "—" : String(row.loanEndYear)} />
-                      <Stat label="Vacance 12 mois" value={`${row.vacancyDays12m} j`} strong={row.vacancyDays12m >= 30 ? "bad" : undefined} />
-                      <Stat label="Turnover 12 mois" value={String(row.turnover12m)} strong={row.turnover12m >= 2 ? "bad" : undefined} />
-                    </div>
-
-                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                      <p className="text-sm font-semibold text-slate-900">{decision.signal}</p>
-                      <p className="mt-1 text-sm leading-6 text-slate-600">{decision.action}</p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+      <section className="space-y-4">
+        {/* Section headers */}
+        <div className="grid gap-4 xl:grid-cols-[1fr,1fr]">
+          <div className="rounded-[2rem] border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-indigo-700">Décision</p>
+            <h3 className="mt-1 text-lg font-semibold text-slate-950">Matrice par bien</h3>
           </div>
-        </div>
-
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
-              <ExclamationTriangleIcon className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-amber-700">Conseils simples</p>
-              <h3 className="mt-1 text-lg font-semibold text-slate-950">À faire maintenant</h3>
-              <p className="mt-1 text-sm text-slate-600">Les chiffres sont traduits en prochaines actions concrètes.</p>
+          <div className="rounded-[2rem] border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+                <ExclamationTriangleIcon className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-amber-700">Conseils simples</p>
+                <h3 className="text-lg font-semibold text-slate-950">À faire maintenant</h3>
+              </div>
             </div>
           </div>
+        </div>
 
-          <div className="mt-4 space-y-3">
-            {(priorityRows.length ? priorityRows : propertyRows.slice(0, 2)).map((row) => (
-              <div key={row.propertyId} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-950">{row.label}</p>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-semibold text-slate-600">
-                    {money(row.cashflow)} / mois
-                  </span>
+        {/* Per-property paired rows */}
+        {propertyRows.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+            Aucun bien exploitable pour l’instant.
+          </div>
+        ) : (
+          propertyRows.map((row) => {
+            const decision = decisionFor(row);
+            const actions = actionsFor(row);
+            return (
+              <div key={row.propertyId} className="grid gap-4 xl:grid-cols-[1fr,1fr] xl:items-start">
+                {/* Left: matrix card */}
+                <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-base font-semibold text-slate-950">{row.label}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Loyers mensuels {money(row.expected)} · charges mensuelles {money(row.recurring)}
+                      </p>
+                    </div>
+                    <span className={`self-start rounded-full border px-3 py-1 text-xs font-semibold ${decision.tone}`}>{decision.label}</span>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                    <Stat label="Encaissé ce mois" value={money(Math.max(row.received, row.ledgerIncome))} />
+                    <Stat label="Dépenses ce mois" value={money(row.expense)} />
+                    <Stat label="Cashflow mensuel" value={money(row.cashflow)} strong={row.cashflow >= 0 ? "good" : "bad"} />
+                    <Stat label="Rendement net" value={row.netYield == null ? "À compléter" : pct(row.netYield)} />
+                    <Stat label="Taux crédit" value={row.loanRate == null ? "À renseigner" : `${row.loanRate.toLocaleString("fr-FR")} %`} />
+                    <Stat label="Fin crédit" value={row.loanEndYear == null ? "—" : String(row.loanEndYear)} />
+                    <Stat label="Vacance 12 mois" value={`${row.vacancyDays12m} j`} strong={row.vacancyDays12m >= 30 ? "bad" : undefined} />
+                    <Stat label="Turnover 12 mois" value={String(row.turnover12m)} strong={row.turnover12m >= 2 ? "bad" : undefined} />
+                  </div>
+
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <p className="text-sm font-semibold text-slate-900">{decision.signal}</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{decision.action}</p>
+                  </div>
                 </div>
-                <div className="mt-2 space-y-2">
-                  {actionsFor(row).map((action) => {
-                    const bg = action.tone === "red" ? "border-red-100 bg-red-50" : action.tone === "amber" ? "border-amber-100 bg-amber-50" : action.tone === "emerald" ? "border-emerald-100 bg-emerald-50" : "border-slate-100 bg-slate-50";
-                    const dot = action.tone === "red" ? "bg-red-400" : action.tone === "amber" ? "bg-amber-400" : action.tone === "emerald" ? "bg-emerald-400" : "bg-slate-300";
-                    return (
-                      <div key={action.title} className={`rounded-2xl border px-3 py-2.5 ${bg}`}>
-                        <div className="flex items-start gap-2">
-                          <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
-                          <div>
-                            <p className="text-sm font-semibold text-slate-950">{action.title}</p>
-                            <p className="mt-0.5 text-sm leading-6 text-slate-600">{action.detail}</p>
+
+                {/* Right: advice card */}
+                <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-950">{row.label}</p>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-semibold text-slate-600">
+                      {money(row.cashflow)} / mois
+                    </span>
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {actions.map((action) => {
+                      const bg = action.tone === "red" ? "border-red-100 bg-red-50" : action.tone === "amber" ? "border-amber-100 bg-amber-50" : action.tone === "emerald" ? "border-emerald-100 bg-emerald-50" : "border-slate-100 bg-slate-50";
+                      const dot = action.tone === "red" ? "bg-red-400" : action.tone === "amber" ? "bg-amber-400" : action.tone === "emerald" ? "bg-emerald-400" : "bg-slate-300";
+                      return (
+                        <div key={action.title} className={`rounded-2xl border px-3 py-2.5 ${bg}`}>
+                          <div className="flex items-start gap-2">
+                            <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+                            <div>
+                              <p className="text-sm font-semibold text-slate-950">{action.title}</p>
+                              <p className="mt-0.5 text-sm leading-6 text-slate-600">{action.detail}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })
+        )}
 
-          <a
-            href="/espace-bailleur?tab=finance"
-            className="mt-4 inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-          >
-            Compléter les charges dans Finance
-          </a>
-        </div>
+        <a
+          href="/espace-bailleur?tab=finance"
+          className="inline-flex w-full items-center justify-center rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+        >
+          Compléter les charges dans Finance
+        </a>
       </section>
 
       {loading ? <p className="text-xs text-slate-500">Chargement de la performance…</p> : null}
