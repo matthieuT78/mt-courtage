@@ -1870,7 +1870,8 @@ export function SectionQuittances({
                                 const t = lease ? tenantsById.get(String(lease.tenant_id)) : null;
 
                                 const receiptStatus = String(r.status || "").toLowerCase();
-                                const sentAtTip = r.sent_at ? `Dernier envoi : ${fmtDateTimeFR(r.sent_at)}` : "Jamais envoyé";
+                                // Si sent_at est renseigné, la quittance a bien été envoyée même si status = "generated"
+                                const displayStatus = receiptStatus === "generated" && r.sent_at ? "sent" : receiptStatus;
 
                                 return (
                                   <tr key={r.id} className="border-b border-slate-100">
@@ -1884,10 +1885,10 @@ export function SectionQuittances({
                                       <span
                                         className={cx(
                                           "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold",
-                                          pillToneReceipt(receiptStatus)
+                                          pillToneReceipt(displayStatus)
                                         )}
                                       >
-                                        {statusLabelReceipt(receiptStatus)}
+                                        {statusLabelReceipt(displayStatus)}
                                       </span>
                                     </td>
 
