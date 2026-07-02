@@ -29,12 +29,22 @@ function signedPct(n: number) {
 export function IrlRevisionPanel({ lease, property, tenant, openTrigger }: Props) {
   const currentRent = Number(lease.rent_amount || 0);
 
-  // Trimestre de référence : champ irl_reference du bail ou trimestre de start_date
+  // Trimestre de référence : champ irl_reference du bail, ou trimestre de start_date,
+  // ou trimestre le plus proche disponible dans la table si pas de correspondance exacte
   const defaultRef = useMemo(() => {
     const irlField = (lease as any).irl_reference as string | null;
     if (irlField && irlByQuarter(irlField)) return irlField;
-    if (lease.start_date) return dateToIrlQuarter(lease.start_date);
-    return "";
+    if (!lease.start_date) return "";
+    const exact = dateToIrlQuarter(lease.start_date);
+    if (irlByQuarter(exact)) return exact;
+    // Fallback : trimestre disponible le plus proche <= start_date
+    const [sy, sq] = exact.split("-T").map(Number);
+    const startNum = sy * 4 + sq;
+    for (const entry of IRL_TABLE) {
+      const [ey, eq] = entry.quarter.split("-T").map(Number);
+      if (ey * 4 + eq <= startNum) return entry.quarter;
+    }
+    return IRL_TABLE[IRL_TABLE.length - 1].quarter;
   }, [lease]);
 
   const [open, setOpen]           = useState(false);
@@ -128,28 +138,33 @@ ___________________________
 
       {open && (
         <div className="mt-4 space-y-4">
+          {/* Explication */}
+          <p className="text-xs leading-5 text-slate-500">
+            L&apos;IRL (Indice de Référence des Loyers) permet de réviser le loyer chaque année à la date anniversaire du bail.
+            Sélectionnez le trimestre IRL inscrit dans votre contrat, puis le trimestre de révision souhaité.
+          </p>
+
           {/* Indices */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <label className="block text-xs font-semibold text-slate-600">
-                Trimestre de référence
-                <span className="ml-1 font-normal text-slate-400">(bail)</span>
+                IRL de référence
               </label>
               <select
                 value={refQuarter}
                 onChange={(e) => setRefQuarter(e.target.value)}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none"
               >
-                <option value="">-- Trimestre --</option>
+                <option value="">-- Choisir --</option>
                 {IRL_TABLE.map((e) => (
                   <option key={e.quarter} value={e.quarter}>{e.label} — {e.value}</option>
                 ))}
               </select>
+              <p className="text-[0.65rem] text-slate-400">Trimestre indiqué dans la clause de révision de votre bail</p>
             </div>
             <div className="space-y-1">
               <label className="block text-xs font-semibold text-slate-600">
-                Trimestre de révision
-                <span className="ml-1 font-normal text-slate-400">(dernier publié)</span>
+                IRL de révision
               </label>
               <select
                 value={newQuarter}
@@ -160,6 +175,7 @@ ___________________________
                   <option key={e.quarter} value={e.quarter}>{e.label} — {e.value}</option>
                 ))}
               </select>
+              <p className="text-[0.65rem] text-slate-400">Dernier trimestre publié par l&apos;INSEE</p>
             </div>
           </div>
 
@@ -221,7 +237,7 @@ ___________________________
               </div>
             </>
           ) : (
-            <p className="text-xs text-slate-400">Sélectionnez les deux trimestres pour calculer.</p>
+            <p className="text-xs text-slate-400">Sélectionnez l&apos;IRL de référence (votre bail) pour calculer le nouveau loyer.</p>
           )}
         </div>
       )}

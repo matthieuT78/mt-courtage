@@ -10,6 +10,10 @@ export type IrlEntry = {
 };
 
 export const IRL_TABLE: IrlEntry[] = [
+  { quarter: "2026-T1", label: "T1 2026", value: 151.34 },
+  { quarter: "2025-T4", label: "T4 2025", value: 150.61 },
+  { quarter: "2025-T3", label: "T3 2025", value: 149.95 },
+  { quarter: "2025-T2", label: "T2 2025", value: 149.12 },
   { quarter: "2025-T1", label: "T1 2025", value: 148.09 },
   { quarter: "2024-T4", label: "T4 2024", value: 147.34 },
   { quarter: "2024-T3", label: "T3 2024", value: 146.71 },
