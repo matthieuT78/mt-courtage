@@ -25,14 +25,14 @@ function getResendError(r: ResendResult): string | null {
 
 async function sendEmailViaResend(params: {
   to: string;
+  cc?: string | null;
   subject: string;
   html: string;
-  attachments?: { filename: string; content: string }[]; // ✅ Resend expects `content` (base64)
+  attachments?: { filename: string; content: string }[];
 }): Promise<ResendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;
 
-  // ✅ Email "désactivé" si pas de config
   if (!apiKey || !from) {
     return {
       ok: false,
@@ -48,6 +48,7 @@ async function sendEmailViaResend(params: {
     html: params.html,
   };
 
+  if (params.cc) payload.cc = params.cc;
   if (params.attachments?.length) payload.attachments = params.attachments;
 
   const r = await fetch("https://api.resend.com/emails", {
@@ -113,17 +114,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       });
     }
 
-    // 3) tenant email
-    const tenantRes = await supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single();
+    // 3) tenant + property
+    const [tenantRes, propertyRes] = await Promise.all([
+      supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single(),
+      lease.property_id
+        ? supabaseAdmin.from("properties").select("city,label").eq("id", lease.property_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
     const tenant: any = tenantRes.data || null;
+    const property: any = (propertyRes as any).data || null;
 
     const toEmail = safeStr(tenant?.email);
     if (!toEmail) return res.status(400).json({ error: "Le locataire n’a pas d’email." });
 
+    const ccEmail = safeStr(lease.reminder_email) || null;
+
     // 4) signed url + download pdf from storage
     if (!receipt.pdf_url) return res.status(400).json({ error: "PDF manquant. Génère d’abord le PDF." });
 
-    // pdf_url format: rent-receipts-pdfs:<path>
     const [bucketRef, storagePath] = String(receipt.pdf_url).split(":");
     if (bucketRef !== "rent-receipts-pdfs" || !storagePath) {
       return res.status(400).json({ error: "pdf_url invalide (attendu rent-receipts-pdfs:<path>)" });
@@ -132,29 +140,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const signed = await supabaseAdmin.storage.from("rent-receipts-pdfs").createSignedUrl(storagePath, 60 * 10);
     if (signed.error) return res.status(500).json({ error: `Signed URL échoué: ${signed.error.message}` });
 
-    // Télécharger le PDF via signedUrl pour pièce jointe
     const pdfResp = await fetch(signed.data.signedUrl);
     if (!pdfResp.ok) return res.status(500).json({ error: `Lecture PDF échouée (${pdfResp.status})` });
     const pdfBuf = Buffer.from(await pdfResp.arrayBuffer());
 
     const yyyymm = String(receipt.period_start || "").slice(0, 7) || "quittance";
-    const filename = `quittance-${yyyymm}.pdf`;
+    const tenantName = safeStr(tenant?.full_name);
+    const city = safeStr(property?.city) || safeStr(property?.label);
+    const monthLong = yyyymm
+      ? new Date(Number(yyyymm.slice(0, 4)), Number(yyyymm.slice(5, 7)) - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+      : yyyymm;
+    const labelParts = [tenantName, city, monthLong].filter(Boolean).join(" - ");
+    const subject = `Quittance de loyer - ${labelParts || yyyymm}`;
+    const slugLabel = (labelParts || yyyymm).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase();
+    const filename = `quittance-${slugLabel}.pdf`;
 
     // 5) send
-    const subject = `Quittance de loyer – ${yyyymm}`;
     const html = `
       <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
         <p>Bonjour,</p>
-        <p>Veuillez trouver en pièce jointe votre quittance de loyer pour <b>${yyyymm}</b>.</p>
+        <p>Veuillez trouver en pièce jointe votre quittance de loyer pour <b>${monthLong}</b>.</p>
         <p>Cordialement,<br/>lokt.fr — <a href="mailto:contact@lokt.fr">contact@lokt.fr</a></p>
       </div>
     `;
 
     const email = await sendEmailViaResend({
       to: toEmail,
+      cc: ccEmail,
       subject,
       html,
-      attachments: [{ filename, content: pdfBuf.toString("base64") }], // ✅ content
+      attachments: [{ filename, content: pdfBuf.toString("base64") }],
     });
 
     const disabled = isResendDisabled(email);
