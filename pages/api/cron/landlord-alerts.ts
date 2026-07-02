@@ -190,6 +190,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const dryRun = String(req.query.dryRun || "") === "1";
     const today = todayParis();
     const runDate = toISODate(today);
+
+    // ── Appliquer les révisions IRL programmées ───────────────────────────
+    if (!dryRun) {
+      const { data: pendingRevisions } = await supabaseAdmin
+        .from("leases")
+        .select("id, rent_amount, irl_sent_new_rent")
+        .lte("irl_apply_on", runDate)
+        .is("irl_applied_at", null)
+        .not("irl_sent_new_rent", "is", null);
+
+      for (const lease of pendingRevisions || []) {
+        await supabaseAdmin.from("leases").update({
+          rent_amount: (lease as any).irl_sent_new_rent,
+          irl_applied_at: new Date().toISOString(),
+          irl_previous_rent: (lease as any).rent_amount,
+        }).eq("id", (lease as any).id);
+      }
+    }
     const baseUrl = appUrl();
     if (!baseUrl && !dryRun) return res.status(500).json({ error: "NEXT_PUBLIC_SITE_URL ou APP_URL manquant." });
 

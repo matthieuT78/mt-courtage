@@ -69,6 +69,13 @@ export type Lease = {
   tracking_from_date?: string | null;
   created_at?: string;
   updated_at?: string;
+  irl_sent_at?: string | null;
+  irl_sent_ref_quarter?: string | null;
+  irl_sent_new_quarter?: string | null;
+  irl_sent_new_rent?: number | null;
+  irl_apply_on?: string | null;
+  irl_applied_at?: string | null;
+  irl_previous_rent?: number | null;
 };
 
 export type PropertyLite = {
@@ -623,6 +630,32 @@ function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: Rent
         detail: `${formatEuro(retainAmt)} retenus${reason ? ` — ${reason}` : ""}.`,
       });
     }
+  }
+
+  const irlSentAt = parseISODateLocal(lease.irl_sent_at);
+  if (irlSentAt) {
+    const refQ = lease.irl_sent_ref_quarter || "";
+    const newQ = lease.irl_sent_new_quarter || "";
+    const newRent = lease.irl_sent_new_rent;
+    events.push({
+      id: `${lease.id}:irl:sent`,
+      date: irlSentAt,
+      tone: "sky",
+      title: "Courrier de révision IRL envoyé",
+      detail: `Révision ${refQ} → ${newQ}${newRent ? ` · Nouveau loyer : ${formatEuro(newRent)}` : ""}`,
+    });
+  }
+  const irlAppliedAt = parseISODateLocal(lease.irl_applied_at);
+  if (irlAppliedAt) {
+    const prev = lease.irl_previous_rent;
+    const next = Number(lease.rent_amount || 0);
+    events.push({
+      id: `${lease.id}:irl:applied`,
+      date: irlAppliedAt,
+      tone: "emerald",
+      title: "Loyer révisé (IRL)",
+      detail: `${prev ? formatEuro(prev) + " → " : ""}${formatEuro(next)} HC/mois`,
+    });
   }
 
   for (const payment of payments.filter((payment) => payment.lease_id === lease.id)) {
@@ -2027,6 +2060,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
           property={p || null}
           tenant={t || null}
           openTrigger={deepLink?.leaseId === l.id && deepLink?.openPanel === "irl" ? deepLink.key : undefined}
+          onRefresh={onRefresh}
         />
       </div>
     );

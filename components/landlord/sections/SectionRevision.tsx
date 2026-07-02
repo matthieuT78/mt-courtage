@@ -1,7 +1,8 @@
 // components/landlord/sections/SectionRevision.tsx
 // Bloc IRL intégré dans la fiche bail de SectionBaux.
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardDocumentIcon, CheckIcon, ChevronDownIcon, ArrowTrendingUpIcon } from "@heroicons/react/24/outline";
+import { ClipboardDocumentIcon, CheckIcon, ChevronDownIcon, ArrowTrendingUpIcon, PaperAirplaneIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { supabase } from "../../../lib/supabaseClient";
 import { IRL_TABLE, LATEST_IRL, dateToIrlQuarter, irlByQuarter } from "../../../lib/irlData";
 import type { Lease } from "./SectionBaux";
 
@@ -13,6 +14,7 @@ type Props = {
   property: PropertyLike | null;
   tenant: TenantLike | null;
   openTrigger?: number;
+  onRefresh?: () => Promise<void>;
 };
 
 function euro(n: number) {
@@ -26,7 +28,7 @@ function signedPct(n: number) {
   return (n >= 0 ? "+" : "") + n.toFixed(2) + " %";
 }
 
-export function IrlRevisionPanel({ lease, property, tenant, openTrigger }: Props) {
+export function IrlRevisionPanel({ lease, property, tenant, openTrigger, onRefresh }: Props) {
   const currentRent = Number(lease.rent_amount || 0);
 
   // Trimestre de référence : champ irl_reference du bail, ou trimestre de start_date,
@@ -56,6 +58,12 @@ export function IrlRevisionPanel({ lease, property, tenant, openTrigger }: Props
   const [newQuarter, setNewQuarter] = useState<string>(LATEST_IRL.quarter);
   const [showLetter, setShowLetter] = useState(false);
   const [copied, setCopied]         = useState(false);
+  const [sending, setSending]         = useState(false);
+  const [sentOk, setSentOk]           = useState(false);
+  const [sendError, setSendError]     = useState<string | null>(null);
+  const [cancelling, setCancelling]   = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [applyOn, setApplyOn]         = useState<string | null>(lease.irl_apply_on ?? null);
 
   const refEntry = useMemo(() => irlByQuarter(refQuarter), [refQuarter]);
   const newEntry = useMemo(() => irlByQuarter(newQuarter), [newQuarter]);
@@ -111,6 +119,62 @@ ___________________________
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     });
+  }
+
+  async function handleSendRevision() {
+    if (sending || !result || !refEntry || !newEntry) return;
+    setSending(true);
+    setSendError(null);
+    setSentOk(false);
+    try {
+      if (!supabase) throw new Error("Client indisponible.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const userId = sessionData?.session?.user?.id;
+      if (!token || !userId) throw new Error("Session expirée.");
+
+      const resp = await fetch("/api/landlord/send-revision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId, leaseId: lease.id, refQuarter, newQuarter }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.error || "Erreur d'envoi.");
+      setSentOk(true);
+      if (data.applyOn) setApplyOn(data.applyOn);
+    } catch (e: any) {
+      setSendError(e?.message || "Erreur inconnue.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function handleCancelRevision() {
+    if (cancelling) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      if (!supabase) throw new Error("Client indisponible.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      const userId = sessionData?.session?.user?.id;
+      if (!token || !userId) throw new Error("Session expirée.");
+
+      const resp = await fetch("/api/landlord/cancel-revision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId, leaseId: lease.id }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.error || "Erreur d'annulation.");
+      setApplyOn(null);
+      setSentOk(false);
+      await onRefresh?.();
+    } catch (e: any) {
+      setCancelError(e?.message || "Erreur inconnue.");
+    } finally {
+      setCancelling(false);
+    }
   }
 
   if (currentRent <= 0) return null;
@@ -204,7 +268,7 @@ ___________________________
               </div>
 
               {/* Courrier */}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => setShowLetter((v) => !v)}
@@ -212,18 +276,72 @@ ___________________________
                 >
                   {showLetter ? "Masquer le courrier" : "Voir le courrier officiel"}
                 </button>
-                <button
-                  type="button"
-                  onClick={copyLetter}
-                  className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700"
-                >
-                  {copied ? (
-                    <><CheckIcon className="h-3.5 w-3.5" />Copié !</>
-                  ) : (
-                    <><ClipboardDocumentIcon className="h-3.5 w-3.5" />Copier le courrier</>
-                  )}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={copyLetter}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                  >
+                    {copied ? (
+                      <><CheckIcon className="h-3.5 w-3.5 text-emerald-500" />Copié !</>
+                    ) : (
+                      <><ClipboardDocumentIcon className="h-3.5 w-3.5" />Copier</>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendRevision}
+                    disabled={sending || sentOk}
+                    className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {sentOk ? (
+                      <><CheckIcon className="h-3.5 w-3.5" />Envoyé au locataire</>
+                    ) : sending ? (
+                      <>Envoi en cours…</>
+                    ) : (
+                      <><PaperAirplaneIcon className="h-3.5 w-3.5" />Envoyer au locataire</>
+                    )}
+                  </button>
+                </div>
               </div>
+              {sendError && (
+                <p className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">{sendError}</p>
+              )}
+              {sentOk && (
+                <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  Courrier de révision envoyé par email au locataire.
+                </p>
+              )}
+
+              {/* Révision programmée / appliquée */}
+              {lease.irl_applied_at ? (
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-700">
+                  <span className="font-semibold">Loyer révisé automatiquement</span> le {fmtDate(lease.irl_applied_at)} — {euro(Number(lease.rent_amount))} HC/mois.
+                </div>
+              ) : applyOn ? (
+                <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-indigo-900">
+                        Révision programmée le {fmtDate(applyOn)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-indigo-700">
+                        Le loyer passera automatiquement à <strong>{euro(result.newRent)}</strong> HC/mois à la date anniversaire du bail.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCancelRevision}
+                      disabled={cancelling}
+                      className="flex shrink-0 items-center gap-1 rounded-lg border border-indigo-200 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-60 transition"
+                    >
+                      <XMarkIcon className="h-3.5 w-3.5" />
+                      {cancelling ? "Annulation…" : "Annuler"}
+                    </button>
+                  </div>
+                  {cancelError && <p className="mt-2 text-xs text-red-600">{cancelError}</p>}
+                </div>
+              ) : null}
 
               {showLetter && (
                 <pre className="whitespace-pre-wrap rounded-xl border border-slate-100 bg-slate-50 p-3 font-mono text-[0.68rem] leading-5 text-slate-600">
