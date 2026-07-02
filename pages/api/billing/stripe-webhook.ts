@@ -52,18 +52,21 @@ async function saveSubscription(params: {
 
   const endsAt = params.currentPeriodEnd ? new Date(params.currentPeriodEnd * 1000).toISOString() : null;
 
-  const { error } = await supabaseAdmin.from("subscriptions").insert({
-    user_id: params.userId,
-    plan: params.plan,
-    status: params.status || "active",
-    ends_at: endsAt,
-    billing_interval: params.billing || null,
-    stripe_customer_id: params.stripeCustomerId || null,
-    stripe_subscription_id: params.stripeSubscriptionId || null,
-    stripe_price_id: params.stripePriceId || null,
-    cancel_at_period_end: params.cancelAtPeriodEnd ?? false,
-    updated_at: new Date().toISOString(),
-  });
+  const { error } = await supabaseAdmin.from("subscriptions").upsert(
+    {
+      user_id: params.userId,
+      plan: params.plan,
+      status: params.status || "active",
+      ends_at: endsAt,
+      billing_interval: params.billing || null,
+      stripe_customer_id: params.stripeCustomerId || null,
+      stripe_subscription_id: params.stripeSubscriptionId || null,
+      stripe_price_id: params.stripePriceId || null,
+      cancel_at_period_end: params.cancelAtPeriodEnd ?? false,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "stripe_subscription_id", ignoreDuplicates: false }
+  );
 
   if (error) throw error;
 }
