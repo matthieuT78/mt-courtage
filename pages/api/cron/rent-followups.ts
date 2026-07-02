@@ -125,7 +125,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           expectedCharges: rentPeriod.charges,
           fullUrl: `${baseUrl}/api/receipts/confirm-paid?token=${tokenValue}&action=full`,
           partialUrl: `${baseUrl}/api/receipts/confirm-paid?token=${tokenValue}&action=partial`,
-          unpaidUrl: `${baseUrl}/api/receipts/confirm-paid?token=${tokenValue}&action=unpaid`,
           isFollowup: true,
         });
 

@@ -7,7 +7,6 @@ type RentReminderEmailParams = {
   expectedCharges?: number | null;
   fullUrl: string;
   partialUrl: string;
-  unpaidUrl: string;
   isTest?: boolean;
   isFollowup?: boolean;
 };
@@ -56,7 +55,6 @@ Montant attendu : ${euro(expectedTotal)}
 Choix disponibles :
 - Loyer reçu complet : ${params.fullUrl}
 - Paiement incomplet : ${params.partialUrl}
-- Non reçu : ${params.unpaidUrl}
 
 Une quittance ne doit être générée que si le paiement complet du loyer et des charges est confirmé.
 
@@ -112,16 +110,13 @@ lokt.fr
           <a href="${params.fullUrl}" style="display:block;text-align:center;margin:0 0 10px;padding:14px 18px;border-radius:999px;background:#0f172a;color:#ffffff;text-decoration:none;font-weight:800;font-size:15px;">
             Loyer reçu complet
           </a>
-          <a href="${params.partialUrl}" style="display:block;text-align:center;margin:0 0 10px;padding:13px 18px;border-radius:999px;border:1px solid #fdba74;background:#fff7ed;color:#9a3412;text-decoration:none;font-weight:800;font-size:15px;">
+          <a href="${params.partialUrl}" style="display:block;text-align:center;padding:13px 18px;border-radius:999px;border:1px solid #fdba74;background:#fff7ed;color:#9a3412;text-decoration:none;font-weight:800;font-size:15px;">
             Paiement incomplet
-          </a>
-          <a href="${params.unpaidUrl}" style="display:block;text-align:center;padding:13px 18px;border-radius:999px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b;text-decoration:none;font-weight:800;font-size:15px;">
-            Non reçu
           </a>
         </div>
 
         <div style="margin-top:18px;padding:13px 14px;border-radius:14px;background:#fffbeb;border:1px solid #fde68a;color:#78350f;font-size:13px;line-height:1.5;">
-          En cas de paiement incomplet, lokt.fr bloque la quittance, alimente le suivi Finance et proposera une relance au locataire.
+          En cas de paiement incomplet, lokt.fr bloque la quittance et alimente le suivi Finance. Vous pourrez confirmer le solde depuis la section Quittances.
         </div>
       </div>
 

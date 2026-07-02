@@ -29,6 +29,10 @@ function escapeHtml(s: string) {
     .replace(/'/g, "&#039;");
 }
 
+function escapeJs(s: string) {
+  return s.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\n/g, "\\n").replace(/\r/g, "");
+}
+
 function appBaseUrl(req: NextApiRequest) {
   const configured = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
   if (configured) return configured.replace(/\/$/, "");
@@ -164,6 +168,186 @@ function partialForm(params: { token: string; rent: number; charges: number; per
   `;
 }
 
+function monthLabelFR(yyyymm: string) {
+  const [y, m] = yyyymm.split("-").map(Number);
+  if (!y || !m) return yyyymm;
+  return new Date(y, m - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
+
+function spinnerPage(params: {
+  token: string;
+  tenantName: string;
+  city: string;
+  period: string;
+  baseUrl: string;
+}) {
+  const { token, tenantName, city, period, baseUrl } = params;
+  const monthLabel = monthLabelFR(period);
+  const badgeParts = [tenantName, city, monthLabel].filter(Boolean).join(" · ");
+
+  return `<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Confirmation paiement · lokt.fr</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0f172a;
+      padding: 16px;
+    }
+    .card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      padding: 36px 28px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .logo {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #4f46e5;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin: 0 auto 22px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .icon { font-size: 44px; margin-bottom: 18px; }
+    .title { font-size: 19px; font-weight: 800; margin-bottom: 8px; line-height: 1.2; }
+    .sub { font-size: 14px; color: #64748b; line-height: 1.55; }
+    .badge {
+      display: inline-block;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 8px 14px;
+      margin-top: 18px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #334155;
+    }
+    .btn {
+      display: inline-block;
+      margin-top: 22px;
+      padding: 11px 22px;
+      background: #0f172a;
+      color: white;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .err-msg { color: #b91c1c; font-size: 13px; margin-top: 10px; line-height: 1.4; }
+    #s-loading { display: block; }
+    #s-success { display: none; }
+    #s-error   { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">lokt.fr</div>
+
+    <div id="s-loading">
+      <div class="spinner"></div>
+      <div class="title">Confirmation en cours…</div>
+      <div class="sub">Nous enregistrons le paiement et préparons votre quittance.</div>
+      <div class="badge">${escapeHtml(badgeParts)}</div>
+    </div>
+
+    <div id="s-success">
+      <div class="icon">✅</div>
+      <div class="title">Paiement confirmé</div>
+      <div class="sub" id="success-msg">Quittance envoyée.</div>
+      <div class="badge">${escapeHtml(badgeParts)}</div>
+      <a href="${escapeHtml(baseUrl)}/espace-bailleur?tab=quittances" class="btn">Voir les quittances</a>
+    </div>
+
+    <div id="s-error">
+      <div class="icon">⚠️</div>
+      <div class="title">Une erreur est survenue</div>
+      <div class="err-msg" id="error-msg"></div>
+      <a href="${escapeHtml(baseUrl)}/espace-bailleur" class="btn">Aller sur lokt.fr</a>
+    </div>
+  </div>
+
+  <script>
+    (async () => {
+      try {
+        const r = await fetch('/api/receipts/confirm-paid', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: '${escapeJs(token)}', action: 'full' })
+        });
+        const json = await r.json().catch(() => ({}));
+        document.getElementById('s-loading').style.display = 'none';
+        if (json.ok) {
+          document.getElementById('success-msg').textContent = json.emailOk
+            ? 'Quittance envoyée à ${escapeJs(tenantName)}. Vous êtes en copie.'
+            : 'Paiement enregistré. La quittance est disponible sur lokt.fr.';
+          document.getElementById('s-success').style.display = 'block';
+        } else {
+          document.getElementById('error-msg').textContent = json.error || 'Erreur inconnue. Confirmez le paiement depuis lokt.fr.';
+          document.getElementById('s-error').style.display = 'block';
+        }
+      } catch (e) {
+        document.getElementById('s-loading').style.display = 'none';
+        document.getElementById('error-msg').textContent = 'Erreur réseau. Confirmez le paiement depuis lokt.fr.';
+        document.getElementById('s-error').style.display = 'block';
+      }
+    })();
+  </script>
+</body>
+</html>`;
+}
+
+function errorPage(message: string, baseUrl: string) {
+  return `<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Lien invalide · lokt.fr</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .card { background: white; border: 1px solid #e2e8f0; border-radius: 22px; padding: 36px 28px; max-width: 400px; width: 100%; text-align: center; }
+    .logo { font-size: 13px; font-weight: 800; letter-spacing: 0.08em; color: #4f46e5; text-transform: uppercase; margin-bottom: 28px; }
+    .icon { font-size: 44px; margin-bottom: 18px; }
+    .title { font-size: 19px; font-weight: 800; margin-bottom: 8px; }
+    .sub { font-size: 14px; color: #64748b; line-height: 1.55; }
+    .btn { display: inline-block; margin-top: 22px; padding: 11px 22px; background: #0f172a; color: white; border-radius: 999px; text-decoration: none; font-weight: 700; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">lokt.fr</div>
+    <div class="icon">⚠️</div>
+    <div class="title">Lien invalide</div>
+    <div class="sub">${escapeHtml(message)}</div>
+    <a href="${escapeHtml(baseUrl)}/espace-bailleur" class="btn">Aller sur lokt.fr</a>
+  </div>
+</body>
+</html>`;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     if (!supabaseAdmin) return res.status(500).send("Supabase admin manquant.");
@@ -171,31 +355,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const token = safeStr(req.method === "POST" ? req.body?.token : req.query.token);
     const rawAction = safeStr(req.method === "POST" ? req.body?.action : req.query.action).toLowerCase();
     const action: OwnerAction =
-      rawAction === "partial" || rawAction === "unpaid" || rawAction === "full"
-        ? rawAction
-        : "full";
+      rawAction === "partial" || rawAction === "unpaid" || rawAction === "full" ? rawAction : "full";
 
     if (!token) return res.status(400).send("Token manquant.");
 
-    const { error, row } = await loadToken(token);
-    if (error) return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "error", reason: error }));
+    const baseUrl = appBaseUrl(req);
 
-    const lease = await loadLease(row);
-    const rentPeriod = getLeaseRentPeriodFromDate(lease, row.period_start);
-    if (!rentPeriod) throw new Error("Cette période est en dehors des dates du bail.");
-    const rent = rentPeriod.rent;
-    const charges = rentPeriod.charges;
-    const period = String(row.period_start).slice(0, 7);
+    // ── GET + action=full → page HTML avec spinner (pas de traitement) ──────
+    if (req.method === "GET" && action === "full") {
+      const { error, row } = await loadToken(token);
+      if (error) {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        return res.status(200).send(errorPage(error, baseUrl));
+      }
 
-    if (action === "partial" && req.method !== "POST") {
-      return res.status(200).send(partialForm({ token, rent, charges, period }));
+      const lease = await loadLease(row);
+      const [tenantRes, propertyRes] = await Promise.all([
+        supabaseAdmin.from("tenants").select("full_name").eq("id", lease.tenant_id).maybeSingle(),
+        lease.property_id
+          ? supabaseAdmin.from("properties").select("city,label").eq("id", lease.property_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+
+      const tenantName = safeStr((tenantRes.data as any)?.full_name) || "Locataire";
+      const city = safeStr((propertyRes.data as any)?.city) || safeStr((propertyRes.data as any)?.label);
+      const period = String(row.period_start).slice(0, 7);
+
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.status(200).send(spinnerPage({ token, tenantName, city, period, baseUrl }));
     }
 
-    if (action === "full") {
+    // ── POST + action=full → traitement + réponse JSON (appelé par le JS) ──
+    if (req.method === "POST" && action === "full") {
+      const { error, row } = await loadToken(token);
+      if (error) return res.status(400).json({ ok: false, error });
+
+      const lease = await loadLease(row);
+      const rentPeriod = getLeaseRentPeriodFromDate(lease, row.period_start);
+      if (!rentPeriod) throw new Error("Cette période est en dehors des dates du bail.");
+
       const proto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0];
       const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
       const generateEndpointUrl = host ? `${proto}://${host}/api/receipts/generate` : null;
       const internalSecret = process.env.INTERNAL_API_SECRET || null;
+
       const result = await confirmLeasePaymentAndSendReceipt({
         userId: row.user_id,
         leaseId: row.lease_id,
@@ -204,56 +407,67 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         generateEndpointUrl,
         internalSecret,
       });
+
       await markTokenUsed(row.id);
-      return res.redirect(
-        302,
-        redirectToBailleur(req, {
-          tab: "quittances",
-          rentResult: "paid_full",
-          month: period,
-          receipt: result.receiptId,
-          email: result.email.ok ? "sent" : "not_sent",
-        })
-      );
+      return res.status(200).json({ ok: true, receiptId: result.receiptId, emailOk: result.email.ok });
     }
 
+    // ── GET + action=partial → formulaire de saisie ──────────────────────────
+    if (action === "partial" && req.method !== "POST") {
+      const { error, row } = await loadToken(token);
+      if (error) return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "error", reason: error }));
+      const lease = await loadLease(row);
+      const rentPeriod = getLeaseRentPeriodFromDate(lease, row.period_start);
+      if (!rentPeriod) throw new Error("Cette période est en dehors des dates du bail.");
+      return res.status(200).send(partialForm({
+        token,
+        rent: rentPeriod.rent,
+        charges: rentPeriod.charges,
+        period: String(row.period_start).slice(0, 7),
+      }));
+    }
+
+    // ── POST + action=partial ─────────────────────────────────────────────────
     if (action === "partial") {
+      const { error, row } = await loadToken(token);
+      if (error) return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "error", reason: error }));
+      const lease = await loadLease(row);
+      const rentPeriod = getLeaseRentPeriodFromDate(lease, row.period_start);
+      if (!rentPeriod) throw new Error("Cette période est en dehors des dates du bail.");
       const rentReceived = parseMoney(req.body?.rentReceived);
       const chargesReceived = parseMoney(req.body?.chargesReceived);
+      const period = String(row.period_start).slice(0, 7);
       await upsertPaymentAndFinance({
-        row,
-        lease,
-        rentReceived,
-        chargesReceived,
+        row, lease, rentReceived, chargesReceived,
         source: "owner_partial_email",
         label: "Paiement partiel loyer",
         notes: `Paiement partiel pour ${period}. Quittance bloquée jusqu'au règlement complet.`,
       });
       await markTokenUsed(row.id);
-      return res.redirect(
-        302,
-        redirectToBailleur(req, {
-          tab: "quittances",
-          rentResult: "partial",
-          month: period,
-          amount: rentReceived + chargesReceived,
-        })
-      );
+      return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "partial", month: period, amount: rentReceived + chargesReceived }));
     }
 
-    await upsertPaymentAndFinance({
-      row,
-      lease,
-      rentReceived: 0,
-      chargesReceived: 0,
-      source: "owner_unpaid_email",
-      label: "Paiement partiel loyer",
-      notes: `Paiement déclaré non reçu pour ${period}.`,
-    });
-    await markTokenUsed(row.id);
-    return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "unpaid", month: period }));
+    // ── action=unpaid ─────────────────────────────────────────────────────────
+    {
+      const { error, row } = await loadToken(token);
+      if (error) return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "error", reason: error }));
+      const lease = await loadLease(row);
+      const period = String(row.period_start).slice(0, 7);
+      await upsertPaymentAndFinance({
+        row, lease, rentReceived: 0, chargesReceived: 0,
+        source: "owner_unpaid_email",
+        label: "Paiement partiel loyer",
+        notes: `Paiement déclaré non reçu pour ${period}.`,
+      });
+      await markTokenUsed(row.id);
+      return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "unpaid", month: period }));
+    }
   } catch (e: any) {
     console.error("[api/receipts/confirm-paid] error:", e);
+    const baseUrl = appBaseUrl(req);
+    if (req.method === "POST" && String(req.headers["content-type"] || "").includes("application/json")) {
+      return res.status(500).json({ ok: false, error: e?.message || "Erreur interne" });
+    }
     return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "error", reason: e?.message || "Erreur" }));
   }
 }

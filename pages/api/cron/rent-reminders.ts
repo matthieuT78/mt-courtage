@@ -126,7 +126,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const baseUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
       const fullUrl = `${baseUrl}/api/receipts/confirm-paid?token=${token}&action=full`;
       const partialUrl = `${baseUrl}/api/receipts/confirm-paid?token=${token}&action=partial`;
-      const unpaidUrl = `${baseUrl}/api/receipts/confirm-paid?token=${token}&action=unpaid`;
 
       const [{ data: property }, { data: tenant }] = await Promise.all([
         l.property_id ? supabaseAdmin.from("properties").select("label,address_line1,city").eq("id", l.property_id).maybeSingle() : Promise.resolve({ data: null }),
@@ -142,7 +141,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         expectedCharges: rentPeriod.charges,
         fullUrl,
         partialUrl,
-        unpaidUrl,
       });
 
       const mail = await sendEmailViaResend({
