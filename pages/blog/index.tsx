@@ -74,15 +74,15 @@ export default function BlogIndex({ posts }: any) {
         >
           <div aria-hidden className="pointer-events-none absolute inset-0 bg-white/55 backdrop-blur-[2px]" />
           <div className="relative mx-auto max-w-6xl">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Blog &amp; Guides immobilier</p>
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Actualités &amp; Guides immobilier</p>
             <h1 className="mt-3 max-w-2xl text-3xl font-semibold leading-tight text-slate-950 sm:text-4xl">
-              Comprendre l&apos;immobilier,{" "}
+              Ne ratez rien de{" "}
               <span className="bg-gradient-to-r from-[#635bff] to-[#00b4d8] bg-clip-text text-transparent">
-                décider mieux.
+                l&apos;immobilier qui compte.
               </span>
             </h1>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
-              Guides actionnables sur le crédit, l&apos;investissement locatif et la fiscalité — avec des liens directs vers les simulateurs lokt.
+            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600 sm:text-base">
+              Taux de crédit, fiscalité locative, rendement, plus-value, gestion de patrimoine — suivez l&apos;actualité immobilière et maîtrisez chaque décision. Des guides pratiques pour investir, emprunter et gérer vos biens comme un investisseur averti.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/calculettes" className="inline-flex items-center rounded-full bg-[#635bff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#635bff]/25 hover:bg-[#4f46e5]">

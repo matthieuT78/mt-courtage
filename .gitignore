@@ -125,9 +125,9 @@ screenshots/
 ###############################################
 # BLOG LOCAL (pas en prod)
 ###############################################
-content/blog/
-pages/blog/
-lib/blog.ts
+# content/blog/
+# pages/blog/
+# lib/blog.ts
 
 ###############################################
 # TEST / ADMIN LOCAL (pas en prod)
