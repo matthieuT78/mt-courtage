@@ -91,6 +91,12 @@ export default function AppFooter() {
           Contact
         </a>
       </div>
+      <div className="mt-3 text-[0.65rem] text-slate-400">
+        Partenaires :{" "}
+        <a href="https://outils-immo.fr" target="_blank" rel="noopener" className="underline hover:text-slate-500">
+          outils.immo
+        </a>
+      </div>
     </footer>
   );
 }
