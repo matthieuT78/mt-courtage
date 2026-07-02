@@ -42,6 +42,25 @@ function formatDateFR(v: string) {
   return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function monthLabelFR(yyyymm: string) {
+  const [y, m] = String(yyyymm).split("-").map(Number);
+  if (!y || !m) return yyyymm;
+  return new Date(y, m - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
+
+function slugify(s: string) {
+  return s
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+}
+
+function receiptLabel(tenantName: string, city: string, yyyymm: string) {
+  const parts = [tenantName, city, monthLabelFR(yyyymm)].filter(Boolean);
+  return parts.join(" - ");
+}
+
 function parsePdfUrl(pdfUrl?: string | null) {
   if (!pdfUrl) return null;
   const idx = String(pdfUrl).indexOf(":");
@@ -171,6 +190,11 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
 
   const tenantName = safeStr((tenant as any)?.full_name) || "Locataire";
   const landlordName = safeStr((landlord as any)?.display_name) || "Bailleur";
+  const propertyCity = safeStr((property as any)?.city);
+  const yyyymm = normalizedPeriodStart.slice(0, 7);
+  const label = receiptLabel(tenantName, propertyCity, yyyymm);
+  const emailSubject = `Quittance de loyer - ${label}`;
+  const pdfFilename = `quittance-${slugify(label) || yyyymm}.pdf`;
   const propertyAddress =
     [
       safeStr((property as any)?.address_line1),
@@ -360,17 +384,16 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
   } else if (!pdfBuffer) {
     email = { ok: false, disabled: false, error: "PDF indisponible pour pièce jointe." };
   } else {
-    const yyyymm = periodStart.slice(0, 7) || "quittance";
     email = await sendEmailViaResend({
       to: toEmail,
       cc: ccEmail,
-      subject: `Quittance de loyer - ${yyyymm}`,
-      filename: `quittance-${yyyymm}.pdf`,
+      subject: emailSubject,
+      filename: pdfFilename,
       pdf: pdfBuffer,
       html: `
         <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
           <p>Bonjour,</p>
-          <p>Veuillez trouver en pièce jointe votre quittance de loyer pour <b>${yyyymm}</b>.</p>
+          <p>Veuillez trouver en pièce jointe votre quittance de loyer pour <b>${monthLabelFR(yyyymm)}</b>.</p>
           <p>Cordialement,<br/>lokt.fr</p>
         </div>
       `,

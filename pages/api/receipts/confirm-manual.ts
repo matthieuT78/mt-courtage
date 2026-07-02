@@ -326,8 +326,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 7) Tenant email
-    const tenantRes = await supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single();
+    const [tenantRes, propertyRes] = await Promise.all([
+      supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).single(),
+      lease.property_id ? supabaseAdmin.from("properties").select("city,label").eq("id", lease.property_id).maybeSingle() : Promise.resolve({ data: null }),
+    ]);
     const tenant: any = tenantRes.data || null;
+    const property: any = (propertyRes as any).data || null;
     const toEmail = safeStr(tenant?.email);
 
     // Bailleur CC : priorité body, sinon lease.reminder_email, sinon null
@@ -338,7 +342,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (signed.error) return res.status(500).json({ error: `Signed URL échoué: ${signed.error.message}` });
 
     const yyyymm = String(receipt.period_start || "").slice(0, 7) || "quittance";
-    const filename = `quittance-${yyyymm}.pdf`;
+    const tenantName = safeStr(tenant?.full_name);
+    const city = safeStr(property?.city) || safeStr(property?.label);
+    const monthLong = yyyymm ? new Date(Number(yyyymm.slice(0,4)), Number(yyyymm.slice(5,7)) - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) : yyyymm;
+    const receiptLabelParts = [tenantName, city, monthLong].filter(Boolean).join(" - ");
+    const emailSubject = `Quittance de loyer - ${receiptLabelParts || yyyymm}`;
+    const slugLabel = (receiptLabelParts || yyyymm).normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-zA-Z0-9]+/g,"-").replace(/^-+|-+$/g,"").toLowerCase();
+    const filename = `quittance-${slugLabel}.pdf`;
 
     let emailResult: ResendResult = { ok: false, error: "Email non tenté." };
 
@@ -352,11 +362,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       } else {
         const pdfBuf = Buffer.from(await pdfResp.arrayBuffer());
 
-        const subject = `Quittance de loyer – ${yyyymm}`;
         const html = `
           <div style="font-family:ui-sans-serif,system-ui,-apple-system;line-height:1.5">
             <p>Bonjour,</p>
-            <p>Veuillez trouver en pièce jointe votre quittance de loyer pour <b>${yyyymm}</b>.</p>
+            <p>Veuillez trouver en pièce jointe votre quittance de loyer pour <b>${monthLong}</b>.</p>
             <p>Cordialement,<br/>lokt.fr — <a href="mailto:contact@lokt.fr">contact@lokt.fr</a></p>
           </div>
         `;
@@ -364,9 +373,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         emailResult = await sendEmailViaResend({
           to: toEmail,
           cc: ccEmail,
-          subject,
+          subject: emailSubject,
           html,
-          attachments: [{ filename, content: base64(pdfBuf) }], // ✅ content
+          attachments: [{ filename, content: base64(pdfBuf) }],
         });
       }
     } else {
@@ -385,8 +394,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         receipt_id: receipt.id,
         to_email: toEmail || null,
         cc_email: ccEmail,
-        subject: `Quittance de loyer – ${yyyymm}`,
-        body_preview: `Quittance ${yyyymm}`,
+        subject: emailSubject,
+        body_preview: `Quittance ${monthLong}`,
         status: logStatus,
         error_message: (emailResult as any)?.ok === true ? null : emailError,
         sent_at: new Date().toISOString(),
