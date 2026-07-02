@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import AppFooter from "../AppFooter";
 import {
   ArrowUpRightIcon,
   CheckCircleIcon,
@@ -845,6 +846,9 @@ export function DashboardShell(props: any) {
           ) : null}
 
           <section className="min-w-0 space-y-4">{content}</section>
+        </div>
+        <div className="pb-24 lg:pb-0">
+          <AppFooter />
         </div>
       </div>
 
