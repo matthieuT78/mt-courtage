@@ -40,6 +40,7 @@ import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing } from "../../lib/permissions";
 import ContactChat from "../ChatContact";
+import { ReviewPrompt } from "../ReviewPrompt";
 
 type LockedSectionConfig = {
   eyebrow: string;
@@ -864,6 +865,9 @@ export function DashboardShell(props: any) {
 
       {/* ── Modal contact (desktop + mobile) ─────────────────── */}
       <ContactChat open={contactOpen} onClose={() => setContactOpen(false)} />
+
+      {/* ── Popup notation ───────────────────────────────────── */}
+      <ReviewPrompt user={props?.user} />
     </div>
   );
 }
