@@ -1860,6 +1860,7 @@ export function SectionQuittances({
                                 <th className="px-3 py-2 text-xs text-slate-600">Période</th>
                                 <th className="px-3 py-2 text-xs text-slate-600">Locataire</th>
                                 <th className="px-3 py-2 text-xs text-slate-600">Statut</th>
+                                <th className="px-3 py-2 text-xs text-slate-600">Envoyée à</th>
                                 <th className="px-3 py-2 text-xs text-slate-600 text-right">Actions</th>
                               </tr>
                             </thead>
@@ -1879,10 +1880,8 @@ export function SectionQuittances({
 
                                     <td className="px-3 py-2 text-slate-700">{(t as any)?.full_name || "—"}</td>
 
-                                    {/* ✅ Statut : tooltip "last sent" AU SURVOL (title) */}
                                     <td className="px-3 py-2">
                                       <span
-                                        title={receiptStatus === "sent" ? sentAtTip : undefined}
                                         className={cx(
                                           "inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold",
                                           pillToneReceipt(receiptStatus)
@@ -1892,7 +1891,10 @@ export function SectionQuittances({
                                       </span>
                                     </td>
 
-                                    {/* ✅ Plus de colonne "Last sent" -> libère de la place */}
+                                    <td className="px-3 py-2 text-[0.75rem] text-slate-500 whitespace-nowrap">
+                                      {r.sent_at ? fmtDateTimeFR(r.sent_at) : "—"}
+                                    </td>
+
                                     <td className="px-3 py-2 text-right">
                                       <div className="relative inline-flex items-center gap-1.5">
                                         {/* Primary: PDF */}
