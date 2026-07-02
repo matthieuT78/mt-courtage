@@ -1153,7 +1153,11 @@ ${form.landlordName || "[Signature]"}`;
 
 // ── Composant principal ──────────────────────────────────────
 export function SectionModeles({ userId }: Props) {
-  const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
+  const [activeTemplate, setActiveTemplateRaw] = useState<string | null>(null);
+  const setActiveTemplate = (tpl: string | null) => {
+    setActiveTemplateRaw(tpl);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   if (activeTemplate === "conge-bailleur") {
     return <CongeForm userId={userId} onBack={() => setActiveTemplate(null)} />;
