@@ -7,6 +7,18 @@
     {
       "path": "/api/cron/purge-candidature-drafts",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/rent-reminders",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/rent-followups",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/landlord-alerts",
+      "schedule": "0 7 * * *"
     }
   ]
 }

@@ -93,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       // Date cible en local (approx via Date.UTC puis format dans tz)
       // On prend y/m/day et ajoute 2 jours (UTC), puis compare sur rendu tz
       const targetUtc = new Date(Date.UTC(y, m - 1, day));
-      targetUtc.setUTCDate(targetUtc.getUTCDate() + 2);
+      targetUtc.setUTCDate(targetUtc.getUTCDate() + 1);
       const targetLocal = yyyymmddInTz(targetUtc, tz);
 
       if (today !== targetLocal) { skipped++; continue; }

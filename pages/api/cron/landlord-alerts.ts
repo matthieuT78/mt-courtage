@@ -281,7 +281,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const daysToDue = daysBetween(today, dueDate);
 
           if (!paid && daysToDue < 0) {
-            const scheduleKey = recurringScheduleKey(`late:${lease.id}:${period.start}`, Math.abs(daysToDue), [1, 3, 7], 7);
+            const scheduleKey = recurringScheduleKey(`late:${lease.id}:${period.start}`, Math.abs(daysToDue), [3, 7], 7);
             if (scheduleKey) {
               alerts.push({
                 key: scheduleKey,
