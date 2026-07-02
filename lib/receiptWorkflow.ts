@@ -140,6 +140,8 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
   periodStart: string;
   periodEnd: string;
   landlordEmail?: string | null;
+  generateEndpointUrl?: string | null;
+  internalSecret?: string | null;
 }): Promise<Result> {
   if (!supabaseAdmin) throw new Error("Supabase admin non configuré.");
 
@@ -291,6 +293,22 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
 
   let parsedPdf = parsePdfUrl(receipt.pdf_url);
   let pdfBuffer: Buffer | null = null;
+
+  // Tenter la génération Puppeteer via l'endpoint interne avant le fallback PDFKit
+  if (!parsedPdf && params.generateEndpointUrl && params.internalSecret) {
+    try {
+      await fetch(params.generateEndpointUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-internal-secret": params.internalSecret },
+        body: JSON.stringify({ userId, leaseId, periodStart: normalizedPeriodStart, periodEnd: normalizedPeriodEnd }),
+      });
+      const r1 = await supabaseAdmin.from("rent_receipts").select("*").eq("id", receipt.id).single();
+      if (r1.data?.pdf_url) receipt = r1.data;
+      parsedPdf = parsePdfUrl(receipt.pdf_url);
+    } catch {
+      // fallback PDFKit
+    }
+  }
 
   if (!parsedPdf) {
     pdfBuffer = await buildPdfBuffer(receipt.content_text || contentText);

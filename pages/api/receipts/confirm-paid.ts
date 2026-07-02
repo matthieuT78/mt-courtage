@@ -192,11 +192,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (action === "full") {
+      const proto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0];
+      const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+      const generateEndpointUrl = host ? `${proto}://${host}/api/receipts/generate` : null;
+      const internalSecret = process.env.INTERNAL_API_SECRET || null;
       const result = await confirmLeasePaymentAndSendReceipt({
         userId: row.user_id,
         leaseId: row.lease_id,
         periodStart: row.period_start,
         periodEnd: row.period_end,
+        generateEndpointUrl,
+        internalSecret,
       });
       await markTokenUsed(row.id);
       return res.redirect(
