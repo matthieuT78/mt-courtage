@@ -8,6 +8,12 @@ import { useAuthUser } from "../../hooks/useAuthUser";
 import { PAID_BILLING_PLANS } from "../../lib/billingPlans";
 import { usePermissions } from "../../components/PermissionProvider";
 
+type SubDetails = {
+  ends_at: string | null;
+  cancel_at_period_end: boolean | null;
+  billing_interval: string | null;
+};
+
 type Billing = "monthly" | "yearly";
 
 type BillingInvoice = {
@@ -26,13 +32,30 @@ type BillingInvoice = {
   created_at: string | null;
 };
 
-function ReferralSection({ userId }: { userId: string }) {
-  const referralCode = userId.replace(/-/g, "").slice(0, 8).toUpperCase();
+function ReferralSection({ userId, referralCode: codeOverride }: { userId: string; referralCode?: string }) {
+  const referralCode = codeOverride || userId.replace(/-/g, "").slice(0, 8).toUpperCase();
   const referralLink =
     typeof window !== "undefined"
       ? `${window.location.origin}?ref=${referralCode}`
       : `https://lokt.fr?ref=${referralCode}`;
   const [copied, setCopied] = useState(false);
+  const [filleulCount, setFilleulCount] = useState<number | null>(null);
+  const [rewarded, setRewarded] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!supabase) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, referral_rewarded_at")
+        .eq("referred_by", referralCode);
+      if (data) {
+        setFilleulCount(data.length);
+        setRewarded(data.some((r: any) => !!r.referral_rewarded_at));
+      }
+    };
+    load();
+  }, [referralCode]);
 
   const handleCopy = async () => {
     try {
@@ -82,6 +105,24 @@ function ReferralSection({ userId }: { userId: string }) {
                 {copied ? "Copié ✓" : "Copier"}
               </button>
             </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-center">
+              <p className="text-lg font-semibold text-slate-900">{filleulCount ?? "…"}</p>
+              <p className="text-xs text-slate-500">filleul{(filleulCount ?? 0) > 1 ? "s" : ""}</p>
+            </div>
+            {rewarded ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
+                <p className="text-xs font-semibold text-emerald-700">Récompense appliquée ✓</p>
+                <p className="text-xs text-emerald-600">3 mois à −50 % activés sur votre abonnement</p>
+              </div>
+            ) : (filleulCount ?? 0) > 0 ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5">
+                <p className="text-xs font-semibold text-amber-700">En attente de souscription</p>
+                <p className="text-xs text-amber-600">La récompense s'active dès que votre filleul souscrit</p>
+              </div>
+            ) : null}
           </div>
 
           <p className="mt-3 text-xs text-slate-500">
@@ -159,6 +200,7 @@ export default function MonCompteAbonnementPage() {
   const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [invoicesError, setInvoicesError] = useState<string | null>(null);
+  const [subDetails, setSubDetails] = useState<SubDetails | null>(null);
 
   const handleLogout = async () => { await signOutAll(); };
 
@@ -171,6 +213,22 @@ export default function MonCompteAbonnementPage() {
         .eq("user_id", user.id);
       const activeCount = (data ?? []).filter((property: any) => (property?.status || "").toLowerCase() !== "archived").length;
       setPropertyCount(activeCount);
+    };
+    load();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!supabase || !user?.id) return;
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("ends_at, cancel_at_period_end, billing_interval")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (data) setSubDetails(data as SubDetails);
     };
     load();
   }, [user?.id]);
@@ -328,14 +386,25 @@ export default function MonCompteAbonnementPage() {
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Plan actuel</p>
                 <p className="mt-1 text-base font-semibold text-slate-900">{permissionsLoading ? "…" : planLabel}</p>
+                {subDetails?.billing_interval ? (
+                  <p className="mt-0.5 text-xs text-slate-400">{subDetails.billing_interval === "year" ? "Facturation annuelle" : "Facturation mensuelle"}</p>
+                ) : null}
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Logements inclus</p>
-                <p className="mt-1 text-base font-semibold text-slate-900">{permissionsLoading ? "…" : includedProperties}</p>
+                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">
+                  {subDetails?.cancel_at_period_end ? "Actif jusqu'au" : "Prochain renouvellement"}
+                </p>
+                <p className="mt-1 text-base font-semibold text-slate-900">
+                  {subDetails?.ends_at ? formatDate(subDetails.ends_at) : permissionsLoading ? "…" : "—"}
+                </p>
+                {subDetails?.cancel_at_period_end ? (
+                  <p className="mt-0.5 text-xs text-amber-600">Annulation en cours</p>
+                ) : null}
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Logements actifs</p>
                 <p className="mt-1 text-base font-semibold text-slate-900">{propertyCount === null ? "…" : propertyCount}</p>
+                <p className="mt-0.5 text-xs text-slate-400">{permissionsLoading ? "" : `${includedProperties} inclus`}</p>
               </div>
             </div>
 

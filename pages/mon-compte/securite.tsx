@@ -14,6 +14,11 @@ export default function MonCompteSecuritePage() {
   const [checkingUser, setCheckingUser] = useState(true);
   const [user, setUser] = useState<any>(null);
 
+  const [newEmail, setNewEmail] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailOk, setEmailOk] = useState<string | null>(null);
+
   const [newPassword, setNewPassword] = useState("");
   const [newPassword2, setNewPassword2] = useState("");
   const [pwdLoading, setPwdLoading] = useState(false);
@@ -53,6 +58,28 @@ export default function MonCompteSecuritePage() {
 
   const handleLogout = async () => { await signOutAll(); };
   const goLogin = () => router.push("/mon-compte?mode=login&redirect=/mon-compte/securite");
+
+  const handleChangeEmail = async (e: FormEvent) => {
+    e.preventDefault();
+    setEmailError(null);
+    setEmailOk(null);
+    if (!supabase) return setEmailError("Auth indisponible.");
+    if (!isLoggedIn) return setEmailError("Vous devez être connecté.");
+    const trimmed = newEmail.trim().toLowerCase();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed))
+      return setEmailError("Merci de renseigner une adresse e-mail valide.");
+    setEmailLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ email: trimmed });
+      if (error) throw error;
+      setEmailOk("Un email de confirmation a été envoyé à " + trimmed + ". Le changement sera effectif après confirmation.");
+      setNewEmail("");
+    } catch (err: any) {
+      setEmailError(err?.message || "Erreur lors du changement d'email.");
+    } finally {
+      setEmailLoading(false);
+    }
+  };
 
   const handleChangePassword = async (e: FormEvent) => {
     e.preventDefault();
@@ -145,6 +172,41 @@ export default function MonCompteSecuritePage() {
             <p className="mt-1.5 text-sm leading-6 text-slate-500">
               Gérez votre mot de passe, vos emails et les paramètres de votre compte.
             </p>
+          </div>
+
+          {/* Email */}
+          <div className="rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">Adresse e-mail</p>
+            <p className="text-xs text-slate-500 mb-5">
+              Email actuel : <span className="font-semibold text-slate-700">{user?.email}</span>
+            </p>
+
+            {emailError && <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{emailError}</div>}
+            {emailOk && <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{emailOk}</div>}
+
+            <form onSubmit={handleChangeEmail} className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">Nouvel e-mail</label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className={inputCls}
+                  placeholder="nouveau@email.fr"
+                  autoComplete="email"
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  type="submit"
+                  disabled={emailLoading}
+                  className="rounded-full bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60 transition-colors"
+                >
+                  {emailLoading ? "Envoi…" : "Changer l'e-mail"}
+                </button>
+                <p className="text-xs text-slate-500">Un lien de confirmation sera envoyé à la nouvelle adresse.</p>
+              </div>
+            </form>
           </div>
 
           {/* Mot de passe */}

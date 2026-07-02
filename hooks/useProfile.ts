@@ -9,6 +9,7 @@ export type Profile = {
   first_name: string | null;
   last_name: string | null;
   full_name: string | null;
+  company_name?: string | null;
   phone: string | null;
   birth_date?: string | null;
   address_line1: string | null;
