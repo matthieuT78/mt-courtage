@@ -1556,7 +1556,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const chartDrillStructuralRows = useMemo(() => {
     if (!chartDrillKey) return [];
     const monthStart = new Date(chartDrillKey + "-01");
-    const rows: Array<{ id: string; label: string; category: string; amount: number; direction: "in" | "out" }> = [];
+    const rows: Array<{ id: string; label: string; category: string; amount: number; direction: "in" | "out"; property_id: string }> = [];
 
     for (const pid of analysisPropertyIds) {
       const recurringTxs = recurringParentTxByProperty.get(pid) || [];
@@ -1572,7 +1572,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
       for (const t of activeTxs) {
         const divisor = t.recurrence_frequency === "quarterly" ? 3 : t.recurrence_frequency === "yearly" ? 12 : 1;
-        rows.push({ id: t.id, label: t.label || categoryLabel(t.category), category: t.category, amount: t.amount / divisor, direction: t.direction });
+        rows.push({ id: t.id, label: t.label || categoryLabel(t.category), category: t.category, amount: t.amount / divisor, direction: t.direction, property_id: pid });
         if (t.category === "loan") hasLoanTx = true;
         else if (t.category === "tax") hasTaxTx = true;
       }
@@ -1581,11 +1581,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       if (fin) {
         if (!hasLoanTx) {
           const amt = Number(fin.loan_monthly || 0) + Number(fin.loan_insurance_monthly || 0);
-          if (amt > 0) rows.push({ id: `pf-loan-${pid}`, label: "Crédit + assurance", category: "loan", amount: amt, direction: "out" });
+          if (amt > 0) rows.push({ id: `pf-loan-${pid}`, label: "Crédit + assurance", category: "loan", amount: amt, direction: "out", property_id: pid });
         }
         if (!hasTaxTx) {
           const amt = Number(fin.property_tax_yearly || 0) / 12 + Number(fin.cfe_yearly || 0) / 12;
-          if (amt > 0) rows.push({ id: `pf-tax-${pid}`, label: "Taxes (foncière/CFE)", category: "tax", amount: amt, direction: "out" });
+          if (amt > 0) rows.push({ id: `pf-tax-${pid}`, label: "Taxes (foncière/CFE)", category: "tax", amount: amt, direction: "out", property_id: pid });
         }
         const fixed =
           Number(fin.fixed_charges_monthly || 0) +
@@ -1594,7 +1594,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           Number(fin.bank_fees_monthly || 0) +
           Number(fin.maintenance_monthly || 0) +
           Number(fin.rental_tax_monthly || 0);
-        if (fixed > 0) rows.push({ id: `pf-fixed-${pid}`, label: "Charges fixes", category: "fees", amount: fixed, direction: "out" });
+        if (fixed > 0) rows.push({ id: `pf-fixed-${pid}`, label: "Charges fixes", category: "fees", amount: fixed, direction: "out", property_id: pid });
       }
     }
 
@@ -2816,18 +2816,23 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                       </tr>
                     </thead>
                     <tbody>
-                      {chartDrillRows.map((r) => (
-                        <tr key={r.id} className="border-b border-slate-100 last:border-0">
-                          <td className="whitespace-nowrap px-4 py-2.5 text-xs text-slate-500">{r.occurred_at}</td>
-                          <td className="px-3 py-2.5">
-                            <p className="font-medium text-slate-900">{r.label || categoryLabel(r.category)}</p>
-                            <p className="text-xs text-slate-400">{categoryLabel(r.category)}</p>
-                          </td>
-                          <td className={cx("whitespace-nowrap px-4 py-2.5 text-right font-semibold", r.direction === "out" ? "text-rose-600" : "text-emerald-600")}>
-                            {r.direction === "out" ? "−" : "+"}{formatEuro(Number(r.amount || 0))}
-                          </td>
-                        </tr>
-                      ))}
+                      {chartDrillRows.map((r) => {
+                        const propLabel = r.property_id ? (propsById.get(r.property_id)?.label || null) : null;
+                        return (
+                          <tr key={r.id} className="border-b border-slate-100 last:border-0">
+                            <td className="whitespace-nowrap px-4 py-2.5 text-xs text-slate-500">{r.occurred_at}</td>
+                            <td className="px-3 py-2.5">
+                              <p className="font-medium text-slate-900">{r.label || categoryLabel(r.category)}</p>
+                              <p className="text-xs text-slate-400">
+                                {categoryLabel(r.category)}{propLabel ? <> · <span className="text-indigo-500">{propLabel}</span></> : null}
+                              </p>
+                            </td>
+                            <td className={cx("whitespace-nowrap px-4 py-2.5 text-right font-semibold", r.direction === "out" ? "text-rose-600" : "text-emerald-600")}>
+                              {r.direction === "out" ? "−" : "+"}{formatEuro(Number(r.amount || 0))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                       {chartDrillStructuralRows.length > 0 && (
                         <>
                           <tr>
@@ -2835,18 +2840,23 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                               Charges structurelles (au prorata mois)
                             </td>
                           </tr>
-                          {chartDrillStructuralRows.map((r) => (
-                            <tr key={r.id} className="border-b border-amber-100 bg-amber-50/50 last:border-0">
-                              <td className="whitespace-nowrap px-4 py-2 text-xs text-slate-400">—</td>
-                              <td className="px-3 py-2">
-                                <p className="font-medium text-slate-700">{r.label}</p>
-                                <p className="text-xs text-slate-400">{categoryLabel(r.category)}</p>
-                              </td>
-                              <td className="whitespace-nowrap px-4 py-2 text-right font-semibold text-amber-700">
-                                −{formatEuro(r.amount)}
-                              </td>
-                            </tr>
-                          ))}
+                          {chartDrillStructuralRows.map((r) => {
+                            const propLabel = propsById.get(r.property_id)?.label || null;
+                            return (
+                              <tr key={r.id} className="border-b border-amber-100 bg-amber-50/50 last:border-0">
+                                <td className="whitespace-nowrap px-4 py-2 text-xs text-slate-400">—</td>
+                                <td className="px-3 py-2">
+                                  <p className="font-medium text-slate-700">{r.label}</p>
+                                  <p className="text-xs text-slate-400">
+                                    {categoryLabel(r.category)}{propLabel ? <> · <span className="text-indigo-500">{propLabel}</span></> : null}
+                                  </p>
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-2 text-right font-semibold text-amber-700">
+                                  −{formatEuro(r.amount)}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </>
                       )}
                     </tbody>

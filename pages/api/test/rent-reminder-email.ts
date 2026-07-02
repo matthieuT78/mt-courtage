@@ -91,7 +91,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       expectedCharges: (lease as any).charges_amount,
       fullUrl: link("full"),
       partialUrl: link("partial"),
-      unpaidUrl: link("unpaid"),
       isTest: true,
     });
 
