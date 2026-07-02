@@ -167,9 +167,21 @@ export default function MonCompteIndexPage() {
   const upsertProfileForUser = async (userId: string) => {
     if (!supabase) throw new Error("Supabase indisponible.");
 
+    // Code de parrainage déterministe basé sur l'UUID
+    const referralCode = userId.replace(/-/g, "").slice(0, 8).toUpperCase();
+    // Récupère le code parrain capturé à l'arrivée sur le site
+    let referredBy: string | null = null;
+    try {
+      const stored = localStorage.getItem("lokt:ref") || "";
+      if (stored && stored !== referralCode) referredBy = stored;
+      localStorage.removeItem("lokt:ref");
+    } catch {}
+
     const payload: any = {
       id: userId,
       email: normalizeEmail(regEmail) || null,
+      referral_code: referralCode,
+      ...(referredBy ? { referred_by: referredBy } : {}),
       civility: civility || null,
       first_name: firstName.trim() || null,
       last_name: lastName.trim() || null,

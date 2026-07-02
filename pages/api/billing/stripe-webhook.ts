@@ -163,6 +163,90 @@ async function stripeGet(path: string) {
   return data;
 }
 
+async function stripePost(path: string, body: Record<string, string>) {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) throw new Error("STRIPE_SECRET_KEY manquant.");
+
+  const resp = await fetch(`https://api.stripe.com/v1/${path.replace(/^\//, "")}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams(body).toString(),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data?.error?.message || `Erreur Stripe ${resp.status}`);
+  return data;
+}
+
+const REFERRAL_COUPON_ID = "LOKT_PARRAIN_50_3M";
+
+async function ensureReferralCoupon(): Promise<string> {
+  try {
+    await stripeGet(`/coupons/${REFERRAL_COUPON_ID}`);
+    return REFERRAL_COUPON_ID;
+  } catch {
+    await stripePost("/coupons", {
+      id: REFERRAL_COUPON_ID,
+      percent_off: "50",
+      duration: "repeating",
+      duration_in_months: "3",
+      name: "Parrainage lokt.fr – 50 % pendant 3 mois",
+    });
+    return REFERRAL_COUPON_ID;
+  }
+}
+
+async function applyReferralReward(filleulUserId: string, filleulSubscriptionId: string | null) {
+  if (!supabaseAdmin) return;
+
+  // Filleul déjà récompensé ?
+  const { data: filleul } = await supabaseAdmin
+    .from("profiles")
+    .select("referred_by, referral_rewarded_at")
+    .eq("id", filleulUserId)
+    .maybeSingle();
+
+  if (!filleul?.referred_by || filleul?.referral_rewarded_at) return;
+
+  // Trouver le parrain
+  const { data: parrain } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .eq("referral_code", filleul.referred_by)
+    .maybeSingle();
+
+  if (!parrain?.id) return;
+
+  const couponId = await ensureReferralCoupon();
+
+  // Appliquer au filleul
+  if (filleulSubscriptionId) {
+    try { await stripePost(`/subscriptions/${filleulSubscriptionId}`, { coupon: couponId }); } catch {}
+  }
+
+  // Trouver l'abonnement actif du parrain et appliquer
+  const { data: parrainSub } = await supabaseAdmin
+    .from("subscriptions")
+    .select("stripe_subscription_id")
+    .eq("user_id", parrain.id)
+    .eq("status", "active")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if ((parrainSub as any)?.stripe_subscription_id) {
+    try { await stripePost(`/subscriptions/${(parrainSub as any).stripe_subscription_id}`, { coupon: couponId }); } catch {}
+  }
+
+  // Marquer comme récompensé (idempotent)
+  await supabaseAdmin
+    .from("profiles")
+    .update({ referral_rewarded_at: new Date().toISOString() })
+    .eq("id", filleulUserId);
+}
+
 function firstSubscriptionItem(subscription: any) {
   return subscription?.items?.data?.[0] || null;
 }
@@ -191,9 +275,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const subscription = subscriptionId ? await stripeGet(`/subscriptions/${subscriptionId}`) : null;
       const item = firstSubscriptionItem(subscription);
       const priceId = item?.price?.id || null;
+      const userId = object?.metadata?.user_id || object?.client_reference_id || null;
 
       await saveSubscription({
-        userId: object?.metadata?.user_id || object?.client_reference_id || null,
+        userId,
         plan: object?.metadata?.plan || getPlanFromStripePrice(priceId),
         status: subscription?.status || (object?.payment_status === "paid" ? "active" : object?.status || "active"),
         billing: object?.metadata?.billing || item?.price?.recurring?.interval || null,
@@ -203,6 +288,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         cancelAtPeriodEnd: !!subscription?.cancel_at_period_end,
         currentPeriodEnd: subscription?.current_period_end || null,
       });
+
+      // Récompense parrainage (non bloquant)
+      if (userId && subscriptionId) {
+        applyReferralReward(userId, subscriptionId).catch(() => {});
+      }
     }
 
     if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {

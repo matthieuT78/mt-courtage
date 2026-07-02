@@ -56,10 +56,11 @@ function ReferralSection({ userId }: { userId: string }) {
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900">Parrainez un bailleur, gagnez 6 mois à −50 %</p>
+          <p className="text-sm font-semibold text-slate-900">Parrainez un bailleur — 3 mois à −50 % pour vous deux</p>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Invitez un propriétaire à rejoindre lokt.fr. Dès qu'il souscrit à une offre payante avec votre lien,
-            votre prochain renouvellement bénéficie de <strong className="font-semibold text-slate-900">6 mois à moitié prix</strong> — appliqués sur votre facture suivante.
+            Invitez un propriétaire à rejoindre lokt.fr avec votre lien. Dès qu'il souscrit,{" "}
+            <strong className="font-semibold text-slate-900">vous bénéficiez tous les deux de 3 mois à moitié prix</strong>{" "}
+            — appliqués automatiquement sur vos abonnements respectifs.
           </p>
 
           <div className="mt-4">

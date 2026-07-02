@@ -28,6 +28,15 @@ export default function App({ Component, pageProps }: AppProps) {
     return () => router.events.off("routeChangeComplete", handleRouteChange);
   }, [router.events]);
 
+  // Capture du lien de parrainage (?ref=CODE) pour usage à l'inscription
+  useEffect(() => {
+    if (!router.isReady) return;
+    const ref = typeof router.query.ref === "string" ? router.query.ref.trim().toUpperCase() : "";
+    if (ref) {
+      try { localStorage.setItem("lokt:ref", ref); } catch {}
+    }
+  }, [router.isReady, router.query.ref]);
+
   return (
     <>
       <Head>
