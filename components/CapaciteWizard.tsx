@@ -527,17 +527,17 @@ function computeLoktScore(params: {
       "Signal rouge : votre reste à vivre après projet est négatif. Dans cette configuration, une banque refusera très probablement.";
   } else if (hardCaps.dtiHigh) {
     comment =
-      "Point bloquant : votre endettement projeté dépasse nettement la cible. Le levier principal est de réduire la mensualité (durée / budget) ou de diminuer certaines charges, ou d’augmenter l’apport.";
+      "Point bloquant : votre endettement projeté dépasse nettement la cible. Le levier principal est de réduire la mensualité (durée / budget) ou de diminuer certaines charges, ou d'augmenter l'apport.";
   } else if (hardCaps.apportLow) {
     comment =
-      "Point d’attention : votre apport ne couvre pas les frais estimés (notaire + garantie). Beaucoup de banques demandent au minimum ces frais en apport.";
+      "Point d'attention : votre apport ne couvre pas les frais estimés (notaire + garantie). Beaucoup de banques demandent au minimum ces frais en apport.";
   } else {
     if (weakest === "apport") {
       comment =
         "Votre score est surtout pénalisé par un apport un peu faible par rapport aux frais. Couvrir au minimum les frais en apport améliore nettement la lecture bancaire.";
     } else if (weakest === "dti") {
       comment =
-        "Votre score est surtout lié à un endettement proche (ou au-dessus) de la cible. Le levier principal : réduire la mensualité (durée / budget) ou renforcer l’apport.";
+        "Votre score est surtout lié à un endettement proche (ou au-dessus) de la cible. Le levier principal : réduire la mensualité (durée / budget) ou renforcer l'apport.";
     } else if (weakest === "rav") {
       comment =
         "Votre score est surtout lié au reste à vivre. À situation égale, cela se joue via la maîtrise des charges fixes et le calibrage de la mensualité.";
@@ -546,7 +546,7 @@ function computeLoktScore(params: {
         "Selon votre statut, la banque peut être plus prudente. Il faut soigner la présentation : régularité des revenus, ancienneté, justificatifs, cohérence globale.";
     } else if (weakest === "age") {
       comment =
-        "La durée et l’âge en fin de prêt pèsent dans la décision. Selon les banques, il faudra peut-être ajuster la durée ou renforcer le dossier.";
+        "La durée et l'âge en fin de prêt pèsent dans la décision. Selon les banques, il faudra peut-être ajuster la durée ou renforcer le dossier.";
     } else if (weakest === "conso") {
       comment =
         "Les crédits conso/auto pèsent sur la décision. Une réduction ciblée (remboursement / regroupement) peut améliorer le score rapidement.";
@@ -627,13 +627,13 @@ function buildActionPlan(
     items.push({
       type: "warning",
       title: "Endettement au-dessus de la cible bancaire",
-      body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) dépasse la cible à ${formatPct(tauxEndettementCible)}. Pour y revenir : allonger légèrement la durée, réduire le budget du bien, ou renforcer l’apport pour diminuer le capital emprunté.`,
+      body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) dépasse la cible à ${formatPct(tauxEndettementCible)}. Pour y revenir : allonger légèrement la durée, réduire le budget du bien, ou renforcer l'apport pour diminuer le capital emprunté.`,
     });
   } else if (margeSousCible < 0.03) {
     items.push({
       type: "warning",
       title: "Vous êtes à la limite — les détails comptent",
-      body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) est très proche de la cible (${formatPct(tauxEndettementCible)}). Ici c’est la qualité du dossier qui fait la différence : tenue des comptes irréprochable, justificatifs clairs, apport couvrant les frais.`,
+      body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) est très proche de la cible (${formatPct(tauxEndettementCible)}). Ici c'est la qualité du dossier qui fait la différence : tenue des comptes irréprochable, justificatifs clairs, apport couvrant les frais.`,
     });
   }
 
@@ -665,7 +665,7 @@ function buildActionPlan(
     items.push({
       type: "warning",
       title: "Statut indépendant — anticipez le dossier",
-      body: `Les banques exigent en général les 3 derniers bilans comptables + avis d’imposition. Plus vos revenus sont stables et en progression, plus le dossier est solide. Commencez à rassembler ces pièces maintenant, même si le projet n’est pas immédiat.`,
+      body: `Les banques exigent en général les 3 derniers bilans comptables + avis d'imposition. Plus vos revenus sont stables et en progression, plus le dossier est solide. Commencez à rassembler ces pièces maintenant, même si le projet n'est pas immédiat.`,
     });
   }
 
@@ -673,7 +673,7 @@ function buildActionPlan(
     items.push({
       type: "warning",
       title: "Âge en fin de prêt à surveiller",
-      body: `À ${dureeCreditCible} ans de durée, vous auriez ~${ageFin} ans à l’échéance. Certaines banques plafonnent à 75-80 ans ou majorent l’assurance emprunteur significativement. Une durée légèrement plus courte peut être plus réaliste et moins coûteuse en assurance.`,
+      body: `À ${dureeCreditCible} ans de durée, vous auriez ~${ageFin} ans à l'échéance. Certaines banques plafonnent à 75-80 ans ou majorent l'assurance emprunteur significativement. Une durée légèrement plus courte peut être plus réaliste et moins coûteuse en assurance.`,
     });
   }
 
@@ -681,7 +681,7 @@ function buildActionPlan(
   if (margeSousCible >= 0.05) {
     items.push({
       type: "positive",
-      title: "Bon niveau d’endettement",
+      title: "Bon niveau d'endettement",
       body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) laisse une marge confortable de ${formatPct(margeSousCible)} sous la cible. Votre dossier présente un bon équilibre — concentrez-vous sur la qualité de présentation.`,
     });
   }
@@ -690,7 +690,7 @@ function buildActionPlan(
     items.push({
       type: "positive",
       title: "Apport solide — un vrai atout",
-      body: `Votre apport représente ${Math.round(apportPct * 100)}% du projet. C’est un signal fort pour les banques : risque perçu plus faible, parfois accès à de meilleures conditions de taux. Mettez-le en avant dans votre présentation de dossier.`,
+      body: `Votre apport représente ${Math.round(apportPct * 100)}% du projet. C'est un signal fort pour les banques : risque perçu plus faible, parfois accès à de meilleures conditions de taux. Mettez-le en avant dans votre présentation de dossier.`,
     });
   }
 
@@ -698,7 +698,7 @@ function buildActionPlan(
     items.push({
       type: "positive",
       title: "Pas de crédits conso",
-      body: `Votre dossier n’est pas alourdi par des mensualités conso ou auto. On peut se concentrer sur la solidité du projet, la présentation et les conditions de financement.`,
+      body: `Votre dossier n'est pas alourdi par des mensualités conso ou auto. On peut se concentrer sur la solidité du projet, la présentation et les conditions de financement.`,
     });
   }
 
@@ -715,7 +715,7 @@ function buildActionPlan(
     items.push({
       type: "tip",
       title: "Un co-emprunteur pourrait changer la donne",
-      body: `Vous simulez seul. Avec un co-emprunteur, les revenus se cumulent et la banque perçoit un risque partagé. Si votre situation le permet, cela peut augmenter significativement votre capacité d’emprunt et améliorer la lecture bancaire.`,
+      body: `Vous simulez seul. Avec un co-emprunteur, les revenus se cumulent et la banque perçoit un risque partagé. Si votre situation le permet, cela peut augmenter significativement votre capacité d'emprunt et améliorer la lecture bancaire.`,
     });
   }
 
@@ -914,7 +914,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionEmail, isLoggedIn]);
 
-  // 2) Persist email au fil de l’eau (tool-specific)
+  // 2) Persist email au fil de l'eau (tool-specific)
   useEffect(() => {
     const e = safeEmail(leadEmail);
     if (!e) return;
@@ -1186,14 +1186,14 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         ? `Âge(s) déclaré(s) : emprunteur ${age1} an(s)${age2 > 0 ? `, co-emprunteur ${age2} an(s)` : ""}.`
         : `Âge(s) déclaré(s) : non renseigné.`,
       ageWarn
-        ? `⚠️ Attention : à ${dureeCredit} ans de durée, l’âge à la fin du prêt serait ~${ageFin} ans (variable selon banques/profil).`
+        ? `⚠️ Attention : à ${dureeCredit} ans de durée, l'âge à la fin du prêt serait ~${ageFin} ans (variable selon banques/profil).`
         : `Âge fin de prêt estimé : ~${ageFin > 0 ? ageFin : "-"} ans.`,
-      `Vos revenus mensuels pris en compte (salaires, autres revenus et 70 % des loyers locatifs) s’élèvent à ${formatEuro(
+      `Vos revenus mensuels pris en compte (salaires, autres revenus et 70 % des loyers locatifs) s'élèvent à ${formatEuro(
         revenusPrisEnCompte
       )}.`,
       `Vos charges récurrentes (crédits et autres charges) représentent ${formatEuro(
         chargesActuelles
-      )} par mois, soit un taux d’endettement actuel d’environ ${formatPct(tauxActuel)}.`,
+      )} par mois, soit un taux d'endettement actuel d'environ ${formatPct(tauxActuel)}.`,
       capaciteMensuelle > 0
         ? `Votre capacité mensuelle "max" (cible ${formatPct(tauxEndettement)}) est ${formatEuro(
             capaciteMensuelle
@@ -1203,14 +1203,14 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
           )} % avec une assurance estimée à ${formatPct(tauxAssurance)}, cela donne ~${formatEuro(
             montantMax
           )} de capital.`
-        : `Avec les paramètres actuels, aucune capacité mensuelle n’apparaît si l’on reste sur un taux d’endettement cible de ${formatPct(
+        : `Avec les paramètres actuels, aucune capacité mensuelle n'apparaît si l'on reste sur un taux d'endettement cible de ${formatPct(
             tauxEndettement
           )}.`,
       montantMax > 0
         ? `La mensualité projetée ressort à ~${formatEuro(mensualiteProjet)} assurance incluse (${formatEuro(
             mensualiteCreditHorsAssurance
-          )} de crédit + ${formatEuro(assuranceMensuelle)} d’assurance).`
-        : `La mensualité projetée n’est pas calculable sans capital.`,
+          )} de crédit + ${formatEuro(assuranceMensuelle)} d'assurance).`
+        : `La mensualité projetée n'est pas calculable sans capital.`,
       `Hypothèses frais (${projectTypeLabel}) : notaire ~${(tauxNotaire * 100).toLocaleString("fr-FR", {
         maximumFractionDigits: 1,
       })}%${
@@ -1227,7 +1227,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         ? `Budget max estimatif (apport inclus) : ${formatEuro(budgetTotalMax)}. Prix de bien "envisageable" ~${formatEuro(
             prixBienMax
           )} (coût total projet ~${formatEuro(coutTotalProjetMax)}).`
-        : `La projection d’un budget max n’est pas pertinente avec ces paramètres : retravaillez durée, taux ou charges.`,
+        : `La projection d'un budget max n'est pas pertinente avec ces paramètres : retravaillez durée, taux ou charges.`,
       `Comparaison de durées : les scénarios 15 / 20 / 25 ans recalculent le capital avec assurance incluse, pour éviter une lecture artificiellement optimiste.`,
     ];
 
@@ -1304,7 +1304,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
     const computed = computeAll();
 
-    // ✅ FIX: stocker computedAll (sinon la synthèse ne s’affiche jamais)
+    // ✅ FIX: stocker computedAll (sinon la synthèse ne s'affiche jamais)
     setComputedAll(computed);
 
     setResumeCapacite(computed.resume);
@@ -1514,7 +1514,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       actionPlan: computed.actionPlan,
     });
 
-    const subject = "Votre rapport de capacité d’emprunt — lokt.fr";
+    const subject = "Votre rapport de capacité d'emprunt — lokt.fr";
 
     setSendingEmail(true);
     try {
@@ -1541,7 +1541,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     setUnlockMsg(null);
 
     if (!hasResult) {
-      setUnlockMsg("Calculez d’abord votre capacité pour débloquer l’analyse.");
+      setUnlockMsg("Calculez d'abord votre capacité pour débloquer l'analyse.");
       return;
     }
 
@@ -1569,7 +1569,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
         await sendAnalysisEmail(email, computed);
       }
     } catch (e: any) {
-      setUnlockMsg("❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue"));
+      setUnlockMsg("❌ Impossible d'enregistrer le dossier : " + (e?.message || "erreur inconnue"));
     } finally {
       setUnlocking(false);
     }
@@ -1716,7 +1716,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                         : "border-white/10 bg-white/5 text-white/60") +
                       (clickable ? "" : " cursor-not-allowed opacity-70")
                     }
-                    aria-label={`Aller à l’étape ${num} : ${label}`}
+                    aria-label={`Aller à l'étape ${num} : ${label}`}
                     title={label}
                   >
                     <span
@@ -2098,21 +2098,40 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
               Résultats de votre simulation
             </p>
             <h2 className="text-sm font-semibold text-slate-900">
-              Votre capacité d&apos;emprunt et votre budget indicatif
+              Votre capacité d&apos;emprunt est calculée
             </h2>
             <p className="text-[0.75rem] text-slate-600">
-              Chiffres "bruts" pour vous positionner. Le Score lokt.fr™ et le plan d’action sont débloqués ensuite.
+              Entrez votre email pour débloquer les résultats et recevoir votre simulation complète.
             </p>
           </div>
         </div>
 
-        {!hasResult ? (
-          <p className="text-[0.8rem] text-slate-600">
-            Complétez les 5 étapes puis cliquez sur « Calculer ma capacité » pour afficher vos résultats.
-          </p>
-        ) : (
+        {/* 🔒 Gate — affiché avant tout résultat */}
+        {!canShowFullAnalysis ? (
+          <LeadGate
+            theme="cyan-emerald"
+            title="Débloquer votre simulation"
+            subtitle="Mensualité max, capital empruntable, budget total, taux d'endettement, score bancaire et plan d'action personnalisé — envoyés par email."
+            email={leadEmail}
+            setEmail={setLeadEmail}
+            consent={consentLokt}
+            setConsent={setConsentLokt}
+            contactConsent={consentContact}
+            setContactConsent={setConsentContact}
+            unlocking={unlocking || sendingEmail}
+            unlockMsg={unlockMsg}
+            onUnlock={handleUnlock}
+            sendByEmail={sendByEmail}
+            setSendByEmail={setSendByEmail}
+            sendingEmail={sendingEmail}
+            sendEmailMsg={sendEmailMsg}
+          />
+        ) : null}
+
+        {/* ✅ Résultats débloqués */}
+        {canShowFullAnalysis ? (
           <>
-            {/* Cartes visibles (gratuites) */}
+            {/* Cartes résumé */}
             <div className="grid gap-3 sm:grid-cols-4 items-stretch">
               <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 h-full flex flex-col">
                 <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Mensualité max</p>
@@ -2164,32 +2183,8 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
               </div>
             </div>
 
-            {/* 🔒 Gate */}
-            {!canShowFullAnalysis ? (
-              <div className="space-y-3">
-                <LeadGate
-                  theme="cyan-emerald"
-                  title="Débloquer l’analyse complète de votre dossier"
-                  subtitle="Comparaison des durées (15/20/25 ans), score de finançabilité, lecture bancaire de votre profil et plan d’action personnalisé."
-                  email={leadEmail}
-                  setEmail={setLeadEmail}
-                  consent={consentLokt}
-                  setConsent={setConsentLokt}
-                  contactConsent={consentContact}
-                  setContactConsent={setConsentContact}
-                  unlocking={unlocking || sendingEmail}
-                  unlockMsg={unlockMsg}
-                  onUnlock={handleUnlock}
-                  sendByEmail={sendByEmail}
-                  setSendByEmail={setSendByEmail}
-                  sendingEmail={sendingEmail}
-                  sendEmailMsg={sendEmailMsg}
-                />
-              </div>
-            ) : null}
-
-            {/* ✅ Partie débloquée */}
-            {canShowFullAnalysis && bankability ? (
+            {/* Analyse détaillée (bankability) */}
+            {bankability ? (
               <>
                 {computedAll?.scenarios?.length ? (
                   <div className="rounded-xl border border-slate-200 bg-white p-3">
@@ -2302,7 +2297,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
                         bankability.details.hardCapsApplied.apportLow) ? (
                         <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-2">
                           <p className="text-[0.7rem] text-amber-800 font-semibold">
-                            Points d’attention détectés :
+                            Points d'attention détectés :
                           </p>
                           <ul className="mt-1 list-disc pl-5 space-y-0.5">
                             {bankability.details.hardCapsApplied.ravNegative && (
@@ -2359,7 +2354,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
               Résultats indicatifs. Ils ne constituent pas une offre de prêt.
             </p>
           </>
-        )}
+        ) : null}
       </section>}
     </div>
   );

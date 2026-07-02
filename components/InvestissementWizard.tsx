@@ -933,7 +933,7 @@ export default function InvestissementWizard() {
     setActionItems(planItems);
 
     const texte = [
-      `Structure du projet : ${nbApparts} lot(s) combinant vos choix de location (longue durée ou saisonnière). Le coût total du projet (prix d’acquisition, frais de notaire, frais d’agence et travaux) ressort à ${formatEuro(
+      `Structure du projet : ${nbApparts} lot(s) combinant vos choix de location (longue durée ou saisonnière). Le coût total du projet (prix d'acquisition, frais de notaire, frais d'agence et travaux) ressort à ${formatEuro(
         coutTotal
       )}.`,
       `Les loyers annuels bruts atteignent environ ${formatEuro(
@@ -944,24 +944,24 @@ export default function InvestissementWizard() {
       )} par an, soit un rendement net avant remboursement du prêt de ${formatPct(
         rendementNetAvantCredit
       )}.`,
-      `Avec un apport personnel de ${formatEuro(apportVal)}, le montant emprunté est d’environ ${formatEuro(
+      `Avec un apport personnel de ${formatEuro(apportVal)}, le montant emprunté est d'environ ${formatEuro(
         montantEmprunte
       )}. À un taux de ${toFloat(tauxCredLoc, 0).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} % sur ${toFloat(dureeCredLoc, 0)} ans
-       la mensualité de crédit (hors assurance emprunteur) est de l’ordre de ${formatEuro(
+       la mensualité de crédit (hors assurance emprunteur) est de l'ordre de ${formatEuro(
         mensualiteCreditNue
       )}.`,
-      `En ajoutant une estimation d’assurance emprunteur de ${toFloat(tauxAssuranceEmp, 0).toLocaleString(
+      `En ajoutant une estimation d'assurance emprunteur de ${toFloat(tauxAssuranceEmp, 0).toLocaleString(
   "fr-FR",
   { maximumFractionDigits: 2 }
 )} % par an sur le capital emprunté, la mensualité totale crédit + assurance ressort autour de ${formatEuro(
   mensualiteTotale
 )}, soit ${formatEuro(annuiteTotale)} par an.`,
-      `Au global, une fois les charges, le crédit et l’assurance intégrés, le projet dégage un résultat net annuel de ${formatEuro(
+      `Au global, une fois les charges, le crédit et l'assurance intégrés, le projet dégage un résultat net annuel de ${formatEuro(
         resultatNetAnnuel
       )}, correspondant à un cash-flow mensuel de ${formatEuro(cashflowMensuel)}.`,
       resultatNetAnnuel >= 0
-        ? `Le cash-flow positif indique que le bien s’autofinance et génère un excédent.`
-        : `Le cash-flow légèrement négatif signifie que le projet nécessite un effort d’épargne mensuel d’environ ${formatEuro(
+        ? `Le cash-flow positif indique que le bien s'autofinance et génère un excédent.`
+        : `Le cash-flow légèrement négatif signifie que le projet nécessite un effort d'épargne mensuel d'environ ${formatEuro(
             -cashflowMensuel
           )}.`,
       `Cette simulation reste indicative : elle ne tient pas compte de la fiscalité, ni de futures évolutions réglementaires.`,
@@ -1010,11 +1010,11 @@ export default function InvestissementWizard() {
   const handleRequestPremiumAnalysis = () => {
     if (typeof window === "undefined") return;
 
-    const subject = encodeURIComponent("Demande d’optimisation de mon investissement locatif");
+    const subject = encodeURIComponent("Demande d'optimisation de mon investissement locatif");
     const bodyLines: string[] = [
       "Bonjour,",
       "",
-      "Je souhaite une analyse approfondie et une optimisation de mon projet d’investissement locatif réalisé sur l’outil MT Courtage & Investissement.",
+      "Je souhaite une analyse approfondie et une optimisation de mon projet d'investissement locatif réalisé sur l'outil MT Courtage & Investissement.",
       "",
       listingUrl
         ? `Lien de l'annonce analysée : ${listingUrl}`
@@ -1049,7 +1049,7 @@ export default function InvestissementWizard() {
       setSendEmailMsg(null); // ✅ reset message email
 
     if (!hasSimulation) {
-      setUnlockMsg("Calculez d’abord votre rentabilité pour débloquer l’analyse.");
+      setUnlockMsg("Calculez d'abord votre rentabilité pour débloquer l'analyse.");
       return;
     }
 
@@ -1067,7 +1067,7 @@ export default function InvestissementWizard() {
           payload: buildLeadPayload(),
         });
       } catch {
-        // on ne bloque pas l’UX si RPC indispo
+        // on ne bloque pas l'UX si RPC indispo
       }
 
       if (typeof window !== "undefined") {
@@ -1083,7 +1083,7 @@ export default function InvestissementWizard() {
         await sendInvestEmail(email);
       }
     } catch (e: any) {
-      setUnlockMsg("❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue"));
+      setUnlockMsg("❌ Impossible d'enregistrer le dossier : " + (e?.message || "erreur inconnue"));
     } finally {
       setUnlocking(false);
     }
@@ -1099,7 +1099,7 @@ export default function InvestissementWizard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
-          subject: "Votre rapport d’investissement locatif — lokt.fr",
+          subject: "Votre rapport d'investissement locatif — lokt.fr",
           computed,
         }),
       });
@@ -1669,8 +1669,8 @@ const canClickUnlock =
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="uppercase tracking-[0.18em] text-[0.7rem] text-emerald-600 mb-1">Synthèse</p>
-              <h2 className="text-lg font-semibold text-slate-900">Résultats & dashboard de rentabilité</h2>
-              <p className="text-xs text-slate-500">Lancez le calcul puis analysez vos chiffres.</p>
+              <h2 className="text-lg font-semibold text-slate-900">Votre analyse de rentabilité est calculée</h2>
+              <p className="text-xs text-slate-500">Entrez votre email pour débloquer les résultats et recevoir votre rapport.</p>
               {marketError && <p className="mt-1 text-[0.7rem] text-red-600">{marketError}</p>}
               {marketLoading && <p className="mt-1 text-[0.7rem] text-slate-500">Récupération des données marché…</p>}
             </div>
@@ -1686,6 +1686,41 @@ const canClickUnlock =
 
           {hasSimulation ? (
             <>
+              {/* Gate — affiché avant tout résultat */}
+              {!canShowFullDetails ? (
+                <div className="w-full rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
+                  <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
+                  <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
+                  <div className="relative space-y-3">
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L'ANALYSE</p>
+                    <h3 className="text-lg font-semibold">Débloquer votre analyse de rentabilité</h3>
+                    <p className="text-sm text-slate-200">Coût total projet, rendements, cash-flow, analyse marché et plan d'action personnalisé — envoyés par email.</p>
+                    <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
+                        <input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="ex: prenom.nom@gmail.com" className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300" />
+                        <p className="text-[0.7rem] text-slate-300">Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}<a href="/confidentialite" className="underline hover:text-white">En savoir plus</a>.</p>
+                      </div>
+                      <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                          <input type="checkbox" checked={consentContact} onChange={(e) => setConsentContact(e.target.checked)} className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10" />
+                          <span className="text-[0.75rem] text-slate-200 leading-relaxed"><span className="font-semibold">Optionnel :</span> j'accepte d'être mis en relation avec un conseiller partenaire pour aller plus loin sur mon projet.<span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n'est pas obligatoire pour recevoir le rapport.</span></span>
+                        </label>
+                      </div>
+                      <button type="button" onClick={handleUnlock} disabled={!canClickUnlock} className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60">
+                        {unlocking ? "Préparation..." : "Recevoir mon rapport"}
+                      </button>
+                      {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
+                      {sendingEmail ? <p className="text-[0.7rem] text-slate-300">Envoi de l'email…</p> : null}
+                      {sendEmailMsg ? <p className="text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Résultats débloqués */}
+              {canShowFullDetails ? (
+              <>
               {/* Cartes de synthèse */}
               <div className="grid gap-4 sm:grid-cols-4 mt-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
@@ -1824,7 +1859,7 @@ const canClickUnlock =
                 <>
                   {!canShowAnalysis && (
                     <p className="mt-2 text-[0.7rem] text-slate-500">
-                      Pour afficher l’analyse détaillée du bien, merci de renseigner :<br />
+                      Pour afficher l'analyse détaillée du bien, merci de renseigner :<br />
                       • la localité du bien<br />
                       • la surface en m²
                     </p>
@@ -1863,7 +1898,7 @@ const canClickUnlock =
                 </>
               )}
 
-              {/* Plan d’action lokt */}
+              {/* Plan d'action lokt */}
               {canShowFullDetails && actionItems.length > 0 ? (
                 <div className="mt-4 space-y-2">
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -1887,40 +1922,8 @@ const canClickUnlock =
                     );
                   })}
                 </div>
-              ) : !canShowFullDetails ? (
-              <div className="mt-4 space-y-3">
-                <div className="blur-sm select-none pointer-events-none space-y-2 rounded-xl overflow-hidden">
-                  {[1,2,3].map(n => <div key={n} className={`h-12 rounded-xl border ${n===1?"bg-red-50 border-red-200":n===2?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} />)}
-                </div>
-                <div className="w-full rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden shadow-lg">
-                  <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
-                  <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
-                  <div className="relative space-y-3">
-                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE COMPLÈTE</p>
-                    <h3 className="text-lg font-semibold">Recevoir mon rapport personnalisé</h3>
-                    <p className="text-sm text-slate-200">Le plan d’action est masqué tant que vous n’êtes pas connecté ou débloqué.</p>
-                    <div className="mt-4 rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
-                      <div className="space-y-1">
-                        <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
-                        <input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="ex: prenom.nom@gmail.com" className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300" />
-                        <p className="text-[0.7rem] text-slate-300">Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}<a href="/confidentialite" className="underline hover:text-white">En savoir plus</a>.</p>
-                      </div>
-                      <div className="rounded-lg bg-white/5 border border-white/10 p-3">
-                        <label className="flex items-start gap-3 cursor-pointer">
-                          <input type="checkbox" checked={consentContact} onChange={(e) => setConsentContact(e.target.checked)} className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10" />
-                          <span className="text-[0.75rem] text-slate-200 leading-relaxed"><span className="font-semibold">Optionnel :</span> j’accepte d’être mis en relation avec un conseiller partenaire pour aller plus loin sur mon projet.<span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span></span>
-                        </label>
-                      </div>
-                      <button type="button" onClick={handleUnlock} disabled={!canClickUnlock} className="w-full inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:opacity-95 disabled:opacity-60">
-                        {unlocking ? "Préparation..." : "Recevoir mon rapport"}
-                      </button>
-                      {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
-                      {sendingEmail ? <p className="text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
-                      {sendEmailMsg ? <p className="text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ) : null}
+              </>
               ) : null}
 
               <p className="mt-2 text-[0.7rem] text-slate-500">
@@ -1929,7 +1932,7 @@ const canClickUnlock =
             </>
           ) : (
             <p className="mt-4 text-sm text-slate-500">
-              Cliquez sur “Calculer / Mettre à jour la rentabilité” pour générer les résultats.
+              Cliquez sur "Calculer / Mettre à jour la rentabilité" pour générer les résultats.
             </p>
           )}
         </section>

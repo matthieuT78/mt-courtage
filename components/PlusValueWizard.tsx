@@ -451,7 +451,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   const [step, setStep] = useState<number>(1);
   const TOTAL_STEPS = 4;
   const [maxStepReached, setMaxStepReached] = useState<number>(1);
-  const stepLabels = useMemo(() => ["La vente", "L’achat", "Le crédit", "Fiscalité"], []);
+  const stepLabels = useMemo(() => ["La vente", "L'achat", "Le crédit", "Fiscalité"], []);
   const progressSteps = useMemo(
     () => [
       { label: stepLabels[0], icon: BanknotesIcon },
@@ -552,7 +552,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionEmail, isLoggedIn]);
 
-  // 2) Persist email au fil de l’eau (tool-specific)
+  // 2) Persist email au fil de l'eau (tool-specific)
   useEffect(() => {
     const e = safeEmail(leadEmail);
     if (!e) return;
@@ -959,7 +959,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     setUnlockMsg(null);
 
     if (!hasResult) {
-      setUnlockMsg("Calculez d’abord votre plus-value pour débloquer l’analyse.");
+      setUnlockMsg("Calculez d'abord votre plus-value pour débloquer l'analyse.");
       return false;
     }
 
@@ -980,7 +980,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       setUnlockMsg("✅ Rapport prêt. Votre simulation est bien enregistrée.");
       return true;
     } catch (e: any) {
-      setUnlockMsg("❌ Impossible d’enregistrer le dossier : " + (e?.message || "erreur inconnue"));
+      setUnlockMsg("❌ Impossible d'enregistrer le dossier : " + (e?.message || "erreur inconnue"));
       return false;
     } finally {
       setUnlocking(false);
@@ -1047,7 +1047,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   const buildDecisionLabel = (r: PVResult) => {
     if (r.netCashSeller < 0) return "Vente tendue : le prix ne couvre pas totalement impôts et prêt à solder.";
     if (!r.isExempt && r.totalTax > Math.max(1, r.netSalePriceForPV) * 0.08) {
-      return "Fiscalité lourde : comparez avec un scénario d’attente ou un prix de vente supérieur.";
+      return "Fiscalité lourde : comparez avec un scénario d'attente ou un prix de vente supérieur.";
     }
     if (r.crd > 0 && r.loanPayoff > Math.max(1, r.netSalePriceForPV) * 0.55) {
       return "Banque dominante : le CRD absorbe une part importante du prix de vente.";
@@ -1077,7 +1077,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         `Coût fiscal retenu : ${formatEuro(r.totalPurchaseCost)} (achat + frais + travaux${r.lmnpAmortizationReintegration > 0 ? " − amortissements LMNP réintégrés" : ""}).`,
         `Prix net vendeur retenu : ${formatEuro(r.netSalePriceForPV)}.`,
         r.lmnpAmortizationReintegration > 0
-          ? `LMNP : ${formatEuro(r.lmnpAmortizationReintegration)} d’amortissements déduits sont réintégrés dans cette estimation.`
+          ? `LMNP : ${formatEuro(r.lmnpAmortizationReintegration)} d'amortissements déduits sont réintégrés dans cette estimation.`
           : "",
         r.isExempt
           ? "Résidence principale : présumé exonéré dans ce simulateur."
@@ -1104,7 +1104,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         "4) Crédit / remboursement anticipé",
         `CRD : ${formatEuro(r.crd)}.`,
         `IRA : ${formatEuro(r.ira)}.`,
-        r.iraCap > 0 ? `Plafond indicatif utilisé : ${formatEuro(r.iraCap)} (min. 6 mois d’intérêts / 3% du CRD).` : "",
+        r.iraCap > 0 ? `Plafond indicatif utilisé : ${formatEuro(r.iraCap)} (min. 6 mois d'intérêts / 3% du CRD).` : "",
         `Total à solder : ${formatEuro(r.loanPayoff)}.`,
         "À vérifier : attestation banque (le CRD exact peut changer la conclusion).",
       ].filter(Boolean).join("\n")
@@ -1113,9 +1113,9 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     lines.push(
       [
         "5) Point de repère",
-        `Prix de vente “à l’équilibre” (coût + frais + prêt) ≈ ${formatEuro(r.breakevenSalePrice)}.`,
-        "Repère : c’est le prix auquel le cash net vendeur serait proche de 0 € (dans ce modèle).",
-        "Documents à réunir : acte d’achat, décompte notaire, factures travaux, tableau d’amortissement ou attestation CRD.",
+        `Prix de vente "à l'équilibre" (coût + frais + prêt) ≈ ${formatEuro(r.breakevenSalePrice)}.`,
+        "Repère : c'est le prix auquel le cash net vendeur serait proche de 0 € (dans ce modèle).",
+        "Documents à réunir : acte d'achat, décompte notaire, factures travaux, tableau d'amortissement ou attestation CRD.",
       ].join("\n")
     );
 
@@ -1141,7 +1141,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
             <>
               <h2 className="text-sm font-semibold text-slate-900">La vente (le bien que vous vendez)</h2>
               <p className="text-[0.75rem] text-slate-600">
-                On calcule d’abord le <strong>prix net vendeur</strong> (prix de vente − frais vendeur). C’est la base
+                On calcule d'abord le <strong>prix net vendeur</strong> (prix de vente − frais vendeur). C'est la base
                 du calcul de plus-value.
               </p>
 
@@ -1150,15 +1150,15 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 bullets={[
                   "Calcule le prix net vendeur = prix de vente − frais à votre charge.",
                   "Détermine si vous êtes présumé exonéré (résidence principale).",
-                  "La durée de détention sert à estimer les abattements si vous n’êtes pas exonéré.",
+                  "La durée de détention sert à estimer les abattements si vous n'êtes pas exonéré.",
                 ]}
               />
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Type d’occupation
-                    <InfoBadge text="Si vous sélectionnez “résidence principale”, le simulateur considère la plus-value exonérée (0 €). En vrai, il existe des conditions (occupation effective, délais…). Si doute, choisissez “secondaire” pour une estimation prudente." />
+                    Type d'occupation
+                    <InfoBadge text={`Si vous sélectionnez "résidence principale", le simulateur considère la plus-value exonérée (0 €). En vrai, il existe des conditions (occupation effective, délais…). Si doute, choisissez "secondaire" pour une estimation prudente.`} />
                   </label>
                     <select
                       value={residenceType}
@@ -1179,7 +1179,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     <div className="space-y-1">
                       <label className="text-xs text-slate-700 flex items-center gap-1">
                         Régime locatif
-                        <InfoBadge text="Le LMNP peut modifier l’estimation depuis 2025 si des amortissements ont été déduits. Pour une location nue, gardez “location nue”." />
+                        <InfoBadge text={`Le LMNP peut modifier l'estimation depuis 2025 si des amortissements ont été déduits. Pour une location nue, gardez "location nue".`} />
                       </label>
                       <select
                         value={rentalTaxMode}
@@ -1195,7 +1195,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Durée de détention (années)
-                    <InfoBadge text="Cette durée sert à appliquer les abattements (réduction progressive de l’impôt). Barème standard : IR exonéré à 22 ans, PS exonérés à 30 ans." />
+                    <InfoBadge text="Cette durée sert à appliquer les abattements (réduction progressive de l'impôt). Barème standard : IR exonéré à 22 ans, PS exonérés à 30 ans." />
                   </label>
                   <input
                     inputMode="numeric"
@@ -1208,7 +1208,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1 lg:col-span-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Prix de vente (net acheteur)
-                    <InfoBadge text="Prix indiqué au compromis. On retire ensuite vos frais vendeur pour obtenir le “prix net vendeur”." />
+                    <InfoBadge text={`Prix indiqué au compromis. On retire ensuite vos frais vendeur pour obtenir le "prix net vendeur".`} />
                   </label>
                   <input
                     inputMode="numeric"
@@ -1220,8 +1220,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Frais d’agence à votre charge
-                    <InfoBadge text="Si le vendeur paie l’agence, mettez le montant ici. Sinon laissez 0. Ces frais diminuent le prix net vendeur." />
+                    Frais d'agence à votre charge
+                    <InfoBadge text="Si le vendeur paie l'agence, mettez le montant ici. Sinon laissez 0. Ces frais diminuent le prix net vendeur." />
                   </label>
                   <input
                     inputMode="numeric"
@@ -1251,7 +1251,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                   <span className="font-semibold">
                     {formatEuro(toInt(saleAgencyFeesSeller, 0) + toInt(saleOtherCosts, 0))}
                   </span>{" "}
-                  → prix “net vendeur”{" "}
+                  → prix "net vendeur"{" "}
                   <span className="font-semibold">
                     {formatEuro(
                       Math.max(
@@ -1269,16 +1269,16 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
           {/* === Step 2 === */}
           {step === 2 && (
             <>
-              <h2 className="text-sm font-semibold text-slate-900">L’achat (le bien que vous avez acheté)</h2>
+              <h2 className="text-sm font-semibold text-slate-900">L'achat (le bien que vous avez acheté)</h2>
               <p className="text-[0.75rem] text-slate-600">
-                On calcule le <strong>coût total d’acquisition</strong> (prix d’achat + frais + travaux). Plus ce coût
+                On calcule le <strong>coût total d'acquisition</strong> (prix d'achat + frais + travaux). Plus ce coût
                 est élevé, plus la plus-value diminue.
               </p>
 
               <StepHint
                 title="Ce que fait cette étape"
                 bullets={[
-                  "Additionne prix d’achat + frais d’acquisition (réels ou forfait).",
+                  "Additionne prix d'achat + frais d'acquisition (réels ou forfait).",
                   "Ajoute les travaux (réels) ou un forfait 15% si détention > 5 ans (simplifié).",
                   "Le total est soustrait au prix net vendeur pour obtenir la plus-value brute.",
                 ]}
@@ -1287,8 +1287,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Prix d’achat
-                    <InfoBadge text="Prix du bien dans l’acte d’achat (hors frais). On ajoute frais + travaux pour reconstituer le coût d’acquisition." />
+                    Prix d'achat
+                    <InfoBadge text="Prix du bien dans l'acte d'achat (hors frais). On ajoute frais + travaux pour reconstituer le coût d'acquisition." />
                   </label>
                   <input
                     inputMode="numeric"
@@ -1300,8 +1300,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
 
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Frais d’acquisition
-                    <InfoBadge text="Forfait 7,5% = estimation simple (souvent proche pour l’ancien). Choisissez “réels” si vous avez les montants exacts." />
+                    Frais d'acquisition
+                    <InfoBadge text={`Forfait 7,5% = estimation simple (souvent proche pour l'ancien). Choisissez "réels" si vous avez les montants exacts.`} />
                   </label>
                   <select
                     value={acqFraisMode}
@@ -1318,7 +1318,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     <div className="space-y-1">
                       <label className="text-xs text-slate-700 flex items-center gap-1">
                         Frais de notaire (réels)
-                        <InfoBadge text="Décompte notaire / acte d’achat. Ces frais réduisent la plus-value en augmentant le coût d’acquisition." />
+                        <InfoBadge text="Décompte notaire / acte d'achat. Ces frais réduisent la plus-value en augmentant le coût d'acquisition." />
                       </label>
                       <input
                         inputMode="numeric"
@@ -1329,8 +1329,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs text-slate-700 flex items-center gap-1">
-                        Frais d’agence (réels)
-                        <InfoBadge text="Frais d’agence payés à l’achat (s’ils existent séparément). S’ajoutent au coût d’acquisition." />
+                        Frais d'agence (réels)
+                        <InfoBadge text="Frais d'agence payés à l'achat (s'ils existent séparément). S'ajoutent au coût d'acquisition." />
                       </label>
                       <input
                         inputMode="numeric"
@@ -1353,7 +1353,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                   <div className="space-y-1">
                     <label className="text-xs text-slate-700 flex items-center gap-1">
                       Travaux
-                    <InfoBadge text="Les travaux augmentent le coût d’acquisition. En pratique, seuls certains travaux sont éligibles (factures, nature). Le forfait 15% est un repère simplifié." />
+                    <InfoBadge text="Les travaux augmentent le coût d'acquisition. En pratique, seuls certains travaux sont éligibles (factures, nature). Le forfait 15% est un repère simplifié." />
                   </label>
                   <select
                     value={travauxMode}
@@ -1370,7 +1370,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                   <div className="space-y-1">
                     <label className="text-xs text-slate-700 flex items-center gap-1">
                       Montant travaux
-                      <InfoBadge text="Astuce : mettez 0 puis comparez ensuite avec le forfait 15% pour l’ordre de grandeur." />
+                      <InfoBadge text="Astuce : mettez 0 puis comparez ensuite avec le forfait 15% pour l'ordre de grandeur." />
                     </label>
                     <input
                       inputMode="numeric"
@@ -1424,8 +1424,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
               <StepHint
                 title="Ce que fait cette étape"
                 bullets={[
-                    "CRD obligatoire si vous avez un prêt : c’est le montant à solder le jour de la vente.",
-                    "Si vous ne connaissez pas le CRD, on l’estime via amortissement (capital, taux, durée, ancienneté).",
+                    "CRD obligatoire si vous avez un prêt : c'est le montant à solder le jour de la vente.",
+                    "Si vous ne connaissez pas le CRD, on l'estime via amortissement (capital, taux, durée, ancienneté).",
                     "Optionnel : IRA estimées avec un plafond indicatif ou un pourcentage de votre contrat.",
                 ]}
                 tone="warn"
@@ -1452,7 +1452,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     <div className="space-y-1">
                       <label className={labelBase}>
                         CRD (capital restant dû)
-                        <InfoBadge text="Le capital restant dû est visible sur votre dernier relevé bancaire ou tableau d’amortissement. C’est le principal montant à déduire de votre prix net." />
+                        <InfoBadge text="Le capital restant dû est visible sur votre dernier relevé bancaire ou tableau d'amortissement. C'est le principal montant à déduire de votre prix net." />
                       </label>
                       <select
                         value={crdMode}
@@ -1460,7 +1460,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         className={selectBase}
                       >
                         <option value="connu">Je connais mon CRD</option>
-                        <option value="estime">Je l’estime (amortissement)</option>
+                        <option value="estime">Je l'estime (amortissement)</option>
                       </select>
                     </div>
 
@@ -1468,7 +1468,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                       <div className="space-y-1">
                         <label className={labelBase}>
                           CRD exact (€)
-                          <InfoBadge text="Montant disponible dans votre espace client bancaire ou sur votre tableau d’amortissement. Votre banque peut aussi vous l’envoyer sur demande." />
+                          <InfoBadge text="Montant disponible dans votre espace client bancaire ou sur votre tableau d'amortissement. Votre banque peut aussi vous l'envoyer sur demande." />
                         </label>
                         <input
                           inputMode="numeric"
@@ -1482,7 +1482,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Capital initial emprunté
-                            <InfoBadge text="Montant emprunté à l’origine, tel qu’indiqué dans votre offre de prêt. Pour un prêt à taux variable ou modulable, le résultat sera une estimation." />
+                            <InfoBadge text="Montant emprunté à l'origine, tel qu'indiqué dans votre offre de prêt. Pour un prêt à taux variable ou modulable, le résultat sera une estimation." />
                           </label>
                           <input
                             inputMode="numeric"
@@ -1495,7 +1495,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Taux du prêt (%)
-                            <InfoBadge text="Taux d’intérêt hors assurance, tel qu’indiqué dans votre offre de prêt." />
+                            <InfoBadge text="Taux d'intérêt hors assurance, tel qu'indiqué dans votre offre de prêt." />
                           </label>
                           <input
                             inputMode="decimal"
@@ -1521,7 +1521,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Années déjà écoulées
-                            <InfoBadge text="Nombre d’années depuis le début du prêt. Plus cette valeur est précise, plus le capital restant dû estimé sera proche de la réalité." />
+                            <InfoBadge text="Nombre d'années depuis le début du prêt. Plus cette valeur est précise, plus le capital restant dû estimé sera proche de la réalité." />
                           </label>
                           <input
                             inputMode="numeric"
@@ -1553,7 +1553,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <div className="space-y-1">
                           <label className={labelBase}>
                             Taux du prêt (%)
-                            <InfoBadge text="Le taux sert à calculer le plafond légal des pénalités de remboursement anticipé (6 mois d’intérêts plafonné à 3 % du capital restant)." />
+                            <InfoBadge text="Le taux sert à calculer le plafond légal des pénalités de remboursement anticipé (6 mois d'intérêts plafonné à 3 % du capital restant)." />
                           </label>
                           <input
                             inputMode="decimal"
@@ -1561,7 +1561,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                             onChange={(e) => setLoanRate(onlyNumberLike(e.target.value))}
                             className={inputSmall}
                           />
-                          <p className="text-[0.65rem] text-slate-500">Repère : min. 6 mois d’intérêts / 3% du CRD.</p>
+                          <p className="text-[0.65rem] text-slate-500">Repère : min. 6 mois d'intérêts / 3% du CRD.</p>
                         </div>
                       ) : iraMode === "pourcent" ? (
                         <div className="space-y-1">
@@ -1600,7 +1600,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
             <>
               <h2 className="text-sm font-semibold text-slate-900">Fiscalité (France — estimation)</h2>
               <p className="text-[0.75rem] text-slate-600">
-                On estime l’impôt sur la plus-value : <strong>IR 19%</strong> + <strong>PS 17,2%</strong>, puis on
+                On estime l'impôt sur la plus-value : <strong>IR 19%</strong> + <strong>PS 17,2%</strong>, puis on
                 applique des <strong>abattements</strong> selon la durée de détention.
               </p>
 
@@ -1617,7 +1617,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                 <div className="space-y-1">
                   <label className={labelBase}>
                       Appliquer la surtaxe ?
-                      <InfoBadge text="Si la plus-value imposable dépasse 50 000 €, une surtaxe progressive peut s’appliquer. Les terrains à bâtir et cas particuliers ne sont pas traités ici." />
+                      <InfoBadge text="Si la plus-value imposable dépasse 50 000 €, une surtaxe progressive peut s'appliquer. Les terrains à bâtir et cas particuliers ne sont pas traités ici." />
                   </label>
                   <select
                     value={applySurtax}
@@ -1692,8 +1692,8 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700 mb-1">Résultats</p>
-            <h2 className="text-sm font-semibold text-slate-900">Plus-value & cash net vendeur</h2>
-            <p className="text-[0.75rem] text-slate-600">Synthèse claire + analyse détaillée (débloquée après).</p>
+            <h2 className="text-sm font-semibold text-slate-900">Votre simulation est calculée</h2>
+            <p className="text-[0.75rem] text-slate-600">Entrez votre email pour débloquer vos résultats et recevoir votre rapport.</p>
           </div>
         </div>
 
@@ -1701,138 +1701,16 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
           <p className="text-[0.8rem] text-slate-600">Complétez les étapes puis cliquez sur « Calculer ma plus-value ».</p>
         ) : (
           <>
-            {/* Synthèse visible */}
-              <div className="grid gap-3 sm:grid-cols-4">
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Prix net vendeur</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.netSalePriceForPV)}</p>
-                <p className="mt-1 text-[0.7rem] text-slate-500">Prix − frais vendeur.</p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
-                  {displayResult.grossGain >= 0 ? "Plus-value brute" : "Moins-value brute"}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.grossGain)}</p>
-                <p className="mt-1 text-[0.7rem] text-slate-500">Net vendeur − coût d’acquisition.</p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Impôts estimés</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.totalTax)}</p>
-                <p className="mt-1 text-[0.7rem] text-slate-500">IR + PS{applySurtax === "oui" ? " + surtaxe" : ""}.</p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Cash net vendeur</p>
-                <p
-                  className={
-                    "mt-1 text-sm font-semibold " +
-                    (displayResult.netCashSeller >= 0 ? "text-emerald-700" : "text-rose-700")
-                  }
-                >
-                  {formatEuro(displayResult.netCashSeller)}
-                </p>
-                <p className="mt-1 text-[0.7rem] text-slate-500">Après impôts + banque.</p>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700">Verdict vendeur</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{buildDecisionLabel(displayResult)}</p>
-                <p className="mt-1 text-[0.75rem] text-slate-700">
-                  Le bon réflexe : comparez le prix cible avec un scénario prudent et demandez le CRD exact à la banque avant signature.
-                </p>
-              </div>
-
-            {/* Scénario (bonus) : seulement si débloqué */}
-            {canShowFullAnalysis ? (
-              <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 space-y-2">
-                <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600">Scénario (prix de vente)</p>
-
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-slate-900">{formatEuro(salePriceScenario)}</p>
-                  <button
-                    type="button"
-                    onClick={() => setScenarioEnabled((v) => !v)}
-                    className={
-                      "rounded-full border px-3 py-1 text-[0.75rem] font-semibold " +
-                      (scenarioEnabled
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")
-                    }
-                  >
-                    {scenarioEnabled ? "Scénario activé" : "Activer le scénario"}
-                  </button>
-                </div>
-
-                <input
-                  type="range"
-                  min={sliderBounds.min}
-                  max={sliderBounds.max}
-                  step={sliderBounds.step}
-                  value={salePriceScenario}
-                  onChange={(e) => {
-                    setSalePriceScenario(toInt(e.target.value, sliderBounds.base));
-                    setScenarioEnabled(true);
-                  }}
-                  className="w-full"
-                />
-
-                <div className="text-[0.7rem] text-slate-500 flex justify-between">
-                  <span>{formatEuro(sliderBounds.min)}</span>
-                  <span>{formatEuro(sliderBounds.max)}</span>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Plan d’action lokt */}
-            {canShowFullAnalysis && actionItems.length > 0 ? (
-              <div className="mt-4 space-y-2">
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Plan d&apos;action lokt
-                </p>
-                {actionItems.map((item, i) => {
-                  const cfg = ACTION_ITEM_CONFIG[item.type];
-                  return (
-                    <div key={i} className={`flex gap-3 rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}>
-                      <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${cfg.iconBg} ${cfg.iconText}`}>
-                        <cfg.Icon className="h-4 w-4" />
-                      </span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={`text-[0.8rem] font-semibold leading-tight ${cfg.titleText}`}>{item.title}</p>
-                          <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${cfg.badgeCls}`}>{cfg.badge}</span>
-                        </div>
-                        <p className="mt-1 text-[0.75rem] leading-5 text-slate-600">{item.body}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : !canShowFullAnalysis ? (
-              <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-4 relative overflow-hidden">
-                <div className="blur-sm select-none space-y-2">
-                  {[1,2,3].map(n => <div key={n} className={`h-16 rounded-xl border ${n===1?"bg-red-50 border-red-200":n===2?"bg-amber-50 border-amber-200":"bg-emerald-50 border-emerald-200"}`} />)}
-                </div>
-                <p className="absolute inset-0 flex items-center justify-center text-[0.75rem] font-semibold text-slate-600 text-center px-6">
-                  Débloquez l’analyse pour afficher le plan d’action personnalisé (bases taxables, IR/PS, CRD/IRA, scénario).
-                </p>
-              </div>
-            ) : null}
-
-            {/* Gate (PretRelais style) */}
+            {/* Gate — affiché avant tout résultat */}
             {!canShowFullAnalysis ? (
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-900 text-white p-5 relative overflow-hidden">
                 <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full opacity-30 blur-3xl bg-cyan-500" />
                 <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full opacity-20 blur-3xl bg-emerald-400" />
-
                 <div className="relative space-y-3">
-                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L’ANALYSE</p>
-                  <h3 className="text-lg font-semibold">Conservez votre simulation et débloquez l’analyse détaillée.</h3>
-
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-cyan-200">DÉBLOQUER L'ANALYSE</p>
+                  <h3 className="text-lg font-semibold">Débloquer votre simulation plus-value</h3>
+                  <p className="text-sm text-slate-200">Prix net vendeur, plus-value brute, impôts estimés, cash net et plan d'action personnalisé — envoyés par email.</p>
                   <div className="mt-2 rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
-                    {/* Email */}
                     <div className="space-y-1">
                       <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
                       <input
@@ -1847,7 +1725,6 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                         <a href="/confidentialite" className="underline hover:text-white">En savoir plus sur vos données personnelles</a>.
                       </p>
                     </div>
-
                     <div className="rounded-lg bg-white/5 border border-white/10 p-3">
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input
@@ -1857,19 +1734,16 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                           className="mt-1 h-4 w-4 rounded border-white/30 bg-white/10"
                         />
                         <span className="text-[0.75rem] text-slate-200 leading-relaxed">
-                          <span className="font-semibold">Optionnel :</span> j’accepte d’être mis en relation avec un conseiller partenaire pour aller plus loin sur mon projet.
-                          <span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n’est pas obligatoire pour recevoir le rapport.</span>
+                          <span className="font-semibold">Optionnel :</span> j'accepte d'être mis en relation avec un conseiller partenaire pour aller plus loin sur mon projet.
+                          <span className="block text-[0.7rem] text-slate-300 mt-1">Cette case n'est pas obligatoire pour recevoir le rapport.</span>
                         </span>
                       </label>
                     </div>
-
-                    {/* Bouton */}
                     <button
                       type="button"
                       onClick={async () => {
                         const ok = await handleUnlock();
                         const email = safeEmail(leadEmail);
-
                         if (ok && email && sendByEmail && result && displayResult) {
                           const computed = buildEmailComputed({ result, displayResult });
                           await sendPlusValueEmail(email, computed);
@@ -1880,13 +1754,101 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
                     >
                       {unlocking ? "Préparation..." : "Recevoir mon rapport"}
                     </button>
-                    {sendingEmail ? <p className="text-[0.7rem] text-slate-300">Envoi de l’email…</p> : null}
+                    {sendingEmail ? <p className="text-[0.7rem] text-slate-300">Envoi de l'email…</p> : null}
                     {sendEmailMsg ? <p className="text-[0.7rem] text-slate-200">{sendEmailMsg}</p> : null}
-
                     {unlockMsg && <p className="text-[0.75rem] text-slate-200">{unlockMsg}</p>}
                   </div>
                 </div>
               </div>
+            ) : null}
+
+            {/* Résultats débloqués */}
+            {canShowFullAnalysis ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Prix net vendeur</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.netSalePriceForPV)}</p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">Prix − frais vendeur.</p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">
+                      {displayResult.grossGain >= 0 ? "Plus-value brute" : "Moins-value brute"}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.grossGain)}</p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">Net vendeur − coût d'acquisition.</p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Impôts estimés</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(displayResult.totalTax)}</p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">IR + PS{applySurtax === "oui" ? " + surtaxe" : ""}.</p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Cash net vendeur</p>
+                    <p className={"mt-1 text-sm font-semibold " + (displayResult.netCashSeller >= 0 ? "text-emerald-700" : "text-rose-700")}>
+                      {formatEuro(displayResult.netCashSeller)}
+                    </p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">Après impôts + banque.</p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-emerald-700">Verdict vendeur</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">{buildDecisionLabel(displayResult)}</p>
+                  <p className="mt-1 text-[0.75rem] text-slate-700">
+                    Le bon réflexe : comparez le prix cible avec un scénario prudent et demandez le CRD exact à la banque avant signature.
+                  </p>
+                </div>
+
+                {/* Scénario */}
+                <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+                  <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-600">Scénario (prix de vente)</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-900">{formatEuro(salePriceScenario)}</p>
+                    <button
+                      type="button"
+                      onClick={() => setScenarioEnabled((v) => !v)}
+                      className={"rounded-full border px-3 py-1 text-[0.75rem] font-semibold " + (scenarioEnabled ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")}
+                    >
+                      {scenarioEnabled ? "Scénario activé" : "Activer le scénario"}
+                    </button>
+                  </div>
+                  <input type="range" min={sliderBounds.min} max={sliderBounds.max} step={sliderBounds.step} value={salePriceScenario} onChange={(e) => { setSalePriceScenario(toInt(e.target.value, sliderBounds.base)); setScenarioEnabled(true); }} className="w-full" />
+                  <div className="text-[0.7rem] text-slate-500 flex justify-between">
+                    <span>{formatEuro(sliderBounds.min)}</span>
+                    <span>{formatEuro(sliderBounds.max)}</span>
+                  </div>
+                </div>
+
+                {/* Plan d'action lokt */}
+                {actionItems.length > 0 ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Plan d&apos;action lokt
+                    </p>
+                    {actionItems.map((item, i) => {
+                      const cfg = ACTION_ITEM_CONFIG[item.type];
+                      return (
+                        <div key={i} className={`flex gap-3 rounded-xl border p-3.5 ${cfg.bg} ${cfg.border}`}>
+                          <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${cfg.iconBg} ${cfg.iconText}`}>
+                            <cfg.Icon className="h-4 w-4" />
+                          </span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className={`text-[0.8rem] font-semibold leading-tight ${cfg.titleText}`}>{item.title}</p>
+                              <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide ${cfg.badgeCls}`}>{cfg.badge}</span>
+                            </div>
+                            <p className="mt-1 text-[0.75rem] leading-5 text-slate-600">{item.body}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </>
             ) : null}
 
             <p className="mt-3 text-[0.7rem] text-slate-500">

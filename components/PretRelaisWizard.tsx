@@ -24,7 +24,7 @@ const PRET_RELAIS_UNLOCK_KEY = "pret_relais_unlock_v1";
 // ✅ NEW: persistance de l'email du lead (pour ne pas le redemander après navigation)
 const PRET_RELAIS_EMAIL_KEY = "pret_relais_email_v1";
 
-// ✅ même principe que la page Capacité : on ne score PAS sur une mensualité “max” pleine
+// ✅ même principe que la page Capacité : on ne score PAS sur une mensualité "max" pleine
 const LOKT_MENSUALITE_BUFFER = 0.9;
 
 function formatEuro(val: number) {
@@ -566,7 +566,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
     mensualitesExistantes: autresMensualites || 0,
     chargesHorsCredits: 0,
     tauxEndettementActuel: 0,
-    tauxEndettementAvecProjet: 999, // volontairement “catastrophique”
+    tauxEndettementAvecProjet: 999, // volontairement "catastrophique"
   };
 
   const assessmentFail: BankabilityAssessment = revenus <= 0
@@ -624,9 +624,9 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
         ].join("\n"),
         "",
         [
-          "3) Pistes d’action",
+          "3) Pistes d'action",
           "• Réduire temporairement le projet (prix cible).",
-          "• Augmenter l’apport si possible.",
+          "• Augmenter l'apport si possible.",
           "• Ajuster la durée (dans la limite des pratiques bancaires).",
           "• Revoir les crédits existants (conso/auto) avant de relancer.",
         ].join("\n"),
@@ -671,7 +671,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
         `Autres mensualités de crédits : ${formatEuro(autresMens)}.`,
         `Endettement cible : ${tauxEndettement.toFixed(0)} % → plafond ≈ ${formatEuro(plafondEndettement)}/mois.`,
         `Mensualité disponible estimée : ${formatEuro(mensualiteNouveauMax)}.`,
-        `Lecture lokt.fr (prudente) : on retient ~${Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de la mensualité disponible pour estimer l’endettement projeté.`,
+        `Lecture lokt.fr (prudente) : on retient ~${Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de la mensualité disponible pour estimer l'endettement projeté.`,
         `Endettement actuel : ~${formatPct(tauxActuel)} ; endettement projeté (lokt.fr) : ~${formatPct(tauxAvecProjet)}.`,
       ].join("\n"),
       "",
@@ -690,7 +690,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       ].join("\n"),
       "",
       [
-        "4) Budget d’achat total estimé",
+        "4) Budget d'achat total estimé",
         `Apport (${formatEuro(apport)}) + relais (${formatEuro(montantRelais)}) + nouveau prêt (${formatEuro(
           capitalNouveau
         )}) ⇒ budget max ≈ ${formatEuro(budgetMax)}.`,
@@ -977,7 +977,7 @@ async function sendPretRelaisEmail(email: string) {
     setUnlockMsg(null);
 
     if (!resume || !texteDetail) {
-      setUnlockMsg("Calculez d’abord votre simulation avant de débloquer l’analyse.");
+      setUnlockMsg("Calculez d'abord votre simulation avant de débloquer l'analyse.");
       return;
     }
 
@@ -1003,7 +1003,7 @@ if (sendByEmail) {
         window.localStorage.setItem(PRET_RELAIS_UNLOCK_KEY, JSON.stringify(unlockPayload));
       }
     } catch (e: any) {
-      setUnlockMsg("❌ Impossible d’enregistrer la simulation : " + (e?.message || "erreur inconnue"));
+      setUnlockMsg("❌ Impossible d'enregistrer la simulation : " + (e?.message || "erreur inconnue"));
     } finally {
       setUnlocking(false);
     }
@@ -1081,7 +1081,7 @@ const renderAnalysisBlocks = (text: string) => {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Usage du futur bien
-                    <InfoBadge text="Cela aide à adapter l’analyse et les conseils (résidence principale, secondaire ou investissement)." />
+                    <InfoBadge text="Cela aide à adapter l'analyse et les conseils (résidence principale, secondaire ou investissement)." />
                   </label>
                   <select
                     value={projectUsageDb}
@@ -1096,8 +1096,8 @@ const renderAnalysisBlocks = (text: string) => {
 
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Horizon d’achat
-                    <InfoBadge text="Pour savoir si votre projet est imminent ou plutôt à moyen terme (cela change parfois l’approche)." />
+                    Horizon d'achat
+                    <InfoBadge text="Pour savoir si votre projet est imminent ou plutôt à moyen terme (cela change parfois l'approche)." />
                   </label>
                   <select
                     value={timelineDb}
@@ -1115,7 +1115,7 @@ const renderAnalysisBlocks = (text: string) => {
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
                     Département (zone)
-                    <InfoBadge text="Juste pour situer la zone de recherche (ex : 75, 78, 13). Pas besoin d’une adresse précise." />
+                    <InfoBadge text="Juste pour situer la zone de recherche (ex : 75, 78, 13). Pas besoin d'une adresse précise." />
                   </label>
                   <input
                     type="text"
@@ -1254,7 +1254,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <div className="space-y-1">
                     <label className={labelBase}>
                       Capital restant dû (€)
-                      <InfoBadge text="Le montant qu’il vous reste à rembourser sur le prêt actuel (visible sur votre tableau d’amortissement)." />
+                      <InfoBadge text="Le montant qu'il vous reste à rembourser sur le prêt actuel (visible sur votre tableau d'amortissement)." />
                     </label>
                     <input
                       inputMode="decimal"
@@ -1267,7 +1267,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <div className="space-y-1">
                     <label className={labelBase}>
                       % retenu par la banque
-                      <InfoBadge text="La banque ne finance généralement qu’une partie de la valeur du bien (souvent 60 à 80%)." />
+                      <InfoBadge text="La banque ne finance généralement qu'une partie de la valeur du bien (souvent 60 à 80%)." />
                     </label>
                     <input
                       inputMode="decimal"
@@ -1282,7 +1282,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <div className="space-y-1">
                     <label className={labelBase}>
                       Taux relais (annuel, %)
-                      <InfoBadge text="Taux indicatif du prêt relais. Il sert surtout à donner un ordre d’idée du coût." />
+                      <InfoBadge text="Taux indicatif du prêt relais. Il sert surtout à donner un ordre d'idée du coût." />
                     </label>
                     <input
                       inputMode="decimal"
@@ -1295,7 +1295,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <div className="space-y-1">
                     <label className={labelBase}>
                       Apport personnel prévu (€)
-                      <InfoBadge text="L’argent que vous apportez de votre poche (épargne, donation, revente, etc.)." />
+                      <InfoBadge text="L'argent que vous apportez de votre poche (épargne, donation, revente, etc.)." />
                     </label>
                     <input
                       inputMode="decimal"
@@ -1336,7 +1336,7 @@ const renderAnalysisBlocks = (text: string) => {
                 <div className="space-y-1">
                   <label className={labelBase}>
                     Prix du bien visé (optionnel)
-                    <InfoBadge text="Si vous avez un prix en tête, on le compare à votre budget max pour voir si c’est cohérent." />
+                    <InfoBadge text="Si vous avez un prix en tête, on le compare à votre budget max pour voir si c'est cohérent." />
                   </label>
                   <input
                     inputMode="decimal"
@@ -1398,8 +1398,8 @@ const renderAnalysisBlocks = (text: string) => {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[0.7rem] uppercase tracking-[0.18em] text-amber-700 mb-1">Résultats</p>
-            <h2 className="text-sm font-semibold text-slate-900">Prêt relais, nouveau prêt et budget maximal</h2>
-            <p className="text-[0.75rem] text-slate-600">Synthèse claire + analyse détaillée (débloquée après).</p>
+            <h2 className="text-sm font-semibold text-slate-900">Votre simulation prêt relais est calculée</h2>
+            <p className="text-[0.75rem] text-slate-600">Entrez votre email pour débloquer les résultats et recevoir votre rapport complet.</p>
           </div>
         </div>
 
@@ -1407,82 +1407,84 @@ const renderAnalysisBlocks = (text: string) => {
           <p className="text-[0.8rem] text-slate-600">Complétez les étapes puis cliquez sur « Calculer ».</p>
         ) : (
           <>
-            {/* Synthèse visible */}
-            <div className="grid gap-3 sm:grid-cols-4">
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Montant du relais</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resume!.montantRelais)}</p>
-                <p className="mt-1 text-[0.7rem] text-slate-500">Valeur × % − CRD.</p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Mensualité max</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resume!.mensualiteNouveauMax)}</p>
-                <p className="mt-1 text-[0.7rem] text-slate-500">Selon endettement cible.</p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Capital nouveau prêt</p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resume!.capitalNouveau)}</p>
-                <p className="mt-1 text-[0.7rem] text-slate-500">
-                  {dureeNouveau} ans à ~{formatPct(tauxNouveau)}.
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
-                <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Budget max</p>
-                <p className="mt-1 text-sm font-semibold text-amber-700">{formatEuro(resume!.budgetMax)}</p>
-                <p className="mt-1 text-[0.7rem] text-slate-500">Relais + nouveau prêt + apport.</p>
-              </div>
-            </div>
-
-            {/* Score lokt.fr™ */}
-            {canShowFullAnalysis && bankabilityScore !== null ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-4">
-                <div className="rounded-xl bg-slate-900 text-white px-3 py-2.5 sm:col-span-2">
-                  <p className="text-[0.65rem] uppercase tracking-[0.14em] text-cyan-200">{loktScoreLabel}</p>
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <p className={`text-2xl font-semibold ${scoreColor}`}>{bankabilityScore}/100</p>
-                    <p className="text-[0.85rem] font-medium text-white">{bankabilityLabel}</p>
-                  </div>
-                  <p className="mt-1 text-[0.75rem] text-slate-100">{bankabilityComment}</p>
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2">
-                  <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Comment c’est calculé</p>
-                  <p className="mt-1 text-[0.75rem] text-slate-700">
-                    Le score se base sur l’endettement projeté <span className="font-semibold">avec une marge de prudence</span>{" "}
-                    (on retient ~{Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de la mensualité disponible), pour éviter un score
-                    “bloqué” au seuil cible.
-                  </p>
-                </div>
-              </div>
+            {/* Gate — affiché avant tout résultat */}
+            {!canShowFullAnalysis ? (
+              <LeadGate
+                theme="cyan-amber"
+                title="Débloquer votre simulation prêt relais"
+                subtitle="Montant du relais, mensualité max, capital nouveau prêt, budget maximal, score de finançabilité et plan d'action — envoyés par email."
+                email={leadEmail}
+                setEmail={setLeadEmail}
+                consent={consentLokt}
+                setConsent={setConsentLokt}
+                contactConsent={consentContact}
+                setContactConsent={setConsentContact}
+                unlocking={unlocking || sendingEmail}
+                unlockMsg={unlockMsg}
+                onUnlock={handleUnlock}
+                sendByEmail={sendByEmail}
+                setSendByEmail={setSendByEmail}
+                sendingEmail={sendingEmail}
+                sendEmailMsg={sendEmailMsg}
+              />
             ) : null}
 
-            {/* Gate */}
-{!canShowFullAnalysis ? (
-  <LeadGate
-    theme="cyan-amber"
-    title="Recevoir mon rapport prêt relais"
-    subtitle="Budget de rachat, risque relais, points de vigilance et synthèse à conserver."
-    email={leadEmail}
-    setEmail={setLeadEmail}
-    consent={consentLokt}
-    setConsent={setConsentLokt}
-    contactConsent={consentContact}
-    setContactConsent={setConsentContact}
-    unlocking={unlocking || sendingEmail}
-    unlockMsg={unlockMsg}
-    onUnlock={handleUnlock}
-    sendByEmail={sendByEmail}
-    setSendByEmail={setSendByEmail}
-    sendingEmail={sendingEmail}
-    sendEmailMsg={sendEmailMsg}
-  />
-) : null}
+            {/* Résultats débloqués */}
+            {canShowFullAnalysis ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-4">
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Montant du relais</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resume!.montantRelais)}</p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">Valeur × % − CRD.</p>
+                  </div>
 
-            {/* Plan d’action lokt */}
-            {canShowFullAnalysis && actionItems.length > 0 ? (
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Mensualité max</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resume!.mensualiteNouveauMax)}</p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">Selon endettement cible.</p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Capital nouveau prêt</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resume!.capitalNouveau)}</p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">
+                      {dureeNouveau} ans à ~{formatPct(tauxNouveau)}.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5">
+                    <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Budget max</p>
+                    <p className="mt-1 text-sm font-semibold text-amber-700">{formatEuro(resume!.budgetMax)}</p>
+                    <p className="mt-1 text-[0.7rem] text-slate-500">Relais + nouveau prêt + apport.</p>
+                  </div>
+                </div>
+
+                {/* Score lokt.fr™ */}
+                {bankabilityScore !== null ? (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                    <div className="rounded-xl bg-slate-900 text-white px-3 py-2.5 sm:col-span-2">
+                      <p className="text-[0.65rem] uppercase tracking-[0.14em] text-cyan-200">{loktScoreLabel}</p>
+                      <div className="mt-1 flex items-baseline gap-2">
+                        <p className={`text-2xl font-semibold ${scoreColor}`}>{bankabilityScore}/100</p>
+                        <p className="text-[0.85rem] font-medium text-white">{bankabilityLabel}</p>
+                      </div>
+                      <p className="mt-1 text-[0.75rem] text-slate-100">{bankabilityComment}</p>
+                    </div>
+
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 sm:col-span-2">
+                      <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Comment c'est calculé</p>
+                      <p className="mt-1 text-[0.75rem] text-slate-700">
+                        Le score se base sur l'endettement projeté <span className="font-semibold">avec une marge de prudence</span>{" "}
+                        (on retient ~{Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de la mensualité disponible), pour éviter un score
+                        "bloqué" au seuil cible.
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* Plan d'action lokt */}
+                {actionItems.length > 0 ? (
               <div className="mt-4 space-y-2">
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
                   Plan d&apos;action lokt
@@ -1505,6 +1507,8 @@ const renderAnalysisBlocks = (text: string) => {
                   );
                 })}
               </div>
+                ) : null}
+              </>
             ) : null}
           </>
         )}
