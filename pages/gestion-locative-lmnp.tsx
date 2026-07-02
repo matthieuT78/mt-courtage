@@ -634,6 +634,31 @@ export default function GestionLocativeLmnpPage() {
         </div>
       </div>
 
+      {/* Guides pratiques — maillage pages non indexées */}
+      <div className="border-t border-slate-200 bg-slate-50 py-10">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-400">Guides pratiques</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <a href="/inventaire-location-meublee" className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 text-lg">📋</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Inventaire de location meublée</p>
+                <p className="mt-0.5 text-[0.8rem] text-slate-500">Checklist du mobilier obligatoire, état des équipements, photos et signature à l'entrée.</p>
+                <p className="mt-2 text-[0.78rem] font-semibold text-indigo-600">Préparer l'inventaire →</p>
+              </div>
+            </a>
+            <a href="/guides/choisir-bail-vide-meuble-mobilite" className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 text-lg">📄</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Choisir entre bail vide, meublé ou mobilité</p>
+                <p className="mt-0.5 text-[0.8rem] text-slate-500">Comparatif des 4 contrats possibles : fiscalité, durée et conditions d'application.</p>
+                <p className="mt-2 text-[0.78rem] font-semibold text-indigo-600">Comparer les baux →</p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Articles liés — maillage blog */}
       <div className="border-t border-slate-100 bg-white py-10">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">

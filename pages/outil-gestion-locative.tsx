@@ -591,6 +591,7 @@ export default function OutilGestionLocativePage() {
                   { label: "Loyer impayé : que faire étape par étape ?", href: "/blog/loyer-impaye-que-faire" },
                   { label: "LMNP vs location nue : quelle fiscalité ?", href: "/blog/lmnp-vs-location-nue" },
                   { label: "Comparer les logiciels de gestion locative", href: "/comparatif-logiciel-gestion-locative" },
+                  { label: "Gestion locative pour propriétaire particulier", href: "/gestion-locative-proprietaire-particulier" },
                   { label: "Calculer la rentabilité locative", href: "/investissement" },
                   { label: "Investissement locatif : le guide complet", href: "/investissement-locatif" },
                 ].map(({ label, href }) => (

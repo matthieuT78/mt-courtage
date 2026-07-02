@@ -20,6 +20,15 @@ const blogEntries = fs.existsSync(BLOG_DIR)
 
 const seoLandingSource = fs.readFileSync(path.join(process.cwd(), "lib/seoLandingPages.ts"), "utf8");
 const seoLandingPages = Array.from(seoLandingSource.matchAll(/slug:\s*"([^"]+)"/g), (match) => `/${match[1]}`);
+const seoLandingDate = seoLandingSource.match(/const today\s*=\s*"([^"]+)"/)?.[1] || null;
+
+const guidesSource = fs.readFileSync(path.join(process.cwd(), "lib/guides.ts"), "utf8");
+const guideDates = new Map();
+for (const chunk of guidesSource.split(/(?=\s{4}slug:)/)) {
+  const slugMatch = chunk.match(/slug:\s*"([^"]+)"/);
+  const dateMatch = chunk.match(/updatedAt:\s*"([^"]+)"/);
+  if (slugMatch && dateMatch) guideDates.set(slugMatch[1], dateMatch[1]);
+}
 
 const villesSource = fs.readFileSync(path.join(process.cwd(), "lib/villesRendement.ts"), "utf8");
 const villesSlugs = Array.from(villesSource.matchAll(/slug:\s*"([^"]+)"/g), (match) => match[1]);
@@ -94,8 +103,13 @@ function sitemapMeta(pathname) {
 }
 
 // pages statiques V1
-for (const p of staticPagesV1) urls.push({ loc: `${siteUrl}${p}`, pathname: p });
-for (const slug of GUIDE_SLUGS) urls.push({ loc: `${siteUrl}/guides/${slug}`, pathname: `/guides/${slug}` });
+for (const p of staticPagesV1) {
+  const date = seoLandingPages.includes(p) && seoLandingDate ? seoLandingDate : null;
+  urls.push({ loc: `${siteUrl}${p}`, pathname: p, date });
+}
+for (const slug of GUIDE_SLUGS) {
+  urls.push({ loc: `${siteUrl}/guides/${slug}`, pathname: `/guides/${slug}`, date: guideDates.get(slug) || null });
+}
 
 // Pages villes rendement locatif
 urls.push({ loc: `${siteUrl}/rendement-locatif`, pathname: "/rendement-locatif" });

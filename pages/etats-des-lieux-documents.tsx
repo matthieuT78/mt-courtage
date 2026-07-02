@@ -316,6 +316,22 @@ export default function EtatsDesLieuxDocumentsPage() {
             </div>
           </section>
 
+          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Guides pratiques</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {[
+                { href: "/guides/arrivee-locataire-remise-cles", cat: "Entrée locataire", title: "Arrivée du locataire et remise des clés : checklist bailleur" },
+                { href: "/guides/dpe-diagnostics-location", cat: "Diagnostics", title: "DPE et diagnostics locatifs : le dossier à remettre au locataire" },
+                { href: "/guides/depart-locataire-etat-des-lieux-sortie", cat: "Fin de bail", title: "Départ du locataire : état des lieux de sortie et restitution" },
+              ].map((a) => (
+                <a key={a.href} href={a.href} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-emerald-200 hover:bg-emerald-50">
+                  <span className="text-[0.68rem] font-semibold text-emerald-600">{a.cat}</span>
+                  <p className="mt-1 text-sm font-semibold leading-snug text-slate-900 group-hover:text-emerald-700">{a.title}</p>
+                </a>
+              ))}
+            </div>
+          </section>
+
           <section className="rounded-[1.75rem] border border-emerald-200 bg-emerald-800 p-6 text-white shadow-sm sm:p-8">
             <div className="grid gap-6 lg:grid-cols-[1fr,360px] lg:items-center">
               <div>

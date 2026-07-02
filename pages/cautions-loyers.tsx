@@ -314,6 +314,22 @@ export default function CautionsLoyersPage() {
             </div>
           </section>
 
+          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Guides pratiques</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {[
+                { href: "/depot-garantie-location-meublee", cat: "Location meublée", title: "Dépôt de garantie en location meublée : restitution et retenues" },
+                { href: "/guides/depart-locataire-etat-des-lieux-sortie", cat: "Fin de bail", title: "Départ du locataire et état des lieux de sortie" },
+                { href: "/guides/depot-garantie-restitution-retenues", cat: "Fin de bail", title: "Restitution du dépôt de garantie : retenues possibles" },
+              ].map((a) => (
+                <a key={a.href} href={a.href} className="group rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-cyan-200 hover:bg-cyan-50">
+                  <span className="text-[0.68rem] font-semibold text-cyan-600">{a.cat}</span>
+                  <p className="mt-1 text-sm font-semibold leading-snug text-slate-900 group-hover:text-cyan-700">{a.title}</p>
+                </a>
+              ))}
+            </div>
+          </section>
+
           <section className="rounded-[1.75rem] border border-cyan-200 bg-cyan-800 p-6 text-white shadow-sm sm:p-8">
             <div className="grid gap-6 lg:grid-cols-[1fr,360px] lg:items-center">
               <div>
