@@ -103,6 +103,7 @@ export default function MonCompteIndexPage() {
   const [billCountry, setBillCountry] = useState("FR");
 
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [refCode, setRefCode] = useState("");
 
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -115,6 +116,14 @@ export default function MonCompteIndexPage() {
     setMode(m === "register" ? "register" : "login");
     setRedirectPath(safeRedirect(router.query.redirect));
   }, [router.isReady, router.query.mode, router.query.redirect]);
+
+  // Pré-remplir le code parrainage depuis localStorage (capturé par _app.tsx via ?ref=)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("lokt:ref") || "";
+      if (stored) setRefCode(stored);
+    } catch {}
+  }, []);
 
   // Si une page a explicitement demandé un redirect, on l'honore. Sinon /mon-compte devient la vue d'ensemble.
   // (Le cas redirectPath === "/" sans login explicite reste la vue compte connecté — pas de redirect auto.)
@@ -169,11 +178,13 @@ export default function MonCompteIndexPage() {
 
     // Code de parrainage déterministe basé sur l'UUID
     const referralCode = userId.replace(/-/g, "").slice(0, 8).toUpperCase();
-    // Récupère le code parrain capturé à l'arrivée sur le site
+    // Code parrain : champ du formulaire en priorité, sinon localStorage
+    const refInput = refCode.trim().toUpperCase();
     let referredBy: string | null = null;
     try {
       const stored = localStorage.getItem("lokt:ref") || "";
-      if (stored && stored !== referralCode) referredBy = stored;
+      const candidate = refInput || stored;
+      if (candidate && candidate !== referralCode) referredBy = candidate;
       localStorage.removeItem("lokt:ref");
     } catch {}
 
@@ -850,6 +861,26 @@ export default function MonCompteIndexPage() {
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                         />
                       </div>
+                    </div>
+
+                    <div className="mt-3 space-y-1">
+                      <label htmlFor="reg_ref_code" className="text-xs text-slate-700">
+                        Code de parrainage{" "}
+                        <span className="text-slate-400">(optionnel)</span>
+                      </label>
+                      <input
+                        id="reg_ref_code"
+                        name="ref_code"
+                        type="text"
+                        value={refCode}
+                        onChange={(e) => setRefCode(e.target.value.toUpperCase())}
+                        placeholder="Ex : AB12CD34"
+                        maxLength={12}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400"
+                      />
+                      {refCode ? (
+                        <p className="text-xs text-emerald-600">Code de parrainage appliqué — vous bénéficierez de 3 mois à −50 % après souscription.</p>
+                      ) : null}
                     </div>
 
                     <div className="mt-3">
