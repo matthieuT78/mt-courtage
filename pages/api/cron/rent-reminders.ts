@@ -71,38 +71,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (error) return res.status(500).json({ error: error.message });
 
     const now = new Date();
+    const debug = String(req.query.debug || "") === "1";
+    const force = String(req.query.force || "") === "1";
     let sent = 0;
     let skipped = 0;
+    const debugResults: any[] = [];
 
     for (const l of leases || []) {
       const canUseAutomation = await userCanUseReceiptAutomation(String(l.user_id || ""));
-      if (!canUseAutomation) { skipped++; continue; }
+      if (!canUseAutomation) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "no_automation_plan" }); continue; }
 
       const tz = l.timezone || "Europe/Paris";
       const today = yyyymmddInTz(now, tz);
-      const period = yyyymmInTz(now, tz); // YYYY-MM (mois courant local)
+      const period = yyyymmInTz(now, tz);
 
-      // Évite double envoi
-      if (l.last_auto_sent_period === period) { skipped++; continue; }
+      if (!force && l.last_auto_sent_period === period) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "already_sent_this_period", last_auto_sent_period: l.last_auto_sent_period }); continue; }
 
-      // compute (payment_day + 2) dans le mois courant local
       const [y, m] = period.split("-").map(Number);
       const day = Number(l.payment_day || 0);
-      if (!day || day < 1 || day > 31) { skipped++; continue; }
+      if (!day || day < 1 || day > 31) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "no_payment_day", payment_day: l.payment_day }); continue; }
 
-      // Date cible en local (approx via Date.UTC puis format dans tz)
-      // On prend y/m/day et ajoute 2 jours (UTC), puis compare sur rendu tz
       const targetUtc = new Date(Date.UTC(y, m - 1, day));
       targetUtc.setUTCDate(targetUtc.getUTCDate() + 1);
       const targetLocal = yyyymmddInTz(targetUtc, tz);
 
-      if (today !== targetLocal) { skipped++; continue; }
+      if (today !== targetLocal) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "wrong_date", today, targetLocal, payment_day: day }); continue; }
 
-      const to = l.reminder_email; // email propriétaire pour confirmation
-      if (!to) { skipped++; continue; }
+      const to = l.reminder_email;
+      if (!to) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "no_reminder_email" }); continue; }
 
       const rentPeriod = getLeaseRentPeriod(l, period);
-      if (!rentPeriod) { skipped++; continue; }
+      if (!rentPeriod) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "no_rent_period" }); continue; }
       const { periodStart, periodEnd } = rentPeriod;
 
       // 2) créer token one-shot
@@ -161,9 +160,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .eq("id", l.id);
 
       sent++;
+      if (debug) debugResults.push({ leaseId: l.id, sent: true, to });
     }
 
-    return res.status(200).json({ ok: true, sent, skipped });
+    return res.status(200).json({ ok: true, sent, skipped, ...(debug ? { debug: debugResults } : {}) });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || "error" });
   }
