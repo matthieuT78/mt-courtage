@@ -1404,7 +1404,11 @@ export function SectionOutils({
   plan?: Plan;
   onRefresh?: () => Promise<void> | void;
 }) {
-  const [activeTool, setActiveTool] = useState<ToolKey | null>(null);
+  const [activeTool, setActiveToolRaw] = useState<ToolKey | null>(null);
+  const setActiveTool = (tool: ToolKey | null) => {
+    setActiveToolRaw(tool);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   const [financeDraft, setFinanceDraft] = useState<FinanceTransactionDraft | null>(null);
   const [financeNotice, setFinanceNotice] = useState("");
   const [creatingWaterInvoice, setCreatingWaterInvoice] = useState(false);
