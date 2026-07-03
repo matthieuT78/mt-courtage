@@ -5,6 +5,7 @@ import {
   ArrowTrendingUpIcon,
   BanknotesIcon,
   BookOpenIcon,
+  CurrencyEuroIcon,
   BuildingOffice2Icon,
   CalculatorIcon,
   ChartBarIcon,
@@ -212,6 +213,15 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                 aria-label="Guides du bailleur"
               >
                 <BookOpenIcon className="h-5 w-5" />
+              </Link>
+
+              <Link
+                href="/tarifs"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:h-10 sm:w-10 md:hidden"
+                title="Tarifs"
+                aria-label="Tarifs"
+              >
+                <CurrencyEuroIcon className="h-5 w-5" />
               </Link>
 
               {authChecking ? (
