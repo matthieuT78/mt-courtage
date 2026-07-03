@@ -91,10 +91,16 @@ export default function AppFooter() {
           Contact
         </a>
       </div>
-      <div className="mt-3 text-[0.65rem] text-slate-400">
-        Partenaires :{" "}
-        <a href="https://outils-immo.fr" target="_blank" rel="noopener" className="underline hover:text-slate-500">
-          outils.immo
+      <div className="mt-4">
+        <a
+          href="https://www.outils-immo.fr/outils/lokt-fr/?utm_source=badge&utm_medium=website"
+          target="_blank"
+          rel="noopener"
+          style={{ display: "inline-block", textDecoration: "none", fontFamily: "Inter,-apple-system,BlinkMacSystemFont,sans-serif", background: "linear-gradient(135deg,#4f46e5,#7c3aed)", color: "#fff", padding: "10px 16px", borderRadius: "10px", lineHeight: 1.5, boxShadow: "0 4px 12px rgba(79,70,229,0.3)" }}
+        >
+          <span style={{ display: "block", fontSize: "11px" }}>
+            <strong>lokt.fr</strong> est recommandé par <strong>outils-immo.fr</strong>
+          </span>
         </a>
       </div>
     </footer>
