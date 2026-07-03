@@ -52,6 +52,7 @@ export function SidebarNav({
   onContactClick,
   searchItems,
   searchInputRef,
+  navBadges,
   className = "",
 }: {
   active: LandlordSectionKey;
@@ -66,6 +67,7 @@ export function SidebarNav({
   onContactClick?: () => void;
   searchItems?: SearchItem[];
   searchInputRef?: React.RefObject<HTMLInputElement>;
+  navBadges?: Partial<Record<LandlordSectionKey, number>>;
   className?: string;
 }) {
   const [query, setQuery] = useState("");
@@ -109,15 +111,23 @@ export function SidebarNav({
   // 🎨 Brand lokt.fr
   const brandBg = "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]";
   const brandText = "text-white";
-  const items: Item[] = getLandlordNavItems(navOrder).map((item) => ({
-    ...item,
-    badge:
-      item.key === "dashboard" ? (
-        <Pill tone={healthScore >= 80 ? "emerald" : healthScore >= 60 ? "amber" : "red"}>
-          Santé {healthScore}
-        </Pill>
-      ) : undefined,
-  }));
+  const items: Item[] = getLandlordNavItems(navOrder).map((item) => {
+    const count = navBadges?.[item.key];
+    const countBadge = count && count > 0 ? (
+      <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#635bff] px-1 text-[0.6rem] font-bold text-white">
+        {count > 99 ? "99+" : count}
+      </span>
+    ) : undefined;
+    return {
+      ...item,
+      badge:
+        item.key === "dashboard" ? (
+          <Pill tone={healthScore >= 80 ? "emerald" : healthScore >= 60 ? "amber" : "red"}>
+            Santé {healthScore}
+          </Pill>
+        ) : countBadge,
+    };
+  });
 
   const go = (e: React.SyntheticEvent, key: LandlordSectionKey) => {
     (e as any).preventDefault?.();

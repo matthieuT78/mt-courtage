@@ -489,6 +489,14 @@ export function SectionLocataires({
 
     try {
       const exitReport = await getExitReportForLease(activeLease.id);
+      const edlReady = ["ready", "signed", "archived"].includes((exitReport?.status || "").toLowerCase());
+
+      // Resume at the correct step instead of always restarting at 1
+      let startStep: 1 | 2 | 3 = 1;
+      if (activeLease.end_date) {
+        startStep = edlReady ? 3 : 2;
+      }
+
       setArchiveWorkflow({
         tenantId,
         leaseId: activeLease.id,
@@ -496,10 +504,25 @@ export function SectionLocataires({
         exitReport,
         edlConfirmed: false,
       });
-      setDepartureStep(1);
+      setDepartureStep(startStep);
     } catch (e: any) {
       console.error("[archiveTenant] exit workflow error:", e);
       setErr(e?.message || "Impossible de préparer le workflow de sortie.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshExitReport = async () => {
+    if (!archiveWorkflow) return;
+    setLoading(true);
+    try {
+      const exitReport = await getExitReportForLease(archiveWorkflow.leaseId);
+      const edlReady = ["ready", "signed", "archived"].includes((exitReport?.status || "").toLowerCase());
+      setArchiveWorkflow((wf) => (wf ? { ...wf, exitReport } : wf));
+      if (edlReady) setDepartureStep(3);
+    } catch (e: any) {
+      setErr(e?.message || "Erreur lors de la vérification.");
     } finally {
       setLoading(false);
     }
@@ -1311,19 +1334,33 @@ export function SectionLocataires({
                 <>
                   <h4 className="text-base font-semibold text-slate-950">État des lieux de sortie</h4>
                   <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Prépare le document dans lokt.fr ou importe le PDF transmis par l’agence. Tu pourras reprendre cet assistant ensuite.
+                    Prépare le document dans lokt.fr ou importe le PDF transmis par l’agence. Reviens ensuite sur cette fenêtre pour continuer.
                   </p>
                   <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <p className="text-xs font-semibold text-slate-900">
-                      {departureEdlReady
-                        ? "État des lieux finalisé"
-                        : archiveWorkflow.exitReport
-                        ? `Document ${archiveWorkflow.exitReport.status || "en cours"}`
-                        : "Aucun état des lieux de sortie rattaché"}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-600">
-                      {departureEdlReady ? "Le document est prêt pour clôturer le bail." : "La sortie peut rester planifiée pendant la préparation du document."}
-                    </p>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-900">
+                          {departureEdlReady
+                            ? "État des lieux finalisé ✓"
+                            : archiveWorkflow.exitReport
+                            ? `Document ${archiveWorkflow.exitReport.status || "en cours"}`
+                            : "Aucun état des lieux de sortie rattaché"}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          {departureEdlReady ? "Le document est prêt pour clôturer le bail." : "La sortie peut rester planifiée pendant la préparation du document."}
+                        </p>
+                      </div>
+                      {!departureEdlReady && (
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={refreshExitReport}
+                          className="shrink-0 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          {loading ? "…" : "Vérifier"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
                     <button type="button" onClick={() => setDepartureStep(1)} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
@@ -1338,7 +1375,7 @@ export function SectionLocataires({
                         }}
                         className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                       >
-                        Ouvrir les états des lieux
+                        Aller aux états des lieux
                       </button>
                       <button type="button" onClick={() => setDepartureStep(3)} className="rounded-lg bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
                         Continuer

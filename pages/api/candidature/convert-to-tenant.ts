@@ -23,6 +23,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if ((candidature.rental_listings as any)?.user_id !== auth.userId) {
     return res.status(403).json({ error: "Non autorisé." });
   }
+
+  // Si déjà convertie : retrouver le locataire et retourner sans recréer
+  if (candidature.status === "converted") {
+    const existing = candidature.email
+      ? (await supabaseAdmin.from("tenants").select("id").eq("user_id", auth.userId).eq("email", candidature.email).maybeSingle()).data
+      : null;
+    return res.status(200).json({ ok: true, tenant: existing, already_exists: true });
+  }
+
   if (candidature.status !== "accepted") {
     return res.status(409).json({ error: "Seule une candidature retenue peut être convertie." });
   }
@@ -37,12 +46,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .maybeSingle();
 
     if (existing) {
-      return res.status(200).json({
-        ok: true,
-        tenant: existing,
-        already_exists: true,
-        message: "Un locataire avec cet email existe déjà.",
-      });
+      await supabaseAdmin
+        .from("candidatures")
+        .update({ status: "converted" })
+        .eq("id", candidature_id);
+      return res.status(200).json({ ok: true, tenant: existing, already_exists: true });
     }
   }
 
@@ -60,6 +68,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
+
+  // Marquer la candidature comme convertie
+  await supabaseAdmin
+    .from("candidatures")
+    .update({ status: "converted" })
+    .eq("id", candidature_id);
 
   return res.status(200).json({ ok: true, tenant, already_exists: false });
 }

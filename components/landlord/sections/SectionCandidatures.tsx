@@ -27,6 +27,7 @@ import type { LandlordSectionKey } from "../navigation";
 type Props = {
   userId: string;
   onNavigate?: (section: LandlordSectionKey) => void;
+  onNavigateDeep?: (section: LandlordSectionKey, link: { openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string }) => void;
   onRefresh?: () => void;
 };
 
@@ -65,6 +66,7 @@ type Listing = {
   income_ratio: number;
   status: string;
   created_at: string;
+  property_id?: string | null;
   candidatures: Candidature[];
 };
 
@@ -73,6 +75,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   accepted: { label: "Retenu", color: "bg-emerald-100 text-emerald-800" },
   rejected: { label: "Refusé", color: "bg-red-100 text-red-700" },
   waitlist: { label: "Liste d'attente", color: "bg-slate-100 text-slate-600" },
+  converted: { label: "Converti en locataire", color: "bg-indigo-100 text-indigo-700" },
 };
 
 const SITUATION_LABELS: Record<string, string> = {
@@ -386,26 +389,16 @@ function WorkflowOnboarding({ onStart }: { onStart: () => void }) {
       </div>
 
       {/* Footer */}
-      <div className="flex flex-col items-start gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          {[
-            { icon: ShieldCheckIcon, label: "RGPD — données supprimées automatiquement" },
-            { icon: CheckCircleIcon, label: "Scoring transparent, sans IA" },
-          ].map(({ icon: Icon, label }) => (
-            <span key={label} className="inline-flex items-center gap-1.5 text-xs text-slate-400">
-              <Icon className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-              {label}
-            </span>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={onStart}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#635bff] px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-        >
-          <PlusIcon className="h-4 w-4" />
-          Créer ma première annonce
-        </button>
+      <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4">
+        {[
+          { icon: ShieldCheckIcon, label: "RGPD — données supprimées automatiquement" },
+          { icon: CheckCircleIcon, label: "Scoring transparent, sans IA" },
+        ].map(({ icon: Icon, label }) => (
+          <span key={label} className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+            <Icon className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+            {label}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -413,7 +406,7 @@ function WorkflowOnboarding({ onStart }: { onStart: () => void }) {
 
 // ── SectionCandidatures ───────────────────────────────────────────────────────
 
-export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
+export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefresh }: Props) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeListing, setActiveListing] = useState<string | null>(null);
@@ -427,29 +420,54 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
   const [closeConfirm, setCloseConfirm] = useState<string | null>(null);
   const [closeResult, setCloseResult] = useState<{ listingId: string; deleted: number } | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
-  const [convertResult, setConvertResult] = useState<{ candidatureId: string; tenantName: string; alreadyExists: boolean } | null>(null);
+  const [convertResult, setConvertResult] = useState<{ candidatureId: string; tenantName: string; alreadyExists: boolean; tenantId: string | null; propertyId: string | null } | null>(null);
 
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [expandedArchive, setExpandedArchive] = useState<string | null>(null);
+  const [activeLeasePropIds, setActiveLeasePropIds] = useState<Set<string>>(new Set());
 
   const [form, setForm] = useState({
     title: "", address: "", rent_amount: "", charges_amount: "",
-    property_type: "vide", surface_m2: "", income_ratio: "3",
+    property_type: "vide", surface_m2: "", income_ratio: "3", property_id: "",
   });
   const setF = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  type PropertyLite = { id: string; label: string | null; address_line1: string | null; postal_code: string | null; city: string | null; surface_m2: number | null };
+  const [properties, setProperties] = useState<PropertyLite[]>([]);
+  const [vacantIds, setVacantIds] = useState<Set<string>>(new Set());
+  const [propsLoaded, setPropsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!showCreate || propsLoaded || !supabase) return;
+    (async () => {
+      const [propsRes, leasesRes] = await Promise.all([
+        supabase.from("properties").select("id,label,address_line1,postal_code,city,surface_m2").eq("user_id", userId).order("created_at", { ascending: false }),
+        supabase.from("leases").select("property_id").eq("user_id", userId).eq("status", "active"),
+      ]);
+      const occupied = new Set<string>((leasesRes.data || []).map((l: any) => l.property_id).filter(Boolean));
+      setVacantIds(new Set((propsRes.data || []).map((p: any) => p.id).filter((id: string) => !occupied.has(id))));
+      setProperties(propsRes.data || []);
+      setPropsLoaded(true);
+    })();
+  }, [showCreate]);
 
   async function load() {
     try {
       const headers = await getHeaders();
-      const res = await fetch("/api/candidature/list", { headers });
-      const json = await res.json();
-      if (!res.ok) {
-        setLoadErr(json.error ?? "Erreur lors du chargement.");
-      } else if (json.listings) {
-        setListings(json.listings);
-        const firstActive = json.listings.find((l: Listing) => l.status === "active");
+      const [listRes, leasesRes] = await Promise.all([
+        fetch("/api/candidature/list", { headers }).then(async (r) => ({ ok: r.ok, data: await r.json() })),
+        supabase
+          ? supabase.from("leases").select("property_id").eq("user_id", userId).in("status", ["active", "signed"])
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      if (!listRes.ok) {
+        setLoadErr(listRes.data.error ?? "Erreur lors du chargement.");
+      } else if (listRes.data.listings) {
+        setListings(listRes.data.listings);
+        const firstActive = listRes.data.listings.find((l: Listing) => l.status === "active");
         if (!activeListing && firstActive) setActiveListing(firstActive.id);
       }
+      setActiveLeasePropIds(new Set<string>((leasesRes.data || []).map((l: any) => l.property_id).filter(Boolean)));
     } catch (e) {
       setLoadErr(e instanceof Error ? e.message : "Erreur inattendue.");
     } finally {
@@ -458,6 +476,20 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
   }
 
   useEffect(() => { load(); }, []);
+
+  function selectProperty(p: PropertyLite | null) {
+    if (!p) {
+      setForm((f) => ({ ...f, property_id: "", address: "", surface_m2: "" }));
+      return;
+    }
+    const parts = [p.address_line1, [p.postal_code, p.city].filter(Boolean).join(" ")].filter(Boolean);
+    setForm((f) => ({
+      ...f,
+      property_id: p.id,
+      address: parts.join(", "),
+      surface_m2: p.surface_m2 != null ? String(p.surface_m2) : f.surface_m2,
+    }));
+  }
 
   async function createListing() {
     if (!form.title || !form.rent_amount) { setCreateErr("Titre et loyer requis."); return; }
@@ -473,13 +505,14 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
         charges_amount: parseFloat(form.charges_amount || "0"),
         surface_m2: form.surface_m2 ? parseFloat(form.surface_m2) : null,
         income_ratio: parseFloat(form.income_ratio || "3"),
+        property_id: form.property_id || null,
       }),
     });
     const json = await res.json();
     if (!res.ok) { setCreateErr(json.error); setCreating(false); return; }
     setShowCreate(false);
     setCreating(false);
-    setForm({ title: "", address: "", rent_amount: "", charges_amount: "", property_type: "vide", surface_m2: "", income_ratio: "3" });
+    setForm({ title: "", address: "", rent_amount: "", charges_amount: "", property_type: "vide", surface_m2: "", income_ratio: "3", property_id: "" });
     await load();
     setActiveListing(json.listing.id);
   }
@@ -500,7 +533,7 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
     }
   }
 
-  async function convertToTenant(candidature_id: string, tenantName: string) {
+  async function convertToTenant(candidature_id: string, tenantName: string, propertyId?: string | null) {
     setConvertingId(candidature_id);
     const headers = await getHeaders();
     const res = await fetch("/api/candidature/convert-to-tenant", {
@@ -510,8 +543,23 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
     const json = await res.json();
     setConvertingId(null);
     if (res.ok) {
-      setConvertResult({ candidatureId: candidature_id, tenantName, alreadyExists: json.already_exists });
+      setConvertResult({ candidatureId: candidature_id, tenantName, alreadyExists: json.already_exists, tenantId: json.tenant?.id ?? null, propertyId: propertyId ?? null });
       onRefresh?.();
+      await load();
+    }
+  }
+
+  function navigateToBailCreate(c: Candidature, propertyId?: string | null) {
+    const tid = convertResult?.candidatureId === c.id ? convertResult?.tenantId ?? undefined : undefined;
+    if (onNavigateDeep) {
+      onNavigateDeep("baux", {
+        openCreate: true,
+        prefillPropertyId: propertyId ?? undefined,
+        prefillTenantId: tid,
+        prefillCandidatureEmail: c.email ?? undefined,
+      });
+    } else {
+      onNavigate?.("baux");
     }
   }
 
@@ -538,6 +586,7 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
   const closedListings = listings.filter((l) => l.status !== "active");
   const currentListing = listings.find((l) => l.id === activeListing);
   const isClosed = currentListing?.status !== "active";
+  const hasConverted = currentListing?.candidatures.some((c) => c.status === "converted") ?? false;
   const submitted = currentListing?.candidatures.filter((c) => c.status === "submitted") ?? [];
   const others = currentListing?.candidatures.filter((c) => c.status !== "submitted") ?? [];
 
@@ -583,6 +632,41 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
           <h2 className="text-base font-semibold text-slate-950">Créer une annonce de candidature</h2>
           {createErr && <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{createErr}</p>}
+
+          {/* Property picker */}
+          {properties.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-700">Bien concerné</p>
+              <div className="flex flex-wrap gap-2">
+                {[...properties].sort((a, b) => (vacantIds.has(b.id) ? 1 : 0) - (vacantIds.has(a.id) ? 1 : 0)).map((p) => {
+                  const vacant = vacantIds.has(p.id);
+                  const selected = form.property_id === p.id;
+                  const name = p.label || p.city || "Bien";
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => selectProperty(selected ? null : p)}
+                      className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+                        selected
+                          ? "border-[#635bff] bg-[#635bff]/10 text-[#635bff]"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      {name}
+                      {vacant && (
+                        <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[0.6rem] font-bold text-emerald-700">Vacant</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {form.property_id && (
+                <p className="text-[0.68rem] text-slate-400">Adresse et surface pré-remplies depuis la fiche bien.</p>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1 text-xs font-semibold text-slate-700 sm:col-span-2">
               Titre de l'annonce
@@ -622,7 +706,7 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
             </label>
           </div>
           <div className="flex gap-3">
-            <button type="button" onClick={() => setShowCreate(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+            <button type="button" onClick={() => { setShowCreate(false); setForm({ title: "", address: "", rent_amount: "", charges_amount: "", property_type: "vide", surface_m2: "", income_ratio: "3", property_id: "" }); setPropsLoaded(false); }} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
               Annuler
             </button>
             <button type="button" onClick={createListing} disabled={creating} className="rounded-xl bg-[#635bff] px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">
@@ -700,14 +784,17 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
                         ? `${convertResult.tenantName} existe déjà dans vos locataires`
                         : `${convertResult.tenantName} ajouté à vos locataires`}
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5">Créez maintenant le bail pour finaliser la location.</p>
-                    <button
-                      type="button"
-                      onClick={() => { setConvertResult(null); onNavigate?.("baux"); }}
-                      className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#635bff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
-                    >
-                      Créer le bail <ArrowRightIcon className="h-3.5 w-3.5" />
-                    </button>
+                    <p className="text-xs text-slate-500 mt-0.5">Utilisez le bouton ci-dessous pour créer le bail, ou clôturez l'annonce.</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setConvertResult(null); setCloseConfirm(currentListing?.id ?? null); }}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                      >
+                        <LockClosedIcon className="h-3.5 w-3.5" />
+                        Clôturer l'annonce
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -754,21 +841,23 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
                       <span className="ml-2">· Les données des candidats non retenus ont été supprimées (RGPD).</span>
                     </div>
                   </div>
-                  {others.filter((c) => c.status === "accepted").length > 0 && (
+                  {others.filter((c) => c.status === "accepted" || c.status === "converted").length > 0 && (
                     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                       <div className="border-b border-slate-100 px-5 py-3">
                         <p className="text-sm font-semibold text-slate-950">Candidat retenu</p>
                       </div>
                       <div className="divide-y divide-slate-100">
-                        {others.filter((c) => c.status === "accepted").map((c) => (
+                        {others.filter((c) => c.status === "accepted" || c.status === "converted").map((c) => (
                           <CandidatureRow
                             key={c.id}
                             c={c}
                             listing={currentListing}
                             updating={false}
                             converting={convertingId === c.id}
+                            hasBail={!!(currentListing.property_id && activeLeasePropIds.has(currentListing.property_id))}
                             onUpdateStatus={() => {}}
-                            onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim())}
+                            onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
+                            onCreateBail={() => navigateToBailCreate(c, currentListing.property_id)}
                           />
                         ))}
                       </div>
@@ -819,8 +908,10 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
                               listing={currentListing}
                               updating={updatingId === c.id}
                               converting={convertingId === c.id}
+                              hasBail={!!(currentListing.property_id && activeLeasePropIds.has(currentListing.property_id))}
                               onUpdateStatus={(status) => updateStatus(c.id, status)}
-                              onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim())}
+                              onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
+                              onCreateBail={() => navigateToBailCreate(c, currentListing.property_id)}
                             />
                           ))}
                       </div>
@@ -840,8 +931,10 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
                             listing={currentListing}
                             updating={updatingId === c.id}
                             converting={convertingId === c.id}
+                            hasBail={!!(currentListing.property_id && activeLeasePropIds.has(currentListing.property_id))}
                             onUpdateStatus={(status) => updateStatus(c.id, status)}
-                            onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim())}
+                            onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
+                            onCreateBail={() => navigateToBailCreate(c, currentListing.property_id)}
                           />
                         ))}
                       </div>
@@ -856,15 +949,34 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
                   )}
 
                   {closeConfirm !== currentListing.id && closeResult?.listingId !== currentListing.id && (
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setCloseConfirm(currentListing.id)}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition"
-                      >
-                        <LockClosedIcon className="h-3.5 w-3.5" />
-                        Clôturer l'annonce et supprimer les données
-                      </button>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      {hasConverted && !convertResult ? (
+                        <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex-1">
+                          <LockClosedIcon className="h-4 w-4 shrink-0 text-amber-600" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-amber-900">Candidat converti en locataire</p>
+                            <p className="text-xs text-amber-700">Pensez à clôturer l'annonce pour effacer les données des autres candidats (RGPD).</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setCloseConfirm(currentListing.id)}
+                            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition"
+                          >
+                            Clôturer
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="ml-auto">
+                          <button
+                            type="button"
+                            onClick={() => setCloseConfirm(currentListing.id)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition"
+                          >
+                            <LockClosedIcon className="h-3.5 w-3.5" />
+                            Clôturer l'annonce et supprimer les données
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
@@ -898,7 +1010,7 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
             <div className="divide-y divide-slate-100 border-t border-slate-100">
               {closedListings.map((l) => {
                 const isOpen = expandedArchive === l.id;
-                const accepted = l.candidatures.filter((c) => c.status === "accepted");
+                const accepted = l.candidatures.filter((c) => c.status === "accepted" || c.status === "converted");
                 return (
                   <div key={l.id}>
                     <button
@@ -947,8 +1059,10 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
                                   listing={l}
                                   updating={false}
                                   converting={convertingId === c.id}
+                                  hasBail={!!(l.property_id && activeLeasePropIds.has(l.property_id))}
                                   onUpdateStatus={() => {}}
-                                  onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim())}
+                                  onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), l.property_id)}
+                                  onCreateBail={() => navigateToBailCreate(c, l.property_id)}
                                 />
                               ))}
                             </div>
@@ -968,7 +1082,16 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
                               </p>
                               <button
                                 type="button"
-                                onClick={() => { setConvertResult(null); onNavigate?.("baux"); }}
+                                onClick={() => {
+                                  const tid = convertResult?.tenantId ?? undefined;
+                                  const pid = convertResult?.propertyId ?? undefined;
+                                  setConvertResult(null);
+                                  if (onNavigateDeep && (tid || pid)) {
+                                    onNavigateDeep("baux", { openCreate: true, prefillTenantId: tid, prefillPropertyId: pid });
+                                  } else {
+                                    onNavigate?.("baux");
+                                  }
+                                }}
                                 className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-[#635bff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
                               >
                                 Créer le bail <ArrowRightIcon className="h-3.5 w-3.5" />
@@ -991,13 +1114,15 @@ export function SectionCandidatures({ userId, onNavigate, onRefresh }: Props) {
 
 // ── CandidatureRow ────────────────────────────────────────────────────────────
 
-function CandidatureRow({ c, listing, updating, converting, onUpdateStatus, onConvert }: {
+function CandidatureRow({ c, listing, updating, converting, hasBail, onUpdateStatus, onConvert, onCreateBail }: {
   c: Candidature;
   listing: Listing;
   updating: boolean;
   converting: boolean;
+  hasBail?: boolean;
   onUpdateStatus: (status: string) => void;
   onConvert: () => void;
+  onCreateBail?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -1123,6 +1248,29 @@ function CandidatureRow({ c, listing, updating, converting, onUpdateStatus, onCo
           <UserPlusIcon className="h-3.5 w-3.5" />
           {converting ? "Création…" : "Convertir en locataire"}
         </button>
+      )}
+
+      {c.status === "converted" && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 text-xs text-indigo-600">
+            <UserPlusIcon className="h-3.5 w-3.5" />
+            Locataire créé
+          </span>
+          {hasBail ? (
+            <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600">
+              <CheckCircleIcon className="h-3.5 w-3.5" />
+              Bail créé
+            </span>
+          ) : onCreateBail && (
+            <button
+              type="button"
+              onClick={onCreateBail}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#635bff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              Créer le bail <ArrowRightIcon className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

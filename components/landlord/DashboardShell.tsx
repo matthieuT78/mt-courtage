@@ -251,6 +251,8 @@ export function DashboardShell(props: any) {
   const [active, setActive] = useState<LandlordSectionKey>("dashboard");
   const [messagingTenantId, setMessagingTenantId] = useState<string | null>(null);
   const [departureTenantId, setDepartureTenantId] = useState<string | null>(null);
+  const [submittedCandidaturesCount, setSubmittedCandidaturesCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [navOrder, setNavOrder] = useState<LandlordSectionKey[]>(DEFAULT_LANDLORD_NAV_ORDER);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -258,7 +260,7 @@ export function DashboardShell(props: any) {
   const [contactOpen, setContactOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const deepLinkKeyRef = useRef(0);
-  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl"; openCreate?: boolean } | null>(null);
+  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string } | null>(null);
 
   useEffect(() => {
     const updatePad = () => {
@@ -401,6 +403,41 @@ export function DashboardShell(props: any) {
   }, [router.query]);
 
   useEffect(() => {
+    if (!supabase || !userId) return;
+    (async () => {
+      const [listingsRes, threadsRes] = await Promise.all([
+        supabase.from("rental_listings").select("id").eq("user_id", userId).eq("status", "active"),
+        supabase.from("tenant_message_threads").select("id").eq("landlord_user_id", userId),
+      ]);
+
+      // Candidatures soumises
+      if (!listingsRes.data?.length) {
+        setSubmittedCandidaturesCount(0);
+      } else {
+        const { count } = await supabase
+          .from("candidatures")
+          .select("id", { count: "exact", head: true })
+          .in("listing_id", listingsRes.data.map((l: any) => l.id))
+          .eq("status", "submitted");
+        setSubmittedCandidaturesCount(count ?? 0);
+      }
+
+      // Messages non lus
+      if (!threadsRes.data?.length) {
+        setUnreadMessagesCount(0);
+      } else {
+        const { count } = await supabase
+          .from("tenant_messages")
+          .select("id", { count: "exact", head: true })
+          .in("thread_id", threadsRes.data.map((t: any) => t.id))
+          .eq("sender_role", "tenant")
+          .is("read_at", null);
+        setUnreadMessagesCount(count ?? 0);
+      }
+    })();
+  }, [userId]);
+
+  useEffect(() => {
     const tab = typeof router.query.tab === "string" ? router.query.tab : "";
     if (tab === "simulateurs") {
       setActive("outils");
@@ -415,10 +452,16 @@ export function DashboardShell(props: any) {
     setMobileMoreOpen(false);
   };
 
-  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" }) {
+  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string }) {
     setActive(section);
     setMobileMoreOpen(false);
-    setDeepLink(link ? { ...link, key: ++deepLinkKeyRef.current } : null);
+    let resolvedLink = link;
+    if (link?.prefillCandidatureEmail && !link?.prefillTenantId) {
+      const email = link.prefillCandidatureEmail.toLowerCase().trim();
+      const found = tenants.find((t) => (t.email || "").toLowerCase().trim() === email);
+      if (found) resolvedLink = { ...link, prefillTenantId: found.id };
+    }
+    setDeepLink(resolvedLink ? { ...resolvedLink, key: ++deepLinkKeyRef.current } : null);
   }
 
   // ── Index de recherche ────────────────────────────────────────────────────
@@ -583,6 +626,7 @@ export function DashboardShell(props: any) {
             userId={userId}
             onGo={setActive}
             onNavigateDeep={navigateDeep}
+            onRefresh={refresh}
             planLabel={planLabel}
             propertiesCount={properties.length}
             properties={properties}
@@ -700,7 +744,7 @@ export function DashboardShell(props: any) {
         return <SectionInventaire userId={userId} properties={properties} />;
 
       case "candidatures":
-        return <SectionCandidatures userId={userId} onNavigate={setActive} onRefresh={refresh} />;
+        return <SectionCandidatures userId={userId} onNavigate={setActive} onNavigateDeep={navigateDeep} onRefresh={refresh} />;
 
       case "documents":
         return <SectionDocumentsTemplates userId={userId} userEmail={userEmail} properties={properties} tenants={tenants} leases={leases} />;
@@ -805,6 +849,10 @@ export function DashboardShell(props: any) {
           onContactClick={() => setContactOpen(true)}
           searchItems={searchItems}
           searchInputRef={searchInputRef}
+          navBadges={{
+            ...(submittedCandidaturesCount > 0 ? { candidatures: submittedCandidaturesCount } : {}),
+            ...(unreadMessagesCount > 0 ? { messagerie: unreadMessagesCount } : {}),
+          }}
         />
       </aside>
 

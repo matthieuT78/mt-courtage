@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { sendEmailViaResend } from "../../../lib/mailer/resend";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -22,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Récupérer l'annonce
   const { data: listing } = await supabaseAdmin
     .from("rental_listings")
-    .select("id, status")
+    .select("id, status, user_id, title")
     .eq("token", listing_token)
     .eq("status", "active")
     .maybeSingle();
@@ -89,5 +90,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (error) return res.status(500).json({ error: error.message });
+
+  // Notification email au bailleur (best-effort, ne bloque pas la réponse)
+  try {
+    const userRes = await supabaseAdmin.auth.admin.getUserById(listing.user_id);
+    const landlordEmail = userRes?.data?.user?.email;
+    if (landlordEmail) {
+      const candidateName = `${payload.first_name} ${payload.last_name}`;
+      const situationLabel: Record<string, string> = {
+        CDI: "CDI", CDI_essai: "CDI (période d'essai)", CDD: "CDD",
+        fonctionnaire: "Fonctionnaire", independant: "Indépendant",
+        etudiant: "Étudiant", retraite: "Retraité", autre: "Autre",
+      };
+      const situation = payload.professional_situation ? situationLabel[payload.professional_situation] ?? payload.professional_situation : null;
+      const income = payload.net_monthly_income ? `${Number(payload.net_monthly_income).toLocaleString("fr-FR")} €/mois` : null;
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://lokt.fr";
+
+      const profileLines = [situation, income, payload.has_guarantor ? "Avec garant" : null].filter(Boolean);
+
+      await sendEmailViaResend({
+        to: landlordEmail,
+        subject: `Nouvelle candidature reçue — ${listing.title}`,
+        html: `
+          <div style="font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;line-height:1.6;color:#0f172a;max-width:520px;margin:0 auto">
+            <p style="margin:0 0 16px">Bonjour,</p>
+            <p style="margin:0 0 16px">
+              <strong>${candidateName}</strong> vient de déposer un dossier de candidature pour votre annonce
+              <strong>${listing.title}</strong>.
+            </p>
+            ${profileLines.length > 0 ? `
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;margin:0 0 20px">
+              <p style="margin:0 0 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#64748b">Profil déclaré</p>
+              <p style="margin:0;font-size:14px;color:#0f172a">${profileLines.join(" · ")}</p>
+            </div>` : ""}
+            <p style="margin:0 0 20px">Connectez-vous pour consulter le dossier complet et le comparer aux autres candidatures.</p>
+            <a href="${baseUrl}/espace-bailleur" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;text-decoration:none;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600">
+              Voir le dossier →
+            </a>
+            <p style="margin:24px 0 0;font-size:12px;color:#94a3b8">lokt.fr · Gestion locative simplifiée</p>
+          </div>
+        `,
+        text: `Nouvelle candidature de ${candidateName} pour "${listing.title}"${profileLines.length ? " — " + profileLines.join(", ") : ""}. Connectez-vous sur ${baseUrl}/espace-bailleur pour la consulter.`,
+      });
+    }
+  } catch {
+    // Ne jamais bloquer la soumission pour une erreur d'email
+  }
+
   return res.status(200).json({ candidature: data });
 }

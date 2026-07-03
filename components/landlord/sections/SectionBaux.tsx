@@ -104,7 +104,7 @@ type Props = {
   onRefresh: () => Promise<void>;
   onPrepareDeparture?: (tenantId: string) => void;
   canShareWithTenant?: boolean;
-  deepLink?: { key: number; leaseId?: string; openPanel?: "irl"; openCreate?: boolean } | null;
+  deepLink?: { key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string } | null;
 };
 
 /* ======================================================
@@ -744,13 +744,27 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [highlightCreate, setHighlightCreate] = useState(false);
+  const [highlightDepositLeaseId, setHighlightDepositLeaseId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!deepLink?.leaseId) return;
     setExpandedId(deepLink.leaseId);
-    setTimeout(() => {
-      document.getElementById(`lease-${deepLink.leaseId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 150);
+    if (deepLink.openPanel === "deposit") {
+      const leaseId = deepLink.leaseId;
+      const lease = leases?.find((l) => l.id === leaseId);
+      if (lease) {
+        setTimeout(() => {
+          openDepositForm(leaseId, "return", lease);
+          document.getElementById(`deposit-${leaseId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          setHighlightDepositLeaseId(leaseId);
+          setTimeout(() => setHighlightDepositLeaseId(null), 2500);
+        }, 180);
+      }
+    } else {
+      setTimeout(() => {
+        document.getElementById(`lease-${deepLink.leaseId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 150);
+    }
   }, [deepLink]);
 
   const [mode, setMode] = useState<Mode>("idle");
@@ -1216,7 +1230,33 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
   useEffect(() => {
     if (!deepLink?.openCreate) return;
-    openCreate();
+    setErr(null);
+    setOk(null);
+    setMode("create");
+    setEditingId(null);
+    setForm({
+      property_id: deepLink.prefillPropertyId ?? "",
+      tenant_id: deepLink.prefillTenantId ?? "",
+      start_date: todayISO(),
+      end_date: "",
+      rent_amount: "",
+      charges_amount: "",
+      deposit_amount: "",
+      lease_kind: "furnished_primary" as LeaseKind,
+      auto_renewal_enabled: true,
+      payment_day: "1",
+      payment_method: "virement",
+      payment_type: "terme_a_echoir",
+      status: "active",
+      auto_quittance_enabled: canUseReceiptAutomation,
+      auto_reminder_enabled: canUseReceiptAutomation,
+      receipts_disabled: false,
+      reminder_day_of_month: "1",
+      reminder_email: userEmail || "",
+      tenant_receipt_email: "",
+      timezone: "Europe/Paris",
+      tracking_from: "now" as "now" | "start",
+    });
     setHighlightCreate(true);
     setTimeout(() => {
       document.getElementById("baux-create-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1712,7 +1752,10 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
           const labelCls = "block space-y-1 text-xs font-semibold text-slate-700";
 
           return (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+            <div
+              id={`deposit-${l.id}`}
+              className={`rounded-2xl border p-4 space-y-3 transition-all duration-300 ${highlightDepositLeaseId === l.id ? "border-amber-400 bg-amber-50 ring-2 ring-amber-300 ring-offset-1" : "border-slate-200 bg-white"}`}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Dépôt de garantie</p>

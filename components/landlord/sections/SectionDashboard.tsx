@@ -8,6 +8,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
+import { TransitionPanel } from "./TransitionPanel";
 
 type DashboardAlert = {
   tone: "emerald" | "amber" | "red";
@@ -175,6 +176,7 @@ export function SectionDashboard({
   onGo,
   onNavigateDeep,
   onPrepareDeparture,
+  onRefresh,
   userId,
   planLabel,
 }: {
@@ -197,8 +199,9 @@ export function SectionDashboard({
   tenantsCount: number;
   leasesCount: number;
   onGo: (k: LandlordSectionKey) => void;
-  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl"; openCreate?: boolean }) => void;
+  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string }) => void;
   onPrepareDeparture?: (tenantId: string) => void;
+  onRefresh?: () => Promise<void>;
   userId?: string;
   planLabel?: string;
 }) {
@@ -1286,6 +1289,18 @@ export function SectionDashboard({
         </div>
       )}
 
+      {/* ── Logements en transition ────────────────────────────────────────── */}
+      {userId && (
+        <TransitionPanel
+          leases={leases}
+          propertyById={propertyById}
+          tenantById={tenantById}
+          userId={userId}
+          onGo={(k, link) => { if (link) { onNavigateDeep?.(k, link as any); } else { onGo(k); } }}
+          onRefresh={onRefresh || (async () => {})}
+        />
+      )}
+
       {/* ═══════════════════════════════════════════════════
           MAIN GRID
       ═══════════════════════════════════════════════════ */}
@@ -1386,8 +1401,8 @@ export function SectionDashboard({
             {transactionsError && <p className="mt-2 text-[0.65rem] text-red-600">{transactionsError}</p>}
           </section>
 
-          {/* ── Alertes (col 1, row 2) ──────────────────────────── */}
-          <div className="space-y-2 lg:col-start-1 lg:row-start-2">
+          {/* ── Alertes (col 1, row 2 si loyers présents, sinon row 1) ── */}
+          <div className={`space-y-2 lg:col-start-1 ${leaseCards.length > 0 ? "lg:row-start-2" : "lg:row-start-1"}`}>
             {priorityActions.map((action, index) => (
               <div
                 key={`${action.title}-${index}`}
@@ -1817,13 +1832,19 @@ export function SectionDashboard({
                     </Pill>
                   </div>
                   <p className="text-right font-semibold text-slate-900">{formatEuro(card.total)}</p>
-                  <button
-                    type="button"
-                    onClick={() => onPrepareDeparture?.(card.lease.tenant_id)}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                  >
-                    Départ
-                  </button>
+                  {card.lease.end_date ? (
+                    <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                      En transition
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onPrepareDeparture?.(card.lease.tenant_id)}
+                      className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                    >
+                      Départ
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
