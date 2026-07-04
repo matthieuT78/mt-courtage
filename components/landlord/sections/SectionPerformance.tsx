@@ -501,6 +501,33 @@ function computeOccupancySignals(leases: Lease[], propertyId: string) {
   return { vacancyDays12m, turnover12m, activeLeaseCount };
 }
 
+function bisectionIRR(
+  investment: number,
+  annualCashflow: number,
+  terminalValue: number,
+  holdingYears: number
+): number | null {
+  if (investment <= 0 || holdingYears < 1) return null;
+  const npv = (r: number): number => {
+    if (Math.abs(r) < 1e-9) return -investment + annualCashflow * holdingYears + terminalValue;
+    return (
+      -investment +
+      (annualCashflow * (1 - Math.pow(1 + r, -holdingYears))) / r +
+      terminalValue / Math.pow(1 + r, holdingYears)
+    );
+  };
+  let lo = -0.5, hi = 10.0;
+  if (npv(lo) * npv(hi) > 0) return null;
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    if (hi - lo < 1e-8) break;
+    if (npv(mid) * npv(lo) <= 0) hi = mid;
+    else lo = mid;
+  }
+  const result = (lo + hi) / 2;
+  return Number.isFinite(result) ? result : null;
+}
+
 type PropertyRow = {
   propertyId: string;
   label: string;
@@ -520,6 +547,11 @@ type PropertyRow = {
   vacancyDays12m: number;
   turnover12m: number;
   activeLeaseCount: number;
+  grossYield: number | null;
+  estimatedValue: number | null;
+  latentGain: number | null;
+  holdingYears: number | null;
+  irr: number | null;
 };
 
 export function SectionPerformance({ userId, leases, payments, propertyById }: Props) {
@@ -635,6 +667,25 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
     return map;
   }, [activeLeases]);
 
+  const earliestDateByProperty = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const lease of (Array.isArray(leases) ? leases : [])) {
+      if (!lease.property_id || !lease.start_date) continue;
+      const d = normalizeDate(lease.start_date);
+      if (!d) continue;
+      const prev = map.get(lease.property_id);
+      if (!prev || d.getTime() < prev) map.set(lease.property_id, d.getTime());
+    }
+    for (const t of tx) {
+      if (!t.property_id || !t.occurred_at) continue;
+      const d = normalizeDate(t.occurred_at);
+      if (!d) continue;
+      const prev = map.get(t.property_id);
+      if (!prev || d.getTime() < prev) map.set(t.property_id, d.getTime());
+    }
+    return map;
+  }, [leases, tx]);
+
   // Charges récurrentes enregistrées comme transactions (même logique que SectionFinance)
   const recurringParentTxByProperty = useMemo(() => {
     const map = new Map<string, Transaction[]>();
@@ -710,6 +761,42 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         const investment = investmentAmount(fin);
         const netYield = investment > 0 ? ((incomeMonthly - recurring) * 12 * 100) / investment : null;
         const occupancy = computeOccupancySignals(safeLeases, id);
+        const loanRemainingMonths = remainingLoanMonths(fin);
+
+        const grossYield = investment > 0 ? (incomeMonthly * 12 * 100) / investment : null;
+        const earliestMs = earliestDateByProperty.get(id);
+        const holdingYears = earliestMs != null ? (Date.now() - earliestMs) / (365.25 * 86400_000) : null;
+        const purchasePrice = Number(fin?.purchase_price || 0);
+        const estimatedValue =
+          holdingYears != null && holdingYears >= 0.5 && purchasePrice > 0
+            ? Math.round(purchasePrice * Math.pow(1.02, holdingYears))
+            : null;
+        const latentGain = estimatedValue != null ? estimatedValue - investment : null;
+        const loanBalanceApprox =
+          loanRemainingMonths != null && loanRemainingMonths > 0 ? loanMonthly * loanRemainingMonths * 0.65 : 0;
+        const terminalValue = estimatedValue != null ? Math.max(0, estimatedValue - loanBalanceApprox) : null;
+        const allPropertyTx = tx.filter((t) => t.property_id === id);
+        const allIncome = sum(
+          allPropertyTx.filter((t) => !isRecurringFlow(t) && isReceivedIncome(t)).map((t) => Number(t.amount))
+        );
+        const allExpense = sum(
+          allPropertyTx
+            .filter((t) => !isRecurringFlow(t) && t.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(t.category))
+            .map((t) => Number(t.amount))
+        );
+        const totalHistoricalRecurring = holdingYears != null ? recurring * 12 * holdingYears : 0;
+        const avgAnnualCashflow =
+          holdingYears != null && holdingYears > 0
+            ? (allIncome - allExpense - totalHistoricalRecurring) / holdingYears
+            : cashflow * 12;
+        const irr =
+          holdingYears != null &&
+          holdingYears >= 1 &&
+          investment > 0 &&
+          terminalValue != null &&
+          Number.isFinite(avgAnnualCashflow)
+            ? bisectionIRR(investment, avgAnnualCashflow, terminalValue, holdingYears)
+            : null;
 
         return {
           propertyId: id,
@@ -724,16 +811,21 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
           netYield,
           loanMonthly,
           loanRate: fin?.loan_rate_percent == null ? null : Number(fin.loan_rate_percent),
-          loanRemainingMonths: remainingLoanMonths(fin),
+          loanRemainingMonths,
           loanEndYear: fin?.loan_end_year == null ? null : Number(fin.loan_end_year),
           taxRegime: fin?.tax_regime || null,
           vacancyDays12m: occupancy.vacancyDays12m,
           turnover12m: occupancy.turnover12m,
           activeLeaseCount: occupancy.activeLeaseCount,
+          grossYield,
+          estimatedValue,
+          latentGain,
+          holdingYears,
+          irr,
         };
       })
       .sort((a, b) => b.cashflow - a.cashflow);
-  }, [activeLeases, selectedPeriod, finance, includeArchivedProperties, leaseById, propertyId, propertyOptions, propsById, recurringParentTxByProperty, safeLeases, safePayments, tx]);
+  }, [activeLeases, earliestDateByProperty, selectedPeriod, finance, includeArchivedProperties, leaseById, propertyId, propertyOptions, propsById, recurringParentTxByProperty, safeLeases, safePayments, tx]);
 
   const series = useMemo(() => {
     const propertyIds = propertyRows.map((row) => row.propertyId);
@@ -812,6 +904,77 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       };
     });
   }, [finance, leaseById, recurringParentTxByProperty, selectedPeriod, propertyId, propertyRows, safePayments, tx]);
+
+  const projectionSeries = useMemo(() => {
+    const rows = propertyRows.filter((row) => row.estimatedValue != null && row.investment > 0);
+    if (rows.length === 0) return [];
+    return Array.from({ length: 21 }, (_, t) => {
+      let equity = 0;
+      let cumulCashflow = 0;
+      for (const row of rows) {
+        const futureValue = row.estimatedValue! * Math.pow(1.02, t);
+        const remMonths = Math.max(0, (row.loanRemainingMonths ?? 0) - t * 12);
+        const debt = remMonths > 0 ? row.loanMonthly * remMonths * 0.65 : 0;
+        equity += Math.max(0, futureValue - debt);
+        cumulCashflow += row.cashflow * 12 * t;
+      }
+      return { t, equity: Math.round(equity), cumulCashflow: Math.round(cumulCashflow) };
+    });
+  }, [propertyRows]);
+
+  const projectionChartData = useMemo(
+    () => ({
+      labels: projectionSeries.map((s) => (s.t % 5 === 0 ? `+${s.t} ans` : "")),
+      datasets: [
+        {
+          type: "line" as const,
+          label: "Capital net estimé",
+          data: projectionSeries.map((s) => s.equity),
+          borderColor: "#635bff",
+          backgroundColor: "rgba(99, 91, 255, 0.06)",
+          pointRadius: projectionSeries.map((s) => (s.t % 5 === 0 ? 4 : 2)),
+          tension: 0.4,
+        },
+        {
+          type: "line" as const,
+          label: "Cashflow cumulé",
+          data: projectionSeries.map((s) => s.cumulCashflow),
+          borderColor: "#10b981",
+          backgroundColor: "rgba(16, 185, 129, 0.06)",
+          pointRadius: projectionSeries.map((s) => (s.t % 5 === 0 ? 4 : 2)),
+          tension: 0.4,
+        },
+      ],
+    }),
+    [projectionSeries]
+  );
+
+  const projectionOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "bottom" as const,
+          labels: { usePointStyle: true, boxWidth: 8, color: "#475569", font: { size: 12, weight: "600" as const } },
+        },
+        tooltip: {
+          callbacks: {
+            title: (items: any[]) => `Dans ${items[0]?.label?.replace("+", "") || ""} ans`,
+            label: (ctx: any) => `${ctx.dataset.label} : ${money(Number(ctx.raw || 0))}`,
+          },
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: "#64748b", font: { size: 11, weight: "600" as const } } },
+        y: {
+          grid: { color: "rgba(148, 163, 184, 0.2)" },
+          ticks: { color: "#64748b", callback: (value: any) => money(Number(value)) },
+        },
+      },
+    }),
+    []
+  );
 
   const chartDrillRows = useMemo(
     () =>
@@ -1181,6 +1344,69 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         </div>
       </section>
 
+      {propertyRows.some((r) => r.grossYield != null || r.irr != null || r.estimatedValue != null) && (
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-1">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Patrimoine</p>
+            <h3 className="text-lg font-semibold text-slate-950">Rentabilité réelle & capital constitué</h3>
+            <p className="text-sm text-slate-600">TRI sur données réelles, rendement brut et estimation de la valeur actuelle de votre parc.</p>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold text-slate-500">Rendement brut moyen</p>
+              {(() => {
+                const wrows = propertyRows.filter((r) => r.grossYield != null && r.investment > 0);
+                if (wrows.length === 0) return <><p className="mt-2 text-xl font-semibold text-slate-400">À compléter</p><p className="mt-1 text-xs text-slate-400">prix d'achat manquant</p></>;
+                const avg = sum(wrows.map((r) => r.grossYield!)) / wrows.length;
+                return <><p className={`mt-2 text-2xl font-semibold ${avg >= 6 ? "text-emerald-700" : avg >= 4 ? "text-amber-700" : "text-rose-700"}`}>{pct(avg)}</p><p className="mt-1 text-xs text-slate-500">loyers bruts annuels / coût d'acquisition</p></>;
+              })()}
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold text-slate-500">TRI estimé (réel)</p>
+              {(() => {
+                const wrows = propertyRows.filter((r) => r.irr != null);
+                if (wrows.length === 0) return <><p className="mt-2 text-xl font-semibold text-slate-400">À calculer</p><p className="mt-1 text-xs text-slate-400">prix d'achat et historique requis</p></>;
+                const avg = sum(wrows.map((r) => r.irr!)) / wrows.length;
+                return <><p className={`mt-2 text-2xl font-semibold ${avg >= 0.07 ? "text-emerald-700" : avg >= 0.04 ? "text-amber-700" : "text-rose-700"}`}>{pct(avg * 100)}</p><p className="mt-1 text-xs text-slate-500">rendement annualisé cashflows + plus-value</p></>;
+              })()}
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold text-slate-500">Valeur estimée totale</p>
+              {(() => {
+                const total = sum(propertyRows.filter((r) => r.estimatedValue != null).map((r) => r.estimatedValue!));
+                if (total === 0) return <><p className="mt-2 text-xl font-semibold text-slate-400">À compléter</p><p className="mt-1 text-xs text-slate-400">prix d'achat manquant</p></>;
+                return <><p className="mt-2 text-2xl font-semibold text-slate-900">{money(total)}</p><p className="mt-1 text-xs text-slate-500">prix achat × (1 + 2 %/an)^durée · indicatif</p></>;
+              })()}
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold text-slate-500">Plus-value latente</p>
+              {(() => {
+                const wrows = propertyRows.filter((r) => r.latentGain != null);
+                if (wrows.length === 0) return <><p className="mt-2 text-xl font-semibold text-slate-400">À compléter</p><p className="mt-1 text-xs text-slate-400">prix d'achat manquant</p></>;
+                const total = sum(wrows.map((r) => r.latentGain!));
+                return <><p className={`mt-2 text-2xl font-semibold ${total >= 0 ? "text-emerald-700" : "text-rose-700"}`}>{total >= 0 ? "+" : ""}{money(total)}</p><p className="mt-1 text-xs text-slate-500">avant impôts et remboursement crédit</p></>;
+              })()}
+            </div>
+          </div>
+
+          {projectionSeries.length > 0 && (
+            <div className="mt-5">
+              <div className="flex flex-col gap-0.5">
+                <p className="text-sm font-semibold text-slate-900">Projection patrimoniale — 20 ans</p>
+                <p className="text-xs text-slate-500">Capital net (valeur estimée − crédit restant) et cashflows cumulés projetés, à taux d'appréciation et de loyer constants.</p>
+              </div>
+              <div className="mt-3 h-[260px] rounded-3xl border border-slate-100 bg-slate-50 p-3">
+                <Chart type="line" data={projectionChartData as any} options={projectionOptions as any} />
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
@@ -1321,6 +1547,23 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
                     <Stat label="Vacance 12 mois" value={`${row.vacancyDays12m} j`} strong={row.vacancyDays12m >= 30 ? "bad" : undefined} />
                     <Stat label="Turnover 12 mois" value={String(row.turnover12m)} strong={row.turnover12m >= 2 ? "bad" : undefined} />
                   </div>
+
+                  {(row.grossYield != null || row.irr != null || row.estimatedValue != null) && (
+                    <div className="mt-2 grid gap-2 sm:grid-cols-4">
+                      <Stat label="Rendement brut" value={row.grossYield != null ? pct(row.grossYield) : "—"} />
+                      <Stat
+                        label="TRI estimé"
+                        value={row.irr != null ? pct(row.irr * 100) : "—"}
+                        strong={row.irr != null ? (row.irr >= 0.07 ? "good" : row.irr < 0 ? "bad" : undefined) : undefined}
+                      />
+                      <Stat label="Valeur estimée" value={row.estimatedValue != null ? money(row.estimatedValue) : "—"} />
+                      <Stat
+                        label="Plus-value latente"
+                        value={row.latentGain != null ? `${row.latentGain >= 0 ? "+" : ""}${money(row.latentGain)}` : "—"}
+                        strong={row.latentGain != null ? (row.latentGain >= 0 ? "good" : "bad") : undefined}
+                      />
+                    </div>
+                  )}
 
                   <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
                     <p className="text-sm font-semibold text-slate-900">{decision.signal}</p>
