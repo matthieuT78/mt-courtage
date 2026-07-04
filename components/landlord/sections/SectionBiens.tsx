@@ -625,21 +625,27 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         </div>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Pièces"
-            value={form.rooms}
-            onChange={(e) => setForm((s) => ({ ...s, rooms: e.target.value }))}
-          />
-          <select
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            value={form.energy_class}
-            onChange={(e) => setForm((s) => ({ ...s, energy_class: e.target.value }))}
-          >
-            {DPE_OPTIONS.map((o) => (
-              <option key={o} value={o}>{o === "" ? "DPE (A–G)" : `Classe ${o}`}</option>
-            ))}
-          </select>
+          <label className="space-y-1">
+            <span className="text-xs text-slate-700">Pièces</span>
+            <input
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              placeholder="Nb. de pièces"
+              value={form.rooms}
+              onChange={(e) => setForm((s) => ({ ...s, rooms: e.target.value }))}
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-slate-700">DPE</span>
+            <select
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              value={form.energy_class}
+              onChange={(e) => setForm((s) => ({ ...s, energy_class: e.target.value }))}
+            >
+              {DPE_OPTIONS.map((o) => (
+                <option key={o} value={o}>{o === "" ? "Classe (A–G)" : `Classe ${o}`}</option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <textarea
@@ -670,55 +676,49 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
 
         {propertyId ? <PropertyDpePanel propertyId={propertyId} propertyLabel={form.label} /> : null}
 
-        {/* Photos */}
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-slate-900">Photos</p>
-            {propertyId ? badge("emerald", `${selectedPhotos.length} photo(s)`) : badge("slate", "Crée d’abord le bien")}
-          </div>
+        {propertyId ? (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-slate-900">Photos</p>
+              {badge("emerald", `${selectedPhotos.length} photo(s)`)}
+            </div>
+            <div>
+              <label className="text-[0.7rem] text-slate-600">Ajouter une photo (2 Mo max)</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f && propertyId) uploadPhoto(f, propertyId);
+                  e.currentTarget.value = "";
+                }}
+                className="mt-1 block text-xs"
+              />
+            </div>
+            <UploadProgressBar progress={uploadPhotoProgress} className="mt-2" />
 
-          {!propertyId ? (
-            <p className="text-sm text-slate-700">Crée le bien pour pouvoir ajouter des photos.</p>
-          ) : (
-            <>
-              <div>
-                <label className="text-[0.7rem] text-slate-600">Ajouter une photo (2 Mo max)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f && propertyId) uploadPhoto(f, propertyId);
-                    e.currentTarget.value = "";
-                  }}
-                  className="mt-1 block text-xs"
-                />
+            {selectedPhotos.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedPhotos.slice(0, 10).map((ph: any) => (
+                  <a
+                    key={ph.id || ph.url}
+                    href={ph.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-white"
+                    title="Ouvrir"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={ph.url} alt="" className="h-full w-full object-cover" />
+                  </a>
+                ))}
               </div>
-              <UploadProgressBar progress={uploadPhotoProgress} className="mt-2" />
-
-              {selectedPhotos.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedPhotos.slice(0, 10).map((ph: any) => (
-                    <a
-                      key={ph.id || ph.url}
-                      href={ph.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-white"
-                      title="Ouvrir"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={ph.url} alt="" className="h-full w-full object-cover" />
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-600">Aucune photo pour l’instant.</p>
-              )}
-            </>
-          )}
-        </div>
+            ) : (
+              <p className="text-sm text-slate-600">Aucune photo pour l’instant.</p>
+            )}
+          </div>
+        ) : null}
       </>
     );
   };
@@ -871,7 +871,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                         <p className="mt-1 text-xs text-slate-500">
                           {row.currentLease
                             ? `Présent depuis ${durationLabel(row.currentTenantDays)} (${formatDateFR(row.currentLease.start_date)})`
-                            : `${row.vacancyDays12m} j vacants sur période connue`}
+                            : `${row.vacancyDays12m} j vacants sur 12 mois glissants`}
                         </p>
                       </div>
 
@@ -890,7 +890,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                           {signal.label}
                         </span>
                         <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[0.7rem] font-semibold text-slate-700">
-                          {row.turnover12m} turnover
+                          {pluralFR(row.turnover12m, "rotation")}
                         </span>
                       </div>
                     </div>
@@ -955,7 +955,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             </div>
           ) : null}
 
-          {renderForm(createForm, (updater) => setCreateForm((prev) => updater(prev)), null)}
+          {freeLimitReached ? null : renderForm(createForm, (updater) => setCreateForm((prev) => updater(prev)), null)}
 
           <div className="mt-4 flex flex-wrap gap-2">
             <button
@@ -1039,6 +1039,10 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                           {p.surface_m2 ? badge("slate", `${p.surface_m2} m²`) : null}
                           {p.rooms ? badge("slate", `${p.rooms} pièces`) : null}
                           {pPhotos.length ? badge("emerald", `${pPhotos.length} photo(s)`) : badge("slate", "0 photo")}
+                          {p.energy_class ? badge(
+                            ["A","B","C","D"].includes(p.energy_class) ? "emerald" : p.energy_class === "E" ? "amber" : "red",
+                            `DPE ${p.energy_class}`
+                          ) : null}
                         </div>
                       </div>
                     }
@@ -1159,6 +1163,10 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                         <div className="mt-2 flex flex-wrap gap-2">
                           {badge("amber", "Archivé")}
                           {pPhotos.length ? badge("slate", `${pPhotos.length} photo(s)`) : badge("slate", "0 photo")}
+                          {p.energy_class ? badge(
+                            ["A","B","C","D"].includes(p.energy_class) ? "emerald" : p.energy_class === "E" ? "amber" : "red",
+                            `DPE ${p.energy_class}`
+                          ) : null}
                         </div>
                       </div>
                     }
