@@ -59,7 +59,7 @@ export default function AcheterOuLouerPage() {
   const pageUrl = `${siteUrl}${pagePath}`;
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
 
-  const title = "Acheter ou louer ? Calculette de décision immobilière gratuite | lokt.fr";
+  const title = "Acheter ou louer en 2026 ? Calculette de décision immobilière gratuite | lokt.fr";
   const description =
     "Faut-il acheter ou louer ? Notre calculette analyse votre situation professionnelle, votre projet et le marché local pour vous donner une recommandation personnalisée en quelques minutes.";
 
@@ -84,6 +84,18 @@ export default function AcheterOuLouerPage() {
       {
         q: "Quels sont les frais d'achat à prévoir ?",
         a: "Les frais annexes à l'achat représentent environ 7 à 9 % du prix : frais de notaire (5 à 8 % selon ancienneté du bien), frais d'agence si non inclus, frais de garantie et de dossier bancaire. Ces frais d'entrée allongent le seuil de rentabilité.",
+      },
+      {
+        q: "Vaut-il mieux acheter ou louer en 2026 ?",
+        a: "En 2026, avec les taux stabilisés autour de 3,40 % et les prix corrigés de 5 à 12 % dans certaines métropoles, la fenêtre est plus favorable à l'achat qu'en 2023-2024. Dans les villes où le ratio prix/loyer dépasse ×25 (Paris, Lyon), rester locataire reste souvent plus efficace à moins de 8 ans d'horizon. Dans les villes moyennes (ratio ×12-18), acheter est avantageux dès 4-5 ans.",
+      },
+      {
+        q: "Est-il rentable de rester locataire et d'investir dans un bien locatif plutôt qu'acheter sa résidence principale ?",
+        a: "C'est une stratégie cohérente dans les marchés chers. Rester locataire préserve la flexibilité géographique et permet de placer l'apport disponible dans un bien locatif à rendement élevé (5-8 % brut en ville moyenne). Le statut LMNP au régime réel peut neutraliser l'impôt sur les loyers perçus pendant 10-15 ans via l'amortissement. À condition de gérer le bien ou d'accepter des frais d'agence.",
+      },
+      {
+        q: "Dans quelles villes vaut-il mieux acheter plutôt que louer en 2026 ?",
+        a: "Les marchés où l'achat est clairement avantageux en 2026 : villes moyennes avec ratio prix/loyer inférieur à ×18 — Grenoble, Le Mans, Montpellier, Clermont-Ferrand, Limoges, Mulhouse. Ces marchés offrent un seuil de rentabilité atteint en 4 à 7 ans. À Paris et Lyon, le ratio dépasse ×25 — l'achat n'est pertinent qu'avec un horizon de 10 ans ou plus.",
       },
     ],
     []
@@ -212,6 +224,110 @@ export default function AcheterOuLouerPage() {
         <section className="px-4 py-10 sm:py-14">
           <div className="mx-auto max-w-5xl">
             <AcheterOuLouerWizard />
+          </div>
+        </section>
+
+        {/* Editorial content */}
+        <section className="px-4 pb-4 pt-2 sm:pb-6">
+          <div className="mx-auto max-w-5xl space-y-4">
+
+            {/* Ratio prix/loyer */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 space-y-4">
+              <h2 className="text-base font-semibold text-slate-900">Le ratio prix / loyer : l'indicateur clé de la décision</h2>
+              <p className="text-sm leading-6 text-slate-600">
+                Le ratio prix/loyer (ou <em>price-to-rent ratio</em>) divise le prix d'achat d'un logement par le loyer annuel équivalent dans le même secteur. C'est le premier filtre à appliquer avant de comparer les mensualités.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3 text-sm">
+                {[
+                  { range: "× 15 ou moins", verdict: "Acheter est clairement avantageux", color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+                  { range: "× 15 à × 25", verdict: "Zone grise — horizon et profil décident", color: "text-amber-700 bg-amber-50 border-amber-200" },
+                  { range: "× 25 et plus", verdict: "Rester locataire est souvent plus efficace", color: "text-rose-700 bg-rose-50 border-rose-200" },
+                ].map((r) => (
+                  <div key={r.range} className={`rounded-xl border px-4 py-3 ${r.color}`}>
+                    <p className="font-bold">{r.range}</p>
+                    <p className="mt-1 text-xs leading-5">{r.verdict}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm leading-6 text-slate-600">
+                En 2026, Paris affiche un ratio d'environ × 28-30, Lyon × 22-24, Bordeaux × 20-22, Nantes × 18-20. Les villes moyennes (Clermont, Le Mans, Limoges) descendent souvent sous × 15 — ce qui en fait des marchés à fort avantage acheteur.
+              </p>
+            </div>
+
+            {/* Seuil de rentabilité */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 space-y-4">
+              <h2 className="text-base font-semibold text-slate-900">Le seuil de rentabilité de l'achat : combien d'années pour que ça vaille le coup ?</h2>
+              <p className="text-sm leading-6 text-slate-600">
+                L'achat immobilier génère des frais d'entrée élevés — frais de notaire (7 à 8 % dans l'ancien), intérêts du crédit, assurance emprunteur. Ces coûts initiaux signifient qu'un bien revendu trop tôt peut être déficitaire même si le marché a progressé.
+              </p>
+              <p className="text-sm leading-6 text-slate-600">
+                En 2026, à taux stable autour de 3,40 %, le seuil de rentabilité de l'achat d'une résidence principale se situe en moyenne entre <strong>5 et 8 ans</strong> selon le marché. Dans les villes où le ratio prix/loyer est élevé (Paris, Lyon), ce seuil monte à 9-12 ans. Dans les villes où il est bas, il peut tomber à 3-4 ans.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="py-2 text-left font-semibold text-slate-700">Ville</th>
+                      <th className="py-2 text-right font-semibold text-slate-700">Ratio ×</th>
+                      <th className="py-2 text-right font-semibold text-slate-700">Seuil (années)</th>
+                      <th className="py-2 text-right font-semibold text-slate-700">Signal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {[
+                      { ville: "Paris", ratio: "×28-30", seuil: "10-12 ans", signal: "🔴 Louer" },
+                      { ville: "Lyon", ratio: "×22-24", seuil: "8-10 ans", signal: "🟠 Mitigé" },
+                      { ville: "Bordeaux", ratio: "×20-22", seuil: "7-9 ans", signal: "🟠 Mitigé" },
+                      { ville: "Nantes", ratio: "×18-20", seuil: "6-8 ans", signal: "🟡 Neutre" },
+                      { ville: "Montpellier", ratio: "×16-18", seuil: "5-7 ans", signal: "🟢 Acheter" },
+                      { ville: "Grenoble / Le Mans", ratio: "×12-15", seuil: "3-5 ans", signal: "🟢 Acheter" },
+                    ].map((r) => (
+                      <tr key={r.ville} className="text-slate-700">
+                        <td className="py-2 font-medium">{r.ville}</td>
+                        <td className="py-2 text-right text-slate-500">{r.ratio}</td>
+                        <td className="py-2 text-right">{r.seuil}</td>
+                        <td className="py-2 text-right">{r.signal}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Acheter RP ou investir locatif */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7 space-y-4">
+              <h2 className="text-base font-semibold text-slate-900">Troisième option : rester locataire et investir dans l'immobilier locatif</h2>
+              <p className="text-sm leading-6 text-slate-600">
+                Dans les marchés chers (ratio &gt; ×25), une stratégie souvent ignorée consiste à rester locataire de sa résidence principale et à investir dans un bien locatif dans une ville à fort rendement. Le loyer payé est "compensé" par le cash-flow du bien investi, tout en bénéficiant d'une déductibilité fiscale (LMNP régime réel, déficit foncier).
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="font-semibold text-slate-800">Acheter sa résidence principale</p>
+                  <ul className="mt-2 space-y-1 text-slate-600 text-xs">
+                    <li>✅ Stabilité, pas de préavis locatif</li>
+                    <li>✅ Constitution de patrimoine progressif</li>
+                    <li>✅ Exonération totale de plus-value à la revente</li>
+                    <li>⚠️ Capital immobilisé, frais d'entrée élevés</li>
+                    <li>⚠️ Peu flexible si mobilité professionnelle</li>
+                  </ul>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <p className="font-semibold text-slate-800">Rester locataire + investir en locatif</p>
+                  <ul className="mt-2 space-y-1 text-slate-600 text-xs">
+                    <li>✅ Flexibilité géographique totale</li>
+                    <li>✅ Effet de levier bancaire sur un bien rentable</li>
+                    <li>✅ Fiscalité LMNP très avantageuse</li>
+                    <li>⚠️ Loyer payé sans capitalisation</li>
+                    <li>⚠️ Gestion locative à assumer</li>
+                  </ul>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">
+                Simulez la rentabilité d'un investissement locatif →{" "}
+                <Link href="/investissement" className="text-[#635bff] hover:underline">Calculette rentabilité locative</Link>
+              </p>
+            </div>
+
           </div>
         </section>
 

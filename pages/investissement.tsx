@@ -81,7 +81,7 @@ export default function InvestissementPage() {
   const pageUrl = `${siteUrl}${pagePath}`;
 
   // ✅ CTR-first
-  const title = "Calcul rentabilité locative gratuit – Cash-flow, rendement, charges | lokt.fr";
+  const title = "Calculette rentabilité locative 2026 – Cash-flow, rendement brut/net, charges | lokt.fr";
   const description =
     "Calculez la rentabilité locative (cash-flow, rendement brut/net, charges, vacance, financement). Comparez location longue durée vs Airbnb avec une lecture claire.";
 
@@ -114,6 +114,18 @@ export default function InvestissementPage() {
       {
         q: "Quels leviers ont le plus d'impact sur la rentabilité ?",
         a: "Le prix d'achat (et les frais), le niveau de loyer/occupation, la vacance, les charges récurrentes, et la structure du financement (taux, durée, apport). Tester 2 scénarios (prudent vs ambitieux) aide à décider.",
+      },
+      {
+        q: "Quel rendement locatif viser en 2026 ?",
+        a: "Le rendement brut national moyen est de 5,2 % en 2026. Un rendement brut inférieur à 4 % est difficile à rentabiliser après charges et fiscalité. Entre 5 et 7 % brut, la rentabilité nette est généralement positive avec un financement à taux actuel (3,4 % sur 20 ans). Au-delà de 7 %, vérifier la qualité du secteur et le risque locatif (vacance, impayés).",
+      },
+      {
+        q: "Combien rapporte un studio en location par mois ?",
+        a: "Un studio acheté 80 000 € avec 500 €/mois de loyer génère 6 000 €/an, soit un rendement brut de 7,5 %. Après charges (taxe foncière, copropriété, assurance, vacance estimée à 5 %), le rendement net tourne autour de 5 à 6 %. En LMNP au régime réel, l'amortissement peut annuler l'impôt sur ces revenus pendant 10 à 15 ans.",
+      },
+      {
+        q: "Quelle est la différence entre rendement brut, net et net-net ?",
+        a: "Le rendement brut = loyers annuels / prix d'achat. Le rendement net retire les charges (taxe foncière, copropriété, assurance, gestion, vacance). Le rendement net-net (ou net d'impôts) retire en plus la fiscalité selon votre régime (micro-BIC, réel, IR sur revenus fonciers). C'est le net-net qui permet de comparer objectivement deux projets.",
       },
     ],
     []
