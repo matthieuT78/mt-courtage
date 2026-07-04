@@ -1,4 +1,4 @@
-import React, { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChatBubbleLeftRightIcon, PaperAirplaneIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
@@ -62,6 +62,7 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedRow = useMemo(() => rows.find((row) => row.tenant.id === selectedTenantId) || null, [rows, selectedTenantId]);
 
@@ -107,6 +108,10 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
   }, [initialTenantId, onTenantSelected]);
 
   useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  useEffect(() => {
     if (!selectedTenantId) {
       setThreadId(null);
       setMessages([]);
@@ -115,6 +120,7 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
     let active = true;
     setLoading(true);
     setErr(null);
+    setOk(null);
     (async () => {
       try {
         const id = selectedRow?.thread?.id || (await ensureThread(selectedTenantId));
@@ -135,8 +141,8 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
 
   useEffect(() => {
     if (!threadId) return;
-    const timer = window.setInterval(() => loadMessages(threadId).catch(() => {}), 12000);
-    return () => window.clearInterval(timer);
+    const timer = setInterval(() => loadMessages(threadId).catch(() => {}), 12000);
+    return () => clearInterval(timer);
   }, [loadMessages, threadId]);
 
   const sendMessage = async (e: FormEvent) => {
@@ -201,6 +207,9 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Locataires</p>
           </div>
           <div className="max-h-[260px] overflow-y-auto lg:max-h-[570px]">
+            {rows.length === 0 ? (
+              <div className="px-4 py-5 text-sm text-slate-500">Aucun locataire pour l'instant.</div>
+            ) : null}
             {rows.map((row) => (
               <button
                 key={row.tenant.id}
@@ -267,6 +276,7 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
 
               <form onSubmit={sendMessage} className="flex gap-2 border-t border-slate-200 bg-white p-3">
