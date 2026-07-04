@@ -6,7 +6,7 @@ import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
-import { PhoneIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { HomeIcon, PhoneIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { RentPayment } from "../../../lib/landlord/types";
 
 /* ======================================================
@@ -186,6 +186,20 @@ function getTenantPaymentStatus(leaseId: string, payments: RentPayment[]): "paid
 
 const CREATE_ID = "__create__";
 
+const LEASE_STATUS_LABELS: Record<string, string> = {
+  active: "Actif",
+  ended: "Terminé",
+  archived: "Archivé",
+  pending: "En attente",
+};
+
+function formatDateFR(dateStr?: string | null): string {
+  if (!dateStr) return "—";
+  const d = new Date(String(dateStr).slice(0, 10) + "T00:00:00");
+  if (!Number.isFinite(d.getTime())) return dateStr;
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+}
+
 export function SectionLocataires({
   userId,
   tenants,
@@ -212,6 +226,7 @@ export function SectionLocataires({
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [archiveWorkflow, setArchiveWorkflow] = useState<ArchiveWorkflow | null>(null);
+  const [confirmDeleteTenantId, setConfirmDeleteTenantId] = useState<string | null>(null);
   const [departureStep, setDepartureStep] = useState<1 | 2 | 3>(1);
 
   const propertyById = useMemo(() => {
@@ -696,7 +711,6 @@ export function SectionLocataires({
       setErr("Suppression impossible : ce locataire a un historique de bail. Archivez-le pour le masquer — les données (quittances, comptabilité) sont conservées.");
       return;
     }
-    if (!confirm("Supprimer définitivement ce locataire ?")) return;
 
     setLoading(true);
     setErr(null);
@@ -962,8 +976,9 @@ export function SectionLocataires({
                             <div className="mt-2 flex flex-wrap items-center gap-1.5">
                               {activeLease ? badge("emerald", "Actif") : hasLease ? badge("slate", "Historique") : badge("amber", "Sans bail")}
                               {p ? (
-                                <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-800">
-                                  🏠 {p.label}
+                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-800">
+                                  <HomeIcon className="h-3 w-3 shrink-0 text-slate-400" />
+                                  {p.label}
                                 </span>
                               ) : null}
                               {totalRent > 0 ? (
@@ -980,13 +995,15 @@ export function SectionLocataires({
                   >
                     {/* Quick actions */}
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onContactTenant?.(t.id)}
-                        className="rounded-full bg-slate-950 px-3 py-1.5 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
-                      >
-                        Contacter
-                      </button>
+                      {onContactTenant ? (
+                        <button
+                          type="button"
+                          onClick={() => onContactTenant(t.id)}
+                          className="rounded-full bg-slate-950 px-3 py-1.5 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
+                        >
+                          Contacter
+                        </button>
+                      ) : null}
 
                       <button
                         type="button"
@@ -1009,15 +1026,6 @@ export function SectionLocataires({
                       >
                         Copier tél.
                       </button>
-
-                      {t.phone ? (
-                        <a
-                          href={`tel:${sanitizePhone(t.phone)}`}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
-                        >
-                          Appeler
-                        </a>
-                      ) : null}
 
                       {t.email ? (
                         <a
@@ -1077,16 +1085,6 @@ export function SectionLocataires({
                       />
                     </div>
 
-                    <div className="mt-3 space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Raison d’archivage (optionnel)</label>
-                      <input
-                        value={f.archived_reason}
-                        onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, archived_reason: e.target.value } }))}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                        placeholder="Ex : départ, état des lieux…"
-                      />
-                    </div>
-
                     <div className="mt-3 flex flex-wrap gap-2 items-center">
                       <button
                         type="button"
@@ -1109,14 +1107,35 @@ export function SectionLocataires({
                       ) : null}
 
                       {!hasLease ? (
-                        <button
-                          type="button"
-                          disabled={loading}
-                          onClick={() => deleteTenant(t.id)}
-                          className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                        >
-                          Supprimer
-                        </button>
+                        confirmDeleteTenantId === t.id ? (
+                          <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
+                            <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                            <button
+                              type="button"
+                              onClick={() => { void deleteTenant(t.id); setConfirmDeleteTenantId(null); }}
+                              disabled={loading}
+                              className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                            >
+                              Supprimer
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteTenantId(null)}
+                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Annuler
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => setConfirmDeleteTenantId(t.id)}
+                            className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            Supprimer
+                          </button>
+                        )
                       ) : (
                         <span className="text-[0.75rem] text-slate-500">Archivez-le pour le masquer</span>
                       )}
@@ -1133,11 +1152,12 @@ export function SectionLocataires({
                             const prop = propertyById.get(l.property_id);
                             return (
                               <div key={l.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                <p className="text-[0.75rem] font-semibold text-slate-900">
-                                  🏠 {prop?.label || "Bien"} • {fmt(l.status)}
+                                <p className="text-[0.75rem] font-semibold text-slate-900 flex items-center gap-1">
+                                  <HomeIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                  {prop?.label || "Bien"} • {LEASE_STATUS_LABELS[String(l.status || "").toLowerCase()] || l.status || "—"}
                                 </p>
                                 <p className="text-[0.7rem] text-slate-600">
-                                  Début : {l.start_date} • Fin : {l.end_date || "—"}
+                                  Début : {formatDateFR(l.start_date)} • Fin : {formatDateFR(l.end_date)}
                                 </p>
                               </div>
                             );
@@ -1217,13 +1237,15 @@ export function SectionLocataires({
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-2 items-center">
-                      <button
-                        type="button"
-                        onClick={() => onContactTenant?.(t.id)}
-                        className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
-                      >
-                        Contacter
-                      </button>
+                      {onContactTenant ? (
+                        <button
+                          type="button"
+                          onClick={() => onContactTenant(t.id)}
+                          className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
+                        >
+                          Contacter
+                        </button>
+                      ) : null}
 
                       <button
                         type="button"
@@ -1235,14 +1257,35 @@ export function SectionLocataires({
                       </button>
 
                       {!hasAnyLeaseForTenant(t.id) ? (
-                        <button
-                          type="button"
-                          disabled={loading}
-                          onClick={() => deleteTenant(t.id)}
-                          className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                        >
-                          Supprimer
-                        </button>
+                        confirmDeleteTenantId === t.id ? (
+                          <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
+                            <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                            <button
+                              type="button"
+                              onClick={() => { void deleteTenant(t.id); setConfirmDeleteTenantId(null); }}
+                              disabled={loading}
+                              className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                            >
+                              Supprimer
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteTenantId(null)}
+                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Annuler
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => setConfirmDeleteTenantId(t.id)}
+                            className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            Supprimer
+                          </button>
+                        )
                       ) : (
                         <span className="text-[0.75rem] text-slate-500">Données conservées</span>
                       )}
@@ -1392,7 +1435,7 @@ export function SectionLocataires({
                     Le bail sera terminé, les automatisations seront arrêtées et le locataire sera archivé.
                   </p>
                   <div className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                    <p><span className="font-semibold text-slate-950">Départ :</span> {archiveWorkflow.exitDate}</p>
+                    <p><span className="font-semibold text-slate-950">Départ :</span> {formatDateFR(archiveWorkflow.exitDate)}</p>
                     <p><span className="font-semibold text-slate-950">Dernier mois :</span> {departureSummary?.total || "—"}</p>
                     <p><span className="font-semibold text-slate-950">État des lieux :</span> {departureEdlReady ? "finalisé" : "à finaliser séparément"}</p>
                   </div>
