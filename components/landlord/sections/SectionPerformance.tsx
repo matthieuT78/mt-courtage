@@ -1538,8 +1538,14 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
                   </div>
 
                   <div className="mt-3 grid gap-2 sm:grid-cols-4">
-                    <Stat label="Encaissé ce mois" value={money(Math.max(row.received, row.ledgerIncome))} />
-                    <Stat label="Dépenses ce mois" value={money(row.expense)} />
+                    <Stat
+                      label={selectedPeriod.monthCount === 1 ? "Encaissé ce mois" : "Encaissé / mois"}
+                      value={money(Math.max(row.received, row.ledgerIncome) / selectedPeriod.monthCount)}
+                    />
+                    <Stat
+                      label={selectedPeriod.monthCount === 1 ? "Dépenses ce mois" : "Dépenses / mois"}
+                      value={money(row.expense / selectedPeriod.monthCount)}
+                    />
                     <Stat label="Cashflow mensuel" value={money(row.cashflow)} strong={row.cashflow >= 0 ? "good" : "bad"} />
                     <Stat label="Rendement net" value={row.netYield == null ? "À compléter" : pct(row.netYield)} />
                     <Stat label="Taux crédit" value={row.loanRate == null ? "À renseigner" : `${row.loanRate.toLocaleString("fr-FR")} %`} />
