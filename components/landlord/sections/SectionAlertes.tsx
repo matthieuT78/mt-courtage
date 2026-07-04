@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   BellAlertIcon,
@@ -131,7 +132,7 @@ const ALERTS: AlertConfig[] = [
   },
 ];
 
-const GROUP_META: Record<AlertConfig["group"], { icon: React.ReactNode; desc: string }> = {
+const GROUP_META: Record<AlertConfig["group"], { icon: ReactNode; desc: string }> = {
   "Paiements et loyers": {
     icon: <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />,
     desc: "Suivez l'encaissement de vos loyers et l'envoi des quittances.",
@@ -187,7 +188,7 @@ export function SectionAlertes({ userId, plan }: Props) {
     setError(null);
     const { data, error: loadError } = await supabase.from("landlord_alert_preferences").select("*").eq("user_id", userId).maybeSingle();
     if (loadError) setError(loadError.message);
-    else setPreferences(normalizeLandlordAlertPreferences(data as any));
+    else setPreferences(normalizeLandlordAlertPreferences(data));
     setLoading(false);
   }, [userId]);
 
@@ -200,7 +201,7 @@ export function SectionAlertes({ userId, plan }: Props) {
     [plan, preferences]
   );
 
-  const save = async (next: LandlordAlertPreferences) => {
+  const save = useCallback(async (next: LandlordAlertPreferences) => {
     if (!supabase) return;
     setPreferences(next);
     setSaving(true);
@@ -217,7 +218,7 @@ export function SectionAlertes({ userId, plan }: Props) {
       setMessage("Préférences enregistrées.");
     }
     setSaving(false);
-  };
+  }, [userId, load]);
 
   const groups = ["Paiements et loyers", "Baux et documents", "Dépôt de garantie", "Données manquantes"] as const;
 
