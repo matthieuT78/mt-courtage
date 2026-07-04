@@ -32,6 +32,16 @@ type Props = {
 
 const CREATE_ID = "__create__";
 const FREE_PROPERTY_LIMIT = 1;
+
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  apartment: "Appartement",
+  house: "Maison",
+  garage: "Garage",
+  parking: "Parking",
+  other: "Autre",
+};
+
+const DPE_OPTIONS = ["", "A", "B", "C", "D", "E", "F", "G"] as const;
 const isNew = (createdAt?: string | null) =>
   !!createdAt && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
 const SUBSCRIPTION_URL = "/mon-compte/abonnement";
@@ -78,6 +88,13 @@ const pct = (value: number) => {
   if (!Number.isFinite(value)) return "—";
   return `${value.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %`;
 };
+
+function formatDateFR(dateStr?: string | null): string {
+  if (!dateStr) return "—";
+  const d = new Date(String(dateStr).slice(0, 10) + "T00:00:00");
+  if (!Number.isFinite(d.getTime())) return dateStr;
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+}
 
 function durationLabel(days: number | null | undefined) {
   if (days == null || !Number.isFinite(days) || days < 0) return "—";
@@ -282,6 +299,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
   const [createForm, setCreateForm] = useState(EMPTY);
   const [editForms, setEditForms] = useState<Record<string, typeof EMPTY>>({});
   const [highlightCreate, setHighlightCreate] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!deepLink?.openCreate) return;
@@ -471,7 +489,6 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       setErr("Suppression impossible : ce bien a un historique de bail. Archivez-le pour le masquer des vues actives — les données (quittances, comptabilité) sont conservées.");
       return;
     }
-    if (!confirm("Supprimer définitivement ce bien ?\n\nCette action est irréversible.")) return;
 
     setErr(null);
     setOk(null);
@@ -614,12 +631,15 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             value={form.rooms}
             onChange={(e) => setForm((s) => ({ ...s, rooms: e.target.value }))}
           />
-          <input
+          <select
             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="DPE (A-G)"
             value={form.energy_class}
             onChange={(e) => setForm((s) => ({ ...s, energy_class: e.target.value }))}
-          />
+          >
+            {DPE_OPTIONS.map((o) => (
+              <option key={o} value={o}>{o === "" ? "DPE (A–G)" : `Classe ${o}`}</option>
+            ))}
+          </select>
         </div>
 
         <textarea
@@ -637,12 +657,15 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             value={form.energy_value}
             onChange={(e) => setForm((s) => ({ ...s, energy_value: e.target.value }))}
           />
-          <input
+          <select
             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="GES (A-G)"
             value={form.ghg_class}
             onChange={(e) => setForm((s) => ({ ...s, ghg_class: e.target.value }))}
-          />
+          >
+            {DPE_OPTIONS.map((o) => (
+              <option key={o} value={o}>{o === "" ? "GES (A–G)" : `Classe ${o}`}</option>
+            ))}
+          </select>
         </div>
 
         {propertyId ? <PropertyDpePanel propertyId={propertyId} propertyLabel={form.label} /> : null}
@@ -847,7 +870,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                         </div>
                         <p className="mt-1 text-xs text-slate-500">
                           {row.currentLease
-                            ? `Présent depuis ${durationLabel(row.currentTenantDays)} (${row.currentLease.start_date})`
+                            ? `Présent depuis ${durationLabel(row.currentTenantDays)} (${formatDateFR(row.currentLease.start_date)})`
                             : `${row.vacancyDays12m} j vacants sur période connue`}
                         </p>
                       </div>
@@ -1009,7 +1032,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                           {isNew(p.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
                         </div>
                         <p className="mt-0.5 text-xs text-slate-600 truncate">
-                          {(p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
+                          {(PROPERTY_TYPE_LABELS[p.type] || p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {badge("emerald", "Actif")}
@@ -1043,14 +1066,35 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                       </button>
 
                       {!hasAnyLeaseForProperty(p.id) ? (
-                        <button
-                          type="button"
-                          onClick={() => remove(p.id)}
-                          disabled={saving}
-                          className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                        >
-                          Supprimer
-                        </button>
+                        confirmDeleteId === p.id ? (
+                          <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
+                            <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                            <button
+                              type="button"
+                              onClick={() => { void remove(p.id); setConfirmDeleteId(null); }}
+                              disabled={saving}
+                              className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                            >
+                              Supprimer
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Annuler
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(p.id)}
+                            disabled={saving}
+                            className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            Supprimer
+                          </button>
+                        )
                       ) : null}
                     </div>
                   </ExpandableRow>
@@ -1110,7 +1154,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                           {isNew(p.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
                         </div>
                         <p className="mt-0.5 text-xs text-slate-600 truncate">
-                          {(p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
+                          {(PROPERTY_TYPE_LABELS[p.type] || p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {badge("amber", "Archivé")}
@@ -1151,14 +1195,35 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                       ) : null}
 
                       {!hasAnyLeaseForProperty(p.id) ? (
-                        <button
-                          type="button"
-                          onClick={() => remove(p.id)}
-                          disabled={saving}
-                          className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                        >
-                          Supprimer
-                        </button>
+                        confirmDeleteId === p.id ? (
+                          <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
+                            <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                            <button
+                              type="button"
+                              onClick={() => { void remove(p.id); setConfirmDeleteId(null); }}
+                              disabled={saving}
+                              className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                            >
+                              Supprimer
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                              Annuler
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(p.id)}
+                            disabled={saving}
+                            className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            Supprimer
+                          </button>
+                        )
                       ) : (
                         <span className="text-[0.75rem] text-slate-500">Données conservées</span>
                       )}
