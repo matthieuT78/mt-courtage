@@ -1,7 +1,3 @@
-// =========================
-// ./components/landlord/sections/SectionEtatDesLieux.tsx
-// VERSION : Wizard + scroll-jump fix + sortie=copy entrée (rooms+items via DB) + upload PDF signé (archivage)
-// =========================
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
@@ -206,6 +202,13 @@ const workflowUi = (report?: InventoryReport | null) => {
     desc: "Reprends la saisie pour compléter puis générer le PDF.",
     tone: "slate" as const,
   };
+};
+
+const fmtDateFR = (iso?: string | null) => {
+  if (!iso) return "—";
+  const d = new Date(iso.slice(0, 10) + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 };
 
 const sortReportsEntryFirst = (list: InventoryReport[]) => {
@@ -510,22 +513,22 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const propertyById = useMemo(() => {
     const m = new Map<string, Property>();
-    for (const p of safeProps) m.set((p as any).id, p);
+    for (const p of safeProps) m.set(p.id, p);
     return m;
   }, [safeProps]);
 
   const tenantById = useMemo(() => {
     const m = new Map<string, Tenant>();
-    for (const t of safeTenants) m.set((t as any).id, t);
+    for (const t of safeTenants) m.set(t.id, t);
     return m;
   }, [safeTenants]);
 
   const activeLeases = useMemo(() => safeLeases.filter(isEDLSelectableLease), [safeLeases]);
 
   const leaseLabel = (l: Lease) => {
-    const p = propertyById.get((l as any).property_id);
-    const t = tenantById.get((l as any).tenant_id);
-    return `${(p as any)?.label || "Logement"} — ${(t as any)?.full_name || "Locataire"}`;
+    const p = propertyById.get(l.property_id);
+    const t = tenantById.get(l.tenant_id);
+    return `${p?.label || "Logement"} — ${t?.full_name || "Locataire"}`;
   };
 
   const propertyPlaceLabel = (p?: Property | null) =>
@@ -577,6 +580,12 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   const [photoBusyItemId, setPhotoBusyItemId] = useState<string | null>(null);
   const [photoFeedback, setPhotoFeedback] = useState<Record<string, { tone: "error" | "success"; message: string }>>({});
 
+  const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<string | null>(null);
+  const [confirmDeletePhotoId, setConfirmDeletePhotoId] = useState<string | null>(null);
+  const [confirmReplaceExternalPdf, setConfirmReplaceExternalPdf] = useState<{ type: "entry" | "exit"; file: File } | null>(null);
+  const [confirmDeleteRoomsOpen, setConfirmDeleteRoomsOpen] = useState(false);
+  const [confirmFinalizeEmptyRooms, setConfirmFinalizeEmptyRooms] = useState(false);
+
   const [search, setSearch] = useState("");
   const [creationMode, setCreationMode] = useState<"lease" | "standalone">("lease");
   const [attachLeaseId, setAttachLeaseId] = useState("");
@@ -601,12 +610,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   });
 
   const selectedReport = useMemo(() => reports.find((r) => r.id === selectedReportId) || null, [reports, selectedReportId]);
-  const selectedLease = useMemo(() => activeLeases.find((l: any) => l.id === selectedLeaseId) || null, [activeLeases, selectedLeaseId]);
+  const selectedLease = useMemo(() => activeLeases.find((l) => l.id === selectedLeaseId) || null, [activeLeases, selectedLeaseId]);
   const leaseEnded = useMemo(() => {
     if (!selectedLease) return false;
-    const l = selectedLease as any;
-    if (l.status === "archived" || l.status === "ended" || l.status === "terminated") return true;
-    if (l.end_date && new Date(l.end_date) < new Date()) return true;
+    if (selectedLease.status === "archived" || selectedLease.status === "ended" || selectedLease.status === "terminated") return true;
+    if (selectedLease.end_date && new Date(selectedLease.end_date) < new Date()) return true;
     return false;
   }, [selectedLease]);
   const startWizardStep3 = (type: "entry" | "exit") => {
@@ -614,7 +622,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     setCreationWizardReportType(type);
     setCreationWizardStep(3);
   };
-  const selectedProperty = selectedLease ? propertyById.get((selectedLease as any).property_id) || null : null;
+  const selectedProperty = selectedLease ? propertyById.get(selectedLease.property_id) || null : null;
   const standalonePlaceLabel = selectedReport
     ? [
         selectedReport.property_address_line1,
@@ -626,7 +634,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     : "";
   const defaultReportPlace = propertyPlaceLabel(selectedProperty) || standalonePlaceLabel;
 
-  const selectedLeaseNiceLabel = selectedLease ? leaseLabel(selectedLease as any) : "—";
+  const selectedLeaseNiceLabel = selectedLease ? leaseLabel(selectedLease) : "—";
   const selectedStandaloneLabel = selectedReport
     ? `${selectedReport.property_label || selectedReport.property_address_line1 || "État des lieux libre"}${
         selectedReport.occupant_label ? ` — ${selectedReport.occupant_label}` : ""
@@ -793,7 +801,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   // Effet séparé : si le bail sélectionné disparaît (suppression, archivage),
   // on le désélectionne proprement sans toucher aux données déjà chargées.
   useEffect(() => {
-    if (selectedLeaseId && !activeLeases.some((lease: any) => lease.id === selectedLeaseId)) {
+    if (selectedLeaseId && !activeLeases.some((lease) => lease.id === selectedLeaseId)) {
       setSelectedLeaseId("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1050,13 +1058,13 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const attachStandaloneReportToLease = async (reportId: string, leaseId: string) => {
     if (!supabase || !userId || !reportId || !leaseId) return;
-    const lease = activeLeases.find((item: any) => item.id === leaseId);
+    const lease = activeLeases.find((item) => item.id === leaseId);
     if (!lease) {
       setErr("Choisis un bail actif pour rattacher ce document.");
       return;
     }
-    const property = propertyById.get((lease as any).property_id) || null;
-    const tenant = tenantById.get((lease as any).tenant_id) || null;
+    const property = propertyById.get(lease.property_id) || null;
+    const tenant = tenantById.get(lease.tenant_id) || null;
 
     setLoading(true);
     setErr(null);
@@ -1068,16 +1076,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         .update({
           lease_id: leaseId,
           attachment_status: "attached",
-          property_id: (lease as any).property_id || null,
-          tenant_id: (lease as any).tenant_id || null,
-          property_label: (property as any)?.label || null,
-          property_address_line1: (property as any)?.address_line1 || null,
-          property_address_line2: (property as any)?.address_line2 || null,
-          property_postal_code: (property as any)?.postal_code || null,
-          property_city: (property as any)?.city || null,
-          occupant_label: (tenant as any)?.full_name || null,
-          occupant_email: (tenant as any)?.email || null,
-          occupant_phone: (tenant as any)?.phone || null,
+          property_id: lease.property_id || null,
+          tenant_id: lease.tenant_id || null,
+          property_label: property?.label || null,
+          property_address_line1: property?.address_line1 || null,
+          property_address_line2: property?.address_line2 || null,
+          property_postal_code: property?.postal_code || null,
+          property_city: property?.city || null,
+          occupant_label: tenant?.full_name || null,
+          occupant_email: tenant?.email || null,
+          occupant_phone: tenant?.phone || null,
         })
         .eq("id", reportId)
         .eq("user_id", userId);
@@ -1256,8 +1264,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       return;
     }
 
-    if (!confirm("Supprimer cet élément ?")) return;
-
+    setConfirmDeleteItemId(null);
     setLoading(true);
     setErr(null);
     setOk(null);
@@ -1343,8 +1350,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       }));
       return;
     }
-    if (!confirm("Supprimer cette photo de l’observation ?")) return;
-
+    setConfirmDeletePhotoId(null);
     setPhotoBusyItemId(photo.item_id);
     setPhotoFeedback((prev) => {
       const next = { ...prev };
@@ -1537,7 +1543,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     }
   };
 
-  const uploadExternalPdf = async (type: "entry" | "exit", file: File) => {
+  const uploadExternalPdf = async (type: "entry" | "exit", file: File, force = false) => {
     if (!supabase || !userId) return;
     if (!selectedLeaseId && creationMode !== "standalone") return;
     if (file.type !== "application/pdf") {
@@ -1554,9 +1560,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       setErr(`${reportTypeLabel(type)} déjà verrouillé : remplace-le uniquement après archivage administratif hors lokt.fr.`);
       return;
     }
-    if (existing && !window.confirm(`${reportTypeLabel(type)} existe déjà. Remplacer son parcours lokt.fr par le PDF externe finalisé ?`)) {
+    if (existing && !force) {
+      setConfirmReplaceExternalPdf({ type, file });
       return;
     }
+    setConfirmReplaceExternalPdf(null);
 
     setLoading(true);
     setErr(null);
@@ -1707,9 +1715,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     return Math.round((okRooms / rooms.length) * 100);
   }, [rooms, itemsByRoomId]);
 
-  const activeOnlyLeases = useMemo(() => activeLeases.filter((l: any) => (l.status || "active") === "active"), [activeLeases]);
+  const activeOnlyLeases = useMemo(() => activeLeases.filter((l) => (l.status || "active") === "active"), [activeLeases]);
   const endedPendingLeases = useMemo(
-    () => activeLeases.filter((l: any) => l.status === "ended" && !completedExitLeaseIds.has(l.id)),
+    () => activeLeases.filter((l) => l.status === "ended" && !completedExitLeaseIds.has(l.id)),
     [activeLeases, completedExitLeaseIds]
   );
   const leaseStarterCards = useMemo(() => activeOnlyLeases.slice(0, 4), [activeOnlyLeases]);
@@ -1748,7 +1756,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone="slate">{title}</Badge>
               {rep ? <Badge tone={statusUi(rep.status).tone}>Statut : {statusUi(rep.status).label}</Badge> : null}
-              {rep?.performed_at ? <Badge tone="slate">Date : {new Date(rep.performed_at).toLocaleString("fr-FR")}</Badge> : null}
+              {rep?.performed_at ? <Badge tone="slate">Date : {fmtDateFR(rep.performed_at)}</Badge> : null}
               {rep?.performed_place ? <Badge tone="slate">Lieu : {rep.performed_place}</Badge> : null}
               {isLocked ? <Badge tone="red">Verrouillé</Badge> : null}
             </div>
@@ -1938,8 +1946,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     const ids = roomRows.filter((r) => r.selected).map((r) => r.id);
     if (!ids.length) return;
 
-    if (!confirm(`Supprimer ${ids.length} pièce(s) et ${selectedItemsCount} élément(s) lié(s) ?`)) return;
-
+    setConfirmDeleteRoomsOpen(false);
     setLoading(true);
     setErr(null);
     setOk(null);
@@ -2163,11 +2170,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       return;
     }
 
-    const emptyRooms = rooms.filter((r) => !(itemsByRoomId.get(r.id) || []).length);
-    if (emptyRooms.length && !confirm(`${emptyRooms.length} pièce(s) n’ont aucun relevé. Finaliser quand même ?`)) {
-      return;
-    }
-
+    setConfirmFinalizeEmptyRooms(false);
     setLoading(true);
     setErr(null);
     setOk(null);
@@ -2400,7 +2403,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                             <button
                               type="button"
                               disabled={loading || isLocked || selectedRoomsCount === 0}
-                              onClick={deleteSelectedRooms}
+                              onClick={() => setConfirmDeleteRoomsOpen(true)}
                               className="rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
                             >
                               Supprimer la sélection
@@ -2409,8 +2412,20 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
                           {selectedRoomsCount > 0 ? (
                             <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                              <span className="font-semibold">Impact :</span> {selectedRoomsCount} pièce(s) et{" "}
-                              <span className="font-semibold">{selectedItemsCount}</span> élément(s) seront supprimés.
+                              {confirmDeleteRoomsOpen ? (
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <span className="font-semibold">Supprimer {selectedRoomsCount} pièce(s) et {selectedItemsCount} élément(s) ?</span>
+                                  <div className="flex gap-2">
+                                    <button type="button" onClick={() => void deleteSelectedRooms()} className="rounded-full bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500">Oui</button>
+                                    <button type="button" onClick={() => setConfirmDeleteRoomsOpen(false)} className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-50">Non</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <span className="font-semibold">Impact :</span> {selectedRoomsCount} pièce(s) et{" "}
+                                  <span className="font-semibold">{selectedItemsCount}</span> élément(s) seront supprimés.
+                                </>
+                              )}
                             </div>
                           ) : null}
 
@@ -2854,13 +2869,20 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                                       </div>
                                     </div>
 
-                                    <button
-                                      type="button"
-                                      onClick={() => deleteItem(it.id)}
-                                      className="shrink-0 rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
-                                    >
-                                      Supprimer
-                                    </button>
+                                    {confirmDeleteItemId === it.id ? (
+                                      <div className="flex shrink-0 items-center gap-1">
+                                        <button type="button" onClick={() => void deleteItem(it.id)} className="rounded-full bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500">Oui</button>
+                                        <button type="button" onClick={() => setConfirmDeleteItemId(null)} className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Non</button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setConfirmDeleteItemId(it.id)}
+                                        className="shrink-0 rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+                                      >
+                                        Supprimer
+                                      </button>
+                                    )}
                                   </div>
 
                                   <div className="grid gap-2 sm:grid-cols-2">
@@ -2984,16 +3006,23 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                                             ) : (
                                               <div className="flex aspect-[4/3] items-center justify-center text-xs text-slate-500">Aperçu indisponible</div>
                                             )}
-                                            <button
-                                              type="button"
-                                              onClick={() => void deleteItemPhoto(photo)}
-                                              disabled={isLocked || photoBusyItemId === it.id}
-                                              className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/95 text-red-700 shadow-sm hover:bg-red-50 disabled:opacity-50"
-                                              title="Supprimer la photo"
-                                              aria-label="Supprimer la photo"
-                                            >
-                                              <TrashIcon className="h-4 w-4" aria-hidden="true" />
-                                            </button>
+                                            {confirmDeletePhotoId === photo.id ? (
+                                              <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+                                                <button type="button" onClick={() => void deleteItemPhoto(photo)} className="rounded-full bg-red-600 px-2 py-1 text-[0.65rem] font-semibold text-white hover:bg-red-500">Oui</button>
+                                                <button type="button" onClick={() => setConfirmDeletePhotoId(null)} className="rounded-full border border-slate-300 bg-white px-2 py-1 text-[0.65rem] font-semibold text-slate-700 hover:bg-slate-50">Non</button>
+                                              </div>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() => setConfirmDeletePhotoId(photo.id)}
+                                                disabled={isLocked || photoBusyItemId === it.id}
+                                                className="absolute right-1.5 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/95 text-red-700 shadow-sm hover:bg-red-50 disabled:opacity-50"
+                                                title="Supprimer la photo"
+                                                aria-label="Supprimer la photo"
+                                              >
+                                                <TrashIcon className="h-4 w-4" aria-hidden="true" />
+                                              </button>
+                                            )}
                                           </div>
                                         ))}
                                       </div>
@@ -3198,11 +3227,21 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     >
                       {wizardStep === "plan" ? "Continuer →" : "Finaliser →"}
                     </button>
+                  ) : confirmFinalizeEmptyRooms ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-slate-700">{rooms.filter((r) => !(itemsByRoomId.get(r.id) || []).length).length} pièce(s) sans relevé. Finaliser quand même ?</span>
+                      <button type="button" onClick={() => void finalizeToReady()} className="min-h-[44px] rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 sm:min-h-0 sm:rounded-full sm:text-xs">Oui</button>
+                      <button type="button" onClick={() => setConfirmFinalizeEmptyRooms(false)} className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 sm:min-h-0 sm:rounded-full sm:text-xs">Non</button>
+                    </div>
                   ) : (
                     <button
                       type="button"
                       disabled={loading || isLocked}
-                      onClick={finalizeToReady}
+                      onClick={() => {
+                        const emptyRooms = rooms.filter((r) => !(itemsByRoomId.get(r.id) || []).length);
+                        if (emptyRooms.length) { setConfirmFinalizeEmptyRooms(true); return; }
+                        void finalizeToReady();
+                      }}
                       className="min-h-[44px] rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs"
                     >
                       {loading ? "Génération en cours..." : "Finaliser & générer le PDF"}
@@ -3319,8 +3358,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                             <p className={cx("mt-1 text-sm font-semibold", entryReport.status === "signed" || entryReport.status === "archived" ? "text-emerald-900" : "text-amber-900")}>
                               {statusUi(entryReport.status).label}
                             </p>
-                            {(entryReport as any).performed_at && (
-                              <p className="text-xs text-slate-500">Le {new Date((entryReport as any).performed_at).toLocaleDateString("fr-FR")}</p>
+                            {entryReport.performed_at && (
+                              <p className="text-xs text-slate-500">Le {fmtDateFR(entryReport.performed_at)}</p>
                             )}
                             {entryReport.document_source === "external" && (
                               <span className="mt-0.5 inline-block text-xs text-slate-500">PDF externe</span>
@@ -3368,8 +3407,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                             <p className={cx("mt-1 text-sm font-semibold", exitReport.status === "signed" || exitReport.status === "archived" ? "text-emerald-900" : "text-amber-900")}>
                               {statusUi(exitReport.status).label}
                             </p>
-                            {(exitReport as any).performed_at && (
-                              <p className="text-xs text-slate-500">Le {new Date((exitReport as any).performed_at).toLocaleDateString("fr-FR")}</p>
+                            {exitReport.performed_at && (
+                              <p className="text-xs text-slate-500">Le {fmtDateFR(exitReport.performed_at)}</p>
                             )}
                             {exitReport.document_source === "external" && (
                               <span className="mt-0.5 inline-block text-xs text-slate-500">PDF externe</span>
@@ -3426,7 +3465,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 <>
                   {leaseStarterCards.length > 0 && (
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                      {leaseStarterCards.map((l: any) => (
+                      {leaseStarterCards.map((l) => (
                         <button
                           key={l.id}
                           type="button"
@@ -3446,7 +3485,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     <div className="mt-4">
                       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">EDL de sortie à finaliser</p>
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {endedPendingLeases.map((l: any) => (
+                        {endedPendingLeases.map((l) => (
                           <button
                             key={l.id}
                             type="button"
@@ -3555,7 +3594,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                             className="min-h-[48px] w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-[#635bff] focus:outline-none focus:ring-4 focus:ring-[#635bff]/10"
                           >
                             <option value="">— Sélectionner un bail —</option>
-                            {activeLeases.map((l: any) => (
+                            {activeLeases.map((l) => (
                               <option key={l.id} value={l.id}>{leaseLabel(l)}</option>
                             ))}
                           </select>
@@ -3589,7 +3628,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       {creationMode === "lease" && selectedLeaseId && (
                         <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                           <span className="truncate text-xs text-slate-700">
-                            {leaseLabel(activeLeases.find((l: any) => l.id === selectedLeaseId))}
+                            {selectedLeaseNiceLabel}
                           </span>
                           <button
                             type="button"
@@ -3648,7 +3687,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       {creationMode === "lease" && selectedLeaseId && (
                         <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                           <span className="truncate text-xs text-slate-700">
-                            {leaseLabel(activeLeases.find((l: any) => l.id === selectedLeaseId))}
+                            {selectedLeaseNiceLabel}
                           </span>
                           <button
                             type="button"
@@ -3874,7 +3913,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               className="min-h-[36px] flex-1 rounded-xl border border-amber-200 bg-white px-3 text-sm font-semibold text-slate-900"
             >
               <option value="">Rattacher à un bail actif…</option>
-              {activeLeases.map((lease: any) => (
+              {activeLeases.map((lease) => (
                 <option key={lease.id} value={lease.id}>{leaseLabel(lease)}</option>
               ))}
             </select>
@@ -4003,6 +4042,36 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
       {ViewModal()}
       {WizardOverlay()}
+
+      {confirmReplaceExternalPdf ? (
+        <Modal
+          open={!!confirmReplaceExternalPdf}
+          title="Remplacer l'état des lieux ?"
+          onClose={() => setConfirmReplaceExternalPdf(null)}
+          footer={
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmReplaceExternalPdf(null)}
+                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => void uploadExternalPdf(confirmReplaceExternalPdf.type, confirmReplaceExternalPdf.file, true)}
+                className="rounded-full bg-red-600 px-4 py-2 text-xs font-semibold text-white hover:bg-red-500"
+              >
+                Oui, remplacer
+              </button>
+            </div>
+          }
+        >
+          <p className="text-sm text-slate-700">
+            {reportTypeLabel(confirmReplaceExternalPdf.type)} existe déjà. Remplacer son parcours lokt.fr par le PDF externe finalisé ?
+          </p>
+        </Modal>
+      ) : null}
     </div>
   );
 }
