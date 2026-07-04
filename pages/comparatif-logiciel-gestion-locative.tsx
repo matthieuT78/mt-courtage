@@ -5,33 +5,34 @@ import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 
 const siteUrl = "https://lokt.fr";
-const metaTitle = "Comparatif logiciels gestion locative 2026 : Rentila, Smovin, lokt.fr | lokt.fr";
+const metaTitle = "Comparatif logiciels gestion locative 2026 : Rentila, BailFacile, Smovin, Gererseul, Homii, lokt.fr";
 const metaDesc =
-  "Comparatif complet des meilleurs logiciels de gestion locative en 2026 : Rentila, Smovin, lokt.fr. Tableau de fonctionnalités, tarifs, points forts et limites de chaque outil pour les bailleurs indépendants.";
+  "Comparatif complet des meilleurs logiciels de gestion locative en 2026 : Rentila, BailFacile, Smovin, Gererseul, Homii et lokt.fr. Tableau de fonctionnalités, tarifs, workflow de mise en location et dossiers de candidature — pour les bailleurs indépendants.";
 const pageUrl = `${siteUrl}/comparatif-logiciel-gestion-locative`;
-const updatedAt = "Juin 2026";
+const updatedAt = "Juillet 2026";
 
 type Mark = "yes" | "no" | "partial";
 
-const criteria: { label: string; marks: [Mark, Mark, Mark, Mark] }[] = [
-  { label: "Gratuit pour démarrer",                    marks: ["yes",     "yes",     "no",      "yes"]     },
-  { label: "Pensé pour 1 à 10 biens",                  marks: ["partial", "yes",     "partial", "yes"]     },
-  { label: "Quittances PDF automatiques",               marks: ["no",      "yes",     "yes",     "yes"]     },
-  { label: "Suivi des paiements et retards",            marks: ["partial", "yes",     "yes",     "yes"]     },
-  { label: "Alertes bailleur (retard, IRL, rappels)",   marks: ["no",      "no",      "partial", "yes"]     },
-  { label: "Relances locataires automatiques",          marks: ["no",      "partial", "yes",     "yes"]     },
-  { label: "Baux et documents stockés",                 marks: ["no",      "yes",     "yes",     "yes"]     },
-  { label: "Révision IRL automatique",                  marks: ["no",      "partial", "yes",     "yes"]     },
-  { label: "Dossier de candidature en ligne (lien, scoring, RGPD)", marks: ["no", "no", "no", "yes"] },
-  { label: "Simulateurs (rentabilité, capacité…)",      marks: ["partial", "no",      "no",      "yes"]     },
-  { label: "LMNP : inventaire, charges, suivi",         marks: ["no",      "partial", "partial", "yes"]     },
-  { label: "Mise en place en moins de 10 min",          marks: ["yes",     "yes",     "no",      "yes"]     },
-  { label: "Interface claire pour particuliers",        marks: ["yes",     "yes",     "partial", "yes"]     },
-  { label: "Zéro commission sur les loyers",            marks: ["yes",     "yes",     "yes",     "yes"]     },
+// Ordre des colonnes : Excel, Rentila, Smovin, BailFacile, Gererseul, Homii, lokt.fr
+const criteria: { label: string; marks: Mark[] }[] = [
+  { label: "Gratuit pour démarrer",                              marks: ["yes",     "yes",     "no",      "yes",     "yes",     "partial", "yes"]     },
+  { label: "Pensé pour 1 à 10 biens",                           marks: ["partial", "yes",     "partial", "yes",     "partial", "yes",     "yes"]     },
+  { label: "Quittances PDF automatiques",                        marks: ["no",      "yes",     "yes",     "yes",     "yes",     "yes",     "yes"]     },
+  { label: "Suivi des paiements et retards",                     marks: ["partial", "yes",     "yes",     "partial", "partial", "yes",     "yes"]     },
+  { label: "Alertes bailleur (retard, IRL, rappels)",            marks: ["no",      "no",      "partial", "partial", "no",      "partial", "yes"]     },
+  { label: "Relances locataires automatiques",                   marks: ["no",      "partial", "yes",     "no",      "no",      "partial", "yes"]     },
+  { label: "Baux et documents stockés",                          marks: ["no",      "yes",     "yes",     "yes",     "partial", "yes",     "yes"]     },
+  { label: "Révision IRL automatique",                           marks: ["no",      "partial", "yes",     "partial", "no",      "yes",     "yes"]     },
+  { label: "Dossier de candidature en ligne (lien, scoring, RGPD)", marks: ["no",  "no",      "no",      "no",      "no",      "no",      "yes"]     },
+  { label: "Simulateurs (rentabilité, capacité…)",               marks: ["partial", "no",      "no",      "no",      "no",      "no",      "yes"]     },
+  { label: "LMNP : inventaire, charges, suivi",                  marks: ["no",      "partial", "partial", "partial", "no",      "partial", "yes"]     },
+  { label: "Mise en place en moins de 10 min",                   marks: ["yes",     "yes",     "no",      "yes",     "partial", "yes",     "yes"]     },
+  { label: "Interface claire pour particuliers",                  marks: ["yes",     "yes",     "partial", "yes",     "partial", "yes",     "yes"]     },
+  { label: "Zéro commission sur les loyers",                     marks: ["yes",     "yes",     "yes",     "yes",     "yes",     "yes",     "yes"]     },
 ];
 
-const columns = ["Tableur Excel", "Rentila", "Smovin", "lokt.fr"];
-const isLokt = (i: number) => i === 3;
+const columns = ["Tableur Excel", "Rentila", "Smovin", "BailFacile", "Gererseul", "Homii", "lokt.fr"];
+const isLokt = (i: number) => i === 6;
 
 function MarkIcon({ mark, lokt }: { mark: Mark; lokt: boolean }) {
   if (mark === "yes")
@@ -73,6 +74,7 @@ const tools = [
       "Suivi LMNP (inventaire, charges meublées) limité",
       "Interface web vieillissante, peu optimisée mobile",
       "Pas d'indicateurs de performance du parc (taux d'occupation, score de gestion)",
+      "Aucun dossier de candidature en ligne : sélection locataire entièrement manuelle",
     ],
     verdict: "Bon point d'entrée gratuit pour un premier bien. Les limites se font sentir dès que vous avez 2-3 locations ou un profil LMNP, ou quand vous cherchez à analyser un nouvel investissement.",
   },
@@ -92,60 +94,141 @@ const tools = [
       "Onboarding long, prise en main de plusieurs heures",
       "Conçu pour des bailleurs professionnels ou semi-professionnels — surdimensionné pour 1 à 3 biens",
       "Pas de simulateurs immobiliers (rentabilité, capacité d'emprunt, plus-value)",
+      "Pas de dossier de candidature intégré",
       "Tarif mensuel fixe même en période sans activité",
     ],
     verdict: "Excellent outil si vous gérez 5 biens ou plus et cherchez une solution professionnelle. Pour un particulier avec 1 à 4 biens, la complexité et le coût mensuel sont difficiles à justifier.",
+  },
+  {
+    name: "BailFacile",
+    icon: "📄",
+    price: "Gratuit (limité) · ~6 €/mois pour les fonctionnalités avancées",
+    ideal: "Bailleur cherchant un outil simple et gratuit pour générer baux et quittances",
+    pros: [
+      "Offre gratuite généreuse pour commencer sans engagement",
+      "Génération de baux et quittances bien exécutée et conforme",
+      "Interface simple et rapide à prendre en main",
+      "Modèles de documents à jour avec la législation en vigueur",
+    ],
+    cons: [
+      "Suivi financier limité : pas de grand livre ni de vision cashflow par bien",
+      "Alertes et relances automatiques absentes ou très basiques",
+      "Aucun dossier de candidature intégré : sélection locataire entièrement manuelle",
+      "Pas de simulateurs : analyse d'investissement impossible depuis l'outil",
+      "Peu adapté dès que vous avez plusieurs biens et voulez piloter votre parc",
+    ],
+    verdict: "BailFacile est l'option idéale pour un premier bien si votre seul besoin est de générer des baux et des quittances conformes. Dès que vous cherchez à suivre vos finances ou à sélectionner des candidats en ligne, ses limites deviennent vite bloquantes.",
+  },
+  {
+    name: "Gererseul",
+    icon: "🏘️",
+    price: "Gratuit (partiel) · Abonnement selon les options",
+    ideal: "Bailleur expérimenté, déjà utilisateur, acceptant une interface vieillissante",
+    pros: [
+      "Outil pionnier avec une base d'utilisateurs fidèle depuis plusieurs années",
+      "Couverture fonctionnelle correcte pour la gestion de base : quittances, baux, suivi des loyers",
+      "Disponible sans abonnement pour les fonctionnalités essentielles",
+    ],
+    cons: [
+      "Interface web vieillissante, peu optimisée mobile",
+      "Pas d'alertes automatiques ni de relances locataires intégrées",
+      "Pas de dossier de candidature ni de scoring des profils",
+      "Pas de simulateurs immobiliers (rentabilité, emprunt, plus-value)",
+      "Expérience utilisateur en retrait par rapport aux outils modernes",
+      "LMNP non supporté",
+    ],
+    verdict: "Gererseul a bâti une solide réputation mais accuse son âge face aux outils plus récents. Si vous l'utilisez déjà, il reste fonctionnel. Pour un nouveau bailleur, d'autres outils offrent une bien meilleure expérience dès le départ.",
+  },
+  {
+    name: "Homii",
+    icon: "🏡",
+    price: "À partir de ~8 €/mois · Pas d'offre entièrement gratuite",
+    ideal: "Bailleur cherchant une interface moderne avec les fonctionnalités essentielles",
+    pros: [
+      "Interface moderne et bien pensée, agréable à utiliser au quotidien",
+      "Fonctionnalités de base solides : quittances, révision IRL, suivi des paiements",
+      "Prise en main rapide, onboarding soigné",
+      "Application mobile disponible",
+    ],
+    cons: [
+      "Aucun plan gratuit : abonnement mensuel dès le premier bien",
+      "Pas de dossier de candidature intégré : la sélection locataire reste manuelle",
+      "Pas de simulateurs d'investissement (rentabilité, plus-value, capacité d'emprunt)",
+      "Recul utilisateur plus limité qu'un outil établi comme Rentila",
+      "Pas de cockpit de performance du parc immobilier",
+    ],
+    verdict: "Homii est un bon choix si vous cherchez une interface moderne sans la complexité de Smovin, et que vous n'avez pas besoin de dossiers de candidature ni de simulateurs. Le tarif mensuel dès le premier bien le rend moins compétitif que lokt.fr pour démarrer.",
+  },
+];
+
+const candidatureSteps = [
+  {
+    num: "1",
+    title: "Publiez votre annonce, récupérez un lien de candidature",
+    body: "lokt.fr génère automatiquement un lien unique pour chaque bien mis en location. Partagez-le sur SeLoger, Le Bon Coin, ou directement par SMS à vos candidats.",
+  },
+  {
+    num: "2",
+    title: "Les candidats remplissent leur dossier en ligne",
+    body: "Pas de création de compte, pas d'impression, pas de mail avec des pièces jointes. Le brouillon est sauvegardé automatiquement. Le candidat complète son dossier à son rythme — vous êtes notifié à chaque dossier finalisé.",
+  },
+  {
+    num: "3",
+    title: "Scoring automatique et comparaison des profils",
+    body: "Chaque dossier est évalué critère par critère : ratio loyer/revenu, stabilité professionnelle (CDI, fonctionnaire, indépendant), présence et solidité du garant. Un tableau clair vous permet de comparer objectivement plusieurs candidats.",
+  },
+  {
+    num: "4",
+    title: "Sélection, clôture et conformité RGPD automatique",
+    body: "Vous retenez le candidat de votre choix. À la clôture de l'annonce, les données des autres candidats sont supprimées automatiquement. Vous êtes en règle avec la réglementation sur les données personnelles, sans action supplémentaire.",
+  },
+  {
+    num: "5",
+    title: "Passage direct à la gestion locative, sans ressaisie",
+    body: "Une fois le locataire sélectionné, ses informations (nom, email, situation professionnelle) sont pré-remplies dans le bail. Vous démarrez la gestion quotidienne — quittances, relances, suivi des paiements — immédiatement.",
   },
 ];
 
 const faq = [
   {
     q: "Quelle est la différence entre Rentila et lokt.fr ?",
-    a: "Rentila est un logiciel de gestion locative pure : quittances, baux, suivi des loyers. lokt.fr couvre la même gestion quotidienne ET intègre des simulateurs d'aide à la décision (rentabilité, capacité d'emprunt, prêt relais, plus-value) ainsi qu'un module de candidature en ligne. Concrètement : avec lokt.fr, vous sélectionnez vos locataires, analysez un investissement et gérez le quotidien depuis le même outil, sans jongler entre plusieurs plateformes.",
+    a: "Rentila est un logiciel de gestion locative pure : quittances, baux, suivi des loyers. lokt.fr couvre la même gestion quotidienne ET intègre des simulateurs d'aide à la décision (rentabilité, capacité d'emprunt, prêt relais, plus-value) ainsi qu'un module complet de candidature en ligne. Concrètement : avec lokt.fr, vous sélectionnez vos locataires, analysez un investissement et gérez le quotidien depuis le même outil, sans jongler entre plusieurs plateformes.",
+  },
+  {
+    q: "Quelle est la différence entre BailFacile et lokt.fr ?",
+    a: "BailFacile se concentre sur la génération de baux et de quittances conformes — il fait ça bien. lokt.fr couvre un périmètre beaucoup plus large : dossiers de candidature en ligne avec scoring, alertes bailleur automatiques, relances locataires, simulateurs immobiliers, et cockpit de performance. Pour un bailleur avec un seul bien qui cherche uniquement à produire des documents, BailFacile peut suffire. Dès que vous souhaitez aussi sélectionner vos locataires ou analyser votre rendement, lokt.fr est nettement plus complet.",
   },
   {
     q: "lokt.fr permet-il de recevoir des dossiers de candidature en ligne ?",
-    a: "Oui. À partir du plan lokt·one (4,90 €/mois), lokt.fr génère un lien dédié pour chaque annonce. Les candidats remplissent leur dossier à leur rythme — le brouillon est sauvegardé automatiquement. Vous recevez les dossiers dans votre tableau de bord avec un scoring règle-par-règle (revenus, stabilité professionnelle, garant) pour comparer les profils objectivement. Les données des candidats non retenus sont supprimées à la clôture de l'annonce, conformément au RGPD. Rentila et Smovin ne proposent pas de module équivalent.",
+    a: "Oui. À partir du plan lokt·one (4,90 €/mois), lokt.fr génère un lien dédié pour chaque annonce. Les candidats remplissent leur dossier à leur rythme — le brouillon est sauvegardé automatiquement. Vous recevez les dossiers dans votre tableau de bord avec un scoring règle-par-règle (revenus, stabilité professionnelle, garant) pour comparer les profils objectivement. Les données des candidats non retenus sont supprimées à la clôture de l'annonce, conformément au RGPD. Rentila, Smovin, BailFacile, Gererseul et Homii ne proposent pas de module équivalent.",
   },
   {
     q: "Lokt.fr est-il mieux que Smovin ?",
-    a: "Ça dépend de votre profil. Smovin est plus complet pour des bailleurs professionnels gérant 10+ biens. lokt.fr est plus adapté aux propriétaires particuliers avec 1 à 10 biens : mise en place en moins de 10 minutes, gratuit pour commencer, et les simulateurs immobiliers sont intégrés — ce que Smovin n'a pas. Pour la grande majorité des bailleurs indépendants, lokt.fr est suffisant et moins coûteux.",
+    a: "Ça dépend de votre profil. Smovin est plus complet pour des bailleurs professionnels gérant 10+ biens. lokt.fr est plus adapté aux propriétaires particuliers avec 1 à 10 biens : mise en place en moins de 10 minutes, gratuit pour commencer, simulateurs immobiliers intégrés et dossiers de candidature — ce que Smovin n'a pas. Pour la grande majorité des bailleurs indépendants, lokt.fr est suffisant et moins coûteux.",
   },
   {
-    q: "Peut-on migrer depuis Rentila vers lokt.fr ?",
-    a: "Oui. La migration se fait manuellement en quelques minutes : vous créez vos biens, ajoutez vos locataires et renseignez les informations de bail. Il n'y a pas d'import automatique depuis Rentila, mais la simplicité de lokt.fr fait que la saisie initiale prend moins de 15 minutes par bien.",
+    q: "Peut-on migrer depuis Rentila ou BailFacile vers lokt.fr ?",
+    a: "Oui. La migration se fait manuellement en quelques minutes : vous créez vos biens, ajoutez vos locataires et renseignez les informations de bail. Il n'y a pas d'import automatique depuis Rentila ou BailFacile, mais la simplicité de lokt.fr fait que la saisie initiale prend moins de 15 minutes par bien.",
   },
   {
     q: "Quel logiciel choisir pour la location meublée (LMNP) ?",
-    a: "lokt.fr est conçu pour la location meublée et nue. Il intègre la gestion de l'inventaire obligatoire en meublé, le suivi des charges LMNP et les quittances adaptées. Rentila a un support LMNP partiel. Smovin couvre le LMNP mais avec une complexité supérieure. Pour un bailleur LMNP particulier, lokt.fr offre le meilleur rapport fonctionnalités / simplicité.",
+    a: "lokt.fr est conçu pour la location meublée et nue. Il intègre la gestion de l'inventaire obligatoire en meublé, le suivi des charges LMNP et les quittances adaptées. Rentila et BailFacile ont un support LMNP partiel. Smovin couvre le LMNP mais avec une complexité supérieure. Gererseul ne supporte pas le LMNP. Pour un bailleur LMNP particulier, lokt.fr offre le meilleur rapport fonctionnalités / simplicité.",
   },
   {
     q: "Est-ce que lokt.fr est gratuit ?",
-    a: "lokt.fr propose une offre gratuite pour démarrer avec 1 logement : quittances PDF, bail, suivi des loyers et accès aux simulateurs inclus. Les plans payants débloquent plusieurs biens, les relances automatiques et des fonctionnalités avancées — à un tarif fixe sans commission sur les loyers.",
+    a: "lokt.fr propose une offre gratuite pour démarrer avec 1 logement : quittances PDF, bail, suivi des loyers et accès aux simulateurs inclus. Les plans payants débloquent plusieurs biens, les relances automatiques, les dossiers de candidature et des fonctionnalités avancées — à un tarif fixe sans commission sur les loyers.",
   },
   {
     q: "Lokt.fr remplace-t-il une agence de gestion locative ?",
     a: "Pour les propriétaires qui veulent garder la main sur leur patrimoine, oui. lokt.fr automatise les tâches répétitives (quittances, relances, suivi des paiements) sans prélever 6 à 10 % sur vos loyers comme le ferait une agence. Vous gardez le lien direct avec votre locataire et la visibilité complète sur vos flux.",
   },
   {
-    q: "Lokt.fr fonctionne-t-il sur mobile ?",
-    a: "Oui. lokt.fr est accessible depuis n'importe quel navigateur mobile. Vous pouvez consulter votre tableau de bord, suivre les paiements et accéder aux simulateurs depuis votre téléphone sans installer d'application.",
+    q: "Gererseul est-il encore une bonne option en 2026 ?",
+    a: "Gererseul reste fonctionnel pour les utilisateurs déjà en place, mais accuse son âge : interface vieillissante, pas d'alertes automatiques, pas de relances, pas de dossiers de candidature. Pour un nouveau bailleur démarrant en 2026, des outils plus récents comme lokt.fr ou BailFacile offrent une meilleure expérience dès le départ.",
   },
   {
     q: "Quelle est la différence entre un logiciel de gestion locative et un tableur ?",
     a: "Un tableur vous donne une feuille vierge — à vous de construire les formules, de générer les quittances manuellement et de gérer les relances à la main. Un logiciel dédié comme lokt.fr automatise tout ça : les quittances PDF sont générées en un clic, les retards de paiement déclenchent des alertes, et les documents sont stockés et accessibles à tout moment.",
-  },
-  {
-    q: "Peut-on utiliser lokt.fr si on a déjà un tableur Excel ?",
-    a: "Oui. La transition est rapide : vous importez vos biens et locataires en quelques minutes. Votre tableur devient inutile dès que lokt.fr génère vos premières quittances et déclenche vos premières relances automatiquement.",
-  },
-  {
-    q: "Quelles alertes lokt.fr envoie-t-il au bailleur ?",
-    a: "lokt.fr envoie des alertes automatiques dans trois situations : (1) loyer en retard — vous êtes notifié dès le lendemain de la date d'échéance si le paiement n'est pas enregistré ; (2) révision IRL — vous êtes alerté avant la date d'anniversaire du bail pour ne pas rater la revalorisation annuelle ; (3) rappels de quittances — lokt.fr vous indique quelles quittances du mois sont à envoyer. Ces alertes remplacent le travail de surveillance manuelle que vous faisiez sur un tableur.",
-  },
-  {
-    q: "Gererseul, Homii ou Bighands : comment se comparent-ils ?",
-    a: "Ces outils ciblent des profils similaires. Gererseul est fonctionnel mais l'interface a vieilli. Homii est récent et bien conçu mais avec moins de recul utilisateur. Bighands se positionne sur la délégation partielle (hybride entre agence et logiciel). lokt.fr se distingue par l'intégration des simulateurs immobiliers et une prise en main immédiate sans formation.",
   },
 ];
 
@@ -156,7 +239,7 @@ const schemas = [
     name: metaTitle,
     description: metaDesc,
     url: pageUrl,
-    dateModified: "2026-06-26",
+    dateModified: "2026-07-04",
   },
   {
     "@context": "https://schema.org",
@@ -164,7 +247,7 @@ const schemas = [
     name: "lokt.fr",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
-    description: "Outil de gestion locative gratuit pour propriétaire bailleur indépendant avec simulateurs immobiliers intégrés.",
+    description: "Outil de gestion locative gratuit pour propriétaire bailleur indépendant avec simulateurs immobiliers intégrés et dossiers de candidature en ligne.",
     url: siteUrl,
     offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
   },
@@ -226,16 +309,15 @@ export default function ComparatifPage() {
             </span>
           </div>
           <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 sm:text-4xl">
-            Meilleur logiciel de gestion locative en 2026 :<br className="hidden sm:block" /> Rentila, Smovin ou lokt.fr ?
+            Meilleur logiciel de gestion locative en 2026 :<br className="hidden sm:block" /> Rentila, BailFacile, Smovin, Gererseul, Homii ou lokt.fr ?
           </h1>
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-slate-600">
             Nous avons testé et comparé les principaux outils utilisés par les bailleurs indépendants en France. Voici ce que chaque solution fait bien, ses limites, et pour quel profil elle convient vraiment.
           </p>
-          {/* Réponse courte */}
           <div className="mt-6 rounded-2xl border border-[#635bff]/20 bg-[#635bff]/5 p-5">
             <p className="text-sm font-semibold text-slate-900">En résumé</p>
             <p className="mt-1.5 text-sm leading-6 text-slate-600">
-              Pour un bailleur particulier gérant 1 à 10 biens, <strong>lokt.fr</strong> est l'option la plus complète : gestion quotidienne + simulateurs immobiliers intégrés, sans frais d'agence ni abonnement élevé. <strong>Rentila</strong> est une alternative gratuite correcte si vous n'avez qu'un bien et pas besoin de simulateurs. <strong>Smovin</strong> vise les bailleurs professionnels gérant plus de 5 biens.
+              Pour un bailleur particulier gérant 1 à 10 biens, <strong>lokt.fr</strong> est l'option la plus complète : gestion quotidienne, simulateurs immobiliers et dossiers de candidature intégrés — sans frais d'agence ni abonnement élevé. <strong>Rentila</strong> et <strong>BailFacile</strong> sont des alternatives gratuites correctes pour un premier bien, sans la sélection en ligne ni les simulateurs. <strong>Smovin</strong> vise les bailleurs professionnels gérant plus de 5 biens. <strong>Gererseul</strong> reste fonctionnel mais vieillissant. <strong>Homii</strong> offre une interface moderne mais sans plan gratuit.
             </p>
           </div>
         </header>
@@ -244,27 +326,27 @@ export default function ComparatifPage() {
         <section className="mb-14 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="text-base font-bold text-slate-900">Tableau comparatif des fonctionnalités</h2>
-            <p className="mt-0.5 text-xs text-slate-400">Tableur Excel · Rentila · Smovin · lokt.fr</p>
+            <p className="mt-0.5 text-xs text-slate-400">Excel · Rentila · Smovin · BailFacile · Gererseul · Homii · lokt.fr</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-sm">
+            <table className="w-full min-w-[900px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="w-2/5 px-5 py-4 text-left text-[0.75rem] font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="w-[30%] px-5 py-4 text-left text-[0.72rem] font-semibold uppercase tracking-wide text-slate-500">
                     Fonctionnalité
                   </th>
                   {columns.map((col, i) => (
                     <th
                       key={col}
                       className={
-                        "px-3 py-4 text-center text-[0.75rem] font-semibold uppercase tracking-wide " +
+                        "px-2 py-4 text-center text-[0.7rem] font-semibold uppercase tracking-wide " +
                         (isLokt(i) ? "bg-[#635bff]/8 text-[#635bff]" : "text-slate-500")
                       }
                     >
                       {isLokt(i) ? (
                         <span className="inline-flex flex-col items-center gap-1">
                           {col}
-                          <span className="rounded-full bg-[#635bff] px-2 py-0.5 text-[0.6rem] font-bold text-white normal-case tracking-normal">
+                          <span className="rounded-full bg-[#635bff] px-2 py-0.5 text-[0.58rem] font-bold text-white normal-case tracking-normal">
                             Notre choix
                           </span>
                         </span>
@@ -278,7 +360,7 @@ export default function ComparatifPage() {
                   <tr key={row.label} className={"border-b border-slate-50 " + (ri % 2 === 0 ? "bg-white" : "bg-slate-50/40")}>
                     <td className="px-5 py-3 font-medium text-slate-800">{row.label}</td>
                     {row.marks.map((mark, ci) => (
-                      <td key={ci} className={"px-3 py-3 text-center " + (isLokt(ci) ? "bg-[#635bff]/5" : "")}>
+                      <td key={ci} className={"px-2 py-3 text-center " + (isLokt(ci) ? "bg-[#635bff]/5" : "")}>
                         <div className="flex justify-center">
                           <MarkIcon mark={mark} lokt={isLokt(ci)} />
                         </div>
@@ -348,14 +430,50 @@ export default function ComparatifPage() {
           </div>
         </section>
 
+        {/* Workflow mise en location */}
+        <section className="mb-14">
+          <div className="flex flex-col gap-1">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-[#635bff]">Exclusif lokt.fr</p>
+            <h2 className="text-2xl font-bold text-slate-950">De la vacance à la signature : le workflow complet</h2>
+          </div>
+          <p className="mt-3 max-w-2xl leading-relaxed text-slate-600">
+            Rentila, BailFacile, Smovin et Gererseul commencent tous au même endroit : <em>après</em> que vous avez trouvé votre locataire. lokt.fr est le seul outil à couvrir aussi la phase de mise en location — de la candidature en ligne à la signature du bail.
+          </p>
+
+          <div className="mt-8 space-y-3">
+            {candidatureSteps.map(({ num, title, body }) => (
+              <div key={num} className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#635bff] text-sm font-bold text-white">
+                  {num}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">{title}</p>
+                  <p className="mt-1 text-[0.82rem] leading-relaxed text-slate-600">{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-[#635bff]/20 bg-[#635bff]/5 p-5">
+            <p className="text-sm font-semibold text-slate-900">Le dossier de candidature lokt.fr en pratique</p>
+            <p className="mt-2 text-[0.82rem] leading-relaxed text-slate-600">
+              Chaque annonce génère un lien unique à partager. Les candidats remplissent leur dossier pièce par pièce, sans créer de compte. Vous recevez un scoring automatique par critère — ratio loyer/revenu, type de contrat, garant — pour choisir le meilleur profil objectivement. Les données des candidats non retenus sont supprimées automatiquement à la clôture : conformité RGPD sans effort.
+            </p>
+            <Link href="/espace-bailleur" className="mt-3 inline-flex items-center gap-1 text-[0.82rem] font-semibold text-[#635bff] hover:text-[#4f46e5]">
+              Créer mon premier dossier de candidature →
+            </Link>
+          </div>
+        </section>
+
         {/* Pourquoi lokt.fr */}
         <section className="mb-14 overflow-hidden rounded-3xl border border-[#635bff]/15 bg-gradient-to-br from-[#635bff]/5 to-white p-8 shadow-sm">
           <h2 className="text-2xl font-bold text-slate-950">Ce que lokt.fr apporte de différent</h2>
           <p className="mt-3 max-w-2xl leading-relaxed text-slate-600">
-            La plupart des outils de gestion locative s'arrêtent à la gestion quotidienne. lokt.fr couvre aussi la phase d'avant-achat : vous analysez un investissement avec les bons chiffres, puis vous gérez depuis le même outil.
+            La plupart des outils de gestion locative s'arrêtent à la gestion quotidienne. lokt.fr couvre aussi la phase d'avant-achat et la mise en location : vous analysez un investissement, sélectionnez vos locataires, puis gérez depuis le même outil.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
+              { title: "Dossiers de candidature en ligne", body: "Un lien unique par annonce. Les candidats remplissent leur dossier sans créer de compte. Scoring automatique (revenus, stabilité pro, garant) pour comparer objectivement. Données supprimées à la clôture — RGPD inclus.", href: "/espace-bailleur", cta: "Voir le module candidature" },
               { title: "Simulateurs intégrés", body: "Rentabilité nette, capacité d'emprunt, prêt relais, plus-value — pour décider d'investir avec les bons chiffres, sans quitter la plateforme.", href: "/calculettes", cta: "Voir les simulateurs" },
               { title: "Alertes bailleur automatiques", body: "lokt.fr vous alerte dès qu'un loyer est en retard, avant chaque échéance de révision IRL et lors de chaque quittance à envoyer. Plus rien ne passe entre les mailles.", href: "/outil-gestion-locative", cta: "Voir les alertes" },
               { title: "Relances locataires intégrées", body: "Relances automatiques par e-mail au locataire en cas d'impayé ou de retard. Vous n'avez pas à rédiger, envoyer ou suivre manuellement.", href: "/outil-gestion-locative", cta: "Voir l'outil" },
@@ -380,7 +498,7 @@ export default function ComparatifPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-white/40">Essai gratuit · Sans carte bancaire</p>
           <h2 className="mt-3 text-2xl font-bold text-white">Gérez votre patrimoine locatif depuis un seul endroit</h2>
           <p className="mt-3 text-[0.9rem] text-white/60">
-            Commencez avec 1 bien. Quittances, suivi des loyers, relances et simulateurs inclus dès le départ.
+            Commencez avec 1 bien. Quittances, suivi des loyers, relances, dossiers de candidature et simulateurs inclus dès le départ.
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Link href="/espace-bailleur" className="rounded-full bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:opacity-90">
