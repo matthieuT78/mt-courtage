@@ -114,6 +114,14 @@ type Props = {
 const CREATE_ID = "__create__";
 type LeaseKind = "furnished_primary" | "furnished_student" | "mobility" | "empty_primary" | "other";
 
+const LEASE_STATUS_LABELS: Record<string, string> = {
+  active: "Actif",
+  ended: "Terminé",
+  draft: "Brouillon",
+  archived: "Archivé",
+  pending: "En attente",
+};
+
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const isNew = (createdAt?: string | null) =>
   !!createdAt && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
@@ -597,20 +605,20 @@ function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: Rent
     });
   }
 
-  const depositPaidAt = parseISODateLocal((lease as any).deposit_paid_at);
-  const depositReturnedAt = parseISODateLocal((lease as any).deposit_returned_at);
+  const depositPaidAt = parseISODateLocal(lease.deposit_paid_at);
+  const depositReturnedAt = parseISODateLocal(lease.deposit_returned_at);
   if (depositPaidAt) {
     events.push({
       id: `${lease.id}:deposit:collected`,
       date: depositPaidAt,
       tone: "emerald",
       title: "Caution encaissée",
-      detail: `${formatEuro((lease as any).deposit_paid_amount ?? lease.deposit_amount)} encaissés.`,
+      detail: `${formatEuro(lease.deposit_paid_amount ?? lease.deposit_amount)} encaissés.`,
     });
   }
   if (depositReturnedAt) {
-    const retAmt = Number((lease as any).deposit_returned_amount ?? 0);
-    const retainAmt = Number((lease as any).deposit_retained_amount ?? 0);
+    const retAmt = Number(lease.deposit_returned_amount ?? 0);
+    const retainAmt = Number(lease.deposit_retained_amount ?? 0);
     if (retAmt > 0) {
       events.push({
         id: `${lease.id}:deposit:returned`,
@@ -621,7 +629,7 @@ function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: Rent
       });
     }
     if (retainAmt > 0) {
-      const reason = String((lease as any).deposit_retained_reason || "");
+      const reason = String(lease.deposit_retained_reason || "");
       events.push({
         id: `${lease.id}:deposit:retained`,
         date: depositReturnedAt,
@@ -741,6 +749,30 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const activeProps = useMemo(() => safeProps.filter(isActivePropertyLike), [safeProps]);
   const activeTenants = useMemo(() => safeTenants.filter(isActiveTenantLike), [safeTenants]);
 
+  const defaultFormValues = () => ({
+    property_id: "",
+    tenant_id: "",
+    start_date: todayISO(),
+    end_date: "",
+    rent_amount: "",
+    charges_amount: "",
+    deposit_amount: "",
+    lease_kind: "furnished_primary" as LeaseKind,
+    auto_renewal_enabled: true,
+    payment_day: "1",
+    payment_method: "virement",
+    payment_type: "terme_a_echoir",
+    status: "active",
+    auto_quittance_enabled: canUseReceiptAutomation,
+    auto_reminder_enabled: canUseReceiptAutomation,
+    receipts_disabled: false,
+    reminder_day_of_month: "1",
+    reminder_email: userEmail || "",
+    tenant_receipt_email: "",
+    timezone: "Europe/Paris",
+    tracking_from: "now" as "now" | "start",
+  });
+
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [highlightCreate, setHighlightCreate] = useState(false);
@@ -775,6 +807,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const [ok, setOk] = useState<string | null>(null);
   const [contractLeaseId, setContractLeaseId] = useState<string | null>(null);
   const [historyOpenByLease, setHistoryOpenByLease] = useState<Record<string, boolean>>({});
+  const [confirmDeleteLeaseId, setConfirmDeleteLeaseId] = useState<string | null>(null);
+  const [confirmCancelDepositByLease, setConfirmCancelDepositByLease] = useState<Record<string, "cancel_collect" | "cancel_return" | null>>({});
 
   // Deposit state
   type DepositAction = "collect" | "return" | null;
@@ -884,7 +918,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   };
 
   const cancelDepositAction = async (leaseId: string, type: "cancel_collect" | "cancel_return") => {
-    if (!confirm(type === "cancel_collect" ? "Annuler l'encaissement ? L'écriture Finance sera supprimée." : "Annuler la restitution ? Les écritures Finance seront supprimées.")) return;
     if (!supabase) return;
     setDepositLoadingByLease((p) => ({ ...p, [leaseId]: true }));
     setDepositErrByLease((p) => ({ ...p, [leaseId]: null }));
@@ -1034,7 +1067,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       tenantEmail: t?.email || null,
       city: p?.city || null,
       total,
-      status: (l.status || "—").toUpperCase(),
+      status: LEASE_STATUS_LABELS[(l.status || "").toLowerCase()] || (l.status || "—"),
       startDateFR,
       endDateFR,
       quittance: l.receipts_disabled ? "Agence" : canUseReceiptAutomation && l.auto_quittance_enabled ? "Auto" : "Manuel",
@@ -1047,7 +1080,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     const receiptEmail = String(lease.tenant_receipt_email || "").trim() || getTenantEmail(tenant);
     const ownerEmail = String(lease.reminder_email || "").trim() || String(userEmail || "").trim();
     const auto = canUseReceiptAutomation && !!lease.auto_quittance_enabled;
-    const confirm = canUseReceiptAutomation && auto;
+    const autoConfirm = canUseReceiptAutomation && auto;
     const manualMode = !auto;
 
     const blockers: string[] = [];
@@ -1080,7 +1113,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       receiptEmail,
       ownerEmail,
       auto,
-      confirm,
+      autoConfirm,
       blockers,
       warnings,
       tone,
@@ -1195,29 +1228,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   );
 
   const resetForm = () => {
-    setForm({
-      property_id: "",
-      tenant_id: "",
-      start_date: todayISO(),
-      end_date: "",
-      rent_amount: "",
-      charges_amount: "",
-      deposit_amount: "",
-      lease_kind: "furnished_primary" as LeaseKind,
-      auto_renewal_enabled: true,
-      payment_day: "1",
-      payment_method: "virement",
-      payment_type: "terme_a_echoir",
-      status: "active",
-      auto_quittance_enabled: canUseReceiptAutomation,
-      auto_reminder_enabled: canUseReceiptAutomation,
-      receipts_disabled: false,
-      reminder_day_of_month: "1",
-      reminder_email: userEmail || "",
-      tenant_receipt_email: "",
-      timezone: "Europe/Paris",
-      tracking_from: "now" as "now" | "start",
-    });
+    setForm(defaultFormValues());
   };
 
   const openCreate = () => {
@@ -1235,27 +1246,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     setMode("create");
     setEditingId(null);
     setForm({
+      ...defaultFormValues(),
       property_id: deepLink.prefillPropertyId ?? "",
       tenant_id: deepLink.prefillTenantId ?? "",
-      start_date: todayISO(),
-      end_date: "",
-      rent_amount: "",
-      charges_amount: "",
-      deposit_amount: "",
-      lease_kind: "furnished_primary" as LeaseKind,
-      auto_renewal_enabled: true,
-      payment_day: "1",
-      payment_method: "virement",
-      payment_type: "terme_a_echoir",
-      status: "active",
-      auto_quittance_enabled: canUseReceiptAutomation,
-      auto_reminder_enabled: canUseReceiptAutomation,
-      receipts_disabled: false,
-      reminder_day_of_month: "1",
-      reminder_email: userEmail || "",
-      tenant_receipt_email: "",
-      timezone: "Europe/Paris",
-      tracking_from: "now" as "now" | "start",
     });
     setHighlightCreate(true);
     setTimeout(() => {
@@ -1505,7 +1498,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
   const onDelete = async (leaseId: string) => {
     if (!userId) return;
-    if (!confirm("Supprimer ce bail ? (Quittances/loyers liés peuvent empêcher la suppression)")) return;
 
     setLoading(true);
     setErr(null);
@@ -1596,14 +1588,35 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                 >
                   {l.auto_quittance_enabled ? "Désactiver auto" : canUseReceiptAutomation ? "Activer auto" : "Auto premium"}
                 </button>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={(e) => { stop(e); onDelete(l.id); }}
-                  className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
-                >
-                  Supprimer
-                </button>
+                {confirmDeleteLeaseId === l.id ? (
+                  <span className="inline-flex items-center gap-2 text-xs">
+                    <span className="text-slate-600">Supprimer ce bail ?</span>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={(e) => { stop(e); setConfirmDeleteLeaseId(null); onDelete(l.id); }}
+                      className="font-semibold text-red-600 hover:text-red-800 disabled:opacity-40"
+                    >
+                      Confirmer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { stop(e); setConfirmDeleteLeaseId(null); }}
+                      className="text-slate-500 hover:text-slate-700"
+                    >
+                      Annuler
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={(e) => { stop(e); setConfirmDeleteLeaseId(l.id); }}
+                    className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
+                  >
+                    Supprimer
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1772,15 +1785,31 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                       <button type="button" onClick={() => openDepositForm(l.id, "return", l)} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
                         Restituer
                       </button>
-                      <button type="button" disabled={depositLoading} onClick={() => cancelDepositAction(l.id, "cancel_collect")} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50">
-                        Annuler encaissement
-                      </button>
+                      {confirmCancelDepositByLease[l.id] === "cancel_collect" ? (
+                        <span className="inline-flex items-center gap-2 text-xs">
+                          <span className="text-slate-600">Annuler l&apos;encaissement ?</span>
+                          <button type="button" disabled={depositLoading} onClick={() => { setConfirmCancelDepositByLease((p) => ({ ...p, [l.id]: null })); cancelDepositAction(l.id, "cancel_collect"); }} className="font-semibold text-red-600 hover:text-red-800 disabled:opacity-40">Confirmer</button>
+                          <button type="button" onClick={() => setConfirmCancelDepositByLease((p) => ({ ...p, [l.id]: null }))} className="text-slate-500 hover:text-slate-700">Annuler</button>
+                        </span>
+                      ) : (
+                        <button type="button" disabled={depositLoading} onClick={() => setConfirmCancelDepositByLease((p) => ({ ...p, [l.id]: "cancel_collect" }))} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50">
+                          Annuler encaissement
+                        </button>
+                      )}
                     </>
                   ) : null}
                   {isReturned && !depositAction ? (
-                    <button type="button" disabled={depositLoading} onClick={() => cancelDepositAction(l.id, "cancel_return")} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50">
-                      Annuler restitution
-                    </button>
+                    confirmCancelDepositByLease[l.id] === "cancel_return" ? (
+                      <span className="inline-flex items-center gap-2 text-xs">
+                        <span className="text-slate-600">Annuler la restitution ?</span>
+                        <button type="button" disabled={depositLoading} onClick={() => { setConfirmCancelDepositByLease((p) => ({ ...p, [l.id]: null })); cancelDepositAction(l.id, "cancel_return"); }} className="font-semibold text-red-600 hover:text-red-800 disabled:opacity-40">Confirmer</button>
+                        <button type="button" onClick={() => setConfirmCancelDepositByLease((p) => ({ ...p, [l.id]: null }))} className="text-slate-500 hover:text-slate-700">Annuler</button>
+                      </span>
+                    ) : (
+                      <button type="button" disabled={depositLoading} onClick={() => setConfirmCancelDepositByLease((p) => ({ ...p, [l.id]: "cancel_return" }))} className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50">
+                        Annuler restitution
+                      </button>
+                    )
                   ) : null}
                   {depositAction ? (
                     <button type="button" onClick={() => closeDepositForm(l.id)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold">
@@ -1797,12 +1826,12 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                     <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">En attente d&apos;encaissement</span>
                   ) : !isReturned ? (
                     <>
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">Encaissé le {l.deposit_paid_at}</span>
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">Encaissé le {fmtDateShortFR(l.deposit_paid_at ?? undefined)}</span>
                       <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">{formatEuro(paidAmt)}</span>
                     </>
                   ) : (
                     <>
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">Clôturé le {l.deposit_returned_at}</span>
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">Clôturé le {fmtDateShortFR(l.deposit_returned_at ?? undefined)}</span>
                       {returnedAmt > 0 ? <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">Rendu : {formatEuro(returnedAmt)}</span> : null}
                       {retainedAmt > 0 ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">Retenu : {formatEuro(retainedAmt)}</span> : null}
                       {l.deposit_retained_reason ? <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">{l.deposit_retained_reason}</span> : null}
