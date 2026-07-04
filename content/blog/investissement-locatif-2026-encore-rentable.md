@@ -5,7 +5,7 @@ date: "2026-07-04"
 updatedAt: "2026-07-04"
 category: "Investissement locatif"
 tags: ["investissement locatif", "rentabilité 2026", "rendement locatif", "LMNP", "villes investissement", "marché immobilier 2026"]
-coverImage: "/blog/investissement-locatif-2026-encore-rentable.jpg"
+coverImage: "/blog/investissement-locatif-2026-encore-rentable.png"
 faq:
   - q: "L'investissement locatif est-il encore rentable en 2026 ?"
     a: "Oui, pour les profils bien préparés. Le rendement brut national s'établit à 5,2 % en moyenne en 2026, contre 4,6 % en 2022. La correction des prix (-4,9 % depuis le pic), la stabilisation des taux autour de 3,40 % sur 20 ans et la tension locative persistante créent une fenêtre favorable. Les villes moyennes comme Grenoble, Marseille ou Le Mans offrent des rendements bruts entre 5 % et 8 %."
