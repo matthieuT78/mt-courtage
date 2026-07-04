@@ -91,32 +91,32 @@ export default function ParcImmobilierPage() {
   const faqData = useMemo(
     () => [
       {
-        q: "Qu’est-ce qu’un simulateur de parc immobilier ?",
-        a: "Un simulateur de parc immobilier consolide plusieurs biens pour obtenir une vision globale : valeur totale, encours, cash-flow et rendements. Cela aide à piloter un patrimoine plutôt que d’analyser un bien isolé.",
+        q: "Qu'est-ce qu'un simulateur de parc immobilier ?",
+        a: "Un simulateur de parc immobilier consolide plusieurs biens pour obtenir une vision globale : valeur totale, encours, cash-flow et rendements. Cela aide à piloter un patrimoine plutôt que d'analyser un bien isolé.",
       },
       {
         q: "Combien de biens puis-je analyser ?",
-        a: "La calculette permet généralement d’ajouter plusieurs biens (par exemple 1 à 20) afin de calculer des indicateurs consolidés.",
+        a: "La calculette permet généralement d'ajouter plusieurs biens (par exemple 1 à 20) afin de calculer des indicateurs consolidés.",
       },
       {
         q: "À quoi servent les ratios LTV et DSCR ?",
-        a: "Le LTV (Loan-to-Value) compare l’encours total au prix/valeur du parc. Le DSCR (Debt Service Coverage Ratio) compare les revenus nets au service de la dette. Ce sont des indicateurs utiles pour mesurer la robustesse d’un parc.",
+        a: "Le LTV (Loan-to-Value) compare l'encours total au prix/valeur du parc. Le DSCR (Debt Service Coverage Ratio) compare les revenus nets au service de la dette. Ce sont des indicateurs utiles pour mesurer la robustesse d'un parc.",
       },
       {
-        q: “Les résultats sont-ils \”bancaires\” ?”,
-        a: “Les résultats sont indicatifs. Selon les établissements, les hypothèses (vacance, charges, prise en compte des loyers, etc.) peuvent varier. L’outil sert surtout à comparer des scénarios avec une lecture homogène.”,
+        q: "Les résultats sont-ils acceptés par les banques ?",
+        a: "Les résultats sont indicatifs. Selon les établissements, les hypothèses (vacance, charges, prise en compte des loyers, etc.) peuvent varier. L'outil sert surtout à comparer des scénarios avec une lecture homogène.",
       },
       {
-        q: “Quel DSCR est considéré comme sain pour un investisseur immobilier ?”,
-        a: “Un DSCR (Debt Service Coverage Ratio) supérieur à 1,2 est généralement considéré comme sain : les loyers nets couvrent 120 % des remboursements de crédit. En dessous de 1,0, les revenus locatifs ne couvrent pas la dette — le parc est en flux négatif chronique. Les banques analysent souvent le DSCR global avant d’accorder un nouveau financement.”,
+        q: "Quel DSCR est considéré comme sain pour un investisseur immobilier ?",
+        a: "Un DSCR (Debt Service Coverage Ratio) supérieur à 1,2 est généralement considéré comme sain : les loyers nets couvrent 120 % des remboursements de crédit. En dessous de 1,0, les revenus locatifs ne couvrent pas la dette — le parc est en flux négatif chronique. Les banques analysent souvent le DSCR global avant d'accorder un nouveau financement.",
       },
       {
-        q: “À partir de combien de biens est-il utile d’analyser son parc en consolidé ?”,
-        a: “Dès 2 biens, une vue consolidée apporte une clarté que les tableurs par bien ne donnent pas : vision du risque de concentration, du LTV moyen et du cash-flow global. À partir de 3-4 biens, les ratios DSCR et LTV deviennent des indicateurs pilotables pour anticiper les conditions d’un nouveau financement.”,
+        q: "À partir de combien de biens est-il utile d'analyser son parc en consolidé ?",
+        a: "Dès 2 biens, une vue consolidée apporte une clarté que les tableurs par bien ne donnent pas : vision du risque de concentration, du LTV moyen et du cash-flow global. À partir de 3-4 biens, les ratios DSCR et LTV deviennent des indicateurs pilotables pour anticiper les conditions d'un nouveau financement.",
       },
       {
-        q: “Comment améliorer la rentabilité globale d’un parc immobilier ?”,
-        a: “Les leviers principaux : renégocier les crédits en cours (taux, durée), optimiser la vacance locative (candidatures rapides, loyer au marché), passer au LMNP réel pour les meublés (amortissement qui réduit l’impôt), arbitrer les biens à rendement faible, et diversifier vers des marchés à rendement plus élevé pour les nouveaux achats.”,
+        q: "Comment améliorer la rentabilité globale d'un parc immobilier ?",
+        a: "Les leviers principaux : renégocier les crédits en cours (taux, durée), optimiser la vacance locative (candidatures rapides, loyer au marché), passer au LMNP réel pour les meublés (amortissement qui réduit l'impôt), arbitrer les biens à rendement faible, et diversifier vers des marchés à rendement plus élevé pour les nouveaux achats.",
       },
     ],
     []
@@ -259,7 +259,7 @@ export default function ParcImmobilierPage() {
             </p>
 
             <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-              L’objectif est de comparer des scénarios (nouvel achat, refinancement, vacance, hausse de charges) avec une
+              L'objectif est de comparer des scénarios (nouvel achat, refinancement, vacance, hausse de charges) avec une
               lecture homogène, plutôt que de multiplier les tableurs.
             </p>
 

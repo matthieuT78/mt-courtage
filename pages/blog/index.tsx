@@ -8,12 +8,24 @@ import AppFooter from "../../components/AppFooter";
 const SITE_URL = "https://lokt.fr";
 
 const CATEGORY_CONFIG: Record<string, { color: string; bg: string; gradient: string }> = {
-  "Capacité d'emprunt":    { color: "text-[#635bff]", bg: "bg-[#635bff]/10",  gradient: "from-[#635bff]/40 via-[#635bff]/20 to-[#007ba7]/10" },
   "Investissement locatif":{ color: "text-emerald-700", bg: "bg-emerald-50",   gradient: "from-emerald-600/40 via-emerald-500/15 to-transparent" },
+  "Gestion locative":      { color: "text-teal-700",    bg: "bg-teal-50",      gradient: "from-teal-600/40 via-teal-400/15 to-transparent" },
+  "Fiscalité locative":    { color: "text-orange-700",  bg: "bg-orange-50",    gradient: "from-orange-600/40 via-orange-400/15 to-transparent" },
   "Plus-value immobilière":{ color: "text-amber-700",   bg: "bg-amber-50",     gradient: "from-amber-600/40 via-amber-400/15 to-transparent" },
-  "Achat immobilier":      { color: "text-sky-700",     bg: "bg-sky-50",       gradient: "from-sky-600/40 via-sky-400/15 to-transparent" },
   "Crédit immobilier":     { color: "text-indigo-700",  bg: "bg-indigo-50",    gradient: "from-indigo-600/40 via-indigo-400/15 to-transparent" },
+  "Achat immobilier":      { color: "text-sky-700",     bg: "bg-sky-50",       gradient: "from-sky-600/40 via-sky-400/15 to-transparent" },
+  "Capacité d'emprunt":    { color: "text-[#635bff]",  bg: "bg-[#635bff]/10", gradient: "from-[#635bff]/40 via-[#635bff]/20 to-[#007ba7]/10" },
 };
+
+const CATEGORY_ORDER = [
+  "Investissement locatif",
+  "Gestion locative",
+  "Fiscalité locative",
+  "Plus-value immobilière",
+  "Crédit immobilier",
+  "Achat immobilier",
+  "Capacité d'emprunt",
+];
 const DEFAULT_CAT = { color: "text-[#635bff]", bg: "bg-[#635bff]/10", gradient: "from-[#635bff]/30 via-[#007ba7]/15 to-[#00a97b]/10" };
 
 function getCat(category?: string) {
@@ -29,9 +41,9 @@ function formatDateFR(dateStr?: string) {
 
 export default function BlogIndex({ posts }: any) {
   const pageUrl = `${SITE_URL}/blog`;
-  const title = "Blog immobilier — guides & simulateurs | lokt.fr";
+  const title = "Guides immobilier 2026 : investissement locatif, gestion, fiscalité | lokt.fr";
   const description =
-    "Guides actionnables sur le crédit immobilier, l'investissement locatif et la fiscalité — avec des liens directs vers les simulateurs lokt.";
+    "Guides pratiques et analyses pour investir, gérer et optimiser vos biens immobiliers en 2026 : rendement locatif, LMNP, fiscalité, prêt relais, plus-value — avec simulateurs intégrés.";
   const ogImage = `${SITE_URL}/logo-transparent-Lokt.jpg`;
 
   const jsonLd = [
@@ -43,6 +55,18 @@ export default function BlogIndex({ posts }: any) {
   ];
 
   const [featured, ...rest] = posts;
+
+  // Group remaining posts by category in defined order
+  const grouped: Record<string, typeof rest> = {};
+  rest.forEach((p: any) => {
+    const cat: string = p.frontmatter.category || "Autre";
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(p);
+  });
+  const orderedCategories = [
+    ...CATEGORY_ORDER.filter((c) => grouped[c]),
+    ...Object.keys(grouped).filter((c) => !CATEGORY_ORDER.includes(c)),
+  ];
 
   return (
     <>
@@ -141,61 +165,57 @@ export default function BlogIndex({ posts }: any) {
             </section>
           )}
 
-          {/* ── GRILLE D'ARTICLES ── */}
-          {rest.length > 0 && (
-            <section className="mt-10">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Tous les articles</p>
-              <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {rest.map((p: any) => {
-                  const cat = getCat(p.frontmatter.category);
-                  return (
-                    <Link key={p.slug} href={`/blog/${p.slug}`} className="group flex flex-col overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
-                      {/* Thumbnail */}
-                      <div className="relative aspect-[16/9] w-full overflow-hidden">
-                        {p.frontmatter.coverImage ? (
-                          <Image
-                            src={p.frontmatter.coverImage}
-                            alt={p.frontmatter.title}
-                            fill
-                            className="object-cover transition duration-500 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className={`h-full w-full bg-gradient-to-br ${cat.gradient}`}>
-                            <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                              <svg viewBox="0 0 64 64" className="h-16 w-16 fill-current text-white"><path d="M32 2 L2 30 H12 V62 H26 V44 H38 V62 H52 V30 H62 Z"/></svg>
+          {/* ── GRILLE PAR CATÉGORIE ── */}
+          {orderedCategories.map((categoryName) => {
+            const catStyle = getCat(categoryName);
+            return (
+              <section key={categoryName} className="mt-10">
+                <div className="flex items-center gap-3">
+                  <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${catStyle.bg} ${catStyle.color}`}>
+                    {categoryName}
+                  </span>
+                  <div className="flex-1 border-t border-slate-200" />
+                </div>
+                <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {grouped[categoryName].map((p: any) => {
+                    const cat = getCat(p.frontmatter.category);
+                    return (
+                      <Link key={p.slug} href={`/blog/${p.slug}`} className="group flex flex-col overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
+                        <div className="relative aspect-[16/9] w-full overflow-hidden">
+                          {p.frontmatter.coverImage ? (
+                            <Image src={p.frontmatter.coverImage} alt={p.frontmatter.title} fill className="object-cover transition duration-500 group-hover:scale-105" />
+                          ) : (
+                            <div className={`h-full w-full bg-gradient-to-br ${cat.gradient}`}>
+                              <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                                <svg viewBox="0 0 64 64" className="h-16 w-16 fill-current text-white"><path d="M32 2 L2 30 H12 V62 H26 V44 H38 V62 H52 V30 H62 Z"/></svg>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                      {/* Body */}
-                      <div className="flex flex-1 flex-col p-5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {p.frontmatter.category && (
-                            <span className={`rounded-full px-2.5 py-0.5 text-[0.68rem] font-semibold ${cat.bg} ${cat.color}`}>
-                              {p.frontmatter.category}
-                            </span>
                           )}
-                          <span className="text-[0.7rem] text-slate-400">{p.readingTime} min</span>
                         </div>
-                        <p className="mt-2.5 font-semibold leading-snug text-slate-900 group-hover:text-[#635bff]">
-                          {p.frontmatter.title}
-                        </p>
-                        {p.frontmatter.description && (
-                          <p className="mt-1.5 text-[0.78rem] leading-5 text-slate-500 line-clamp-2">
-                            {p.frontmatter.description}
+                        <div className="flex flex-1 flex-col p-5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[0.7rem] text-slate-400">{p.readingTime} min</span>
+                          </div>
+                          <p className="mt-2 font-semibold leading-snug text-slate-900 group-hover:text-[#635bff]">
+                            {p.frontmatter.title}
                           </p>
-                        )}
-                        <div className="mt-auto flex items-center justify-between pt-4">
-                          <span className="text-[0.7rem] text-slate-400">{formatDateFR(p.frontmatter.date)}</span>
-                          <span className="text-[0.78rem] font-semibold text-[#635bff]">Lire →</span>
+                          {p.frontmatter.description && (
+                            <p className="mt-1.5 text-[0.78rem] leading-5 text-slate-500 line-clamp-2">
+                              {p.frontmatter.description}
+                            </p>
+                          )}
+                          <div className="mt-auto flex items-center justify-between pt-4">
+                            <span className="text-[0.7rem] text-slate-400">{formatDateFR(p.frontmatter.date)}</span>
+                            <span className="text-[0.78rem] font-semibold text-[#635bff]">Lire →</span>
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
 
           {/* ── CTA SIMULATEURS ── */}
           <section className="mt-12 rounded-[1.5rem] border border-[#635bff]/20 bg-gradient-to-r from-[#635bff]/8 to-[#00b4d8]/8 p-7 sm:p-8">
