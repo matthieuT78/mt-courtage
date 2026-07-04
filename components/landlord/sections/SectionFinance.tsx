@@ -48,6 +48,7 @@ type Receipt = {
   period_start?: string | null;
   period_end?: string | null;
   total_amount?: number | null;
+  status?: string | null;
   created_at: string;
 };
 
@@ -171,6 +172,13 @@ const periodRange = (mode: PeriodMode, anchorMonth: string, customStart?: string
     return { start: addMonths(anchorStart, -5), end: anchorEnd };
   }
   return { start: anchorStart, end: anchorEnd };
+};
+
+const fmtDateFR = (iso?: string | null) => {
+  if (!iso) return "—";
+  const d = new Date(iso.slice(0, 10) + "T00:00:00");
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 };
 
 const normalizeDate = (val?: string | null) => {
@@ -473,7 +481,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [tab, setTab] = useState<FinanceTab>("finance");
 
   // 🎨 lokt.fr
-  const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
+  const brandBg = "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
 
@@ -532,6 +540,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [filterText, setFilterText] = useState<string>("");
 
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [confirmDeleteTxId, setConfirmDeleteTxId] = useState<string | null>(null);
   const [txWizardOpen, setTxWizardOpen] = useState(false);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
@@ -564,7 +573,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const leasePropertyById = useMemo(() => {
     const map = new Map<string, string>();
     for (const lease of safeLeases) {
-      if ((lease as any)?.id && (lease as any)?.property_id) map.set(String((lease as any).id), String((lease as any).property_id));
+      if (lease.id && lease.property_id) map.set(lease.id, lease.property_id);
     }
     return map;
   }, [safeLeases]);
@@ -681,13 +690,13 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     );
 
     const syncableReceipts = uniqueReceipts.filter((r) => {
-      const status = String((r as any).status || "").toLowerCase();
+      const status = String(r.status || "").toLowerCase();
       return status === "generated" || status === "sent";
     });
     if (syncableReceipts.length === 0) return;
 
     const payload = syncableReceipts.map((r) => {
-      const lease = safeLeases.find((l) => (l as any).id === r.lease_id);
+      const lease = safeLeases.find((l) => l.id === r.lease_id);
       const payment = paymentsByPeriod.get(`${r.lease_id}:${r.period_start}:${r.period_end}`);
       const fullyPaid = !!payment?.paid_at && Number(payment.total_amount || 0) + 0.01 >= Number(r.total_amount || 0);
       const occurred_at =
@@ -696,7 +705,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
       return {
         user_id: userId,
-        property_id: (lease as any)?.property_id ?? null,
+        property_id: lease?.property_id ?? null,
         lease_id: r.lease_id,
         receipt_id: r.id,
         occurred_at,
@@ -858,13 +867,13 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
 
       for (const lease of safeLeases) {
-        const propertyId = String((lease as any).property_id || "");
+        const propertyId = lease.property_id || "";
         if (!propertyId || !analysisPropertyIds.includes(propertyId)) continue;
 
-        const leaseStart = normalizeDate((lease as any).start_date);
-        const leaseEnd = normalizeDate((lease as any).end_date);
+        const leaseStart = normalizeDate(lease.start_date);
+        const leaseEnd = normalizeDate(lease.end_date);
         if (!leaseStart) continue;
-        if (statusBlocked.has(String((lease as any).status || "").toLowerCase())) continue;
+        if (statusBlocked.has((lease.status || "").toLowerCase())) continue;
         if (leaseStart > monthEnd || (leaseEnd && leaseEnd < cursor)) continue;
 
         const amount = Number(getLeaseRentPeriod(lease, key)?.total || 0);
@@ -885,15 +894,15 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     }
 
     const activeLeases = safeLeases.filter((l) => {
-      const s = normalizeDate((l as any).start_date);
-      const e = normalizeDate((l as any).end_date);
-      const leasePropertyId = String((l as any).property_id || "");
+      const s = normalizeDate(l.start_date);
+      const e = normalizeDate(l.end_date);
+      const leasePropertyId = l.property_id || "";
       if (analysisPropertyId && leasePropertyId !== analysisPropertyId) return false;
       if (!analysisPropertyId && leasePropertyId && !activePropertyIdSet.has(leasePropertyId)) return false;
       if (!s) return false;
       const startsBeforeEnd = s.getTime() <= end.getTime();
       const notEnded = !e || e.getTime() >= start.getTime();
-      const statusOk = ((l as any).status || "active").toLowerCase() !== "draft";
+      const statusOk = (l.status || "active").toLowerCase() !== "draft";
       return startsBeforeEnd && notEnded && statusOk;
     });
 
@@ -903,8 +912,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         return sum(
           activeLeases
             .filter((l) => {
-              const s = normalizeDate((l as any).start_date);
-              const e = normalizeDate((l as any).end_date);
+              const s = normalizeDate(l.start_date);
+              const e = normalizeDate(l.end_date);
               return !!s && s <= mEnd && (!e || e >= mStart);
             })
             .map((l) => Number(getLeaseRentPeriod(l, monthKey(mStart))?.total || 0))
@@ -913,17 +922,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     );
 
     const periodPayments = safePayments.filter((p) => {
-      const paymentPropertyId = leasePropertyById.get(String((p as any).lease_id || "")) || "";
+      const paymentPropertyId = leasePropertyById.get(p.lease_id || "") || "";
       if (analysisPropertyId && paymentPropertyId !== analysisPropertyId) return false;
       if (!analysisPropertyId && paymentPropertyId && !activePropertyIdSet.has(paymentPropertyId)) return false;
-      const ps = normalizeDate((p as any).period_start);
-      const pe = normalizeDate((p as any).period_end);
+      const ps = normalizeDate(p.period_start);
+      const pe = normalizeDate(p.period_end);
       if (!ps || !pe) return false;
       return !(pe.getTime() < start.getTime() || ps.getTime() > end.getTime());
     });
 
     const received = sum(
-      periodPayments.filter((p) => !!(p as any).paid_at).map((p) => Number((p as any).total_amount || 0))
+      periodPayments.filter((p) => !!p.paid_at).map((p) => Number(p.total_amount || 0))
     );
 
     const pending = Math.max(0, expected - received);
@@ -996,8 +1005,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   ]);
 
   const filteredLedgerSummary = useMemo(() => {
-    const income = sum(filteredMonthLedger.filter(isIncomeReceived).map((r) => Number(r.amount || 0)));
-    const expense = sum(filteredMonthLedger.filter((r) => r.direction === "out").map((r) => Number(r.amount || 0)));
+    const income = sum(filteredMonthLedger.filter((r) => !isRecurringFlow(r) && isIncomeReceived(r)).map((r) => Number(r.amount || 0)));
+    const expense = sum(filteredMonthLedger.filter((r) => !isRecurringFlow(r) && r.direction === "out").map((r) => Number(r.amount || 0)));
     return { income, expense, net: income - expense, count: filteredMonthLedger.length };
   }, [filteredMonthLedger]);
 
@@ -1081,11 +1090,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       const activeLeaseCount = propertyId === "—"
         ? 0
         : safeLeases.filter((lease) => {
-            if (String((lease as any).property_id || "") !== propertyId) return false;
-            const status = String((lease as any).status || "").toLowerCase();
+            if ((lease.property_id || "") !== propertyId) return false;
+            const status = (lease.status || "").toLowerCase();
             if (["draft", "archived", "ended"].includes(status)) return false;
-            const leaseStart = normalizeDate((lease as any).start_date);
-            const leaseEnd = normalizeDate((lease as any).end_date);
+            const leaseStart = normalizeDate(lease.start_date);
+            const leaseEnd = normalizeDate(lease.end_date);
             if (!leaseStart) return false;
             return leaseStart <= selectedPeriod.end && (!leaseEnd || leaseEnd >= selectedPeriod.start);
           }).length;
@@ -1340,8 +1349,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       setErr("Cette écriture est protégée (quittance auto ou caution).");
       return;
     }
-    const label = r.label || categoryLabel(r.category);
-    if (!confirm(`Supprimer cette écriture ?\n${label} — ${formatEuro(Number(r.amount || 0))}`)) return;
 
     setDeleteBusy(true);
     setErr(null);
@@ -1539,7 +1546,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     }
 
     return months;
-  }, [monthlyRecurringByProperty, periodLedger.rows, selectedPeriod]);
+  }, [analysisPropertyIds, recurringParentTxByProperty, pf, periodLedger.rows, selectedPeriod]);
 
   const chartDrillRows = useMemo(
     () =>
@@ -2061,7 +2068,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
                   return (
                     <tr key={r.id} className="border-b border-slate-100 last:border-0">
-                      <td className="px-3 py-2 text-slate-700">{r.occurred_at}</td>
+                      <td className="px-3 py-2 text-slate-700">{fmtDateFR(r.occurred_at)}</td>
                       <td className="truncate px-3 py-2 text-slate-700">{p?.label || "—"}</td>
                       <td className="px-3 py-2">
                         <div className="min-w-0">
@@ -2114,15 +2121,22 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                             >
                               <PencilSquareIcon className="h-3.5 w-3.5" />
                             </button>
-                            <button
-                              type="button"
-                              title="Supprimer cette écriture"
-                              disabled={deleteBusy}
-                              onClick={() => deleteOneTx(r)}
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
-                            >
-                              <TrashIcon className="h-3.5 w-3.5" />
-                            </button>
+                            {confirmDeleteTxId === r.id ? (
+                              <span className="inline-flex items-center gap-1 text-xs">
+                                <button type="button" disabled={deleteBusy} onClick={() => { setConfirmDeleteTxId(null); deleteOneTx(r); }} className="font-semibold text-red-600 hover:text-red-800 disabled:opacity-40">Oui</button>
+                                <button type="button" onClick={() => setConfirmDeleteTxId(null)} className="text-slate-400 hover:text-slate-600">Non</button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                title="Supprimer cette écriture"
+                                disabled={deleteBusy}
+                                onClick={() => setConfirmDeleteTxId(r.id)}
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                              >
+                                <TrashIcon className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                           </div>
                         ) : null}
                       </td>
@@ -2820,7 +2834,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                         const propLabel = r.property_id ? (propsById.get(r.property_id)?.label || null) : null;
                         return (
                           <tr key={r.id} className="border-b border-slate-100 last:border-0">
-                            <td className="whitespace-nowrap px-4 py-2.5 text-xs text-slate-500">{r.occurred_at}</td>
+                            <td className="whitespace-nowrap px-4 py-2.5 text-xs text-slate-500">{fmtDateFR(r.occurred_at)}</td>
                             <td className="px-3 py-2.5">
                               <p className="font-medium text-slate-900">{r.label || categoryLabel(r.category)}</p>
                               <p className="text-xs text-slate-400">
@@ -2942,61 +2956,40 @@ function PropertyFinanceForm({
   existing: PropertyFinance | null;
   onSave: (propertyId: string, patch: Partial<PropertyFinance>) => Promise<void>;
 }) {
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [s, setS] = useState<PropertyFinance>({
+  const fromExisting = (ex: PropertyFinance | null): PropertyFinance => ({
     property_id: propertyId,
     user_id: "",
-    purchase_price: existing?.purchase_price ?? null,
-    notary_fees: existing?.notary_fees ?? null,
-    agency_fees: existing?.agency_fees ?? null,
-    works: existing?.works ?? null,
-    down_payment: existing?.down_payment ?? null,
-    loan_monthly: existing?.loan_monthly ?? null,
-    loan_insurance_monthly: existing?.loan_insurance_monthly ?? null,
-    loan_rate_percent: existing?.loan_rate_percent ?? null,
-    loan_remaining_months: existing?.loan_remaining_months ?? null,
-    loan_end_year: existing?.loan_end_year ?? estimatedLoanEndYear(existing?.loan_remaining_months),
-    tax_regime: existing?.tax_regime ?? null,
-    fixed_charges_monthly: existing?.fixed_charges_monthly ?? null,
-    fixed_charges_frequency: existing?.fixed_charges_frequency || "monthly",
-    property_tax_yearly: existing?.property_tax_yearly ?? null,
-    pno_insurance_monthly: existing?.pno_insurance_monthly ?? null,
-    copro_charges_monthly: existing?.copro_charges_monthly ?? null,
-    cfe_yearly: existing?.cfe_yearly ?? null,
-    loan_interest_monthly: existing?.loan_interest_monthly ?? null,
-    bank_fees_monthly: existing?.bank_fees_monthly ?? null,
-    maintenance_monthly: existing?.maintenance_monthly ?? null,
-    rental_tax_monthly: existing?.rental_tax_monthly ?? null,
-    recurring_since: existing?.recurring_since ?? null,
+    purchase_price: ex?.purchase_price ?? null,
+    notary_fees: ex?.notary_fees ?? null,
+    agency_fees: ex?.agency_fees ?? null,
+    works: ex?.works ?? null,
+    down_payment: ex?.down_payment ?? null,
+    loan_monthly: ex?.loan_monthly ?? null,
+    loan_insurance_monthly: ex?.loan_insurance_monthly ?? null,
+    loan_rate_percent: ex?.loan_rate_percent ?? null,
+    loan_remaining_months: ex?.loan_remaining_months ?? null,
+    loan_end_year: ex?.loan_end_year ?? estimatedLoanEndYear(ex?.loan_remaining_months),
+    tax_regime: ex?.tax_regime ?? null,
+    fixed_charges_monthly: ex?.fixed_charges_monthly ?? null,
+    fixed_charges_frequency: ex?.fixed_charges_frequency || "monthly",
+    property_tax_yearly: ex?.property_tax_yearly ?? null,
+    pno_insurance_monthly: ex?.pno_insurance_monthly ?? null,
+    copro_charges_monthly: ex?.copro_charges_monthly ?? null,
+    cfe_yearly: ex?.cfe_yearly ?? null,
+    loan_interest_monthly: ex?.loan_interest_monthly ?? null,
+    bank_fees_monthly: ex?.bank_fees_monthly ?? null,
+    maintenance_monthly: ex?.maintenance_monthly ?? null,
+    rental_tax_monthly: ex?.rental_tax_monthly ?? null,
+    recurring_since: ex?.recurring_since ?? null,
   });
 
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [s, setS] = useState<PropertyFinance>(() => fromExisting(existing));
+
   useEffect(() => {
-    setS((prev) => ({
-      ...prev,
-      purchase_price: existing?.purchase_price ?? null,
-      notary_fees: existing?.notary_fees ?? null,
-      agency_fees: existing?.agency_fees ?? null,
-      works: existing?.works ?? null,
-      down_payment: existing?.down_payment ?? null,
-      loan_monthly: existing?.loan_monthly ?? null,
-      loan_insurance_monthly: existing?.loan_insurance_monthly ?? null,
-      loan_rate_percent: existing?.loan_rate_percent ?? null,
-      loan_remaining_months: existing?.loan_remaining_months ?? null,
-      loan_end_year: existing?.loan_end_year ?? estimatedLoanEndYear(existing?.loan_remaining_months),
-      tax_regime: existing?.tax_regime ?? null,
-      fixed_charges_monthly: existing?.fixed_charges_monthly ?? null,
-      fixed_charges_frequency: existing?.fixed_charges_frequency || "monthly",
-      property_tax_yearly: existing?.property_tax_yearly ?? null,
-      pno_insurance_monthly: existing?.pno_insurance_monthly ?? null,
-      copro_charges_monthly: existing?.copro_charges_monthly ?? null,
-      cfe_yearly: existing?.cfe_yearly ?? null,
-      loan_interest_monthly: existing?.loan_interest_monthly ?? null,
-      bank_fees_monthly: existing?.bank_fees_monthly ?? null,
-      maintenance_monthly: existing?.maintenance_monthly ?? null,
-      rental_tax_monthly: existing?.rental_tax_monthly ?? null,
-      recurring_since: existing?.recurring_since ?? null,
-    }));
+    setS(fromExisting(existing));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing]);
 
   const save = async (e: FormEvent) => {
@@ -3029,7 +3022,7 @@ function PropertyFinanceForm({
         recurring_since: s.recurring_since || null,
       });
       setSaved(true);
-      window.setTimeout(() => setSaved(false), 2500);
+      setTimeout(() => setSaved(false), 2500);
     } finally {
       setSaving(false);
     }
