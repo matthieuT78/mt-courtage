@@ -5,7 +5,7 @@ date: "2026-07-04"
 category: "Gestion locative"
 tags: ["logiciel gestion locative", "Rentila", "BailFacile", "Smovin", "gestion locative particulier", "dossier candidature locataire"]
 relatedCalculators: ["investissement", "parc-immobilier"]
-coverImage: "/blog/choisir-logiciel-gestion-locative.jpg"
+coverImage: "/blog/choisir-logiciel-gestion-locative.png"
 faq:
   - q: "Faut-il utiliser un logiciel de gestion locative si on a un seul bien ?"
     a: "Oui, dès le premier bien. Même avec un seul logement, un outil dédié vous fait gagner plusieurs heures par mois : génération automatique des quittances, suivi des paiements, alertes en cas de retard. Le temps économisé chaque mois dépasse largement le coût d'un abonnement."
