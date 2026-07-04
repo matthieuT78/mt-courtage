@@ -20,9 +20,9 @@ import AppFooter from "../components/AppFooter";
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/gestion-locative-lmnp`;
 const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
-const title = "Logiciel Gestion Locative LMNP Gratuit — Location Meublée 2026 | lokt.fr";
+const title = "Gestion Locative LMNP 2026 : bail, loyers, inventaire et quittances pour location meublée | lokt.fr";
 const description =
-  "Gérez votre location meublée LMNP sans tableur : bail, inventaire meublé, état des lieux, quittances, loyers et suivi financier. Logiciel de gestion locative meublée gratuit pour 1 logement.";
+  "Gérez votre location meublée LMNP sans tableur : bail numérique, inventaire meublé, état des lieux, quittances PDF, loyers et suivi financier. Gestion de location meublée gratuite pour 1 logement.";
 
 const features = [
   {
@@ -100,6 +100,14 @@ const faq = [
     q: "Que se passe-t-il en cas de départ du locataire d’un meublé ?",
     a: "Le préavis de départ est d’un mois pour le locataire d’un meublé (contre 3 mois en location vide). À la sortie, un état des lieux de sortie est obligatoire et doit être comparé à l’état des lieux d’entrée. Le dépôt de garantie doit être restitué dans un délai d’un mois (ou deux si des dégradations sont constatées), déduction faite des retenues justifiées.",
   },
+  {
+    q: "Comment gérer une location meublée LMNP au quotidien ?",
+    a: "La gestion LMNP s’organise en trois axes : (1) l’opérationnel mensuel — confirmer le loyer, générer la quittance, signaler un retard ; (2) les preuves — inventaire détaillé du mobilier, états des lieux d’entrée et de sortie comparables, bail et avenants archivés ; (3) la comptabilité — classer les charges déductibles (travaux, assurances, intérêts), conserver les justificatifs et préparer les éléments pour la déclaration. Un outil de gestion locative LMNP comme lokt.fr centralise ces trois dimensions pour éviter les tableurs dispersés.",
+  },
+  {
+    q: "Gestion LMNP vs gestion de location vide : quelles différences ?",
+    a: "En location meublée LMNP, la gestion se distingue sur plusieurs points : l’inventaire du mobilier est obligatoire et doit être comparé à chaque sortie, le bail a une durée minimale d’un an (contre 3 ans en vide), le préavis du locataire est réduit à 1 mois, le dépôt de garantie est plafonné à 2 mois de loyer (contre 1 mois en vide), et la fiscalité relève du régime BIC (micro-BIC 50 % ou réel simplifié avec amortissement) plutôt que des revenus fonciers. Ces spécificités nécessitent un outil de gestion de location meublée adapté au suivi du mobilier, des quittances et des charges.",
+  },
 ];
 
 const jsonLdItems = [
@@ -117,7 +125,7 @@ const jsonLdItems = [
       name: "lokt.fr",
       url: siteUrl,
     },
-    about: ["gestion locative LMNP", "location meublée", "inventaire meublé", "quittances de loyer"],
+    about: ["gestion locative LMNP", "gestion LMNP", "gestion de location meublée", "location meublée", "inventaire meublé", "quittances de loyer"],
   },
   {
     "@context": "https://schema.org",
@@ -548,6 +556,72 @@ export default function GestionLocativeLmnpPage() {
               </div>
               <p className="text-xs text-slate-500">
                 Sources : loi ALUR, décret n°2015-981 du 31 juillet 2015, Service-Public.fr. Ces informations sont indicatives — consultez un professionnel pour votre situation.
+              </p>
+            </section>
+
+            {/* ── Section éditoriale D : Gestion de location meublée ── */}
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8 space-y-5">
+              <div>
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Gestion pratique</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Gérer une location meublée LMNP au quotidien</h2>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                  La gestion de location meublée LMNP se distingue de la location vide par la nécessité de suivre le mobilier, de produire un inventaire contradictoire et de maîtriser un régime fiscal spécifique (BIC). Bien organisée, la gestion LMNP peut se gérer sans agence ni comptable pour un ou deux logements — à condition de disposer des bons outils et des bonnes habitudes.
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[
+                  {
+                    title: "Gestion LMNP au démarrage",
+                    items: [
+                      "Rédiger le bail meublé et l'inventaire détaillé",
+                      "Réaliser l'état des lieux d'entrée (mobile ou papier)",
+                      "Encaisser et documenter le dépôt de garantie",
+                      "Déclarer le bien (formulaire P0i) pour l'activité LMNP",
+                    ],
+                  },
+                  {
+                    title: "Gestion LMNP mois par mois",
+                    items: [
+                      "Confirmer chaque paiement de loyer dans les délais",
+                      "Émettre et archiver la quittance PDF",
+                      "Signaler et gérer les retards ou paiements partiels",
+                      "Classer les charges (assurance, charges de copropriété, travaux)",
+                    ],
+                  },
+                  {
+                    title: "Gestion LMNP en fin de bail",
+                    items: [
+                      "Réaliser l'état des lieux de sortie et comparer l'inventaire",
+                      "Évaluer les retenues éventuelles sur dépôt de garantie",
+                      "Restituer dans le délai légal (1 ou 2 mois selon l'état des lieux)",
+                      "Archiver tous les documents pour la déclaration fiscale",
+                    ],
+                  },
+                  {
+                    title: "Gestion LMNP et déclaration",
+                    items: [
+                      "Choisir entre micro-BIC (50 %) et régime réel simplifié",
+                      "Conserver tous les justificatifs de charges et travaux",
+                      "Anticiper la liasse P0i si changement de régime",
+                      "Faire appel à un expert-comptable spécialisé LMNP si besoin",
+                    ],
+                  },
+                ].map((block) => (
+                  <div key={block.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-sm font-semibold text-slate-900">{block.title}</p>
+                    <ul className="mt-3 space-y-2">
+                      {block.items.map((item) => (
+                        <li key={item} className="flex gap-2 text-sm text-slate-600">
+                          <span className="mt-0.5 shrink-0 text-indigo-400">→</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm leading-relaxed text-slate-600">
+                L'essentiel de la gestion LMNP repose sur la traçabilité : chaque loyer encaissé, chaque charge réglée, chaque document signé doit être retrouvable rapidement — pour un contrôle fiscal, un départ de locataire ou une revente du bien. lokt.fr centralise ces preuves dans un espace bailleur structuré autour du logement plutôt que du document.
               </p>
             </section>
 

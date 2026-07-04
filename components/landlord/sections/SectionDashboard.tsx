@@ -179,6 +179,7 @@ export function SectionDashboard({
   onRefresh,
   userId,
   planLabel,
+  showTransitionPanel = true,
 }: {
   monthRange: { startISO: string; endISO: string };
   monthlyExpected: number;
@@ -204,6 +205,7 @@ export function SectionDashboard({
   onRefresh?: () => Promise<void>;
   userId?: string;
   planLabel?: string;
+  showTransitionPanel?: boolean;
 }) {
   const ratio = monthlyExpected > 0 ? clampPct((monthlyPaid / monthlyExpected) * 100) : 0;
 
@@ -1290,7 +1292,7 @@ export function SectionDashboard({
       )}
 
       {/* ── Logements en transition ────────────────────────────────────────── */}
-      {userId && (
+      {userId && showTransitionPanel && (
         <TransitionPanel
           leases={leases}
           propertyById={propertyById}

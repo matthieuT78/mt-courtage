@@ -41,9 +41,20 @@ const CALCULATOR_LINKS = [
   { href: "/parc-immobilier", label: "Parc immobilier", description: "Consolider vos biens locatifs", icon: BuildingOffice2Icon },
 ];
 
+function getInitials(user: any): string {
+  const name: string = user?.user_metadata?.full_name || user?.user_metadata?.name || "";
+  if (name.trim()) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  const email: string = user?.email || "";
+  return email.slice(0, 2).toUpperCase();
+}
+
 export default function AppHeader({ staticMode = false }: { staticMode?: boolean }) {
   const router = useRouter();
-  const { checking: authChecking, isLoggedIn } = useAuthUser();
+  const { checking: authChecking, isLoggedIn, user: authUser } = useAuthUser();
   const { checking: tenantChecking, isLoggedIn: isTenantLoggedIn } = useTenantAuthUser();
   void staticMode;
 
@@ -233,17 +244,11 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                 <>
                   <Link
                     href="/mon-compte"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 sm:hidden"
                     title="Mon compte"
                     aria-label="Mon compte"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] text-[0.68rem] font-bold text-white shadow-sm transition hover:opacity-90 sm:h-10 sm:w-10 sm:text-[0.72rem]"
                   >
-                    <UserCircleIcon className="h-5 w-5" />
-                  </Link>
-                  <Link
-                    href="/mon-compte"
-                    className="hidden rounded-full border border-slate-200 bg-white px-3 py-2 text-[0.8rem] font-semibold text-slate-700 hover:bg-slate-50 sm:inline-flex"
-                  >
-                    Mon compte
+                    {getInitials(authUser)}
                   </Link>
                   <Link
                     href="/espace-bailleur"

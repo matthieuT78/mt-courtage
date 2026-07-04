@@ -53,6 +53,7 @@ export function SidebarNav({
   searchItems,
   searchInputRef,
   navBadges,
+  proSections,
   className = "",
 }: {
   active: LandlordSectionKey;
@@ -68,6 +69,7 @@ export function SidebarNav({
   searchItems?: SearchItem[];
   searchInputRef?: React.RefObject<HTMLInputElement>;
   navBadges?: Partial<Record<LandlordSectionKey, number>>;
+  proSections?: LandlordSectionKey[];
   className?: string;
 }) {
   const [query, setQuery] = useState("");

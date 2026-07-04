@@ -126,7 +126,7 @@ export default function TarifsPage() {
   const router = useRouter();
   const title = "Tarifs gestion locative propriétaire bailleur | lokt.fr";
   const description =
-    "Comparez les offres lokt.fr : gestion locative gratuite pour un logement actif, lokt·one pour automatiser les quittances, lokt·plus pour le pilotage et les outils bailleur.";
+    "Comparez les offres lokt.fr : gestion locative gratuite pour un logement actif, lokt·one pour les candidatures et l'automatisation, lokt·plus pour le pilotage et les outils bailleur.";
   const pageUrl = "https://lokt.fr/tarifs";
   const ogImage = "https://lokt.fr/lokt-logo.jpg";
   const pricingJsonLd = {
@@ -222,10 +222,10 @@ export default function TarifsPage() {
                 </div>
                 <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] sm:mt-6">
                   <span className="block text-[2.55rem] text-slate-950 sm:text-6xl">Gratuit pour gérer.</span>
-                  <span className="mt-1 block text-[2rem] bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] sm:text-5xl">Payant quand lokt.fr automatise.</span>
+                  <span className="mt-1 block text-[2rem] bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] sm:text-5xl">Payant quand lokt.fr fait plus.</span>
                 </h1>
                 <p className="mt-5 max-w-3xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
-                  Un logement gratuit pour démarrer. lokt·one automatise les quittances, active le portail locataire et le partage de documents. lokt·plus ajoute le pilotage financier et la boîte à outils bailleur.
+                  Un logement gratuit pour gérer un locataire en place. lokt·one débloque les candidatures, automatise les quittances et active le portail locataire. lokt·plus ajoute le pilotage financier et la boîte à outils bailleur.
                 </p>
               </div>
 
@@ -282,6 +282,7 @@ export default function TarifsPage() {
                 <li>✓ 25 Mo de stockage documentaire sécurisé</li>
                 <li>✓ Finance simple</li>
                 <li>✓ 4 alertes essentielles : retard de paiement, quittance à finaliser, email manquant</li>
+                <li className="text-slate-500">Candidatures non incluses</li>
                 <li className="text-slate-500">Quittances automatiques non incluses</li>
                 <li className="text-slate-500">Portail locataire non inclus</li>
                 <li className="text-slate-500">Partage de documents non inclus</li>
@@ -321,7 +322,7 @@ export default function TarifsPage() {
                 <span className="mt-1 block text-lg text-[#635bff]">Réellement.</span>
               </h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Tous les plans sont sans engagement. lokt·one automatise le quotidien ; lokt·plus ajoute le pilotage financier et les outils métier.
+                Tous les plans sont sans engagement. lokt·one débloque les candidatures et automatise le quotidien ; lokt·plus ajoute le pilotage financier et les outils métier.
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -380,7 +381,7 @@ export default function TarifsPage() {
             <div data-scroll-reveal data-reveal-delay="80" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">
               <p className="text-sm font-semibold text-slate-900">lokt·one = candidatures + automatisation</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Le propriétaire paie quand lokt.fr enlève les tâches répétitives et active la relation locataire : validation paiement, quittances auto, relances, alertes avancées, portail locataire, partage des documents et accusés de réception.
+                Le propriétaire paie quand il cherche un nouveau locataire ou quand lokt.fr automatise son quotidien : candidatures en ligne avec scoring, validation paiement, quittances auto, relances, portail locataire, partage des documents et accusés de réception.
               </p>
             </div>
             <div data-scroll-reveal data-reveal-delay="160" className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[1.75rem] sm:p-5">

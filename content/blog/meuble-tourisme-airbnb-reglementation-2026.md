@@ -1,6 +1,6 @@
 ---
-title: "Meublé de tourisme et Airbnb 2026 : réglementation, fiscalité et loi Le Meur"
-description: "La loi Le Meur a changé les règles du meublé de tourisme fin 2024. Enregistrement obligatoire, abattement micro-BIC réduit à 30 %, nouvelles restrictions mairies : tout ce qui change en 2026."
+title: "Réglementation Airbnb 2026 : loi Le Meur, abattement 30 % et nouvelles restrictions"
+description: "Loi Le Meur : abattement micro-BIC réduit à 30 % pour les non classés, enregistrement obligatoire et limite 120 nuits. Ce qui change pour louer sur Airbnb en 2026 — guide complet avec exemples chiffrés."
 date: "2026-07-01"
 updatedAt: "2026-07-01"
 category: "Investissement locatif"
@@ -19,7 +19,7 @@ faq:
     a: "Après la loi Le Meur, le classement devient encore plus avantageux fiscalement : abattement 50 % vs 30 % pour les non classés (au micro-BIC), et jusqu'à 71 % en zone non tendue. Le classement se fait auprès d'un organisme accrédité (Atout France, Gîtes de France…) pour un coût de 150 à 300 € tous les 5 ans. Il est rentable dès la première année pour la plupart des bien."
 ---
 
-# Meublé de tourisme et Airbnb 2026 : réglementation, fiscalité et loi Le Meur
+# Réglementation Airbnb 2026 : loi Le Meur, abattement 30 % et nouvelles restrictions
 
 Depuis fin 2024 et la promulgation de la loi Le Meur, les règles du meublé de tourisme ont profondément changé en France. Abattement fiscal réduit, enregistrement généralisé, pouvoirs renforcés des maires, durcissement des règles de changement d'usage : les propriétaires qui louent sur Airbnb, Booking ou d'autres plateformes de courte durée doivent repenser leur modèle. Ce guide fait le point complet sur la réglementation en vigueur en 2026, les conséquences fiscales concrètes, et comment adapter sa stratégie.
 

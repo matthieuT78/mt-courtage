@@ -4,14 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import AppFooter from "../AppFooter";
 import {
-  ArrowUpRightIcon,
-  CheckCircleIcon,
-  LockClosedIcon,
   MoonIcon,
-  SparklesIcon,
   SunIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { LockedPremiumSection, type LockedSectionConfig } from "./LockedPremiumSection";
 import { SidebarNav, LandlordSectionKey, type SearchItem } from "./SidebarNav";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -38,67 +35,9 @@ import { SectionDocumentsTemplates } from "./sections/SectionDocumentsTemplates"
 import { SectionCandidatures } from "./sections/SectionCandidatures";
 import { usePermissions } from "../PermissionProvider";
 import { getBillingPlan } from "../../lib/billingPlans";
-import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing } from "../../lib/permissions";
+import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing, planAllowsCandidatures } from "../../lib/permissions";
 import ContactChat from "../ChatContact";
 import { ReviewPrompt } from "../ReviewPrompt";
-
-type LockedSectionConfig = {
-  eyebrow: string;
-  title: string;
-  desc: string;
-  requiredPlan: "lokt·one" | "lokt·plus";
-  href: string;
-  cta: string;
-  features: string[];
-};
-
-function LockedPremiumSection({ config }: { config: LockedSectionConfig }) {
-  return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="h-1.5 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
-      <div className="grid gap-0 lg:grid-cols-[1fr,340px]">
-        <div className="p-6 sm:p-7">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#635bff]/20 bg-[#635bff]/5 px-3 py-1 text-xs font-semibold text-[#4f46e5]">
-            <LockClosedIcon className="h-4 w-4" aria-hidden="true" />
-            {config.eyebrow}
-          </div>
-
-          <h2 className="mt-4 max-w-2xl text-2xl font-semibold leading-tight text-slate-950">{config.title}</h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{config.desc}</p>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {config.features.map((feature) => (
-              <div key={feature} className="flex gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-                <CheckCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
-                <p className="text-sm leading-5 text-slate-700">{feature}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <aside className="border-t border-slate-200 bg-[#f6f9fc] p-6 lg:border-l lg:border-t-0">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-white">
-              <SparklesIcon className="h-5 w-5" aria-hidden="true" />
-            </div>
-            <p className="mt-4 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Plan requis</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-950">{config.requiredPlan}</p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Votre compte gratuit reste disponible pour le tableau de bord, biens, locataires, baux, quittances manuelles et finance de base.
-            </p>
-            <Link
-              href={config.href}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
-            >
-              {config.cta}
-              <ArrowUpRightIcon className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </div>
-        </aside>
-      </div>
-    </section>
-  );
-}
 
 function MobileBottomNav({
   active,
@@ -322,6 +261,7 @@ export function DashboardShell(props: any) {
   const canUsePerformance = planAllowsPerformance(plan);
   const canUseTools = planAllowsTools(plan);
   const canShareDocuments = planAllowsDocumentSharing(plan);
+  const canUseCandidatures = planAllowsCandidatures(plan);
 
   useEffect(() => {
     if (!userId) return;
@@ -605,8 +545,25 @@ export function DashboardShell(props: any) {
         features: ["Répartition de facture d’eau au prorata des relevés", "Répartition des charges par tantièmes", "TEOM et régularisation locative", "Simulateurs bailleur intégrés"],
       };
     }
+    if (active === "candidatures" && !canUseCandidatures) {
+      return {
+        eyebrow: "Fonctionnalité lokt·one",
+        title: "Gestion des candidatures réservée au plan lokt·one",
+        desc:
+          "Publiez vos annonces, collectez et analysez les dossiers de candidature avec le score lokt. Suivez le parcours de chaque candidat jusqu’à la signature du bail.",
+        requiredPlan: "lokt·one",
+        href: "/mon-compte/abonnement?source=candidatures",
+        cta: "Passer à lokt·one",
+        features: [
+          "Annonces de location en ligne",
+          "Collecte et scoring des dossiers candidats",
+          "Workflow candidature → bail en 1 clic",
+          "Suivi du changement de locataire (transition panel)",
+        ],
+      };
+    }
     return null;
-  }, [active, canUsePerformance, canUseTools, canShareDocuments, permissionsLoading]);
+  }, [active, canUsePerformance, canUseTools, canShareDocuments, canUseCandidatures, permissionsLoading]);
 
   const content = useMemo(() => {
     if (!userId) {
@@ -628,6 +585,7 @@ export function DashboardShell(props: any) {
             onNavigateDeep={navigateDeep}
             onRefresh={refresh}
             planLabel={planLabel}
+            showTransitionPanel={canUseCandidatures}
             propertiesCount={properties.length}
             properties={properties}
             propertyFinance={propertyFinance}

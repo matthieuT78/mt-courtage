@@ -22,12 +22,12 @@ export const PAID_BILLING_PLANS: PaidBillingPlan[] = [
   {
     id: "landlord_5",
     name: "lokt·one",
-    description: "Pour ne plus oublier les quittances, rappels et validations de paiement.",
+    description: "Pour trouver le prochain locataire, automatiser les quittances et activer la relation locataire.",
     priceLabel: "4,90 € / mois",
     monthlyPrice: 4.9,
     yearlyPrice: 49,
     limitLabel: "Jusqu’à 3 logements actifs",
-    audience: "Automatisation quittances",
+    audience: "Candidatures & automatisation",
     features: [
       "Tout le plan Gratuit",
       "Dossier de candidature en ligne : lien dédié, scoring automatique, suppression RGPD",

@@ -1,6 +1,6 @@
 ---
-title: "Assurance PNO (propriétaire non occupant) : obligatoire, coût et garanties 2026"
-description: "L'assurance PNO est obligatoire en copropriété depuis la loi Alur. Ce qu'elle couvre, ce qu'elle coûte (80 à 200 €/an), la différence avec la MRH du locataire, et comment bien la choisir."
+title: "Assurance PNO obligatoire 2026 : ce que doit savoir tout propriétaire bailleur"
+description: "PNO obligatoire en copropriété depuis la loi Alur. Coût : 80 à 200 €/an, entièrement déductible. Ce qu'elle couvre (vacance locative, sinistres bailleur), la différence avec la MRH et comment bien la choisir."
 date: "2026-07-01"
 updatedAt: "2026-07-01"
 category: "Gestion locative"
@@ -19,7 +19,7 @@ faq:
     a: "Si le locataire n'est pas assuré, la PNO du propriétaire prend le relais pour couvrir les dommages qui auraient dû être pris en charge par la MRH du locataire. Le propriétaire peut ensuite se retourner contre le locataire non assuré. Sans PNO, le propriétaire supporte seul les dommages."
 ---
 
-# Assurance PNO (propriétaire non occupant) : obligatoire, coût et garanties 2026
+# Assurance PNO obligatoire 2026 : ce que doit savoir tout propriétaire bailleur
 
 Beaucoup de bailleurs ignorent l'existence de l'assurance PNO, ou la confondent avec l'assurance habitation du locataire. C'est pourtant une protection distincte, obligatoire en copropriété depuis 2014, et utile dans tous les cas de figure pour un propriétaire qui loue. Ce guide fait le tour complet : ce que la PNO couvre, ce qu'elle coûte, pourquoi elle complète — et ne remplace pas — l'assurance du locataire, et comment bien la choisir.
 

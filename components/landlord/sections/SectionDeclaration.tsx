@@ -1,17 +1,16 @@
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownTrayIcon,
   ArrowPathIcon,
   CheckCircleIcon,
-  LockClosedIcon,
-  SparklesIcon,
   ExclamationTriangleIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import type { Property } from "../../../lib/landlord/types";
 import { usePermissions } from "../../PermissionProvider";
 import { planAllowsPerformance } from "../../../lib/permissions";
+import { LockedPremiumSection } from "../LockedPremiumSection";
 
 type Regime = "lmnp_micro" | "lmnp_reel" | "nu_micro" | "nu_reel" | "pinel";
 type LocationKind = "meuble_longue" | "meuble_saisonnier";
@@ -483,34 +482,20 @@ export function SectionDeclaration({ userId, properties }: Props) {
 
   if (!permissionsLoading && !isPremium) {
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-800">
-              <LockClosedIcon className="h-4 w-4" />
-              Fonction premium
-            </div>
-            <h2 className="mt-4 text-xl font-semibold text-slate-900">Aide à la déclaration propriétaire</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Cette section prépare un dossier fiscal exploitable : import Finance, ventilation par bien, comparaison micro/réel,
-              alertes d’incohérence, checklist justificatifs et export pour votre comptable.
-            </p>
-          </div>
-          <Link href="/mon-compte/abonnement" className={cx("rounded-full px-5 py-2.5 text-sm font-semibold", brandBg, brandText, brandHover)}>
-            Voir les abonnements
-          </Link>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <Stat label="Import Finance" value="Premium" sub="Recettes et charges préremplies" />
-          <Stat label="Comparaison" value="Micro / réel" sub="Lecture indicative par régime" />
-          <Stat label="Dossier" value="Export" sub="Synthèse à transmettre" />
-        </div>
-
-        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Le plan gratuit reste centré sur la gestion de base d’un bien. La préparation déclarative est une fonctionnalité à forte valeur, réservée aux offres payantes.
-        </div>
-      </div>
+      <LockedPremiumSection config={{
+        eyebrow: "Fonctionnalité lokt·plus",
+        title: "Aide à la déclaration réservée au plan lokt·plus",
+        desc: "Préparez un dossier fiscal exploitable : import Finance, ventilation par bien, comparaison micro/réel, alertes d’incohérence, checklist justificatifs et export pour votre comptable.",
+        requiredPlan: "lokt·plus",
+        href: "/mon-compte/abonnement?source=declaration",
+        cta: "Upgrade vers lokt·plus",
+        features: [
+          "Import automatique des recettes et charges Finance",
+          "Comparaison micro-BIC / régime réel par bien",
+          "Alertes d’incohérence et checklist justificatifs",
+          "Export synthèse à transmettre à votre comptable",
+        ],
+      }} />
     );
   }
 
