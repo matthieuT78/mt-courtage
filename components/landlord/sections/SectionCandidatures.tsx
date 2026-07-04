@@ -124,10 +124,10 @@ function scoreProfile(c: Candidature, listing: Listing): number {
   return Math.min(100, incomeScore + situScore + docsScore + guarantorScore);
 }
 
-function profileBadge(score: number): { label: string; color: string; dot: string } {
-  if (score >= 72) return { label: "Profil solide", color: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-500" };
-  if (score >= 48) return { label: "Profil acceptable", color: "bg-amber-100 text-amber-800", dot: "bg-amber-400" };
-  return { label: "Profil risqué", color: "bg-red-100 text-red-700", dot: "bg-red-400" };
+function profileBadge(score: number): { label: string; color: string; dot: string; bubble: string; bar: string } {
+  if (score >= 72) return { label: "Profil solide",     color: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-500", bubble: "bg-emerald-500", bar: "bg-emerald-500" };
+  if (score >= 48) return { label: "Profil acceptable", color: "bg-amber-100 text-amber-800",    dot: "bg-amber-400",   bubble: "bg-amber-400",   bar: "bg-amber-400"   };
+  return             { label: "Profil risqué",     color: "bg-red-100 text-red-700",       dot: "bg-red-400",     bubble: "bg-red-500",     bar: "bg-red-500"     };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1114,6 +1114,12 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
 
 // ── CandidatureRow ────────────────────────────────────────────────────────────
 
+const SITUATION_SHORT: Record<string, string> = {
+  CDI: "CDI", CDI_essai: "CDI*", CDD: "CDD",
+  fonctionnaire: "Fonct.", independant: "Indép.",
+  etudiant: "Étud.", retraite: "Retraité", autre: "Autre",
+};
+
 function CandidatureRow({ c, listing, updating, converting, hasBail, onUpdateStatus, onConvert, onCreateBail }: {
   c: Candidature;
   listing: Listing;
@@ -1129,122 +1135,124 @@ function CandidatureRow({ c, listing, updating, converting, hasBail, onUpdateSta
   const totalRent = listing.rent_amount + listing.charges_amount;
   const requiredIncome = totalRent * listing.income_ratio;
   const income = c.net_monthly_income ?? 0;
+  const ratio = requiredIncome > 0 ? income / requiredIncome : 0;
   const isEligible = income >= requiredIncome;
-  const ratio = income > 0 ? (income / requiredIncome).toFixed(1) : null;
-  const statusInfo = STATUS_LABELS[c.status] ?? { label: c.status, color: "bg-slate-100 text-slate-500" };
+  const docsCount = [c.docs_identity, c.docs_payslips, c.docs_tax, c.docs_address].filter(Boolean).length;
   const score = scoreProfile(c, listing);
   const badge = profileBadge(score);
+  const statusInfo = STATUS_LABELS[c.status] ?? { label: c.status, color: "bg-slate-100 text-slate-500" };
 
   return (
     <div className="px-5 py-4 space-y-3">
-      {/* Ligne principale */}
-      <div className="flex items-start gap-3 flex-wrap">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-semibold text-slate-950">
-              {c.first_name} {c.last_name}
-            </p>
-            <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${statusInfo.color}`}>
-              {statusInfo.label}
-            </span>
-            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${badge.color}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
-              {badge.label} · {score}/100
-            </span>
+
+      {/* ── Score + nom ── */}
+      <div className="flex items-start gap-3.5">
+        {/* Bulle score lokt */}
+        <div className={`flex h-[52px] w-[52px] shrink-0 flex-col items-center justify-center rounded-2xl shadow-sm ${badge.bubble}`}>
+          <span className="text-[1.2rem] font-extrabold leading-none text-white">{score}</span>
+          <span className="text-[0.5rem] font-semibold uppercase tracking-wider text-white/70">/100</span>
+        </div>
+
+        <div className="min-w-0 flex-1 pt-0.5">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="text-sm font-semibold text-slate-950">{c.first_name} {c.last_name}</p>
+            <span className={`rounded-full px-2 py-0.5 text-[0.62rem] font-semibold ${badge.color}`}>{badge.label}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[0.62rem] font-semibold ${statusInfo.color}`}>{statusInfo.label}</span>
             {c.has_guarantor && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[0.65rem] font-semibold text-indigo-700">
+              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[0.62rem] font-semibold text-indigo-700">
                 <ShieldCheckIcon className="h-3 w-3" />
-                Avec garant
+                Garant
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-xs text-slate-500">
-            {c.email}
-            {c.professional_situation && ` · ${SITUATION_LABELS[c.professional_situation] ?? c.professional_situation}`}
-            {c.employer_name && ` — ${c.employer_name}`}
-          </p>
-        </div>
-        <div className="text-right shrink-0">
-          <p className={`text-sm font-semibold ${isEligible ? "text-emerald-700" : "text-red-600"}`}>
-            {income > 0 ? `${income.toLocaleString("fr-FR")} €/mois` : "—"}
-          </p>
-          <p className="text-[0.65rem] text-slate-400">
-            {isEligible
-              ? `✓ ${ratio}× le loyer requis`
-              : `✗ requis ${Math.round(requiredIncome)} €`}
-          </p>
+          {/* Barre de score */}
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+            <div className={`h-full rounded-full transition-all ${badge.bar}`} style={{ width: `${score}%` }} />
+          </div>
         </div>
       </div>
 
-      <DocsCompleteness c={c} />
+      {/* ── 3 indicateurs clés ── */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className={`rounded-xl border p-2.5 text-center ${isEligible ? "border-emerald-100 bg-emerald-50" : income > 0 ? "border-red-100 bg-red-50" : "border-slate-100 bg-slate-50"}`}>
+          <p className={`text-base font-extrabold leading-none ${isEligible ? "text-emerald-700" : income > 0 ? "text-red-600" : "text-slate-400"}`}>
+            {ratio > 0 ? `${ratio.toFixed(1)}×` : "—"}
+          </p>
+          <p className={`mt-0.5 text-[0.58rem] font-semibold uppercase tracking-wide ${isEligible ? "text-emerald-500" : income > 0 ? "text-red-400" : "text-slate-400"}`}>
+            vs seuil
+          </p>
+        </div>
 
-      {/* Détails dépliables */}
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-center">
+          <p className="text-sm font-extrabold leading-none text-slate-800">
+            {c.professional_situation ? (SITUATION_SHORT[c.professional_situation] ?? "—") : "—"}
+          </p>
+          <p className="mt-0.5 text-[0.58rem] font-semibold uppercase tracking-wide text-slate-400">Situation</p>
+        </div>
+
+        <div className={`rounded-xl border p-2.5 text-center ${docsCount === 4 ? "border-emerald-100 bg-emerald-50" : docsCount >= 2 ? "border-amber-100 bg-amber-50" : "border-slate-100 bg-slate-50"}`}>
+          <p className={`text-base font-extrabold leading-none ${docsCount === 4 ? "text-emerald-700" : docsCount >= 2 ? "text-amber-700" : "text-slate-400"}`}>
+            {docsCount}/4
+          </p>
+          <p className={`mt-0.5 text-[0.58rem] font-semibold uppercase tracking-wide ${docsCount === 4 ? "text-emerald-500" : docsCount >= 2 ? "text-amber-500" : "text-slate-400"}`}>Docs</p>
+        </div>
+      </div>
+
+      {/* ── Accordéon dossier complet ── */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600"
       >
         {expanded ? <ChevronUpIcon className="h-3.5 w-3.5" /> : <ChevronDownIcon className="h-3.5 w-3.5" />}
-        {expanded ? "Moins de détails" : "Plus de détails"}
+        {expanded ? "Réduire" : "Voir le dossier complet"}
       </button>
 
       {expanded && (
-        <div className="grid gap-x-6 gap-y-1.5 rounded-xl bg-slate-50 px-4 py-3 text-xs sm:grid-cols-2">
-          {c.phone && <Detail label="Téléphone" value={c.phone} />}
-          {c.birth_date && <Detail label="Date de naissance" value={formatDate(c.birth_date) ?? ""} />}
-          {c.submitted_at && <Detail label="Déposé le" value={formatDate(c.submitted_at) ?? ""} />}
-          {c.has_guarantor && (
-            <>
-              <Detail label="Garant" value={[c.guarantor_first_name, c.guarantor_last_name].filter(Boolean).join(" ") || "—"} />
-              {c.guarantor_income && <Detail label="Revenus garant" value={`${c.guarantor_income.toLocaleString("fr-FR")} €/mois`} />}
-            </>
-          )}
-          <div className="sm:col-span-2 mt-1 pt-2 border-t border-slate-200">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400 mb-1">Détail du score</p>
+        <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3 text-xs">
+          <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+            {c.email && <Detail label="Email" value={c.email} />}
+            {c.phone && <Detail label="Téléphone" value={c.phone} />}
+            {c.birth_date && <Detail label="Date de naissance" value={formatDate(c.birth_date) ?? ""} />}
+            {c.submitted_at && <Detail label="Déposé le" value={formatDate(c.submitted_at) ?? ""} />}
+            {c.employer_name && <Detail label="Employeur" value={c.employer_name} />}
+            {income > 0 && <Detail label="Revenus nets" value={`${income.toLocaleString("fr-FR")} €/mois`} />}
+            {c.has_guarantor && (
+              <>
+                <Detail label="Garant" value={[c.guarantor_first_name, c.guarantor_last_name].filter(Boolean).join(" ") || "—"} />
+                {c.guarantor_income && <Detail label="Revenus garant" value={`${c.guarantor_income.toLocaleString("fr-FR")} €/mois`} />}
+              </>
+            )}
+          </div>
+          <DocsCompleteness c={c} />
+          <div className="border-t border-slate-200 pt-2">
+            <p className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">Détail du score lokt</p>
             <ScoreBreakdown c={c} listing={listing} />
           </div>
         </div>
       )}
 
-      {/* Actions */}
+      {/* ── Actions ── */}
       {c.status === "submitted" && (
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={updating}
-            onClick={() => onUpdateStatus("accepted")}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-          >
-            <CheckCircleIcon className="h-3.5 w-3.5" />
-            Retenir
+          <button type="button" disabled={updating} onClick={() => onUpdateStatus("accepted")}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50">
+            <CheckCircleIcon className="h-3.5 w-3.5" />Retenir
           </button>
-          <button
-            type="button"
-            disabled={updating}
-            onClick={() => onUpdateStatus("waitlist")}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-          >
+          <button type="button" disabled={updating} onClick={() => onUpdateStatus("waitlist")}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50">
             Liste d'attente
           </button>
-          <button
-            type="button"
-            disabled={updating}
-            onClick={() => onUpdateStatus("rejected")}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50"
-          >
-            <XCircleIcon className="h-3.5 w-3.5" />
-            Refuser
+          <button type="button" disabled={updating} onClick={() => onUpdateStatus("rejected")}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 disabled:opacity-50">
+            <XCircleIcon className="h-3.5 w-3.5" />Refuser
           </button>
         </div>
       )}
 
       {c.status === "accepted" && (
-        <button
-          type="button"
-          disabled={converting}
-          onClick={onConvert}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[#635bff]/30 bg-[#635bff]/5 px-3 py-1.5 text-xs font-semibold text-[#635bff] hover:bg-[#635bff]/10 disabled:opacity-50"
-        >
+        <button type="button" disabled={converting} onClick={onConvert}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#635bff]/30 bg-[#635bff]/5 px-3 py-1.5 text-xs font-semibold text-[#635bff] hover:bg-[#635bff]/10 disabled:opacity-50">
           <UserPlusIcon className="h-3.5 w-3.5" />
           {converting ? "Création…" : "Convertir en locataire"}
         </button>
@@ -1253,20 +1261,15 @@ function CandidatureRow({ c, listing, updating, converting, hasBail, onUpdateSta
       {c.status === "converted" && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="inline-flex items-center gap-1.5 text-xs text-indigo-600">
-            <UserPlusIcon className="h-3.5 w-3.5" />
-            Locataire créé
+            <UserPlusIcon className="h-3.5 w-3.5" />Locataire créé
           </span>
           {hasBail ? (
             <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600">
-              <CheckCircleIcon className="h-3.5 w-3.5" />
-              Bail créé
+              <CheckCircleIcon className="h-3.5 w-3.5" />Bail créé
             </span>
           ) : onCreateBail && (
-            <button
-              type="button"
-              onClick={onCreateBail}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#635bff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
-            >
+            <button type="button" onClick={onCreateBail}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#635bff] px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
               Créer le bail <ArrowRightIcon className="h-3.5 w-3.5" />
             </button>
           )}
