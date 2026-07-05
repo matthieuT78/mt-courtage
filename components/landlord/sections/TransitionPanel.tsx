@@ -133,10 +133,11 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
           .in("lease_id", leaseIds),
         supabase
           .from("rental_listings")
-          .select("id, property_id")
+          .select("id, property_id, status")
           .eq("user_id", userId)
-          .eq("status", "active")
-          .in("property_id", propertyIds),
+          .in("property_id", propertyIds)
+          .not("status", "eq", "archived")
+          .order("created_at", { ascending: false }),
       ]);
 
       const edlByLease = new Map<string, string>();
@@ -144,10 +145,10 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
         if (!edlByLease.has(r.lease_id)) edlByLease.set(r.lease_id, r.status || "");
       }
 
-      // Map property_id → listing id
+      // Map property_id → listing id (le plus récent, déjà trié DESC)
       const listingByProp = new Map<string, string>();
       for (const l of listingsRes.data || []) {
-        listingByProp.set(l.property_id, l.id);
+        if (!listingByProp.has(l.property_id)) listingByProp.set(l.property_id, l.id);
       }
 
       // Fetch candidatures for those listings
