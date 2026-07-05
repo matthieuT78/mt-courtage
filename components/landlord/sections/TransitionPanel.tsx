@@ -180,13 +180,13 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
         const cands = listingId ? candidaturesByListing.get(listingId) : null;
         const acceptedCount = cands?.accepted ?? 0;
         const submittedCount = cands?.submitted ?? 0;
-        const candidatRetenuDone = acceptedCount > 0 || hasNewLease;
         const hasNewLease = leases.some(
           (l) =>
             l.id !== lease.id &&
             l.property_id === lease.property_id &&
             String(l.status || "").toLowerCase() === "active"
         );
+        const candidatRetenuDone = acceptedCount > 0 || hasNewLease;
         const cautionDeadline = lease.end_date ? addDays(lease.end_date, 30) : null;
 
         return {
