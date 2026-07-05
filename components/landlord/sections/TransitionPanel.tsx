@@ -30,6 +30,7 @@ type TransitionData = {
   cautionDeadline: Date | null;
   hasNewLease: boolean;
   submittedCount: number;
+  incomingTenantName: string | null;
 };
 
 const STEPS: { key: StepKey; label: string }[] = [
@@ -154,19 +155,24 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
       const listingIds = (listingsRes.data || [])
         .filter((l: any) => listingByProp.get(l.property_id) === l.id)
         .map((l: any) => l.id);
-      const candidaturesByListing = new Map<string, { submitted: number; accepted: number }>();
+      const candidaturesByListing = new Map<string, { submitted: number; accepted: number; acceptedName: string | null }>();
 
       if (listingIds.length > 0) {
         const { data: cands } = await supabase
           .from("candidatures")
-          .select("listing_id, status")
+          .select("listing_id, status, first_name, last_name")
           .in("listing_id", listingIds)
           .in("status", ["submitted", "accepted", "converted"]);
 
         for (const c of cands || []) {
-          const cur = candidaturesByListing.get(c.listing_id) || { submitted: 0, accepted: 0 };
+          const cur = candidaturesByListing.get(c.listing_id) || { submitted: 0, accepted: 0, acceptedName: null };
           if (c.status === "submitted") cur.submitted++;
-          if (c.status === "accepted" || c.status === "converted") cur.accepted++;
+          if (c.status === "accepted" || c.status === "converted") {
+            cur.accepted++;
+            if (!cur.acceptedName) {
+              cur.acceptedName = [c.first_name, c.last_name].filter(Boolean).join(" ") || null;
+            }
+          }
           candidaturesByListing.set(c.listing_id, cur);
         }
       }
@@ -180,13 +186,19 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
         const cands = listingId ? candidaturesByListing.get(listingId) : null;
         const acceptedCount = cands?.accepted ?? 0;
         const submittedCount = cands?.submitted ?? 0;
-        const hasNewLease = leases.some(
+        const newLease = leases.find(
           (l) =>
             l.id !== lease.id &&
             l.property_id === lease.property_id &&
             String(l.status || "").toLowerCase() === "active"
         );
+        const hasNewLease = !!newLease;
         const candidatRetenuDone = acceptedCount > 0 || hasNewLease;
+        const newTenantFromLease = newLease ? tenantById.get(newLease.tenant_id) : null;
+        const incomingTenantName =
+          newTenantFromLease?.full_name ||
+          cands?.acceptedName ||
+          null;
         const cautionDeadline = lease.end_date ? addDays(lease.end_date, 30) : null;
 
         return {
@@ -203,6 +215,7 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
           cautionDeadline,
           hasNewLease,
           submittedCount,
+          incomingTenantName,
         };
       });
 
@@ -261,9 +274,16 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900">{propLabel}</p>
-                <p className="text-xs text-slate-500">
-                  Départ de {tenantName} · {fmtDate(t.lease.end_date)}
-                </p>
+                {t.steps.candidat_retenu && t.incomingTenantName ? (
+                  <p className="text-xs text-slate-500">
+                    <span className="font-medium text-emerald-600">Arrivée de {t.incomingTenantName}</span>
+                    <span className="text-slate-400"> · départ {tenantName}</span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Départ de {tenantName} · {fmtDate(t.lease.end_date)}
+                  </p>
+                )}
               </div>
               <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-[0.68rem] font-semibold text-slate-600">
                 {doneCount}/{total}
