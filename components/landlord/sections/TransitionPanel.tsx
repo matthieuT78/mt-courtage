@@ -122,27 +122,21 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
     const propertyIds = inTransition.map((l) => l.property_id).filter(Boolean);
 
     (async () => {
-      const [edlRes, listingsRes, activeListingsRes] = await Promise.all([
+      const [edlRes, listingsRes] = await Promise.all([
         supabase
           .from("inventory_reports")
           .select("lease_id, status")
           .eq("user_id", userId)
           .eq("report_type", "exit")
           .in("lease_id", leaseIds),
-        // Toutes les annonces non-archivées → détecte si une annonce a été créée
+        // Annonces non-archivées, les plus récentes en premier
         supabase
           .from("rental_listings")
           .select("id, property_id")
           .eq("user_id", userId)
           .in("property_id", propertyIds)
-          .not("status", "eq", "archived"),
-        // Annonces actives uniquement → comptage des candidatures en cours
-        supabase
-          .from("rental_listings")
-          .select("id, property_id")
-          .eq("user_id", userId)
-          .eq("status", "active")
-          .in("property_id", propertyIds),
+          .not("status", "eq", "archived")
+          .order("created_at", { ascending: false }),
       ]);
 
       const edlByLease = new Map<string, string>();
@@ -150,20 +144,16 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
         if (!edlByLease.has(r.lease_id)) edlByLease.set(r.lease_id, r.status || "");
       }
 
-      // annonceDone : toute annonce non-archivée suffit
+      // On garde uniquement la listing la plus récente par property
       const listingByProp = new Map<string, string>();
       for (const l of listingsRes.data || []) {
         if (!listingByProp.has(l.property_id)) listingByProp.set(l.property_id, l.id);
       }
 
-      // candidatures : uniquement depuis l'annonce active
-      const activeListingByProp = new Map<string, string>();
-      for (const l of activeListingsRes.data || []) {
-        if (!activeListingByProp.has(l.property_id)) activeListingByProp.set(l.property_id, l.id);
-      }
-
-      // Fetch candidatures for active listings only
-      const listingIds = (activeListingsRes.data || []).map((l: any) => l.id);
+      // Candidatures depuis la listing la plus récente (non-archivée)
+      const listingIds = (listingsRes.data || [])
+        .filter((l: any) => listingByProp.get(l.property_id) === l.id)
+        .map((l: any) => l.id);
       const candidaturesByListing = new Map<string, { submitted: number; accepted: number }>();
 
       if (listingIds.length > 0) {
@@ -187,8 +177,7 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
         const cautionDone = !!lease.deposit_returned_at;
         const listingId = listingByProp.get(lease.property_id);
         const annonceDone = !!listingId;
-        const activeListingId = activeListingByProp.get(lease.property_id);
-        const cands = activeListingId ? candidaturesByListing.get(activeListingId) : null;
+        const cands = listingId ? candidaturesByListing.get(listingId) : null;
         const acceptedCount = cands?.accepted ?? 0;
         const submittedCount = cands?.submitted ?? 0;
         const candidatRetenuDone = acceptedCount > 0;
