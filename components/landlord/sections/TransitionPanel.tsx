@@ -194,10 +194,14 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
         );
         const hasNewLease = !!newLease;
         const candidatRetenuDone = acceptedCount > 0 || hasNewLease;
-        const newTenantFromLease = newLease ? tenantById.get(newLease.tenant_id) : null;
+        // On exclut le locataire sortant pour éviter de le remonter comme "arrivant"
+        const newTenantFromLease =
+          newLease && newLease.tenant_id !== lease.tenant_id
+            ? tenantById.get(newLease.tenant_id)
+            : null;
         const incomingTenantName =
-          newTenantFromLease?.full_name ||
           cands?.acceptedName ||
+          newTenantFromLease?.full_name ||
           null;
         const cautionDeadline = lease.end_date ? addDays(lease.end_date, 30) : null;
 
