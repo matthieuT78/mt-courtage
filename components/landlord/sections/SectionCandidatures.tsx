@@ -106,10 +106,10 @@ function scoreProfile(c: Candidature, listing: Listing): number {
   const income = c.net_monthly_income ?? 0;
   const ratio = required > 0 ? income / required : 0;
 
-  // Revenus : 40 pts
+  // Revenus : 40 pts — ratio = income / required, donc ratio=1 = seuil exact atteint
   const incomeScore =
-    ratio >= 4 ? 40 : ratio >= 3.5 ? 35 : ratio >= 3 ? 28 :
-    ratio >= 2.5 ? 18 : ratio >= 2 ? 8 : 0;
+    ratio >= 1.5 ? 40 : ratio >= 1.25 ? 35 : ratio >= 1.0 ? 28 :
+    ratio >= 0.85 ? 18 : ratio >= 0.67 ? 8 : 0;
 
   // Stabilité pro : 30 pts
   const situScore = SITUATION_SCORE[c.professional_situation ?? ""] ?? 0;
@@ -1294,7 +1294,7 @@ function ScoreBreakdown({ c, listing }: { c: Candidature; listing: Listing }) {
   const income = c.net_monthly_income ?? 0;
   const ratio = required > 0 ? income / required : 0;
 
-  const incomeScore = ratio >= 4 ? 40 : ratio >= 3.5 ? 35 : ratio >= 3 ? 28 : ratio >= 2.5 ? 18 : ratio >= 2 ? 8 : 0;
+  const incomeScore = ratio >= 1.5 ? 40 : ratio >= 1.25 ? 35 : ratio >= 1.0 ? 28 : ratio >= 0.85 ? 18 : ratio >= 0.67 ? 8 : 0;
   const situScore = SITUATION_SCORE[c.professional_situation ?? ""] ?? 0;
   const docsScore = [c.docs_identity, c.docs_payslips, c.docs_tax, c.docs_address].filter(Boolean).length * 5;
   const guarantorScore = c.has_guarantor ? 10 : 0;

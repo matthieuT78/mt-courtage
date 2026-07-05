@@ -59,7 +59,16 @@ const EMPTY = {
   energy_class: "",
   energy_value: "",
   ghg_class: "",
+  delegated_services: [] as string[],
+  delegation_agency_name: "",
 };
+
+const DELEGATED_SERVICES = [
+  { key: "mise_en_location", label: "Mise en location & candidatures", desc: "Recherche locataire, dossiers de candidature" },
+  { key: "bail_edl", label: "Bail & états des lieux", desc: "Rédaction du bail, état des lieux entrée et sortie" },
+  { key: "gestion_courante", label: "Gestion courante", desc: "Encaissement loyers, quittances, révision IRL" },
+  { key: "depot_garantie", label: "Dépôt de garantie", desc: "Encaissement et restitution" },
+] as const;
 
 const toNumOrNull = (v: string) => {
   const n = Number(String(v || "").replace(",", "."));
@@ -355,6 +364,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
           energy_class: p.energy_class ?? "",
           energy_value: p.energy_value != null ? String(p.energy_value) : "",
           ghg_class: p.ghg_class ?? "",
+          delegated_services: Array.isArray(p.delegated_services) ? p.delegated_services : [],
+          delegation_agency_name: p.delegation_agency_name ?? "",
         },
       };
     });
@@ -409,6 +420,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         energy_class: (form.energy_class || "").trim() || null,
         energy_value: form.energy_value ? toNumOrNull(form.energy_value) : null,
         ghg_class: (form.ghg_class || "").trim() || null,
+        delegated_services: Array.isArray(form.delegated_services) ? form.delegated_services : [],
+        delegation_agency_name: (form.delegation_agency_name || "").trim() || null,
         status: isEdit ? (selectedIsArchived ? "archived" : "active") : "active",
       };
 
@@ -672,6 +685,53 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
               <option key={o} value={o}>{o === "" ? "GES (A–G)" : `Classe ${o}`}</option>
             ))}
           </select>
+        </div>
+
+        {/* ── Gestion de ce bien ── */}
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Comment ce bien est géré ?</p>
+            <p className="mt-0.5 text-xs text-slate-500">Cochez les services pris en charge par un tiers. lokt désactivera les alertes correspondantes pour ce bien.</p>
+          </div>
+          <input
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+            placeholder="Nom de l'agence ou du gestionnaire (optionnel)"
+            value={form.delegation_agency_name}
+            onChange={(e) => setForm((s) => ({ ...s, delegation_agency_name: e.target.value }))}
+          />
+          <div className="space-y-2">
+            {DELEGATED_SERVICES.map((svc) => {
+              const checked = (form.delegated_services || []).includes(svc.key);
+              return (
+                <label key={svc.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-3 hover:border-[#635bff]/40 transition">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded accent-[#635bff]"
+                    checked={checked}
+                    onChange={() =>
+                      setForm((s) => ({
+                        ...s,
+                        delegated_services: checked
+                          ? (s.delegated_services || []).filter((k) => k !== svc.key)
+                          : [...(s.delegated_services || []), svc.key],
+                      }))
+                    }
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900">{svc.label}</p>
+                    <p className="text-xs text-slate-500">{svc.desc}</p>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          {(form.delegated_services || []).length > 0 && (
+            <p className="text-xs text-[#635bff] font-medium">
+              {(form.delegated_services || []).length === DELEGATED_SERVICES.length
+                ? "Toutes les alertes liées à ce bien sont désactivées."
+                : `${(form.delegated_services || []).length} service(s) délégué(s) — alertes correspondantes désactivées.`}
+            </p>
+          )}
         </div>
 
         {propertyId ? <PropertyDpePanel propertyId={propertyId} propertyLabel={form.label} /> : null}
@@ -1012,6 +1072,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                   energy_class: p.energy_class ?? "",
                   energy_value: p.energy_value != null ? String(p.energy_value) : "",
                   ghg_class: p.ghg_class ?? "",
+                  delegated_services: Array.isArray(p.delegated_services) ? p.delegated_services : [],
+                  delegation_agency_name: p.delegation_agency_name ?? "",
                 };
 
                 return (
@@ -1138,6 +1200,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                   energy_class: p.energy_class ?? "",
                   energy_value: p.energy_value != null ? String(p.energy_value) : "",
                   ghg_class: p.ghg_class ?? "",
+                  delegated_services: Array.isArray(p.delegated_services) ? p.delegated_services : [],
+                  delegation_agency_name: p.delegation_agency_name ?? "",
                 };
 
                 return (

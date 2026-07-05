@@ -83,6 +83,8 @@ export type PropertyLite = {
   label: string | null;
   city?: string | null;
   status?: string | null;
+  delegated_services?: string[];
+  delegation_agency_name?: string | null;
 };
 
 export type TenantLite = {
@@ -1061,6 +1063,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     const startDateFR = fmtDateShortFR(l.start_date);
     const endDateFR = fmtDateShortFR(l.end_date);
 
+    const delegatedServices: string[] = Array.isArray(p?.delegated_services) ? p!.delegated_services! : [];
+    const agencyName = p?.delegation_agency_name || null;
     return {
       propertyLabel: p?.label || "Bien",
       tenantName: t?.full_name || "Locataire",
@@ -1073,6 +1077,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       quittance: l.receipts_disabled ? "Agence" : canUseReceiptAutomation && l.auto_quittance_enabled ? "Auto" : "Manuel",
       pay: `J${l.payment_day ?? "—"} • ${l.payment_method || "—"} • ${paymentTypeShort(l.payment_type)}`,
       renewal,
+      isBailEdlDelegated: delegatedServices.includes("bail_edl"),
+      isGestionDelegated: delegatedServices.includes("gestion_courante"),
+      agencyName,
     };
   };
 
@@ -2798,6 +2805,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                           <div className="mt-2 flex flex-wrap gap-2">
                             {badge("emerald", "Actif")}
                             {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
+                            {(meta.isBailEdlDelegated || meta.isGestionDelegated) && badge("sky", `Délégué${meta.agencyName ? ` · ${meta.agencyName}` : ""}`)}
                           </div>
                         </div>
                       }
@@ -2854,6 +2862,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                         <div className="mt-2 flex flex-wrap gap-2">
                           {badge(archiveTone, archiveLabel)}
                           {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
+                          {(meta.isBailEdlDelegated || meta.isGestionDelegated) && badge("sky", `Délégué${meta.agencyName ? ` · ${meta.agencyName}` : ""}`)}
                         </div>
                       </div>
                     }

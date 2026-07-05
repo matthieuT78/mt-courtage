@@ -20,9 +20,9 @@ import AppFooter from "../components/AppFooter";
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/gestion-locative-lmnp`;
 const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
-const title = "Gestion Locative LMNP 2026 : bail, loyers, inventaire et quittances pour location meublée | lokt.fr";
+const title = "Logiciel gestion locative LMNP gratuit 2026 — bail meublé, quittances, inventaire | lokt.fr";
 const description =
-  "Gérez votre location meublée LMNP sans tableur : bail numérique, inventaire meublé, état des lieux, quittances PDF, loyers et suivi financier. Gestion de location meublée gratuite pour 1 logement.";
+  "Gérez votre LMNP gratuitement : bail meublé conforme, inventaire du mobilier, quittances PDF automatiques, état des lieux et suivi financier. Gratuit pour 1 logement, sans tableur.";
 
 const features = [
   {

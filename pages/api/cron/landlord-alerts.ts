@@ -20,6 +20,7 @@ type AlertItem = {
   title: string;
   detail: string;
   href: string;
+  propertyId?: string;
 };
 
 type LeaseRow = Record<string, any>;
@@ -124,6 +125,29 @@ function weeklyScheduleKey(prefix: string, today: Date) {
   return `${prefix}:week-${toISODate(monday)}`;
 }
 
+const ALERT_SERVICE_MAP: Partial<Record<LandlordAlertPreferenceKey, string>> = {
+  late_payment:            "gestion_courante",
+  due_soon:                "gestion_courante",
+  receipt_to_finalize:     "gestion_courante",
+  rent_revision_due:       "gestion_courante",
+  tenant_email_missing:    "gestion_courante",
+  lease_end:               "bail_edl",
+  expired_active_lease:    "bail_edl",
+  entry_inventory_missing: "bail_edl",
+  exit_inventory_to_prepare: "bail_edl",
+  deposit_not_collected:   "depot_garantie",
+  deposit_return_overdue:  "depot_garantie",
+};
+
+function isServiceDelegated(propertyId: string | undefined, preferenceKey: LandlordAlertPreferenceKey, propertiesById: Map<string, any>): boolean {
+  if (!propertyId) return false;
+  const property = propertiesById.get(propertyId);
+  const delegated: string[] = Array.isArray(property?.delegated_services) ? property.delegated_services : [];
+  if (delegated.length === 0) return false;
+  const service = ALERT_SERVICE_MAP[preferenceKey];
+  return !!service && delegated.includes(service);
+}
+
 async function ownerEmailForUser(userId: string, leases: LeaseRow[]) {
   const leaseEmail = leases.map((l) => String(l.reminder_email || "").trim()).find(Boolean);
   if (leaseEmail) return leaseEmail;
@@ -221,7 +245,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { data: preferences, error: preferencesError },
     ] = await Promise.all([
       supabaseAdmin.from("leases").select("*"),
-      supabaseAdmin.from("properties").select("id,user_id,label,address_line1,status"),
+      supabaseAdmin.from("properties").select("id,user_id,label,address_line1,status,delegated_services"),
       supabaseAdmin.from("tenants").select("id,user_id,full_name,first_name,last_name,email,archived_at"),
       supabaseAdmin.from("rent_payments").select("id,lease_id,period_start,period_end,paid_at,total_amount"),
       supabaseAdmin.from("rent_receipts").select("id,lease_id,period_start,period_end,pdf_url,sent_at,status"),
@@ -308,6 +332,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 title: `Retard de paiement - ${labels.property}`,
                 detail: `${labels.tenant} n'est pas marqué payé pour la période ${period.start} au ${period.end}. Échéance dépassée depuis ${Math.abs(daysToDue)} jour(s).`,
                 href: "/espace-bailleur",
+                propertyId: lease.property_id,
               });
             }
           } else if (!paid && [3, 1, 0].includes(daysToDue)) {
@@ -318,6 +343,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               title: `Loyer bientôt exigible - ${labels.property}`,
               detail: `${labels.tenant} doit régler le loyer dans ${daysToDue} jour(s).`,
               href: "/espace-bailleur",
+              propertyId: lease.property_id,
             });
           }
 
@@ -335,6 +361,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 title: `Quittance à finaliser - ${labels.property}`,
                 detail: `Le paiement de ${labels.tenant} est confirmé, mais la quittance n'est pas encore générée et envoyée.`,
                 href: "/espace-bailleur",
+                propertyId: lease.property_id,
               });
             }
           }
@@ -350,6 +377,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 title: `Révision annuelle du loyer à préparer - ${labels.property}`,
                 detail: `Le bail de ${labels.tenant} atteint sa date anniversaire dans ${daysToAnniversary} jours. Vérifiez la clause de révision, le DPE et l'IRL applicable avant toute demande au locataire. La hausse n'est pas automatique.`,
                 href: "/revision-loyer-irl",
+                propertyId: lease.property_id,
               });
             }
           }
@@ -362,6 +390,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               title: `Email locataire manquant - ${labels.property}`,
               detail: `Ajoutez un email pour ${labels.tenant} afin d'envoyer les quittances automatiquement.`,
               href: "/espace-bailleur",
+              propertyId: lease.property_id,
             });
           }
 
@@ -376,6 +405,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 title: `État des lieux d'entrée manquant - ${labels.property}`,
                 detail: `Aucun EDL d'entrée n'est rattaché au bail de ${labels.tenant}.`,
                 href: "/espace-bailleur",
+                propertyId: lease.property_id,
               });
             }
           }
@@ -388,6 +418,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               title: `Email bailleur manquant - ${labels.property}`,
               detail: "Ajoutez un email de notification pour recevoir les validations de paiement et alertes automatiques.",
               href: "/espace-bailleur",
+              propertyId: lease.property_id,
             });
           }
         }
@@ -403,6 +434,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               title: `Caution non encaissee - ${labels.property}`,
               detail: `Le depot de garantie de ${labels.tenant} (${Number(lease.deposit_amount).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}) n'a pas encore ete encaisse.`,
               href: "/espace-bailleur?tab=locataires",
+              propertyId: lease.property_id,
             });
           }
         }
@@ -425,6 +457,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 title: `Caution non restituee - ${labels.property}`,
                 detail: `Le bail de ${labels.tenant} est termine depuis ${daysAfterEnd} jour(s) et le depot de garantie n'a pas encore ete restitue. Delai legal : 1 mois (2 mois si dommages constates).`,
                 href: "/espace-bailleur?tab=locataires",
+                propertyId: lease.property_id,
               });
             }
           }
@@ -444,6 +477,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 title: `Bail expiré encore actif - ${labels.property}`,
                 detail: `La date de fin du bail de ${labels.tenant} est dépassée. Clôturez le bail ou corrigez la date.`,
                 href: "/espace-bailleur?tab=locataires",
+                propertyId: lease.property_id,
               });
             }
           } else if (active && [60, 30, 7].includes(daysToEnd)) {
@@ -454,6 +488,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               title: `Bail bientôt à échéance - ${labels.property}`,
               detail: `Le bail de ${labels.tenant} arrive à échéance dans ${daysToEnd} jour(s). Préparez renouvellement, congé ou sortie.`,
               href: "/espace-bailleur?tab=locataires",
+              propertyId: lease.property_id,
             });
           }
 
@@ -470,6 +505,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 title: `État des lieux de sortie à préparer - ${labels.property}`,
                 detail: `Le bail de ${labels.tenant} se termine bientôt ou est terminé. L'EDL de sortie n'est pas finalisé.`,
                 href: "/espace-bailleur?tab=locataires",
+                propertyId: lease.property_id,
               });
             }
           }
@@ -480,6 +516,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         new Map(
           alerts
             .filter((alert) => userPreferences[alert.preferenceKey] && planAllowsLandlordAlert(userPlan, alert.preferenceKey))
+            .filter((alert) => !isServiceDelegated(alert.propertyId, alert.preferenceKey, propertiesById))
             .map((a) => [a.key, a])
         ).values()
       ).slice(0, 24);

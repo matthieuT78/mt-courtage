@@ -1,6 +1,6 @@
 ---
-title: "Combien puis-je emprunter avec 3 000 € par mois ?"
-description: "Capacité d'emprunt avec 3 000 € nets/mois : tableau par durée, budget achat dans les principales villes, impact des crédits en cours et stratégies pour emprunter plus."
+title: "Combien emprunter avec 3 000 €/mois net ? Tableau 2026 + simulation gratuite"
+description: "Avec 3 000 € nets/mois : capacité d'emprunt entre 155 000 et 220 000 € selon la durée. Tableau complet, impact des crédits en cours, villes accessibles et stratégies 2026."
 date: "2026-06-20"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "3000 euros", "budget achat immobilier"]

@@ -28,6 +28,8 @@ export type Property = {
   status?: string | null;
   created_at: string;
   updated_at: string;
+  delegated_services?: string[];
+  delegation_agency_name?: string | null;
 };
 
 export type PropertyFinance = {

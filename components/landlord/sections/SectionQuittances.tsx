@@ -1840,6 +1840,7 @@ export function SectionQuittances({
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-base">🏠</span>
                     <span className="text-sm font-semibold text-slate-900 truncate">{p.label}</span>
+                    {(() => { const prop = propsById.get(p.propertyId); return prop && Array.isArray(prop.delegated_services) && prop.delegated_services.includes("gestion_courante") ? <span className="shrink-0 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[0.65rem] font-semibold text-indigo-700">{prop.delegation_agency_name ? `Délégué · ${prop.delegation_agency_name}` : "Délégué"}</span> : null; })()}
                   </div>
                   <span className="text-xs text-slate-500">
                     {Array.from(p.years.values()).reduce((acc, arr) => acc + arr.length, 0)} quittances

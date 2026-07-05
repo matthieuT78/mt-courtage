@@ -49,6 +49,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         skipped++;
         continue;
       }
+      if (lease.property_id) {
+        const { data: prop } = await supabaseAdmin.from("properties").select("delegated_services").eq("id", lease.property_id).maybeSingle();
+        if (Array.isArray(prop?.delegated_services) && prop.delegated_services.includes("gestion_courante")) {
+          skipped++;
+          continue;
+        }
+      }
       for (const shift of [0, -1]) {
         const period = shiftedMonth(shift);
         const rentPeriod = getLeaseRentPeriod(lease, period);

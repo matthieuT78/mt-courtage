@@ -97,9 +97,9 @@ export default function PretRelaisPage() {
   const pagePath = "/pret-relais";
   const pageUrl = `${siteUrl}${pagePath}`;
 
-  const title = "Simulation Prêt Relais Immobilier — Calculette Gratuite 2026 | lokt.fr";
+  const title = "Calculette Prêt Relais 2026 — Simulation gratuite, résultat immédiat | lokt.fr";
   const description =
-    "Simulation prêt relais gratuite en ligne. Calculez le montant du crédit relais, les intérêts intercalaires et votre budget d'achat avant la vente de votre bien. Prêt relais sec ou adossé, résultat instantané.";
+    "Calculette prêt relais gratuite : montant du crédit relais, intérêts intercalaires et budget d'achat avant vente. Prêt relais sec ou adossé — simulation instantanée, sans inscription.";
 
   // OG image (non transparent, OK WhatsApp)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;

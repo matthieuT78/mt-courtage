@@ -682,18 +682,27 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const uniqueReceipts = Array.from(byId.values());
     if (uniqueReceipts.length === 0) return;
 
-    const paymentsByPeriod = new Map(
-      safePayments.map((payment) => [
-        `${payment.lease_id}:${payment.period_start}:${payment.period_end}`,
-        payment,
-      ])
-    );
-
     const syncableReceipts = uniqueReceipts.filter((r) => {
       const status = String(r.status || "").toLowerCase();
       return status === "generated" || status === "sent";
     });
     if (syncableReceipts.length === 0) return;
+
+    // ⚠️ Toujours fetcher les paiements frais depuis Supabase — les props peuvent être périmées
+    // (ex: confirm-manual écrit status="received" côté serveur, puis le client écrase avec "expected"
+    // si safePayments ne contient pas encore le paid_at). Une seule requête ciblée sur les baux concernés.
+    const leaseIds = [...new Set(syncableReceipts.map((r) => r.lease_id).filter(Boolean))];
+    const { data: freshPayments } = await supabase
+      .from("rent_payments")
+      .select("lease_id,period_start,period_end,paid_at,total_amount")
+      .in("lease_id", leaseIds);
+
+    const paymentsByPeriod = new Map(
+      (freshPayments || []).map((payment) => [
+        `${payment.lease_id}:${payment.period_start}:${payment.period_end}`,
+        payment,
+      ])
+    );
 
     const payload = syncableReceipts.map((r) => {
       const lease = safeLeases.find((l) => l.id === r.lease_id);
@@ -722,7 +731,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     // ⚠️ utilise l'index unique existant (user_id, receipt_id) WHERE receipt_id IS NOT NULL
     const { error } = await supabase.from("transactions").upsert(payload, { onConflict: "user_id,receipt_id" });
     if (error) throw error;
-  }, [safeLeases, safePayments, safeReceipts, userId]);
+  }, [safeLeases, safeReceipts, userId]);
 
   const loadFinance = useCallback(async (options?: { silent?: boolean }) => {
     if (!supabase || !userId) return;

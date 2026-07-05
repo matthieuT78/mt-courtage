@@ -474,13 +474,19 @@ export function SectionDashboard({
     const financeByProperty = new Map((propertyFinance || []).map((row) => [row.property_id, row]));
     const financeConfigured =
       hasProperty && managedProperties.every((property) => hasFinanceSetup(financeByProperty.get(property.id)));
+    const bailEdlDelegated = managedProperties.some((p) =>
+      Array.isArray((p as any).delegated_services) && (p as any).delegated_services.includes("bail_edl")
+    );
     const leaseStepLabel =
       propertiesWithoutLease.length > 0 || tenantsWithoutLease.length > 0 ? "Créer le nouveau bail" : "Créer un bail";
+    const leaseStepDesc = bailEdlDelegated
+      ? "Renseignez les infos du bail (loyer, dates) pour le suivi financier — même si le document est géré par l'agence."
+      : null;
 
     const steps = [
       { key: "biens" as LandlordSectionKey, label: "Créer un bien", done: hasProperty },
       { key: "locataires" as LandlordSectionKey, label: "Créer un locataire", done: hasTenant },
-      { key: "baux" as LandlordSectionKey, label: leaseStepLabel, done: leaseWorkflowReady },
+      { key: "baux" as LandlordSectionKey, label: leaseStepLabel, done: leaseWorkflowReady, desc: leaseStepDesc },
       { key: "finance" as LandlordSectionKey, label: "Configurer la finance", done: financeConfigured },
     ];
 
@@ -1619,7 +1625,7 @@ export function SectionDashboard({
                       <p className={"text-[0.7rem] " + (step.done ? "text-emerald-600" : "text-red-600")}>
                         {step.key === "biens" ? "Adresse, infos, statut"
                           : step.key === "locataires" ? "Nom, email, contact"
-                          : step.key === "baux" ? "Bien, locataire et loyer"
+                          : step.key === "baux" ? ((step as any).desc || "Bien, locataire et loyer")
                           : "Prix et taux crédit"}
                       </p>
                     </div>

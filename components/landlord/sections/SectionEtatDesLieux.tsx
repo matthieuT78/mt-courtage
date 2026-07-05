@@ -3639,6 +3639,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                           </button>
                         </div>
                       )}
+                      {selectedProperty && Array.isArray(selectedProperty.delegated_services) && selectedProperty.delegated_services.includes("bail_edl") && (
+                        <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+                          États des lieux délégués{selectedProperty.delegation_agency_name ? ` à ${selectedProperty.delegation_agency_name}` : " à un tiers"} — vous pouvez tout de même archiver un document ici.
+                        </div>
+                      )}
 
                       {creationMode === "standalone" && (
                         <p className="text-xs text-slate-500">Sans bail rattaché, les deux sont possibles.</p>
