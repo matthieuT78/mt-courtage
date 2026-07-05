@@ -429,17 +429,13 @@ export function SectionDashboard({
   // -----------------------------
   // Onboarding: persistence + auto-hide
   // -----------------------------
-  const HIDE_AFTER_DAYS = 7;
-
   const storageKey = useMemo(() => {
     const u = (userId || "").trim();
     return `imp:onboarding_done_at:${u || "anon"}`;
   }, [userId]);
 
   const [doneAtISO, setDoneAtISO] = useState<string | null>(null);
-  const [justCompleted, setJustCompleted] = useState(false);
   const [manuallyDismissed, setManuallyDismissed] = useState(false);
-  const [notifExpanded, setNotifExpanded] = useState(false);
   const prevPercentRef = useRef<number>(-1);
 
   const dismissedKey = useMemo(() => `imp:onboarding_dismissed:${(userId || "").trim() || "anon"}`, [userId]);
@@ -530,13 +526,16 @@ export function SectionDashboard({
 
   const shouldHideOnboarding = useMemo(() => {
     if (manuallyDismissed) return true;
+    const activeProps = (properties || []).filter(
+      (p) => String(p.status || "").toLowerCase() !== "archived"
+    );
+    // Une fois la mise en route complétée, elle disparaît définitivement
+    // tant que l'utilisateur a au moins un bien actif.
+    // Elle ne revient que s'il repart de zéro (0 biens actifs).
+    if (doneAtISO && activeProps.length > 0) return true;
     if (onboarding.percent < 100) return false;
-    if (!doneAtISO) return false;
-    const t = new Date(doneAtISO).getTime();
-    if (!Number.isFinite(t)) return false;
-    const days = (Date.now() - t) / (1000 * 60 * 60 * 24);
-    return days >= HIDE_AFTER_DAYS;
-  }, [doneAtISO, manuallyDismissed, onboarding.percent]);
+    return true;
+  }, [doneAtISO, manuallyDismissed, onboarding.percent, properties]);
 
   useEffect(() => {
     const previous = prevPercentRef.current;
@@ -544,8 +543,6 @@ export function SectionDashboard({
     prevPercentRef.current = current;
 
     if (current === 100 && previous >= 0 && previous < 100) {
-      setJustCompleted(true);
-      const timer = setTimeout(() => setJustCompleted(false), 2200);
       const nowISO = new Date().toISOString();
       setDoneAtISO(nowISO);
 
@@ -565,7 +562,6 @@ export function SectionDashboard({
         }
       })();
 
-      return () => clearTimeout(timer);
     }
   }, [onboarding.percent, storageKey, userId]);
 
@@ -1177,6 +1173,95 @@ export function SectionDashboard({
       )}
       </div>{/* end relative wrapper */}
 
+      {/* ── Mise en route ─────────────────────────────────────── */}
+      {!shouldHideOnboarding && (
+        <div className={`overflow-hidden rounded-2xl border ${
+          onboarding.percent === 0
+            ? "border-[#635bff]/20 bg-gradient-to-br from-[#635bff]/[0.04] to-[#00d4ff]/[0.03]"
+            : "border-amber-200 bg-amber-50"
+        }`}>
+          {/* En-tête */}
+          <div className="flex items-center gap-3 px-4 py-3">
+            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
+              onboarding.percent === 0 ? "bg-[#635bff]/10 text-[#635bff]" : "bg-amber-100 text-amber-600"
+            }`}>
+              {onboarding.percent === 0
+                ? <HomeModernIcon className="h-4 w-4" aria-hidden="true" />
+                : <BellIcon className="h-4 w-4" aria-hidden="true" />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className={`text-[0.8rem] font-semibold ${onboarding.percent === 0 ? "text-slate-900" : "text-amber-900"}`}>
+                {onboarding.percent === 0
+                  ? "Mise en route — démarrons en 2 minutes"
+                  : `Mise en route · ${onboarding.doneCount}/${onboarding.steps.length} étapes terminées`}
+              </p>
+              {onboarding.next && (
+                <p className={`mt-0.5 truncate text-[0.73rem] ${onboarding.percent === 0 ? "text-slate-500" : "text-amber-700"}`}>
+                  {onboarding.percent === 0
+                    ? "Créez un bien, un locataire et un bail pour démarrer."
+                    : `À faire : ${onboarding.next.label}`}
+                </p>
+              )}
+            </div>
+            {/* Barre de progression */}
+            <div className="hidden w-16 shrink-0 sm:block">
+              <div className={`h-1.5 overflow-hidden rounded-full ${onboarding.percent === 0 ? "bg-[#635bff]/15" : "bg-amber-200"}`}>
+                <div className={`h-full transition-all duration-700 ${onboarding.percent === 0 ? "bg-[#635bff]" : "bg-amber-500"}`}
+                  style={{ width: `${onboarding.percent}%` }} />
+              </div>
+              <p className={`mt-0.5 text-center text-[0.65rem] font-semibold ${onboarding.percent === 0 ? "text-[#635bff]" : "text-amber-600"}`}>
+                {onboarding.percent}%
+              </p>
+            </div>
+          </div>
+
+          {/* Étapes — toujours visibles */}
+          <div className={`px-4 pb-4 ${
+            onboarding.percent === 0
+              ? "border-t border-[#635bff]/10 bg-white/70 pt-3"
+              : "border-t border-amber-200 bg-white/60 pt-3"
+          }`}>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {onboarding.steps.map((step) => (
+                <button key={step.key} type="button"
+                  onClick={() => step.done ? onGo(step.key) : (onNavigateDeep ? onNavigateDeep(step.key, { openCreate: true }) : onGo(step.key))}
+                  className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
+                    step.done
+                      ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
+                      : "border-slate-200 bg-white hover:border-[#635bff]/30 hover:bg-[#635bff]/5"
+                  }`}>
+                  <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${step.done ? "bg-emerald-500" : "bg-slate-200"}`}>
+                    {step.done
+                      ? <CheckCircleIcon className="h-4 w-4 text-white" aria-hidden="true" />
+                      : <span className="h-2 w-2 rounded-full bg-white" />}
+                  </span>
+                  <div className="min-w-0">
+                    <p className={`text-[0.78rem] font-semibold ${step.done ? "text-emerald-800" : "text-slate-800"}`}>{step.label}</p>
+                    <p className={`text-[0.7rem] ${step.done ? "text-emerald-600" : "text-slate-500"}`}>
+                      {step.key === "biens" ? "Adresse, infos, statut"
+                        : step.key === "locataires" ? "Nom, email, contact"
+                        : step.key === "baux" ? ((step as any).desc || "Bien, locataire et loyer")
+                        : "Prix et taux crédit"}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            {onboarding.next && (
+              <div className="mt-3 flex justify-end">
+                <button type="button"
+                  onClick={() => onNavigateDeep ? onNavigateDeep(onboarding.next!.key, { openCreate: true }) : onGo(onboarding.next!.key)}
+                  className="rounded-full bg-[#635bff] px-4 py-1.5 text-[0.73rem] font-semibold text-white transition hover:bg-[#4f46e5]">
+                  {onboarding.percent === 0
+                    ? `Commencer : ${onboarding.next.label} →`
+                    : `Continuer : ${onboarding.next.label} →`}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Alertes météo biens ──────────────────────────────── */}
       {/* Risques climatiques sur les biens — toujours visible après chargement */}
       {weatherLoaded && (
@@ -1548,105 +1633,6 @@ export function SectionDashboard({
           </section>
 
       </div>
-
-      {/* ── Notification mise en route ─────────────────────────── */}
-      {!shouldHideOnboarding && (
-        <div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50">
-          {/* Ligne résumé (toujours visible) */}
-          <div className="flex items-center gap-3 px-4 py-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
-              <BellIcon className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[0.8rem] font-semibold text-amber-900">
-                Mise en route · {onboarding.doneCount}/{onboarding.steps.length} étapes terminées
-              </p>
-              {!notifExpanded && onboarding.next && (
-                <p className="mt-0.5 truncate text-[0.73rem] text-amber-700">
-                  À faire : {onboarding.next.label}
-                </p>
-              )}
-            </div>
-            {/* Barre de progression */}
-            <div className="hidden w-16 shrink-0 sm:block">
-              <div className="h-1.5 overflow-hidden rounded-full bg-amber-200">
-                <div className="h-full bg-amber-500 transition-all duration-700" style={{ width: `${onboarding.percent}%` }} />
-              </div>
-              <p className="mt-0.5 text-center text-[0.65rem] font-semibold text-amber-600">{onboarding.percent}%</p>
-            </div>
-            {/* Expand toggle */}
-            <button
-              type="button"
-              onClick={() => setNotifExpanded((v) => !v)}
-              className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-600 transition hover:bg-amber-200"
-              aria-label={notifExpanded ? "Réduire" : "Voir les étapes"}
-            >
-              <ChevronDownIcon className={"h-4 w-4 transition-transform duration-200 " + (notifExpanded ? "rotate-180" : "")} aria-hidden="true" />
-            </button>
-            {/* Dismiss */}
-            <button
-              type="button"
-              onClick={() => {
-                setManuallyDismissed(true);
-                try { window.localStorage.setItem(dismissedKey, "1"); } catch { /* ignore */ }
-              }}
-              className="shrink-0 rounded-lg px-1.5 py-1 text-[0.85rem] font-medium text-amber-400 transition hover:bg-amber-100 hover:text-amber-700"
-              aria-label="Masquer"
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Détail des étapes (expandable) */}
-          {notifExpanded && (
-            <div className="border-t border-amber-200 bg-white/60 px-4 py-3">
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                {onboarding.steps.map((step) => (
-                  <button
-                    key={step.key}
-                    type="button"
-                    onClick={() => step.done ? onGo(step.key) : (onNavigateDeep ? onNavigateDeep(step.key, { openCreate: true }) : onGo(step.key))}
-                    className={
-                      "flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition " +
-                      (step.done
-                        ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
-                        : "border-red-200 bg-red-50 hover:bg-red-100")
-                    }
-                  >
-                    <span className={"mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full " + (step.done ? "bg-emerald-500" : "bg-red-400")}>
-                      {step.done
-                        ? <CheckCircleIcon className="h-4 w-4 text-white" aria-hidden="true" />
-                        : <span className="h-2 w-2 rounded-full bg-white" />}
-                    </span>
-                    <div className="min-w-0">
-                      <p className={"text-[0.78rem] font-semibold " + (step.done ? "text-emerald-800" : "text-red-800")}>
-                        {step.label}
-                      </p>
-                      <p className={"text-[0.7rem] " + (step.done ? "text-emerald-600" : "text-red-600")}>
-                        {step.key === "biens" ? "Adresse, infos, statut"
-                          : step.key === "locataires" ? "Nom, email, contact"
-                          : step.key === "baux" ? ((step as any).desc || "Bien, locataire et loyer")
-                          : "Prix et taux crédit"}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              {onboarding.next && (
-                <div className="mt-3 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => onNavigateDeep ? onNavigateDeep(onboarding.next!.key, { openCreate: true }) : onGo(onboarding.next!.key)}
-                    className="rounded-full bg-red-500 px-4 py-1.5 text-[0.73rem] font-semibold text-white transition hover:bg-red-600"
-                  >
-                    Continuer : {onboarding.next.label} →
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
         <SectionTitle
