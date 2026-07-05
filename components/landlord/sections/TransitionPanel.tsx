@@ -20,7 +20,7 @@ type Props = {
   onRefresh: () => Promise<void>;
 };
 
-type StepKey = "edl" | "caution" | "annonce" | "premier_dossier" | "candidat_retenu" | "nouveau_bail";
+type StepKey = "edl" | "caution" | "annonce" | "candidat_retenu" | "nouveau_bail";
 
 type TransitionData = {
   lease: Lease;
@@ -36,7 +36,6 @@ const STEPS: { key: StepKey; label: string }[] = [
   { key: "edl",             label: "EDL sortie" },
   { key: "caution",         label: "Caution" },
   { key: "annonce",         label: "Annonce" },
-  { key: "premier_dossier", label: "Dossiers" },
   { key: "candidat_retenu", label: "Candidat" },
   { key: "nouveau_bail",    label: "Nouveau bail" },
 ];
@@ -101,10 +100,9 @@ function nextAction(
   if (!steps.edl)             return { label: "Faire l'état des lieux", target: "etat_des_lieux" };
   if (!steps.caution)         return { label: "Restituer la caution", target: "baux", link: { leaseId, openPanel: "deposit" } };
   if (!steps.annonce)         return { label: "Créer l'annonce", target: "candidatures" };
-  if (!steps.premier_dossier) return { label: "Partager l'annonce", target: "candidatures" };
   if (!steps.candidat_retenu) {
     if (submittedCount > 0)   return { label: `Analyser ${submittedCount} dossier${submittedCount > 1 ? "s" : ""}`, target: "candidatures" };
-    return { label: "Attendre les dossiers", target: "candidatures" };
+    return { label: "Partager l'annonce", target: "candidatures" };
   }
   if (!steps.nouveau_bail)    return { label: "Créer le bail", target: "baux", link: { openCreate: true, prefillPropertyId: propertyId } };
   return { label: "Voir le bail", target: "baux" };
@@ -193,7 +191,6 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
         const cands = activeListingId ? candidaturesByListing.get(activeListingId) : null;
         const acceptedCount = cands?.accepted ?? 0;
         const submittedCount = cands?.submitted ?? 0;
-        const premierDossierDone = (submittedCount + acceptedCount) > 0;
         const candidatRetenuDone = acceptedCount > 0;
         const hasNewLease = leases.some(
           (l) =>
@@ -211,7 +208,6 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
             edl: edlDone,
             caution: cautionDone,
             annonce: annonceDone,
-            premier_dossier: premierDossierDone,
             candidat_retenu: candidatRetenuDone,
             nouveau_bail: hasNewLease,
           },
@@ -299,7 +295,7 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
                 const done = t.steps[s.key];
                 const isLast = i === STEPS.length - 1;
                 // "Candidat" step : amber dot when submissions pending but none accepted yet
-                const isPending = s.key === "candidat_retenu" && !done && t.submittedCount > 0 && t.steps.premier_dossier;
+                const isPending = s.key === "candidat_retenu" && !done && t.submittedCount > 0;
                 return (
                   <React.Fragment key={s.key}>
                     <div className="flex min-w-[52px] flex-col items-center gap-1 text-center">
