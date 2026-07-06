@@ -1253,10 +1253,14 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     setMode("create");
     setEditingId(null);
     const prefillTenantId = deepLink.prefillTenantId ?? "";
+    const prefillPropertyId = deepLink.prefillPropertyId ?? "";
+    const prefillProp = prefillPropertyId ? propertyById.get(prefillPropertyId) : null;
+    const prefillGestionDelegated = (prefillProp?.delegated_services || []).includes("gestion_courante");
     setForm({
       ...defaultFormValues(),
-      property_id: deepLink.prefillPropertyId ?? "",
+      property_id: prefillPropertyId,
       tenant_id: prefillTenantId,
+      ...(prefillGestionDelegated ? { receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: false } : {}),
     });
     // Si le locataire vient d'être créé et n'est pas encore dans la liste, on rafraîchit
     if (prefillTenantId && !tenants?.some((t) => t.id === prefillTenantId)) {
@@ -2214,7 +2218,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             <label className="text-[0.7rem] text-slate-700">Bien *</label>
             <select
               value={form.property_id}
-              onChange={(e) => setForm((s) => ({ ...s, property_id: e.target.value }))}
+              onChange={(e) => {
+                const pid = e.target.value;
+                const p = propertyById.get(pid);
+                const isGestionDelegated = (p?.delegated_services || []).includes("gestion_courante");
+                setForm((s) => ({
+                  ...s,
+                  property_id: pid,
+                  ...(isGestionDelegated ? { receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: false } : {}),
+                }));
+              }}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             >
               <option value="">— Sélectionner —</option>
@@ -2225,6 +2238,11 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               ))}
             </select>
             {activeProps.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un bien actif.</p> : null}
+            {form.property_id && (propertyById.get(form.property_id)?.delegated_services || []).includes("gestion_courante") ? (
+              <p className="text-[0.7rem] text-sky-700">
+                Gestion déléguée — quittances passées en "Géré par agence" automatiquement.
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-1">
