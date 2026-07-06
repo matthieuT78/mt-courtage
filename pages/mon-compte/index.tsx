@@ -1,5 +1,5 @@
 // pages/mon-compte/index.tsx
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import AccountLayout from "../../components/account/AccountLayout";
 import PostalCodeCityFields from "../../components/forms/PostalCodeCityFields";
 import { StorageUsagePanel } from "../../components/account/StorageUsagePanel";
 import { supabase } from "../../lib/supabaseClient";
+import { supabaseTenant } from "../../lib/supabaseTenantClient";
 import { signOutAll } from "../../lib/authUtils";
 import { useAuthUser } from "../../hooks/useAuthUser";
 import { useProfile } from "../../hooks/useProfile";
@@ -60,6 +61,60 @@ async function checkEmailAlreadyExists(email: string) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload?.error || "Impossible de vérifier cette adresse e-mail.");
   return !!payload?.exists;
+}
+
+function TenantLoginInline({ onSuccess }: { onSuccess: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const inputCls = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100";
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!supabaseTenant) return;
+    setLoading(true);
+    setErr(null);
+    const { error } = await supabaseTenant.auth.signInWithPassword({ email, password });
+    if (error) {
+      setErr("Email ou mot de passe incorrect.");
+      setLoading(false);
+      return;
+    }
+    onSuccess();
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div>
+        <p className="uppercase tracking-[0.18em] text-[0.7rem] text-sky-700 mb-1">Accès locataire</p>
+        <h1 className="text-lg font-semibold text-slate-900">Connexion</h1>
+        <p className="text-xs text-slate-500 mt-1">Votre compte a été créé sur invitation de votre bailleur.</p>
+      </div>
+      <div className="space-y-1 pt-1">
+        <label htmlFor="tenant_email" className="text-xs text-slate-700">Adresse e-mail</label>
+        <input id="tenant_email" type="email" autoComplete="email" value={email}
+          onChange={(e) => setEmail(e.target.value)} required className={inputCls} />
+      </div>
+      <div className="space-y-1">
+        <label htmlFor="tenant_password" className="text-xs text-slate-700">Mot de passe</label>
+        <input id="tenant_password" type="password" autoComplete="current-password" value={password}
+          onChange={(e) => setPassword(e.target.value)} required className={inputCls} />
+      </div>
+      {err && (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{err}</p>
+      )}
+      <div className="flex items-center gap-3 pt-1">
+        <button type="submit" disabled={loading}
+          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+          {loading ? "Connexion..." : "Se connecter"}
+        </button>
+        <a href="/espace-locataire/connexion" className="text-xs text-slate-500 underline hover:text-slate-700">
+          Mot de passe oublié ?
+        </a>
+      </div>
+    </form>
+  );
 }
 
 export default function MonCompteIndexPage() {
@@ -453,43 +508,34 @@ export default function MonCompteIndexPage() {
         ) : (
           <div className="mx-auto max-w-2xl">
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-              {/* Toggle Bailleur / Locataire */}
-              <div className="mb-5 flex items-center gap-2 rounded-full bg-slate-100 p-1 text-xs w-fit">
-                <button
-                  type="button"
-                  onClick={() => setRole("bailleur")}
-                  className={cx(
-                    "rounded-full px-4 py-1.5 font-semibold transition",
-                    role === "bailleur" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  Bailleur
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole("locataire")}
-                  className={cx(
-                    "rounded-full px-4 py-1.5 font-semibold transition",
-                    role === "locataire" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  Locataire
-                </button>
-              </div>
-
-              {role === "locataire" ? (
-                <div className="py-4">
-                  <h1 className="text-lg font-semibold text-slate-900">Espace locataire</h1>
-                  <p className="mt-2 text-sm text-slate-600">
-                    Votre espace locataire est accessible depuis le lien envoyé par votre bailleur, ou directement depuis la page de connexion locataire.
-                  </p>
-                  <Link
-                    href="/espace-locataire/connexion"
-                    className="mt-5 inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 transition"
+              {/* Toggle Bailleur / Locataire — masqué en mode inscription */}
+              {mode !== "register" && (
+                <div className="mb-5 flex items-center gap-2 rounded-full bg-slate-100 p-1 text-xs w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setRole("bailleur")}
+                    className={cx(
+                      "rounded-full px-4 py-1.5 font-semibold transition",
+                      role === "bailleur" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
+                    )}
                   >
-                    Acceder a mon espace locataire
-                  </Link>
+                    Bailleur
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole("locataire")}
+                    className={cx(
+                      "rounded-full px-4 py-1.5 font-semibold transition",
+                      role === "locataire" ? "bg-slate-900 text-white" : "text-slate-600 hover:text-slate-900"
+                    )}
+                  >
+                    Locataire
+                  </button>
                 </div>
+              )}
+
+              {role === "locataire" && mode !== "register" ? (
+                <TenantLoginInline onSuccess={() => router.replace("/espace-locataire")} />
               ) : (
               <>
               <div className="flex items-center justify-between gap-3 mb-5">

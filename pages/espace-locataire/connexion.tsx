@@ -25,17 +25,13 @@ export default function TenantConnexionPage() {
     const hash = typeof window !== "undefined" ? window.location.hash : "";
     const isNewInvite = hash.includes("type=invite");
     const isReInvite = hash.includes("type=recovery");
+    const hasMagicHash = isNewInvite || isReInvite;
 
     const handleSession = (session: any | null) => {
-      if (!session) {
-        setMode("login");
-        return;
-      }
+      if (!session) { setMode("login"); return; }
       if (isNewInvite) {
-        // Premier accès : le locataire doit choisir un mot de passe
         setMode("set-password");
       } else {
-        // Ré-invite ou déjà connecté : accès direct au portail
         router.replace("/espace-locataire");
       }
     };
@@ -46,8 +42,8 @@ export default function TenantConnexionPage() {
       }
     });
 
-    // Si pas de hash magique, vérifier s'il y a déjà une session active
-    if (!isNewInvite && !isReInvite) {
+    if (!hasMagicHash) {
+      // Pas de lien magique : vérifier la session existante
       supabase.auth.getSession().then(({ data }) => {
         if (data.session) {
           router.replace("/espace-locataire");
@@ -55,12 +51,18 @@ export default function TenantConnexionPage() {
           setMode("login");
         }
       });
+    } else {
+      // Lien magique présent : laisser onAuthStateChange gérer.
+      // Timeout de sécurité : si le token est invalide/expiré et que l'event
+      // ne fire jamais, on sort du mode detecting après 4 secondes.
+      const fallback = setTimeout(() => setMode("login"), 4000);
+      return () => {
+        clearTimeout(fallback);
+        listener.subscription.unsubscribe();
+      };
     }
-    // Si hash présent, laisser onAuthStateChange gérer (detectSessionInUrl: true s'occupe du reste)
 
-    return () => {
-      listener.subscription.unsubscribe();
-    };
+    return () => { listener.subscription.unsubscribe(); };
   }, [router]);
 
   const handleSetPassword = async (e: React.FormEvent) => {

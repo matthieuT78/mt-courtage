@@ -84,7 +84,7 @@ function makeClient(): SupabaseClient | null {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true,
+      detectSessionInUrl: false, // le client bailleur ne reçoit jamais de lien magique
     },
     // ✅ clé : on force supabase-js à utiliser notre fetch instrumenté
     global: {

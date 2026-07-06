@@ -257,7 +257,14 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                     <span className="sm:hidden">Mon espace</span>
                     <span className="hidden sm:inline">Espace locataire</span>
                   </Link>
-                ) : null
+                ) : (
+                  <Link
+                    href="/espace-locataire/connexion"
+                    className="hidden min-h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-[0.8rem] font-semibold text-slate-800 hover:bg-slate-50 sm:inline-flex"
+                  >
+                    Se connecter
+                  </Link>
+                )
               ) : isLoggedIn ? (
                 <>
                   <Link
