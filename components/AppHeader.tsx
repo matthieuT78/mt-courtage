@@ -58,6 +58,11 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
   const { checking: tenantChecking, isLoggedIn: isTenantLoggedIn } = useTenantAuthUser();
   void staticMode;
 
+  // Pages /espace-locataire/* → session tenant ; toutes les autres → session bailleur.
+  // Les deux sessions coexistent en localStorage mais ne se mélangent jamais.
+  const isTenantRoute = router.pathname.startsWith("/espace-locataire");
+  const checking = isTenantRoute ? tenantChecking : authChecking;
+
   // ✅ Toggle simple : V1 landing
   const LOKT_V1_LANDING = true;
 
@@ -235,11 +240,24 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                 <CurrencyEuroIcon className="h-5 w-5" />
               </Link>
 
-              {authChecking ? (
+              {checking ? (
                 <>
                   <span className="hidden h-10 w-28 rounded-full bg-slate-100 sm:inline-flex" aria-hidden="true" />
                   <span className="h-9 w-9 rounded-full bg-slate-100 sm:hidden" aria-hidden="true" />
                 </>
+              ) : isTenantRoute ? (
+                isTenantLoggedIn ? (
+                  <Link
+                    href="/espace-locataire"
+                    className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-[0.76rem] font-semibold shadow-sm sm:min-h-10 sm:gap-1.5 sm:px-3 sm:text-[0.8rem] ${brandBg} ${brandText} ${brandHover}`}
+                    title="Espace locataire"
+                    aria-label="Espace locataire"
+                  >
+                    <HomeModernIcon className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                    <span className="sm:hidden">Mon espace</span>
+                    <span className="hidden sm:inline">Espace locataire</span>
+                  </Link>
+                ) : null
               ) : isLoggedIn ? (
                 <>
                   <Link
@@ -261,17 +279,6 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                     <span className="hidden sm:inline">Espace bailleur</span>
                   </Link>
                 </>
-              ) : isTenantLoggedIn ? (
-                <Link
-                  href="/espace-locataire"
-                  className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-[0.76rem] font-semibold shadow-sm sm:min-h-10 sm:gap-1.5 sm:px-3 sm:text-[0.8rem] ${brandBg} ${brandText} ${brandHover}`}
-                  title="Espace locataire"
-                  aria-label="Espace locataire"
-                >
-                  <HomeModernIcon className="h-4 w-4 sm:hidden" aria-hidden="true" />
-                  <span className="sm:hidden">Mon espace</span>
-                  <span className="hidden sm:inline">Espace locataire</span>
-                </Link>
               ) : (
                 <>
                   <Link

@@ -70,7 +70,7 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
     if (loggingOut) return;
     setLoggingOut(true);
     try { await onLogout(); } catch {}
-    router.replace("/");
+    window.location.href = "/";
   };
 
   useEffect(() => {
