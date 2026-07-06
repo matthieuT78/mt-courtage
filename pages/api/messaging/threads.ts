@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const [{ data: threads, error: threadsError }, { data: accesses, error: accessError }] = await Promise.all([
         supabaseAdmin.from("tenant_message_threads").select("*").eq("landlord_user_id", auth.userId),
-        supabaseAdmin.from("tenant_portal_access").select("tenant_id,status,invited_email").eq("landlord_user_id", auth.userId),
+        supabaseAdmin.from("tenant_portal_access").select("tenant_id,status,invited_email,messaging_enabled").eq("landlord_user_id", auth.userId),
       ]);
       if (threadsError) throw threadsError;
       if (accessError) throw accessError;

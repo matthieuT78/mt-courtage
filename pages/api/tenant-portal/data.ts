@@ -14,6 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (accesses.length === 0) {
       return res.status(403).json({ error: "Aucun espace locataire n’est rattaché à ce compte." });
     }
+    const messagingEnabled = accesses.every((a) => a.messaging_enabled !== false)
+      ? true
+      : accesses.some((a) => a.messaging_enabled !== false);
 
     const tenantIds = accesses.map((access) => access.tenant_id);
     const landlordIds = Array.from(new Set(accesses.map((access) => access.landlord_user_id)));
@@ -25,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ] = await Promise.all([
       supabaseAdmin.from("tenants").select("id,full_name,first_name,last_name,email,phone").in("id", tenantIds),
       supabaseAdmin.from("leases").select("*").in("tenant_id", tenantIds).order("created_at", { ascending: false }),
-      supabaseAdmin.from("landlords").select("user_id,display_name,address").in("user_id", landlordIds),
+      supabaseAdmin.from("landlords").select("user_id,display_name,address,iban,bic").in("user_id", landlordIds),
     ]);
     if (tenantsError) throw tenantsError;
     if (leasesError) throw leasesError;
@@ -109,11 +112,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq("tenant_user_id", auth.userId)
       .eq("status", "invited");
 
+    // RGPD: only expose IBAN/BIC when the tenant's active lease uses virement
+    const virementsLandlordIds = new Set(
+      (leases || [])
+        .filter((l: any) => l.payment_method === "virement" && l.status === "active")
+        .map((l: any) => l.user_id)
+    );
+    const landlordsFiltered = (landlords || []).map((l: any) => ({
+      user_id: l.user_id,
+      display_name: l.display_name,
+      address: l.address,
+      ...(virementsLandlordIds.has(l.user_id) && l.iban ? { iban: l.iban, bic: l.bic || null } : {}),
+    }));
+
     return res.status(200).json({
       user: { id: auth.userId, email: auth.email || null },
+      messagingEnabled,
       tenants: tenants || [],
       leases: leases || [],
-      landlords: landlords || [],
+      landlords: landlordsFiltered,
       properties: properties || [],
       receipts: receipts || [],
       inventoryReports: reports || [],

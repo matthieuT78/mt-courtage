@@ -710,7 +710,7 @@ export function DashboardShell(props: any) {
 
 
       case "parametres":
-        return <SectionParametres userId={userId} navOrder={navOrder} onNavOrderChange={setNavOrder} />;
+        return <SectionParametres userId={userId} navOrder={navOrder} onNavOrderChange={setNavOrder} landlord={landlord} />;
 
       default:
         return (

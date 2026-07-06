@@ -6,7 +6,7 @@ import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
-import { HomeIcon, PhoneIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ChatBubbleLeftRightIcon, HomeIcon, NoSymbolIcon, PhoneIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { RentPayment } from "../../../lib/landlord/types";
 
 /* ======================================================
@@ -228,6 +228,80 @@ export function SectionLocataires({
   const [archiveWorkflow, setArchiveWorkflow] = useState<ArchiveWorkflow | null>(null);
   const [confirmDeleteTenantId, setConfirmDeleteTenantId] = useState<string | null>(null);
   const [departureStep, setDepartureStep] = useState<1 | 2 | 3>(1);
+
+  // Portail locataire
+  const [portalAccessMap, setPortalAccessMap] = useState<Map<string, any>>(new Map());
+  const [portalInviting, setPortalInviting] = useState<Set<string>>(new Set());
+  const [portalTogglingMsg, setPortalTogglingMsg] = useState<Set<string>>(new Set());
+
+  const portalAuthHeaders = async () => {
+    if (!supabase) throw new Error("Supabase non initialisé.");
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Session expirée.");
+    return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  };
+
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    supabase
+      .from("tenant_portal_access")
+      .select("tenant_id,status,messaging_enabled,invited_at,activated_at")
+      .eq("landlord_user_id", userId)
+      .in("status", ["invited", "active"])
+      .then(({ data }) => {
+        if (!data) return;
+        setPortalAccessMap(new Map(data.map((row: any) => [row.tenant_id, row])));
+      });
+  }, [userId]);
+
+  const inviteToPortal = async (tenantId: string, messagingEnabled: boolean): Promise<{ ok: boolean; message: string }> => {
+    setPortalInviting((s) => new Set(s).add(tenantId));
+    try {
+      const headers = await portalAuthHeaders();
+      const res = await fetch("/api/tenant-portal/invite", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ tenantId, messagingEnabled }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || "Invitation impossible.");
+      setPortalAccessMap((m) => {
+        const next = new Map(m);
+        next.set(tenantId, { ...(next.get(tenantId) || {}), status: "invited", messaging_enabled: messagingEnabled });
+        return next;
+      });
+      return { ok: true, message: json?.message || "Invitation envoyée." };
+    } catch (e: any) {
+      return { ok: false, message: e?.message || "Invitation impossible." };
+    } finally {
+      setPortalInviting((s) => { const n = new Set(s); n.delete(tenantId); return n; });
+    }
+  };
+
+  const toggleMessaging = async (tenantId: string, enabled: boolean): Promise<{ ok: boolean; message: string }> => {
+    setPortalTogglingMsg((s) => new Set(s).add(tenantId));
+    try {
+      const headers = await portalAuthHeaders();
+      const res = await fetch("/api/tenant-portal/toggle-messaging", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ tenantId, messagingEnabled: enabled }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || "Modification impossible.");
+      setPortalAccessMap((m) => {
+        const next = new Map(m);
+        next.set(tenantId, { ...(next.get(tenantId) || {}), messaging_enabled: enabled });
+        return next;
+      });
+      return { ok: true, message: enabled ? "Messagerie activée." : "Messagerie désactivée." };
+    } catch (e: any) {
+      return { ok: false, message: e?.message || "Modification impossible." };
+    } finally {
+      setPortalTogglingMsg((s) => { const n = new Set(s); n.delete(tenantId); return n; });
+    }
+  };
 
   const propertyById = useMemo(() => {
     const m = new Map<string, PropertyLite>();
@@ -1019,6 +1093,31 @@ export function SectionLocataires({
                                   {formatEuro(totalRent)}/mois
                                 </span>
                               ) : null}
+                              {(() => {
+                                const pa = portalAccessMap.get(t.id);
+                                if (!pa) return (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-[0.7rem] font-semibold text-slate-400">
+                                    Portail non activé
+                                  </span>
+                                );
+                                if (pa.status === "invited") return (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[0.7rem] font-semibold text-amber-700">
+                                    Invitation envoyée
+                                  </span>
+                                );
+                                return (
+                                  <span className={cx(
+                                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.7rem] font-semibold",
+                                    pa.messaging_enabled
+                                      ? "border border-indigo-200 bg-indigo-50 text-indigo-700"
+                                      : "border border-slate-200 bg-slate-50 text-slate-500"
+                                  )}>
+                                    {pa.messaging_enabled
+                                      ? <><ChatBubbleLeftRightIcon className="h-3 w-3" />Portail + messagerie</>
+                                      : <><NoSymbolIcon className="h-3 w-3" />Portail sans messagerie</>}
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>
@@ -1070,6 +1169,18 @@ export function SectionLocataires({
                         </a>
                       ) : null}
                     </div>
+
+                    {/* Portail locataire */}
+                    <PortalPanel
+                      tenantId={t.id}
+                      tenantEmail={t.email}
+                      hasEmail={!!t.email}
+                      access={portalAccessMap.get(t.id) || null}
+                      isInviting={portalInviting.has(t.id)}
+                      isTogglingMsg={portalTogglingMsg.has(t.id)}
+                      onInvite={inviteToPortal}
+                      onToggleMessaging={toggleMessaging}
+                    />
 
                     {/* Form */}
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -1502,6 +1613,132 @@ export function SectionLocataires({
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function PortalPanel({
+  tenantId,
+  tenantEmail,
+  hasEmail,
+  access,
+  isInviting,
+  isTogglingMsg,
+  onInvite,
+  onToggleMessaging,
+}: {
+  tenantId: string;
+  tenantEmail?: string | null;
+  hasEmail: boolean;
+  access: any | null;
+  isInviting: boolean;
+  isTogglingMsg: boolean;
+  onInvite: (tenantId: string, messagingEnabled: boolean) => Promise<{ ok: boolean; message: string }>;
+  onToggleMessaging: (tenantId: string, enabled: boolean) => Promise<{ ok: boolean; message: string }>;
+}) {
+  const [withMessaging, setWithMessaging] = useState(true);
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const handleInvite = async () => {
+    setResult(null);
+    const r = await onInvite(tenantId, withMessaging);
+    setResult({ ok: r.ok, msg: r.message });
+  };
+
+  const handleToggle = async (enabled: boolean) => {
+    setResult(null);
+    const r = await onToggleMessaging(tenantId, enabled);
+    setResult({ ok: r.ok, msg: r.message });
+  };
+
+  return (
+    <div className="mt-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 px-4 py-3">
+      <p className="mb-2.5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-indigo-600">
+        Espace locataire
+      </p>
+
+      {!hasEmail ? (
+        <p className="text-xs text-slate-500">Ajoutez un email pour activer le portail.</p>
+
+      ) : !access ? (
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={withMessaging}
+                onChange={(e) => setWithMessaging(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 accent-indigo-600"
+              />
+              <span className="text-xs text-slate-700">Inclure la messagerie</span>
+            </label>
+            <button
+              type="button"
+              disabled={isInviting}
+              onClick={handleInvite}
+              className="inline-flex items-center gap-1.5 rounded-full border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+            >
+              <UserPlusIcon className="h-3.5 w-3.5" />
+              {isInviting ? "Envoi en cours…" : "Activer le portail"}
+            </button>
+          </div>
+          {result ? (
+            <p className={`text-xs font-medium ${result.ok ? "text-emerald-700" : "text-red-600"}`}>
+              {result.ok ? "✓ " : "✗ "}{result.msg}
+              {result.ok && tenantEmail ? ` — email envoyé à ${tenantEmail}` : ""}
+            </p>
+          ) : null}
+        </div>
+
+      ) : (
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-slate-600">
+              {access.status === "invited"
+                ? <>Invitation envoyée à <span className="font-semibold">{tenantEmail}</span> — en attente d'activation.</>
+                : <>Portail actif.</>}
+              {" "}Messagerie :{" "}
+              <span className="font-semibold">{access.messaging_enabled ? "activée" : "désactivée"}</span>.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {access.messaging_enabled ? (
+              <button
+                type="button"
+                disabled={isTogglingMsg}
+                onClick={() => handleToggle(false)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                <NoSymbolIcon className="h-3.5 w-3.5" />
+                {isTogglingMsg ? "…" : "Désactiver la messagerie"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={isTogglingMsg}
+                onClick={() => handleToggle(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 disabled:opacity-50"
+              >
+                <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />
+                {isTogglingMsg ? "…" : "Activer la messagerie"}
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={isInviting}
+              onClick={handleInvite}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-400 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {isInviting ? "Envoi…" : "Renvoyer l'invitation"}
+            </button>
+          </div>
+          {result ? (
+            <p className={`text-xs font-medium ${result.ok ? "text-emerald-700" : "text-red-600"}`}>
+              {result.ok ? "✓ " : "✗ "}{result.msg}
+            </p>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

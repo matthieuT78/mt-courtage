@@ -3,6 +3,8 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { supabaseTenant as supabase } from "../../lib/supabaseTenantClient";
 
+// type=invite  → nouveau locataire, doit créer un mot de passe
+// type=recovery → locataire existant ré-invité, on le connecte directement sans forcer un changement de mdp
 type Mode = "detecting" | "set-password" | "login";
 
 export default function TenantConnexionPage() {
@@ -21,29 +23,40 @@ export default function TenantConnexionPage() {
     }
 
     const hash = typeof window !== "undefined" ? window.location.hash : "";
-    const isSetPasswordHash = hash.includes("type=invite") || hash.includes("type=recovery");
+    const isNewInvite = hash.includes("type=invite");
+    const isReInvite = hash.includes("type=recovery");
+
+    const handleSession = (session: any | null) => {
+      if (!session) {
+        setMode("login");
+        return;
+      }
+      if (isNewInvite) {
+        // Premier accès : le locataire doit choisir un mot de passe
+        setMode("set-password");
+      } else {
+        // Ré-invite ou déjà connecté : accès direct au portail
+        router.replace("/espace-locataire");
+      }
+    };
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") && session) {
-        if (isSetPasswordHash) {
-          setMode("set-password");
-        } else {
-          router.replace("/espace-locataire");
-        }
+      if (event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") {
+        handleSession(session);
       }
     });
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        if (isSetPasswordHash) {
-          setMode("set-password");
-        } else {
+    // Si pas de hash magique, vérifier s'il y a déjà une session active
+    if (!isNewInvite && !isReInvite) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) {
           router.replace("/espace-locataire");
+        } else {
+          setMode("login");
         }
-      } else if (!isSetPasswordHash) {
-        setMode("login");
-      }
-    });
+      });
+    }
+    // Si hash présent, laisser onAuthStateChange gérer (detectSessionInUrl: true s'occupe du reste)
 
     return () => {
       listener.subscription.unsubscribe();

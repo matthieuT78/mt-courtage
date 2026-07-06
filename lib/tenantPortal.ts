@@ -7,6 +7,7 @@ export type TenantPortalAccess = {
   tenant_user_id: string;
   invited_email: string;
   status: "invited" | "active" | "revoked";
+  messaging_enabled: boolean;
 };
 
 export async function getTenantPortalAccess(userId: string, tenantId?: string) {

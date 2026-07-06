@@ -12,6 +12,8 @@ export type LandlordSettings = {
   auto_send_frequency: string | null;
   auto_send_day: number | null;
   auto_send_hour: number | null;
+  iban: string | null;
+  bic: string | null;
   created_at: string;
   updated_at: string;
 };

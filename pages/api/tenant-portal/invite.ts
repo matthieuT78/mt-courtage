@@ -17,15 +17,22 @@ function tenantPortalRedirectUrl(req: NextApiRequest) {
   return `${origin.replace(/\/$/, "")}/espace-locataire/connexion`;
 }
 
-async function sendInviteEmail(params: { to: string; tenantName: string; actionLink: string; isNew: boolean }) {
-  const { to, tenantName, actionLink, isNew } = params;
+async function sendInviteEmail(params: { to: string; tenantName: string; actionLink: string; isNew: boolean; messagingEnabled: boolean }) {
+  const { to, tenantName, actionLink, isNew, messagingEnabled } = params;
   const subject = isNew
     ? "Votre espace locataire lokt.fr est pret"
     : "Acces a votre espace locataire lokt.fr";
   const ctaLabel = isNew ? "Creer mon mot de passe" : "Acceder a mon espace";
   const intro = isNew
     ? "Votre bailleur vous invite a acceder a votre espace locataire lokt.fr."
-    : "Votre bailleur vous reinvite sur votre espace locataire lokt.fr.";
+    : "Votre bailleur vous invite a acceder a votre espace locataire lokt.fr.";
+
+  const features = [
+    "<li>Consulter et telecharger vos quittances de loyer</li>",
+    "<li>Suivre le statut de votre loyer mensuel</li>",
+    "<li>Acceder a vos documents de location (bail, EDL, DPE)</li>",
+    ...(messagingEnabled ? ["<li>Echanger directement avec votre bailleur</li>"] : []),
+  ].join("\n          ");
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -43,10 +50,7 @@ async function sendInviteEmail(params: { to: string; tenantName: string; actionL
         <p style="margin:0 0 24px;font-size:14px;color:#475569;line-height:1.6">${intro}</p>
         <p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.6">Depuis votre espace vous pouvez :</p>
         <ul style="margin:0 0 24px;padding-left:20px;font-size:14px;color:#475569;line-height:1.8">
-          <li>Consulter et telecharger vos quittances de loyer</li>
-          <li>Echanger directement avec votre bailleur</li>
-          <li>Suivre le statut de votre loyer mensuel</li>
-          <li>Acceder a vos documents de location (bail, EDL, DPE)</li>
+          ${features}
         </ul>
         <a href="${actionLink}" style="display:inline-block;border-radius:999px;background:#0f172a;color:#fff;padding:12px 24px;font-size:14px;font-weight:700;text-decoration:none">${ctaLabel}</a>
         <p style="margin:24px 0 0;font-size:12px;color:#94a3b8">Ce lien est valable 24h. Si vous n'attendiez pas cet email, ignorez-le.</p>
@@ -79,6 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
     const tenantId = String(req.body?.tenantId || "");
+    const messagingEnabled = req.body?.messagingEnabled !== false; // défaut true
     if (!tenantId) return res.status(400).json({ error: "tenantId requis." });
 
     const { data: tenant, error: tenantError } = await supabaseAdmin
@@ -111,7 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       tenantUser = data.user;
       const actionLink = (data as any).properties?.action_link || "";
       if (actionLink) {
-        await sendInviteEmail({ to: email, tenantName, actionLink, isNew: true });
+        await sendInviteEmail({ to: email, tenantName, actionLink, isNew: true, messagingEnabled });
       }
       invitationSent = true;
     } else {
@@ -124,7 +129,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (error) throw error;
       const actionLink = (data as any).properties?.action_link || "";
       if (actionLink) {
-        await sendInviteEmail({ to: email, tenantName, actionLink, isNew: false });
+        await sendInviteEmail({ to: email, tenantName, actionLink, isNew: false, messagingEnabled });
       }
       invitationSent = true;
     }
@@ -140,6 +145,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           tenant_user_id: tenantUser.id,
           invited_email: email,
           status: "invited",
+          messaging_enabled: messagingEnabled,
           invited_at: now,
           updated_at: now,
         },

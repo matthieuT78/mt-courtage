@@ -263,6 +263,8 @@ export default function EspaceLocatairePage() {
 
   if (checking) return null;
 
+  const messagingEnabled = data?.messagingEnabled !== false;
+
   const tabs: Array<{ key: PortalTab; label: string; icon: React.ReactNode; badge?: number }> = [
     { key: "accueil", label: "Accueil", icon: <HomeModernIcon className="h-4 w-4" /> },
     {
@@ -273,7 +275,7 @@ export default function EspaceLocatairePage() {
     },
     { key: "quittances", label: "Quittances", icon: <DocumentTextIcon className="h-4 w-4" /> },
     { key: "documents", label: "Documents", icon: <ArrowDownTrayIcon className="h-4 w-4" /> },
-    { key: "messagerie", label: "Messagerie", icon: <ChatBubbleLeftRightIcon className="h-4 w-4" /> },
+    ...(messagingEnabled ? [{ key: "messagerie" as PortalTab, label: "Messagerie", icon: <ChatBubbleLeftRightIcon className="h-4 w-4" /> }] : []),
   ];
 
   return (
@@ -344,6 +346,7 @@ export default function EspaceLocatairePage() {
                     <Stat label="Quittances disponibles" value={String(data.receipts?.length || 0)} />
                     <Stat label="Documents" value={String((data.inventoryReports?.length || 0) + (data.leaseContracts?.length || 0) + (data.dpes?.length || 0))} />
                   </div>
+                  <PaymentInstructions activeLease={activeLease} landlords={data.landlords || []} tenant={tenant} />
                 </div>
               ) : null}
 
@@ -466,6 +469,101 @@ export default function EspaceLocatairePage() {
           </div>
         ) : null}
       </main>
+    </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback silencieux
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="ml-2 inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-white px-2 py-0.5 text-[0.68rem] font-semibold text-indigo-600 hover:bg-indigo-50 transition"
+      title="Copier"
+    >
+      {copied ? <CheckCircleIcon className="h-3 w-3 text-emerald-500" /> : (
+        <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <rect x="5" y="5" width="9" height="9" rx="1.5" />
+          <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" />
+        </svg>
+      )}
+      {copied ? "Copié !" : "Copier"}
+    </button>
+  );
+}
+
+function PaymentInstructions({ activeLease, landlords, tenant }: { activeLease: any; landlords: any[]; tenant: any }) {
+  if (!activeLease || activeLease.payment_method !== "virement") return null;
+  const landlord = landlords.find((l: any) => l.user_id === activeLease.user_id);
+  if (!landlord?.iban) return null;
+
+  const total = Number(activeLease.rent_amount || 0) + Number(activeLease.charges_amount || 0);
+  const totalStr = total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+  const paymentDay = activeLease.payment_day ? `le ${activeLease.payment_day} de chaque mois` : "selon les termes du bail";
+  const ibanFormatted = landlord.iban.replace(/(.{4})/g, "$1 ").trim();
+  const tenantName = tenant?.full_name || [tenant?.first_name, tenant?.last_name].filter(Boolean).join(" ") || "";
+  const reference = ["Loyer", tenantName].filter(Boolean).join(" ");
+
+  return (
+    <div className="mt-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-indigo-600">Paiement par virement</p>
+      <h3 className="mt-1 text-base font-semibold text-slate-950">Instructions de virement</h3>
+      <div className="mt-3 space-y-2.5">
+        <Row label="Bénéficiaire" value={landlord.display_name || "Votre bailleur"} />
+        <Row
+          label="IBAN"
+          value={
+            <span className="inline-flex items-center gap-1 font-mono tracking-wider">
+              {ibanFormatted}
+              <CopyButton text={landlord.iban} />
+            </span>
+          }
+        />
+        {landlord.bic ? (
+          <Row
+            label="BIC / SWIFT"
+            value={
+              <span className="inline-flex items-center gap-1 font-mono">
+                {landlord.bic}
+                <CopyButton text={landlord.bic} />
+              </span>
+            }
+          />
+        ) : null}
+        <Row label="Montant" value={totalStr} />
+        <Row label="Échéance" value={paymentDay} />
+        <Row
+          label="Référence"
+          value={
+            <span className="inline-flex items-center gap-1">
+              {reference}
+              {reference ? <CopyButton text={reference} /> : null}
+            </span>
+          }
+        />
+      </div>
+      <p className="mt-4 text-[0.68rem] text-slate-500">
+        Ces coordonnées sont communiquées par votre bailleur via votre espace sécurisé. Ne les transmettez pas par e-mail.
+      </p>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+      <span className="w-28 shrink-0 text-xs text-slate-500">{label}</span>
+      <span className="text-sm font-semibold text-slate-950">{value}</span>
     </div>
   );
 }

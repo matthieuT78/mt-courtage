@@ -1,5 +1,5 @@
 import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChatBubbleLeftRightIcon, PaperAirplaneIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { ChatBubbleLeftRightIcon, NoSymbolIcon, PaperAirplaneIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import { cx } from "../ui/uiHelpers";
@@ -16,7 +16,7 @@ type Tenant = {
 type ThreadRow = {
   tenant: Tenant;
   thread: { id: string; updated_at: string } | null;
-  access: { status: string; invited_email: string } | null;
+  access: { status: string; invited_email: string; messaging_enabled?: boolean } | null;
   latestMessage: { body: string; created_at: string } | null;
   unreadCount: number;
 };
@@ -60,6 +60,7 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [togglingMsg, setTogglingMsg] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -177,7 +178,7 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
       const response = await fetch("/api/tenant-portal/invite", {
         method: "POST",
         headers: await authHeaders(),
-        body: JSON.stringify({ tenantId: selectedTenantId }),
+        body: JSON.stringify({ tenantId: selectedTenantId, messagingEnabled: true }),
       });
       const json = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(json?.error || "Invitation impossible.");
@@ -187,6 +188,28 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
       setErr(e?.message || "Invitation impossible.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleMessagingForTenant = async (enabled: boolean) => {
+    if (!selectedTenantId) return;
+    setTogglingMsg(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const response = await fetch("/api/tenant-portal/toggle-messaging", {
+        method: "POST",
+        headers: await authHeaders(),
+        body: JSON.stringify({ tenantId: selectedTenantId, messagingEnabled: enabled }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json?.error || "Modification impossible.");
+      setOk(enabled ? "Messagerie activée." : "Messagerie désactivée.");
+      await loadThreads();
+    } catch (e: any) {
+      setErr(e?.message || "Modification impossible.");
+    } finally {
+      setTogglingMsg(false);
     }
   };
 
@@ -238,20 +261,62 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
         <section className="flex min-h-[450px] flex-col">
           {selectedRow ? (
             <>
-              <header className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-slate-950">{tenantName(selectedRow.tenant)}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{selectedRow.tenant.email || "Email locataire manquant"}</p>
+              <header className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">{tenantName(selectedRow.tenant)}</p>
+                    <p className="mt-0.5 text-xs text-slate-500">{selectedRow.tenant.email || "Email locataire manquant"}</p>
+                  </div>
+                  {!selectedRow.access ? (
+                    <button
+                      type="button"
+                      disabled={loading || !selectedRow.tenant.email}
+                      onClick={inviteTenant}
+                      className="shrink-0 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
+                    >
+                      <UserPlusIcon className="h-4 w-4" />
+                      Activer l’espace locataire
+                    </button>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedRow.access.messaging_enabled !== false ? (
+                        <button
+                          type="button"
+                          disabled={togglingMsg}
+                          onClick={() => toggleMessagingForTenant(false)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          <NoSymbolIcon className="h-3.5 w-3.5" />
+                          {togglingMsg ? "…" : "Désactiver la messagerie"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={togglingMsg}
+                          onClick={() => toggleMessagingForTenant(true)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+                        >
+                          <ChatBubbleLeftRightIcon className="h-3.5 w-3.5" />
+                          {togglingMsg ? "…" : "Activer la messagerie"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={loading || !selectedRow.tenant.email}
+                        onClick={inviteTenant}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        <UserPlusIcon className="h-3.5 w-3.5" />
+                        Renvoyer l’invitation
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  disabled={loading || !selectedRow.tenant.email}
-                  onClick={inviteTenant}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
-                >
-                  <UserPlusIcon className="h-4 w-4" />
-                  {selectedRow.access ? "Vérifier / réactiver l’accès" : "Inviter dans l’espace locataire"}
-                </button>
+                {selectedRow.access?.messaging_enabled === false ? (
+                  <p className="text-[0.7rem] text-amber-600">
+                    La messagerie est désactivée pour ce locataire — il voit ses documents mais ne peut pas vous écrire.
+                  </p>
+                ) : null}
               </header>
 
               <div className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4">
