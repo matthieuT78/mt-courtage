@@ -6,7 +6,7 @@ import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
-import { HomeIcon, PhoneIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { HomeIcon, PhoneIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { RentPayment } from "../../../lib/landlord/types";
 
 /* ======================================================
@@ -763,7 +763,7 @@ export function SectionLocataires({
 
       {/* TOOLBAR */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center w-full">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center flex-1">
           <div className="relative flex-1">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
             <input
@@ -797,103 +797,136 @@ export function SectionLocataires({
             </button>
           </div>
         </div>
-      </div>
 
-      <div className="grid gap-4">
-        {/* ✅ LIGNE CRÉER (pas de section) */}
-        <div id="locataires-create-form" className={highlightCreate ? "rounded-2xl ring-2 ring-red-400 ring-offset-2 transition-shadow duration-500" : ""}>
-        <ExpandableRow
-          id={CREATE_ID}
-          expandedId={expandedId}
-          setExpandedId={(id) => {
-            // Quand on ouvre "Créer", on reset les messages
+        {/* CTA Créer locataire */}
+        <button
+          type="button"
+          onClick={() => {
             setErr(null);
             setOk(null);
-            setExpandedId(id);
+            setExpandedId(expandedId === CREATE_ID ? null : CREATE_ID);
           }}
-          tone="sky"
-          hideRight
-          left={
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                {badge("sky", "Créer")}
-                <p className="text-sm font-semibold text-slate-900">+ Nouveau locataire</p>
-              </div>
-              <p className="mt-0.5 text-xs text-slate-600">Clique pour ouvrir le formulaire.</p>
-            </div>
-          }
+          className={cx(
+            "inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200",
+            expandedId === CREATE_ID
+              ? "bg-slate-700 shadow-slate-200 hover:bg-slate-600"
+              : "bg-gradient-to-r from-[#635bff] to-[#00d4ff] shadow-indigo-200 hover:shadow-indigo-300 hover:scale-[1.02] active:scale-[0.98]"
+          )}
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-[0.7rem] text-slate-700">Prénom</label>
-              <input
-                value={createForm.first_name}
-                onChange={(e) => setCreateForm((s) => ({ ...s, first_name: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="Ex : Marie"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[0.7rem] text-slate-700">Nom</label>
-              <input
-                value={createForm.last_name}
-                onChange={(e) => setCreateForm((s) => ({ ...s, last_name: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="Ex : Dupont"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[0.7rem] text-slate-700">Email</label>
-              <input
-                type="email"
-                value={createForm.email}
-                onChange={(e) => setCreateForm((s) => ({ ...s, email: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="nom@email.fr"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[0.7rem] text-slate-700">Téléphone</label>
-              <input
-                value={createForm.phone}
-                onChange={(e) => setCreateForm((s) => ({ ...s, phone: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="06 00 00 00 00"
-              />
-            </div>
-          </div>
+          <UserPlusIcon className="h-4 w-4" />
+          Créer un locataire
+        </button>
+      </div>
 
-          <div className="mt-3 space-y-1">
-            <label className="text-[0.7rem] text-slate-700">Notes</label>
-            <textarea
-              rows={3}
-              value={createForm.notes}
-              onChange={(e) => setCreateForm((s) => ({ ...s, notes: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            />
-          </div>
+      {/* Carte création locataire */}
+      {expandedId === CREATE_ID && (
+        <div
+          id="locataires-create-form"
+          className={cx(
+            "overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-xl shadow-indigo-50",
+            highlightCreate ? "ring-2 ring-[#635bff] ring-offset-2" : ""
+          )}
+        >
+          {/* Barre gradient */}
+          <div className="h-1 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
 
-          <div className="mt-3 flex flex-wrap gap-2 items-center">
+          {/* En-tête */}
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50">
+                <UserPlusIcon className="h-5 w-5 text-[#635bff]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Nouveau locataire</p>
+                <p className="text-xs text-slate-500">Remplis les informations ci-dessous</p>
+              </div>
+            </div>
             <button
               type="button"
-              disabled={loading}
-              onClick={() => saveTenant(undefined)}
-              className="rounded-full bg-sky-600 px-5 py-2 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-60"
-            >
-              {loading ? "Enregistrement…" : "Créer"}
-            </button>
-
-            <button
-              type="button"
-              disabled={loading}
               onClick={() => setExpandedId(null)}
-              className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
             >
-              Annuler
+              <XMarkIcon className="h-4 w-4" />
             </button>
           </div>
-        </ExpandableRow>
+
+          {/* Formulaire */}
+          <div className="p-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-[0.7rem] font-medium text-slate-600">Prénom</label>
+                <input
+                  value={createForm.first_name}
+                  onChange={(e) => setCreateForm((s) => ({ ...s, first_name: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  placeholder="Ex : Marie"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[0.7rem] font-medium text-slate-600">Nom</label>
+                <input
+                  value={createForm.last_name}
+                  onChange={(e) => setCreateForm((s) => ({ ...s, last_name: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  placeholder="Ex : Dupont"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[0.7rem] font-medium text-slate-600">Email</label>
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm((s) => ({ ...s, email: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  placeholder="nom@email.fr"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[0.7rem] font-medium text-slate-600">Téléphone</label>
+                <input
+                  value={createForm.phone}
+                  onChange={(e) => setCreateForm((s) => ({ ...s, phone: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                  placeholder="06 00 00 00 00"
+                />
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-1">
+              <label className="text-[0.7rem] font-medium text-slate-600">Notes</label>
+              <textarea
+                rows={3}
+                value={createForm.notes}
+                onChange={(e) => setCreateForm((s) => ({ ...s, notes: e.target.value }))}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2 items-center">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => saveTenant(undefined)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#635bff] to-[#00d4ff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-100 hover:shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 disabled:pointer-events-none"
+              >
+                <UserPlusIcon className="h-4 w-4" />
+                {loading ? "Enregistrement…" : "Créer le locataire"}
+              </button>
+
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => setExpandedId(null)}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
         </div>
+      )}
+
+      <div className="grid gap-4">
 
         {/* 1) ACTIFS */}
         <ExpandableSection

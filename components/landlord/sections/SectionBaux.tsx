@@ -2721,42 +2721,75 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
       {/* Toolbar */}
-      <div className="relative w-full">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Rechercher un bail, locataire, bien…"
-          className="w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm text-slate-900"
-        />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔎</span>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Rechercher un bail, locataire, bien…"
+            className="w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 py-2 text-sm text-slate-900"
+          />
+        </div>
+
+        {/* CTA Créer bail */}
+        <button
+          type="button"
+          onClick={() => {
+            openRow(expandedId === CREATE_ID ? null : CREATE_ID);
+          }}
+          className={cx(
+            "inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200",
+            expandedId === CREATE_ID
+              ? "bg-slate-700 shadow-slate-200 hover:bg-slate-600"
+              : "bg-gradient-to-r from-[#635bff] to-[#00d4ff] shadow-indigo-200 hover:shadow-indigo-300 hover:scale-[1.02] active:scale-[0.98]"
+          )}
+        >
+          <DocumentTextIcon className="h-4 w-4" />
+          Créer un bail
+        </button>
       </div>
 
-      <div className="grid gap-4">
-        {/* ✅ LIGNE CRÉER */}
-        <div id="baux-create-form" className={highlightCreate ? "rounded-2xl ring-2 ring-red-400 ring-offset-2 transition-shadow duration-500" : ""}>
-        <ExpandableRow
-          id={CREATE_ID}
-          expandedId={expandedId}
-          setExpandedId={(id) => {
-            openRow(id);
-          }}
-          tone="sky"
-          hideRight
-          left={
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-sky-800">
-                  <PlusIcon className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <p className="text-sm font-semibold text-slate-900">Nouveau bail</p>
-              </div>
-              <p className="mt-0.5 text-xs text-slate-600">Choisis un bien + un locataire, puis configure les options.</p>
-            </div>
-          }
+      {/* Carte création bail */}
+      {expandedId === CREATE_ID && (
+        <div
+          id="baux-create-form"
+          className={cx(
+            "overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-xl shadow-indigo-50",
+            highlightCreate ? "ring-2 ring-[#635bff] ring-offset-2" : ""
+          )}
         >
-          {renderLeaseForm()}
-        </ExpandableRow>
+          {/* Barre gradient */}
+          <div className="h-1 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+
+          {/* En-tête */}
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50">
+                <DocumentTextIcon className="h-5 w-5 text-[#635bff]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Nouveau bail</p>
+                <p className="text-xs text-slate-500">Choisis un bien + un locataire, puis configure les options.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => openRow(null)}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Formulaire */}
+          <div className="p-5">
+            {renderLeaseForm()}
+          </div>
         </div>
+      )}
+
+      <div className="grid gap-4">
 
         {/* ✅ ACTIFS */}
         <ExpandableSection

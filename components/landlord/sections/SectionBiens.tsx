@@ -9,7 +9,9 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   HomeModernIcon,
+  PlusIcon,
   UsersIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
@@ -969,78 +971,107 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         )}
       </div>
 
-      <div className="grid gap-4">
-        {/* ✅ LIGNE CRÉER (pas de section) */}
-        <div id="biens-create-form" className={highlightCreate ? "rounded-2xl ring-2 ring-red-400 ring-offset-2 transition-shadow duration-500" : ""}>
-        <ExpandableRow
-          id={CREATE_ID}
-          expandedId={expandedId}
-          setExpandedId={(id) => {
+      {/* CTA Ajouter un bien */}
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
             setErr(null);
             setOk(null);
-            setExpandedId(id);
+            setExpandedId(expandedId === CREATE_ID ? null : CREATE_ID);
           }}
-          tone="sky"
-          hideRight
-          left={
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                {freeLimitReached ? badge("amber", "Abonnement requis") : badge("sky", "Créer")}
-                <p className="text-sm font-semibold text-slate-900">+ Nouveau bien</p>
-              </div>
-              <p className="mt-0.5 text-xs text-slate-600">
-                {freeLimitReached
-                  ? hasFreeLimit
-                    ? "Limite gratuite atteinte : 1 logement actif."
-                    : `Limite atteinte : ${activePropertyLimit} logements actifs.`
-                  : "Nom + Adresse (ligne 1) obligatoires."}
-              </p>
-            </div>
-          }
+          className={cx(
+            "inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200",
+            expandedId === CREATE_ID
+              ? "bg-slate-700 shadow-slate-200 hover:bg-slate-600"
+              : "bg-gradient-to-r from-[#635bff] to-[#00d4ff] shadow-indigo-200 hover:shadow-indigo-300 hover:scale-[1.02] active:scale-[0.98]"
+          )}
         >
-          {freeLimitReached ? (
-            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-              <p className="font-semibold">Vous avez déjà {pluralFR(activePropertyCount, "logement actif")}.</p>
-              <p className="mt-1">
-                {hasFreeLimit
-                  ? "L’offre gratuite permet de gérer 1 logement. Pour créer un 2e logement et continuer votre gestion locative, passez sur une offre adaptée."
-                  : "Votre abonnement actuel a atteint sa limite de logements actifs. Passez sur une offre supérieure pour continuer."}
-              </p>
-              <Link
-                href={SUBSCRIPTION_URL}
-                className="mt-3 inline-flex rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-800"
-              >
-                Voir les abonnements
-              </Link>
+          <HomeModernIcon className="h-4 w-4" />
+          Ajouter un bien
+        </button>
+      </div>
+
+      {/* Carte création bien */}
+      {expandedId === CREATE_ID && (
+        <div
+          id="biens-create-form"
+          className={cx(
+            "overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-xl shadow-indigo-50",
+            highlightCreate ? "ring-2 ring-[#635bff] ring-offset-2" : ""
+          )}
+        >
+          {/* Barre gradient */}
+          <div className="h-1 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+
+          {/* En-tête */}
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50">
+                <HomeModernIcon className="h-5 w-5 text-[#635bff]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Nouveau bien</p>
+                <p className="text-xs text-slate-500">
+                  {freeLimitReached
+                    ? hasFreeLimit ? "Limite gratuite atteinte : 1 logement actif." : `Limite atteinte : ${activePropertyLimit} logements actifs.`
+                    : "Nom + Adresse (ligne 1) obligatoires."}
+                </p>
+              </div>
             </div>
-          ) : null}
-
-          {freeLimitReached ? null : renderForm(createForm, (updater) => setCreateForm((prev) => updater(prev)), null)}
-
-          <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => saveProperty(undefined)}
-              disabled={saving || freeLimitReached}
-              className="rounded-full bg-sky-600 px-5 py-2 text-xs font-semibold text-white hover:bg-sky-500 disabled:opacity-60"
+              onClick={() => { setCreateForm(EMPTY); setExpandedId(null); }}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
             >
-              {saving ? "Enregistrement…" : freeLimitReached ? "Abonnement requis" : "Créer"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setCreateForm(EMPTY);
-                setExpandedId(null);
-              }}
-              disabled={saving}
-              className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-            >
-              Annuler
+              <XMarkIcon className="h-4 w-4" />
             </button>
           </div>
-        </ExpandableRow>
+
+          {/* Formulaire */}
+          <div className="p-5">
+            {freeLimitReached ? (
+              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                <p className="font-semibold">Vous avez déjà {pluralFR(activePropertyCount, "logement actif")}.</p>
+                <p className="mt-1">
+                  {hasFreeLimit
+                    ? "L’offre gratuite permet de gérer 1 logement. Pour créer un 2e logement et continuer votre gestion locative, passez sur une offre adaptée."
+                    : "Votre abonnement actuel a atteint sa limite de logements actifs. Passez sur une offre supérieure pour continuer."}
+                </p>
+                <Link
+                  href={SUBSCRIPTION_URL}
+                  className="mt-3 inline-flex rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+                >
+                  Voir les abonnements
+                </Link>
+              </div>
+            ) : renderForm(createForm, (updater) => setCreateForm((prev) => updater(prev)), null)}
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => saveProperty(undefined)}
+                disabled={saving || freeLimitReached}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#635bff] to-[#00d4ff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-100 hover:shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 disabled:pointer-events-none"
+              >
+                <PlusIcon className="h-4 w-4" />
+                {saving ? "Enregistrement…" : freeLimitReached ? "Abonnement requis" : "Créer le bien"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setCreateForm(EMPTY); setExpandedId(null); }}
+                disabled={saving}
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
         </div>
+      )}
+
+      <div className="grid gap-4">
 
         {/* ✅ ACTIFS */}
         <ExpandableSection
