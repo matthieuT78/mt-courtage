@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       leaseIds.length
         ? supabaseAdmin
             .from("rent_receipts")
-            .select("id,lease_id,period_start,period_end,total_amount,issue_date,pdf_url,status,sent_at")
+            .select("id,lease_id,period_start,period_end,total_amount,issue_date,pdf_url,status,sent_at,receipt_number")
             .in("lease_id", leaseIds)
             .not("pdf_url", "is", null)
             .order("period_start", { ascending: false })

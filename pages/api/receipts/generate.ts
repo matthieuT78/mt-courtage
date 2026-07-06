@@ -606,6 +606,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       receipt = ins.data;
     }
 
+    // Numérotation séquentielle — génère QU-YYYY-NNNN si absent
+    let receiptNumberSeq = (receipt as any).receipt_number as string | null;
+    if (!receiptNumberSeq) {
+      const year = new Date((receipt as any).created_at || issueDateISO).getFullYear();
+      const { data: seqData } = await supabaseAdmin.rpc("generate_receipt_number", {
+        p_user_id: userId,
+        p_year: year,
+      });
+      receiptNumberSeq = seqData as string | null;
+    }
+
     const landlordName =
       safeStr(landlord?.display_name) ||
       safeStr(profile?.full_name) ||
@@ -678,7 +689,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const periodLabel = `Période du ${formatDateFR(periodStart)} au ${formatDateFR(periodEnd)}`;
     const issueDateLabel = issuePlace ? `Émise le ${formatDateFR(issueDateISO)} · ${issuePlace}` : `Émise le ${formatDateFR(issueDateISO)}`;
 
-    const receiptNumber = `QU-${periodStart.slice(0, 7).replace("-", ".")}-${String(receipt.id).slice(0, 6).toUpperCase()}`;
+    const receiptNumber = receiptNumberSeq || `QU-${periodStart.slice(0, 7).replace("-", ".")}-${String(receipt.id).slice(0, 6).toUpperCase()}`;
 
     const html = htmlTemplatePremium({
       receiptNumber,
@@ -728,6 +739,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         pdf_url: pdfUrl,
         content_text: finalText,
         status: receipt.status || "generated",
+        ...(receiptNumberSeq ? { receipt_number: receiptNumberSeq } : {}),
       })
       .eq("id", receipt.id);
 

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
-import { irlByQuarter } from "../../../lib/irlData";
+import { irlByQuarterAsync } from "../../../lib/irlService";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -33,8 +33,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (leaseErr || !lease) return res.status(404).json({ error: "Bail introuvable." });
   if (lease.user_id !== auth.userId) return res.status(403).json({ error: "Accès refusé." });
 
-  const refEntry = irlByQuarter(refQuarter);
-  const newEntry = irlByQuarter(newQuarter);
+  const [refEntry, newEntry] = await Promise.all([
+    irlByQuarterAsync(refQuarter),
+    irlByQuarterAsync(newQuarter),
+  ]);
   const currentRent = Number(lease.rent_amount || 0);
 
   if (!refEntry || !newEntry) return res.status(400).json({ error: "Trimestre IRL introuvable." });

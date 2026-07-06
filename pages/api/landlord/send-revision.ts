@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
-import { irlByQuarter } from "../../../lib/irlData";
+import { irlByQuarterAsync } from "../../../lib/irlService";
 
 function euro(n: number) {
   return n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", minimumFractionDigits: 2 });
@@ -82,9 +82,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const toEmail = String(tenant?.email || "").trim();
   if (!toEmail) return res.status(400).json({ error: "Le locataire n'a pas d'adresse email enregistrée." });
 
-  // Compute IRL revision
-  const refEntry = irlByQuarter(refQuarter);
-  const newEntry = irlByQuarter(newQuarter);
+  // Compute IRL revision (lecture DB avec fallback statique)
+  const [refEntry, newEntry] = await Promise.all([
+    irlByQuarterAsync(refQuarter),
+    irlByQuarterAsync(newQuarter),
+  ]);
   const currentRent = Number(lease.rent_amount || 0);
 
   if (!refEntry || !newEntry) return res.status(400).json({ error: "Trimestre IRL introuvable." });

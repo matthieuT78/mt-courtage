@@ -141,5 +141,6 @@ export type RentReceipt = {
   pdf_url: string | null;
   sent_to_tenant_email: string | null;
   sent_at: string | null;
+  receipt_number: string | null;
   created_at: string;
 };

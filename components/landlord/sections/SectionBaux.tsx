@@ -1252,11 +1252,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     setOk(null);
     setMode("create");
     setEditingId(null);
+    const prefillTenantId = deepLink.prefillTenantId ?? "";
     setForm({
       ...defaultFormValues(),
       property_id: deepLink.prefillPropertyId ?? "",
-      tenant_id: deepLink.prefillTenantId ?? "",
+      tenant_id: prefillTenantId,
     });
+    // Si le locataire vient d'être créé et n'est pas encore dans la liste, on rafraîchit
+    if (prefillTenantId && !tenants?.some((t) => t.id === prefillTenantId)) {
+      onRefresh();
+    }
     setHighlightCreate(true);
     setTimeout(() => {
       document.getElementById("baux-create-form")?.scrollIntoView({ behavior: "smooth", block: "start" });

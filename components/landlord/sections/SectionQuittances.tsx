@@ -1754,6 +1754,7 @@ export function SectionQuittances({
                       </span>
                     </div>
                     <p className="text-xs text-slate-600">
+                      {r.receipt_number ? <span className="mr-2 font-mono text-[0.68rem] text-indigo-600">{r.receipt_number}</span> : null}
                       {fmtDate(r.period_start)} → {fmtDate(r.period_end)}
                     </p>
                     <p className="text-xs text-slate-500">

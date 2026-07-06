@@ -219,23 +219,23 @@ export default function EspaceLocatairePage() {
       items.push({
         tone: "emerald",
         icon: <CheckCircleIcon className="h-5 w-5 text-emerald-600" />,
-        title: `Loyer de ${monthLabel} confirme`,
-        desc: `Votre bailleur a confirme la reception de votre loyer (${total}).`,
+        title: `Loyer de ${monthLabel} confirmé`,
+        desc: `Votre bailleur a confirmé la réception de votre loyer (${total}).`,
       });
     } else if (duePassed) {
       items.push({
         tone: "red",
         icon: <ExclamationTriangleIcon className="h-5 w-5 text-red-600" />,
-        title: `Loyer de ${monthLabel} non confirme`,
-        desc: `L'echeance du ${dueThisMonth.toLocaleDateString("fr-FR")} est passee et votre bailleur n'a pas encore confirme la reception de votre loyer.`,
+        title: `Loyer de ${monthLabel} non confirmé`,
+        desc: `L'échéance du ${dueThisMonth.toLocaleDateString("fr-FR")} est passée et votre bailleur n'a pas encore confirmé la réception de votre loyer.`,
       });
     } else {
       const euro = Number(activeLease.rent_amount || 0) + Number(activeLease.charges_amount || 0);
       items.push({
         tone: "slate",
         icon: <InformationCircleIcon className="h-5 w-5 text-slate-500" />,
-        title: `Loyer de ${monthLabel} a venir`,
-        desc: `Echeance le ${dueThisMonth.toLocaleDateString("fr-FR")}. Montant attendu : ${euro.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}.`,
+        title: `Loyer de ${monthLabel} à venir`,
+        desc: `Échéance le ${dueThisMonth.toLocaleDateString("fr-FR")}. Montant attendu : ${euro.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}.`,
       });
     }
 
@@ -387,8 +387,10 @@ export default function EspaceLocatairePage() {
                   empty="Aucune quittance PDF disponible pour le moment."
                   rows={(data.receipts || []).map((receipt: any) => ({
                     id: receipt.id,
-                    title: `Quittance - ${formatDate(receipt.period_start)}`,
-                    subtitle: `${formatMoney(receipt.total_amount)} · période du ${formatDate(receipt.period_start)} au ${formatDate(receipt.period_end)}`,
+                    title: receipt.receipt_number
+                      ? `Quittance ${receipt.receipt_number}`
+                      : `Quittance — ${formatDate(receipt.period_start)}`,
+                    subtitle: `${formatMoney(receipt.total_amount)} · du ${formatDate(receipt.period_start)} au ${formatDate(receipt.period_end)}`,
                   }))}
                   onOpen={(id) => openDocument("receipt", id)}
                 />
