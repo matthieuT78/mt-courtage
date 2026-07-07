@@ -52,10 +52,19 @@ export default function TenantConnexionPage() {
         }
       });
     } else {
-      // Lien magique présent : laisser onAuthStateChange gérer.
-      // Timeout de sécurité : si le token est invalide/expiré et que l'event
-      // ne fire jamais, on sort du mode detecting après 4 secondes.
-      const fallback = setTimeout(() => setMode("login"), 4000);
+      // Lien magique présent : vérifier d'abord si le singleton a déjà échangé le token
+      // (race condition : supabaseTenant est créé au chargement du module, avant que React
+      // monte et enregistre le listener — le SIGNED_IN peut avoir déjà fire)
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) handleSession(data.session);
+        // Sinon, onAuthStateChange prendra le relais quand l'échange réseau se termine
+      });
+
+      // Timeout de sécurité : si le token est invalide ou expiré, informer l'utilisateur
+      const fallback = setTimeout(() => {
+        setErr("Ce lien a expiré ou est invalide. Demandez un nouvel accès à votre bailleur.");
+        setMode("login");
+      }, 4000);
       return () => {
         clearTimeout(fallback);
         listener.subscription.unsubscribe();

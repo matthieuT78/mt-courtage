@@ -8,6 +8,14 @@ declare global {
   var __supabaseTenant: SupabaseClient | null | undefined;
 }
 
+function makeFetchWithTimeout(timeoutMs = 15000): typeof fetch {
+  return (input, init) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    return fetch(input, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+  };
+}
+
 function makeClient(): SupabaseClient | null {
   if (!supabaseUrl || !supabaseAnonKey) return null;
   return createClient(supabaseUrl, supabaseAnonKey, {
@@ -17,6 +25,7 @@ function makeClient(): SupabaseClient | null {
       detectSessionInUrl: true,
       storageKey: "lokt-tenant-auth",
     },
+    global: { fetch: makeFetchWithTimeout(15000) },
   });
 }
 

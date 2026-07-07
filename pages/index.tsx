@@ -424,6 +424,16 @@ export default function Home() {
   const [user, setUser] = useState<SimpleUser | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  // Si un lien d'invitation locataire atterrit ici par erreur (mauvaise config Supabase redirect),
+  // le renvoyer vers la bonne page avant que le token soit perdu
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (hash.includes("type=invite") || hash.includes("type=recovery")) {
+      window.location.replace("/espace-locataire/connexion" + hash);
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
