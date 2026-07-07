@@ -5,7 +5,7 @@ date: "2026-07-05"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "salaire", "budget achat immobilier", "tableau emprunt"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
-coverImage: "/blog/combien-emprunter-salaire.jpg"
+coverImage: "/blog/combien-emprunter-3000.jpg"
 faq:
   - q: "Combien puis-je emprunter avec 2 000 € par mois ?"
     a: "Avec 2 000 €/mois nets, votre mensualité maximale est de 700 € (35 % de taux d'endettement). Selon la durée et les taux 2026, vous pouvez emprunter entre 100 000 et 145 000 €. Sur 25 ans avec un taux de 3,5 %, le capital accessible est d'environ 135 000 €."
