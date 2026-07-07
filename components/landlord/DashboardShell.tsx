@@ -528,7 +528,7 @@ export function DashboardShell(props: any) {
         desc:
           "La section Performance transforme vos données de loyers, charges et crédit en lecture de rentabilité par logement, cash-flow et plan d’action priorisé.",
         requiredPlan: "lokt·plus",
-        href: "/mon-compte/abonnement?source=performance",
+        planId: "landlord_15",
         cta: "Upgrade vers lokt·plus",
         features: ["Rentabilité et cash-flow par logement", "Analyse des charges et du crédit", "Actions prioritaires pour améliorer la gestion", "Jusqu’à 10 logements actifs"],
       };
@@ -540,7 +540,7 @@ export function DashboardShell(props: any) {
         desc:
           "Les outils avancés traitent les cas métier qui demandent de l’historique, des justificatifs et des calculs de répartition : eau, charges, TEOM, régularisation et simulateurs bailleur.",
         requiredPlan: "lokt·plus",
-        href: "/mon-compte/abonnement?source=outils",
+        planId: "landlord_15",
         cta: "Upgrade vers lokt·plus",
         features: ["Répartition de facture d’eau au prorata des relevés", "Répartition des charges par tantièmes", "TEOM et régularisation locative", "Simulateurs bailleur intégrés"],
       };
@@ -552,7 +552,7 @@ export function DashboardShell(props: any) {
         desc:
           "Publiez vos annonces, collectez et analysez les dossiers de candidature avec le score lokt. Suivez le parcours de chaque candidat jusqu’à la signature du bail.",
         requiredPlan: "lokt·one",
-        href: "/mon-compte/abonnement?source=candidatures",
+        planId: "landlord_5",
         cta: "Passer à lokt·one",
         features: [
           "Annonces de location en ligne",

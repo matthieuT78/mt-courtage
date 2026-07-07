@@ -1,17 +1,19 @@
-import Link from "next/link";
 import { ArrowUpRightIcon, CheckCircleIcon, LockClosedIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { useCheckout } from "../../lib/useCheckout";
 
 export type LockedSectionConfig = {
   eyebrow: string;
   title: string;
   desc: string;
   requiredPlan: "lokt·one" | "lokt·plus";
-  href: string;
+  planId: string;
   cta: string;
   features: string[];
 };
 
 export function LockedPremiumSection({ config }: { config: LockedSectionConfig }) {
+  const { startCheckout, loading, error } = useCheckout();
+
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="h-1.5 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
@@ -45,13 +47,16 @@ export function LockedPremiumSection({ config }: { config: LockedSectionConfig }
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Votre compte gratuit reste disponible pour le tableau de bord, biens, locataires, baux, quittances manuelles et finance de base.
             </p>
-            <Link
-              href={config.href}
-              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+            <button
+              type="button"
+              onClick={() => startCheckout(config.planId)}
+              disabled={loading}
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
             >
-              {config.cta}
-              <ArrowUpRightIcon className="h-4 w-4" aria-hidden="true" />
-            </Link>
+              {loading ? "Redirection…" : config.cta}
+              {!loading && <ArrowUpRightIcon className="h-4 w-4" aria-hidden="true" />}
+            </button>
+            {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
           </div>
         </aside>
       </div>

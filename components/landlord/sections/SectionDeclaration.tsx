@@ -487,7 +487,7 @@ export function SectionDeclaration({ userId, properties }: Props) {
         title: "Aide à la déclaration réservée au plan lokt·plus",
         desc: "Préparez un dossier fiscal exploitable : import Finance, ventilation par bien, comparaison micro/réel, alertes d’incohérence, checklist justificatifs et export pour votre comptable.",
         requiredPlan: "lokt·plus",
-        href: "/mon-compte/abonnement?source=declaration",
+        planId: "landlord_15",
         cta: "Upgrade vers lokt·plus",
         features: [
           "Import automatique des recettes et charges Finance",
