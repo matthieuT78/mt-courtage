@@ -8,26 +8,37 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     if (!router.isReady || !supabase) return;
 
-    const code = router.query.code;
     const redirect = router.query.redirect;
     const dest =
       typeof redirect === "string" && redirect.startsWith("/")
         ? redirect
         : "/espace-bailleur";
 
-    if (code && typeof code === "string") {
-      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-        if (error) {
-          console.error("[auth/callback]", error.message);
-          router.replace("/mon-compte");
-        } else {
-          router.replace(dest);
-        }
-      });
-    } else {
-      router.replace("/mon-compte");
-    }
-  }, [router.isReady, router.query]);
+    // Supabase (detectSessionInUrl: true) échange le code automatiquement.
+    // On attend juste que la session soit établie.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        subscription.unsubscribe();
+        router.replace(dest);
+      }
+      if (event === "SIGNED_OUT" || (!session && event !== "INITIAL_SESSION")) {
+        subscription.unsubscribe();
+        router.replace("/mon-compte");
+      }
+    });
+
+    // Fallback : si onAuthStateChange ne fire pas dans 5s, on vérifie manuellement
+    const timeout = setTimeout(async () => {
+      subscription.unsubscribe();
+      const { data } = await supabase.auth.getSession();
+      router.replace(data.session ? dest : "/mon-compte");
+    }, 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
+  }, [router.isReady]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950">
