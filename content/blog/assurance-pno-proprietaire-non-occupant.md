@@ -1,6 +1,6 @@
 ---
-title: "Assurance PNO 2026 : obligatoire, prix et garanties — guide propriétaire bailleur"
-description: "PNO obligatoire en copropriété depuis la loi Alur. Prix : 80–200 €/an, 100 % déductible. Ce qu'elle couvre vraiment, ses limites face à la MRH du locataire et comment bien la choisir."
+title: "Assurance PNO : obligatoire en copropriété, coût réel et ce qu'elle couvre (2026)"
+description: "La PNO est obligatoire depuis la loi Alur. Comptez 80–200 €/an, 100 % déductibles. Ce qu'elle couvre que la MRH du locataire ne couvre pas — et comment éviter les doublons inutiles."
 date: "2026-07-01"
 updatedAt: "2026-07-01"
 category: "Gestion locative"

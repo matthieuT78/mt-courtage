@@ -1,6 +1,6 @@
 ---
-title: "Préavis de départ locataire : durée, zones tendues et lettre type 2026"
-description: "Tout ce que le bailleur doit savoir sur le préavis : durée selon le type de bien et la zone, comment le comptabiliser, que faire à la fin, et lettre type à utiliser."
+title: "Préavis locataire 2026 : 1 mois ou 3 mois selon la zone, calcul et lettre type"
+description: "3 mois en zone non tendue, 1 mois en zone tendue ou situation particulière : durées légales, comment décompter les jours, que faire si le locataire ne part pas. Lettre type incluse."
 date: "2026-06-27"
 updatedAt: "2026-07-01"
 category: "Gestion locative"
