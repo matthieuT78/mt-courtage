@@ -1,5 +1,6 @@
 // pages/mon-compte/profil.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import AccountLayout from "../../components/account/AccountLayout";
 import { signOutAll } from "../../lib/authUtils";
 import { useAuthUser } from "../../hooks/useAuthUser";
@@ -8,7 +9,11 @@ import { useProfile } from "../../hooks/useProfile";
 const inputCls =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-colors";
 
+const inputErrorCls =
+  "w-full rounded-xl border border-red-400 bg-red-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-200 transition-colors";
+
 const selectCls = inputCls + " cursor-pointer";
+const selectErrorCls = inputErrorCls + " cursor-pointer";
 
 function Field({ label, children, full, hint }: { label: string; children: React.ReactNode; full?: boolean; hint?: string }) {
   return (
@@ -21,9 +26,27 @@ function Field({ label, children, full, hint }: { label: string; children: React
 }
 
 export default function MonCompteProfilPage() {
+  const router = useRouter();
   const { checking, user, isLoggedIn } = useAuthUser();
   const { loading, profile, error, ok, save, setProfile } = useProfile(user?.id ?? null);
   const [billingSame, setBillingSame] = useState<boolean | null>(null);
+  const [showHighlight, setShowHighlight] = useState(false);
+
+  // Champs obligatoires pour le profil bailleur
+  const isEmpty = (v: string | null | undefined) => !v?.trim();
+  const inputC = (v: string | null | undefined) => isEmpty(v) && showHighlight ? inputErrorCls : inputCls;
+  const selectC = (v: string | null | undefined) => isEmpty(v) && showHighlight ? selectErrorCls : selectCls;
+
+  useEffect(() => {
+    if (router.query.highlight !== "1" || loading) return;
+    setShowHighlight(true);
+    // Scroller sur le premier champ vide après le rendu
+    setTimeout(() => {
+      const el = document.querySelector<HTMLElement>("[data-highlight-empty]");
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      (el as HTMLInputElement | HTMLSelectElement | null)?.focus?.();
+    }, 150);
+  }, [router.query.highlight, loading]);
 
   const handleLogout = async () => { await signOutAll(); };
 
@@ -113,7 +136,8 @@ export default function MonCompteProfilPage() {
 
               <Field label="Prénom">
                 <input
-                  className={inputCls}
+                  className={inputC(profile?.first_name)}
+                  {...(isEmpty(profile?.first_name) && showHighlight ? { "data-highlight-empty": "" } : {})}
                   value={profile?.first_name ?? ""}
                   placeholder="Jean"
                   onChange={(e) => set({ first_name: e.target.value })}
@@ -122,7 +146,8 @@ export default function MonCompteProfilPage() {
 
               <Field label="Nom">
                 <input
-                  className={inputCls}
+                  className={inputC(profile?.last_name)}
+                  {...(isEmpty(profile?.last_name) && showHighlight ? { "data-highlight-empty": "" } : {})}
                   value={profile?.last_name ?? ""}
                   placeholder="Dupont"
                   onChange={(e) => set({ last_name: e.target.value })}
@@ -158,7 +183,10 @@ export default function MonCompteProfilPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 mb-5">Adresse du propriétaire</p>
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Adresse ligne 1" full>
-                <input className={inputCls} value={profile?.address_line1 ?? ""} placeholder="12 rue de la Paix"
+                <input
+                  className={inputC(profile?.address_line1)}
+                  {...(isEmpty(profile?.address_line1) && showHighlight ? { "data-highlight-empty": "" } : {})}
+                  value={profile?.address_line1 ?? ""} placeholder="12 rue de la Paix"
                   onChange={(e) => set({ address_line1: e.target.value })} />
               </Field>
               <Field label="Adresse ligne 2" full>
@@ -166,11 +194,17 @@ export default function MonCompteProfilPage() {
                   onChange={(e) => set({ address_line2: e.target.value })} />
               </Field>
               <Field label="Code postal">
-                <input className={inputCls} value={profile?.postal_code ?? ""} placeholder="75001"
+                <input
+                  className={inputC(profile?.postal_code)}
+                  {...(isEmpty(profile?.postal_code) && showHighlight ? { "data-highlight-empty": "" } : {})}
+                  value={profile?.postal_code ?? ""} placeholder="75001"
                   onChange={(e) => set({ postal_code: e.target.value })} />
               </Field>
               <Field label="Ville">
-                <input className={inputCls} value={profile?.city ?? ""} placeholder="Paris"
+                <input
+                  className={inputC(profile?.city)}
+                  {...(isEmpty(profile?.city) && showHighlight ? { "data-highlight-empty": "" } : {})}
+                  value={profile?.city ?? ""} placeholder="Paris"
                   onChange={(e) => set({ city: e.target.value })} />
               </Field>
               <Field label="Pays" full>

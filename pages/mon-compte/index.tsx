@@ -437,7 +437,7 @@ export default function MonCompteIndexPage() {
                     ok: profileReady,
                     title: "Compléter les informations bailleur",
                     desc: "Nom et adresse alimentent les quittances, états des lieux et documents.",
-                    href: "/mon-compte/profil",
+                    href: profileReady ? "/mon-compte/profil" : "/mon-compte/profil?highlight=1",
                   },
                   {
                     ok: (propertyCount ?? 0) > 0,
