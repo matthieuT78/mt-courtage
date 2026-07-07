@@ -1641,7 +1641,10 @@ function PortalPanel({
 
   const handleInvite = async () => {
     setResult(null);
-    const r = await onInvite(tenantId, withMessaging);
+    // Si le portail est déjà activé, préserver le réglage messagerie existant plutôt que
+    // d'utiliser withMessaging (qui vaut toujours true côté état local une fois le panel en mode "access")
+    const msgEnabled = access ? (access.messaging_enabled !== false) : withMessaging;
+    const r = await onInvite(tenantId, msgEnabled);
     setResult({ ok: r.ok, msg: r.message });
   };
 

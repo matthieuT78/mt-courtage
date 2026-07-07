@@ -175,10 +175,13 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
     setErr(null);
     setOk(null);
     try {
+      // Préserver le réglage messagerie existant si le portail est déjà activé
+      const currentAccess = rows.find((r) => r.tenant.id === selectedTenantId)?.access;
+      const messagingEnabled = currentAccess ? currentAccess.messaging_enabled !== false : true;
       const response = await fetch("/api/tenant-portal/invite", {
         method: "POST",
         headers: await authHeaders(),
-        body: JSON.stringify({ tenantId: selectedTenantId, messagingEnabled: true }),
+        body: JSON.stringify({ tenantId: selectedTenantId, messagingEnabled }),
       });
       const json = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(json?.error || "Invitation impossible.");
