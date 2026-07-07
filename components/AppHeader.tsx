@@ -271,9 +271,18 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                     href="/mon-compte"
                     title="Mon compte"
                     aria-label="Mon compte"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] text-[0.68rem] font-bold text-white shadow-sm transition hover:opacity-90 sm:h-10 sm:w-10 sm:text-[0.72rem]"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#635bff] via-[#00d4ff] to-[#00e5a8] text-[0.68rem] font-bold text-white shadow-sm transition hover:opacity-90 sm:h-10 sm:w-10 sm:text-[0.72rem] overflow-hidden"
                   >
-                    {getInitials(authUser)}
+                    {authUser?.user_metadata?.avatar_url ? (
+                      <img
+                        src={authUser.user_metadata.avatar_url}
+                        alt={getInitials(authUser)}
+                        className="h-full w-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      getInitials(authUser)
+                    )}
                   </Link>
                   <Link
                     href="/espace-bailleur"
