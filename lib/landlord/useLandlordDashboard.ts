@@ -515,7 +515,10 @@ export function useLandlordDashboard() {
 
     score += Math.round(activePropertyCoverage * 20);
 
-    const collectionRatio = monthlyDueExpected > 0 ? Math.min(Math.max(monthlyDuePaid / monthlyDueExpected, 0), 1) : 1;
+    // 0 bails actifs = rien configuré → pas de points (≠ "collecte parfaite")
+    const collectionRatio = monthlyDueExpected > 0
+      ? Math.min(Math.max(monthlyDuePaid / monthlyDueExpected, 0), 1)
+      : activeLeaseCount > 0 ? 1 : 0;
     score += Math.round(collectionRatio * 40);
 
     if (activeLeaseCount > 0) {
