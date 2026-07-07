@@ -1175,28 +1175,30 @@ export function SectionDashboard({
 
       {/* ── Mise en route ─────────────────────────────────────── */}
       {!shouldHideOnboarding && (
-        <div className={`overflow-hidden rounded-2xl border ${
+        <div className={`overflow-hidden rounded-3xl border-2 ${
           onboarding.percent === 0
-            ? "border-[#635bff]/20 bg-gradient-to-br from-[#635bff]/[0.04] to-[#00d4ff]/[0.03]"
-            : "border-amber-200 bg-amber-50"
+            ? "border-[#635bff]/25 bg-gradient-to-br from-[#635bff]/[0.07] via-[#00d4ff]/[0.04] to-transparent"
+            : "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50/40"
         }`}>
           {/* En-tête */}
-          <div className="flex items-center gap-3 px-4 py-3">
-            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
-              onboarding.percent === 0 ? "bg-[#635bff]/10 text-[#635bff]" : "bg-amber-100 text-amber-600"
+          <div className="flex items-center gap-4 px-5 py-5 sm:px-6">
+            <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm ${
+              onboarding.percent === 0
+                ? "bg-gradient-to-br from-[#635bff] to-[#00d4ff] text-white"
+                : "bg-amber-400 text-white"
             }`}>
               {onboarding.percent === 0
-                ? <HomeModernIcon className="h-4 w-4" aria-hidden="true" />
-                : <BellIcon className="h-4 w-4" aria-hidden="true" />}
+                ? <HomeModernIcon className="h-6 w-6" aria-hidden="true" />
+                : <BellIcon className="h-6 w-6" aria-hidden="true" />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className={`text-[0.8rem] font-semibold ${onboarding.percent === 0 ? "text-slate-900" : "text-amber-900"}`}>
+              <p className={`text-base font-bold leading-snug ${onboarding.percent === 0 ? "text-slate-900" : "text-amber-900"}`}>
                 {onboarding.percent === 0
                   ? "Mise en route — démarrons en 2 minutes"
                   : `Mise en route · ${onboarding.doneCount}/${onboarding.steps.length} étapes terminées`}
               </p>
               {onboarding.next && (
-                <p className={`mt-0.5 truncate text-[0.73rem] ${onboarding.percent === 0 ? "text-slate-500" : "text-amber-700"}`}>
+                <p className={`mt-0.5 text-sm ${onboarding.percent === 0 ? "text-slate-500" : "text-amber-700"}`}>
                   {onboarding.percent === 0
                     ? "Créez un bien, un locataire et un bail pour démarrer."
                     : `À faire : ${onboarding.next.label}`}
@@ -1204,40 +1206,40 @@ export function SectionDashboard({
               )}
             </div>
             {/* Barre de progression */}
-            <div className="hidden w-16 shrink-0 sm:block">
-              <div className={`h-1.5 overflow-hidden rounded-full ${onboarding.percent === 0 ? "bg-[#635bff]/15" : "bg-amber-200"}`}>
-                <div className={`h-full transition-all duration-700 ${onboarding.percent === 0 ? "bg-[#635bff]" : "bg-amber-500"}`}
+            <div className="hidden w-20 shrink-0 sm:block">
+              <div className={`h-2 overflow-hidden rounded-full ${onboarding.percent === 0 ? "bg-[#635bff]/15" : "bg-amber-200"}`}>
+                <div className={`h-full transition-all duration-700 ${onboarding.percent === 0 ? "bg-gradient-to-r from-[#635bff] to-[#00d4ff]" : "bg-amber-500"}`}
                   style={{ width: `${onboarding.percent}%` }} />
               </div>
-              <p className={`mt-0.5 text-center text-[0.65rem] font-semibold ${onboarding.percent === 0 ? "text-[#635bff]" : "text-amber-600"}`}>
+              <p className={`mt-1 text-center text-xs font-bold ${onboarding.percent === 0 ? "text-[#635bff]" : "text-amber-600"}`}>
                 {onboarding.percent}%
               </p>
             </div>
           </div>
 
-          {/* Étapes — toujours visibles */}
-          <div className={`px-4 pb-4 ${
+          {/* Étapes */}
+          <div className={`px-5 pb-5 sm:px-6 ${
             onboarding.percent === 0
-              ? "border-t border-[#635bff]/10 bg-white/70 pt-3"
-              : "border-t border-amber-200 bg-white/60 pt-3"
+              ? "border-t border-[#635bff]/15 bg-white/60 pt-4"
+              : "border-t border-amber-200 bg-white/50 pt-4"
           }`}>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {onboarding.steps.map((step) => (
                 <button key={step.key} type="button"
                   onClick={() => step.done ? onGo(step.key) : (onNavigateDeep ? onNavigateDeep(step.key, { openCreate: true }) : onGo(step.key))}
-                  className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left transition ${
+                  className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-left transition ${
                     step.done
                       ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
-                      : "border-slate-200 bg-white hover:border-[#635bff]/30 hover:bg-[#635bff]/5"
+                      : "border-slate-200 bg-white shadow-sm hover:border-[#635bff]/40 hover:bg-[#635bff]/5 hover:shadow"
                   }`}>
-                  <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${step.done ? "bg-emerald-500" : "bg-slate-200"}`}>
+                  <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${step.done ? "bg-emerald-500" : "bg-slate-200"}`}>
                     {step.done
-                      ? <CheckCircleIcon className="h-4 w-4 text-white" aria-hidden="true" />
-                      : <span className="h-2 w-2 rounded-full bg-white" />}
+                      ? <CheckCircleIcon className="h-5 w-5 text-white" aria-hidden="true" />
+                      : <span className="h-2.5 w-2.5 rounded-full bg-white" />}
                   </span>
                   <div className="min-w-0">
-                    <p className={`text-[0.78rem] font-semibold ${step.done ? "text-emerald-800" : "text-slate-800"}`}>{step.label}</p>
-                    <p className={`text-[0.7rem] ${step.done ? "text-emerald-600" : "text-slate-500"}`}>
+                    <p className={`text-sm font-semibold ${step.done ? "text-emerald-800" : "text-slate-800"}`}>{step.label}</p>
+                    <p className={`mt-0.5 text-xs leading-4 ${step.done ? "text-emerald-600" : "text-slate-500"}`}>
                       {step.key === "biens" ? "Adresse, infos, statut"
                         : step.key === "locataires" ? "Nom, email, contact"
                         : step.key === "baux" ? ((step as any).desc || "Bien, locataire et loyer")
@@ -1248,10 +1250,10 @@ export function SectionDashboard({
               ))}
             </div>
             {onboarding.next && (
-              <div className="mt-3 flex justify-end">
+              <div className="mt-4 flex justify-end">
                 <button type="button"
                   onClick={() => onNavigateDeep ? onNavigateDeep(onboarding.next!.key, { openCreate: true }) : onGo(onboarding.next!.key)}
-                  className="rounded-full bg-[#635bff] px-4 py-1.5 text-[0.73rem] font-semibold text-white transition hover:bg-[#4f46e5]">
+                  className="rounded-full bg-gradient-to-r from-[#635bff] to-[#4f46e5] px-6 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-[#4f46e5] hover:to-[#4338ca] hover:shadow-lg">
                   {onboarding.percent === 0
                     ? `Commencer : ${onboarding.next.label} →`
                     : `Continuer : ${onboarding.next.label} →`}
