@@ -234,7 +234,7 @@ export default function MonCompteIndexPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/mon-compte?redirect=${encodeURIComponent(dest)}`,
+        redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(dest)}`,
       },
     });
   };
