@@ -5,7 +5,7 @@ date: "2026-07-07"
 category: "Investissement locatif"
 tags: ["rendement locatif", "calcul rendement locatif", "formule rendement brut", "rendement net locatif", "rentabilité immobilière", "simuler rendement"]
 relatedCalculators: ["investissement"]
-coverImage: "/blog/calcul-rendement-locatif-brut-net-2026.jpg"
+coverImage: "/blog/rentabilite-locative.jpg"
 faq:
   - q: "Comment calculer le rendement brut d'un investissement locatif ?"
     a: "Formule : (loyer mensuel × 12) / prix total d'acquisition × 100. Le prix total inclut le prix du bien ET les frais de notaire (7–8 % dans l'ancien). Exemple : loyer 750 €, prix total 160 000 € → rendement brut = (750 × 12) / 160 000 × 100 = 5,63 %."
