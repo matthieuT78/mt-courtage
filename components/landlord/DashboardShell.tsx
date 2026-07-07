@@ -38,6 +38,7 @@ import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing, planAllowsCandidatures } from "../../lib/permissions";
 import ContactChat from "../ChatContact";
 import { ReviewPrompt } from "../ReviewPrompt";
+import { useProfile } from "../../hooks/useProfile";
 
 function MobileBottomNav({
   active,
@@ -229,6 +230,8 @@ export function DashboardShell(props: any) {
 
   const userId: string = props?.user?.id || "";
   const userEmail: string | undefined = props?.user?.email;
+
+  const { profile, loaded: profileLoaded } = useProfile(userId || null);
 
   const properties = Array.isArray(props?.properties) ? props.properties : [];
   const propertyFinance = Array.isArray(props?.propertyFinance) ? props.propertyFinance : [];
@@ -604,6 +607,8 @@ export function DashboardShell(props: any) {
             receipts={receipts}
             propertyById={propertyById}
             tenantById={tenantById}
+            profile={profile}
+            profileLoaded={profileLoaded}
             onPrepareDeparture={(tenantId) => {
               setDepartureTenantId(tenantId);
               setActive("locataires");

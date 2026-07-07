@@ -1,9 +1,11 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowTopRightOnSquareIcon, ArrowTrendingUpIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, NoSymbolIcon } from "@heroicons/react/24/outline";
+import { useRouter } from "next/router";
+import { ArrowTopRightOnSquareIcon, ArrowTrendingUpIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, NoSymbolIcon, UserCircleIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
+import type { Profile } from "../../../hooks/useProfile";
 import { supabase } from "../../../lib/supabaseClient";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
@@ -180,6 +182,8 @@ export function SectionDashboard({
   userId,
   planLabel,
   showTransitionPanel = true,
+  profile,
+  profileLoaded = false,
 }: {
   monthRange: { startISO: string; endISO: string };
   monthlyExpected: number;
@@ -206,7 +210,10 @@ export function SectionDashboard({
   userId?: string;
   planLabel?: string;
   showTransitionPanel?: boolean;
+  profile?: Profile | null;
+  profileLoaded?: boolean;
 }) {
+  const router = useRouter();
   const ratio = monthlyExpected > 0 ? clampPct((monthlyPaid / monthlyExpected) * 100) : 0;
 
   // ── Événements contextuels (anniversaires + baux expirants) ──────────────
@@ -476,10 +483,22 @@ export function SectionDashboard({
     const leaseStepLabel =
       propertiesWithoutLease.length > 0 || tenantsWithoutLease.length > 0 ? "Créer le nouveau bail" : "Créer un bail";
     const leaseStepDesc = bailEdlDelegated
-      ? "Renseignez les infos du bail (loyer, dates) pour le suivi financier — même si le document est géré par l'agence."
+      ? "Renseignez les infos du bail (loyer, dates) pour le suivi financier — même si le document est géré par l’agence."
       : null;
 
-    const steps = [
+    // Profil complet = nom + adresse minimale. On attend le chargement avant de signaler incomplet.
+    const profileComplete = !profileLoaded
+      ? true
+      : !!(
+          profile &&
+          (profile.first_name || profile.last_name || profile.full_name) &&
+          profile.address_line1 &&
+          profile.postal_code &&
+          profile.city
+        );
+
+    const steps: Array<{ key: LandlordSectionKey | "profil"; label: string; done: boolean; desc?: string | null }> = [
+      { key: "profil", label: "Compléter mon profil", done: profileComplete },
       { key: "biens" as LandlordSectionKey, label: "Créer un bien", done: hasProperty },
       { key: "locataires" as LandlordSectionKey, label: "Créer un locataire", done: hasTenant },
       { key: "baux" as LandlordSectionKey, label: leaseStepLabel, done: leaseWorkflowReady, desc: leaseStepDesc },
@@ -488,11 +507,18 @@ export function SectionDashboard({
 
     const doneCount = steps.filter((step) => step.done).length;
     const percent = Math.round((doneCount / steps.length) * 100);
-    const next = !hasProperty ? steps[0] : !hasTenant ? steps[1] : !leaseWorkflowReady ? steps[2] : !financeConfigured ? steps[3] : null;
+    const next = !profileComplete ? steps[0]
+      : !hasProperty ? steps[1]
+      : !hasTenant ? steps[2]
+      : !leaseWorkflowReady ? steps[3]
+      : !financeConfigured ? steps[4]
+      : null;
 
     const headline =
       percent === 100
         ? "Mise en route terminée"
+        : next?.key === "profil"
+        ? "Commencez par votre profil bailleur"
         : next?.key === "finance"
         ? "Dernière étape : fiabiliser les calculs"
         : next?.key === "baux" && hasLease
@@ -506,6 +532,8 @@ export function SectionDashboard({
     const sub =
       percent === 100
         ? "Vous pouvez maintenant gérer loyers, quittances, états des lieux et suivi financier."
+        : next?.key === "profil"
+        ? "Votre nom et adresse sont requis pour les quittances, baux et états des lieux."
         : next?.key === "biens"
         ? "Commencez par créer un bien : adresse, libellé et informations utiles."
         : next?.key === "locataires"
@@ -522,7 +550,7 @@ export function SectionDashboard({
 
     const cta = next ? { key: next.key, label: next.label } : null;
     return { steps, doneCount, percent, next, headline, sub, cta };
-  }, [activeLeases, properties, propertyFinance, tenantById]);
+  }, [activeLeases, properties, propertyFinance, tenantById, profile, profileLoaded]);
 
   const shouldHideOnboarding = useMemo(() => {
     if (manuallyDismissed) return true;
@@ -807,7 +835,7 @@ export function SectionDashboard({
           `${onboarding.doneCount}/${onboarding.steps.length} étapes terminées`,
           `Prochaine étape : ${onboarding.next.label}`,
         ],
-        target: onboarding.next.key,
+        target: onboarding.next.key === "profil" ? undefined : onboarding.next.key as LandlordSectionKey,
         cta: onboarding.next.label,
       });
     }
@@ -1194,14 +1222,12 @@ export function SectionDashboard({
             <div className="min-w-0 flex-1">
               <p className={`text-base font-bold leading-snug ${onboarding.percent === 0 ? "text-slate-900" : "text-amber-900"}`}>
                 {onboarding.percent === 0
-                  ? "Mise en route — démarrons en 2 minutes"
+                  ? `Mise en route — ${onboarding.headline}`
                   : `Mise en route · ${onboarding.doneCount}/${onboarding.steps.length} étapes terminées`}
               </p>
               {onboarding.next && (
                 <p className={`mt-0.5 text-sm ${onboarding.percent === 0 ? "text-slate-500" : "text-amber-700"}`}>
-                  {onboarding.percent === 0
-                    ? "Créez un bien, un locataire et un bail pour démarrer."
-                    : `À faire : ${onboarding.next.label}`}
+                  {onboarding.sub}
                 </p>
               )}
             </div>
@@ -1223,10 +1249,15 @@ export function SectionDashboard({
               ? "border-t border-[#635bff]/15 bg-white/60 pt-4"
               : "border-t border-amber-200 bg-white/50 pt-4"
           }`}>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {onboarding.steps.map((step) => (
                 <button key={step.key} type="button"
-                  onClick={() => step.done ? onGo(step.key) : (onNavigateDeep ? onNavigateDeep(step.key, { openCreate: true }) : onGo(step.key))}
+                  onClick={() => {
+                    if (step.key === "profil") { router.push("/mon-compte"); return; }
+                    const k = step.key as LandlordSectionKey;
+                    if (step.done) { onGo(k); return; }
+                    if (onNavigateDeep) { onNavigateDeep(k, { openCreate: true }); } else { onGo(k); }
+                  }}
                   className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-left transition ${
                     step.done
                       ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
@@ -1235,12 +1266,15 @@ export function SectionDashboard({
                   <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${step.done ? "bg-emerald-500" : "bg-slate-200"}`}>
                     {step.done
                       ? <CheckCircleIcon className="h-5 w-5 text-white" aria-hidden="true" />
+                      : step.key === "profil"
+                      ? <UserCircleIcon className="h-5 w-5 text-slate-400" aria-hidden="true" />
                       : <span className="h-2.5 w-2.5 rounded-full bg-white" />}
                   </span>
                   <div className="min-w-0">
                     <p className={`text-sm font-semibold ${step.done ? "text-emerald-800" : "text-slate-800"}`}>{step.label}</p>
                     <p className={`mt-0.5 text-xs leading-4 ${step.done ? "text-emerald-600" : "text-slate-500"}`}>
-                      {step.key === "biens" ? "Adresse, infos, statut"
+                      {step.key === "profil" ? "Nom, adresse, coordonnées"
+                        : step.key === "biens" ? "Adresse, infos, statut"
                         : step.key === "locataires" ? "Nom, email, contact"
                         : step.key === "baux" ? ((step as any).desc || "Bien, locataire et loyer")
                         : "Prix et taux crédit"}
@@ -1252,7 +1286,11 @@ export function SectionDashboard({
             {onboarding.next && (
               <div className="mt-4 flex justify-end">
                 <button type="button"
-                  onClick={() => onNavigateDeep ? onNavigateDeep(onboarding.next!.key, { openCreate: true }) : onGo(onboarding.next!.key)}
+                  onClick={() => {
+                    if (onboarding.next!.key === "profil") { router.push("/mon-compte"); return; }
+                    const k = onboarding.next!.key as LandlordSectionKey;
+                    if (onNavigateDeep) { onNavigateDeep(k, { openCreate: true }); } else { onGo(k); }
+                  }}
                   className="rounded-full bg-gradient-to-r from-[#635bff] to-[#4f46e5] px-6 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-[#4f46e5] hover:to-[#4338ca] hover:shadow-lg">
                   {onboarding.percent === 0
                     ? `Commencer : ${onboarding.next.label} →`

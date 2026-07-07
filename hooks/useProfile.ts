@@ -32,6 +32,7 @@ const buildFullName = (first?: string | null, last?: string | null) =>
 
 export function useProfile(userId: string | null) {
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -51,6 +52,7 @@ export function useProfile(userId: string | null) {
       setProfile(null);
     } finally {
       setLoading(false);
+      setLoaded(true);
     }
   }, [userId]);
 
@@ -91,5 +93,5 @@ export function useProfile(userId: string | null) {
     if (userId) load();
   }, [userId, load]);
 
-  return { loading, profile, error, ok, load, save, setProfile };
+  return { loading, loaded, profile, error, ok, load, save, setProfile };
 }
