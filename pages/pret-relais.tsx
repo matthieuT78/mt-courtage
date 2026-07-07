@@ -97,9 +97,9 @@ export default function PretRelaisPage() {
   const pagePath = "/pret-relais";
   const pageUrl = `${siteUrl}${pagePath}`;
 
-  const title = "Calculette Prêt Relais 2026 — Simulation gratuite, résultat immédiat | lokt.fr";
+  const title = "Simulation Prêt Relais 2026 — Calcul gratuit sec ou adossé | lokt.fr";
   const description =
-    "Calculette prêt relais gratuite : montant du crédit relais, intérêts intercalaires et budget d'achat avant vente. Prêt relais sec ou adossé — simulation instantanée, sans inscription.";
+    "Calculette prêt relais gratuite : calculez le montant du crédit relais, les intérêts intercalaires et votre budget d'achat en 30 secondes. Formule expliquée, exemples chiffrés de 200 k à 500 k €, prêt relais sec ou adossé — sans inscription.";
 
   // OG image (non transparent, OK WhatsApp)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
@@ -165,6 +165,22 @@ export default function PretRelaisPage() {
       {
         q: "Crédit relais : quelle banque choisir ?",
         a: "Crédit Agricole, LCL, Crédit Mutuel, BNP Paribas et la plupart des grandes banques proposent des prêts relais. Les conditions varient significativement : décote appliquée (60 % à 80 %), taux, durée maximale (12 à 24 mois), franchise possible. Il est recommandé de comparer au moins 3 offres ou de passer par un courtier.",
+      },
+      {
+        q: "Peut-on rembourser un prêt relais par anticipation ?",
+        a: "Oui, et c'est même le fonctionnement normal : le prêt relais est conçu pour être remboursé dès la vente du bien, sans attendre la date d'échéance prévue. Les pénalités de remboursement anticipé sont généralement faibles ou inexistantes sur ce type de prêt (à vérifier dans le contrat), car les banques prévoient cette issue.",
+      },
+      {
+        q: "Un prêt relais est-il possible en SCI ?",
+        a: "Oui, une SCI (Société Civile Immobilière) peut souscrire un prêt relais, à condition que les associés apportent des garanties suffisantes. La banque analysera le bilan de la SCI, la valeur du bien cédé et la solvabilité personnelle des gérants. La procédure est plus complexe qu'en nom propre et nécessite souvent un accompagnement notarial.",
+      },
+      {
+        q: "Que se passe-t-il avec le prêt relais en cas de divorce ou séparation ?",
+        a: "Si le bien à vendre est en indivision, les deux ex-conjoints sont solidairement responsables du remboursement du prêt relais. En cas de divorce en cours, la banque peut exiger une convention d'indivision ou un protocole de partage avant d'accorder le prêt. Si l'un des deux rachète la part de l'autre, cela change la donne : à traiter avec un notaire avant la demande de financement.",
+      },
+      {
+        q: "Puis-je louer le bien à vendre pendant la période de relais ?",
+        a: "En principe non, si le bien est mis en vente. Un locataire en place complique la vente (durée du bail, droit de préemption du locataire) et peut décourager les acquéreurs. Certaines banques refusent d'accorder un prêt relais sur un bien loué. Si le bien est libre, il se vend généralement plus vite et à un meilleur prix.",
       },
     ],
     []
@@ -233,33 +249,45 @@ export default function PretRelaisPage() {
     const howTo = {
       "@context": "https://schema.org",
       "@type": "HowTo",
-      name: "Calculer un prêt relais immobilier",
-      description: "Méthode simple pour estimer un prêt relais avant la vente d'un bien immobilier.",
+      name: "Comment obtenir un prêt relais immobilier",
+      description: "Étapes pour calculer, préparer et obtenir un prêt relais avant la vente d'un bien immobilier.",
       inLanguage: "fr-FR",
       step: [
         {
           "@type": "HowToStep",
           position: 1,
           name: "Estimer la valeur du bien à vendre",
-          text: "Renseignez une valeur réaliste du bien actuel, idéalement avec une estimation prudente.",
+          text: "Faites estimer le bien par un agent immobilier ou un notaire. La banque peut mandater sa propre expertise — une surestimation réduit le montant du relais accordé.",
         },
         {
           "@type": "HowToStep",
           position: 2,
-          name: "Déduire le capital restant dû",
-          text: "Retirez le capital restant à rembourser sur le crédit immobilier actuel.",
+          name: "Calculer le prêt relais mobilisable",
+          text: "Appliquez la formule : valeur du bien × pourcentage retenu par la banque (60 à 80 %) − capital restant dû. Utilisez le simulateur pour obtenir le montant et les intérêts indicatifs.",
         },
         {
           "@type": "HowToStep",
           position: 3,
-          name: "Appliquer le pourcentage bancaire",
-          text: "Appliquez le pourcentage retenu par la banque, souvent entre 60 % et 80 % de la valeur du bien.",
+          name: "Préparer le dossier",
+          text: "Réunissez : fiches de paie (3 mois), avis d'imposition, relevés bancaires, titre de propriété, capital restant dû, estimation immobilière.",
         },
         {
           "@type": "HowToStep",
           position: 4,
-          name: "Comparer avec le nouveau projet",
-          text: "Ajoutez le nouveau prêt possible et l'apport pour estimer votre budget d'achat avant la vente.",
+          name: "Comparer les offres de banques",
+          text: "Sollicitez au moins 2 à 3 banques ou passez par un courtier. Comparez taux, couverture, durée maximale et conditions de remboursement anticipé.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 5,
+          name: "Signer l'offre de prêt",
+          text: "Respectez le délai légal de réflexion de 10 jours. Le prêt relais est débloqué avant ou au moment de l'achat du nouveau bien.",
+        },
+        {
+          "@type": "HowToStep",
+          position: 6,
+          name: "Vendre et rembourser",
+          text: "Le produit de la vente rembourse le capital du relais et les intérêts intercalaires dès l'acte notarié.",
         },
       ],
     };
@@ -303,8 +331,8 @@ export default function PretRelaisPage() {
       <main className="flex-1">
         <CalculatorHero
           eyebrow="Simulation prêt relais — lokt.fr"
-          title={isLoggedIn && displayName ? `${displayName}, simulez votre prêt relais.` : "Simulation prêt relais immobilier gratuite"}
-          description="Calculez le montant du crédit relais, les intérêts intercalaires et votre budget d'achat avant la vente du bien actuel. Prêt relais sec ou adossé."
+          title={isLoggedIn && displayName ? `${displayName}, simulez votre prêt relais.` : "Simulation et calcul prêt relais gratuit"}
+          description="Calculez le montant du crédit relais, les intérêts intercalaires et votre budget d'achat avant la vente du bien actuel. Prêt relais sec ou adossé — résultat immédiat."
           links={[
             { href: "/", label: "Accueil" },
             { href: "/capacite", label: "Capacité d'emprunt" },
@@ -492,7 +520,104 @@ export default function PretRelaisPage() {
             </p>
           </section>
 
-          {/* ── Section 5 : conditions et précautions ── */}
+          {/* ── Section 5 : taux par banque ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
+            <h2 className="text-base font-semibold text-slate-900">Taux prêt relais par banque en 2026</h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Les conditions varient significativement d'une banque à l'autre. Les points clés à comparer sont le taux d'intérêt annuel,
+              le pourcentage de couverture appliqué sur la valeur du bien, la durée maximale et l'existence d'une franchise (période sans
+              remboursement d'intérêts). Ces données sont indicatives — les conditions réelles dépendent du profil et du dossier.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left">
+                    <th className="pb-2 pr-3 font-semibold text-slate-700">Banque</th>
+                    <th className="pb-2 pr-3 font-semibold text-slate-700">Taux indicatif</th>
+                    <th className="pb-2 pr-3 font-semibold text-slate-700">Couverture</th>
+                    <th className="pb-2 font-semibold text-slate-700">Durée max</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-600">
+                  {[
+                    ["Crédit Agricole", "3,6 % – 4,5 %", "70 – 80 %", "24 mois"],
+                    ["LCL", "3,7 % – 4,6 %", "70 – 80 %", "24 mois"],
+                    ["Crédit Mutuel", "3,5 % – 4,4 %", "65 – 75 %", "18 – 24 mois"],
+                    ["BNP Paribas", "3,8 % – 4,8 %", "60 – 70 %", "12 – 24 mois"],
+                    ["Société Générale", "3,7 % – 4,7 %", "65 – 80 %", "24 mois"],
+                    ["Caisse d'Épargne", "3,6 % – 4,5 %", "70 – 75 %", "18 – 24 mois"],
+                  ].map(([bank, rate, cov, dur]) => (
+                    <tr key={bank} className="border-b border-slate-100">
+                      <td className="py-2 pr-3 font-medium text-slate-800">{bank}</td>
+                      <td className="py-2 pr-3">{rate}</td>
+                      <td className="py-2 pr-3">{cov}</td>
+                      <td className="py-2">{dur}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-slate-500">
+              Données indicatives, relevées au 1er semestre 2026. Les taux et conditions réelles varient selon le profil emprunteur, le
+              marché immobilier local et la politique commerciale de l'agence. Comparez au moins 3 établissements ou faites appel à un
+              courtier pour obtenir les meilleures conditions.
+            </p>
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-800">
+              <p className="font-semibold">Un écart de 0,5 point peut représenter plusieurs milliers d'euros</p>
+              <p className="mt-1 leading-relaxed">
+                Sur un relais de 200 000 € pendant 12 mois, passer de 4,5 % à 4,0 % représente une économie d'environ 1 000 €.
+                Sur 18 mois, l'écart grimpe à 1 500 €. Negocier ou comparer les offres de plusieurs banques vaut toujours l'effort.
+              </p>
+            </div>
+          </section>
+
+          {/* ── Section 6 : étapes pour obtenir ── */}
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
+            <h2 className="text-base font-semibold text-slate-900">Comment obtenir un prêt relais : les étapes</h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              L'obtention d'un prêt relais suit un processus précis. Voici les étapes dans l'ordre, du premier calcul à la signature.
+            </p>
+            <ol className="space-y-3">
+              {[
+                {
+                  step: "1. Estimer la valeur du bien à vendre",
+                  detail: "Faites appel à un agent immobilier ou un notaire pour obtenir une estimation sérieuse. La banque peut mander sa propre expertise — une surestimation du prix nuit directement au montant du relais accordé.",
+                },
+                {
+                  step: "2. Calculer le prêt relais mobilisable",
+                  detail: "Utilisez le simulateur ci-dessus pour estimer le montant, les intérêts intercalaires et le budget d'achat. C'est la base du dossier à présenter aux banques.",
+                },
+                {
+                  step: "3. Préparer le dossier",
+                  detail: "Pièces attendues : justificatifs de revenus (3 dernières fiches de paie, dernier avis d'imposition), relevés de compte des 3 derniers mois, titre de propriété du bien à vendre, détail du capital restant dû, estimation immobilière.",
+                },
+                {
+                  step: "4. Comparer les offres",
+                  detail: "Sollicitez au moins 2 à 3 banques ou passez par un courtier. Comparez taux, couverture, durée, franchise et conditions de remboursement anticipé. L'offre globale (relais + nouveau prêt) compte autant que le taux du relais seul.",
+                },
+                {
+                  step: "5. Signer l'offre de prêt",
+                  detail: "Délai légal de réflexion de 10 jours après réception de l'offre. Le prêt relais est ensuite débloqué avant ou au moment de l'achat du nouveau bien.",
+                },
+                {
+                  step: "6. Vendre le bien et rembourser",
+                  detail: "Dès la vente actée chez le notaire, le produit de cession rembourse le capital du relais. Les intérêts intercalaires sont soldés en même temps. Si la vente intervient avant la date d'échéance, aucune pénalité n'est généralement appliquée.",
+                },
+              ].map(({ step, detail }, idx) => (
+                <li key={step} className="flex gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-[0.65rem] font-bold text-indigo-700">
+                    {idx + 1}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{step.replace(/^\d+\.\s*/, "")}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-600">{detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          {/* ── Section 7 : conditions et précautions ── */}
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 sm:p-7 space-y-4" data-scroll-reveal>
             <h2 className="text-base font-semibold text-slate-900">Conditions d’obtention et précautions</h2>
             <div className="grid gap-4 sm:grid-cols-2">
