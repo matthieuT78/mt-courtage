@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import type { ComponentType, SVGProps } from "react";
 import LeadGate from "./LeadGate";
+import { useAgenceSession } from "../lib/useAgenceSession";
 import { supabase } from "../lib/supabaseClient";
 import {
   BriefcaseIcon,
@@ -667,6 +668,7 @@ export default function AcheterOuLouerWizard() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [leadEmail, setLeadEmail]   = useState("");
   const [unlocked, setUnlocked]     = useState(false);
+  const isAgence = useAgenceSession();
   const [contactConsent, setContactConsent] = useState(false);
   const [unlocking, setUnlocking]   = useState(false);
   const [unlockMsg, setUnlockMsg]   = useState<string | null>(null);
@@ -710,7 +712,7 @@ export default function AcheterOuLouerWizard() {
     }
   }, [leadEmail]);
 
-  const canShowDetails = isLoggedIn || unlocked;
+  const canShowDetails = isLoggedIn || unlocked || isAgence;
 
   const resultRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {

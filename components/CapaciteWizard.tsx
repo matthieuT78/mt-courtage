@@ -21,6 +21,7 @@ import {
   buildCapaciteEmailText,
 } from "../lib/emails/capaciteEmail";
 import LeadGate from "./LeadGate";
+import { useAgenceSession } from "../lib/useAgenceSession";
 import {
   safeEmail,
   loadLeadEmail,
@@ -768,6 +769,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
   }, []);
 
   const isLoggedIn = !!sessionUserId;
+  const isAgence = useAgenceSession();
 
   /* ======================== Wizard steps ======================== */
   const [step, setStep] = useState<number>(1);
@@ -1651,7 +1653,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     return "Score lokt.fr — Sous tension";
   }, [bankability]);
 
-  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
+  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked || isAgence, [isLoggedIn, unlocked, isAgence]);
 
   const tauxCreditNum = toFloat(tauxCreditCible, 0);
   const tauxAssuranceNum = toFloat(tauxAssuranceCible, 0);

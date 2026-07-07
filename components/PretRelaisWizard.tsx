@@ -14,6 +14,7 @@ import {
 import type { ComponentType, SVGProps } from "react";
 import { supabase } from "../lib/supabaseClient";
 import LeadGate from "./LeadGate";
+import { useAgenceSession } from "../lib/useAgenceSession";
 import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
 
 const PRET_RELAIS_STORAGE_KEY = "pret_relais_simulation_v2";
@@ -312,6 +313,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   }, []);
 
   const isLoggedIn = !!sessionUserId;
+  const isAgence = useAgenceSession();
 
   // ---------------------------
   // Étapes (cliquables)
@@ -1009,7 +1011,7 @@ if (sendByEmail) {
     }
   };
 
-  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
+  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked || isAgence, [isLoggedIn, unlocked, isAgence]);
 
   const labelBase = "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
 

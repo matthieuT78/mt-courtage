@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, SVGProps } from "react";
 import dynamic from "next/dynamic";
+import { useAgenceSession } from "../lib/useAgenceSession";
 import {
   BanknotesIcon,
   BuildingOffice2Icon,
@@ -198,6 +199,7 @@ function getSourceLabel(): string {
 /* ======================== Component ======================== */
 export default function InvestissementWizard() {
   const { canSeeCalcDetails, isLoggedIn } = usePermissions();
+  const isAgence = useAgenceSession();
 
   /* ======================== Session (pré-remplir email) ======================== */
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -368,7 +370,7 @@ export default function InvestissementWizard() {
 
   const canShowAnalysis =
   hasSimulation && surfaceNum > 0 && (selectedCity !== null || cityQuery.trim().length > 0);
-  const canShowFullDetails = (canSeeCalcDetails && isLoggedIn) || unlocked;
+  const canShowFullDetails = (canSeeCalcDetails && isLoggedIn) || unlocked || isAgence;
 
   const resultSectionRef = useRef<HTMLDivElement | null>(null);
 

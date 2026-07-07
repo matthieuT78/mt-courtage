@@ -12,6 +12,7 @@ import {
   ScaleIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
+import { useAgenceSession } from "../lib/useAgenceSession";
 import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
 import {
   safeEmail,
@@ -446,6 +447,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
   }, []);
 
   const isLoggedIn = !!sessionUserId;
+  const isAgence = useAgenceSession();
 
   /* ======================== Wizard steps ======================== */
   const [step, setStep] = useState<number>(1);
@@ -578,7 +580,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     setUnlocked(ok);
   }, [leadEmail, isLoggedIn]);
 
-  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
+  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked || isAgence, [isLoggedIn, unlocked, isAgence]);
 
   /* ======================== Calcul core ======================== */
   const computeAll = (overrides?: { salePrice?: number }) => {
