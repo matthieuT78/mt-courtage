@@ -55,7 +55,7 @@ export default function GuidesIndexPage() {
             Louer proprement, sans perdre le fil.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            8 guides pratiques organisés dans l'ordre du bail — de la mise en location au départ du locataire. Chaque guide contient les points de contrôle, les règles clés et une checklist opérationnelle.
+            13 guides pratiques organisés dans l'ordre du bail — de la mise en location au départ du locataire. Chaque guide contient les points de contrôle, les règles clés et une checklist opérationnelle.
           </p>
 
           {/* Lifecycle pills */}

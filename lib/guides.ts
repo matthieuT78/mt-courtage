@@ -1121,6 +1121,491 @@ export const GUIDES: GuideArticle[] = [
       { label: "Commission Nationale de Concertation : grille de vétusté", href: "https://www.anil.org" },
     ],
   },
+  // ── GESTION : Quittances & révision IRL ──────────────────────────────────
+  {
+    slug: "quittances-revision-irl",
+    category: "gestion",
+    title: "Quittances, révision IRL et gestion mensuelle du loyer",
+    shortTitle: "Quittances et révision IRL",
+    description: "Délivrer des quittances conformes, appliquer la révision IRL à la bonne date et conserver une traçabilité irréprochable des paiements.",
+    updatedAt: "2026-07-08",
+    intro:
+      "Chaque mois, le bailleur doit encaisser le loyer, délivrer une quittance si le locataire la demande, et préparer la révision annuelle à la date anniversaire du bail. Ces tâches paraissent simples mais recèlent des pièges : mention manquante sur la quittance, révision oubliée pendant 2 ans, revalorisation impossible à régulariser rétroactivement, preuve de paiement absente en cas de litige. Ce guide couvre chaque étape de la gestion mensuelle.",
+    sections: [
+      {
+        title: "1. La quittance : obligation et contenu",
+        paragraphs: [
+          "Le bailleur est légalement tenu de délivrer une quittance au locataire qui en fait la demande, et ce gratuitement. L'envoi peut se faire par email (PDF) — un simple modèle Word ou un outil de gestion locative suffit. Refuser de délivrer une quittance ou la faire payer constitue un manquement susceptible d'être invoqué par le locataire.",
+          "La quittance n'est pas obligatoire si le locataire ne la réclame pas, mais c'est une bonne pratique de l'émettre systématiquement. En cas de litige futur sur les paiements, les quittances constituent une preuve unilatérale de bonne foi — elles ne font pas foi absolue, mais renforcent considérablement votre position.",
+        ],
+        bullets: [
+          "Mention obligatoire : nom et adresse du bailleur, nom du locataire, adresse du logement.",
+          "Montant du loyer hors charges, montant des provisions sur charges, total.",
+          "Période couverte (ex. : 'loyer du 1er juillet au 31 juillet 2026').",
+          "Mention que le locataire est à jour de ses paiements.",
+          "Date d'émission et signature du bailleur.",
+          "Format PDF transmis par email : preuve de remise datée et archivable.",
+        ],
+        note: "Si le locataire a payé partiellement, délivrez un reçu de paiement partiel (pas une quittance). La quittance atteste d'un paiement complet. Un reçu partiel protège le bailleur en cas de contestation.",
+      },
+      {
+        title: "2. La révision IRL : principe et calcul",
+        paragraphs: [
+          "L'Indice de Référence des Loyers (IRL) est publié chaque trimestre par l'INSEE. Il sert à plafonner l'augmentation annuelle du loyer. Le bail doit comporter une clause de révision pour que la révision soit possible — sans cette clause, le loyer est gelé pendant toute la durée du bail.",
+          "La formule est : Nouveau loyer = Loyer actuel × (IRL du trimestre de référence actuel / IRL du même trimestre de l'année précédente). Le trimestre de référence est celui mentionné dans le bail — souvent le dernier IRL connu à la date de signature. Si rien n'est précisé, le trimestre de la signature du bail fait foi.",
+          "Exemple : loyer actuel 850 €, IRL T1 2026 = 145,47, IRL T1 2025 = 140,18. Nouveau loyer = 850 × (145,47 / 140,18) = 850 × 1,0377 = 882,05 € → arrondi à 882 €.",
+        ],
+        bullets: [
+          "IRL publié chaque trimestre par l'INSEE (résultats disponibles ~45 jours après la fin du trimestre).",
+          "Clause de révision obligatoire dans le bail pour pouvoir augmenter.",
+          "Formule : loyer actuel × (IRL n / IRL n-1).",
+          "Augmentation plafonnée à l'IRL : toute clause permettant une hausse supérieure est nulle.",
+          "En zone encadrée des loyers : la révision IRL s'applique, mais ne peut pas dépasser le loyer de référence majoré.",
+        ],
+      },
+      {
+        title: "3. Quand et comment appliquer la révision",
+        paragraphs: [
+          "La révision s'applique à la date anniversaire du bail, une fois par an. Si le bail a été signé le 1er septembre 2024, la première révision possible est le 1er septembre 2025. Le bailleur doit informer le locataire du nouveau loyer par écrit (email suffit) avant la date de révision.",
+          "Si vous oubliez d'appliquer la révision à la date anniversaire, vous n'êtes pas en droit de la régulariser rétroactivement. Certains juristes estiment qu'une mise en demeure peut permettre une révision tardive, mais la jurisprudence est mitigée. La meilleure pratique : posez un rappel annuel et appliquez la révision à la bonne date.",
+          "Pour les baux à loyer vide, la révision est optionnelle. Pour les baux meublés (BIC), elle est également optionnelle mais fortement conseillée pour maintenir la valeur réelle du loyer dans le temps. Sur 5 ans, une inflation de 3 %/an non répercutée représente une perte de plus de 15 % du loyer en valeur réelle.",
+        ],
+        bullets: [
+          "Date anniversaire : à noter dès la signature du bail.",
+          "Notification au locataire par email avant la date de révision.",
+          "IRL à utiliser : dernier IRL publié à la date de révision.",
+          "Révision oubliée : non rétroactivement récupérable (sauf accord du locataire ou mise en demeure contestée).",
+          "Nouveau loyer arrondi à l'euro le plus proche (usage courant).",
+          "Avenant au bail recommandé pour acter le nouveau montant.",
+        ],
+        note: "Vous n'êtes pas obligé d'appliquer la révision IRL dans sa totalité. Vous pouvez ne pas réviser ou réviser à la hausse dans la limite de l'IRL. Réviser en dessous de l'IRL est autorisé — certains bailleurs font ce choix pour fidéliser un bon locataire.",
+      },
+      {
+        title: "4. Traçabilité des paiements et gestion des retards",
+        paragraphs: [
+          "Archivez chaque paiement de loyer avec la date, le montant et le mode de règlement. En cas de litige sur un impayé prétendu, vous devrez prouver que tel mois a bien été encaissé. Un simple tableau Excel ou un outil de gestion locative fait l'affaire, à condition d'être tenu à jour.",
+          "Pour les retards de quelques jours, un email de rappel bienveillant suffit dans un premier temps. Conservez l'email envoyé et la réponse : cet échange constitue une trace de la situation. Si le retard se répète ou s'allonge, formalisez rapidement (voir le guide sur les loyers impayés).",
+          "La date de paiement convenue dans le bail est contractuelle. Si le locataire paie systématiquement en retard, vous pouvez rappeler par écrit la date contractuelle. La tolérance répétée sans réaction écrite peut être interprétée comme une acceptation tacite du nouveau mode de paiement.",
+        ],
+        bullets: [
+          "Journal des paiements : date d'encaissement, montant, référence du virement.",
+          "Retard ponctuel : email de rappel conservé.",
+          "Retard répété : formaliser rapidement par email ou courrier.",
+          "Ne jamais tolérer silencieusement un retard systématique sans en laisser une trace écrite.",
+          "Mode de paiement : virement bancaire recommandé pour la traçabilité (éviter le chèque ou le cash).",
+        ],
+      },
+      {
+        title: "5. Comment lokt vous aide",
+        paragraphs: [
+          "lokt génère automatiquement les quittances PDF chaque mois pour chaque logement, avec toutes les mentions légales pré-remplies. Il vous suffit de confirmer le paiement — la quittance est prête à envoyer au locataire en un clic, sans ressaisie.",
+          "L'espace bailleur lokt intègre un rappel de révision IRL à la date anniversaire de chaque bail. Vous recevez une alerte avec le calcul du nouveau loyer pré-calculé, le trimestre IRL applicable et le montant arrondi. Il n'y a plus d'IRL à chercher ni de formule à appliquer manuellement.",
+          "L'historique des paiements est centralisé dans lokt : date d'encaissement, quittances émises, mois en retard signalés en rouge. En cas de litige, vous exportez l'historique complet en PDF en quelques secondes.",
+        ],
+        bullets: [
+          "Quittances PDF générées automatiquement chaque mois, conformes aux mentions légales.",
+          "Rappel de révision IRL à la date anniversaire avec calcul pré-rempli.",
+          "Historique des paiements centralisé et exportable.",
+          "Alertes de retard de paiement dès J+1 après la date d'échéance.",
+          "Accès depuis mobile : confirmer un paiement et envoyer la quittance en 30 secondes.",
+        ],
+      },
+    ],
+    checklist: [
+      "Clause de révision IRL présente dans le bail",
+      "Date anniversaire de révision notée",
+      "IRL applicable identifié chaque année",
+      "Nouveau loyer calculé et notifié avant la date de révision",
+      "Avenant ou email d'information envoyé au locataire",
+      "Paiements archivés mois par mois",
+      "Quittances émises avec toutes les mentions légales",
+      "Retards formalisés par email",
+    ],
+    sources: [
+      { label: "INSEE : Indice de Référence des Loyers (IRL)", href: "https://www.insee.fr/fr/statistiques/serie/001515333" },
+      { label: "Service-Public : révision du loyer", href: "https://www.service-public.fr/particuliers/vosdroits/F1215" },
+      { label: "Service-Public : quittance de loyer", href: "https://www.service-public.fr/particuliers/vosdroits/F1191" },
+    ],
+  },
+  // ── GESTION : Charges locatives & régularisation ─────────────────────────
+  {
+    slug: "charges-regularisation-annuelle",
+    category: "gestion",
+    title: "Charges locatives : récupérer ce qui est dû et régulariser sans litige",
+    shortTitle: "Charges et régularisation",
+    description: "Provisions vs forfait, liste des charges récupérables, calcul de la régularisation annuelle et délais légaux pour éviter tout litige.",
+    updatedAt: "2026-07-08",
+    intro:
+      "Les charges locatives sont la deuxième source de litige entre bailleurs et locataires, juste derrière le dépôt de garantie. Le bailleur peut récupérer certaines dépenses sur le locataire — mais uniquement celles listées par le décret 87-713 — et doit en justifier le montant chaque année. Une régularisation mal calculée, tardive ou non justifiée peut être contestée et annulée. Ce guide couvre le bon mode de gestion des charges, le calcul de la régularisation et les pièges à éviter.",
+    sections: [
+      {
+        title: "1. Provisions vs forfait : choisir le bon mode",
+        paragraphs: [
+          "En location vide, les charges sont obligatoirement gérées par provisions avec régularisation annuelle. Vous fixez un montant mensuel de provisions estimé, et vous le régularisez chaque année en fonction des charges réelles. Le forfait charges est interdit en location vide.",
+          "En location meublée, vous avez le choix entre provisions avec régularisation (comme en vide) ou forfait charges. Le forfait est un montant fixe mensuel, non régularisé. Il est plus simple à gérer, mais vous devez estimer correctement les charges à la hausse : si les charges réelles sont supérieures au forfait, vous ne pouvez pas réclamer de complément.",
+          "Le choix entre provisions et forfait en meublé doit être fait dès la signature du bail et mentionné dans le contrat. Vous ne pouvez pas changer de mode en cours de bail sans avenant.",
+        ],
+        bullets: [
+          "Location vide : provisions avec régularisation obligatoires. Forfait interdit.",
+          "Location meublée : provisions avec régularisation ou forfait (au choix, à mentionner dans le bail).",
+          "Forfait : pratique mais risqué si charges sous-estimées — pas de rattrapage possible.",
+          "Provisions : plus précises, mais impliquent une régularisation annuelle rigoureuse.",
+        ],
+      },
+      {
+        title: "2. Les charges récupérables : ce que vous pouvez facturer",
+        paragraphs: [
+          "Le décret du 26 août 1987 (n° 87-713) liste de façon limitative les charges récupérables sur le locataire. Tout ce qui ne figure pas dans cette liste est à la charge définitive du bailleur, même si vous l'avez payé. Facturer une charge non récupérable expose le bailleur à devoir rembourser les sommes perçues.",
+          "Les principales charges récupérables concernent les parties communes (eau froide, eau chaude, entretien, électricité), les équipements collectifs (ascenseur, chauffage collectif, interphone) et les espaces extérieurs (gardiennage, espaces verts, voirie). Certaines taxes sont également récupérables : la taxe d'enlèvement des ordures ménagères (TEOM) est récupérable en totalité.",
+        ],
+        bullets: [
+          "Eau froide et eau chaude des parties communes et du logement (si compteur individuel).",
+          "Électricité des parties communes et équipements collectifs.",
+          "Chauffage collectif : combustible, maintenance, exploitation.",
+          "Ascenseur : électricité, contrat d'entretien et petites réparations.",
+          "Taxe d'enlèvement des ordures ménagères (TEOM).",
+          "Gardiennage (si le gardien assure effectivement des tâches d'entretien).",
+          "Entretien des parties communes (ménage, produits, main d'œuvre).",
+          "Espaces verts : entretien courant, arrosage.",
+        ],
+        note: "Consultez le décret 87-713 ou l'article de blog lokt sur les charges récupérables pour la liste complète. En cas de doute, un charge non listée = charge bailleur.",
+      },
+      {
+        title: "3. Calculer la régularisation annuelle",
+        paragraphs: [
+          "La régularisation consiste à comparer les provisions encaissées sur l'année avec les charges réelles payées. Si les provisions excèdent les charges réelles, vous devez rembourser le trop-perçu au locataire. Si les charges réelles dépassent les provisions, vous avez le droit de réclamer le complément.",
+          "Pour une copropriété, la base de calcul est le décompte annuel des charges de copropriété établi par le syndic, ventilé entre charges récupérables et charges non récupérables (les charges de gestion et d'administration restent à la charge du bailleur). Pour un logement individuel (maison, eau individuelle), la base est le montant des factures réelles de l'année.",
+          "Exemple simple : provisions mensuelles = 80 €, soit 960 € sur 12 mois. Charges récupérables réelles selon le décompte de copropriété = 1 120 €. Régularisation = 1 120 - 960 = 160 € à réclamer au locataire. Si les charges réelles avaient été 820 €, vous auriez dû rembourser 140 €.",
+        ],
+        bullets: [
+          "Base de calcul en copropriété : décompte annuel du syndic (charges récupérables uniquement).",
+          "Base de calcul logement individuel : factures réelles (eau, ordures, entretien).",
+          "Régularisation = charges réelles − provisions versées.",
+          "Trop-perçu : à rembourser au locataire dans le délai convenu (ou immédiatement).",
+          "Complément : à réclamer par écrit avec pièces justificatives.",
+          "Ajuster les provisions pour l'année suivante après régularisation.",
+        ],
+      },
+      {
+        title: "4. Délais, pièces justificatives et obligations légales",
+        paragraphs: [
+          "La régularisation doit avoir lieu au moins une fois par an, dans le mois suivant la clôture du compte de charges de copropriété (généralement entre mars et juillet selon les exercices). Vous n'avez pas l'obligation d'effectuer la régularisation à une date précise — mais un retard excessif peut être interprété comme une renonciation tacite au complément.",
+          "Vous devez transmettre au locataire le décompte des charges (ou les factures pour un logement individuel) au moins un mois avant la date de régularisation pour lui permettre de vérifier. Ces pièces doivent être tenues à disposition du locataire pendant 6 mois après l'envoi du décompte.",
+          "Un locataire peut demander une copie des justificatifs à tout moment pendant cette période de 6 mois. Refuser de les communiquer vous expose à une contestation de la régularisation. Conservez les originaux (ou les copies scannées) pendant toute la durée du bail.",
+        ],
+        bullets: [
+          "Régularisation : au moins une fois par an.",
+          "Décompte à transmettre : au moins 1 mois avant la régularisation.",
+          "Justificatifs à conserver disponibles : 6 mois après envoi du décompte.",
+          "Ajustement des provisions pour l'année suivante recommandé après chaque régularisation.",
+          "En copropriété : attendre le décompte définitif du syndic avant de régulariser.",
+        ],
+        note: "Pour les baux meublés en forfait charges, aucune régularisation n'est due ni possible. Si les charges réelles dépassent le forfait, le bailleur ne peut rien réclamer — et si elles sont inférieures, il n'a rien à rembourser. Cette règle rend le forfait risqué si vous avez sous-estimé les charges au départ.",
+      },
+      {
+        title: "5. Erreurs fréquentes et litiges à éviter",
+        paragraphs: [
+          "Les erreurs les plus courantes : inclure des charges non récupérables (frais de gestion de l'agence, honoraires du syndic, assurance de l'immeuble, gros travaux), ne pas transmettre les justificatifs, régulariser trop tardivement, ou confondre les charges de l'exercice avec les appels de fonds provisionnels.",
+          "Un locataire qui reçoit un complément de charges sans justificatifs est en droit de le contester. La Commission Départementale de Conciliation (CDC) peut être saisie gratuitement. Si la régularisation n'est pas justifiée, elle sera annulée. En cas de régularisation abusive répétée, le locataire peut solliciter des dommages et intérêts.",
+          "Si vous gérez plusieurs biens dans la même copropriété, la ventilation des charges entre les logements doit correspondre aux tantièmes de copropriété de chaque lot. Vous ne pouvez pas arbitrairement répartir les charges entre vos locataires.",
+        ],
+        bullets: [
+          "Non récupérables : frais de gestion, assurance de l'immeuble, honoraires de syndic, gros travaux.",
+          "Ne pas confondre appels de fonds provisionnels et charges réelles.",
+          "Justificatifs obligatoires : factures, décompte de copropriété.",
+          "Régularisation tardive : peut affaiblir votre position en cas de litige.",
+          "Ventilation entre logements : respecter les tantièmes de copropriété.",
+        ],
+      },
+      {
+        title: "6. Comment lokt vous aide",
+        paragraphs: [
+          "lokt centralise le suivi des provisions sur charges pour chaque logement : vous enregistrez les provisions mensuelles et les charges réelles au fur et à mesure. À l'échéance, l'espace bailleur calcule automatiquement la régularisation et génère le décompte à transmettre au locataire.",
+          "L'historique des provisions et des régularisations est archivé dans lokt par logement. Vous pouvez retrouver en quelques secondes le décompte de charges des 3 dernières années — indispensable si un locataire conteste une régularisation après son départ.",
+          "Pour les bailleurs LMNP au régime réel, lokt vous aide à distinguer les charges récupérables (refacturées au locataire) des charges déductibles fiscalement (toutes les charges effectives). Les deux colonnes sont exportables pour votre expert-comptable.",
+        ],
+        bullets: [
+          "Suivi des provisions par logement : montants mensuels et total annuel.",
+          "Calcul automatique de la régularisation avec décompte exportable.",
+          "Archivage des justificatifs de charges par année et par logement.",
+          "Export LMNP : distinction charges récupérables / charges fiscalement déductibles.",
+          "Alerte de régularisation annuelle à la clôture de l'exercice de copropriété.",
+        ],
+      },
+    ],
+    checklist: [
+      "Mode de charges choisi dans le bail (provisions ou forfait en meublé)",
+      "Provisions mensuelles estimées correctement",
+      "Décompte de copropriété ou factures rassemblés",
+      "Charges récupérables identifiées (décret 87-713)",
+      "Régularisation calculée : provisions vs charges réelles",
+      "Décompte transmis au locataire avec justificatifs",
+      "Délai légal respecté (1 mois avant régularisation)",
+      "Provisions ajustées pour l'année suivante",
+      "Justificatifs conservés 6 mois après envoi",
+    ],
+    sources: [
+      { label: "Légifrance : décret 87-713 (charges récupérables)", href: "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000512060" },
+      { label: "Service-Public : charges récupérables sur le locataire", href: "https://www.service-public.fr/particuliers/vosdroits/F947" },
+      { label: "ANIL : régularisation des charges", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/" },
+    ],
+  },
+  // ── GESTION : Loyers impayés ──────────────────────────────────────────────
+  {
+    slug: "loyers-impayes-procedure",
+    category: "gestion",
+    title: "Loyers impayés : du premier retard à la procédure judiciaire",
+    shortTitle: "Loyers impayés",
+    description: "Comment réagir dès le premier retard, formaliser la relance, activer la GLI, et lancer la procédure judiciaire si nécessaire — étape par étape.",
+    updatedAt: "2026-07-08",
+    intro:
+      "Un loyer impayé doit déclencher une réaction rapide et formalisée. Plus vous attendez, plus la dette s'accumule et plus la procédure judiciaire est longue et coûteuse. La règle de base : relance amiable dès J+5, mise en demeure formelle à J+15, activation de la GLI ou contact du garant avant le mois suivant. Un bailleur organisé réduit considérablement le risque d'impayé structurel.",
+    sections: [
+      {
+        title: "1. Identifier la nature du retard",
+        paragraphs: [
+          "Tous les retards ne sont pas équivalents. Un locataire habituellement fiable qui paie avec 5 jours de retard un mois n'appelle pas la même réponse qu'un locataire qui n'a pas payé depuis 3 semaines sans répondre aux appels. Avant d'agir, qualifiez la situation : impayé ponctuel (incident de paiement isolé), impayé tardif (retards répétés qui s'allongent) ou défaillance structurelle (arrêt des paiements, plus de contact).",
+          "Vérifiez votre propre situation : le virement a-t-il été envoyé mais pas encore crédité ? Le locataire a-t-il indiqué un changement de RIB ou de banque ? Avant toute relance formelle, assurez-vous que le problème ne vient pas d'un délai bancaire ou d'une erreur de communication.",
+        ],
+        bullets: [
+          "Impayé ponctuel (< 10 jours, premier incident) : relance email bienveillante.",
+          "Retards répétés : formalisation immédiate, email de mise en alerte.",
+          "Absence de paiement > 15 jours sans réponse : mise en demeure LRAR.",
+          "Absence de paiement > 1 mois : activation GLI, contact garant, préparation procédure.",
+          "Vérifier d'abord : virement en transit ? Changement de RIB non signalé ?",
+        ],
+      },
+      {
+        title: "2. La relance amiable : agir dès J+5",
+        paragraphs: [
+          "Dès le 5e jour suivant la date d'échéance contractuelle, envoyez un email de rappel simple et non accusateur. Un ton neutre et factuel est plus efficace qu'un ton agressif — l'objectif est d'obtenir le paiement, pas de déclencher un conflit. Mentionnez le montant dû, la date d'échéance et demandez une confirmation de paiement ou une explication.",
+          "Conservez cet email et toutes les réponses. En cas de procédure ultérieure, cet historique documente votre démarche amiable préalable et renforce votre dossier. Un juge apprécie que le bailleur ait cherché à résoudre la situation à l'amiable avant de saisir le tribunal.",
+          "Si le locataire répond avec une promesse de paiement à une date précise, confirmez-la par écrit et attendez. Si la date promise passe sans paiement, passez à l'étape suivante sans attendre davantage.",
+        ],
+        bullets: [
+          "J+5 : email de relance simple, montant et date d'échéance rappelés.",
+          "Ton neutre : 'Nous n'avons pas reçu votre règlement de juillet. Pouvez-vous nous confirmer ?'",
+          "Conserver l'email envoyé + toute réponse du locataire.",
+          "Promesse de paiement à une date → confirmer par écrit, patienter jusqu'à cette date.",
+          "Date promise non tenue → passer à la mise en demeure sans délai supplémentaire.",
+        ],
+      },
+      {
+        title: "3. La mise en demeure formelle : J+15",
+        paragraphs: [
+          "Sans réponse ou sans paiement à J+15, envoyez une mise en demeure de payer par lettre recommandée avec accusé de réception (LRAR). Ce courrier marque le début de la procédure formelle. Il doit mentionner le montant total dû (loyer + charges + éventuels arriérés), la date limite de régularisation (généralement 8 jours), et la mention que faute de règlement, vous vous réservez le droit d'engager une procédure judiciaire.",
+          "La mise en demeure n'est pas une obligation légale préalable à la procédure judiciaire, mais elle est fortement recommandée pour deux raisons : elle peut suffire à déclencher le paiement, et elle constitue une preuve irréfutable que le locataire a été informé de l'impayé avant toute procédure.",
+          "Parallèlement, informez le garant (caution solidaire) de la situation par LRAR. Si vous avez souscrit une GLI, déclarez l'impayé à l'assureur dès ce stade — la plupart des contrats imposent une déclaration dans un délai précis (souvent 30 à 45 jours après l'impayé).",
+        ],
+        bullets: [
+          "LRAR au locataire : montant dû, date limite, mention de procédure éventuelle.",
+          "Délai de régularisation : 8 jours (usage), sans obligation légale d'un délai minimum.",
+          "LRAR au garant (caution solidaire) simultanément.",
+          "GLI : déclarer l'impayé à l'assureur dans le délai contractuel (vérifier votre contrat).",
+          "Conserver l'accusé de réception du recommandé.",
+        ],
+        note: "Pour les baux d'habitation, la résiliation du bail pour impayé requiert une procédure judiciaire et une décision de justice. Vous ne pouvez pas changer la serrure, couper l'électricité ou l'eau, ni expulser vous-même le locataire — ces actes constituent un délit passible de poursuites pénales.",
+      },
+      {
+        title: "4. Activer la GLI ou le garant",
+        paragraphs: [
+          "Si vous avez souscrit une garantie loyers impayés (GLI), déclarez l'impayé à l'assureur dès le premier mois de retard complet. Le délai de déclaration est précisé dans votre contrat — le dépasser peut entraîner la déchéance de la garantie. L'assureur vous indiquera les pièces à fournir (bail, état des loyers, mise en demeure) et le délai de prise en charge.",
+          "Si vous avez opté pour une caution solidaire (garant personne physique), mettez-le en demeure de payer dès le premier impayé, par LRAR. La caution solidaire est immédiatement actionnable — vous n'avez pas à justifier d'une mise en demeure infructueuse du locataire au préalable (contrairement à la caution simple).",
+          "Si vous utilisez Visale (Action Logement), déclarez l'impayé sur le portail Visale. Action Logement prend en charge les loyers impayés dans les conditions prévues par la convention et engage ensuite le recouvrement auprès du locataire.",
+        ],
+        bullets: [
+          "GLI : déclarer dans le délai contractuel (souvent 30-45 jours), fournir bail + état des loyers + mise en demeure.",
+          "Caution solidaire : LRAR au garant simultanément à la mise en demeure du locataire.",
+          "Visale : déclaration sur le portail Action Logement, sans démarche judiciaire préalable.",
+          "Conserver toutes les pièces transmises à l'assureur ou à Action Logement.",
+        ],
+      },
+      {
+        title: "5. La procédure judiciaire : commandement de payer",
+        paragraphs: [
+          "Si la mise en demeure reste sans effet, la procédure judiciaire commence par un commandement de payer, délivré par un commissaire de justice (anciennement huissier) au locataire. Ce document officiel donne au locataire 2 mois pour régler l'intégralité de la dette (loyers + charges + frais). Ce délai peut être allongé par le juge si le locataire sollicite des délais de paiement.",
+          "Le commandement de payer est la première étape formelle vers la résiliation judiciaire du bail. Si la dette n'est pas réglée dans les 2 mois, vous pouvez saisir le tribunal judiciaire pour obtenir une ordonnance de résiliation du bail et, à terme, une autorisation d'expulsion. La procédure dure en moyenne 6 à 18 mois selon les juridictions.",
+          "Les frais de procédure (commissaire de justice, avocat si nécessaire) sont en principe mis à la charge du locataire défaillant par le juge, mais leur recouvrement effectif n'est pas garanti si le locataire est insolvable.",
+        ],
+        bullets: [
+          "Commandement de payer : délivré par commissaire de justice, délai 2 mois au locataire.",
+          "Après 2 mois sans paiement : saisine du tribunal judiciaire.",
+          "Jugement : résiliation du bail + titre exécutoire pour expulsion.",
+          "Expulsion : uniquement sur ordonnance judiciaire + concours de la force publique.",
+          "Délai moyen : 6 à 18 mois selon les juridictions (avec ou sans audience de conciliation).",
+          "Trêve hivernale (1er novembre - 31 mars) : expulsions impossibles sauf exceptions.",
+        ],
+        note: "Ne coupez jamais l'électricité, l'eau ou le gaz pour forcer le départ du locataire. Ces actes constituent une 'voie de fait' passible de 3 ans d'emprisonnement et 30 000 € d'amende (article 226-4-2 du code pénal).",
+      },
+      {
+        title: "6. Négocier un plan d'apurement",
+        paragraphs: [
+          "À n'importe quelle étape de la procédure, un locataire de bonne foi peut proposer un plan d'apurement : paiement de la dette par mensualités sur une période définie, en plus du loyer courant. Ce plan peut être accepté, mais formalisez-le impérativement par écrit (email signé ou avenant).",
+          "Si un plan d'apurement est conclu, vérifiez scrupuleusement chaque échéance. Le non-respect d'une seule mensualité doit déclencher une relance immédiate. Un plan d'apurement mal suivi peut vous faire perdre des mois supplémentaires.",
+          "En cas de jugement déjà prononcé, le locataire peut demander des délais de paiement au juge de l'exécution. Le juge peut accorder jusqu'à 36 mois de délais. Pendant ce délai, l'expulsion est suspendue mais le locataire doit payer son loyer courant et respecter les échéances de l'apurement.",
+        ],
+        bullets: [
+          "Plan d'apurement : formaliser par écrit (email signé ou avenant au bail).",
+          "Préciser les montants et dates de chaque versement.",
+          "Non-respect d'une mensualité → relance écrite immédiate.",
+          "Plan d'apurement + loyer courant : les deux doivent être honorés.",
+          "Délais accordés par le juge : jusqu'à 36 mois, suspension d'expulsion.",
+        ],
+      },
+      {
+        title: "7. Comment lokt vous aide",
+        paragraphs: [
+          "lokt signale automatiquement tout loyer non encaissé dès le lendemain de la date d'échéance. Vous recevez une alerte sur votre espace bailleur (et par email si configuré), sans avoir à vérifier manuellement chaque mois que le virement est arrivé.",
+          "L'historique des paiements de chaque locataire est centralisé dans lokt : vous voyez d'un coup d'œil les mois payés, les retards et les impayés. En cas de procédure, vous exportez l'état complet des loyers (montants, dates, manquants) en PDF en quelques secondes — le document type attendu par les assureurs GLI et les commissaires de justice.",
+          "Pour les bailleurs avec plusieurs logements, lokt consolide les alertes impayés dans un tableau de bord unique. Plus besoin de surveiller plusieurs comptes bancaires ou tableaux Excel : un seul écran suffit pour voir l'état de chaque logement.",
+        ],
+        bullets: [
+          "Alerte automatique de loyer non encaissé dès J+1 après l'échéance.",
+          "Historique des paiements par locataire, exportable en PDF pour la GLI ou le commissaire de justice.",
+          "Tableau de bord consolidé : état des paiements de tous les logements en un seul écran.",
+          "Archivage des échanges et mises en demeure dans le dossier locataire.",
+          "Rappel de trêve hivernale : alerte en octobre pour anticiper les procédures.",
+        ],
+      },
+    ],
+    checklist: [
+      "Date d'échéance du loyer vérifiée",
+      "Relance email amiable à J+5",
+      "Mise en demeure LRAR à J+15",
+      "Garant informé par LRAR simultanément",
+      "GLI déclarée dans le délai contractuel",
+      "Commandement de payer via commissaire de justice si pas de règlement à J+60",
+      "Plan d'apurement formalisé par écrit si accord amiable",
+      "Historique des paiements archivé",
+      "Trêve hivernale vérifiée avant toute procédure d'expulsion",
+    ],
+    sources: [
+      { label: "Service-Public : loyer impayé et procédure d'expulsion", href: "https://www.service-public.fr/particuliers/vosdroits/F1169" },
+      { label: "ANIL : impayés de loyer", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/impayes-de-loyer/" },
+      { label: "Action Logement : garantie Visale", href: "https://www.visale.fr" },
+    ],
+  },
+  // ── PRÉPARER : Fixer le loyer ─────────────────────────────────────────────
+  {
+    slug: "fixer-son-loyer",
+    category: "preparer",
+    title: "Fixer le loyer : zones tendues, encadrement et optimisation",
+    shortTitle: "Fixer le loyer",
+    description: "Comprendre l'encadrement des loyers, vérifier les loyers de référence, appliquer les règles de relocation et fixer un loyer attractif sans se sous-évaluer.",
+    updatedAt: "2026-07-08",
+    intro:
+      "Le loyer initial est libre en principe, mais de nombreuses règles viennent l'encadrer selon la localisation, la situation du logement et le type de bail. En zone d'encadrement (Paris, Lyon, Bordeaux, Lille, Montpellier et d'autres communes), un loyer supérieur au plafond expose le bailleur à une mise en conformité forcée et au remboursement des trop-perçus. En zone tendue, la relocation est soumise à des règles strictes. Ce guide vous aide à fixer un loyer légal, bien positionné et défendable.",
+    sections: [
+      {
+        title: "1. Loyer libre ou encadré : vérifier d'abord",
+        paragraphs: [
+          "En dehors des zones d'encadrement, le loyer initial est librement fixé par le bailleur. La seule contrainte légale est la décence du logement et le respect des règles de relocation en zone tendue. Dans ce cas, référez-vous au marché local pour estimer un loyer compétitif : sites d'annonces, observatoires locaux des loyers (OLL), données de votre ADIL.",
+          "Dans les communes soumises à l'encadrement des loyers, le loyer est plafonné par un loyer de référence majoré défini par arrêté préfectoral. Ce plafond varie selon le type de bien (vide ou meublé), le nombre de pièces, la période de construction et le quartier ou l'arrondissement. Dépasser ce plafond expose à une mise en conformité forcée, au remboursement du trop-perçu et potentiellement à une amende.",
+          "La liste des communes en encadrement des loyers évolue chaque année. En 2026, les villes principales concernées sont Paris (depuis 2019), Lille (depuis 2020), Lyon et Villeurbanne (depuis 2021), Bordeaux (depuis 2022), Montpellier (depuis 2022). D'autres communes ont rejoint ou vont rejoindre le dispositif — vérifiez la situation de votre commune avant toute mise en location.",
+        ],
+        bullets: [
+          "Communes en encadrement des loyers (2026) : Paris, Lille, Lyon, Villeurbanne, Bordeaux, Montpellier, et d'autres.",
+          "Loyer de référence majoré : plafond à ne pas dépasser.",
+          "Loyer de référence minoré : plancher en dessous duquel le locataire peut demander une baisse.",
+          "Vérification en ligne : via les portails officiels de chaque ville (Paris : encadrementdesloyers.appart.fr, autres : sites préfectoraux).",
+        ],
+      },
+      {
+        title: "2. Comprendre les loyers de référence",
+        paragraphs: [
+          "Les loyers de référence sont calculés par quartier, par type de logement (vide ou meublé), par nombre de pièces et par époque de construction. Ils sont exprimés en €/m² et révisés annuellement. Trois valeurs sont publiées : le loyer de référence (valeur médiane du marché), le loyer de référence majoré (plafond = loyer de référence × 1,2) et le loyer de référence minoré (plancher = loyer de référence × 0,7).",
+          "Pour vérifier si votre loyer est conforme, calculez votre loyer en €/m² (loyer hors charges ÷ surface habitable) et comparez-le au loyer de référence majoré de votre quartier pour les caractéristiques de votre logement. Si votre loyer en €/m² dépasse le loyer de référence majoré, vous devez le baisser.",
+          "Le complément de loyer est la seule exception légale au plafond. Il peut être ajouté si le logement présente des caractéristiques exceptionnelles par rapport aux logements comparables du quartier : vue sur un monument, terrasse privative, équipements haut de gamme. Le complément doit être mentionné dans le bail et son montant justifié — il peut être contesté par le locataire devant la commission de conciliation dans les 3 mois suivant la signature.",
+        ],
+        bullets: [
+          "Loyer de référence = médiane du marché local (par m², type de bien, époque, nombre de pièces).",
+          "Loyer de référence majoré = plafond légal (loyer de référence × 1,2).",
+          "Loyer de référence minoré = plancher (le locataire peut demander une baisse en dessous).",
+          "Complément de loyer : autorisé pour caractéristiques exceptionnelles, à justifier dans le bail.",
+          "Meublé vs vide : loyer de référence majoré meublé ≈ 10-15 % supérieur au vide.",
+        ],
+      },
+      {
+        title: "3. Les règles de relocation en zone tendue",
+        paragraphs: [
+          "En zone tendue (liste définie par décret, incluant environ 1 149 communes), le loyer à la relocation (changement de locataire) est plafonné par le loyer du précédent locataire, sauf exceptions. Cette règle s'applique indépendamment de l'encadrement des loyers et concerne toutes les communes de la liste.",
+          "Les exceptions permettant une augmentation à la relocation sont limitées : le logement est vacant depuis plus de 18 mois, des travaux d'amélioration représentant au moins 6 mois de loyer ont été effectués au cours des 6 derniers mois, le loyer est manifestement sous-évalué par rapport au marché (la sous-évaluation doit être documentée par des références comparables).",
+          "Si vous êtes en zone tendue ET en encadrement des loyers, les deux contraintes s'appliquent cumulativement : votre loyer doit respecter à la fois le loyer de référence majoré et le loyer du précédent locataire (le plus contraignant des deux s'impose).",
+        ],
+        bullets: [
+          "Zone tendue : ~1 149 communes (vérifier sur service-public.fr).",
+          "Principe : loyer de relocation ≤ loyer du précédent locataire.",
+          "Exception 1 : vacance > 18 mois.",
+          "Exception 2 : travaux ≥ 6 mois de loyer dans les 6 derniers mois.",
+          "Exception 3 : loyer manifestement sous-évalué (avec références documentées).",
+          "En encadrement + zone tendue : la contrainte la plus restrictive s'impose.",
+        ],
+        note: "Si vous ne connaissez pas le loyer du précédent locataire (achat du bien avec locataire sortant, oubli), l'ADIL de votre département peut vous conseiller sur la marche à suivre. L'absence de loyer de référence documenté ne vous exonère pas du plafonnement.",
+      },
+      {
+        title: "4. Fixer un loyer attractif sans se sous-évaluer",
+        paragraphs: [
+          "Un loyer trop élevé allonge la vacance locative et attire des dossiers en surdétente. Un loyer trop bas vous fait perdre de la rentabilité et peut être difficile à réviser rapidement. L'objectif est de vous positionner dans la fourchette haute du marché comparable, en respectant les plafonds légaux.",
+          "Pour un bien hors encadrement, analysez les annonces comparables (même secteur, même superficie, même type de bail, même état) sur Leboncoin, SeLoger et les observatoires locaux des loyers. Croisez 5 à 10 références récentes. Positionnez-vous à 95-105 % de la médiane observée selon l'état et les équipements de votre logement.",
+          "Un logement bien présenté (photos professionnelles, description claire, DPE A ou B) se loue plus vite et justifie un loyer dans la fourchette haute du marché. Un DPE F ou G peut au contraire forcer un positionnement plus bas pour trouver preneur, surtout si le loyer est gelé à la relocation.",
+        ],
+        bullets: [
+          "Analyser 5 à 10 références comparables récentes (même secteur, superficie, type de bail).",
+          "Positionner dans la fourchette haute si le logement est en bon état et bien présenté.",
+          "DPE A-B : argument pour un loyer en haut de fourchette.",
+          "DPE F-G : peut forcer un positionnement bas + loyer gelé à la relocation.",
+          "Vacance locative : coût d'un mois de vacance > économie réalisée sur 12 mois à un loyer trop élevé.",
+        ],
+      },
+      {
+        title: "5. Mentionner le loyer dans le bail et prévoir la révision",
+        paragraphs: [
+          "Le bail doit mentionner séparément : le montant du loyer hors charges, le montant des provisions sur charges (ou du forfait charges pour un meublé), le montant du dépôt de garantie, et si applicable, le montant du complément de loyer et sa justification.",
+          "Pour que la révision IRL soit possible chaque année, le bail doit comporter une clause de révision. Sans cette clause, le loyer est gelé pendant toute la durée du bail, même si l'IRL augmente de 5 %. La clause doit mentionner la période de référence IRL (trimestre) et la date anniversaire de révision.",
+          "En zone d'encadrement, le bail doit également mentionner le loyer du précédent locataire (en cas de relocation) et, si applicable, le montant du complément de loyer et les raisons qui le justifient. L'absence de ces mentions peut être invoquée par le locataire pour contester le loyer.",
+        ],
+        bullets: [
+          "Bail : loyer HC, provisions ou forfait charges, dépôt de garantie — séparément.",
+          "Clause de révision IRL obligatoire pour pouvoir augmenter chaque année.",
+          "Trimestre IRL de référence et date anniversaire à mentionner.",
+          "En encadrement : loyer de référence majoré applicable à mentionner dans le bail.",
+          "Complément de loyer : à justifier dans le bail si applicable.",
+          "Relocation en zone tendue : loyer du précédent locataire à mentionner.",
+        ],
+      },
+      {
+        title: "6. Comment lokt vous aide",
+        paragraphs: [
+          "Le simulateur de rendement locatif lokt vous permet de comparer différents scénarios de loyer : pour une adresse donnée, vous simulez l'impact sur le rendement brut et net selon le loyer mensuel, les charges et la fiscalité choisie (LMNP, revenus fonciers, SCI). Vous identifiez rapidement le loyer optimal entre rentabilité cible et attractivité marché.",
+          "L'espace bailleur lokt affiche pour chaque logement le loyer actuel, la date anniversaire de révision IRL et le nouveau loyer calculé. Vous suivez en un coup d'œil l'évolution du loyer dans le temps et ne ratez plus aucune révision.",
+          "Pour les bailleurs avec plusieurs biens, le tableau de bord lokt consolide les loyers de l'ensemble du parc : loyer actuel, dernier IRL appliqué, prochaine révision. Vous pouvez identifier d'un coup d'œil les logements dont le loyer n'a pas été révisé depuis 2 ans.",
+        ],
+        bullets: [
+          "Simulateur de rendement : impact du loyer sur la rentabilité brute et nette.",
+          "Rappel de révision IRL automatique à la date anniversaire de chaque bail.",
+          "Calcul du nouveau loyer IRL pré-rempli dans l'espace bailleur.",
+          "Tableau de bord parc : loyer actuel et date de dernière révision pour chaque logement.",
+          "Export du calcul de loyer révisé en PDF pour l'avenant au bail.",
+        ],
+      },
+    ],
+    checklist: [
+      "Commune vérifiée : encadrement des loyers applicable ou non",
+      "Zone tendue vérifiée : règles de relocation applicables ou non",
+      "Loyer de référence majoré consulté si encadrement",
+      "Loyer du précédent locataire vérifié si relocation en zone tendue",
+      "Références de marché collectées (5 à 10 annonces comparables)",
+      "Loyer positionné dans la fourchette légale et cohérent avec le marché",
+      "Bail : loyer HC, charges et dépôt mentionnés séparément",
+      "Clause de révision IRL et trimestre de référence inclus dans le bail",
+      "Complément de loyer justifié si applicable",
+    ],
+    sources: [
+      { label: "Service-Public : encadrement des loyers", href: "https://www.service-public.fr/particuliers/vosdroits/F1519" },
+      { label: "Service-Public : zones tendues (liste communes)", href: "https://www.service-public.fr/simulateur/calcul/zones-tendues" },
+      { label: "ANIL : fixer le loyer d'un logement", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/loyer/fixer-le-loyer/" },
+    ],
+  },
 ];
 
 export function getGuideBySlug(slug: string) {
