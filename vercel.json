@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/gsc-weekly-report",
+      "schedule": "0 8 * * 1"
+    },
+    {
       "path": "/api/cron/anonymize-leads",
       "schedule": "0 3 1 * *"
     },

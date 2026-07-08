@@ -1065,9 +1065,9 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
   {
     slug: "modele-lettre-conge-bailleur",
     title: "Modèle lettre de congé bailleur 2026 — Reprise, vente, motif légitime",
-    metaTitle: "Lettre de congé bailleur 2026 : modèle gratuit PDF — reprise, vente, motif légitime | lokt.fr",
+    metaTitle: "Lettre de congé bailleur 2026 : modèle PDF gratuit, prêt en 2 min | lokt.fr",
     description:
-      "Donnez congé à votre locataire en bonne et due forme : choisissez votre motif (reprise, vente, motif sérieux), le générateur crée la lettre conforme loi 1989 en PDF, prête à envoyer en recommandé.",
+      "Congé pour reprise, vente ou motif légitime : générez la lettre conforme à la loi du 6 juillet 1989 en 2 minutes. PDF prêt à envoyer en recommandé — sans risque d'erreur sur les délais de préavis.",
     eyebrow: "Congé bailleur",
     h1: "Lettre de congé bailleur : modèle 2026 conforme à la loi",
     intro:

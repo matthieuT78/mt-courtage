@@ -1,6 +1,6 @@
 ---
-title: "Gestion locative sans agence : mode d'emploi complet 2026"
-description: "Gérer son bien locatif sans agence, c'est possible et rentable. Voici la méthode complète : trouver un locataire, rédiger le bail, quittances, révision IRL, relances — sans intermédiaire."
+title: "Gestion locative sans agence 2026 : économisez 1 500 €/an — guide complet étape par étape"
+description: "Trouver un locataire, rédiger le bail, émettre les quittances, réviser le loyer à l'IRL : tout ce qu'il faut savoir pour gérer seul et économiser 1 500 à 2 000 €/an. 15 à 20 min par mois avec un bon outil."
 date: "2026-06-26"
 updatedAt: "2026-07-01"
 category: "Investissement locatif"

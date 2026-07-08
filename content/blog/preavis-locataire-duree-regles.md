@@ -1,6 +1,6 @@
 ---
-title: "Préavis locataire 2026 : 1 mois ou 3 mois selon la zone, calcul et lettre type"
-description: "3 mois en zone non tendue, 1 mois en zone tendue ou situation particulière : durées légales, comment décompter les jours, que faire si le locataire ne part pas. Lettre type incluse."
+title: "Préavis locataire 2026 : 1 ou 3 mois — calcul exact, cas particuliers et lettre type"
+description: "Quand le préavis est réduit à 1 mois (zone tendue, mutation, perte d'emploi, RSA…) et quand il reste 3 mois. Comment calculer la date de fin exacte, le loyer du dernier mois et que faire si le locataire ne libère pas les lieux."
 date: "2026-06-27"
 updatedAt: "2026-07-01"
 category: "Gestion locative"

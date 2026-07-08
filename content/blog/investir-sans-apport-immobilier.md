@@ -1,6 +1,6 @@
 ---
-title: "Investir dans l'immobilier sans (gros) apport : ce qui est vraiment possible en 2026"
-description: "Peut-on investir dans l'immobilier avec peu ou pas d'apport en 2026 ? Oui — à condition d'avoir le bon profil et la bonne stratégie. Voici ce que les banques regardent vraiment, et comment optimiser son dossier."
+title: "Investir dans l'immobilier sans apport en 2026 : possible ou mythe ?"
+description: "Certains profils obtiennent un financement à 100 % voire 110 % — mais les banques regardent autre chose que l'apport. Ce que vous devez vraiment avoir pour emprunter sans épargne et comment monter un dossier solide en 2026."
 date: "2026-06-26"
 category: "Investissement locatif"
 tags: ["investissement locatif", "apport", "financement immobilier", "crédit immobilier", "sans apport"]

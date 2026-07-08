@@ -1,6 +1,6 @@
 ---
-title: "Charges locatives récupérables : liste complète et régularisation 2026"
-description: "Quelles charges peut-on récupérer sur le locataire ? Liste complète issue du décret 87-713, charges non récupérables, régularisation annuelle et pièges à éviter."
+title: "Charges récupérables sur le locataire 2026 : liste décret 87-713 et régularisation"
+description: "Eau froide, chauffage collectif, ascenseur, espaces verts… La liste légale complète selon le décret 87-713. Régularisation annuelle obligatoire, calcul des provisions et délai de prescription de 3 ans."
 date: "2026-06-27"
 updatedAt: "2026-07-01"
 category: "Gestion locative"

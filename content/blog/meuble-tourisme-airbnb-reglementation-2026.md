@@ -1,6 +1,6 @@
 ---
-title: "Airbnb 2026 : abattement 30 %, 120 nuits, enregistrement — impact réel pour les bailleurs"
-description: "Loi Le Meur en pratique : l'abattement micro-BIC tombe à 30 % pour les meublés non classés, la limite des 120 nuits s'applique en résidence principale. Calculez l'impact sur votre fiscalité — cas pratiques et comparatif avant/après."
+title: "Location Airbnb 2026 : loi Le Meur, 120 nuits et abattement 30 % — ce qui change vraiment"
+description: "Loi Le Meur : abattement micro-BIC réduit à 30 % pour les meublés non classés, limite 120 nuits en résidence principale, enregistrement obligatoire. Ce que ça change concrètement pour votre fiscalité — comparatif avant/après et cas pratiques."
 date: "2026-07-01"
 updatedAt: "2026-07-01"
 category: "Investissement locatif"

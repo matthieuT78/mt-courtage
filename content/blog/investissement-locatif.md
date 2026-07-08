@@ -1,6 +1,6 @@
 ---
-title: "Investissement locatif : calculer la rentabilité et le cash-flow en 2026"
-description: "Guide complet pour réussir un investissement locatif rentable en 2026 : rendement brut, net et net-net, cash-flow réel, fiscalité LMNP et stratégies selon votre profil."
+title: "Investissement locatif 2026 : rendement, cash-flow et fiscalité — guide complet"
+description: "Rendement brut, net, net-net : comment calculer la vraie rentabilité d'un investissement locatif. Cash-flow réel, LMNP vs revenus fonciers, exemples chiffrés et erreurs classiques à éviter."
 date: "2026-06-26"
 category: "Investissement locatif"
 tags: ["investissement locatif", "rendement locatif", "cash-flow", "LMNP", "fiscalité immobilière"]

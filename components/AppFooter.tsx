@@ -90,6 +90,9 @@ export default function AppFooter() {
         <a href="mailto:contact@lokt.fr" className="underline hover:text-slate-700">
           Contact
         </a>
+        <a href="https://outils-immo.fr" target="_blank" rel="noopener" className="underline hover:text-slate-700">
+          outils-immo.fr
+        </a>
       </div>
       <div className="mt-4">
         <a
