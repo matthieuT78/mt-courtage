@@ -69,16 +69,8 @@ const VALEURS = [
 
 const PRIX = Array.from({ length: 70 }, (_, i) => 100000 + i * 10000);
 
-const GUIDE_SLUGS = [
-  "checklist-mise-en-location",
-  "dpe-diagnostics-location",
-  "lmnp-checklist-location-meublee",
-  "choisir-bail-vide-meuble-mobilite",
-  "arrivee-locataire-remise-cles",
-  "travaux-reparations-bailleur-locataire",
-  "depart-locataire-etat-des-lieux-sortie",
-  "depot-garantie-restitution-retenues",
-];
+// Auto-extraits depuis lib/guides.ts (slug: "...")
+const GUIDE_SLUGS = Array.from(guidesSource.matchAll(/^\s{2,4}slug:\s*"([^"]+)"/gm), (m) => m[1]);
 
 // Les pages /simulateur/... sont des pages techniques/programmatique noindex.
 // On les laisse crawlables si Google les découvre, mais on ne les pousse pas dans le sitemap.
