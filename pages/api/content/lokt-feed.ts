@@ -19,9 +19,12 @@ const PHASE_LABEL: Record<string, string> = {
 };
 
 export default function handler(_req: NextApiRequest, res: NextApiResponse<LoktFeedItem[]>) {
-  const posts = getAllPostsMeta()
+  // Index du jour UTC — change chaque jour à minuit
+  const dayIndex = Math.floor(Date.now() / 86_400_000);
+
+  // Pool complet trié par date (tous les articles, pas juste les récents)
+  const allPosts = getAllPostsMeta()
     .sort((a: any, b: any) => new Date(b.frontmatter.date || 0).getTime() - new Date(a.frontmatter.date || 0).getTime())
-    .slice(0, 5)
     .map((p: any) => ({
       type: "blog" as const,
       title: p.frontmatter.title,
@@ -31,9 +34,8 @@ export default function handler(_req: NextApiRequest, res: NextApiResponse<LoktF
       date: p.frontmatter.date || "",
     }));
 
-  const guides = [...GUIDES]
+  const allGuides = [...GUIDES]
     .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
-    .slice(0, 4)
     .map((g) => ({
       type: "guide" as const,
       title: g.shortTitle,
@@ -43,10 +45,19 @@ export default function handler(_req: NextApiRequest, res: NextApiResponse<LoktF
       date: g.updatedAt || "",
     }));
 
-  const feed = [...posts.slice(0, 4), ...guides.slice(0, 3)]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 6);
+  // Rotation quotidienne : 2 articles + 2 guides, décalés chaque jour
+  const pick = <T>(pool: T[], offset: number): [T, T] => [
+    pool[offset % pool.length],
+    pool[(offset + 1) % pool.length],
+  ];
 
-  res.setHeader("Cache-Control", "s-maxage=3600, stale-while-revalidate=600");
+  const feed = [
+    ...pick(allPosts, dayIndex * 2),
+    ...pick(allGuides, dayIndex * 2),
+  ];
+
+  // Cache expirant à minuit UTC pour que le changement soit instantané
+  const secondsUntilMidnight = 86_400 - (Math.floor(Date.now() / 1000) % 86_400);
+  res.setHeader("Cache-Control", `s-maxage=${secondsUntilMidnight}, stale-while-revalidate=60`);
   res.status(200).json(feed);
 }
