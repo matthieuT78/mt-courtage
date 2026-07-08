@@ -5,7 +5,7 @@ date: "2026-07-07"
 category: "Gestion locative"
 tags: ["garant locataire", "caution solidaire", "caution simple", "Visale", "bail location", "garantie loyer"]
 relatedCalculators: []
-coverImage: "/blog/garant-locataire-caution-2026.jpg"
+coverImage: "/blog/assurance-loyers-impayes.jpg"
 faq:
   - q: "Un garant doit-il gagner 3 fois le loyer ?"
     a: "Il n'existe pas de règle légale fixant un ratio exact. Dans la pratique, la plupart des bailleurs et agences exigent des ressources nettes mensuelles représentant au moins 3 à 4 fois le loyer charges comprises. Une garantie Visale ou une caution commerciale peut se substituer à une personne physique sans ressources suffisantes."
