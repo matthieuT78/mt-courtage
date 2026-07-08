@@ -2208,42 +2208,55 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       {activeRecurringTx.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="border-b border-slate-200 px-4 py-3">
-            <p className="text-sm font-semibold text-slate-900">Charges récurrentes actives</p>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Ces lignes sont automatiquement répercutées dans le grand livre. Arrêtez-en une si le montant change.
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Abonnements &amp; charges récurrentes</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Générées automatiquement chaque période. Arrêtez-en une dès que le montant évolue.
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                {activeRecurringTx.length}
+              </span>
+            </div>
           </div>
           <div className="divide-y divide-slate-100">
             {activeRecurringTx.map((t) => {
-              const propertyLabel = t.property_id ? (propertyById?.get(t.property_id)?.label || propertyById?.get(t.property_id)?.address_line1 || "Bien") : "Tous biens";
-              const freqLabel = t.recurrence_frequency === "quarterly" ? "Trimestrielle" : t.recurrence_frequency === "yearly" ? "Annuelle" : "Mensuelle";
+              const prop = t.property_id ? propertyById?.get(t.property_id) : null;
+              const propertyLabel = prop?.label || prop?.address_line1 || (t.property_id ? "Bien" : "Tous biens");
+              const freqLabel = t.recurrence_frequency === "quarterly" ? "/ trimestre" : t.recurrence_frequency === "yearly" ? "/ an" : "/ mois";
               const since = t.recurrence_since || t.occurred_at;
               const sinceFormatted = since ? new Date(since).toLocaleDateString("fr-FR", { month: "short", year: "numeric" }) : "—";
+              const displayLabel = t.label || categoryLabel(t.category);
               const isConfirming = confirmStopRecurId === t.id;
               return (
-                <div key={t.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+                <div key={t.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3.5">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${t.direction === "out" ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>
-                      {t.direction === "out" ? "−" : "+"}
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.68rem] font-bold tracking-wide ${t.direction === "out" ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>
+                      {t.direction === "out" ? "Dépense" : "Recette"}
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-900">{t.label || t.category}</p>
-                      <p className="text-xs text-slate-500">
-                        {propertyLabel} · <span className="font-medium text-slate-700">{formatEuro(t.amount)}</span> · {freqLabel} · depuis {sinceFormatted}
-                      </p>
+                      <p className="truncate text-sm font-semibold text-slate-900">{displayLabel}</p>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500">
+                        <span className="font-medium text-slate-700">{formatEuro(t.amount)}{freqLabel}</span>
+                        <span className="text-slate-300">·</span>
+                        <span>{propertyLabel}</span>
+                        <span className="text-slate-300">·</span>
+                        <span>depuis {sinceFormatted}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {isConfirming ? (
                       <span className="inline-flex items-center gap-2 text-xs">
-                        <span className="text-slate-500">Arrêter cette récurrente ?</span>
+                        <span className="text-slate-500">Confirmer l'arrêt ?</span>
                         <button type="button" disabled={stopBusy} onClick={() => { setConfirmStopRecurId(null); stopRecurring(t); }}
-                          className="font-semibold text-red-600 hover:text-red-800 disabled:opacity-40">Oui</button>
-                        <button type="button" onClick={() => setConfirmStopRecurId(null)} className="text-slate-400 hover:text-slate-600">Non</button>
+                          className="font-semibold text-red-600 hover:text-red-800 disabled:opacity-40">Oui, arrêter</button>
+                        <button type="button" onClick={() => setConfirmStopRecurId(null)} className="text-slate-400 hover:text-slate-600">Annuler</button>
                       </span>
                     ) : (
                       <button type="button" disabled={stopBusy} onClick={() => setConfirmStopRecurId(t.id)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-40">
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-40">
                         Arrêter
                       </button>
                     )}
@@ -2252,8 +2265,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               );
             })}
           </div>
-          <p className="border-t border-slate-100 px-4 py-2.5 text-[0.72rem] text-slate-500">
-            Pour modifier le montant : arrêtez la récurrente puis créez-en une nouvelle via le bouton <span className="font-semibold">+ Écriture</span>.
+          <p className="border-t border-slate-100 px-4 py-2.5 text-[0.72rem] text-slate-400">
+            Pour changer le montant : arrêtez la ligne concernée, puis recréez-en une via <span className="font-semibold text-slate-500">+ Écriture</span>.
           </p>
         </div>
       )}
