@@ -100,7 +100,7 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
             {/* Brand */}
             <Link href="/" className="flex items-center gap-3">
               <img
-                src="/LOKT_LOGO.jpg"
+                src="/lokt-logo-small.jpg"
                 alt="lokt.fr"
                 className="h-7 w-auto object-contain sm:h-10 md:h-11"
               />
@@ -337,7 +337,7 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
         <div className="flex items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-3">
             <img
-              src="/LOKT_LOGO.jpg"
+              src="/lokt-logo-small.jpg"
               alt="lokt.fr"
               className="h-10 md:h-11 w-auto object-contain"
             />

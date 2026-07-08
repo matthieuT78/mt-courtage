@@ -159,11 +159,11 @@ function SeoHead() {
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:url" content={pageUrl} />
-      <meta property="og:image" content={`${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`} />
+      <meta property="og:image" content={`${siteUrl}/espace-bailleur-lokt.png`} />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description} />
-      <meta name="twitter:image" content={`${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`} />
+      <meta name="twitter:image" content={`${siteUrl}/espace-bailleur-lokt.png`} />
       {jsonLdItems.map((schema, index) => (
         <script key={index} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
       ))}

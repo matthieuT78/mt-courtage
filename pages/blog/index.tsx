@@ -40,7 +40,7 @@ export default function BlogIndex({ posts }: any) {
   const title = "Blog immobilier 2026 : guides investissement, gestion locative et crédit | lokt.fr";
   const description =
     "Guides pratiques pour investir, gérer et optimiser vos biens en 2026 : rendement locatif, LMNP, fiscalité, prêt relais, taux d'endettement — avec simulateurs intégrés.";
-  const ogImage = `${SITE_URL}/logo-transparent-Lokt.jpg`;
+  const ogImage = `${SITE_URL}/lokt-logo-transparent.jpg`;
 
   const jsonLd = [
     {

@@ -190,7 +190,7 @@ export function buildPlusValueEmailHtml(computed: any) {
   const out = pickPVResult(computed);
 
   const siteUrl = "https://lokt.fr";
-  const logoUrl = `${siteUrl}/LOKT_LOGO.jpg`;
+  const logoUrl = `${siteUrl}/lokt-logo-small.jpg`;
   const ctaUrl = `${siteUrl}/plus-value-vente-immobiliere`;
 
   const fmtSmall = (label: string, value: string) => `

@@ -78,10 +78,10 @@ function fmtDateTimeFR(iso?: string | null) {
 function readLogoDataUrlIfExists() {
   const candidates = [
     path.join(process.cwd(), "public", "minilogo.png"),
-    path.join(process.cwd(), "public", "LOKT_LOGO.jpg"),
-    path.join(process.cwd(), "public", "logo-transparent-Lokt.jpg"),
+    path.join(process.cwd(), "public", "lokt-logo-small.jpg"),
+    path.join(process.cwd(), "public", "lokt-logo-transparent.jpg"),
     path.join(process.cwd(), "public", "lokt-logo.jpg"),
-    path.join(process.cwd(), "public", "brand", "LOKT_LOGO.jpg"),
+    path.join(process.cwd(), "public", "brand", "lokt-logo-small.jpg"),
     path.join(process.cwd(), "public", "lokt-logo.png"),
   ];
   const p = candidates.find((x) => fs.existsSync(x));

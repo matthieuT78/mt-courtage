@@ -19,7 +19,7 @@ import AppFooter from "../components/AppFooter";
 
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/gestion-locative-lmnp`;
-const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
+const ogImage = `${siteUrl}/espace-bailleur-lokt.png`;
 const title = "Gestion locative LMNP gratuite 2026 : bail meublé, quittances PDF, inventaire | lokt.fr";
 const description =
   "Gérez votre LMNP sans tableur ni agence : bail meublé Cerfa, inventaire du mobilier, quittances PDF en 1 clic, suivi des loyers et finance propriétaire. Gratuit pour 1 logement, sans carte bancaire.";

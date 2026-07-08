@@ -19,7 +19,7 @@ import { useScrollReveal } from "../hooks/useScrollReveal";
 
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/outil-gestion-locative`;
-const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
+const ogImage = `${siteUrl}/espace-bailleur-lokt.png`;
 const title = "Outil de gestion locative gratuit pour propriétaire bailleur 2026 | lokt.fr";
 const description =
   "Gérez vos baux, loyers et locataires sans agence ni tableur. lokt.fr automatise les quittances, les relances et la révision IRL — gratuit pour 1 logement, prêt en 10 minutes.";

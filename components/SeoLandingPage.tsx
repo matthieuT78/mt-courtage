@@ -14,7 +14,7 @@ import AppHeader from "./AppHeader";
 import type { SeoLandingPage as SeoLandingPageData } from "../lib/seoLandingPages";
 
 const siteUrl = "https://lokt.fr";
-const ogImage = `${siteUrl}/ESPACEBAILLEURSCREENSHOT.png`;
+const ogImage = `${siteUrl}/espace-bailleur-lokt.png`;
 const organization = {
   "@type": "Organization",
   name: "lokt.fr",

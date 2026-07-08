@@ -207,7 +207,7 @@ export default function GestionLocativePage() {
         <meta property="og:description" content={description} />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content={`${SITE_URL}/logo-transparent-Lokt.jpg`} />
+        <meta property="og:image" content={`${SITE_URL}/lokt-logo-transparent.jpg`} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -266,7 +266,7 @@ export default function GestionLocativePage() {
             <div className="pointer-events-none absolute -inset-x-20 bottom-0 h-32 bg-gradient-to-t from-[#f6f9fc] to-transparent" />
             <div className="overflow-hidden rounded-t-[1.5rem] shadow-2xl shadow-black/40 ring-1 ring-white/10 sm:rounded-t-[2rem]">
               <img
-                src="/1A0A4109-195A-4848-B12A-5B5A6228D9DA.png"
+                src="/cockpit-bailleur-lokt.png"
                 alt="Tableau de bord gestion locative lokt.fr"
                 className="block h-auto w-full"
                 loading="eager"

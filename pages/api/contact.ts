@@ -93,11 +93,11 @@ function labelFromCategory(category: Cat) {
 
 /**
  * Accusé de réception "waou" (logo + header + look premium)
- * ⚠️ Assure-toi que /public/LOKT_LOGO.jpg existe bien.
+ * ⚠️ Assure-toi que /public/lokt-logo-small.jpg existe bien.
  */
 function buildAckEmail() {
   const siteUrl = "https://lokt.fr";
-  const logoUrl = `${siteUrl}/LOKT_LOGO.jpg`;
+  const logoUrl = `${siteUrl}/lokt-logo-small.jpg`;
 
   const subject = "Message bien reçu — lokt.fr";
 

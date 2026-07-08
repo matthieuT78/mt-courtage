@@ -118,7 +118,7 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
         <meta property="og:title" content={metaTitle} />
         <meta property="og:description" content={metaDesc} />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:image" content={`${SITE_URL}/logo-transparent-Lokt.jpg`} />
+        <meta property="og:image" content={`${SITE_URL}/lokt-logo-transparent.jpg`} />
         {schemas.map((s, i) => (
           <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(s) }} />
         ))}

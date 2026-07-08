@@ -166,7 +166,7 @@ export function buildPretRelaisEmailHtml(computedAny: any) {
   const { resume, bankability, texteDetail } = pickOutput(computedAny);
 
   const siteUrl = "https://lokt.fr";
-  const logoUrl = `${siteUrl}/LOKT_LOGO.jpg`;
+  const logoUrl = `${siteUrl}/lokt-logo-small.jpg`;
   const ctaUrl = `${siteUrl}/pret-relais`;
 
   const fmtSmall = (label: string, value: string) => `

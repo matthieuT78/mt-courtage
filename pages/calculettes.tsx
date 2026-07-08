@@ -63,7 +63,7 @@ const faq = [
     a: "Le rendement brut rapporte les loyers annuels au coût total d'acquisition. Le rendement net soustrait les charges réelles (taxe foncière, copropriété, assurance, frais de gestion). En pratique, l'écart est de 1,5 à 2 points. C'est le rendement net — avant remboursement du crédit — qui permet de comparer objectivement deux biens.",
   },
 ];
-const ogImage = `${siteUrl}/screenCALCULETTE.png`;
+const ogImage = `${siteUrl}/simulateurs-immobiliers-lokt.png`;
 const title = "Calculettes immobilières gratuites 2026 | Capacité d’emprunt, rentabilité locative, prêt relais | lokt.fr";
 const description =
   "6 simulateurs immobiliers gratuits : capacité d’emprunt, rentabilité locative (rendement net + cash-flow), prêt relais, plus-value et arbitrage acheter/louer. Résultats immédiats, sans inscription.";

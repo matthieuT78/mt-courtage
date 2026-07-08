@@ -96,7 +96,7 @@ export function buildCapaciteEmailHtml(computed: ComputeAllResult) {
   const b = computed.assessment;
 
   const siteUrl = "https://lokt.fr";
-  const logoUrl = `${siteUrl}/LOKT_LOGO.jpg`;
+  const logoUrl = `${siteUrl}/lokt-logo-small.jpg`;
   const ctaUrl = `${siteUrl}/capacite`;
 
   const fmtSmall = (label: string, value: string) => `

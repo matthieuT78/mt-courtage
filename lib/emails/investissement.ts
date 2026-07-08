@@ -446,7 +446,7 @@ export function buildInvestissementEmailHtml(computed: any) {
   const k = extractKpis(computed || {});
 
   const siteUrl = "https://lokt.fr";
-  const logoUrl = `${siteUrl}/LOKT_LOGO.jpg`;
+  const logoUrl = `${siteUrl}/lokt-logo-small.jpg`;
   const ctaUrl = `${siteUrl}/investissement`;
 
   // EXACTEMENT le même "bloc KPI" que capacité

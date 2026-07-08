@@ -139,7 +139,7 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
     "Guide immobilier lokt.fr : explications simples + simulateurs pour emprunter, investir et optimiser vos projets.";
   const ogImage = frontmatter.coverImage
     ? `${SITE_URL}${frontmatter.coverImage}`
-    : `${SITE_URL}/logo-transparent-Lokt.jpg`;
+    : `${SITE_URL}/lokt-logo-transparent.jpg`;
 
   const calculatorKeys = frontmatter.relatedCalculators?.length
     ? frontmatter.relatedCalculators
@@ -155,7 +155,7 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
       headline: frontmatter.title || "Article lokt.fr",
       description,
       url: pageUrl,
-      image: frontmatter.coverImage ? `${SITE_URL}${frontmatter.coverImage}` : `${SITE_URL}/logo-transparent-Lokt.jpg`,
+      image: frontmatter.coverImage ? `${SITE_URL}${frontmatter.coverImage}` : `${SITE_URL}/lokt-logo-transparent.jpg`,
       inLanguage: "fr-FR",
       datePublished: frontmatter.date || undefined,
       dateModified: frontmatter.updatedAt || frontmatter.date || undefined,
