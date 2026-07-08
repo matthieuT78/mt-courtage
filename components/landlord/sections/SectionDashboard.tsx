@@ -835,7 +835,7 @@ export function SectionDashboard({
           `${onboarding.doneCount}/${onboarding.steps.length} étapes terminées`,
           `Prochaine étape : ${onboarding.next.label}`,
         ],
-        target: onboarding.next.key === "profil" ? undefined : onboarding.next.key as LandlordSectionKey,
+        target: onboarding.next.key === "profil" ? "parametres" as LandlordSectionKey : onboarding.next.key as LandlordSectionKey,
         cta: onboarding.next.label,
       });
     }
