@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireApiUser } from "../../../lib/apiAuth";
 import { removeTrackedPartialPaymentTransactions } from "../../../lib/rentPaymentFinance";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { invalidateStorageCache } from "../../../lib/storageQuota";
 
 type Json = { ok: boolean; error?: string; receipt_id?: string; payment_id?: string | null; deleted_pdf?: boolean };
 
@@ -95,6 +96,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (parsedPdf) {
       const remove = await supabaseAdmin.storage.from(parsedPdf.bucket).remove([parsedPdf.path]);
       if (remove.error) return res.status(500).json({ ok: false, error: `Suppression PDF échouée: ${remove.error.message}` });
+      invalidateStorageCache(String(auth.userId));
       deletedPdf = true;
     }
 

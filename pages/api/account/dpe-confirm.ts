@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireApiUser } from "../../../lib/apiAuth";
-import { getUserStorageUsage } from "../../../lib/storageQuota";
+import { getUserStorageUsage, invalidateStorageCache } from "../../../lib/storageQuota";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -25,6 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       user_id: auth.userId, property_id: propertyId, storage_bucket: bucket, storage_path: path, file_name: fileName, size_bytes: bytes,
     }).select("*").single();
     if (error) throw error;
+    invalidateStorageCache(auth.userId);
     return res.status(200).json({ ok: true, dpe: data });
   } catch (error: any) {
     return res.status(500).json({ error: error?.message || "Enregistrement impossible." });

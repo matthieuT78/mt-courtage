@@ -3,6 +3,7 @@ import PDFDocument from "pdfkit";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { contractPdfPath, LEASE_CONTRACT_BUCKET, leaseContractKindLabels } from "../../../lib/leaseContract";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { invalidateStorageCache } from "../../../lib/storageQuota";
 
 const text = (value: unknown, fallback = "Non renseigné") => String(value ?? "").trim() || fallback;
 const euro = (value: unknown) => Number(value || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
@@ -221,6 +222,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const path = contractPdfPath(String(userId), document.lease_id, document.id);
     const { error: uploadError } = await supabaseAdmin.storage.from(LEASE_CONTRACT_BUCKET).upload(path, pdf, { contentType: "application/pdf", upsert: true });
     if (uploadError) throw uploadError;
+    invalidateStorageCache(String(userId));
     const pdfUrl = `${LEASE_CONTRACT_BUCKET}:${path}`;
     const { data, error } = await supabaseAdmin.from("lease_contract_documents").update({ pdf_url: pdfUrl, status: "ready", generated_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", document.id).select("*").single();
     if (error) throw error;

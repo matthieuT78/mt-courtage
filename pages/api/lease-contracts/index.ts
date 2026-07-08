@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { isLeaseContractKind } from "../../../lib/leaseContract";
-import { getUserStorageUsage } from "../../../lib/storageQuota";
+import { getUserStorageUsage, invalidateStorageCache } from "../../../lib/storageQuota";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 async function loadContext(userId: string, leaseId: string) {
@@ -75,6 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!context.document?.id) return res.status(400).json({ error: "Document introuvable." });
       const path = `${userId}/${leaseId}/${context.document.id}.external.pdf`;
       await supabaseAdmin.storage.from("lease-contract-pdfs").remove([path]);
+      invalidateStorageCache(String(userId));
       const { data, error } = await supabaseAdmin
         .from("lease_contract_documents")
         .update({

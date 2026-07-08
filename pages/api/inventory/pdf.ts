@@ -5,6 +5,7 @@ import path from "path";
 import chromium from "@sparticuz/chromium";
 import puppeteerCore from "puppeteer-core";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { invalidateStorageCache } from "../../../lib/storageQuota";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 
 type Json = Record<string, any>;
@@ -1089,6 +1090,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       upsert: true,
     });
     if (up.error) return res.status(500).json({ error: `Upload PDF échoué: ${up.error.message}` });
+    invalidateStorageCache(String(userId));
 
     const pdfUrl = `inventory-pdfs:${storagePath}`;
 
