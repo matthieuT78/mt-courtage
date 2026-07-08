@@ -541,6 +541,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [confirmDeleteTxId, setConfirmDeleteTxId] = useState<string | null>(null);
+  const [confirmStopRecurId, setConfirmStopRecurId] = useState<string | null>(null);
+  const [stopBusy, setStopBusy] = useState(false);
   const [txWizardOpen, setTxWizardOpen] = useState(false);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
@@ -594,6 +596,14 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       map.set(pid, list);
     }
     return map;
+  }, [tx]);
+
+  // Récurrentes actives : parents dont la date de fin est absente ou future
+  const activeRecurringTx = useMemo(() => {
+    const today = toISODate(new Date());
+    return tx
+      .filter((t) => t.is_recurring && (!t.recurrence_end_date || t.recurrence_end_date > today))
+      .sort((a, b) => (a.property_id || "").localeCompare(b.property_id || "") || (a.recurrence_since || a.occurred_at).localeCompare(b.recurrence_since || b.occurred_at));
   }, [tx]);
 
   const monthlyRecurringByProperty = useMemo(() => {
@@ -1372,6 +1382,38 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       setErr(e?.message || "Erreur suppression.");
     } finally {
       setDeleteBusy(false);
+    }
+  };
+
+  // ========= Stopper une charge récurrente =========
+  const stopRecurring = async (parentTx: Transaction) => {
+    if (!supabase || !userId) return;
+    setStopBusy(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const today = toISODate(new Date());
+      const { error: upErr } = await supabase
+        .from("transactions")
+        .update({ recurrence_end_date: today, updated_at: new Date().toISOString() })
+        .eq("id", parentTx.id)
+        .eq("user_id", userId);
+      if (upErr) throw upErr;
+      // Supprimer les instances futures non encore échues
+      const { error: delErr } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("recurrence_parent_id", parentTx.id)
+        .eq("user_id", userId)
+        .gt("occurred_at", today);
+      if (delErr) throw delErr;
+      setOk("Récurrente arrêtée ✅");
+      await loadFinance();
+      await onRefresh?.();
+    } catch (e: any) {
+      setErr(e?.message || "Erreur lors de l'arrêt de la récurrente.");
+    } finally {
+      setStopBusy(false);
     }
   };
 
@@ -2161,6 +2203,60 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           Les écritures sans boutons (loyers auto, cautions) sont protégées. Pour annuler un loyer confirmé par erreur : <span className="font-semibold">Quittances → sélectionner le mois → Annuler paiement</span>. Cela réinitialise le paiement et retire l'écriture ici.
         </p>
       </div>
+
+      {/* Charges récurrentes actives */}
+      {activeRecurringTx.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-sm font-semibold text-slate-900">Charges récurrentes actives</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Ces lignes sont automatiquement répercutées dans le grand livre. Arrêtez-en une si le montant change.
+            </p>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {activeRecurringTx.map((t) => {
+              const propertyLabel = t.property_id ? (propertyById?.get(t.property_id)?.label || propertyById?.get(t.property_id)?.address_line1 || "Bien") : "Tous biens";
+              const freqLabel = t.recurrence_frequency === "quarterly" ? "Trimestrielle" : t.recurrence_frequency === "yearly" ? "Annuelle" : "Mensuelle";
+              const since = t.recurrence_since || t.occurred_at;
+              const sinceFormatted = since ? new Date(since).toLocaleDateString("fr-FR", { month: "short", year: "numeric" }) : "—";
+              const isConfirming = confirmStopRecurId === t.id;
+              return (
+                <div key={t.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${t.direction === "out" ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-700"}`}>
+                      {t.direction === "out" ? "−" : "+"}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">{t.label || t.category}</p>
+                      <p className="text-xs text-slate-500">
+                        {propertyLabel} · <span className="font-medium text-slate-700">{formatEuro(t.amount)}</span> · {freqLabel} · depuis {sinceFormatted}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isConfirming ? (
+                      <span className="inline-flex items-center gap-2 text-xs">
+                        <span className="text-slate-500">Arrêter cette récurrente ?</span>
+                        <button type="button" disabled={stopBusy} onClick={() => { setConfirmStopRecurId(null); stopRecurring(t); }}
+                          className="font-semibold text-red-600 hover:text-red-800 disabled:opacity-40">Oui</button>
+                        <button type="button" onClick={() => setConfirmStopRecurId(null)} className="text-slate-400 hover:text-slate-600">Non</button>
+                      </span>
+                    ) : (
+                      <button type="button" disabled={stopBusy} onClick={() => setConfirmStopRecurId(t.id)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-40">
+                        Arrêter
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="border-t border-slate-100 px-4 py-2.5 text-[0.72rem] text-slate-500">
+            Pour modifier le montant : arrêtez la récurrente puis créez-en une nouvelle via le bouton <span className="font-semibold">+ Écriture</span>.
+          </p>
+        </div>
+      )}
 
       {/* Paramètres financiers par bien */}
       <div id="finance-pilotage" className={`overflow-hidden rounded-2xl border bg-white transition-shadow duration-500 ${highlightFinanceConfig ? "border-red-400 ring-2 ring-red-400 ring-offset-2" : "border-slate-200"}`}>
