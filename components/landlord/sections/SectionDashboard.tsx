@@ -333,7 +333,7 @@ export function SectionDashboard({
   const [alertSnoozes, setAlertSnoozes] = useState<AlertSnoozeState>({});
   const [openAlertMenuId, setOpenAlertMenuId] = useState<string | null>(null);
   const [scoreHovered, setScoreHovered] = useState(false);
-  const [news, setNews] = useState<{ title: string; url: string; image: string | null; source: string; publishedAt: string }[]>([]);
+  const [news, setNews] = useState<import("../../../pages/api/content/lokt-feed").LoktFeedItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [weatherAlerts, setWeatherAlerts] = useState<import("../../../pages/api/weather/alerts").WeatherAlert[]>([]);
   const [weatherLoaded, setWeatherLoaded] = useState(false);
@@ -357,7 +357,7 @@ export function SectionDashboard({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/news/immobilier")
+    fetch("/api/content/lokt-feed")
       .then((r) => r.json())
       .then((data) => { if (!cancelled) setNews(Array.isArray(data) ? data : []); })
       .catch(() => {})
@@ -1599,76 +1599,71 @@ export function SectionDashboard({
             ))}
           </div>
 
-          {/* ── Actu Immobilier (col 2, row 2) ─────────────────── */}
+          {/* ── Ressources lokt (col 2, row 2) ─────────────────── */}
           <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:col-start-2 lg:row-start-2">
             {/* Header */}
             <div className="flex items-center justify-between px-4 pb-2 pt-3.5">
               <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-orange-400 text-sm shadow-sm">📰</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#635bff] to-[#00b4d8] text-sm shadow-sm">📚</span>
                 <div>
-                  <p className="text-[0.72rem] font-bold text-slate-900">Actu Immobilier</p>
-                  <p className="text-[0.6rem] text-slate-400 leading-tight">Mis à jour toutes les 15 min</p>
+                  <p className="text-[0.72rem] font-bold text-slate-900">Ressources lokt</p>
+                  <p className="text-[0.6rem] text-slate-400 leading-tight">Articles & guides pour bailleurs</p>
                 </div>
               </div>
-              <span className={`h-2 w-2 rounded-full ${newsLoading ? "bg-amber-400 animate-pulse" : news.length > 0 ? "bg-emerald-400" : "bg-slate-200"}`} title={newsLoading ? "Chargement…" : "Live"} />
+              <a href="/blog" target="_blank" rel="noopener noreferrer"
+                className="text-[0.6rem] font-semibold text-[#635bff] hover:underline">
+                Tout voir →
+              </a>
             </div>
 
-            {/* Skeleton loading */}
+            {/* Skeleton */}
             {newsLoading && (
               <div className="space-y-px px-3 pb-3">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-2xl px-1 py-2.5">
-                    <div className="h-14 w-14 shrink-0 animate-pulse rounded-2xl bg-slate-100" />
-                    <div className="flex-1 space-y-2">
+                  <div key={i} className="flex items-start gap-3 rounded-xl px-1 py-2.5">
+                    <div className="mt-0.5 h-4 w-10 shrink-0 animate-pulse rounded-full bg-slate-100" />
+                    <div className="flex-1 space-y-1.5">
                       <div className="h-3 animate-pulse rounded-full bg-slate-100" />
-                      <div className="h-3 w-3/4 animate-pulse rounded-full bg-slate-100" />
-                      <div className="h-2 w-1/3 animate-pulse rounded-full bg-slate-100" />
+                      <div className="h-3 w-4/5 animate-pulse rounded-full bg-slate-100" />
                     </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Articles */}
+            {/* Feed */}
             {!newsLoading && news.length > 0 && (
-              <div className="space-y-px px-3 pb-3">
-                {news.slice(0, 5).map((item, i) => {
-                  const ms = Date.now() - new Date(item.publishedAt).getTime();
-                  const h = Math.floor(ms / 3_600_000);
-                  const age = h < 1 ? "À l'instant" : h < 24 ? `${h}h` : `${Math.floor(h / 24)}j`;
+              <div className="divide-y divide-slate-100 px-3 pb-3">
+                {news.map((item, i) => {
+                  const isBlog = item.type === "blog";
                   return (
                     <a key={item.url + i} href={item.url} target="_blank" rel="noopener noreferrer"
-                      className="group flex items-start gap-3 rounded-2xl px-1 py-2.5 transition hover:bg-slate-50 active:bg-slate-100">
-                      {/* Thumbnail */}
-                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-slate-100 shadow-sm">
-                        {item.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={item.image} alt="" className="h-full w-full object-cover" loading="lazy"
-                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-indigo-100 to-sky-100 text-xl">🏠</div>
-                        )}
-                      </div>
+                      className="group flex items-start gap-2.5 py-2.5 transition hover:opacity-80">
+                      {/* Badge type */}
+                      <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide ${
+                        isBlog
+                          ? "bg-[#635bff]/10 text-[#635bff]"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}>
+                        {isBlog ? "Article" : "Guide"}
+                      </span>
                       {/* Text */}
-                      <div className="min-w-0 flex-1 pt-0.5">
-                        <p className="line-clamp-2 text-[0.75rem] font-semibold leading-snug text-slate-900 group-hover:text-indigo-700">
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-[0.73rem] font-semibold leading-snug text-slate-900 group-hover:text-[#635bff]">
                           {item.title}
                         </p>
-                        <p className="mt-1.5 text-[0.62rem] text-slate-400">
-                          <span className="font-medium text-slate-500">{item.source}</span>
-                          {item.publishedAt ? <> · {age}</> : null}
-                        </p>
+                        <p className="mt-0.5 text-[0.62rem] text-slate-400">{item.category}</p>
                       </div>
-                      <ArrowTopRightOnSquareIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-200 transition group-hover:text-indigo-400" aria-hidden="true" />
+                      <ArrowTopRightOnSquareIcon className="mt-0.5 h-3 w-3 shrink-0 text-slate-200 transition group-hover:text-[#635bff]" aria-hidden="true" />
                     </a>
                   );
                 })}
               </div>
             )}
 
-            {/* Empty fallback */}
+            {/* Empty */}
             {!newsLoading && news.length === 0 && (
-              <p className="px-4 pb-4 text-xs text-slate-400">Aucun article disponible pour le moment.</p>
+              <p className="px-4 pb-4 text-xs text-slate-400">Aucun contenu disponible.</p>
             )}
           </section>
 
