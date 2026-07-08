@@ -821,6 +821,7 @@ export function SectionDashboard({
       desc: string;
       details?: string[];
       target?: LandlordSectionKey;
+      onClick?: () => void;
       cta?: string;
       snoozable?: boolean;
     }> = [];
@@ -835,7 +836,8 @@ export function SectionDashboard({
           `${onboarding.doneCount}/${onboarding.steps.length} étapes terminées`,
           `Prochaine étape : ${onboarding.next.label}`,
         ],
-        target: onboarding.next.key === "profil" ? "parametres" as LandlordSectionKey : onboarding.next.key as LandlordSectionKey,
+        target: onboarding.next.key === "profil" ? undefined : onboarding.next.key as LandlordSectionKey,
+        onClick: onboarding.next.key === "profil" ? () => router.push("/mon-compte") : undefined,
         cta: onboarding.next.label,
       });
     }
@@ -1541,8 +1543,8 @@ export function SectionDashboard({
                 key={`${action.title}-${index}`}
                 className="group relative overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
               >
-                <button type="button" onClick={() => action.target && onGo(action.target)} disabled={!action.target}
-                  className={"block w-full rounded-2xl px-3 py-3 text-left " + (action.target ? "cursor-pointer" : "cursor-default")}>
+                <button type="button" onClick={() => { if (action.onClick) { action.onClick(); } else if (action.target) { onGo(action.target); } }} disabled={!action.target && !action.onClick}
+                  className={"block w-full rounded-2xl px-3 py-3 text-left " + (action.target || action.onClick ? "cursor-pointer" : "cursor-default")}>
                   <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:pr-20 md:pr-24">
                     <div className="flex min-w-0 items-start gap-3">
                       <span className={
