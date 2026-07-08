@@ -548,6 +548,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
   const [uploadDocProgress, setUploadDocProgress] = useState<number | null>(null);
 
+  // Edit recurring transaction
+  const [editRecurTx, setEditRecurTx] = useState<Transaction | null>(null);
+  const [editRecurForm, setEditRecurForm] = useState({ amount: "", label: "" });
+  const [editRecurScope, setEditRecurScope] = useState<"all" | "future">("future");
+  const [editRecurBusy, setEditRecurBusy] = useState(false);
+
   // Edit transaction
   const [editTxOpen, setEditTxOpen] = useState(false);
   const [editTxId, setEditTxId] = useState<string | null>(null);
@@ -1417,6 +1423,40 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     }
   };
 
+  // ========= Modifier une charge récurrente =========
+  const saveEditRecurring = async () => {
+    if (!supabase || !userId || !editRecurTx) return;
+    const amount = Number(String(editRecurForm.amount).replace(",", "."));
+    if (!Number.isFinite(amount) || amount <= 0) { setErr("Montant invalide."); return; }
+    setEditRecurBusy(true);
+    setErr(null);
+    setOk(null);
+    try {
+      const today = toISODate(new Date());
+      const patch: Record<string, unknown> = { amount, updated_at: new Date().toISOString() };
+      if (editRecurForm.label.trim()) patch.label = editRecurForm.label.trim();
+
+      // Mettre à jour le parent
+      const { error: pErr } = await supabase.from("transactions").update(patch).eq("id", editRecurTx.id).eq("user_id", userId);
+      if (pErr) throw pErr;
+
+      // Mettre à jour les instances enfants selon le scope
+      let childQ = supabase.from("transactions").update(patch).eq("recurrence_parent_id", editRecurTx.id).eq("user_id", userId);
+      if (editRecurScope === "future") childQ = childQ.gt("occurred_at", today);
+      const { error: cErr } = await childQ;
+      if (cErr) throw cErr;
+
+      setOk(editRecurScope === "all" ? "Toutes les occurrences mises à jour ✅" : "Prochaines occurrences mises à jour ✅");
+      setEditRecurTx(null);
+      await loadFinance();
+      await onRefresh?.();
+    } catch (e: any) {
+      setErr(e?.message || "Erreur lors de la modification.");
+    } finally {
+      setEditRecurBusy(false);
+    }
+  };
+
   // ========= Upsert property finance =========
   const upsertPropertyFinance = async (propertyId: string, patch: Partial<PropertyFinance>) => {
     if (!supabase || !userId || !propertyId) return;
@@ -2255,10 +2295,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                         <button type="button" onClick={() => setConfirmStopRecurId(null)} className="text-slate-400 hover:text-slate-600">Annuler</button>
                       </span>
                     ) : (
-                      <button type="button" disabled={stopBusy} onClick={() => setConfirmStopRecurId(t.id)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-40">
-                        Arrêter
-                      </button>
+                      <>
+                        <button type="button" disabled={stopBusy || editRecurBusy}
+                          onClick={() => { setEditRecurTx(t); setEditRecurForm({ amount: String(t.amount), label: t.label || "" }); setEditRecurScope("future"); }}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-300 hover:bg-slate-50 disabled:opacity-40">
+                          Modifier
+                        </button>
+                        <button type="button" disabled={stopBusy || editRecurBusy} onClick={() => setConfirmStopRecurId(t.id)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:opacity-40">
+                          Arrêter
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -2664,6 +2711,95 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       </form>
         </div>
       ) : null}
+
+      {/* Modal modification charge récurrente */}
+      {editRecurTx && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
+          <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => setEditRecurTx(null)} />
+          <div className="relative w-full max-w-lg overflow-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            {/* Header */}
+            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                    <PencilSquareIcon className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Modifier la récurrente</p>
+                    <p className="text-[0.8rem] text-slate-500 truncate max-w-[16rem]">{editRecurTx.label || categoryLabel(editRecurTx.category)}</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setEditRecurTx(null)} className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50" aria-label="Fermer">
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {/* Libellé */}
+              <div>
+                <label className="text-xs font-semibold text-slate-700">Libellé</label>
+                <input
+                  type="text"
+                  value={editRecurForm.label}
+                  onChange={(e) => setEditRecurForm((s) => ({ ...s, label: e.target.value }))}
+                  placeholder={categoryLabel(editRecurTx.category)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none"
+                />
+              </div>
+
+              {/* Montant */}
+              <div>
+                <label className="text-xs font-semibold text-slate-700">Nouveau montant</label>
+                <div className="mt-1 flex items-center rounded-2xl border border-slate-300 bg-white px-3 py-2 focus-within:border-slate-900">
+                  <input
+                    inputMode="decimal"
+                    value={editRecurForm.amount}
+                    onChange={(e) => setEditRecurForm((s) => ({ ...s, amount: e.target.value }))}
+                    className="min-w-0 flex-1 border-0 bg-transparent text-xl font-semibold text-slate-900 outline-none"
+                    placeholder="0"
+                  />
+                  <span className="text-sm font-semibold text-slate-500">EUR</span>
+                </div>
+              </div>
+
+              {/* Scope */}
+              <div>
+                <p className="mb-2 text-xs font-semibold text-slate-700">Appliquer ce changement…</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditRecurScope("future")}
+                    className={`flex flex-col gap-1 rounded-2xl border px-4 py-3 text-left transition ${editRecurScope === "future" ? "border-[#635bff] bg-[#635bff]/5 ring-1 ring-[#635bff]" : "border-slate-200 bg-white hover:bg-slate-50"}`}
+                  >
+                    <span className="text-sm font-semibold text-slate-900">À partir de maintenant</span>
+                    <span className="text-xs text-slate-500">Les occurrences passées restent inchangées. Seules les prochaines utilisent le nouveau montant.</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditRecurScope("all")}
+                    className={`flex flex-col gap-1 rounded-2xl border px-4 py-3 text-left transition ${editRecurScope === "all" ? "border-[#635bff] bg-[#635bff]/5 ring-1 ring-[#635bff]" : "border-slate-200 bg-white hover:bg-slate-50"}`}
+                  >
+                    <span className="text-sm font-semibold text-slate-900">Depuis le début</span>
+                    <span className="text-xs text-slate-500">Toutes les occurrences existantes (passées et futures) sont mises à jour avec le nouveau montant.</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                <button type="button" onClick={() => setEditRecurTx(null)} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                  Annuler
+                </button>
+                <button type="button" disabled={editRecurBusy} onClick={saveEditRecurring}
+                  className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50">
+                  {editRecurBusy ? "Enregistrement…" : "Enregistrer"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal édition écriture */}
       {editTxOpen ? (
