@@ -94,7 +94,7 @@ INSERT INTO donnees_reference (key, data) VALUES (
 INSERT INTO donnees_reference (key, data) VALUES (
   'taux_endettement',
   '{
-    "description": "Taux d'\''endettement des emprunteurs immobiliers en France (2026)",
+    "description": "Taux d''endettement des emprunteurs immobiliers en France (2026)",
     "plafond_reglementaire_hcsf": 35,
     "moyen_constate": 28.3,
     "median_constate": 27.1
