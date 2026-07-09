@@ -92,7 +92,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   const [document, setDocument] = useState<any>(null);
   const [sourceMode, setSourceMode] = useState<"choose" | "generated" | "external">("choose");
   const [generatedDone, setGeneratedDone] = useState(false);
-  const [signedDone, setSignedDone] = useState(false);
   const [kind, setKind] = useState("furnished_primary");
   const [form, setForm] = useState<Record<string, any>>({});
   const [sigLoading, setSigLoading] = useState(false);
@@ -238,19 +237,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
       openUrl(data.signedUrl);
     } catch (error: any) { setErr(error?.message || "Ouverture impossible."); }
   };
-  const uploadSigned = async (file?: File) => {
-    if (!file || file.type !== "application/pdf") return setErr("Sélectionne un fichier PDF signé.");
-    try {
-      setLoading(true); setErr(null); setUploadProgress(0);
-      const saved = document?.id ? document : await save();
-      const signed = await api("/api/lease-contracts/signed-upload-url", { userId, documentId: saved.id, uploadType: "signed", sizeBytes: file.size });
-      await xhrUploadToSignedUrl(signed.signedUrl, file, (pct) => setUploadProgress(pct));
-      setUploadProgress(null);
-      const result = await api("/api/lease-contracts", { action: "confirmSigned", userId, leaseId, signedPdfUrl: `${signed.bucket}:${signed.path}` });
-      setDocument(result.document);
-      setSignedDone(true);
-    } catch (error: any) { setErr(error?.message || "Import impossible."); setUploadProgress(null); } finally { setLoading(false); }
-  };
 
   const sendForSignature = async () => {
     if (!document?.pdf_url || !form.tenant_email) return;
@@ -334,7 +320,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
             <Choice
               icon={DocumentTextIcon}
               title="Rédiger avec Lokt"
-              description="Compléter l’assistant, générer un PDF puis importer la version signée."
+              description="Compléter l’assistant, générer un PDF et envoyer pour signature électronique."
               onClick={() => {
                 if (kind === "other") setKind("furnished_primary");
                 setSourceMode("generated");
@@ -403,7 +389,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
             <p className="text-sm font-semibold text-emerald-950">Document enregistré</p>
             <p className="mt-1 text-xs leading-5 text-emerald-800">{document.original_file_name || "bail-signé.pdf"} · Le bail est archivé dans Lokt et accessible depuis la fiche.</p>
           </div>
-          <p className="text-sm leading-6 text-slate-600">Tu peux maintenant partager le bail signé avec ton locataire depuis cette fenêtre, ou le retrouver plus tard depuis la fiche bail.</p>
+          <p className="text-sm leading-6 text-slate-600">Le bail signé est archivé dans Lokt et accessible depuis la fiche bail.</p>
         </div>
         <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
           <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-xs font-semibold text-white"><XMarkIcon className="h-4 w-4"/>Fermer</button>
@@ -424,7 +410,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         </div>
         <div className="space-y-4 p-5">
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
-          <UploadProgressBar progress={uploadProgress} />
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
             <p className="text-sm font-semibold text-emerald-950">Génération terminée avec succès</p>
             <p className="mt-1 text-xs leading-5 text-emerald-800">Le document est archivé dans Lokt. Tu peux le rouvrir plus tard depuis cette fiche bail.</p>
@@ -455,7 +440,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><XMarkIcon className="h-4 w-4"/>Fermer</button>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le PDF</button>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white"><DocumentArrowUpIcon className="h-4 w-4"/>Importer la version signée<input type="file" accept="application/pdf" className="hidden" onChange={(event) => uploadSigned(event.target.files?.[0])}/></label>
           </div>
         </div>
       </Modal>
@@ -478,7 +462,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         {step === 5 ? <><Fields form={form} set={set} names={[["recent_works","Travaux récents"],["estimated_energy_cost","Estimation annuelle des dépenses d’énergie","number"],["energy_reference_year","Année de référence de l’estimation énergétique"],["tenant_agency_fees","Honoraires imputés au locataire","number"],["tenant_inventory_fees","Honoraires d’état des lieux imputés au locataire","number"],["rent_supplement","Complément de loyer","number"],["rent_supplement_reason","Justification du complément de loyer"],["special_terms","Clauses particulières"]]} /><Checks form={form} set={set} names={[["annual_insurance_clause","Clause assurance habitation annuelle (recommandée)"]]} /></> : null}
         {step === 6 ? <><AnnexChecks form={form} set={set} /><Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} names={[["signature_place","Lieu de signature"],["signature_date","Date de signature","date"]]} /></> : null}
       </div>
-      {uploadProgress !== null ? <div className="border-t border-slate-200 px-5 pt-4"><UploadProgressBar progress={uploadProgress} /></div> : null}
       <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
         <div className="flex flex-wrap gap-2">
           {step > 0 ? <button type="button" disabled={loading} onClick={() => setStep(step - 1)} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Précédent</button> : null}
@@ -496,8 +479,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
               </button>
             )
           ) : null}
-          {document?.pdf_url ? <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${loading ? "pointer-events-none opacity-50" : ""}`}><DocumentArrowUpIcon className="h-4 w-4"/>{loading ? "Import en cours…" : "Importer signé"}<input type="file" accept="application/pdf" className="hidden" disabled={loading} onChange={(event) => uploadSigned(event.target.files?.[0])}/></label> : null}
-          {step < 6 ? <button type="button" disabled={loading} onClick={next} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Suivant<ArrowRightIcon className="h-4 w-4"/></button> : <button type="button" disabled={loading} onClick={generate} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{loading ? "Génération..." : "Finaliser et générer le PDF"}</button>}
+          {step < 6 ?<button type="button" disabled={loading} onClick={next} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Suivant<ArrowRightIcon className="h-4 w-4"/></button> : <button type="button" disabled={loading} onClick={generate} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{loading ? "Génération..." : "Finaliser et générer le PDF"}</button>}
         </div>
       </div>
     </Modal>
