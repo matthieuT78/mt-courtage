@@ -235,7 +235,7 @@ export default function SignerPage() {
               </div>
               <h1 className="text-xl font-semibold text-slate-900">Signature enregistrée</h1>
               <p className="mt-3 text-sm text-slate-500 leading-6">
-                {data?.status === "completed" || view === "done"
+                {data?.status === "completed"
                   ? "Les deux parties ont signé. Vous recevrez le PDF certifié par email dans quelques instants."
                   : `Votre signature a été enregistrée. En attente de la signature ${otherRole.toLowerCase()} (${otherName}).`}
               </p>

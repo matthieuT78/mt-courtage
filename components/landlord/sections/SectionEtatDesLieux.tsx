@@ -1569,6 +1569,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
           document_label: documentLabel,
           inventory_report_id: selectedReport.id,
           lease_id: selectedReport.lease_id,
+          property_id: selectedLease?.property_id || null,
           original_pdf_url: selectedReport.pdf_url,
           landlord_email: landlordEmail,
           tenant_email: selectedReport.occupant_email,

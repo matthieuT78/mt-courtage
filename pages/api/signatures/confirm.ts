@@ -4,15 +4,16 @@ import { stampPdf, type SignatureAuditEntry } from "../../../lib/pdfStamp";
 import { contractPdfPath } from "../../../lib/leaseContract";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lokt.fr";
 
-async function sendEmail(to: string, subject: string, html: string) {
-  await fetch("https://api.resend.com/emails", {
+async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+  const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: "lokt.fr <noreply@lokt.fr>", to, subject, html }),
   });
+  if (!r.ok) throw new Error(`Resend ${r.status}: ${await r.text()}`);
 }
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lokt.fr";
 
 function completedEmailHtml(opts: { documentLabel: string; downloadUrl: string }) {
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"></head>
@@ -23,7 +24,7 @@ function completedEmailHtml(opts: { documentLabel: string; downloadUrl: string }
     <img src="${SITE_URL}/lokt-logo-small.jpg" alt="lokt.fr" height="32" style="display:block;border-radius:6px">
   </td></tr>
   <tr><td style="padding:32px">
-    <p style="margin:0 0 8px;font-size:13px;color:#059669;font-weight:600;text-transform:uppercase;letter-spacing:.08em">✓ Document signé</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#059669;font-weight:600;text-transform:uppercase;letter-spacing:.08em">Document signé</p>
     <h1 style="margin:0 0 16px;font-size:22px;color:#0f172a;font-weight:700">${opts.documentLabel}</h1>
     <p style="margin:0 0 20px;font-size:15px;color:#475569;line-height:1.6">
       Les deux parties ont signé. Vous trouverez ci-dessous le PDF certifié avec le certificat de signature électronique en dernière page.
@@ -53,7 +54,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     "unknown";
   const userAgent = req.headers["user-agent"] || "";
 
-  // Chercher par token bailleur ou locataire
   const { data: sigReq, error } = await supabaseAdmin
     .from("signature_requests")
     .select("*")
@@ -80,23 +80,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const updateFields = isLandlord
     ? { landlord_signed_at: now, landlord_ip: ip, landlord_user_agent: userAgent }
     : { tenant_signed_at: now, tenant_ip: ip, tenant_user_agent: userAgent };
-
-  // Déterminer le nouveau statut
   const otherSigned = isLandlord ? !!sigReq.tenant_signed_at : !!sigReq.landlord_signed_at;
-  const newStatus = otherSigned ? "completed" : "partially_signed";
 
-  const { error: updateErr } = await supabaseAdmin
+  // Bug 10 fix: atomic guard — `.is()` ensures the field is still NULL before writing,
+  // preventing two concurrent requests from both believing they signed last.
+  // Bug 1 fix: always write "partially_signed" here; "completed" is set only after the
+  // PDF has been successfully stamped and uploaded.
+  const { data: updateResult, error: updateErr } = await supabaseAdmin
     .from("signature_requests")
-    .update({ ...updateFields, status: newStatus })
-    .eq("id", sigReq.id);
+    .update({ ...updateFields, status: "partially_signed" })
+    .eq("id", sigReq.id)
+    .is(isLandlord ? "landlord_signed_at" : "tenant_signed_at", null)
+    .select("id");
 
   if (updateErr) return res.status(500).json({ error: "Erreur lors de l'enregistrement de la signature." });
+  if (!updateResult?.length) {
+    // Concurrent request beat us — treat as already signed
+    return res.status(200).json({ status: sigReq.status, alreadySigned: true });
+  }
 
-  if (newStatus !== "completed") {
+  if (!otherSigned) {
     return res.status(200).json({ status: "partially_signed" });
   }
 
-  // ── Les deux ont signé : estampiller le PDF ──
+  // ── Both signed — stamp the PDF ──
   const [bucket, ...pathParts] = sigReq.original_pdf_url.split(":");
   const storagePath = pathParts.join(":");
 
@@ -106,7 +113,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
-
   const landlordSignedAt = isLandlord ? new Date(now) : new Date(sigReq.landlord_signed_at);
   const tenantSignedAt = isLandlord ? new Date(sigReq.tenant_signed_at) : new Date(now);
   const landlordIp = isLandlord ? ip : sigReq.landlord_ip;
@@ -129,64 +135,76 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     },
   ];
 
-  const stampedBytes = await stampPdf(pdfBytes, {
-    documentLabel: sigReq.document_label,
-    referenceId: sigReq.id,
-    auditEntries,
-    documentHash: sigReq.document_hash,
-  });
-
-  // Déterminer le chemin de destination selon le type de document
   let signedPath: string;
   let signedBucket: string;
-
   if (sigReq.document_type === "bail" && sigReq.lease_contract_id && sigReq.lease_id && sigReq.landlord_id) {
     signedBucket = "lease-contract-pdfs";
     signedPath = contractPdfPath(sigReq.landlord_id, sigReq.lease_id, sigReq.lease_contract_id, true);
   } else {
-    // EDL ou fallback
     signedBucket = bucket;
     signedPath = storagePath.replace(/\.pdf$/, ".signed.pdf");
   }
 
-  const { error: uploadErr } = await supabaseAdmin.storage
-    .from(signedBucket)
-    .upload(signedPath, stampedBytes, { contentType: "application/pdf", upsert: true });
+  // Bug 5 fix: wrap PDF work so a crash here doesn't leave status permanently stuck.
+  // The signature IS recorded; only the PDF generation failed.
+  let signedPdfUrl: string;
+  try {
+    const stampedBytes = await stampPdf(pdfBytes, {
+      documentLabel: sigReq.document_label,
+      referenceId: sigReq.id,
+      auditEntries,
+      documentHash: sigReq.document_hash,
+    });
 
-  if (uploadErr) return res.status(500).json({ error: "Erreur lors du dépôt du PDF signé." });
+    const { error: uploadErr } = await supabaseAdmin.storage
+      .from(signedBucket)
+      .upload(signedPath, stampedBytes, { contentType: "application/pdf", upsert: true });
 
-  const signedPdfUrl = `${signedBucket}:${signedPath}`;
+    if (uploadErr) throw new Error(`Upload: ${uploadErr.message}`);
 
-  // Mettre à jour la demande avec l'URL du PDF signé
-  await supabaseAdmin
+    signedPdfUrl = `${signedBucket}:${signedPath}`;
+  } catch (err) {
+    console.error("[signatures/confirm] PDF stamping failed:", err);
+    return res.status(500).json({
+      error: "La signature a été enregistrée mais la génération du PDF a échoué. Contactez le support.",
+    });
+  }
+
+  // Bug 1 fix: set "completed" only after successful PDF upload.
+  // Bug 7 fix: check errors on all three DB updates.
+  const { error: completeErr } = await supabaseAdmin
     .from("signature_requests")
-    .update({ signed_pdf_url: signedPdfUrl })
+    .update({ signed_pdf_url: signedPdfUrl, status: "completed" })
     .eq("id", sigReq.id);
+  if (completeErr) console.error("[signatures/confirm] Failed to mark completed:", completeErr);
 
-  // Mettre à jour le document source avec l'URL signée
   if (sigReq.document_type === "bail" && sigReq.lease_contract_id) {
-    await supabaseAdmin
+    const { error: bailUpdateErr } = await supabaseAdmin
       .from("lease_contract_documents")
       .update({ signed_pdf_url: signedPdfUrl, signed_at: now, status: "signed" })
       .eq("id", sigReq.lease_contract_id);
+    if (bailUpdateErr) console.error("[signatures/confirm] Failed to update lease_contract_documents:", bailUpdateErr);
   } else if (sigReq.document_type === "edl" && sigReq.inventory_report_id) {
-    await supabaseAdmin
+    const { error: edlUpdateErr } = await supabaseAdmin
       .from("inventory_reports")
       .update({ pdf_url: signedPdfUrl, status: "signed" })
       .eq("id", sigReq.inventory_report_id);
+    if (edlUpdateErr) console.error("[signatures/confirm] Failed to update inventory_reports:", edlUpdateErr);
   }
 
-  // URL de téléchargement signée (1h)
   const { data: signedUrlData } = await supabaseAdmin.storage
     .from(signedBucket)
     .createSignedUrl(signedPath, 60 * 60 * 24 * 7); // 7 jours
   const downloadUrl = signedUrlData?.signedUrl || `${SITE_URL}/espace-bailleur`;
 
-  // Emails de confirmation aux deux parties
-  await Promise.all([
-    sendEmail(sigReq.landlord_email, `✓ Document signé — ${sigReq.document_label}`, completedEmailHtml({ documentLabel: sigReq.document_label, downloadUrl })),
-    sendEmail(sigReq.tenant_email, `✓ Document signé — ${sigReq.document_label}`, completedEmailHtml({ documentLabel: sigReq.document_label, downloadUrl })),
+  // Bug 4 fix: log email failures rather than silently swallowing them.
+  const emailResults = await Promise.allSettled([
+    sendEmail(sigReq.landlord_email, `Document signé — ${sigReq.document_label}`, completedEmailHtml({ documentLabel: sigReq.document_label, downloadUrl })),
+    sendEmail(sigReq.tenant_email, `Document signé — ${sigReq.document_label}`, completedEmailHtml({ documentLabel: sigReq.document_label, downloadUrl })),
   ]);
+  emailResults.forEach((r, i) => {
+    if (r.status === "rejected") console.error(`[signatures/confirm] Email ${i} failed:`, r.reason);
+  });
 
   return res.status(200).json({ status: "completed", signedPdfUrl });
 }

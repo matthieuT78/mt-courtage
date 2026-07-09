@@ -14,6 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .single();
 
   if (error || !data) return res.status(404).json({ error: "Demande introuvable." });
+  if (data.status === "cancelled" || data.status === "expired") return res.status(410).json({ error: "Ce lien n'est plus valide." });
   if (new Date(data.expires_at) < new Date()) return res.status(410).json({ error: "Lien expiré." });
 
   const [bucket, ...pathParts] = data.original_pdf_url.split(":");

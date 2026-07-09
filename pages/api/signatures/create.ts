@@ -6,12 +6,13 @@ import { hashPdfBuffer } from "../../../lib/pdfStamp";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lokt.fr";
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 
-async function sendEmail(to: string, subject: string, html: string) {
-  await fetch("https://api.resend.com/emails", {
+async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+  const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from: "lokt.fr <noreply@lokt.fr>", to, subject, html }),
   });
+  if (!r.ok) throw new Error(`Resend ${r.status}: ${await r.text()}`);
 }
 
 function signerEmailHtml(opts: {
@@ -129,7 +130,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const landlordUrl = `${SITE_URL}/signer/${sigReq.landlord_token}`;
   const tenantUrl = `${SITE_URL}/signer/${sigReq.tenant_token}`;
 
-  await Promise.all([
+  // Bug 4 fix: detect email failures instead of silently swallowing them.
+  const emailResults = await Promise.allSettled([
     sendEmail(landlord_email, `À signer : ${sigReq.document_label}`, signerEmailHtml({
       role: "bailleur",
       recipientName: landlord_name || "Bailleur",
@@ -147,6 +149,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       expiresAt: expiresLabel,
     })),
   ]);
+  const emailErrors = emailResults.filter((r) => r.status === "rejected");
+  emailErrors.forEach((r) => console.error("[signatures/create] Email failed:", (r as PromiseRejectedResult).reason));
+  if (emailErrors.length === 2) {
+    return res.status(500).json({ error: "La demande a été créée mais l'envoi des emails a échoué. Vérifiez la configuration Resend." });
+  }
 
   return res.status(200).json({ id: sigReq.id, status: sigReq.status });
 }
