@@ -755,6 +755,7 @@ export default function Home() {
                 <p className="mt-2 text-sm leading-6 text-slate-400">Baux, loyers, quittances, alertes, relances, messagerie, EDL, documents et finance — au même endroit.</p>
                 <ul className="mt-6 flex-1 space-y-3">
                   {[
+                    ["Candidatures en ligne", "Lien unique, dossiers scorés automatiquement, RGPD géré"],
                     ["Quittances automatiques", "Loyer confirmé → PDF généré → envoyé au locataire"],
                     ["Alertes & relances", "IRL, retards, baux expirants — zéro oubli"],
                     ["Messagerie locataire", "Historique complet des échanges dans le dossier"],
