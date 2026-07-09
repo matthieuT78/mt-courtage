@@ -2,9 +2,14 @@ import Head from "next/head";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
-import { DONNEES_IMMO } from "./api/donnees";
+import { getDonneesImmo, type DonneesImmo } from "../lib/donnees-service";
 
-export default function DonneesPage() {
+export async function getStaticProps() {
+  const donnees = await getDonneesImmo();
+  return { props: { donnees }, revalidate: 3600 }; // ISR toutes les heures
+}
+
+export default function DonneesPage({ donnees }: { donnees: DonneesImmo }) {
   const title = "Données immobilières France 2026 : loyers, rendements, taux de crédit | lokt.fr";
   const description =
     "Loyers médians par ville, rendements locatifs bruts par type de bien, taux de crédit immobilier et capacité d'emprunt par revenus — données de référence T2 2026, librement accessibles via API JSON.";
@@ -46,7 +51,7 @@ export default function DonneesPage() {
     },
   ];
 
-  const { loyers_medians_par_ville, rendements_locatifs_par_type, rendements_par_ville, taux_credit_immobilier, capacite_emprunt_reference, taux_endettement } = DONNEES_IMMO;
+  const { loyers_medians_par_ville, rendements_locatifs_par_type, rendements_par_ville, taux_credit_immobilier, capacite_emprunt_reference, taux_endettement } = donnees;
 
   return (
     <div className="min-h-screen bg-[#f7f7fb] text-slate-950">

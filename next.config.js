@@ -52,6 +52,12 @@ const nextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      // Sert llms.txt dynamiquement (données mises à jour hebdomadairement)
+      { source: "/llms.txt", destination: "/api/llms-txt" },
+    ];
+  },
 };
 
 module.exports = nextConfig;
