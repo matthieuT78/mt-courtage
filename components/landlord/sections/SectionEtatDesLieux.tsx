@@ -3683,8 +3683,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         </div>
                       )}
                       {selectedProperty && Array.isArray(selectedProperty.delegated_services) && selectedProperty.delegated_services.includes("bail_edl") && (
-                        <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
-                          États des lieux délégués{selectedProperty.delegation_agency_name ? ` à ${selectedProperty.delegation_agency_name}` : " à un tiers"} — vous pouvez tout de même archiver un document ici.
+                        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                          <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+                          <p className="text-xs leading-5 text-amber-800">
+                            États des lieux délégués{selectedProperty.delegation_agency_name ? ` à ${selectedProperty.delegation_agency_name}` : " à votre gestionnaire"} — la saisie guidée est désactivée pour ce bien. Importez le PDF fourni par votre gestionnaire.
+                          </p>
                         </div>
                       )}
 
@@ -3747,13 +3750,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         </div>
                       )}
 
-                      {/* Sortie après entrée PDF externe : import uniquement */}
-                      {creationMode === "lease" && creationWizardReportType === "exit" && entryReport?.document_source === "external" ? (
+                      {/* Bien délégué ou sortie après entrée PDF externe : import uniquement */}
+                      {(selectedProperty?.delegated_services?.includes("bail_edl")) ||
+                       (creationMode === "lease" && creationWizardReportType === "exit" && entryReport?.document_source === "external") ? (
                         <>
                           <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
                             <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
                             <p className="text-xs leading-5 text-amber-800">
-                              L’entrée a été gérée par une agence (PDF importé). La sortie doit aussi être importée en PDF — la saisie guidée n’est pas disponible.
+                              {selectedProperty?.delegated_services?.includes("bail_edl")
+                                ? `Les états des lieux de ce bien sont gérés par ${selectedProperty.delegation_agency_name || "votre gestionnaire"}. Importez directement le PDF fourni.`
+                                : "L’entrée a été gérée par une agence (PDF importé). La sortie doit aussi être importée en PDF — la saisie guidée n’est pas disponible."}
                             </p>
                           </div>
                           <button
@@ -3764,7 +3770,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                           >
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-base">📄</span>
                             <div className="text-left">
-                              <p>{loading ? "Import en cours…" : "Importer le PDF de sortie"}</p>
+                              <p>{loading ? "Import en cours…" : "Importer le PDF fourni par votre gestionnaire"}</p>
                               <p className="text-[0.72rem] font-normal text-white/60">PDF finalisé, 10 Mo max — archivé et verrouillé</p>
                             </div>
                           </button>
