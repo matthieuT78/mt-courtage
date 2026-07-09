@@ -139,8 +139,8 @@ export default function TarifsPage() {
     description,
     offers: [
       { "@type": "Offer", name: "Gratuit", price: "0", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
-      { "@type": "Offer", name: "lokt·one", price: "4.90", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
-      { "@type": "Offer", name: "lokt·plus", price: "9.90", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
+      { "@type": "Offer", name: "lokt·one", price: "6.90", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
+      { "@type": "Offer", name: "lokt·plus", price: "11.90", priceCurrency: "EUR", availability: "https://schema.org/InStock" },
       { "@type": "Offer", name: "lokt·pro", priceCurrency: "EUR", availability: "https://schema.org/PreOrder" },
     ],
   };

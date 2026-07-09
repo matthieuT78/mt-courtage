@@ -4,7 +4,8 @@ export type Plan =
   | "calc_full" // inscrit gratuit (détail visible)
   | "landlord_5"
   | "landlord_15"
-  | "landlord_unlimited";
+  | "landlord_unlimited"
+  | "agence";    // espace agent immobilier
 
 export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "inactive";
 
@@ -46,6 +47,10 @@ export function planAllowsCandidatures(plan: Plan) {
   return plan === "landlord_5" || plan === "landlord_15" || plan === "landlord_unlimited";
 }
 
+export function planAllowsAgence(plan: Plan) {
+  return plan === "agence";
+}
+
 export function planAllowsReceiptAutomation(plan: Plan) {
   return planAllowsLandlord(plan);
 }
@@ -53,9 +58,9 @@ export function planAllowsReceiptAutomation(plan: Plan) {
 export function landlordMaxActiveLeases(plan: Plan): number {
   switch (plan) {
     case "landlord_5":
-      return 3;
+      return 2;
     case "landlord_15":
-      return 10;
+      return 5;
     case "landlord_unlimited":
       return 999999;
     default:
@@ -66,9 +71,9 @@ export function landlordMaxActiveLeases(plan: Plan): number {
 export function landlordMaxActiveProperties(plan: Plan): number {
   switch (plan) {
     case "landlord_5":
-      return 3;
+      return 2;
     case "landlord_15":
-      return 10;
+      return 5;
     case "landlord_unlimited":
       return 999999;
     case "calc_full":
