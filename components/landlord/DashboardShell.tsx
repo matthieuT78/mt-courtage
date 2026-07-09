@@ -650,7 +650,6 @@ export function DashboardShell(props: any) {
             payments={payments}
             receipts={receipts}
             onRefresh={refresh}
-            canShareWithTenant={canShareDocuments}
             deepLink={deepLink}
             onPrepareDeparture={(tenantId) => {
               setDepartureTenantId(tenantId);
