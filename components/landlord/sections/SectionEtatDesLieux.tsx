@@ -2046,11 +2046,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         return;
       }
 
-      const { error } = await supabase.from("inventory_rooms").insert(payload);
+      const { data: inserted, error } = await supabase.from("inventory_rooms").insert(payload).select("*");
       if (error) throw error;
 
-      await loadReportDetails(reportId);
-      setOk(`${payload.length} pièce(s) ajoutée(s) ✅`);
+      setRooms((prev) => [...prev, ...((inserted || []) as any)]);
+      setOk(`${(inserted || []).length} pièce(s) ajoutée(s) ✅`);
     } catch (e: any) {
       setErr(e?.message || "Impossible d’ajouter les pièces.");
     } finally {
@@ -2078,17 +2078,17 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     setOk(null);
 
     try {
-      const { error } = await supabase.from("inventory_rooms").insert({
+      const { data: inserted, error } = await supabase.from("inventory_rooms").insert({
         report_id: reportId,
         name,
         floor_level: null,
         notes: null,
         sort_order: rooms.length,
-      });
+      }).select("*").single();
       if (error) throw error;
 
       setCustomRoomName("");
-      await loadReportDetails(reportId);
+      setRooms((prev) => [...prev, inserted as any]);
       setOk("Pièce ajoutée ✅");
     } catch (e: any) {
       setErr(e?.message || "Impossible d’ajouter la pièce.");
