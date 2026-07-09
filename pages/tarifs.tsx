@@ -202,7 +202,7 @@ export default function TarifsPage() {
                   <span className="mt-1 block text-[2rem] bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] sm:text-5xl">Payant quand lokt.fr fait plus.</span>
                 </h1>
                 <p className="mt-5 max-w-3xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
-                  Un logement gratuit pour gérer un locataire en place. lokt·one débloque les candidatures, automatise les quittances et active le portail locataire. lokt·plus ajoute le pilotage financier et la boîte à outils bailleur.
+                  Un logement gratuit pour gérer un locataire en place. lokt·one débloque les candidatures, automatise les quittances, active la signature électronique du bail et de l'EDL et ouvre le portail locataire. lokt·plus ajoute le pilotage financier et la boîte à outils bailleur.
                 </p>
               </div>
 
@@ -255,7 +255,7 @@ export default function TarifsPage() {
               <ul className="mt-4 flex-1 space-y-2 text-sm text-slate-700">
                 <li>✓ Bien, bail et locataire</li>
                 <li>✓ Quittances manuelles et PDF</li>
-                <li>✓ États des lieux et inventaire</li>
+                <li>✓ Contrat de bail et EDL numériques</li>
                 <li>✓ 25 Mo de stockage documentaire sécurisé</li>
                 <li>✓ Finance simple</li>
                 <li>✓ 4 alertes essentielles : retard de paiement, quittance à finaliser, email manquant</li>
@@ -263,6 +263,7 @@ export default function TarifsPage() {
                 <li className="text-slate-500">Quittances automatiques non incluses</li>
                 <li className="text-slate-500">Portail locataire non inclus</li>
                 <li className="text-slate-500">Partage de documents non inclus</li>
+                <li className="text-slate-500">Signature électronique non incluse</li>
                 <li className="text-slate-500">Alertes IRL, fin de bail, EDL non incluses</li>
               </ul>
               <Link
@@ -327,6 +328,7 @@ export default function TarifsPage() {
                     ["Relance bailleur automatique à J+1", "Non inclus", "Inclus", "Inclus"],
                     ["Envoi automatique des quittances", "Non inclus", "Inclus", "Inclus"],
                     ["Portail locataire (quittances, bail, EDL en ligne)", "Non inclus", "Inclus", "Inclus"],
+                    ["Signature électronique du bail et de l'EDL (eIDAS)", "Non inclus", "Inclus", "Inclus"],
                     ["Partage des documents avec le locataire par email", "Non inclus", "Inclus", "Inclus"],
                     ["Accusé de réception locataire horodaté", "Non inclus", "Inclus", "Inclus"],
                     ["Vue dossier bail (statut consolidé par location)", "Non inclus", "Inclus", "Inclus"],

@@ -752,7 +752,7 @@ export default function Home() {
               <div data-scroll-reveal data-reveal-delay="0" className="flex flex-col rounded-[1.75rem] bg-slate-950 p-8 text-white">
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-cyan-300">Espace bailleur</p>
                 <h3 className="mt-2 text-2xl font-semibold">Gérez vos locations de A à Z</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-400">Baux, loyers, quittances, alertes, relances, messagerie, EDL, documents et finance — au même endroit.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-400">Baux, loyers, quittances, alertes, relances, messagerie, EDL, signature électronique, documents et finance — au même endroit.</p>
                 <ul className="mt-6 flex-1 space-y-3">
                   {[
                     ["Candidatures en ligne", "Lien unique, dossiers scorés automatiquement, RGPD géré"],
@@ -930,7 +930,7 @@ export default function Home() {
                         </svg>
                       </div>
                       <h3 className="mt-3 text-sm font-semibold text-slate-950">Portail locataire</h3>
-                      <p className="mt-1 text-xs leading-5 text-slate-500">Bail, quittances et EDL accessibles en ligne. Accusé de réception horodaté.</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">Bail, quittances, EDL et signatures électroniques accessibles en ligne. Accusé de réception horodaté.</p>
                       <div className="mt-3 rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 px-3 py-2">
                         <p className="text-[0.65rem] font-semibold text-[#635bff]">Portail actif ✓</p>
                         <p className="text-[0.6rem] text-slate-500">3 documents partagés · Vu le 12 juin</p>
@@ -1001,8 +1001,65 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Bail & EDL — signature électronique */}
+            <div data-scroll-reveal data-reveal-delay="0" className="mt-5 overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-7 shadow-sm">
+              <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#635bff]/10">
+                      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-[#635bff] stroke-[1.8]" aria-hidden>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinejoin="round"/>
+                        <polyline points="14,2 14,8 20,8" strokeLinejoin="round"/>
+                        <path d="M9 12h6M9 16h4" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#635bff]">Intégré</span>
+                      <h3 className="text-lg font-semibold text-slate-950">Bail & état des lieux numériques</h3>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                    Rédigez votre contrat de bail ou réalisez votre état des lieux dans lokt.fr, puis envoyez les liens de signature par email. Bailleur et locataire signent chacun depuis leur téléphone. Le PDF certifié est archivé automatiquement.
+                  </p>
+                  <ul className="mt-4 space-y-1.5">
+                    {[
+                      "Contrat de bail généré selon le type de location",
+                      "État des lieux d'entrée et de sortie avec photos",
+                      "Signature électronique simple conforme eIDAS",
+                      "PDF certifié archivé — audit trail et hash SHA-256",
+                    ].map((item) => (
+                      <li key={item} className="flex items-center gap-2 text-sm text-slate-700">
+                        <span className="text-[#635bff]">✓</span> {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5">
+                    <Link href="/tarifs" className="inline-flex h-9 items-center justify-center rounded-full bg-[#635bff] px-5 text-xs font-semibold text-white hover:opacity-90 transition">
+                      Disponible en lokt·one · 6,90 €/mois
+                    </Link>
+                  </div>
+                </div>
+                <div className="space-y-2.5">
+                  {[
+                    { step: "01", label: "PDF généré dans lokt.fr", sub: "Bail ou EDL selon le type de location", color: "bg-slate-100 text-slate-600" },
+                    { step: "02", label: "Liens envoyés par email", sub: "Un lien unique pour le bailleur, un pour le locataire", color: "bg-sky-100 text-sky-700" },
+                    { step: "03", label: "Chacun signe depuis son écran", sub: "Sans compte lokt.fr · Mobile ou ordinateur", color: "bg-violet-100 text-violet-700" },
+                    { step: "04", label: "PDF certifié archivé", sub: "Page de certificat · Hash SHA-256 · eIDAS Art. 3(10)", color: "bg-[#635bff]/10 text-[#635bff]" },
+                  ].map(({ step, label, sub, color }) => (
+                    <div key={step} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color}`}>{step}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{label}</p>
+                        <p className="text-xs text-slate-500">{sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div data-scroll-reveal className="mt-5 flex flex-col gap-3 rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-600">Gratuit pour 1 logement. lokt·one débloque quittances auto, alertes complètes, candidatures et portail locataire.</p>
+              <p className="text-sm text-slate-600">Gratuit pour 1 logement. lokt·one débloque quittances auto, signature électronique, candidatures et portail locataire.</p>
               <Link href="/espace-bailleur" className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800">
                 Essayer l’espace bailleur →
               </Link>
@@ -1185,7 +1242,7 @@ export default function Home() {
                   price: "6,90 €",
                   cadence: "/ mois · 2 logements",
                   desc: "Automatisation complète + portail locataire + partage de documents.",
-                  features: ["Quittances automatiques", "Portail locataire activé", "Partage bail & EDL", "Toutes les alertes", "Accusé de réception"],
+                  features: ["Quittances automatiques", "Signature électronique bail & EDL", "Portail locataire activé", "Toutes les alertes", "Accusé de réception"],
                   cta: "Souscrire",
                   href: "/tarifs",
                   card: "border-[#635bff]/30 bg-white ring-2 ring-[#635bff]/10",
