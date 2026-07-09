@@ -457,6 +457,29 @@ export function SectionDashboard({
     }
   }, [storageKey, dismissedKey]);
 
+  // Sync cross-device : si doneAtISO n'est pas dans localStorage (autre device),
+  // on le récupère depuis Supabase app_settings.
+  useEffect(() => {
+    if (!supabase || !userId || doneAtISO) return;
+    const key = `onboarding_done_at:${userId}`;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("app_settings")
+          .select("value_json")
+          .eq("key", key)
+          .maybeSingle();
+        const iso = data?.value_json?.done_at;
+        if (iso) {
+          setDoneAtISO(iso);
+          try { window.localStorage.setItem(storageKey, iso); } catch { /* ignore */ }
+        }
+      } catch {
+        // table absente ou RLS : on ignore silencieusement.
+      }
+    })();
+  }, [userId, doneAtISO, storageKey]);
+
   const onboarding = useMemo(() => {
     const managedProperties = (properties || []).filter(
       (property) => String((property as any)?.status || "").toLowerCase() !== "archived"
