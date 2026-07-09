@@ -45,6 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     probe("Geo API Gouv (villes)", "https://geo.api.gouv.fr/communes?nom=Paris&limit=1"),
     probe("API Adresse Gouv", "https://api-adresse.data.gouv.fr/search/?q=Paris&limit=1"),
     probe("Open-Meteo", "https://api.open-meteo.com/v1/forecast?latitude=48.86&longitude=2.35&current=temperature_2m"),
+    probe("Market Benchmarks (Supabase)", "https://lokt.fr/api/market-benchmarks?postalCode=75001"),
     probe("INSEE BDM (IRL)", "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/001515333?format=json&lastNObservations=1", {
       headers: INSEE_TOKEN ? { Authorization: `Bearer ${INSEE_TOKEN}` } : {},
     }),
