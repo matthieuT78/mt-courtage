@@ -654,6 +654,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   const isLocked = selectedReport?.status === "signed" || selectedReport?.status === "archived";
   const hasPdf = !!selectedReport?.pdf_url;
   const isExternalReport = selectedReport?.document_source === "external";
+  const effectiveTenantEmail = selectedReport?.occupant_email
+    || (selectedLease?.tenant_id ? tenantById.get(selectedLease.tenant_id)?.email || null : null)
+    || null;
   const selectedWorkflow = workflowUi(selectedReport);
   const entryReport = useMemo(() => reports.find((r) => r.report_type === "entry") || null, [reports]);
   const exitReport = useMemo(() => reports.find((r) => r.report_type === "exit") || null, [reports]);
@@ -932,6 +935,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       }
 
       // créer report
+      const _lease = safeLeases.find((l) => l.id === selectedLeaseId) || null;
+      const _tenant = _lease?.tenant_id ? tenantById.get(_lease.tenant_id) || null : null;
+      const _property = _lease?.property_id ? propertyById.get(_lease.property_id) || null : null;
       const { data, error } = await supabase
         .from("inventory_reports")
         .insert({
@@ -944,6 +950,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
           counters_json: null,
           general_notes: "",
           pdf_url: null,
+          tenant_id: _lease?.tenant_id || null,
+          property_id: _lease?.property_id || null,
+          occupant_label: _tenant?.full_name || null,
+          occupant_email: _tenant?.email || null,
+          occupant_phone: _tenant?.phone || null,
+          property_label: _property?.label || null,
+          property_address_line1: _property?.address_line1 || null,
+          property_address_line2: _property?.address_line2 || null,
+          property_postal_code: _property?.postal_code || null,
+          property_city: _property?.city || null,
         })
         .select("*")
         .single();
@@ -1476,7 +1492,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   };
 
   const sendEdlForSignature = async () => {
-    if (!selectedReport?.pdf_url || !selectedReport.occupant_email) return;
+    if (!selectedReport?.pdf_url || !effectiveTenantEmail) return;
     setSigEdlLoading(true); setSigEdlError(null);
     try {
       const { data: sessionData } = await supabase!.auth.getSession();
@@ -1487,7 +1503,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         selectedReport.property_address_line1,
         selectedReport.property_city,
       ].filter(Boolean).join(", ");
-      const documentLabel = `EDL ${reportTypeLabel} — ${selectedReport.occupant_label || selectedReport.occupant_email}${address ? ` — ${address}` : ""}`;
+      const documentLabel = `EDL ${reportTypeLabel} — ${selectedReport.occupant_label || effectiveTenantEmail}${address ? ` — ${address}` : ""}`;
       const res = await fetch("/api/signatures/create", {
         method: "POST",
         headers: await authJsonHeaders(),
@@ -1499,8 +1515,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
           property_id: selectedLease?.property_id || null,
           original_pdf_url: selectedReport.pdf_url,
           landlord_email: landlordEmail,
-          tenant_email: selectedReport.occupant_email,
-          tenant_name: selectedReport.occupant_label || selectedReport.occupant_email,
+          tenant_email: effectiveTenantEmail,
+          tenant_name: selectedReport.occupant_label || effectiveTenantEmail,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -3854,19 +3870,19 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
             </button>
 
 
-            {isLocked && hasPdf && selectedReport?.occupant_email ? (
+            {isLocked && hasPdf && effectiveTenantEmail ? (
               <button
                 type="button"
                 disabled={sendingTenant || !!tenantEmailSent}
                 onClick={handleSendToTenant}
                 className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-4 text-xs font-semibold text-indigo-900 hover:bg-indigo-100 disabled:opacity-60"
-                title={tenantEmailSent ? `Envoyé à ${tenantEmailSent}` : `Envoyer le PDF à ${selectedReport.occupant_email}`}
+                title={tenantEmailSent ? `Envoyé à ${tenantEmailSent}` : `Envoyer le PDF à ${effectiveTenantEmail}`}
               >
                 {sendingTenant ? "Envoi…" : tenantEmailSent ? "Email envoyé ✓" : "Envoyer au locataire"}
               </button>
             ) : null}
 
-            {hasPdf && !isLocked && selectedReport?.occupant_email ? (
+            {hasPdf && !isLocked && effectiveTenantEmail ? (
               sigEdlSent ? (
                 <span className="inline-flex min-h-[36px] items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 text-xs font-semibold text-emerald-800">
                   Liens de signature envoyés ✓
