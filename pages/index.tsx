@@ -940,8 +940,68 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Candidatures — tuile pleine largeur */}
+            <div data-scroll-reveal data-reveal-delay="0" className="mt-5 overflow-hidden rounded-[1.75rem] border border-[#635bff]/20 bg-gradient-to-br from-[#635bff]/5 via-white to-[#00d4ff]/5 p-7 shadow-sm">
+              <div className="grid gap-8 lg:grid-cols-[1fr,1.1fr] lg:items-center">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#635bff]/10">
+                      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-[#635bff] stroke-[1.8]" aria-hidden>
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeLinecap="round"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" strokeLinecap="round"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" strokeLinecap="round"/>
+                      </svg>
+                    </span>
+                    <div>
+                      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#635bff]">Différenciant</span>
+                      <h3 className="text-lg font-semibold text-slate-950">Candidatures en ligne & scoring automatique</h3>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-sm leading-6 text-slate-600">
+                    Partagez un lien unique sur vos annonces. Les candidats postulent sans créer de compte. Vous recevez des dossiers scorés automatiquement — ratio loyer/revenu, type de contrat, garant — et choisissez le bon profil en quelques minutes.
+                  </p>
+                  <ul className="mt-4 space-y-1.5">
+                    {[
+                      "Lien dédié par annonce — aucune saisie manuelle",
+                      "Scoring automatique : revenus, stabilité, garant",
+                      "Données des candidats non retenus supprimées (RGPD)",
+                      "Dossier retenu pré-remplit le bail automatiquement",
+                    ].map((item) => (
+                      <li key={item} className="flex items-center gap-2 text-sm text-slate-700">
+                        <span className="text-[#635bff]">✓</span> {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5 flex items-center gap-3">
+                    <Link href="/tarifs" className="inline-flex h-9 items-center justify-center rounded-full bg-[#635bff] px-5 text-xs font-semibold text-white hover:opacity-90 transition">
+                      Disponible en lokt·one · 6,90 €/mois
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Flow visuel */}
+                <div className="space-y-2.5">
+                  {[
+                    { step: "01", label: "Annonce publiée", sub: "Lien lokt.fr partagé sur SeLoger, LeBonCoin…", color: "bg-slate-100 text-slate-600" },
+                    { step: "02", label: "Candidat postule", sub: "Dossier rempli en ligne, sans créer de compte", color: "bg-sky-100 text-sky-700" },
+                    { step: "03", label: "Score calculé", sub: "Ratio loyer/revenu · CDI/CDD/TNS · Garant ✓", color: "bg-violet-100 text-violet-700" },
+                    { step: "04", label: "Vous choisissez", sub: "Profils comparés côte à côte · Bail pré-rempli", color: "bg-[#635bff]/10 text-[#635bff]" },
+                  ].map(({ step, label, sub, color }) => (
+                    <div key={step} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color}`}>{step}</span>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{label}</p>
+                        <p className="text-xs text-slate-500">{sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div data-scroll-reveal className="mt-5 flex flex-col gap-3 rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-600">Gratuit pour 1 logement. lokt·one débloque quittances auto, alertes complètes, messagerie et portail locataire.</p>
+              <p className="text-sm text-slate-600">Gratuit pour 1 logement. lokt·one débloque quittances auto, alertes complètes, candidatures et portail locataire.</p>
               <Link href="/espace-bailleur" className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800">
                 Essayer l’espace bailleur →
               </Link>
