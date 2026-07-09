@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       <!-- Header -->
       <tr>
-        <td style="background:#0f172a;padding:24px 32px;text-align:center">
+        <td style="background:linear-gradient(135deg,#635bff,#00d4ff);padding:24px 32px;text-align:center">
           <img src="${LOGO_URL}" alt="lokt.fr" height="36" style="height:36px;display:inline-block">
         </td>
       </tr>
@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             Votre retour nous aide à améliorer l'outil pour tous les utilisateurs.
           </p>
           <p style="margin:0 0 28px;font-size:15px;color:#374151;line-height:1.6">
-            Cela prend <strong>moins de 2 minutes</strong> — note + quelques mots suffisent.
+            Cela prend <strong>moins de 30 secondes</strong> — note + quelques mots suffisent.
           </p>
 
           <!-- CTA -->
