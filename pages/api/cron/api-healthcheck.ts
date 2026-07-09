@@ -45,9 +45,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     probe("Geo API Gouv (villes)", "https://geo.api.gouv.fr/communes?nom=Paris&limit=1"),
     probe("API Adresse Gouv", "https://api-adresse.data.gouv.fr/search/?q=Paris&limit=1"),
     probe("Open-Meteo", "https://api.open-meteo.com/v1/forecast?latitude=48.86&longitude=2.35&current=temperature_2m"),
-    probe("RSS Le Figaro Immo", "https://www.lefigaro.fr/rss/figaro_immobilier.xml"),
-    probe("RSS Le Monde Immo", "https://www.lemonde.fr/immobilier/rss_full.xml"),
-    probe("RSS Google News Immo", "https://news.google.com/rss/search?q=immobilier+location&hl=fr&gl=FR&ceid=FR:fr"),
     probe("INSEE BDM (IRL)", "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/001515333?format=json&lastNObservations=1", {
       headers: INSEE_TOKEN ? { Authorization: `Bearer ${INSEE_TOKEN}` } : {},
     }),
