@@ -1576,6 +1576,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         }),
       });
       const json = await res.json().catch(() => ({}));
+      if (res.status === 409) { setSigEdlSent(true); return; } // déjà envoyé
       if (!res.ok) throw new Error(json?.error || "Erreur lors de l'envoi.");
       setSigEdlSent(true);
     } catch (e: any) {

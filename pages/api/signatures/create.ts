@@ -76,6 +76,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Paramètres manquants." });
   }
 
+  // Dedup — éviter plusieurs demandes actives pour le même document
+  const dedupField = document_type === "bail" ? "lease_contract_id" : "inventory_report_id";
+  const dedupValue = document_type === "bail" ? lease_contract_id : inventory_report_id;
+  if (dedupValue) {
+    const { data: existing } = await supabaseAdmin
+      .from("signature_requests")
+      .select("id, status")
+      .eq(dedupField, dedupValue)
+      .in("status", ["pending", "partially_signed"])
+      .maybeSingle();
+    if (existing) {
+      return res.status(409).json({ error: "Une demande de signature est déjà en cours pour ce document. Vérifiez vos emails ou attendez qu'elle expire." });
+    }
+  }
+
   // Calculer le hash du PDF original
   const [bucket, ...pathParts] = original_pdf_url.split(":");
   const storagePath = pathParts.join(":");

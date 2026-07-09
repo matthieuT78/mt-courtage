@@ -172,14 +172,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else if (sigReq.document_type === "edl" && sigReq.inventory_report_id) {
     await supabaseAdmin
       .from("inventory_reports")
-      .update({ pdf_url: signedPdfUrl, signed_at: now })
+      .update({ pdf_url: signedPdfUrl, status: "signed" })
       .eq("id", sigReq.inventory_report_id);
   }
 
   // URL de téléchargement signée (1h)
   const { data: signedUrlData } = await supabaseAdmin.storage
     .from(signedBucket)
-    .createSignedUrl(signedPath, 3600);
+    .createSignedUrl(signedPath, 60 * 60 * 24 * 7); // 7 jours
   const downloadUrl = signedUrlData?.signedUrl || `${SITE_URL}/espace-bailleur`;
 
   // Emails de confirmation aux deux parties

@@ -288,6 +288,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
         }),
       });
       const json = await res.json().catch(() => ({}));
+      if (res.status === 409) { setSigSent(true); return; } // déjà envoyé
       if (!res.ok) throw new Error(json?.error || "Erreur lors de l'envoi.");
       setSigSent(true);
     } catch (e: any) {
@@ -501,6 +502,15 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
           {document?.pdf_url ? <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>{document.signed_pdf_url ? "Ouvrir le bail signé" : "Ouvrir le PDF"}</button> : null}
+          {document?.pdf_url && !document?.signed_pdf_url && form.tenant_email ? (
+            sigSent ? (
+              <span className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Liens de signature envoyés ✓</span>
+            ) : (
+              <button type="button" disabled={sigLoading} onClick={sendForSignature} className="inline-flex items-center gap-2 rounded-lg border border-[#635bff]/30 bg-[#635bff]/5 px-3 py-2 text-xs font-semibold text-[#635bff] hover:bg-[#635bff]/10 disabled:opacity-50">
+                {sigLoading ? "Envoi…" : "Signature électronique →"}
+              </button>
+            )
+          ) : null}
           {document?.pdf_url ? <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold ${loading ? "pointer-events-none opacity-50" : ""}`}><DocumentArrowUpIcon className="h-4 w-4"/>{loading ? "Import en cours…" : "Importer signé"}<input type="file" accept="application/pdf" className="hidden" disabled={loading} onChange={(event) => uploadSigned(event.target.files?.[0])}/></label> : null}
           {step < 6 ? <button type="button" disabled={loading} onClick={next} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Suivant<ArrowRightIcon className="h-4 w-4"/></button> : <button type="button" disabled={loading} onClick={generate} className="rounded-lg bg-slate-950 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{loading ? "Génération..." : "Finaliser et générer le PDF"}</button>}
         </div>
