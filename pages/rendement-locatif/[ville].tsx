@@ -477,7 +477,7 @@ export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
                   Gérez votre bien locatif sans agence avec lokt.fr
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Quittances automatiques, révision IRL, suivi des loyers, baux en ligne et réception des candidatures — tout en un, à partir de 4,90 €/mois.
+                  Quittances automatiques, révision IRL, suivi des loyers, baux en ligne et réception des candidatures — tout en un, à partir de 6,90 €/mois.
                 </p>
                 <ul className="mt-3 space-y-1">
                   {["Quittances générées en 1 clic", "Candidatures en ligne avec scoring automatique", "Révisions IRL et alertes échéances", "Déclaration fiscale simplifiée"].map((item) => (

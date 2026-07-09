@@ -200,7 +200,7 @@ const faq = [
   },
   {
     q: "lokt.fr permet-il de recevoir des dossiers de candidature en ligne ?",
-    a: "Oui. À partir du plan lokt·one (4,90 €/mois), lokt.fr génère un lien dédié pour chaque annonce. Les candidats remplissent leur dossier à leur rythme — le brouillon est sauvegardé automatiquement. Vous recevez les dossiers dans votre tableau de bord avec un scoring règle-par-règle (revenus, stabilité professionnelle, garant) pour comparer les profils objectivement. Les données des candidats non retenus sont supprimées à la clôture de l'annonce, conformément au RGPD. Rentila, Smovin, BailFacile, Gererseul et Homii ne proposent pas de module équivalent.",
+    a: "Oui. À partir du plan lokt·one (6,90 €/mois), lokt.fr génère un lien dédié pour chaque annonce. Les candidats remplissent leur dossier à leur rythme — le brouillon est sauvegardé automatiquement. Vous recevez les dossiers dans votre tableau de bord avec un scoring règle-par-règle (revenus, stabilité professionnelle, garant) pour comparer les profils objectivement. Les données des candidats non retenus sont supprimées à la clôture de l'annonce, conformément au RGPD. Rentila, Smovin, BailFacile, Gererseul et Homii ne proposent pas de module équivalent.",
   },
   {
     q: "Lokt.fr est-il mieux que Smovin ?",

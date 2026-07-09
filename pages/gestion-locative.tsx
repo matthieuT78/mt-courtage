@@ -620,7 +620,7 @@ export default function GestionLocativePage() {
               </Link>
             </div>
             <p className="mt-5 text-xs text-slate-400">
-              lokt·one à 4,90 €/mois débloque quittances auto, alertes complètes et portail locataire.
+              lokt·one à 6,90 €/mois débloque quittances auto, alertes complètes et portail locataire.
             </p>
           </div>
         </section>
