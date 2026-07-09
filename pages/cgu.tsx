@@ -145,7 +145,26 @@ export default function CGUPage() {
                 </p>
               </Section>
 
-              <Section title="8. Simulations, fiscalité et aide à la déclaration">
+              <Section title="8. Signature électronique">
+                <p>
+                  lokt.fr propose une fonctionnalité de signature électronique pour les contrats de bail et les états des lieux. La signature produite
+                  est une <strong>signature électronique simple</strong> au sens de l’article 3(10) du règlement (UE) n°910/2014 (eIDAS). Elle constitue
+                  un élément de preuve recevable en justice en application de l’article 25(1) dudit règlement, mais elle ne bénéficie pas de la
+                  présomption de fiabilité attachée à la signature électronique qualifiée définie à l’article 3(12).
+                </p>
+                <p>
+                  Le processus de signature repose sur l’envoi d’un lien unique et personnel à chaque signataire par email, l’enregistrement du
+                  consentement explicite, l’adresse IP, l’horodatage et un empreinte SHA-256 du document original. Ces éléments constituent
+                  l’audit trail archivé dans le PDF certifié remis aux deux parties.
+                </p>
+                <p>
+                  L’utilisateur reconnaît que la valeur probante de cette signature peut être inférieure à celle d’une signature électronique avancée
+                  ou qualifiée, notamment si l’identité d’un signataire est contestée. Pour des actes nécessitant une force probante renforcée,
+                  l’utilisateur est invité à recourir à un prestataire de services de confiance qualifié au sens du règlement eIDAS.
+                </p>
+              </Section>
+
+              <Section title="9. Simulations, fiscalité et aide à la déclaration">
                 <p>
                   Les résultats de simulation, analyses de rentabilité, calculs fiscaux et aides à la déclaration sont fournis à titre indicatif. Ils
                   peuvent être incomplets, approximatifs ou dépendre de règles qui évoluent. Ils ne constituent ni un conseil juridique, ni un conseil
@@ -157,7 +176,7 @@ export default function CGUPage() {
                 </p>
               </Section>
 
-              <Section title="9. Responsabilité">
+              <Section title="10. Responsabilité">
                 <p>
                   lokt.fr est fourni « en l’état ». Malgré le soin apporté au service, l’éditeur ne garantit pas l’absence d’erreurs, d’interruptions,
                   de pertes de données, de retards d’email ou d’écarts entre les calculs et la situation réelle de l’utilisateur.
@@ -168,14 +187,14 @@ export default function CGUPage() {
                 </p>
               </Section>
 
-              <Section title="10. Usage acceptable">
+              <Section title="11. Usage acceptable">
                 <p>
                   L’utilisateur s’engage à ne pas utiliser le service pour porter atteinte aux droits de tiers, contourner les limites d’usage,
                   perturber l’infrastructure, extraire massivement les données ou générer des documents frauduleux.
                 </p>
               </Section>
 
-              <Section title="11. Propriété intellectuelle">
+              <Section title="12. Propriété intellectuelle">
                 <p>
                   L’interface, les textes, les modèles, les workflows, les calculs, le nom lokt.fr et les éléments graphiques du site sont protégés. Toute
                   reproduction, extraction ou réutilisation non autorisée est interdite, sauf usage strictement personnel des documents générés pour
