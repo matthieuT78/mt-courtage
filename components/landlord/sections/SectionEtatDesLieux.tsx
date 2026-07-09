@@ -3638,7 +3638,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                             className="min-h-[48px] w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-[#635bff] focus:outline-none focus:ring-4 focus:ring-[#635bff]/10"
                           >
                             <option value="">— Sélectionner un bail —</option>
-                            {activeLeases.map((l) => (
+                            {[...activeOnlyLeases, ...endedPendingLeases].map((l) => (
                               <option key={l.id} value={l.id}>{leaseLabel(l)}</option>
                             ))}
                           </select>
