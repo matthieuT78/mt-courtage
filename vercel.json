@@ -5,6 +5,10 @@
       "schedule": "30 6 * * *"
     },
     {
+      "path": "/api/cron/dvf-refresh-reminder",
+      "schedule": "0 8 1 11 *"
+    },
+    {
       "path": "/api/cron/refresh-donnees",
       "schedule": "0 6 * * 1"
     },
