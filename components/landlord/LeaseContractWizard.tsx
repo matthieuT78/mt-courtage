@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentArrowUpIcon, DocumentTextIcon, LockClosedIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabaseClient";
 import { xhrUploadToSignedUrl } from "../../lib/uploadWithProgress";
@@ -100,11 +100,16 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
   const [sigLoading, setSigLoading] = useState(false);
   const [sigSent, setSigSent] = useState(false);
   const [sigError, setSigError] = useState<string | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const set = (key: string, value: any) =>
     setForm((current) => {
       const next = { ...current, [key]: value };
       return key.startsWith("property_") ? { ...next, property_address: propertyAddress(next) } : next;
     });
+
+  useEffect(() => {
+    contentRef.current?.scrollTo(0, 0);
+  }, [step]);
 
   useEffect(() => {
     (async () => {
@@ -483,7 +488,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Assistant contrat de location</p>
         <div className="mt-3 flex gap-1 overflow-auto">{steps.map((name, index) => <span key={name} className={`min-w-fit rounded-md px-2 py-1 text-xs font-semibold ${index === step ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-600"}`}>{index + 1}. {name}</span>)}</div>
       </div>
-      <div className="max-h-[68vh] overflow-auto p-5">
+      <div ref={contentRef} className="max-h-[68vh] overflow-auto p-5">
         {err ? <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
         {step > 0 ? <p className="mb-4 text-xs leading-5 text-slate-500"><span className="font-bold text-red-600">*</span> Information obligatoire pour établir le contrat de location avec ce modèle.</p> : null}
         {step === 0 ? <StepType kind={kind} setKind={setKind} /> : null}
