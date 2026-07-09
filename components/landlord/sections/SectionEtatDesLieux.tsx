@@ -2013,7 +2013,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   };
 
   const applyAddSuggestions = async () => {
-    if (!supabase || !selectedReportId) return;
+    const reportId = wizardReportId || selectedReportId;
+    if (!supabase || !reportId) return;
     if (isLocked) return;
 
     const toAdd = suggestedRooms.filter((s) => s.checked && (s.name || "").trim());
@@ -2033,7 +2034,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         .map((r) => ({ name: r.name.trim() }))
         .filter((r) => !existingNames.has(r.name.toLowerCase()))
         .map((r, idx) => ({
-          report_id: selectedReportId,
+          report_id: reportId,
           name: r.name,
           floor_level: null,
           notes: null,
@@ -2048,9 +2049,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       const { error } = await supabase.from("inventory_rooms").insert(payload);
       if (error) throw error;
 
+      await loadReportDetails(reportId);
       setOk(`${payload.length} pièce(s) ajoutée(s) ✅`);
-      await loadReportDetails(selectedReportId);
-      setWizardStep("plan");
     } catch (e: any) {
       setErr(e?.message || "Impossible d’ajouter les pièces.");
     } finally {
@@ -2059,7 +2059,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   };
 
   const addCustomRoom = async () => {
-    if (!supabase || !selectedReportId) return;
+    const reportId = wizardReportId || selectedReportId;
+    if (!supabase || !reportId) return;
     if (isLocked) return;
 
     const name = (customRoomName || "").trim();
@@ -2078,7 +2079,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
     try {
       const { error } = await supabase.from("inventory_rooms").insert({
-        report_id: selectedReportId,
+        report_id: reportId,
         name,
         floor_level: null,
         notes: null,
@@ -2086,10 +2087,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       });
       if (error) throw error;
 
-      setOk("Pièce ajoutée ✅");
       setCustomRoomName("");
-      await loadReportDetails(selectedReportId);
-      setWizardStep("plan");
+      await loadReportDetails(reportId);
+      setOk("Pièce ajoutée ✅");
     } catch (e: any) {
       setErr(e?.message || "Impossible d’ajouter la pièce.");
     } finally {
