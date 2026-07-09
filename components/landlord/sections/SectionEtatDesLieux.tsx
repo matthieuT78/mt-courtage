@@ -568,6 +568,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   const [ok, setOk] = useState<string | null>(null);
   const [sendingTenant, setSendingTenant] = useState(false);
   const [tenantEmailSent, setTenantEmailSent] = useState<string | null>(null);
+  const [sigEdlLoading, setSigEdlLoading] = useState(false);
+  const [sigEdlSent, setSigEdlSent] = useState(false);
+  const [sigEdlError, setSigEdlError] = useState<string | null>(null);
 
   const [reports, setReports] = useState<InventoryReport[]>([]);
   const [standaloneReports, setStandaloneReports] = useState<InventoryReport[]>([]);
@@ -810,6 +813,8 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   useEffect(() => {
     if (selectedReportId) loadReportDetails(selectedReportId);
     setTenantEmailSent(null);
+    setSigEdlSent(false);
+    setSigEdlError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedReportId]);
 
@@ -1540,6 +1545,43 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       setErr(e?.message || "Erreur lors de l'envoi de l'email");
     } finally {
       setSendingTenant(false);
+    }
+  };
+
+  const sendEdlForSignature = async () => {
+    if (!selectedReport?.pdf_url || !selectedReport.occupant_email) return;
+    setSigEdlLoading(true); setSigEdlError(null);
+    try {
+      const { data: sessionData } = await supabase!.auth.getSession();
+      const landlordEmail = sessionData.session?.user?.email;
+      if (!landlordEmail) throw new Error("Session expirée. Reconnecte-toi.");
+      const reportTypeLabel = selectedReport.report_type === "entry" ? "Entrée" : "Sortie";
+      const address = [
+        selectedReport.property_address_line1,
+        selectedReport.property_city,
+      ].filter(Boolean).join(", ");
+      const documentLabel = `EDL ${reportTypeLabel} — ${selectedReport.occupant_label || selectedReport.occupant_email}${address ? ` — ${address}` : ""}`;
+      const res = await fetch("/api/signatures/create", {
+        method: "POST",
+        headers: await authJsonHeaders(),
+        body: JSON.stringify({
+          document_type: "edl",
+          document_label: documentLabel,
+          inventory_report_id: selectedReport.id,
+          lease_id: selectedReport.lease_id,
+          original_pdf_url: selectedReport.pdf_url,
+          landlord_email: landlordEmail,
+          tenant_email: selectedReport.occupant_email,
+          tenant_name: selectedReport.occupant_label || selectedReport.occupant_email,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || "Erreur lors de l'envoi.");
+      setSigEdlSent(true);
+    } catch (e: any) {
+      setSigEdlError(e?.message || "Envoi impossible.");
+    } finally {
+      setSigEdlLoading(false);
     }
   };
 
@@ -3907,6 +3949,24 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 {sendingTenant ? "Envoi…" : tenantEmailSent ? "Email envoyé ✓" : "Envoyer au locataire"}
               </button>
             ) : null}
+
+            {hasPdf && !isLocked && selectedReport?.occupant_email ? (
+              sigEdlSent ? (
+                <span className="inline-flex min-h-[36px] items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 text-xs font-semibold text-emerald-800">
+                  Liens de signature envoyés ✓
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={sigEdlLoading}
+                  onClick={sendEdlForSignature}
+                  className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-full border border-[#635bff]/30 bg-[#635bff]/5 px-4 text-xs font-semibold text-[#635bff] hover:bg-[#635bff]/10 disabled:opacity-60"
+                >
+                  {sigEdlLoading ? "Envoi…" : "Signature électronique →"}
+                </button>
+              )
+            ) : null}
+            {sigEdlError ? <span className="text-xs text-red-600">{sigEdlError}</span> : null}
           </div>
         </div>
 

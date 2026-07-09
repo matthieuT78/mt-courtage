@@ -97,6 +97,9 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
   const [form, setForm] = useState<Record<string, any>>({});
   const [sharing, setSharing] = useState(false);
   const [shared, setShared] = useState(false);
+  const [sigLoading, setSigLoading] = useState(false);
+  const [sigSent, setSigSent] = useState(false);
+  const [sigError, setSigError] = useState<string | null>(null);
   const set = (key: string, value: any) =>
     setForm((current) => {
       const next = { ...current, [key]: value };
@@ -259,6 +262,41 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
     } catch (error: any) { setErr(error?.message || "Envoi impossible."); } finally { setSharing(false); }
   };
 
+  const sendForSignature = async () => {
+    if (!document?.pdf_url || !form.tenant_email) return;
+    setSigLoading(true); setSigError(null);
+    try {
+      const { data: sessionData } = await supabase!.auth.getSession();
+      const landlordEmail = sessionData.session?.user?.email;
+      if (!landlordEmail) throw new Error("Session expirée. Reconnecte-toi.");
+      const h = await headers();
+      const propAddress = [form.property_address_line1, form.property_city].filter(Boolean).join(", ");
+      const documentLabel = `Bail — ${form.tenant_name || form.tenant_email}${propAddress ? ` — ${propAddress}` : ""}`;
+      const res = await fetch("/api/signatures/create", {
+        method: "POST",
+        headers: h,
+        body: JSON.stringify({
+          document_type: "bail",
+          document_label: documentLabel,
+          lease_contract_id: document.id,
+          lease_id: leaseId,
+          original_pdf_url: document.pdf_url,
+          landlord_email: landlordEmail,
+          landlord_name: form.landlord_name || landlordEmail,
+          tenant_email: form.tenant_email,
+          tenant_name: form.tenant_name || form.tenant_email,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || "Erreur lors de l'envoi.");
+      setSigSent(true);
+    } catch (e: any) {
+      setSigError(e?.message || "Envoi impossible.");
+    } finally {
+      setSigLoading(false);
+    }
+  };
+
   const deleteExternal = async () => {
     if (!confirm("Supprimer le bail importé ? Cette action est irréversible.")) return;
     try {
@@ -398,15 +436,33 @@ export function LeaseContractWizard({ userId, leaseId, onClose, canShareWithTena
           <h2 className="mt-1 text-lg font-semibold text-slate-950">Le PDF du bail est prêt</h2>
         </div>
         <div className="space-y-4 p-5">
-          <p className="text-sm leading-6 text-slate-700">
-            Télécharge le PDF, fais-le signer par les parties puis reviens importer la version signée. Le bail Lokt reste actif pour le suivi de la location.
-          </p>
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
           <UploadProgressBar progress={uploadProgress} />
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
             <p className="text-sm font-semibold text-emerald-950">Génération terminée avec succès</p>
             <p className="mt-1 text-xs leading-5 text-emerald-800">Le document est archivé dans Lokt. Tu peux le rouvrir plus tard depuis cette fiche bail.</p>
           </div>
+          {form.tenant_email ? (
+            <div className="rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 p-4">
+              <p className="text-sm font-semibold text-slate-950">Signature électronique</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Envoie les liens de signature par email au bailleur et au locataire ({form.tenant_email}). Chacun signera depuis son téléphone ou son ordinateur, sans compte lokt.fr.</p>
+              {sigError ? <p className="mt-2 text-xs text-red-600">{sigError}</p> : null}
+              {sigSent ? (
+                <p className="mt-2 text-xs font-semibold text-emerald-700">Liens de signature envoyés ✓ — Vous recevrez le PDF certifié par email une fois les deux signatures recueillies.</p>
+              ) : (
+                <button
+                  type="button"
+                  disabled={sigLoading}
+                  onClick={sendForSignature}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#635bff] to-[#00d4ff] px-4 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {sigLoading ? "Envoi…" : "Envoyer pour signature électronique →"}
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">Pour activer la signature électronique, renseigne l'e-mail du locataire à l'étape Parties.</p>
+          )}
         </div>
         <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
           <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><XMarkIcon className="h-4 w-4"/>Fermer</button>
