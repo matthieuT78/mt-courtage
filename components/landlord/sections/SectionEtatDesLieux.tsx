@@ -2524,9 +2524,21 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         </div>
                       </div>
 
-                      <div className="mt-4 space-y-2 max-h-[360px] overflow-auto pr-1" style={{ overflowAnchor: "none" }}>
+                      <div className="mt-4 flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-500">{suggestedRooms.filter((x) => x.checked).length} cochée(s)</span>
+                        <button
+                          type="button"
+                          disabled={loading || isLocked || suggestedRooms.every((x) => !x.checked)}
+                          onClick={applyAddSuggestions}
+                          className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                        >
+                          Ajouter les pièces cochées →
+                        </button>
+                      </div>
+
+                      <div className="mt-3 space-y-2 max-h-[360px] overflow-auto pr-1" style={{ overflowAnchor: "none" }}>
                         {suggestedRooms.map((s) => (
-                          <label key={s.tempId} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+                          <label key={s.tempId} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 cursor-pointer">
                             <input
                               type="checkbox"
                               checked={s.checked}
@@ -2542,18 +2554,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                             </div>
                           </label>
                         ))}
-                      </div>
-
-                      <div className="mt-4 flex items-center justify-between gap-2">
-                        <Badge tone="slate">{suggestedRooms.filter((x) => x.checked).length} cochée(s)</Badge>
-                        <button
-                          type="button"
-                          disabled={loading || isLocked || suggestedRooms.every((x) => !x.checked)}
-                          onClick={applyAddSuggestions}
-                          className="rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
-                        >
-                          Ajouter les pièces cochées
-                        </button>
                       </div>
                     </div>
 
