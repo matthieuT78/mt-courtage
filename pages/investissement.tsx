@@ -83,7 +83,7 @@ export default function InvestissementPage() {
   // ✅ CTR-first
   const title = "Calculette rentabilité locative 2026 – Cash-flow, rendement brut/net, charges | lokt.fr";
   const description =
-    "Calculez la rentabilité locative (cash-flow, rendement brut/net, charges, vacance, financement). Comparez location longue durée vs Airbnb avec une lecture claire.";
+    "Simulateur de rentabilité locative gratuit : rendement brut, net et net-net, cash-flow, charges et financement. Résultat immédiat, sans inscription.";
 
   // OG image (non transparent, OK WhatsApp)
   const ogImage = `${siteUrl}/lokt-logo.jpg`;

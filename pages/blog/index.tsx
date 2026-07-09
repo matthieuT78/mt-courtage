@@ -39,7 +39,7 @@ export default function BlogIndex({ posts }: any) {
   const pageUrl = `${SITE_URL}/blog`;
   const title = "Blog immobilier 2026 : guides investissement, gestion locative et crédit | lokt.fr";
   const description =
-    "Guides pratiques pour investir, gérer et optimiser vos biens en 2026 : rendement locatif, LMNP, fiscalité, prêt relais, taux d'endettement — avec simulateurs intégrés.";
+    "Rendement locatif, LMNP, crédit immobilier, fiscalité 2026 — articles chiffrés avec simulateurs intégrés pour investir et gérer sans se tromper.";
   const ogImage = `${SITE_URL}/lokt-logo-transparent.jpg`;
 
   const jsonLd = [
@@ -127,6 +127,24 @@ export default function BlogIndex({ posts }: any) {
               >
                 Accéder aux simulateurs →
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ── CONTEXTE ÉDITORIAL ── */}
+        <section className="border-b border-slate-100 bg-white px-6 pb-8 pt-2 sm:px-10">
+          <div className="mx-auto max-w-6xl grid gap-6 sm:grid-cols-3">
+            <div>
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-emerald-700">Investissement locatif</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Rendement brut, net et net-net, cashflow, LMNP, effet de levier et zones tendues — les chiffres pour décider avant d'acheter.</p>
+            </div>
+            <div>
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-teal-700">Gestion locative</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Baux, quittances, révision IRL, charges récupérables, état des lieux et dépôt de garantie — les règles pratiques pour gérer sans litige.</p>
+            </div>
+            <div>
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-indigo-700">Crédit &amp; fiscalité</p>
+              <p className="mt-2 text-sm leading-6 text-slate-500">Capacité d'emprunt, taux d'endettement, prêt relais, micro-foncier et régime réel — les leviers pour optimiser financement et imposition.</p>
             </div>
           </div>
         </section>

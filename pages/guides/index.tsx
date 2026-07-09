@@ -32,7 +32,7 @@ const CATEGORY_COLORS: Record<GuideCategory, { bg: string; text: string; border:
 export default function GuidesIndexPage() {
   const metaTitle = "Guide du bailleur : mettre en location et gérer un logement | lokt.fr";
   const description =
-    "Guides pratiques pour préparer une location, accueillir un locataire, suivre le bail et organiser le départ : DPE, LMNP, charges, travaux et état des lieux.";
+    "13 guides bailleur dans l'ordre du bail : DPE, choix du locataire, quittances, révision IRL, travaux, charges et restitution du dépôt. Checklists incluses.";
 
   return (
     <div className="min-h-screen bg-[#f7f7fb] text-slate-950">
@@ -70,6 +70,17 @@ export default function GuidesIndexPage() {
               );
             })}
           </div>
+        </div>
+      </section>
+
+      {/* ── Contexte éditorial ── */}
+      <section className="border-b border-slate-100 bg-white px-4 py-5">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-sm leading-7 text-slate-500">
+            En France, un bailleur particulier gère en moyenne 1 à 3 logements sans formation juridique ni comptable.
+            Chaque guide lokt.fr couvre une étape précise du cycle locatif avec les règles essentielles, les erreurs fréquentes à éviter et une checklist opérationnelle.
+            Du choix du locataire jusqu'à la restitution du dépôt de garantie, vous trouverez ici les réponses concrètes que ni un forum ni un modèle de document ne peut donner seul.
+          </p>
         </div>
       </section>
 

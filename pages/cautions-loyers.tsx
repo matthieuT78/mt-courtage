@@ -19,7 +19,7 @@ const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/cautions-loyers`;
 const title = "Caution, dépôt de garantie et suivi des loyers | lokt.fr";
 const description =
-  "Comprendre et suivre dépôt de garantie, loyers, retards, quittances, relances et restitution dans un dossier locatif clair pour propriétaire bailleur.";
+  "Suivez dépôt de garantie, loyers, quittances et relances dans un espace bailleur clair. Alertes automatiques et historique complet pour chaque locataire.";
 const ogImage = `${siteUrl}/espace-bailleur-lokt.png`;
 
 const cta = "/mon-compte?mode=register&redirect=/espace-bailleur";

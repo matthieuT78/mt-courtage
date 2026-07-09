@@ -193,7 +193,7 @@ export default function GestionLocativePage() {
 
   const title = "Logiciel de gestion locative gratuit — Workflow complet | lokt.fr";
   const description =
-    "lokt.fr couvre tout le cycle locatif en un seul outil : candidatures scorées, bail, quittances automatiques, alertes, finance et performance. Gratuit pour 1 bien.";
+    "Logiciel de gestion locative tout-en-un : candidatures, bail, quittances automatiques, états des lieux et finance bailleur. Gratuit pour les bailleurs particuliers.";
   const pageUrl = `${SITE_URL}/gestion-locative`;
 
   return (
