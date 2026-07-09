@@ -14,6 +14,7 @@ import {
 import type { ComponentType, SVGProps } from "react";
 import { supabase } from "../lib/supabaseClient";
 import LeadGate from "./LeadGate";
+import { useAgenceMode } from "../lib/useAgenceMode";
 import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
 
 const PRET_RELAIS_STORAGE_KEY = "pret_relais_simulation_v2";
@@ -402,6 +403,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   // ---------------------------
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [leadEmail, setLeadEmail] = useState<string>("");
+  const [leadPhone, setLeadPhone] = useState<string>("");
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
   const [consentContact, setConsentContact] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
@@ -887,7 +889,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
 
       p_postal_code: null,
       p_city: null,
-      p_phone: null,
+      p_phone: leadPhone.trim() || null,
 
       p_source: "pret_relais_wizard",
       p_utm: null,
@@ -1009,7 +1011,8 @@ if (sendByEmail) {
     }
   };
 
-  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
+  const isAgence = useAgenceMode();
+  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked || isAgence, [isLoggedIn, unlocked, isAgence]);
 
   const labelBase = "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
 
@@ -1415,6 +1418,8 @@ const renderAnalysisBlocks = (text: string) => {
                 subtitle="Montant du relais, mensualité max, capital nouveau prêt, budget maximal, score de finançabilité et plan d'action — envoyés par email."
                 email={leadEmail}
                 setEmail={setLeadEmail}
+                phone={leadPhone}
+                setPhone={setLeadPhone}
                 consent={consentLokt}
                 setConsent={setConsentLokt}
                 contactConsent={consentContact}

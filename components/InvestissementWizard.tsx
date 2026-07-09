@@ -15,6 +15,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../lib/supabaseClient";
 import { usePermissions } from "./PermissionProvider";
+import { useAgenceMode } from "../lib/useAgenceMode";
 import ListingAnalysisSection from "./investissement/ListingAnalysisSection";
 import CalculatorWizardShell from "./calculators/CalculatorWizardShell";
 
@@ -317,6 +318,7 @@ export default function InvestissementWizard() {
   /* ======================== Gate states ======================== */
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [leadEmail, setLeadEmail] = useState<string>("");
+  const [leadPhone, setLeadPhone] = useState<string>("");
   const [consentContact, setConsentContact] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
   const [unlockMsg, setUnlockMsg] = useState<string | null>(null);
@@ -368,7 +370,8 @@ export default function InvestissementWizard() {
 
   const canShowAnalysis =
   hasSimulation && surfaceNum > 0 && (selectedCity !== null || cityQuery.trim().length > 0);
-  const canShowFullDetails = (canSeeCalcDetails && isLoggedIn) || unlocked;
+  const isAgence = useAgenceMode();
+  const canShowFullDetails = (canSeeCalcDetails && isLoggedIn) || unlocked || isAgence;
 
   const resultSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -650,7 +653,7 @@ export default function InvestissementWizard() {
       p_payload: params.payload,
       p_postal_code: selectedCity?.postalCode ?? null,
       p_city: selectedCity?.name ?? null,
-      p_phone: null,
+      p_phone: leadPhone.trim() || null,
       p_source: source,
       p_utm: utm,
       p_lead_age: null,
@@ -1700,6 +1703,11 @@ const canClickUnlock =
                         <label className="text-xs text-slate-100 font-semibold">Votre e-mail (obligatoire)</label>
                         <input type="email" value={leadEmail} onChange={(e) => setLeadEmail(e.target.value)} placeholder="ex: prenom.nom@gmail.com" className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300" />
                         <p className="text-[0.7rem] text-slate-300">Utilisé pour vous envoyer le rapport et retrouver votre simulation.{" "}<a href="/confidentialite" className="underline hover:text-white">En savoir plus</a>.</p>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-100 font-semibold">Téléphone <span className="font-normal text-slate-400">(optionnel)</span></label>
+                        <input type="tel" value={leadPhone} onChange={(e) => setLeadPhone(e.target.value)} placeholder="ex: 06 12 34 56 78" className="w-full min-w-0 rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-base text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300" />
+                        <p className="text-[0.7rem] text-slate-300">Pour être rappelé(e) rapidement par un conseiller partenaire.</p>
                       </div>
                       <div className="rounded-lg bg-white/5 border border-white/10 p-3">
                         <label className="flex items-start gap-3 cursor-pointer">

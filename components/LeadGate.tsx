@@ -6,6 +6,8 @@ export default function LeadGate({
   subtitle = "Score, points de vigilance et plan d’action clair à conserver.",
   email,
   setEmail,
+  phone,
+  setPhone,
   contactConsent,
   setContactConsent,
   unlocking,
@@ -20,6 +22,8 @@ export default function LeadGate({
   subtitle?: string;
   email: string;
   setEmail: (v: string) => void;
+  phone?: string;
+  setPhone?: (v: string) => void;
   consent?: boolean;
   setConsent?: (v: boolean) => void;
   contactConsent?: boolean;
@@ -44,6 +48,7 @@ export default function LeadGate({
   const haloA = theme === "cyan-amber" ? "bg-amber-400" : "bg-emerald-400";
   const haloB = "bg-cyan-500";
 
+  const showPhone = typeof phone === "string" && typeof setPhone === "function";
   const showContactConsent =
     typeof contactConsent === "boolean" && typeof setContactConsent === "function";
 
@@ -78,6 +83,24 @@ export default function LeadGate({
               <a href="/confidentialite" className="underline hover:text-white">En savoir plus sur vos données personnelles</a>.
             </p>
           </div>
+
+          {showPhone ? (
+            <div className="space-y-1">
+              <label className="text-xs text-slate-100 font-semibold">
+                Téléphone <span className="font-normal text-slate-400">(optionnel)</span>
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone!(e.target.value)}
+                placeholder="ex: 06 12 34 56 78"
+                className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-slate-300 focus:outline-none focus:ring-1 focus:ring-cyan-300"
+              />
+              <p className="text-[0.7rem] text-slate-300">
+                Pour être rappelé(e) rapidement par un conseiller partenaire.
+              </p>
+            </div>
+          ) : null}
 
           {showContactConsent ? (
             <div

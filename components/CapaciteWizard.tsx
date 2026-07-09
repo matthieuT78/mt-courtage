@@ -21,6 +21,7 @@ import {
   buildCapaciteEmailText,
 } from "../lib/emails/capaciteEmail";
 import LeadGate from "./LeadGate";
+import { useAgenceMode } from "../lib/useAgenceMode";
 import {
   safeEmail,
   loadLeadEmail,
@@ -883,6 +884,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
   /* ======================== Gate (par calculette) ======================== */
   const [unlocked, setUnlocked] = useState<boolean>(false);
   const [leadEmail, setLeadEmail] = useState<string>("");
+  const [leadPhone, setLeadPhone] = useState<string>("");
   const [consentLokt, setConsentLokt] = useState<boolean>(false);
   const [consentContact, setConsentContact] = useState<boolean>(false);
   const [unlocking, setUnlocking] = useState<boolean>(false);
@@ -1483,7 +1485,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
       p_payload: payload,
       p_postal_code: null,
       p_city: null,
-      p_phone: null,
+      p_phone: leadPhone.trim() || null,
       p_source: source,
       p_utm: utm,
       p_lead_age: lead_age,
@@ -1651,7 +1653,8 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     return "Score lokt.fr — Sous tension";
   }, [bankability]);
 
-  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked, [isLoggedIn, unlocked]);
+  const isAgence = useAgenceMode();
+  const canShowFullAnalysis = useMemo(() => isLoggedIn || unlocked || isAgence, [isLoggedIn, unlocked, isAgence]);
 
   const tauxCreditNum = toFloat(tauxCreditCible, 0);
   const tauxAssuranceNum = toFloat(tauxAssuranceCible, 0);
@@ -2114,6 +2117,8 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
             subtitle="Mensualité max, capital empruntable, budget total, taux d'endettement, score bancaire et plan d'action personnalisé — envoyés par email."
             email={leadEmail}
             setEmail={setLeadEmail}
+            phone={leadPhone}
+            setPhone={setLeadPhone}
             consent={consentLokt}
             setConsent={setConsentLokt}
             contactConsent={consentContact}

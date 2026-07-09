@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import type { ComponentType, SVGProps } from "react";
 import LeadGate from "./LeadGate";
+import { useAgenceMode } from "../lib/useAgenceMode";
 import { supabase } from "../lib/supabaseClient";
 import {
   BriefcaseIcon,
@@ -666,6 +667,7 @@ export default function AcheterOuLouerWizard() {
   // ── Auth & lead gate
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [leadEmail, setLeadEmail]   = useState("");
+  const [leadPhone, setLeadPhone]   = useState("");
   const [unlocked, setUnlocked]     = useState(false);
   const [contactConsent, setContactConsent] = useState(false);
   const [unlocking, setUnlocking]   = useState(false);
@@ -710,7 +712,8 @@ export default function AcheterOuLouerWizard() {
     }
   }, [leadEmail]);
 
-  const canShowDetails = isLoggedIn || unlocked;
+  const isAgence = useAgenceMode();
+  const canShowDetails = isLoggedIn || unlocked || isAgence;
 
   const resultRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -771,7 +774,7 @@ export default function AcheterOuLouerWizard() {
       fetch("/api/tools/acheter-ou-louer/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, payload: emailPayload }),
+        body: JSON.stringify({ email, phone: leadPhone.trim() || null, payload: emailPayload }),
       }).catch(() => {});
     } catch {}
     // Unlock immédiatement sans attendre la réponse email
@@ -997,6 +1000,8 @@ export default function AcheterOuLouerWizard() {
                   subtitle="Comparaison mensuelle chiffrée, scores détaillés et plan d'action — rapport envoyé par email."
                   email={leadEmail}
                   setEmail={setLeadEmail}
+                  phone={leadPhone}
+                  setPhone={setLeadPhone}
                   contactConsent={contactConsent}
                   setContactConsent={setContactConsent}
                   unlocking={unlocking}
