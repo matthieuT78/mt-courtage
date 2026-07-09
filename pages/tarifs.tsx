@@ -39,9 +39,6 @@ function PlanCard({
   onCheckout: (planId: string) => void;
   revealDelay?: number;
 }) {
-  const isQuote = plan.monthlyPrice == null;
-  const isComingSoon = plan.id === "landlord_unlimited";
-
   return (
     <article
       data-scroll-reveal
@@ -60,17 +57,13 @@ function PlanCard({
           <span className="shrink-0 rounded-full border border-[#635bff]/20 bg-[#635bff]/10 px-2 py-0.5 text-[0.68rem] font-semibold text-[#3f37c9]">
             Recommandé
           </span>
-        ) : isComingSoon ? (
-          <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.68rem] font-semibold text-amber-800">
-            À venir
-          </span>
         ) : null}
       </div>
 
       <div className="mt-3 min-h-[4.5rem]">
         <p className="text-2xl font-semibold leading-tight text-slate-950">{priceLabel(plan, billing)}</p>
         <p className="mt-1 text-xs text-slate-600">
-          {isComingSoon ? "Module en préparation" : isQuote ? plan.limitLabel : billing === "monthly" ? `${plan.yearlyPrice} € / an` : "2 mois offerts"}
+          {billing === "monthly" ? `${plan.yearlyPrice} € / an` : "2 mois offerts"}
         </p>
       </div>
 
@@ -79,13 +72,6 @@ function PlanCard({
       </p>
 
       <p className="mt-4 text-sm leading-6 text-slate-600">{plan.description}</p>
-
-      {isComingSoon ? (
-        <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-          Cette offre n’est pas encore ouverte. Elle est pensée pour les agences, administrateurs de biens et bailleurs qui ont besoin de dossiers
-          locataires, pièces sensibles, diagnostics et preuves de gestion au même endroit.
-        </div>
-      ) : null}
 
       <ul className="mt-4 flex-1 space-y-2 text-sm text-slate-700">
         <li className="font-semibold text-slate-900">{plan.limitLabel}</li>
@@ -97,27 +83,18 @@ function PlanCard({
         ))}
       </ul>
 
-      {isQuote ? (
-        <a
-          href="mailto:contact@lokt.fr?subject=Offre%20Pro%20Agence%20lokt.fr"
-          className="mt-5 inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-        >
-          Contacter lokt.fr
-        </a>
-      ) : (
-        <button
-          type="button"
-          onClick={() => onCheckout(plan.id)}
-          disabled={loading}
-          className={cx(
-            "mt-5 inline-flex w-full items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-white",
-            plan.recommended ? "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] hover:opacity-95" : "bg-slate-950 hover:bg-slate-800",
-            loading && "opacity-60"
-          )}
-        >
-          {loading ? "Redirection Stripe…" : "Souscrire"}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => onCheckout(plan.id)}
+        disabled={loading}
+        className={cx(
+          "mt-5 inline-flex w-full items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-white",
+          plan.recommended ? "bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8] hover:opacity-95" : "bg-slate-950 hover:bg-slate-800",
+          loading && "opacity-60"
+        )}
+      >
+        {loading ? "Redirection Stripe…" : "Souscrire"}
+      </button>
     </article>
   );
 }
@@ -262,7 +239,7 @@ export default function TarifsPage() {
             </h2>
           </div>
 
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <article data-scroll-reveal data-reveal-delay="0" className="flex h-full flex-col rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-[1.75rem] sm:p-5">
               <div className="min-h-[3.65rem]">
                 <p className="text-sm font-semibold text-slate-900">Gratuit</p>
@@ -296,7 +273,7 @@ export default function TarifsPage() {
               </Link>
             </article>
 
-            {PAID_BILLING_PLANS.map((plan, i) => (
+            {PAID_BILLING_PLANS.filter((p) => p.id !== "landlord_unlimited").map((plan, i) => (
               <PlanCard
                 key={plan.id}
                 plan={plan}
@@ -337,7 +314,7 @@ export default function TarifsPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-700">
                   {[
-                    ["Logements actifs", "1", "Jusqu’à 3", "Jusqu’à 10"],
+                    ["Logements actifs", "1", "Jusqu’à 2", "Jusqu’à 5"],
                     ["Biens, locataires et baux", "Inclus", "Inclus", "Inclus"],
                     ["Quittances PDF manuelles", "Inclus", "Inclus", "Inclus"],
                     ["États des lieux et inventaire", "Inclus", "Inclus", "Inclus"],
