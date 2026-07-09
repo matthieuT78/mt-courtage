@@ -533,7 +533,7 @@ export function DashboardShell(props: any) {
         requiredPlan: "lokt·plus",
         planId: "landlord_15",
         cta: "Upgrade vers lokt·plus",
-        features: ["Rentabilité et cash-flow par logement", "Analyse des charges et du crédit", "Actions prioritaires pour améliorer la gestion", "Jusqu’à 10 logements actifs"],
+        features: ["Rentabilité et cash-flow par logement", "Analyse des charges et du crédit", "Actions prioritaires pour améliorer la gestion", "Jusqu’à 5 logements actifs"],
       };
     }
     if (active === "outils" && !canUseTools) {

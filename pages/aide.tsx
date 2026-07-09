@@ -32,7 +32,7 @@ const faqSections: { title: string; icon: string; items: FaqItem[] }[] = [
       {
         question: "Combien de logements puis-je gérer sur le plan Gratuit ?",
         answer:
-          "Le plan Gratuit vous permet de gérer 1 logement actif. Pour gérer jusqu'à 3 logements, passez au plan lokt·one (4,90 €/mois). Le plan lokt·plus (9,90 €/mois) permet de gérer jusqu'à 10 logements.",
+          "Le plan Gratuit vous permet de gérer 1 logement actif. Pour gérer jusqu'à 2 logements, passez au plan lokt·one (6,90 €/mois). Le plan lokt·plus (11,90 €/mois) permet de gérer jusqu'à 5 logements.",
       },
       {
         question: "Comment changer de plan tarifaire ?",
@@ -498,11 +498,11 @@ export default function AidePage() {
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-slate-100">
                     <span className="font-semibold text-blue-700">lokt·one</span>
-                    <span className="text-slate-500">3 logements · 4,90 €/mois</span>
+                    <span className="text-slate-500">2 logements · 6,90 €/mois</span>
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="font-semibold text-violet-700">lokt·plus</span>
-                    <span className="text-slate-500">10 logements · 9,90 €/mois</span>
+                    <span className="text-slate-500">5 logements · 11,90 €/mois</span>
                   </div>
                 </div>
                 <Link

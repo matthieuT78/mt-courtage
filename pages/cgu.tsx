@@ -87,10 +87,10 @@ export default function CGUPage() {
                     <strong>Gratuit :</strong> 1 logement actif, avec gestion manuelle des quittances et accès aux fonctions de base (biens, locataires, baux, finances, états des lieux).
                   </li>
                   <li>
-                    <strong>lokt·one — 4,90 € / mois (ou 49 € / an) :</strong> jusqu’à 3 logements actifs, avec automatisation des quittances, envoi email au locataire, validation du paiement, alertes métier et portail locataire.
+                    <strong>lokt·one — 6,90 € / mois (ou 69 € / an) :</strong> jusqu’à 2 logements actifs, avec automatisation des quittances, envoi email au locataire, validation du paiement, alertes métier et portail locataire.
                   </li>
                   <li>
-                    <strong>lokt·plus — 9,90 € / mois (ou 99 € / an) :</strong> jusqu’à 10 logements actifs, avec pilotage avancé, boîte à outils bailleur, simulateurs LMNP/IRL, aide à la déclaration et exports.
+                    <strong>lokt·plus — 11,90 € / mois (ou 119 € / an) :</strong> jusqu’à 5 logements actifs, avec pilotage avancé, boîte à outils bailleur, simulateurs LMNP/IRL, aide à la déclaration et exports.
                   </li>
                   <li>
                     <strong>Pro / agence :</strong> offre en cours de déploiement, non disponible à ce jour. Destinée aux gestionnaires multi-biens et agences avec coffre-fort documentaire et traçabilité équipe.
