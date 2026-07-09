@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
+import ReviewsSection from "../components/ReviewsSection";
 import { supabase } from "../lib/supabaseClient";
 import { firstNameFromUser } from "../lib/userDisplay";
 import { useScrollReveal } from "../hooks/useScrollReveal";
@@ -1209,6 +1210,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <ReviewsSection />
 
         <section id="faq" className="bg-slate-100 px-4 py-14 sm:py-20">
           <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.8fr,1.2fr] lg:items-start">
