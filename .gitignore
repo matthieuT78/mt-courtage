@@ -68,6 +68,7 @@ data/
 # CSV, TXT outputs
 *.csv
 *.txt
+!public/llms.txt
 
 # DVF files (raw)
 valeursfoncieres*.txt

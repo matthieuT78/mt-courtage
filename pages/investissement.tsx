@@ -127,6 +127,18 @@ export default function InvestissementPage() {
         q: "Quelle est la différence entre rendement brut, net et net-net ?",
         a: "Le rendement brut = loyers annuels / prix d'achat. Le rendement net retire les charges (taxe foncière, copropriété, assurance, gestion, vacance). Le rendement net-net (ou net d'impôts) retire en plus la fiscalité selon votre régime (micro-BIC, réel, IR sur revenus fonciers). C'est le net-net qui permet de comparer objectivement deux projets.",
       },
+      {
+        q: "Quels sont les taux de rendement locatif en France en 2026 ?",
+        a: "Le rendement brut médian national est de 5,2 % en 2026. Par ville : Paris ~3,2 % (prix élevés), Lyon ~5,1 %, Bordeaux ~4,8 %, Marseille ~6,2 %, Toulouse ~5,5 %, Lille ~6,1 %, Nantes ~5,2 %. Un rendement brut inférieur à 4 % est difficile à rentabiliser après charges et fiscalité. Au-delà de 7 %, vérifier la qualité locative du secteur.",
+      },
+      {
+        q: "Comment financer un investissement locatif en 2026 ?",
+        a: "La majorité des investisseurs locatifs empruntent à 100 % (hors frais de notaire). Les taux en 2026 sont autour de 3,40 % sur 20 ans. La banque regarde le taux d'endettement global (35 % max HCSF), le reste à vivre et la qualité du bien. Les loyers sont pris en compte à hauteur de 70 % pour compenser le risque de vacance. Le simulateur de capacité d'emprunt lokt.fr permet d'estimer le montant finançable selon vos revenus.",
+      },
+      {
+        q: "Paris ou province : où investir dans le locatif en 2026 ?",
+        a: "Paris offre un rendement brut faible (~3 %) mais une sécurité locative élevée et une valorisation sur le long terme. En province, les rendements sont plus élevés (5 à 7 % brut) avec un prix d'entrée moindre. Les villes comme Marseille, Lille ou Toulouse affichent de bons rendements avec une demande locative soutenue. Le choix dépend de votre objectif : cash-flow immédiat (province) ou capitalisation (grandes métropoles).",
+      },
     ],
     []
   );

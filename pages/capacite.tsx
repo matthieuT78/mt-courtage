@@ -150,6 +150,18 @@ export default function CapaciteEmpruntPage() {
         q: "Dois-je créer un compte ?",
         a: "Non. La calculette est totalement libre d’accès, sans inscription.",
       },
+      {
+        q: "Quel taux de crédit immobilier en 2026 ?",
+        a: "En juin 2026, les taux moyens constatés sont d’environ 3,20 % sur 15 ans, 3,40 % sur 20 ans et 3,60 % sur 25 ans (hors assurance emprunteur). Ces taux varient selon le profil, le montant emprunté et l’établissement. Source : Observatoire Crédit Logement/CSA.",
+      },
+      {
+        q: "Comment calculer son taux d’endettement ?",
+        a: "Taux d’endettement = (total des charges mensuelles + nouvelle mensualité) / revenus nets mensuels × 100. La norme HCSF fixe un plafond à 35 % charges incluses (assurance emprunteur comprise). Exemple : avec 3 000 € de revenus, la mensualité max est de 1 050 €.",
+      },
+      {
+        q: "Existe-t-il un outil gratuit de gestion locative en France ?",
+        a: "Oui. lokt.fr propose un outil de gestion locative gratuit pour les bailleurs particuliers : baux PDF, quittances automatiques, suivi des loyers, révision IRL, états des lieux et alertes. Sans agence, sans abonnement pour un bien actif.",
+      },
     ],
     []
   );
