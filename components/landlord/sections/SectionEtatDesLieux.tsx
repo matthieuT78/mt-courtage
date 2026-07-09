@@ -5,7 +5,6 @@ import {
   BuildingOffice2Icon,
   CheckCircleIcon,
   ClipboardDocumentListIcon,
-  DocumentArrowUpIcon,
   DocumentCheckIcon,
   ExclamationTriangleIcon,
   FolderOpenIcon,
@@ -193,7 +192,7 @@ const workflowUi = (report?: InventoryReport | null) => {
   if (report.status === "ready" || report.pdf_url) {
     return {
       label: "À signer",
-      desc: "Le PDF est prêt. Importe la version signée pour terminer.",
+      desc: "Le PDF est prêt. Envoie-le pour signature électronique.",
       tone: "amber" as const,
     };
   }
@@ -665,7 +664,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     : "Créer l’état des lieux";
   const counters = (selectedReport?.counters_json && typeof selectedReport.counters_json === "object" ? selectedReport.counters_json : {}) as Record<string, any>;
 
-  // ✅ Scroll preserve (wizard) + anti “retour en haut”
+  // ✅ Scroll preserve (wizard) + anti "retour en haut"
   const wizardScrollRef = useRef<HTMLDivElement | null>(null);
   const preserveWizardScroll = (fn: () => void) => {
     const el = wizardScrollRef.current;
@@ -676,8 +675,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     });
   };
 
-  // input file upload PDF signé
-  const signedFileInputRef = useRef<HTMLInputElement | null>(null);
+
   const externalEntryFileInputRef = useRef<HTMLInputElement | null>(null);
   const externalExitFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -1439,77 +1437,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     }
   };
 
-  const buildPdfPath = (opts: { reportId: string; userId: string; leaseId: string; kind: "generated" | "signed" }) => {
-    // path “stable” pour retrouver facilement
-    // -> si tu veux changer plus tard, fais-le aussi côté API pdf-url
-    const suffix = opts.kind === "signed" ? "signed" : "generated";
-    return `inventory/${opts.userId}/${opts.leaseId}/${opts.reportId}.${suffix}.pdf`;
-  };
-
-  const uploadSignedPdf = async (file: File) => {
-    if (!supabase || !userId || !selectedReportId) return;
-    if (!selectedReport) return;
-
-    if (selectedReport.status === "archived") {
-      setErr("Document archivé : import impossible.");
-      return;
-    }
-
-    if (file.type !== "application/pdf") {
-      setErr("Fichier invalide : PDF uniquement.");
-      return;
-    }
-    if (file.size > MAX_PDF_BYTES) {
-      setErr("PDF trop volumineux : 10 Mo maximum.");
-      return;
-    }
-
-    setLoading(true);
-    setErr(null);
-    setOk(null);
-
-    try {
-      const headers = await authJsonHeaders();
-      const uploadUrlResp = await fetch("/api/inventory/signed-upload-url", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ userId, reportId: selectedReportId, kind: "signed", sizeBytes: file.size }),
-      });
-      const { raw, json } = await safeJson(uploadUrlResp);
-      if (!uploadUrlResp.ok) throw new Error(json?.error || raw || `Erreur ${uploadUrlResp.status}`);
-
-      const fallbackLeaseKey = selectedLeaseId || selectedReport.lease_id || "standalone";
-      const path = String(json?.path || buildPdfPath({ reportId: selectedReportId, userId, leaseId: fallbackLeaseKey, kind: "signed" }));
-      const signedUrl = String(json?.signedUrl || "");
-      if (!signedUrl) throw new Error("URL d’upload signée indisponible.");
-
-      setUploadProgress(0);
-      await xhrUploadPdf(signedUrl, file);
-      setUploadProgress(null);
-
-      // On pointe pdf_url sur le PDF signé et on verrouille en “signed”
-      const { error: eUpd } = await supabase
-        .from("inventory_reports")
-        .update({ pdf_url: `${INVENTORY_BUCKET}:${path}`, status: "signed", document_source: "generated", original_file_name: file.name })
-        .eq("id", selectedReportId)
-        .eq("user_id", userId);
-      if (eUpd) throw eUpd;
-
-      if (selectedLeaseId) {
-        await loadReportsForLease(selectedLeaseId);
-      } else {
-        await loadStandaloneReports();
-      }
-      await loadReportDetails(selectedReportId);
-
-      setOk("PDF signé importé ✅ (statut : Signé)");
-    } catch (e: any) {
-      setErr(e?.message || "Impossible d’importer le PDF signé.");
-    } finally {
-      setLoading(false);
-      if (signedFileInputRef.current) signedFileInputRef.current.value = "";
-    }
-  };
 
   const handleSendToTenant = async () => {
     if (!selectedReport?.occupant_email || !selectedReport.pdf_url) return;
@@ -1723,7 +1650,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       { label: "Pièces renseignées", done: rooms.length > 0 && rooms.every((r) => (itemsByRoomId.get(r.id) || []).length > 0) },
       { label: "Compteurs / clés", done: ["electricity", "water", "gas", "keys", "badges", "remotes"].some((k) => !!String(counters[k] || "").trim()) },
       { label: "PDF généré", done: hasPdf },
-      { label: "PDF signé importé", done: selectedReport?.status === "signed" || selectedReport?.status === "archived" },
+      { label: "Signature électronique", done: selectedReport?.status === "signed" || selectedReport?.status === "archived" },
     ],
     [counters, hasPdf, itemsByRoomId, rooms, selectedLeaseId, selectedReport?.performed_at, selectedReport?.performed_place, selectedReport?.status, selectedReportId]
   );
@@ -2199,13 +2126,13 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       return;
     }
     if (!selectedReport?.performed_at) {
-      setErr("Renseigne la date et l’heure dans la dernière étape “Finaliser” avant de générer le PDF.");
+      setErr("Renseigne la date et l'heure dans la dernière étape \"Finaliser\" avant de générer le PDF.");
       return;
     }
     const finalPlace = (selectedReport.performed_place || "").trim() || defaultReportPlace;
     if (!finalPlace) {
       setErr(
-        "Renseigne le champ “Lieu de signature / visite” dans la dernière étape “Finaliser”. C’est l’adresse où l’état des lieux est réalisé, par exemple : 12 rue Victor Hugo, 75000 Paris."
+        "Renseigne le champ \"Lieu de signature / visite\" dans la dernière étape \"Finaliser\". C'est l'adresse où l'état des lieux est réalisé, par exemple : 12 rue Victor Hugo, 75000 Paris."
       );
       return;
     }
@@ -2610,7 +2537,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         })}
                         {!rooms.length ? (
                           <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
-                            Aucune pièce. Ajoute-en dans l’onglet “Pièces”.
+                            Aucune pièce. Ajoute-en dans l’onglet "Pièces".
                           </div>
                         ) : null}
                       </div>
@@ -2891,7 +2818,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
                           {currentRoomItems.length === 0 ? (
                             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
-                              Aucun élément encore. Clique sur “+ Ajouter un élément” ou utilise les boutons structure.
+                              Aucun élément encore. Clique sur "+ Ajouter un élément" ou utilise les boutons structure.
                             </div>
                           ) : (
                             <div className="grid gap-3 xl:grid-cols-2">
@@ -3130,7 +3057,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-sm font-semibold text-slate-900">Résumé</p>
                       <p className="text-xs text-slate-600 mt-1">
-                        Clique sur <span className="font-semibold">“Finaliser & générer le PDF”</span> : tu obtiens un PDF à{" "}
+                        Clique sur <span className="font-semibold">"Finaliser & générer le PDF"</span> : tu obtiens un PDF à{" "}
                         <span className="font-semibold">imprimer</span> et faire signer.
                       </p>
 
@@ -3228,10 +3155,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         </div>
                       ) : null}
 
-                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-xs font-semibold text-slate-900">Après signature</p>
+                      <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
+                        <p className="text-xs font-semibold text-slate-900">Signature électronique</p>
                         <p className="mt-1 text-xs text-slate-700">
-                          Reviens sur la page principale et clique sur <span className="font-semibold">“Importer le PDF signé”</span> pour archiver.
+                          Une fois le PDF généré, ferme le wizard et clique sur <span className="font-semibold">Envoyer pour signature</span> depuis la fiche EDL.
                         </p>
                       </div>
                     </div>
@@ -3926,25 +3853,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               {isExternalReport ? "Ouvrir le PDF externe" : selectedReport?.status === "signed" ? "Ouvrir PDF signé" : "Ouvrir le PDF"}
             </button>
 
-            <input
-              ref={signedFileInputRef}
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSignedPdf(f); }}
-            />
-            {!isLocked ? (
-              <button
-                type="button"
-                disabled={loading || !hasPdf}
-                onClick={() => signedFileInputRef.current?.click()}
-                className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50"
-                title={!hasPdf ? "Génère d’abord le PDF (finaliser)." : "Importer le PDF signé pour archiver"}
-              >
-                <DocumentArrowUpIcon className="h-4 w-4" aria-hidden="true" />
-                {loading ? "Import en cours…" : "Importer le PDF signé"}
-              </button>
-            ) : null}
 
             {isLocked && hasPdf && selectedReport?.occupant_email ? (
               <button
@@ -4063,7 +3971,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
               {rooms.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-700">
-                  Aucune pièce. Utilise “Ouvrir l’assistant” en haut pour ajouter des pièces.
+                  Aucune pièce. Utilise "Ouvrir l’assistant" en haut pour ajouter des pièces.
                 </div>
               ) : (
                 <div className="space-y-3">
