@@ -52,9 +52,19 @@ type ImportTotals = {
   otherExpenses: number;
 };
 
+type PropertyFinance = {
+  property_id: string;
+  tax_regime?: string | null;
+  purchase_price?: number | null;
+  notary_fees?: number | null;
+  agency_fees?: number | null;
+  works?: number | null;
+};
+
 type Props = {
   userId: string;
   properties?: Property[];
+  propertyFinance?: PropertyFinance[];
 };
 
 function cx(...c: Array<string | false | null | undefined>) {
@@ -141,7 +151,7 @@ const DEPOSIT_CATEGORIES = new Set(["deposit_collected", "deposit_returned", "de
 // Taux de réduction d'impôt Pinel selon durée d'engagement
 const PINEL_RATES: Record<number, number> = { 6: 0.12, 9: 0.18, 12: 0.21 };
 
-export function SectionDeclaration({ userId, properties }: Props) {
+export function SectionDeclaration({ userId, properties, propertyFinance }: Props) {
   const { loading: permissionsLoading, plan } = usePermissions();
   const isPremium = planAllowsPerformance(plan);
 
@@ -152,6 +162,20 @@ export function SectionDeclaration({ userId, properties }: Props) {
   const safeProperties = Array.isArray(properties) ? properties : [];
   const propertyById = useMemo(() => new Map(safeProperties.map((p) => [p.id, p])), [safeProperties]);
 
+  // Grouper les biens par catégorie fiscale (depuis property_finance.tax_regime)
+  const fiscalGroups = useMemo(() => {
+    const lmnp: string[] = [];
+    const nu: string[] = [];
+    const pinel: string[] = [];
+    for (const fin of propertyFinance || []) {
+      const tr = fin.tax_regime || "";
+      if (tr === "lmnp_micro" || tr === "lmnp_real") lmnp.push(fin.property_id);
+      else if (tr === "nu_micro" || tr === "nu_real") nu.push(fin.property_id);
+      else if (tr === "pinel") pinel.push(fin.property_id);
+    }
+    return { lmnp, nu, pinel };
+  }, [propertyFinance]);
+
   const years = useMemo(() => {
     const y = currentYear();
     return [y, y - 1, y - 2, y - 3];
@@ -159,7 +183,14 @@ export function SectionDeclaration({ userId, properties }: Props) {
 
   const [year, setYear] = useState<number>(years[1] ?? currentYear() - 1);
   const [regime, setRegime] = useState<Regime>("lmnp_micro");
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("all");
+
+  // IDs des biens contribuant au régime actif (après déclaration de `regime`)
+  const relevantPropertyIds = useMemo(() => {
+    if (regime.startsWith("lmnp")) return new Set(fiscalGroups.lmnp);
+    if (regime.startsWith("nu") || regime === "pinel") return new Set([...fiscalGroups.nu, ...fiscalGroups.pinel]);
+    return new Set<string>();
+  }, [regime, fiscalGroups]);
+
   const [locationKind, setLocationKind] = useState<LocationKind>("meuble_longue");
   const [furnishedAnswer, setFurnishedAnswer] = useState<FurnishedAnswer>("unknown");
   const [expenseProfile, setExpenseProfile] = useState<ExpenseProfile>("low");
@@ -207,6 +238,26 @@ export function SectionDeclaration({ userId, properties }: Props) {
   const isPinel = regime === "pinel";
   const isReal = regime.endsWith("reel");
   const isMicro = regime.endsWith("micro");
+
+  // Auto-fill Pinel depuis Finance + fiche bien quand les champs sont vides
+  const pinelPropertyId = fiscalGroups.pinel[0] ?? null;
+  useEffect(() => {
+    if (!isPinel || !pinelPropertyId) return;
+    if (pinelAddress === "") {
+      const p = propertyById.get(pinelPropertyId);
+      if (p) {
+        const addr = [p.address_line1, p.postal_code, p.city].filter(Boolean).join(", ");
+        if (addr) setPinelAddress(addr);
+      }
+    }
+    if (pinelAcqPrice === 0) {
+      const fin = (propertyFinance || []).find((f) => f.property_id === pinelPropertyId);
+      if (fin) {
+        const total = (fin.purchase_price || 0) + (fin.notary_fees || 0) + (fin.agency_fees || 0) + (fin.works || 0);
+        if (total > 0) setPinelAcqPrice(total);
+      }
+    }
+  }, [isPinel, pinelPropertyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Recettes fiscales (hors dépôt de garantie)
   const receiptsTotal = grossRent + chargesRecovered + otherIncome;
@@ -278,8 +329,11 @@ export function SectionDeclaration({ userId, properties }: Props) {
       ? "Vos charges, travaux ou intérêts semblent importants : le réel mérite d'être étudié."
       : "Avec peu de charges à retraiter, le régime micro peut être un bon point de départ.";
 
-  const selectedPropertyLabel =
-    selectedPropertyId === "all" ? "Tous les biens" : propertyById.get(selectedPropertyId)?.label || "Bien sélectionné";
+  const categoryLabel =
+    isLmnp ? `LMNP — ${isMicro ? "Micro-BIC" : "Réel"} (${fiscalGroups.lmnp.length} bien${fiscalGroups.lmnp.length > 1 ? "s" : ""})` :
+    isPinel ? `Pinel (${fiscalGroups.pinel.length} bien${fiscalGroups.pinel.length > 1 ? "s" : ""})` :
+    isNu ? `Location nue — ${isMicro ? "Micro-foncier" : "Réel"} (${fiscalGroups.nu.length} bien${fiscalGroups.nu.length > 1 ? "s" : ""})` :
+    "Catégorie à définir";
 
   const resetFormFields = () => {
     setRowId(null);
@@ -307,7 +361,6 @@ export function SectionDeclaration({ userId, properties }: Props) {
         .eq("user_id", userId)
         .eq("year", year)
         .eq("regime", regime)
-        .eq("property_id", selectedPropertyId)
         .maybeSingle();
 
       if (error) throw error;
@@ -362,7 +415,6 @@ export function SectionDeclaration({ userId, properties }: Props) {
         user_id: userId,
         year,
         regime,
-        property_id: selectedPropertyId,
         data: {
           locationKind,
           furnishedAnswer,
@@ -394,7 +446,7 @@ export function SectionDeclaration({ userId, properties }: Props) {
 
       const { data, error } = await supabase
         .from("tax_declarations")
-        .upsert(payload, { onConflict: "user_id,year,regime,property_id" })
+        .upsert(payload, { onConflict: "user_id,year,regime" })
         .select("id")
         .single();
 
@@ -468,7 +520,7 @@ export function SectionDeclaration({ userId, properties }: Props) {
         .lte("occurred_at", end)
         .order("occurred_at", { ascending: true });
 
-      if (selectedPropertyId !== "all") query = query.eq("property_id", selectedPropertyId);
+      if (relevantPropertyIds.size > 0) query = query.in("property_id", Array.from(relevantPropertyIds));
       const { data, error } = await query;
       if (error) throw error;
 
@@ -486,7 +538,7 @@ export function SectionDeclaration({ userId, properties }: Props) {
   useEffect(() => {
     if (!permissionsLoading && isPremium) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, year, regime, selectedPropertyId, permissionsLoading, isPremium]);
+  }, [userId, year, regime, permissionsLoading, isPremium]);
 
   const alerts = useMemo(() => {
     const list: Array<{ tone: "amber" | "red" | "emerald"; text: string }> = [];
@@ -550,7 +602,7 @@ export function SectionDeclaration({ userId, properties }: Props) {
   const exportDossier = () => {
     const rows: Array<[string, string]> = [
       ["Année", String(year)],
-      ["Bien", selectedPropertyLabel],
+      ["Catégorie", categoryLabel],
       ["Régime choisi", regimeLabel(regime)],
       ["Recettes loyers", csvNum(grossRent)],
       ["Charges récupérées", csvNum(chargesRecovered)],
@@ -587,45 +639,82 @@ export function SectionDeclaration({ userId, properties }: Props) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `dossier-declaration-${year}-${selectedPropertyId === "all" ? "tous-biens" : selectedPropertyId}.csv`;
+    link.download = `dossier-declaration-${year}-${regime}.csv`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
   };
 
-  const steps: Array<{ key: DeclarationStep; label: string; title: string; desc: string }> = [
-    { key: "diagnostic", label: "1", title: "Orienter", desc: "Identifier le type de location et le régime à étudier." },
-    { key: "prepare",    label: "2", title: "Préparer", desc: "Année, bien, régime et import Finance." },
-    { key: "verify",     label: "3", title: "Vérifier", desc: "Contrôler les montants et le régime le plus cohérent." },
-    { key: "export",     label: "4", title: "Exporter", desc: "Alertes, justificatifs et dossier comptable." },
-  ];
 
-  const completionItems = [
-    { label: "Diagnostic réalisé",    ok: furnishedAnswer !== "unknown" },
-    { label: "Périmètre choisi",      ok: !!year && !!regime && !!selectedPropertyId },
-    { label: "Recettes renseignées",  ok: receiptsTotal > 0 },
-    { label: "Charges contrôlées",    ok: commonCharges > 0 || isMicro },
-    { label: "Dossier sauvegardé",    ok: !!rowId },
-  ];
-  const completionPct = Math.round((completionItems.filter((item) => item.ok).length / completionItems.length) * 100);
+  // Guide de déclaration : montant exact à reporter + formulaire + cases (indicatifs)
+  const declarationGuide = useMemo(() => {
+    if (receiptsTotal === 0) return null;
+    if (regime === "lmnp_micro") return {
+      montantLabel: "Recettes brutes à déclarer",
+      montant: receiptsTotal,
+      montantNote: `Les impôts appliquent ensuite l'abattement ${locationKind === "meuble_saisonnier_classe" ? "71 %" : "50 %"} automatiquement — base imposable résultante : ${eur(microBicBase)}`,
+      formulaire: "2042-C-PRO",
+      caseHint: "Section « Locations meublées non professionnelles / Micro-BIC » — case recettes brutes (ex : 5ND)",
+      isDeficit: false,
+      needsAccountant: false,
+      accountantNote: null,
+    };
+    if (regime === "lmnp_reel") return {
+      montantLabel: realLmnpBase >= 0 ? "Bénéfice à déclarer" : "Déficit à reporter",
+      montant: Math.abs(realLmnpBase),
+      montantNote: realLmnpBase >= 0
+        ? "Résultat net après charges et amortissements mobiliers"
+        : "Le déficit LMNP non-professionnel n'est pas imputable sur le revenu global — il se reporte sur les BIC non-pro des 10 années suivantes",
+      formulaire: "2031 + 2042-C-PRO",
+      caseHint: realLmnpBase >= 0
+        ? "Section « BIC non professionnels / Réel » — case bénéfice (ex : 5NK)"
+        : "Section « BIC non professionnels / Réel » — case déficit (ex : 5NL)",
+      isDeficit: realLmnpBase < 0,
+      needsAccountant: true,
+      accountantNote: "Le formulaire 2031 (liasse fiscale) est obligatoire. Un comptable ou l'adhésion à un CGA est fortement recommandé pour le LMNP réel.",
+    };
+    if (regime === "nu_micro") return {
+      montantLabel: "Recettes brutes à déclarer",
+      montant: receiptsTotal,
+      montantNote: `Les impôts appliquent l'abattement 30 % automatiquement — base imposable résultante : ${eur(microFoncierBase)}. Plafond micro-foncier : 15 000 €/an.`,
+      formulaire: "2042",
+      caseHint: "Section « Revenus fonciers / Micro-foncier » — case revenus bruts (ex : 4BE)",
+      isDeficit: false,
+      needsAccountant: false,
+      accountantNote: null,
+    };
+    if (regime === "nu_reel") return {
+      montantLabel: realNuBase >= 0 ? "Revenu net foncier à déclarer" : "Déficit foncier à déduire",
+      montant: Math.abs(realNuBase),
+      montantNote: realNuBase >= 0
+        ? "Revenus locatifs nets après déduction de toutes les charges réelles"
+        : `Déficit imputable sur le revenu global dans la limite de 10 700 €/an — le surplus se reporte 10 ans sur les revenus fonciers`,
+      formulaire: "2044 + 2042",
+      caseHint: realNuBase >= 0
+        ? "Formulaire 2044 → reporter en case revenus nets (ex : 4BA sur la 2042)"
+        : "Formulaire 2044 → case déficit imputable revenu global (ex : 4BC) ou report (ex : 4BB)",
+      isDeficit: realNuBase < 0,
+      needsAccountant: false,
+      accountantNote: "Le formulaire 2044 détaille chaque charge déductible. Faisable seul, mais une vérification ligne par ligne s'impose.",
+    };
+    if (regime === "pinel") return {
+      montantLabel: "Réduction d'impôt annuelle",
+      montant: pinelYearlyReduction,
+      montantNote: `${(pinelRate * 100).toFixed(0)} % × ${eur(pinelAcqPrice)} = ${eur(pinelTotalReduction)} sur ${pinelCommitmentYears} ans. Les revenus fonciers (${eur(pinelRevenusBase)}) sont à déclarer séparément.`,
+      formulaire: "2042-C + 2044",
+      caseHint: "Cases réduction Pinel (ex : 7QA pour 6 ans, 7QB pour 9 ans, 7QC pour 12 ans) — vérifiez l'année de votre investissement",
+      isDeficit: false,
+      needsAccountant: false,
+      accountantNote: "La réduction Pinel est plafonnée à 300 000 € d'investissement. Vérifiez votre acte d'acquisition et votre bail.",
+    };
+    return null;
+  }, [
+    regime, receiptsTotal, microBicBase, microFoncierBase, realLmnpBase, realNuBase,
+    pinelYearlyReduction, pinelRevenusBase, pinelTotalReduction, pinelAcqPrice,
+    pinelCommitmentYears, pinelRate, locationKind,
+  ]);
 
-  const propertyDossiers = useMemo(() => {
-    const selectedReady = selectedPropertyId !== "all" && receiptsTotal > 0;
-    return safeProperties.map((property) => {
-      const isSelected = property.id === selectedPropertyId;
-      const progress = isSelected ? completionPct : 0;
-      const tone = isSelected && selectedReady ? "emerald" : isSelected ? "amber" : "slate";
-      return {
-        property,
-        isSelected,
-        progress,
-        tone: tone as "emerald" | "amber" | "red" | "slate",
-        label: property.label || property.address_line1 || "Logement",
-        city: property.city || property.postal_code || "Adresse à compléter",
-      };
-    });
-  }, [safeProperties, selectedPropertyId, receiptsTotal, completionPct]);
 
   if (!permissionsLoading && !isPremium) {
     return (
@@ -646,535 +735,274 @@ export function SectionDeclaration({ userId, properties }: Props) {
     );
   }
 
+  const noCat = fiscalGroups.lmnp.length === 0 && fiscalGroups.nu.length === 0 && fiscalGroups.pinel.length === 0;
+  const hasCat = !noCat;
+
   return (
-    <div className="space-y-4">
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 bg-[#f6f9fc] px-5 py-6 sm:px-6">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Aide à la déclaration</p>
-              <h2 className="mt-2 max-w-3xl text-3xl font-semibold leading-tight text-slate-950">
-                Transformer l'année locative en dossier fiscal clair.
-              </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                lokt.fr vous aide à choisir le bon périmètre, importer les écritures Finance, vérifier les montants et préparer une synthèse exploitable pour vous ou votre comptable.
-              </p>
-            </div>
-            <div className="rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Dossier prêt</p>
-              <p className="mt-1 text-2xl font-semibold text-slate-950">{completionPct}%</p>
-            </div>
+    <div className="space-y-5">
+
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Aide à la déclaration</p>
+          <h2 className="mt-1 text-2xl font-semibold text-slate-950">Revenus locatifs {year}</h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={year} onChange={(e) => setYear(parseInt(e.target.value, 10))} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900">
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <button type="button" onClick={importFromFinance} disabled={loading} className={cx("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover, loading && "opacity-60")}>
+            <ArrowPathIcon className="h-4 w-4" />
+            {loading ? "Chargement…" : "Importer Finance"}
+          </button>
+        </div>
+      </div>
+
+      {err && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{err}</div>}
+      {info && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{info}</div>}
+
+      {/* Import preview */}
+      {importPreview && (
+        <div className="rounded-2xl border border-[#635bff]/25 bg-[#635bff]/5 px-4 py-4">
+          <p className="text-sm font-semibold text-slate-950">
+            Finance — {importPreview.rows.length} écriture{importPreview.rows.length > 1 ? "s" : ""} trouvée{importPreview.rows.length > 1 ? "s" : ""}
+          </p>
+          <p className="mt-1 text-xs text-slate-600">
+            Loyers : {eur(importPreview.grossRent)} · Intérêts : {eur(importPreview.interest)} · Assurance : {eur(importPreview.insurance)} · Taxe foncière : {eur(importPreview.propertyTax)}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button type="button" onClick={() => applyImportPreview()} className={cx("rounded-full px-4 py-1.5 text-sm font-semibold", brandBg, brandText)}>Appliquer</button>
+            <button type="button" onClick={() => setImportPreview(null)} className="rounded-full border border-slate-300 bg-white px-4 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Ignorer</button>
           </div>
         </div>
+      )}
 
-        <div className="border-b border-slate-200 bg-white px-4 py-3 sm:px-5">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex gap-2 overflow-x-auto pb-1 xl:pb-0">
-              {steps.map((step) => (
-                <button
-                  key={step.key}
-                  type="button"
-                  onClick={() => setActiveStep(step.key)}
-                  className={cx(
-                    "flex min-w-[9.5rem] items-center gap-2 rounded-2xl border px-3 py-2 text-left transition",
-                    activeStep === step.key ? "border-[#635bff]/30 bg-[#635bff]/5 shadow-sm" : "border-slate-200 bg-white hover:bg-slate-50"
-                  )}
-                >
-                  <span className={cx("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold", activeStep === step.key ? brandBg + " " + brandText : "bg-slate-100 text-slate-700")}>
-                    {step.label}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-slate-950">{step.title}</span>
-                    <span className="block truncate text-[0.72rem] text-slate-500">{step.desc}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
+      {/* ── Aucun régime configuré ── */}
+      {noCat && (
+        <section className="rounded-3xl border border-amber-200 bg-amber-50 p-6">
+          <p className="font-semibold text-amber-900">Aucun régime fiscal configuré</p>
+          <p className="mt-2 text-sm leading-6 text-amber-800">
+            Rendez-vous dans <strong>Finance → Stratégie financière</strong> pour définir le régime de chaque bien :{" "}
+            <strong>LMNP</strong> (meublé), <strong>location nue</strong> ou <strong>Pinel</strong>.
+            Cette information est nécessaire pour préparer votre déclaration.
+          </p>
+        </section>
+      )}
 
-            <div className="shrink-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-              <div className="flex items-center gap-3">
-                <div>
-                  <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Avancement</p>
-                  <p className="text-sm font-semibold text-slate-950">{completionPct}% prêt</p>
-                </div>
-                <div className="flex -space-x-1">
-                  {completionItems.map((item) => (
-                    <span
-                      key={item.label}
-                      className={cx("h-2.5 w-2.5 rounded-full ring-2 ring-slate-50", item.ok ? "bg-emerald-500" : "bg-slate-300")}
-                      title={item.label}
-                    />
+      {/* ── Onglets catégorie ── */}
+      {hasCat && (
+        <div className="flex flex-wrap gap-2">
+          {fiscalGroups.lmnp.length > 0 && (
+            <button type="button" onClick={() => setRegime(isLmnp ? regime : "lmnp_micro")}
+              className={cx("rounded-full border px-4 py-2 text-sm font-semibold transition", isLmnp ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>
+              Meublé LMNP{fiscalGroups.lmnp.length > 1 ? ` — ${fiscalGroups.lmnp.length} biens` : ""}
+            </button>
+          )}
+          {fiscalGroups.nu.length > 0 && (
+            <button type="button" onClick={() => setRegime(isNu ? regime : "nu_micro")}
+              className={cx("rounded-full border px-4 py-2 text-sm font-semibold transition", isNu ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>
+              Location nue{fiscalGroups.nu.length > 1 ? ` — ${fiscalGroups.nu.length} biens` : ""}
+            </button>
+          )}
+          {fiscalGroups.pinel.length > 0 && (
+            <button type="button" onClick={() => setRegime("pinel")}
+              className={cx("rounded-full border px-4 py-2 text-sm font-semibold transition", isPinel ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>
+              Pinel{fiscalGroups.pinel.length > 1 ? ` — ${fiscalGroups.pinel.length} biens` : ""}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Carte catégorie ── */}
+      {hasCat && (
+        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+
+          {/* Biens inclus */}
+          <div className="border-b border-slate-100 bg-slate-50 px-5 py-3">
+            <p className="text-xs text-slate-500">
+              {(isLmnp ? fiscalGroups.lmnp : isPinel ? fiscalGroups.pinel : fiscalGroups.nu)
+                .map((id) => { const p = propertyById.get(id); return p?.label || p?.address_line1 || "Bien"; })
+                .join(" · ")}
+            </p>
+          </div>
+
+          <div className="space-y-7 p-5">
+
+            {/* Régime (non Pinel) */}
+            {!isPinel && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Régime</p>
+                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
+                  {(isLmnp
+                    ? [["lmnp_micro", "Micro-BIC"], ["lmnp_reel", "Réel"]] as const
+                    : [["nu_micro", "Micro-foncier"], ["nu_reel", "Réel foncier"]] as const
+                  ).map(([r, label]) => (
+                    <button key={r} type="button" onClick={() => setRegime(r as Regime)}
+                      className={cx("rounded-lg px-4 py-2 text-sm font-semibold transition", regime === r ? "bg-white text-slate-950 shadow-sm" : "text-slate-500 hover:text-slate-700")}>
+                      {label}
+                    </button>
                   ))}
                 </div>
+                <p className="mt-1.5 text-xs text-slate-400">
+                  {isMicro
+                    ? isLmnp ? `Abattement ${locationKind === "meuble_saisonnier_classe" ? "71 %" : "50 %"} appliqué automatiquement par les impôts` : "Abattement 30 % appliqué automatiquement par les impôts"
+                    : "Vous déduisez vos charges réelles — renseignez-les ci-dessous"}
+                </p>
+                {isLmnp && isMicro && (
+                  <select value={locationKind} onChange={(e) => setLocationKind(e.target.value as LocationKind)}
+                    className="mt-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                    <option value="meuble_longue">Meublé longue durée (abattement 50 %)</option>
+                    <option value="meuble_saisonnier">Meublé saisonnier non classé (abattement 50 %)</option>
+                    <option value="meuble_saisonnier_classe">Meublé de tourisme classé (abattement 71 %)</option>
+                  </select>
+                )}
               </div>
-            </div>
-          </div>
-        </div>
+            )}
 
-        <div className="min-w-0 p-5">
-          <div className="mb-4 grid gap-3 md:grid-cols-4">
-            <Stat label="Recettes" value={eur(receiptsTotal)} sub="Hors dépôt" />
-            <Stat label="Charges" value={eur(chargesStatDisplay)} sub={isReal ? "Déductibles estimées" : "Indicatif (micro)"} />
-            <Stat label="Base imposable" value={eur(taxableApprox)} sub={`Régime ${regimeLabel(regime)}`} />
-            <Stat label="Import" value={String(financeRows.length)} sub={`${selectedPropertyLabel} · ${year}`} />
-          </div>
-
-          {err ? <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
-          {info ? <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{info}</div> : null}
-
-          <section className="mb-4 rounded-3xl border border-slate-200 bg-white p-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            {/* Recettes */}
+            {!isPinel && (
               <div>
-                <p className="text-sm font-semibold text-slate-950">Dossiers par logement</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">Sélectionnez un bien pour préparer un dossier fiscal dédié. "Tous les biens" reste possible pour une vue consolidée.</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Recettes {year}</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Loyers perçus (€)" value={grossRent} onChange={setGrossRent} />
+                  <Field label="Charges récupérées (€)" value={chargesRecovered} onChange={setChargesRecovered} />
+                  <Field label="Autres recettes (€)" value={otherIncome} onChange={setOtherIncome} />
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedPropertyId("all")}
-                className={cx("rounded-full border px-3 py-1.5 text-xs font-semibold", selectedPropertyId === "all" ? "border-[#635bff]/30 bg-[#635bff]/5 text-[#4f46e5]" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}
-              >
-                Vue consolidée
-              </button>
-            </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              {propertyDossiers.slice(0, 6).map((dossier) => (
-                <button
-                  key={dossier.property.id}
-                  type="button"
-                  onClick={() => setSelectedPropertyId(dossier.property.id)}
-                  className={cx(
-                    "rounded-2xl border px-3 py-3 text-left transition hover:-translate-y-0.5",
-                    dossier.isSelected ? "border-[#635bff]/35 bg-[#635bff]/5 shadow-sm" : "border-slate-200 bg-slate-50 hover:bg-white"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-slate-950">{dossier.label}</p>
-                      <p className="mt-1 truncate text-xs text-slate-500">{dossier.city}</p>
-                    </div>
-                    <span className={cx("shrink-0 rounded-full border px-2 py-0.5 text-[0.68rem] font-semibold", statusToneClass(dossier.tone))}>
-                      {dossier.isSelected ? `${dossier.progress}%` : "À préparer"}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </section>
+            )}
 
-          {/* ── Étape 1 : Diagnostic ─────────────────────────────────── */}
-          {activeStep === "diagnostic" ? (
-            <div className="space-y-4">
-              <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
-                <div className="border-b border-slate-200 bg-gradient-to-r from-[#eef2ff] via-white to-[#ecfeff] p-5">
-                  <p className="text-sm font-semibold text-slate-950">1. Orientation de départ</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    Répondez simplement. L'objectif n'est pas de trancher juridiquement, mais d'éviter de partir dans le mauvais dossier.
-                  </p>
+            {/* Charges déductibles (réel uniquement) */}
+            {isReal && !isPinel && (
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Charges déductibles</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Intérêts d'emprunt (€)" value={interest} onChange={setInterest} />
+                  <Field label="Assurance (€)" value={insurance} onChange={setInsurance} />
+                  <Field label="Taxe foncière (€)" value={propertyTax} onChange={setPropertyTax} />
+                  <Field label="Charges copropriété (€)" value={copro} onChange={setCopro} />
+                  <Field label="Travaux / réparations (€)" value={repairs} onChange={setRepairs} />
+                  <Field label="Frais de gestion (€)" value={managementFees} onChange={setManagementFees} />
+                  <Field label="Eau, électricité, divers (€)" value={utilities} onChange={setUtilities} />
+                  <Field label="Autres charges (€)" value={otherExpenses} onChange={setOtherExpenses} />
+                  {isLmnp && <Field label="Amortissements mobilier (€)" value={amortizationMobilier} onChange={setAmortizationMobilier} hint="Mobilier et équipements — déductible en LMNP non-pro" />}
+                  {isNu && <Field label="CFE (€)" value={cfe} onChange={setCfe} hint="Cotisation Foncière des Entreprises" />}
                 </div>
-                <div className="grid gap-4 p-5 lg:grid-cols-[1fr,320px]">
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Type de location</p>
-                      <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                        {[
-                          ["yes", "Meublé"],
-                          ["no", "Vide"],
-                          ["unknown", "Je ne sais pas"],
-                        ].map(([value, label]) => (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() => setFurnishedAnswer(value as FurnishedAnswer)}
-                            className={cx("rounded-2xl border px-4 py-3 text-sm font-semibold transition", furnishedAnswer === value ? "border-[#635bff]/40 bg-[#635bff]/5 text-[#4f46e5]" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50")}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+              </div>
+            )}
 
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Niveau de charges</p>
-                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                        <button
-                          type="button"
-                          onClick={() => setExpenseProfile("low")}
-                          className={cx("rounded-2xl border px-4 py-3 text-left text-sm transition", expenseProfile === "low" ? "border-[#635bff]/40 bg-[#635bff]/5" : "border-slate-200 bg-white hover:bg-slate-50")}
-                        >
-                          <span className="font-semibold text-slate-950">Peu de charges</span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">Pas ou peu de travaux, intérêts ou frais à déduire.</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setExpenseProfile("high")}
-                          className={cx("rounded-2xl border px-4 py-3 text-left text-sm transition", expenseProfile === "high" ? "border-[#635bff]/40 bg-[#635bff]/5" : "border-slate-200 bg-white hover:bg-slate-50")}
-                        >
-                          <span className="font-semibold text-slate-950">Charges importantes</span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">Crédit, travaux, copro, assurance, gestion ou amortissement.</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Sortie attendue</p>
-                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                        <button
-                          type="button"
-                          onClick={() => setAccountingProfile("solo")}
-                          className={cx("rounded-2xl border px-4 py-3 text-left text-sm transition", accountingProfile === "solo" ? "border-[#635bff]/40 bg-[#635bff]/5" : "border-slate-200 bg-white hover:bg-slate-50")}
-                        >
-                          <span className="font-semibold text-slate-950">Je veux comprendre</span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">Synthèse lisible pour déclarer plus sereinement.</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAccountingProfile("accountant")}
-                          className={cx("rounded-2xl border px-4 py-3 text-left text-sm transition", accountingProfile === "accountant" ? "border-[#635bff]/40 bg-[#635bff]/5" : "border-slate-200 bg-white hover:bg-slate-50")}
-                        >
-                          <span className="font-semibold text-slate-950">Je transmets à un expert</span>
-                          <span className="mt-1 block text-xs leading-5 text-slate-500">Dossier détaillé avec sources et justificatifs.</span>
-                        </button>
-                      </div>
-                    </div>
+            {/* Pinel */}
+            {isPinel && (
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Dispositif Pinel</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-semibold text-slate-700">Adresse du bien</label>
+                    <input value={pinelAddress} onChange={(e) => setPinelAddress(e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                      placeholder="Ex : 12 rue des Lilas, 75011 Paris" />
+                    {pinelAddress && (propertyById.get(pinelPropertyId ?? "")?.address_line1) &&
+                      pinelAddress.startsWith(propertyById.get(pinelPropertyId ?? "")?.address_line1 ?? "___") && (
+                      <p className="mt-1 text-[0.68rem] text-slate-400">Récupéré depuis la fiche bien</p>
+                    )}
                   </div>
-
-                  <aside className="rounded-3xl border border-emerald-200 bg-emerald-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-800">Régime à étudier</p>
-                    <p className="mt-2 text-2xl font-semibold text-emerald-950">{regimeLabel(suggestedRegime)}</p>
-                    <p className="mt-2 text-sm leading-6 text-emerald-900">{suggestedReason}</p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRegime(suggestedRegime);
-                        setActiveStep("prepare");
-                      }}
-                      className="mt-4 w-full rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                      Utiliser cette orientation
-                    </button>
-                  </aside>
-                </div>
-              </section>
-            </div>
-          ) : null}
-
-          {/* ── Étape 2 : Préparer ───────────────────────────────────── */}
-          {activeStep === "prepare" ? (
-            <div className="space-y-4">
-              <section className="rounded-3xl border border-slate-200 bg-white p-5">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <Field label="Année d'acquisition" value={pinelAcqYear} onChange={setPinelAcqYear} />
                   <div>
-                    <p className="text-sm font-semibold text-slate-950">1. Choisir le périmètre</p>
-                    <p className="mt-1 text-sm text-slate-600">Sélectionnez l'exercice, le bien et le régime que vous voulez préparer.</p>
+                    <Field label="Prix d'acquisition (€)" value={pinelAcqPrice} onChange={setPinelAcqPrice} />
+                    {pinelAcqPrice > 0 && (() => {
+                      const fin = (propertyFinance || []).find((f) => f.property_id === pinelPropertyId);
+                      const total = (fin?.purchase_price || 0) + (fin?.notary_fees || 0) + (fin?.agency_fees || 0) + (fin?.works || 0);
+                      return total > 0 && pinelAcqPrice === total
+                        ? <p className="mt-1 text-[0.68rem] text-slate-400">Récupéré depuis Finance (achat + frais + travaux)</p>
+                        : null;
+                    })()}
                   </div>
-                  <button type="button" onClick={importFromFinance} disabled={loading} className={cx("inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover, loading && "opacity-60")}>
-                    <ArrowPathIcon className="h-4 w-4" />
-                    Importer Finance
-                  </button>
-                </div>
-
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div>
-                    <label className="text-xs font-semibold text-slate-700">Année déclarée</label>
-                    <select value={year} onChange={(e) => setYear(parseInt(e.target.value, 10))} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                      {years.map((y) => <option key={y} value={y}>{y}</option>)}
+                    <label className="text-xs font-semibold text-slate-700">Durée d'engagement</label>
+                    <select value={pinelCommitmentYears} onChange={(e) => setPinelCommitmentYears(Number(e.target.value))}
+                      className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
+                      <option value={6}>6 ans — réduction 12 %</option>
+                      <option value={9}>9 ans — réduction 18 %</option>
+                      <option value={12}>12 ans — réduction 21 %</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700">Bien</label>
-                    <select value={selectedPropertyId} onChange={(e) => setSelectedPropertyId(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                      <option value="all">Tous les biens</option>
-                      {safeProperties.map((property) => (
-                        <option key={property.id} value={property.id}>{property.label || property.address_line1 || "Bien"}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700">Régime travaillé</label>
-                    <select value={regime} onChange={(e) => setRegime(e.target.value as Regime)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                      {(Object.keys(REGIME_LABELS) as Regime[]).map((key) => (
-                        <option key={key} value={key}>{regimeLabel(key)}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {isLmnp ? (
-                    <div>
-                      <label className="text-xs font-semibold text-slate-700">Type de meublé</label>
-                      <select value={locationKind} onChange={(e) => setLocationKind(e.target.value as LocationKind)} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                        <option value="meuble_longue">Meublé longue durée (abattement 50 %)</option>
-                        <option value="meuble_saisonnier">Meublé saisonnier non classé (abattement 50 %)</option>
-                        <option value="meuble_saisonnier_classe">Meublé tourisme classé (abattement 71 %)</option>
-                      </select>
-                    </div>
-                  ) : null}
                 </div>
+              </div>
+            )}
 
-                {isPinel ? (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold text-slate-900">Informations Pinel</p>
-                    <div className="mt-3 grid gap-3 md:grid-cols-2">
-                      <div className="md:col-span-2">
-                        <label className="text-xs font-semibold text-slate-700">Adresse du bien</label>
-                        <input value={pinelAddress} onChange={(e) => setPinelAddress(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" placeholder="Ex : 12 rue des Lilas, 75011 Paris" />
-                      </div>
-                      <Field label="Année d'acquisition" value={pinelAcqYear} onChange={setPinelAcqYear} />
-                      <Field label="Prix d'acquisition (€)" value={pinelAcqPrice} onChange={setPinelAcqPrice} hint="Utilisé pour calculer la réduction d'impôt" />
-                      <div>
-                        <label className="text-xs font-semibold text-slate-700">Durée d'engagement</label>
-                        <select value={pinelCommitmentYears} onChange={(e) => setPinelCommitmentYears(Number(e.target.value))} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                          <option value={6}>6 ans — réduction 12 %</option>
-                          <option value={9}>9 ans — réduction 18 %</option>
-                          <option value={12}>12 ans — réduction 21 %</option>
-                        </select>
-                      </div>
-                      {pinelAcqPrice > 0 ? (
-                        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
-                          <p className="text-xs font-semibold text-indigo-900">Réduction Pinel estimée</p>
-                          <p className="mt-1 text-lg font-bold text-indigo-950">{eur(pinelYearlyReduction)} / an</p>
-                          <p className="text-xs text-indigo-700">{eur(pinelTotalReduction)} total sur {pinelCommitmentYears} ans</p>
-                        </div>
-                      ) : null}
-                    </div>
+            {/* ── Ce que vous déclarez ── */}
+            {declarationGuide ? (
+              <div className="rounded-3xl border-2 border-[#635bff]/20 bg-gradient-to-br from-[#635bff]/5 to-white p-5">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Ce que vous déclarez aux impôts</p>
+                <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500">{declarationGuide.montantLabel}</p>
+                    <p className="mt-0.5 text-3xl font-bold tracking-tight text-slate-950">
+                      {declarationGuide.isDeficit ? "−" : ""}{eur(declarationGuide.montant)}
+                    </p>
+                    <p className="mt-2 max-w-md text-xs leading-5 text-slate-600">{declarationGuide.montantNote}</p>
                   </div>
-                ) : null}
-              </section>
+                  <div className="shrink-0 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-slate-400">Formulaire</p>
+                    <p className="mt-0.5 text-lg font-bold text-slate-950">{declarationGuide.formulaire}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{declarationGuide.caseHint}</p>
+                  </div>
+                </div>
+                {declarationGuide.needsAccountant && declarationGuide.accountantNote && (
+                  <div className="mt-3 flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2">
+                    <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <p className="text-xs leading-5 text-amber-900">{declarationGuide.accountantNote}</p>
+                  </div>
+                )}
+                {!declarationGuide.needsAccountant && declarationGuide.accountantNote && (
+                  <p className="mt-2 text-xs leading-5 text-slate-500">{declarationGuide.accountantNote}</p>
+                )}
+                <p className="mt-3 text-[0.67rem] leading-5 text-slate-400">
+                  <ExclamationTriangleIcon className="mr-1 inline h-3 w-3 text-amber-400" />
+                  Cases indicatives — les numéros changent chaque année. Vérifiez sur{" "}
+                  <strong className="text-slate-500">impots.gouv.fr</strong> avant de déclarer.
+                  lokt.fr n'est pas un logiciel de déclaration officiel.
+                </p>
+              </div>
+            ) : receiptsTotal === 0 && !isPinel ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                Saisissez vos recettes ou importez depuis Finance pour voir le montant à déclarer.
+              </div>
+            ) : null}
 
-              {importPreview ? (
-                <section className="rounded-3xl border border-cyan-200 bg-cyan-50 p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-cyan-950">Aperçu de l'import Finance</p>
-                      <p className="mt-1 text-sm leading-6 text-cyan-900">
-                        Les champs ne sont pas remplacés tant que vous ne validez pas. Les dépôts de garantie ont été exclus automatiquement.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={() => setImportPreview(null)} className="rounded-full border border-cyan-300 bg-white/70 px-4 py-2 text-sm font-semibold text-cyan-950 hover:bg-white">
-                        Ignorer
-                      </button>
-                      <button type="button" onClick={() => applyImportPreview()} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                        Importer ces montants
-                      </button>
-                    </div>
+            {/* Alertes */}
+            {alerts.filter((a) => a.tone !== "emerald").length > 0 && (
+              <div className="space-y-2">
+                {alerts.filter((a) => a.tone !== "emerald").map((alert, idx) => (
+                  <div key={idx} className={cx("flex items-start gap-2 rounded-2xl border px-3 py-2 text-sm",
+                    alert.tone === "red" ? "border-red-200 bg-red-50 text-red-800" : "border-amber-200 bg-amber-50 text-amber-900")}>
+                    <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0" />
+                    {alert.text}
                   </div>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                    <Stat label="Loyers" value={eur(importPreview.grossRent)} sub={`${importPreview.rows.length} écriture(s)`} />
-                    <Stat label="Autres recettes" value={eur(importPreview.otherIncome)} />
-                    <Stat label="Intérêts d'emprunt" value={eur(importPreview.interest)} />
-                    <Stat label="Charges classées" value={eur(importPreview.propertyTax + importPreview.insurance + importPreview.copro + importPreview.repairs + importPreview.managementFees + importPreview.utilities)} />
-                  </div>
-                </section>
-              ) : null}
+                ))}
+              </div>
+            )}
 
-              <div className="flex justify-end">
-                <button type="button" onClick={() => setActiveStep("verify")} className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                  Vérifier les montants
+            {/* Actions */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              <p className="text-xs text-slate-400">
+                {regimeLabel(regime)} · {year}{rowId ? " · Sauvegardé ✓" : ""}
+              </p>
+              <div className="flex gap-2">
+                <button type="button" onClick={save} disabled={loading}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60">
+                  {loading ? "Sauvegarde…" : "Sauvegarder"}
+                </button>
+                <button type="button" onClick={exportDossier}
+                  className={cx("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover)}>
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  Exporter CSV
                 </button>
               </div>
             </div>
-          ) : null}
 
-          {/* ── Étape 3 : Vérifier ───────────────────────────────────── */}
-          {activeStep === "verify" ? (
-            <div className="space-y-4">
-              <section className="rounded-3xl border border-slate-200 bg-white p-5">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-950">2. Contrôler les montants</p>
-                    <p className="mt-1 text-sm text-slate-600">Les montants peuvent venir de Finance ou être corrigés manuellement.</p>
-                  </div>
-                  <button type="button" onClick={save} disabled={loading} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
-                    {loading ? "Sauvegarde..." : rowId ? "Sauvegarder" : "Créer le dossier"}
-                  </button>
-                </div>
-
-                <div className="mt-4 space-y-5">
-                  {/* Recettes */}
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400 mb-3">Recettes</p>
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <Field label="Loyers encaissés" value={grossRent} onChange={setGrossRent} />
-                      <Field
-                        label="Charges récupérées"
-                        value={chargesRecovered}
-                        onChange={setChargesRecovered}
-                        hint={isNu ? "S'ajoutent aux revenus fonciers — ne sont pas déductibles" : undefined}
-                      />
-                      <Field label="Autres recettes" value={otherIncome} onChange={setOtherIncome} />
-                      <Field
-                        label="Dépôt garantie (indicatif)"
-                        value={depositReceived}
-                        onChange={setDepositReceived}
-                        hint="Non imposable sauf si conservé définitivement"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Charges déductibles */}
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400 mb-3">
-                      {isMicro ? "Charges (indicatif — non utilisées en micro)" : "Charges déductibles"}
-                    </p>
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <Field
-                        label="Intérêts d'emprunt"
-                        value={interest}
-                        onChange={setInterest}
-                        hint={isMicro ? "Non déductibles en micro (abattement forfaitaire)" : undefined}
-                      />
-                      <Field label="Assurances (PNO / GLI)" value={insurance} onChange={setInsurance} />
-                      <Field label="Taxe foncière" value={propertyTax} onChange={setPropertyTax} />
-                      <Field label="Copro non récupérable" value={copro} onChange={setCopro} />
-                      <Field label="Travaux / entretien" value={repairs} onChange={setRepairs} />
-                      <Field label="Gestion / conciergerie" value={managementFees} onChange={setManagementFees} />
-                      <Field label="Eau / élec / internet" value={utilities} onChange={setUtilities} />
-                      <Field label="Autres charges" value={otherExpenses} onChange={setOtherExpenses} />
-                      {regime === "nu_reel" ? (
-                        <Field
-                          label="CFE (Cotisation Foncière)"
-                          value={cfe}
-                          onChange={setCfe}
-                          hint="Déductible en réel foncier — non applicable en micro"
-                        />
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {/* Amortissements LMNP réel */}
-                  {regime === "lmnp_reel" ? (
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400 mb-3">Amortissements LMNP réel</p>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <Field
-                          label="Amortissement mobilier (déductible)"
-                          value={amortizationMobilier}
-                          onChange={setAmortizationMobilier}
-                          hint="Meubles, équipements, électroménager — durée 5-10 ans"
-                        />
-                        <Field
-                          label="Amortissement immobilier (info)"
-                          value={amortizationImmobilier}
-                          onChange={setAmortizationImmobilier}
-                          hint="Non déductible en LMNP non-professionnel — uniquement informatif"
-                        />
-                      </div>
-                      {amortizationImmobilier > 0 ? (
-                        <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                          L'amortissement immobilier n'est pas déductible en LMNP non-professionnel. Seul le mobilier est pris en compte dans le calcul du résultat.
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              </section>
-
-              <section className="rounded-3xl border border-slate-200 bg-white p-5">
-                <p className="text-sm font-semibold text-slate-950">Lecture automatique</p>
-                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                  <div className={cx("rounded-2xl border p-4", isLmnp ? "border-cyan-200 bg-cyan-50" : "border-slate-200 bg-slate-50")}>
-                    <p className="text-sm font-semibold text-slate-900">Meublé LMNP</p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      {locationKind === "meuble_saisonnier_classe" ? "Micro-BIC tourisme classé (abattement 71 %)" : "Micro-BIC (abattement 50 %)"}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-800">{eur(microBicBase)}</p>
-                    <p className="mt-2 text-xs text-slate-500">Réel LMNP (résultat)</p>
-                    <p className="text-sm font-semibold text-slate-800">{eur(realLmnpBase)}</p>
-                  </div>
-                  <div className={cx("rounded-2xl border p-4", isNu || isPinel ? "border-cyan-200 bg-cyan-50" : "border-slate-200 bg-slate-50")}>
-                    <p className="text-sm font-semibold text-slate-900">Location nue</p>
-                    <p className="mt-2 text-xs text-slate-500">Micro-foncier (abattement 30 %)</p>
-                    <p className="text-sm font-semibold text-slate-800">{eur(microFoncierBase)}</p>
-                    <p className="mt-2 text-xs text-slate-500">Réel foncier (résultat)</p>
-                    <p className="text-sm font-semibold text-slate-800">{eur(realNuBase)}</p>
-                  </div>
-                </div>
-                {isPinel && pinelAcqPrice > 0 ? (
-                  <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
-                    <p className="text-sm font-semibold text-indigo-900">Pinel — réduction d'impôt</p>
-                    <p className="mt-1 text-xs text-indigo-700">
-                      Réduction = {(pinelRate * 100).toFixed(0)} % × {eur(pinelAcqPrice)} = {eur(pinelTotalReduction)} sur {pinelCommitmentYears} ans
-                    </p>
-                    <p className="text-lg font-bold text-indigo-950">{eur(pinelYearlyReduction)} / an</p>
-                    <p className="mt-1 text-xs text-indigo-600">La base imposable reste le revenu foncier (location nue réel ou micro).</p>
-                  </div>
-                ) : null}
-                {recommendedMode ? (
-                  <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-950">
-                    <SparklesIcon className="mr-2 inline h-4 w-4" />
-                    {recommendedMode}
-                  </div>
-                ) : null}
-              </section>
-
-              <div className="flex justify-between gap-2">
-                <button type="button" onClick={() => setActiveStep("prepare")} className="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50">
-                  Retour
-                </button>
-                <button type="button" onClick={() => setActiveStep("export")} className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                  Voir les points à traiter
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {/* ── Étape 4 : Export ─────────────────────────────────────── */}
-          {activeStep === "export" ? (
-            <div className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-2">
-                <section className="rounded-3xl border border-slate-200 bg-white p-5">
-                  <p className="text-sm font-semibold text-slate-900">Points à traiter</p>
-                  <div className="mt-3 space-y-2">
-                    {alerts.map((alert, idx) => (
-                      <div key={idx} className={cx("rounded-2xl border px-3 py-3 text-sm", alert.tone === "red" ? "border-red-200 bg-red-50 text-red-800" : alert.tone === "amber" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-emerald-200 bg-emerald-50 text-emerald-900")}>
-                        {alert.tone !== "emerald" ? <ExclamationTriangleIcon className="mr-2 inline h-4 w-4" /> : <CheckCircleIcon className="mr-2 inline h-4 w-4" />}
-                        {alert.text}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="rounded-3xl border border-slate-200 bg-white p-5">
-                  <p className="text-sm font-semibold text-slate-900">Justificatifs à garder</p>
-                  <div className="mt-3 space-y-2">
-                    {checklist.map((item) => (
-                      <div key={item.label} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                        <span className="text-slate-700">{item.label}</span>
-                        <span className={cx("shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold", item.ok ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900")}>
-                          {item.ok ? "OK" : "À vérifier"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </div>
-
-              <section className="rounded-3xl border border-slate-200 bg-white p-5">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-950">Dossier à exporter</p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Synthèse {year} pour {selectedPropertyLabel} : recettes {eur(receiptsTotal)}, base imposable estimée {eur(taxableApprox)} ({regimeLabel(regime)}).
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={save} disabled={loading} className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60">
-                      {loading ? "Sauvegarde..." : "Sauvegarder"}
-                    </button>
-                    <button type="button" onClick={exportDossier} className={cx("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover)}>
-                      <ArrowDownTrayIcon className="h-4 w-4" />
-                      Exporter le dossier
-                    </button>
-                  </div>
-                </div>
-              </section>
-
-              <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-                Cette aide prépare vos chiffres et vos justificatifs. Elle ne remplace pas la déclaration officielle sur impots.gouv ni l'avis d'un professionnel.
-              </section>
-            </div>
-          ) : null}
-        </div>
-      </section>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
