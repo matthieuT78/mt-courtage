@@ -325,7 +325,7 @@ export default function EspaceLocatairePage() {
               <div className="mt-1 border-t border-slate-100 pt-1">
                 <button
                   type="button"
-                  onClick={async () => { await signOutAll(); window.location.href = "/"; }}
+                  onClick={async () => { await signOutAll(); router.push("/"); }}
                   className="flex w-full items-center gap-2 rounded-2xl px-3 py-2.5 text-left text-sm font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
                 >
                   Se deconnecter
