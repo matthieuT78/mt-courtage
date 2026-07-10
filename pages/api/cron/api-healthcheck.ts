@@ -35,19 +35,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
   const INSEE_TOKEN = process.env.INSEE_API_TOKEN;
 
+  // Resend: sending-only keys return 401 with name=restricted_api_key — key IS valid
+  const probeResend = (async (): Promise<CheckResult> => {
+    const start = performance.now();
+    try {
+      const res = await fetch("https://api.resend.com/domains", {
+        method: "GET",
+        headers: { Authorization: `Bearer ${RESEND_KEY}` },
+        signal: AbortSignal.timeout(8000),
+      });
+      const latencyMs = Math.round(performance.now() - start);
+      if (res.ok) return { name: "Resend", ok: true, status: res.status, latencyMs };
+      const body = await res.json().catch(() => ({}));
+      const validKeyRestricted = res.status === 401 && body?.name === "restricted_api_key";
+      return { name: "Resend", ok: validKeyRestricted, status: res.status, latencyMs };
+    } catch (e: any) {
+      return { name: "Resend", ok: false, latencyMs: Math.round(performance.now() - start), error: e?.message ?? "timeout" };
+    }
+  })();
+
   const checks = await Promise.all([
     probe("Stripe", "https://api.stripe.com/v1/products?limit=1", {
       headers: { Authorization: `Bearer ${STRIPE_KEY}` },
     }),
-    probe("Resend", "https://api.resend.com/domains", {
-      headers: { Authorization: `Bearer ${RESEND_KEY}` },
-    }),
+    probeResend,
     probe("Geo API Gouv (villes)", "https://geo.api.gouv.fr/communes?nom=Paris&limit=1"),
     probe("API Adresse Gouv", "https://api-adresse.data.gouv.fr/search/?q=Paris&limit=1"),
     probe("Open-Meteo", "https://api.open-meteo.com/v1/forecast?latitude=48.86&longitude=2.35&current=temperature_2m"),
     probe("Market Benchmarks (Supabase)", "https://lokt.fr/api/market-benchmarks?postalCode=75001"),
-    probe("INSEE BDM (IRL)", "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/001515333?format=json&lastNObservations=1", {
-      headers: INSEE_TOKEN ? { Authorization: `Bearer ${INSEE_TOKEN}` } : {},
+    probe("INSEE BDM (IRL)", "https://api.insee.fr/series/BDM/V1/data/SERIES_BDM/001515333?lastNObservations=1", {
+      headers: { Accept: "application/json", ...(INSEE_TOKEN ? { Authorization: `Bearer ${INSEE_TOKEN}` } : {}) },
     }),
   ]);
 
