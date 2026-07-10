@@ -337,6 +337,9 @@ export function SectionDashboard({
   const [newsLoading, setNewsLoading] = useState(true);
   const [weatherAlerts, setWeatherAlerts] = useState<import("../../../pages/api/weather/alerts").WeatherAlert[]>([]);
   const [weatherLoaded, setWeatherLoaded] = useState(false);
+  const [lmnpInventoryCompliance, setLmnpInventoryCompliance] = useState<
+    Array<{ propertyId: string; compliance: number; missingCount: number }>
+  >([]);
   const scoreHoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onScoreEnter = () => { if (scoreHoverTimeout.current) clearTimeout(scoreHoverTimeout.current); setScoreHovered(true); };
   const onScoreLeave = () => { scoreHoverTimeout.current = setTimeout(() => setScoreHovered(false), 180); };
@@ -638,6 +641,51 @@ export function SectionDashboard({
       mounted = false;
     };
   }, [userId]);
+
+  // ── Conformité inventaire LMNP ────────────────────────────────────────
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    const lmnpIds = (propertyFinance || [])
+      .filter((fin) => fin.tax_regime === "lmnp_micro" || fin.tax_regime === "lmnp_real")
+      .map((fin) => fin.property_id);
+    if (!lmnpIds.length) { setLmnpInventoryCompliance([]); return; }
+
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("property_inventory_items")
+          .select("property_id, is_required_lmnp, actual_quantity, required_quantity, condition")
+          .eq("user_id", userId)
+          .eq("is_required_lmnp", true)
+          .in("property_id", lmnpIds);
+
+        if (!mounted) return;
+        const byProp = new Map<string, { ok: number; total: number }>();
+        for (const item of data || []) {
+          const entry = byProp.get(item.property_id) || { ok: 0, total: 0 };
+          entry.total++;
+          const req = Number(item.required_quantity || 0);
+          const actual = Number(item.actual_quantity || 0);
+          const isOk = item.condition !== "a_remplacer" && (req === 0 || actual >= req);
+          if (isOk) entry.ok++;
+          byProp.set(item.property_id, entry);
+        }
+        // Biens sans aucun item inventaire → compliance 0
+        for (const id of lmnpIds) { if (!byProp.has(id)) byProp.set(id, { ok: 0, total: 0 }); }
+        setLmnpInventoryCompliance(
+          Array.from(byProp.entries()).map(([propertyId, { ok, total }]) => ({
+            propertyId,
+            compliance: total > 0 ? Math.round((ok / total) * 100) : 0,
+            missingCount: total - ok,
+          }))
+        );
+      } catch {
+        // On ignore silencieusement — la table peut ne pas exister en dev
+      }
+    })();
+    return () => { mounted = false; };
+  }, [userId, propertyFinance]);
 
   const accountingMonths = useMemo(() => {
     const now = new Date();
@@ -965,6 +1013,36 @@ export function SectionDashboard({
       });
     }
 
+    // ── Inventaire LMNP non conforme ──────────────────────────────────────
+    const lmnpInventoryIssues = lmnpInventoryCompliance
+      .filter((d) => d.compliance < 100)
+      .map((d) => {
+        const property = propertyById.get(d.propertyId);
+        const label = (property as any)?.label || (property as any)?.address_line1 || "Bien";
+        const fin = (propertyFinance || []).find((f) => f.property_id === d.propertyId);
+        const regime = fin?.tax_regime === "lmnp_real" ? "LMNP réel" : "LMNP micro-BIC";
+        return { label, compliance: d.compliance, missingCount: d.missingCount, regime };
+      });
+
+    if (lmnpInventoryIssues.length > 0) {
+      const allEmpty = lmnpInventoryIssues.every((b) => b.compliance === 0 && b.missingCount === 0);
+      actions.push({
+        tone: "amber",
+        title: `Inventaire LMNP${lmnpInventoryIssues.length > 1 ? ` (${lmnpInventoryIssues.length} biens)` : ""} non conforme`,
+        desc: allEmpty
+          ? "Vos biens meublés n'ont pas encore d'inventaire réglementaire. La liste des 18 éléments obligatoires garantit la qualification LMNP en cas de contrôle."
+          : "L'inventaire de mobilier obligatoire n'est pas complet sur certains biens meublés. Un bien non conforme peut perdre son statut LMNP.",
+        details: lmnpInventoryIssues.slice(0, 3).map((b) =>
+          b.compliance === 0 && b.missingCount === 0
+            ? `${b.label} · inventaire à créer`
+            : `${b.label} · ${b.compliance}% conforme · ${b.missingCount} élément${b.missingCount > 1 ? "s" : ""} manquant${b.missingCount > 1 ? "s" : ""}`
+        ),
+        target: "inventaire",
+        cta: "Vérifier l'inventaire",
+        snoozable: true,
+      });
+    }
+
     for (const alert of alerts) {
       const target = actionTarget(alert.action);
       if (!target) continue;
@@ -1013,6 +1091,7 @@ export function SectionDashboard({
     onboarding.percent,
     onboarding.steps.length,
     onboarding.sub,
+    lmnpInventoryCompliance,
     properties,
     propertyById,
     propertyFinance,
