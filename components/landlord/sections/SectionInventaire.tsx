@@ -15,7 +15,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, formatEuro } from "../UiBits";
-import type { Property } from "../../../lib/landlord/types";
+import type { Property, PropertyFinance } from "../../../lib/landlord/types";
 
 type InventoryCondition = "neuf" | "tres_bon" | "bon" | "moyen" | "a_remplacer";
 type InventoryStatus = "ok" | "missing" | "partial" | "replace";
@@ -56,6 +56,7 @@ type PropertyInventorySnapshot = {
 type Props = {
   userId: string;
   properties?: Property[];
+  propertyFinance?: PropertyFinance[];
 };
 
 const LMNP_REQUIRED_ITEMS = [
@@ -143,12 +144,25 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-export function SectionInventaire({ userId, properties }: Props) {
+export function SectionInventaire({ userId, properties, propertyFinance }: Props) {
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
 
-  const safeProperties = Array.isArray(properties) ? properties : [];
+  const lmnpPropertyIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const fin of propertyFinance || []) {
+      if (fin.tax_regime === "lmnp_micro" || fin.tax_regime === "lmnp_real") ids.add(fin.property_id);
+    }
+    return ids;
+  }, [propertyFinance]);
+
+  const safeProperties = useMemo(() =>
+    (Array.isArray(properties) ? properties : []).filter(
+      (p) => lmnpPropertyIds.has(p.id) && String(p.status || "").toLowerCase() !== "archived"
+    ),
+  [properties, lmnpPropertyIds]);
+
   const propertyById = useMemo(() => new Map(safeProperties.map((p) => [p.id, p])), [safeProperties]);
 
   const [items, setItems] = useState<PropertyInventoryItem[]>([]);
@@ -623,13 +637,16 @@ export function SectionInventaire({ userId, properties }: Props) {
               value={selectedPropertyId}
               onChange={(e) => setSelectedPropertyId(e.target.value)}
               className="mt-1 w-full rounded-2xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+              disabled={safeProperties.length === 0}
             >
-              {safeProperties.length === 0 ? <option value="">Aucun bien</option> : null}
-              {safeProperties.map((property) => (
-                <option key={property.id} value={property.id}>
-                  {property.label || `${property.address_line1 || "Bien"} ${property.city || ""}`.trim()}
-                </option>
-              ))}
+              {safeProperties.length === 0
+                ? <option value="">Aucun bien LMNP — configurez le régime fiscal dans Finance</option>
+                : safeProperties.map((property) => (
+                    <option key={property.id} value={property.id}>
+                      {property.label || `${property.address_line1 || "Bien"} ${property.city || ""}`.trim()}
+                    </option>
+                  ))
+              }
             </select>
           </div>
 
