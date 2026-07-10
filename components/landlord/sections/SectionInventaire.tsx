@@ -1,5 +1,5 @@
 // components/landlord/sections/SectionInventaire.tsx
-import React, { FormEvent, useEffect, useMemo, useState } from "react";
+import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArchiveBoxArrowDownIcon,
   ArrowDownTrayIcon,
@@ -28,7 +28,7 @@ type PropertyInventoryItem = {
   category: string;
   label: string;
   required_quantity: number;
-  actual_quantity: number;
+  actual_quantity: number | null;
   condition: InventoryCondition;
   is_required_lmnp: boolean;
   replacement_cost: number | null;
@@ -107,6 +107,15 @@ const statusOf = (item: PropertyInventoryItem): InventoryStatus => {
   return "ok";
 };
 
+function calcItemReplacementQty(item: PropertyInventoryItem): number {
+  const missingQty = Math.max(0, Number(item.required_quantity || 0) - Number(item.actual_quantity || 0));
+  return statusOf(item) === "replace" ? Math.max(1, Number(item.required_quantity || 1)) : missingQty;
+}
+
+function calcReplacementBudget(items: PropertyInventoryItem[]): number {
+  return items.reduce((acc, item) => acc + calcItemReplacementQty(item) * Number(item.replacement_cost || 0), 0);
+}
+
 const statusLabel = (status: InventoryStatus) => {
   if (status === "missing") return "Manquant";
   if (status === "partial") return "Incomplet";
@@ -176,6 +185,19 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
   const [selectedItemIds, setSelectedItemIds] = useState<Record<string, boolean>>({});
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!err) return;
+    const t = setTimeout(() => setErr(null), 3000);
+    return () => clearTimeout(t);
+  }, [err]);
+
+  useEffect(() => {
+    if (!ok) return;
+    const t = setTimeout(() => setOk(null), 3000);
+    return () => clearTimeout(t);
+  }, [ok]);
+
   const [form, setForm] = useState({
     room: "Cuisine",
     category: "Vaisselle",
@@ -196,6 +218,8 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
     notes: "",
   });
 
+  const autoInitDoneRef = useRef<Set<string>>(new Set());
+
   const selectedProperty = selectedPropertyId ? propertyById.get(selectedPropertyId) || null : null;
   const propertyItems = useMemo(() => items.filter((item) => item.property_id === selectedPropertyId), [items, selectedPropertyId]);
 
@@ -205,11 +229,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
     const required = propertyItems.filter((item) => item.is_required_lmnp);
     const missing = propertyItems.filter((item) => ["missing", "partial"].includes(statusOf(item)));
     const replace = propertyItems.filter((item) => statusOf(item) === "replace");
-    const replacementBudget = propertyItems.reduce((acc, item) => {
-      const shortage = Math.max(0, Number(item.required_quantity || 0) - Number(item.actual_quantity || 0));
-      const needsReplace = item.condition === "a_remplacer" ? Math.max(1, Number(item.required_quantity || 1)) : 0;
-      return acc + Math.max(shortage, needsReplace) * Number(item.replacement_cost || 0);
-    }, 0);
+    const replacementBudget = calcReplacementBudget(propertyItems);
     const requiredOk = required.filter((item) => statusOf(item) === "ok").length;
     const compliance = required.length ? Math.round((requiredOk / required.length) * 100) : 0;
     return {
@@ -337,15 +357,16 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
     if (!selectedPropertyId && safeProperties.length > 0) setSelectedPropertyId(safeProperties[0].id);
   }, [safeProperties, selectedPropertyId]);
 
-  // Auto-init : si le bien sélectionné est LMNP et n'a aucun item → insérer la liste réglementaire silencieusement
+  // Auto-init : si le bien sélectionné est LMNP et n'a aucun item → insérer la liste réglementaire
   useEffect(() => {
     if (!supabase || !userId || !selectedPropertyId) return;
     if (!lmnpPropertyIds.has(selectedPropertyId)) return;
+    if (loading) return;
+    if (autoInitDoneRef.current.has(selectedPropertyId)) return;
     const hasItems = items.some((i) => i.property_id === selectedPropertyId);
     if (hasItems) return;
 
-    // On attend que le chargement initial soit terminé (items est [] mais loading peut encore être true)
-    if (loading) return;
+    autoInitDoneRef.current.add(selectedPropertyId);
 
     const payload = LMNP_REQUIRED_ITEMS.map((item) => ({
       user_id: userId,
@@ -361,9 +382,15 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
       notes: null,
     }));
 
-    supabase.from("property_inventory_items").insert(payload).then(({ error }) => {
-      if (!error) loadInventory();
-    });
+    (async () => {
+      const { error } = await supabase.from("property_inventory_items").insert(payload);
+      if (error) {
+        setErr(error.message || "Impossible d'initialiser l'inventaire LMNP.");
+        autoInitDoneRef.current.delete(selectedPropertyId);
+      } else {
+        await loadInventory();
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPropertyId, items, loading, lmnpPropertyIds, userId]);
 
@@ -436,7 +463,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
         category: form.category.trim() || "Autre",
         label: form.label.trim(),
         required_quantity: Math.max(0, Math.round(num(form.required_quantity))),
-        actual_quantity: Math.max(0, Math.round(num(form.actual_quantity))),
+        actual_quantity: form.actual_quantity.trim() === "" ? null : Math.max(0, Math.round(num(form.actual_quantity))),
         condition: form.condition,
         is_required_lmnp: form.is_required_lmnp,
         replacement_cost: form.replacement_cost ? num(form.replacement_cost) : null,
@@ -446,7 +473,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
       if (error) throw error;
       setOk("Élément ajouté ✅");
       setAddOpen(false);
-      setForm((prev) => ({ ...prev, label: "", notes: "", replacement_cost: "" }));
+      setForm((prev) => ({ ...prev, label: "", notes: "", replacement_cost: "", actual_quantity: "1", room: "Cuisine", category: "Vaisselle" }));
       await loadInventory();
     } catch (e: any) {
       setErr(e?.message || "Impossible d’ajouter l’élément.");
@@ -537,7 +564,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
       item.category,
       item.label,
       item.required_quantity,
-      item.actual_quantity,
+      item.actual_quantity ?? "",
       statusLabel(statusOf(item)),
       conditionLabel(item.condition),
       item.is_required_lmnp ? "Oui" : "Non",
@@ -572,8 +599,6 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
     try {
       const snapshotItems = propertyItems.map((item) => {
         const status = statusOf(item);
-        const missingQty = Math.max(0, Number(item.required_quantity || 0) - Number(item.actual_quantity || 0));
-        const replacementQty = status === "replace" ? Math.max(1, Number(item.required_quantity || 1)) : missingQty;
         return {
           room: item.room,
           category: item.category,
@@ -583,14 +608,14 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
           status,
           condition: item.condition,
           replacement_cost: item.replacement_cost,
-          replacement_total: replacementQty * Number(item.replacement_cost || 0),
+          replacement_total: calcItemReplacementQty(item) * Number(item.replacement_cost || 0),
           notes: item.notes,
         };
       });
 
       const missingCount = snapshotItems.filter((item) => item.status === "missing" || item.status === "partial").length;
       const replaceCount = snapshotItems.filter((item) => item.status === "replace").length;
-      const replacementBudget = snapshotItems.reduce((acc, item) => acc + Number(item.replacement_total || 0), 0);
+      const replacementBudget = calcReplacementBudget(propertyItems);
 
       const { error } = await supabase.from("property_inventory_snapshots").insert({
         user_id: userId,
@@ -928,7 +953,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
                               {item.is_required_lmnp ? <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[0.7rem] font-semibold text-cyan-800">LMNP</span> : null}
                             </div>
                             <p className="mt-1 text-xs text-slate-600">
-                              {item.category} · attendu {item.required_quantity} · réel {item.actual_quantity}
+                              {item.category} · attendu {item.required_quantity} · réel {item.actual_quantity ?? "—"}
                               {item.notes ? ` · ${item.notes}` : ""}
                             </p>
                             </div>
@@ -949,9 +974,9 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
                               <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Réel</span>
                               <input
                                 inputMode="numeric"
-                                value={item.actual_quantity}
+                                value={item.actual_quantity ?? ""}
                                 disabled={savingId === item.id}
-                                onChange={(e) => updateItem(item.id, { actual_quantity: Math.max(0, Math.round(num(e.target.value))) })}
+                                onChange={(e) => updateItem(item.id, { actual_quantity: e.target.value.trim() === "" ? null : Math.max(0, Math.round(num(e.target.value))) })}
                                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                               />
                             </div>
