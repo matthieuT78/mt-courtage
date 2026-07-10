@@ -425,14 +425,6 @@ export function SectionDashboard({
     setOpenAlertMenuId(null);
   };
 
-  const propertyOptions = useMemo(
-    () =>
-      Array.from(propertyById.values()).filter(isActivePropertyLike).sort((a, b) =>
-        String(a.label || a.address_line1 || "").localeCompare(String(b.label || b.address_line1 || ""))
-      ),
-    [propertyById]
-  );
-
   // -----------------------------
   // Onboarding: persistence + auto-hide
   // -----------------------------
@@ -1778,70 +1770,6 @@ export function SectionDashboard({
               </div>
             </div>
           )}
-        </div>
-      </section>
-
-      <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <SectionTitle
-          kicker="Comptabilité"
-          title="Encaissements et dépenses sur 6 mois"
-          desc="Le vert affiche uniquement les loyers confirmés encaissés. Les loyers attendus restent suivis dans Quittances tant que le paiement n’est pas pointé."
-          right={
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={accountingPropertyId}
-                onChange={(e) => setAccountingPropertyId(e.target.value)}
-                className="rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
-                aria-label="Filtrer le graphique par bien"
-              >
-                <option value="">Tous les biens</option>
-                {propertyOptions.map((property) => (
-                  <option key={property.id} value={property.id}>
-                    {property.label || property.address_line1 || "Bien"}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => onGo("finance")}
-                className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-              >
-                Ouvrir Finance
-              </button>
-            </div>
-          }
-        />
-
-        <div className="mt-4 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr),280px]">
-          <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
-            <div className="flex h-64 items-end gap-3 overflow-x-auto border-b border-slate-200 pb-3">
-              {accountingSeries.map((row) => {
-                const incomeHeight = Math.max(4, (row.income / maxChartValue) * 190);
-                const expenseHeight = Math.max(4, (row.expense / maxChartValue) * 190);
-                return (
-                  <div key={row.key} className="flex min-w-[72px] flex-1 flex-col items-center justify-end gap-2">
-                    <div className="flex h-52 items-end gap-1">
-                      <div className="w-5 rounded-t-lg bg-emerald-500" style={{ height: `${incomeHeight}px` }} title={`Encaissé ${formatEuro(row.income)}`} />
-                      <div className="w-5 rounded-t-lg bg-rose-500" style={{ height: `${expenseHeight}px` }} title={`Dépenses ${formatEuro(row.expense)}`} />
-                    </div>
-                    <p className="text-xs font-semibold text-slate-600">{monthLabel(row.key)}</p>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-600">
-              <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Encaissé</span>
-              <span className="inline-flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-rose-500" /> Dépenses</span>
-              {transactionsLoading ? <span>Chargement des écritures...</span> : null}
-              {transactionsError ? <span className="text-red-700">{transactionsError}</span> : null}
-            </div>
-          </div>
-
-          <div className="grid gap-3">
-            <KpiCard title="Encaissé 6 mois" value={formatEuro(accountingTotals.income)} hint="Paiements confirmés" tone="emerald" />
-            <KpiCard title="Dépenses 6 mois" value={formatEuro(accountingTotals.expense)} hint="Écritures sortantes" tone={accountingTotals.expense > 0 ? "red" : "slate"} />
-            <KpiCard title="Résultat net" value={formatEuro(accountingTotals.net)} hint="Encaissé - dépenses" tone={accountingTotals.net >= 0 ? "emerald" : "red"} />
-          </div>
         </div>
       </section>
 
