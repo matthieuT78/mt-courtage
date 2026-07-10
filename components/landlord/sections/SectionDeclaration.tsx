@@ -281,6 +281,19 @@ export function SectionDeclaration({ userId, properties }: Props) {
   const selectedPropertyLabel =
     selectedPropertyId === "all" ? "Tous les biens" : propertyById.get(selectedPropertyId)?.label || "Bien sélectionné";
 
+  const resetFormFields = () => {
+    setRowId(null);
+    setLocationKind("meuble_longue");
+    setFurnishedAnswer("unknown");
+    setExpenseProfile("low");
+    setAccountingProfile("solo");
+    setGrossRent(0); setChargesRecovered(0); setOtherIncome(0); setDepositReceived(0);
+    setInterest(0); setInsurance(0); setPropertyTax(0); setCopro(0);
+    setRepairs(0); setManagementFees(0); setUtilities(0); setOtherExpenses(0);
+    setAmortizationMobilier(0); setAmortizationImmobilier(0); setCfe(0);
+    setPinelAddress(""); setPinelAcqPrice(0); setPinelCommitmentYears(6);
+  };
+
   const load = async () => {
     if (!supabase || !userId || !isPremium) return;
     setLoading(true);
@@ -294,18 +307,18 @@ export function SectionDeclaration({ userId, properties }: Props) {
         .eq("user_id", userId)
         .eq("year", year)
         .eq("regime", regime)
+        .eq("property_id", selectedPropertyId)
         .maybeSingle();
 
       if (error) throw error;
       if (!data) {
-        setRowId(null);
-        setInfo("Aucune préparation sauvegardée pour cet exercice.");
+        resetFormFields();
+        setInfo("Aucune préparation sauvegardée pour ce bien / exercice.");
         return;
       }
 
       const d = ((data as Stored).data || {}) as Record<string, unknown>;
       setRowId((data as Stored).id);
-      setSelectedPropertyId(String(d.selectedPropertyId || "all"));
       setLocationKind((d.locationKind as LocationKind) || "meuble_longue");
       setFurnishedAnswer((d.furnishedAnswer as FurnishedAnswer) || "unknown");
       setExpenseProfile((d.expenseProfile as ExpenseProfile) || "low");
@@ -349,8 +362,8 @@ export function SectionDeclaration({ userId, properties }: Props) {
         user_id: userId,
         year,
         regime,
+        property_id: selectedPropertyId,
         data: {
-          selectedPropertyId,
           locationKind,
           furnishedAnswer,
           expenseProfile,
@@ -381,7 +394,7 @@ export function SectionDeclaration({ userId, properties }: Props) {
 
       const { data, error } = await supabase
         .from("tax_declarations")
-        .upsert(payload, { onConflict: "user_id,year,regime" })
+        .upsert(payload, { onConflict: "user_id,year,regime,property_id" })
         .select("id")
         .single();
 
@@ -473,7 +486,7 @@ export function SectionDeclaration({ userId, properties }: Props) {
   useEffect(() => {
     if (!permissionsLoading && isPremium) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, year, regime, permissionsLoading, isPremium]);
+  }, [userId, year, regime, selectedPropertyId, permissionsLoading, isPremium]);
 
   const alerts = useMemo(() => {
     const list: Array<{ tone: "amber" | "red" | "emerald"; text: string }> = [];
