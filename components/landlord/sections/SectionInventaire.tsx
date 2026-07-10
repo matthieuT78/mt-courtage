@@ -337,6 +337,36 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
     if (!selectedPropertyId && safeProperties.length > 0) setSelectedPropertyId(safeProperties[0].id);
   }, [safeProperties, selectedPropertyId]);
 
+  // Auto-init : si le bien sélectionné est LMNP et n'a aucun item → insérer la liste réglementaire silencieusement
+  useEffect(() => {
+    if (!supabase || !userId || !selectedPropertyId) return;
+    if (!lmnpPropertyIds.has(selectedPropertyId)) return;
+    const hasItems = items.some((i) => i.property_id === selectedPropertyId);
+    if (hasItems) return;
+
+    // On attend que le chargement initial soit terminé (items est [] mais loading peut encore être true)
+    if (loading) return;
+
+    const payload = LMNP_REQUIRED_ITEMS.map((item) => ({
+      user_id: userId,
+      property_id: selectedPropertyId,
+      room: item.room,
+      category: item.category,
+      label: item.label,
+      required_quantity: item.required_quantity,
+      actual_quantity: null,
+      condition: "bon" as InventoryCondition,
+      is_required_lmnp: true,
+      replacement_cost: null,
+      notes: null,
+    }));
+
+    supabase.from("property_inventory_items").insert(payload).then(({ error }) => {
+      if (!error) loadInventory();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPropertyId, items, loading, lmnpPropertyIds, userId]);
+
   const createBaseInventory = async () => {
     if (!supabase || !userId || !selectedPropertyId) return;
 
@@ -353,7 +383,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
         category: item.category,
         label: item.label,
         required_quantity: item.required_quantity,
-        actual_quantity: item.required_quantity,
+        actual_quantity: null,
         condition: "bon" as InventoryCondition,
         is_required_lmnp: true,
         replacement_cost: null,
