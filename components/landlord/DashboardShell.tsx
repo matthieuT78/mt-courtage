@@ -473,7 +473,7 @@ export function DashboardShell(props: any) {
       // Messagerie
       { label: "Envoyer un message",         sublabel: "contacter locataire, messagerie, email, courrier, notification", section: "messagerie" },
       // Inventaire
-      { label: "Inventaire mobilier",        sublabel: "liste meubles, meublé, équipement, cuisine, literie, électroménager", section: "inventaire" },
+      { label: "Inventaire LMNP",             sublabel: "liste meubles, meublé, équipement, cuisine, literie, électroménager", section: "inventaire" },
       // Dashboard
       { label: "Score bailleur",             sublabel: "santé portefeuille, indicateur, performance globale, tableau de bord", section: "dashboard" },
       { label: "Risque climatique",          sublabel: "inondation, sécheresse, aléas naturels, DPE, passoire, zone risque", section: "dashboard" },
