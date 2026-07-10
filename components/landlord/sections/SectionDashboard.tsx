@@ -994,7 +994,6 @@ export function SectionDashboard({
         const label = (property as any)?.label || (property as any)?.address_line1 || "Bien";
         const missing: string[] = [];
         if (!Number(fin.purchase_price || 0)) missing.push("prix d'achat");
-        if (!Number(fin.cfe_yearly || 0)) missing.push("CFE annuelle");
         if (fin.tax_regime === "lmnp_real" && !Number(fin.loan_interest_monthly || 0))
           missing.push("intérêts d'emprunt");
         return missing.length ? { label, missing } : null;
