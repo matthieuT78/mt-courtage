@@ -2562,28 +2562,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             </div>
           ) : null}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-[0.7rem] text-slate-700">Email bailleur notification</label>
-              <input
-                type="email"
-                value={form.reminder_email}
-                onChange={(e) => setForm((s) => ({ ...s, reminder_email: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[0.7rem] text-slate-700">Email destinataire quittance</label>
-              <input
-                type="email"
-                value={form.tenant_receipt_email}
-                onChange={(e) => setForm((s) => ({ ...s, tenant_receipt_email: e.target.value }))}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-
           <p className="text-[0.7rem] text-slate-500">
             La quittance est un reçu : le workflow recommandé garde une validation de paiement avant l’envoi au locataire.
           </p>
