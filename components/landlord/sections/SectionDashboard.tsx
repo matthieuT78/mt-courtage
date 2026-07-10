@@ -932,6 +932,39 @@ export function SectionDashboard({
       });
     }
 
+    // ── LMNP compliance ──────────────────────────────────────────────────
+    const activePropertyIds = new Set(
+      (properties || [])
+        .filter((p) => String(p.status || "").toLowerCase() !== "archived")
+        .map((p) => p.id)
+    );
+    const lmnpIssues = (propertyFinance || [])
+      .filter((fin) => activePropertyIds.has(fin.property_id))
+      .filter((fin) => fin.tax_regime === "lmnp_micro" || fin.tax_regime === "lmnp_real")
+      .map((fin) => {
+        const property = propertyById.get(fin.property_id);
+        const label = (property as any)?.label || (property as any)?.address_line1 || "Bien";
+        const missing: string[] = [];
+        if (!Number(fin.purchase_price || 0)) missing.push("prix d'achat");
+        if (!Number(fin.cfe_yearly || 0)) missing.push("CFE annuelle");
+        if (fin.tax_regime === "lmnp_real" && !Number(fin.loan_interest_monthly || 0))
+          missing.push("intérêts d'emprunt");
+        return missing.length ? { label, missing } : null;
+      })
+      .filter((x): x is { label: string; missing: string[] } => x !== null);
+
+    if (lmnpIssues.length > 0) {
+      actions.push({
+        tone: "amber",
+        title: `${lmnpIssues.length} bien${lmnpIssues.length > 1 ? "s" : ""} LMNP incomplet${lmnpIssues.length > 1 ? "s" : ""}`,
+        desc: "Des données fiscales manquent pour vos biens LMNP. Le rendement calculé et la préparation de votre déclaration ne seront pas fiables.",
+        details: lmnpIssues.slice(0, 3).map((b) => `${b.label} · manque ${b.missing.join(", ")}`),
+        target: "finance",
+        cta: "Compléter Finance",
+        snoozable: true,
+      });
+    }
+
     for (const alert of alerts) {
       const target = actionTarget(alert.action);
       if (!target) continue;
@@ -980,6 +1013,9 @@ export function SectionDashboard({
     onboarding.percent,
     onboarding.steps.length,
     onboarding.sub,
+    properties,
+    propertyById,
+    propertyFinance,
     rentsToCollect,
     ratio,
     remainingToCollect,
