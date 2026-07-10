@@ -1594,45 +1594,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                 ) : null}
               </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-3 lg:justify-end">
-                <button
-                  type="button"
-                  disabled={loading || (!l.auto_quittance_enabled && !canUseReceiptAutomation)}
-                  onClick={(e) => { stop(e); quickToggleQuittance(l); }}
-                  className="text-xs text-slate-500 hover:text-slate-700 disabled:opacity-40 underline underline-offset-2"
-                >
-                  {l.auto_quittance_enabled ? "Désactiver auto" : canUseReceiptAutomation ? "Activer auto" : "Auto premium"}
-                </button>
-                {confirmDeleteLeaseId === l.id ? (
-                  <span className="inline-flex items-center gap-2 text-xs">
-                    <span className="text-slate-600">Supprimer ce bail ?</span>
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={(e) => { stop(e); setConfirmDeleteLeaseId(null); onDelete(l.id); }}
-                      className="font-semibold text-red-600 hover:text-red-800 disabled:opacity-40"
-                    >
-                      Confirmer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => { stop(e); setConfirmDeleteLeaseId(null); }}
-                      className="text-slate-500 hover:text-slate-700"
-                    >
-                      Annuler
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={(e) => { stop(e); setConfirmDeleteLeaseId(l.id); }}
-                    className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
-                  >
-                    Supprimer
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -2668,9 +2629,42 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
         <div className="sticky bottom-3 z-10 rounded-2xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-slate-600">
-              {mode === "edit" ? "Enregistrez les modifications du bail." : "Une fois les informations renseignées, créez le bail ici."}
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs text-slate-600">
+                {mode === "edit" ? "Enregistrez les modifications du bail." : "Une fois les informations renseignées, créez le bail ici."}
+              </p>
+              {mode === "edit" && editingId ? (
+                confirmDeleteLeaseId === editingId ? (
+                  <span className="inline-flex items-center gap-2 text-xs">
+                    <span className="text-slate-600">Supprimer ce bail ?</span>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={(e) => { stop(e); setConfirmDeleteLeaseId(null); onDelete(editingId); }}
+                      className="font-semibold text-red-600 hover:text-red-800 disabled:opacity-40"
+                    >
+                      Confirmer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { stop(e); setConfirmDeleteLeaseId(null); }}
+                      className="text-slate-500 hover:text-slate-700"
+                    >
+                      Annuler
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={(e) => { stop(e); setConfirmDeleteLeaseId(editingId); }}
+                    className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
+                  >
+                    Supprimer ce bail
+                  </button>
+                )
+              ) : null}
+            </div>
 
             <div className="flex flex-wrap gap-2">
               <ActionButton
