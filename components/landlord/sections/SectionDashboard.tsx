@@ -1,7 +1,7 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { ArrowTopRightOnSquareIcon, ArrowTrendingUpIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, NoSymbolIcon, UserCircleIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, ArrowTrendingUpIcon, ArrowUturnLeftIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, NoSymbolIcon, UserCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
@@ -332,6 +332,7 @@ export function SectionDashboard({
   const [accountingPropertyId, setAccountingPropertyId] = useState<string>("");
   const [alertSnoozes, setAlertSnoozes] = useState<AlertSnoozeState>({});
   const [openAlertMenuId, setOpenAlertMenuId] = useState<string | null>(null);
+  const [showSnoozedModal, setShowSnoozedModal] = useState(false);
   const [scoreHovered, setScoreHovered] = useState(false);
   const [news, setNews] = useState<import("../../../pages/api/content/lokt-feed").LoktFeedItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
@@ -396,6 +397,12 @@ export function SectionDashboard({
     } catch {
       // Le masquage reste en mémoire si localStorage est indisponible.
     }
+  };
+
+  const unsnoozeAction = (id: string) => {
+    const next = { ...alertSnoozes };
+    delete next[id];
+    saveAlertSnoozes(next);
   };
 
   useEffect(() => {
@@ -876,7 +883,7 @@ export function SectionDashboard({
     [leaseCards]
   );
 
-  const priorityActions = useMemo(() => {
+  const { priorityActions, snoozedActions } = useMemo(() => {
     const actions: Array<{
       id?: string;
       tone: "red" | "amber" | "emerald" | "indigo";
@@ -1056,26 +1063,29 @@ export function SectionDashboard({
       });
     }
 
-    const visibleActions = actions
-      .map((action) => ({ ...action, id: action.id || priorityActionId(action) }))
-      .filter((action) => !isSnoozeActive(alertSnoozes[action.id]));
+    const allActions = actions.map((action) => ({ ...action, id: action.id || priorityActionId(action) }));
+    const visibleActions = allActions.filter((action) => !isSnoozeActive(alertSnoozes[action.id]));
+    const snoozed = allActions.filter((action) => isSnoozeActive(alertSnoozes[action.id]));
 
     if (visibleActions.length === 0) {
-      actions.push({
-        id: "no-urgent-action",
-        tone: "emerald",
-        title: actions.length > 0 ? "Alertes mises de côté" : "Rien d’urgent aujourd’hui",
-        desc: actions.length > 0
-          ? "Vous avez masqué les actions en cours. Elles restent accessibles dans leurs sections et reviendront après snooze si nécessaire."
-          : "Le mois est propre. Surveillez simplement les encaissements et les charges.",
-        target: "finance",
-        cta: "Voir la finance",
-        snoozable: false,
-      });
-      return actions.slice(-1);
+      const hasSnoozed = allActions.length > 0;
+      return {
+        snoozedActions: snoozed,
+        priorityActions: [{
+          id: "no-urgent-action",
+          tone: "emerald" as const,
+          title: hasSnoozed ? "Alertes mises de côté" : "Rien d’urgent aujourd’hui",
+          desc: hasSnoozed
+            ? "Vous avez masqué des alertes. Cliquez pour les voir et les réactiver si besoin."
+            : "Le mois est propre. Surveillez simplement les encaissements et les charges.",
+          onClick: hasSnoozed ? () => setShowSnoozedModal(true) : undefined,
+          cta: hasSnoozed ? "Voir les alertes masquées" : undefined,
+          snoozable: false,
+        }],
+      };
     }
 
-    return visibleActions.slice(0, 5);
+    return { priorityActions: visibleActions.slice(0, 5), snoozedActions: snoozed };
   }, [
     activeLeases.length,
     alertSnoozes,
@@ -1947,6 +1957,75 @@ export function SectionDashboard({
           </div>
         )}
       </section>
+
+      {/* ── Modal alertes masquées ─────────────────────────────────────── */}
+      {showSnoozedModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-slate-950/30"
+            onClick={() => setShowSnoozedModal(false)}
+            aria-label="Fermer"
+          />
+          <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Alertes masquées</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {snoozedActions.length} alerte{snoozedActions.length > 1 ? "s" : ""} mise{snoozedActions.length > 1 ? "s" : ""} de côté — cliquez sur Réactiver pour la faire réapparaître dans le cockpit.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSnoozedModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto p-4 space-y-2">
+              {snoozedActions.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">Aucune alerte masquée.</p>
+              ) : (
+                snoozedActions.map((action) => (
+                  <div key={action.id} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <span className={
+                      "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
+                      (action.tone === "red" ? "bg-red-50 text-red-700" : action.tone === "amber" ? "bg-amber-50 text-amber-700" : action.tone === "indigo" ? "bg-[#635bff]/10 text-[#4f46e5]" : "bg-emerald-50 text-emerald-700")
+                    }>!</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900">{action.title}</p>
+                      <p className="mt-0.5 text-xs text-slate-500 leading-5">{action.desc}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => unsnoozeAction(action.id!)}
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      <ArrowUturnLeftIcon className="h-3 w-3" />
+                      Réactiver
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            {snoozedActions.length > 0 && (
+              <div className="border-t border-slate-100 px-5 py-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    snoozedActions.forEach((a) => unsnoozeAction(a.id!));
+                    setShowSnoozedModal(false);
+                  }}
+                  className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Tout réactiver
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
