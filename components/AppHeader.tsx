@@ -14,6 +14,7 @@ import {
   MapPinIcon,
   ScaleIcon,
   UserCircleIcon,
+  UserPlusIcon,
 } from "@heroicons/react/24/outline";
 import { useAuthUser } from "../hooks/useAuthUser";
 import { useTenantAuthUser } from "../hooks/useTenantAuthUser";
@@ -314,11 +315,11 @@ export default function AppHeader({ staticMode = false }: { staticMode?: boolean
                   <Link
                     href="/mon-compte?mode=register&redirect=/espace-bailleur"
                     className={`inline-flex min-h-9 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-[0.76rem] font-semibold shadow-sm sm:min-h-10 sm:gap-1.5 sm:px-3 sm:text-[0.8rem] ${brandBg} ${brandText} ${brandHover}`}
-                    title="Créer un compte bailleur"
-                    aria-label="Créer un compte bailleur"
+                    title="Créer un compte gratuit"
+                    aria-label="Créer un compte gratuit"
                   >
-                    <BuildingOffice2Icon className="h-4 w-4 sm:hidden" aria-hidden="true" />
-                    <span className="sm:hidden">Bailleur</span>
+                    <UserPlusIcon className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                    <span className="sm:hidden">S'inscrire</span>
                     <span className="hidden sm:inline">Créer un compte gratuit</span>
                   </Link>
                 </>
