@@ -618,16 +618,18 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       const recurringTxs = recurringParentTxByProperty.get(propertyId) || [];
       const fin = pf.get(propertyId) || null;
 
-      // Charges récurrentes du grand livre, regroupées par catégorie. "loan" et "tax" remplacent
-      // leur équivalent property_finance s'ils existent ; les autres catégories ("fixed") s'ajoutent
-      // toujours aux champs property_finance correspondants (migration progressive bien par bien).
+      // Charges récurrentes du grand livre, regroupées par catégorie.
+      // "loan", "tax", "insurance" et "copro" remplacent leur équivalent property_finance
+      // si une transaction récurrente de cette catégorie existe (évite le double-comptage).
       let loanTx = 0, taxTx = 0, fixedTx = 0;
-      let hasLoanTx = false, hasTaxTx = false;
+      let hasLoanTx = false, hasTaxTx = false, hasInsuranceTx = false, hasCoproTx = false;
       for (const tx of recurringTxs) {
         const divisor = tx.recurrence_frequency === "quarterly" ? 3 : tx.recurrence_frequency === "yearly" ? 12 : 1;
         const monthlyAmt = (tx.amount / divisor) * (tx.direction === "out" ? 1 : -1);
         if (tx.category === "loan") { loanTx += monthlyAmt; hasLoanTx = true; }
         else if (tx.category === "tax") { taxTx += monthlyAmt; hasTaxTx = true; }
+        else if (tx.category === "insurance") { fixedTx += monthlyAmt; hasInsuranceTx = true; }
+        else if (tx.category === "copro") { fixedTx += monthlyAmt; hasCoproTx = true; }
         else fixedTx += monthlyAmt;
       }
 
@@ -638,8 +640,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       const fixed =
         fixedTx +
         Number(fin?.fixed_charges_monthly || 0) +
-        Number(fin?.pno_insurance_monthly || 0) +
-        Number(fin?.copro_charges_monthly || 0) +
+        (hasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
+        (hasCoproTx ? 0 : Number(fin?.copro_charges_monthly || 0)) +
         Number(fin?.bank_fees_monthly || 0) +
         Number(fin?.maintenance_monthly || 0) +
         Number(fin?.rental_tax_monthly || 0);
@@ -1031,7 +1033,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
   const filteredLedgerSummary = useMemo(() => {
     const income = sum(filteredMonthLedger.filter((r) => !isRecurringFlow(r) && isIncomeReceived(r)).map((r) => Number(r.amount || 0)));
-    const expense = sum(filteredMonthLedger.filter((r) => !isRecurringFlow(r) && r.direction === "out").map((r) => Number(r.amount || 0)));
+    const expense = sum(filteredMonthLedger.filter((r) => !isRecurringFlow(r) && r.direction === "out" && !DEPOSIT_TRANSIT_CATEGORIES.includes(r.category)).map((r) => Number(r.amount || 0)));
     return { income, expense, net: income - expense, count: filteredMonthLedger.length };
   }, [filteredMonthLedger]);
 
@@ -1252,6 +1254,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       if (error) throw error;
 
       // Générer les instances passées si récurrent
+      let instanceCount = 0;
       if (isRecurring && inserted?.id) {
         const instances = buildRecurringInstances(
           inserted.id,
@@ -1260,18 +1263,16 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           form.recurrence_since,
           form.recurrence_end_date || null
         );
+        instanceCount = instances.length;
         if (instances.length > 0) {
-          await supabase.from("transactions").insert(instances);
+          const { error: instancesError } = await supabase.from("transactions").insert(instances);
+          if (instancesError) throw instancesError;
         }
       }
 
       if (invoiceFile && inserted?.id) {
         await attachDocumentToTransaction({ id: inserted.id, property_id: inserted.property_id || null }, invoiceFile);
       }
-
-      const instanceCount = isRecurring
-        ? buildRecurringInstances(inserted!.id, basePayload as any, form.recurrence_frequency, form.recurrence_since, form.recurrence_end_date || null).length
-        : 0;
       setOk(
         isRecurring
           ? `Charge récurrente créée + ${instanceCount} écriture${instanceCount > 1 ? "s" : ""} passée${instanceCount > 1 ? "s" : ""} ✅`
@@ -1585,16 +1586,18 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           return true;
         });
 
-        let hasLoanTx = false, hasTaxTx = false;
+        let hasLoanTx = false, hasTaxTx = false, hasInsuranceTx = false, hasCoproTx = false;
         for (const tx of activeTxs) {
           const divisor = tx.recurrence_frequency === "quarterly" ? 3 : tx.recurrence_frequency === "yearly" ? 12 : 1;
           total += (tx.amount / divisor) * (tx.direction === "out" ? 1 : -1);
           if (tx.category === "loan") hasLoanTx = true;
           else if (tx.category === "tax") hasTaxTx = true;
+          else if (tx.category === "insurance") hasInsuranceTx = true;
+          else if (tx.category === "copro") hasCoproTx = true;
         }
 
-        // Fallback property_finance, catégorie par catégorie (migration progressive), en respectant
-        // sa propre date de prise d'effet.
+        // Fallback property_finance par catégorie — remplacé si une transaction récurrente
+        // de même catégorie existe (évite le double-comptage).
         const fin = pf.get(propertyId);
         const since = fin?.recurring_since ? new Date(fin.recurring_since) : null;
         const finActive = !since || monthStart >= new Date(since.getFullYear(), since.getMonth(), 1);
@@ -1603,8 +1606,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           if (!hasTaxTx) total += Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12;
           total +=
             Number(fin?.fixed_charges_monthly || 0) +
-            Number(fin?.pno_insurance_monthly || 0) +
-            Number(fin?.copro_charges_monthly || 0) +
+            (hasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
+            (hasCoproTx ? 0 : Number(fin?.copro_charges_monthly || 0)) +
             Number(fin?.bank_fees_monthly || 0) +
             Number(fin?.maintenance_monthly || 0) +
             Number(fin?.rental_tax_monthly || 0);
@@ -1658,7 +1661,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
     for (const pid of analysisPropertyIds) {
       const recurringTxs = recurringParentTxByProperty.get(pid) || [];
-      let hasLoanTx = false, hasTaxTx = false;
+      let hasLoanTx = false, hasTaxTx = false, hasInsuranceTx = false, hasCoproTx = false;
 
       const activeTxs = recurringTxs.filter((t) => {
         const since = t.recurrence_since ? new Date(t.recurrence_since) : null;
@@ -1673,6 +1676,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         rows.push({ id: t.id, label: t.label || categoryLabel(t.category), category: t.category, amount: t.amount / divisor, direction: t.direction, property_id: pid });
         if (t.category === "loan") hasLoanTx = true;
         else if (t.category === "tax") hasTaxTx = true;
+        else if (t.category === "insurance") hasInsuranceTx = true;
+        else if (t.category === "copro") hasCoproTx = true;
       }
 
       const fin = pf.get(pid);
@@ -1687,8 +1692,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         }
         const fixed =
           Number(fin.fixed_charges_monthly || 0) +
-          Number(fin.pno_insurance_monthly || 0) +
-          Number(fin.copro_charges_monthly || 0) +
+          (hasInsuranceTx ? 0 : Number(fin.pno_insurance_monthly || 0)) +
+          (hasCoproTx ? 0 : Number(fin.copro_charges_monthly || 0)) +
           Number(fin.bank_fees_monthly || 0) +
           Number(fin.maintenance_monthly || 0) +
           Number(fin.rental_tax_monthly || 0);

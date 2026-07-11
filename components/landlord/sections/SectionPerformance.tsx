@@ -742,17 +742,28 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
         );
         const fin = finance.get(id) || null;
         const recurringTxs = recurringParentTxByProperty.get(id) || [];
-        // "loan" remplace son équivalent property_finance s'il existe ; les autres catégories
-        // récurrentes s'ajoutent toujours aux charges property_finance (migration progressive).
-        let loanTx = 0, otherTx = 0, hasLoanTx = false;
+        // "loan", "tax", "insurance" et "copro" remplacent leur équivalent property_finance
+        // si une transaction récurrente de même catégorie existe (évite le double-comptage).
+        let loanTx = 0, otherTx = 0;
+        let hasLoanTx = false, hasTaxTx = false, hasInsuranceTx = false, hasCoproTx = false;
         for (const t of recurringTxs) {
           const divisor = t.recurrence_frequency === "quarterly" ? 3 : t.recurrence_frequency === "yearly" ? 12 : 1;
           const monthlyAmt = (t.amount / divisor) * (t.direction === "out" ? 1 : -1);
           if (t.category === "loan") { loanTx += monthlyAmt; hasLoanTx = true; }
+          else if (t.category === "tax") { otherTx += monthlyAmt; hasTaxTx = true; }
+          else if (t.category === "insurance") { otherTx += monthlyAmt; hasInsuranceTx = true; }
+          else if (t.category === "copro") { otherTx += monthlyAmt; hasCoproTx = true; }
           else otherTx += monthlyAmt;
         }
         const loanMonthly = hasLoanTx ? loanTx : Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
-        const finOtherMonthly = recurringMonthly(fin) - Number(fin?.loan_monthly || 0) - Number(fin?.loan_insurance_monthly || 0);
+        const finOtherMonthly =
+          (hasTaxTx ? 0 : Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12) +
+          Number(fin?.fixed_charges_monthly || 0) +
+          (hasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
+          (hasCoproTx ? 0 : Number(fin?.copro_charges_monthly || 0)) +
+          Number(fin?.bank_fees_monthly || 0) +
+          Number(fin?.maintenance_monthly || 0) +
+          Number(fin?.rental_tax_monthly || 0);
         const recurring = loanMonthly + finOtherMonthly + otherTx;
         const incomeBase = Math.max(received, ledgerIncome);
         const incomeMonthly = monthCount > 1 ? incomeBase / monthCount : incomeBase;
@@ -845,24 +856,25 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
           return true;
         });
 
-        let hasLoanTx = false;
+        let hasLoanTx = false, hasTaxTx = false, hasInsuranceTx = false, hasCoproTx = false;
         for (const t of activeTxs) {
           const divisor = t.recurrence_frequency === "quarterly" ? 3 : t.recurrence_frequency === "yearly" ? 12 : 1;
           total += (t.amount / divisor) * (t.direction === "out" ? 1 : -1);
           if (t.category === "loan") hasLoanTx = true;
+          else if (t.category === "tax") hasTaxTx = true;
+          else if (t.category === "insurance") hasInsuranceTx = true;
+          else if (t.category === "copro") hasCoproTx = true;
         }
 
         if (!hasLoanTx) total += Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
         total +=
+          (hasTaxTx ? 0 : Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12) +
           Number(fin?.fixed_charges_monthly || 0) +
-          Number(fin?.pno_insurance_monthly || 0) +
-          Number(fin?.copro_charges_monthly || 0) +
-          Number(fin?.loan_interest_monthly || 0) +
+          (hasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
+          (hasCoproTx ? 0 : Number(fin?.copro_charges_monthly || 0)) +
           Number(fin?.bank_fees_monthly || 0) +
           Number(fin?.maintenance_monthly || 0) +
-          Number(fin?.rental_tax_monthly || 0) +
-          Number(fin?.property_tax_yearly || 0) / 12 +
-          Number(fin?.cfe_yearly || 0) / 12;
+          Number(fin?.rental_tax_monthly || 0);
       }
       return total;
     };
@@ -1047,8 +1059,9 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
     return { expected, received, expense, recurring, cashflow };
   }, [propertyRows]);
 
+  const { monthCount } = selectedPeriod;
   const priorityRows = propertyRows
-    .filter((row) => row.cashflow < 150 || row.expected > Math.max(row.received, row.ledgerIncome) || row.recurring <= 0)
+    .filter((row) => row.cashflow < 150 || (row.expected * monthCount > Math.max(row.received, row.ledgerIncome) * 0.95) || row.recurring <= 0)
     .slice(0, 4);
 
   const scenarios = useMemo(() => {

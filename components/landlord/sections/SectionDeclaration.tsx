@@ -37,6 +37,8 @@ type Transaction = {
   label: string | null;
   amount: number;
   notes: string | null;
+  is_recurring?: boolean | null;
+  recurrence_parent_id?: string | null;
 };
 
 type ImportTotals = {
@@ -463,11 +465,12 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   };
 
   const buildImportTotals = (rows: Transaction[]): ImportTotals => {
-    // Exclure les dépôts de garantie — ils ne sont pas des revenus fiscaux
+    // Exclure les dépôts de garantie et les parents récurrents (templates).
+    // Les instances enfants (recurrence_parent_id != null) sont des paiements réels → conservées.
     const receivedIncome = rows.filter(
-      (r) => r.direction === "in" && r.status === "received" && !DEPOSIT_CATEGORIES.has(r.category)
+      (r) => r.direction === "in" && r.status === "received" && !DEPOSIT_CATEGORIES.has(r.category) && r.is_recurring !== true
     );
-    const paidExpenses = rows.filter((r) => r.direction === "out" && r.status === "paid");
+    const paidExpenses = rows.filter((r) => r.direction === "out" && r.status === "paid" && r.is_recurring !== true);
     const sum = (list: Transaction[]) => list.reduce((acc, r) => acc + Number(r.amount || 0), 0);
 
     return {
