@@ -375,7 +375,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
       category: item.category,
       label: item.label,
       required_quantity: item.required_quantity,
-      actual_quantity: null,
+      actual_quantity: 0,
       condition: "bon" as InventoryCondition,
       is_required_lmnp: true,
       replacement_cost: null,
@@ -410,7 +410,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
         category: item.category,
         label: item.label,
         required_quantity: item.required_quantity,
-        actual_quantity: null,
+        actual_quantity: 0,
         condition: "bon" as InventoryCondition,
         is_required_lmnp: true,
         replacement_cost: null,
@@ -463,7 +463,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
         category: form.category.trim() || "Autre",
         label: form.label.trim(),
         required_quantity: Math.max(0, Math.round(num(form.required_quantity))),
-        actual_quantity: form.actual_quantity.trim() === "" ? null : Math.max(0, Math.round(num(form.actual_quantity))),
+        actual_quantity: form.actual_quantity.trim() === "" ? 0 : Math.max(0, Math.round(num(form.actual_quantity))),
         condition: form.condition,
         is_required_lmnp: form.is_required_lmnp,
         replacement_cost: form.replacement_cost ? num(form.replacement_cost) : null,
@@ -976,7 +976,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
                                 inputMode="numeric"
                                 value={item.actual_quantity ?? ""}
                                 disabled={savingId === item.id}
-                                onChange={(e) => updateItem(item.id, { actual_quantity: e.target.value.trim() === "" ? null : Math.max(0, Math.round(num(e.target.value))) })}
+                                onChange={(e) => updateItem(item.id, { actual_quantity: e.target.value.trim() === "" ? 0 : Math.max(0, Math.round(num(e.target.value))) })}
                                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                               />
                             </div>
