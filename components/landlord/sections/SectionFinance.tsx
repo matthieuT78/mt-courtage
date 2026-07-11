@@ -1824,6 +1824,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const byCategory = new Map<string, number>();
     for (const row of periodLedger.rows) {
       if (row.direction !== "out") continue;
+      if (isRecurringFlow(row)) continue; // déjà compté dans les charges structurelles du graphe
+      if (DEPOSIT_TRANSIT_CATEGORIES.includes(row.category)) continue;
       byCategory.set(row.category, (byCategory.get(row.category) || 0) + Number(row.amount || 0));
     }
     return Array.from(byCategory.entries())
