@@ -1901,7 +1901,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       </div>
 
       {/* ── Déclaration tab ───────────────────────────────────────── */}
-      {tab === "declaration" && <SectionDeclaration userId={userId} properties={properties} propertyFinance={Array.from(pf.values())} />}
+      {tab === "declaration" && <SectionDeclaration userId={userId} properties={properties} propertyFinance={Array.from(pf.values()).filter((fin) => activePropertyIdSet.has(fin.property_id))} />}
 
       {/* ── Finance tab ───────────────────────────────────────────── */}
       {tab === "finance" && <>

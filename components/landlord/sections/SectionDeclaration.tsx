@@ -44,6 +44,7 @@ type Transaction = {
 type ImportTotals = {
   rows: Transaction[];
   grossRent: number;
+  chargesRecovered: number;
   otherIncome: number;
   propertyTax: number;
   insurance: number;
@@ -190,7 +191,8 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   // IDs des biens contribuant au régime actif (après déclaration de `regime`)
   const relevantPropertyIds = useMemo(() => {
     if (regime.startsWith("lmnp")) return new Set(fiscalGroups.lmnp);
-    if (regime.startsWith("nu") || regime === "pinel") return new Set([...fiscalGroups.nu, ...fiscalGroups.pinel]);
+    if (regime.startsWith("nu")) return new Set(fiscalGroups.nu);
+    if (regime === "pinel") return new Set(fiscalGroups.pinel);
     return new Set<string>();
   }, [regime, fiscalGroups]);
 
@@ -275,7 +277,8 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
 
   // Pinel : revenu foncier = same base as nu réel, mais avec réduction d'impôt séparée
   const pinelRate = PINEL_RATES[pinelCommitmentYears] ?? 0.12;
-  const pinelTotalReduction = pinelAcqPrice * pinelRate;
+  const pinelAcqPriceCapped = Math.min(pinelAcqPrice, 300_000);
+  const pinelTotalReduction = pinelAcqPriceCapped * pinelRate;
   const pinelYearlyReduction = pinelCommitmentYears > 0 ? Math.round(pinelTotalReduction / pinelCommitmentYears) : 0;
   const pinelRevenusBase = realNuBase; // Pinel = location nue, base imposable = réel ou micro-foncier
 
@@ -476,7 +479,8 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     return {
       rows,
       grossRent: sum(receivedIncome.filter((r) => r.category === "rent")),
-      otherIncome: sum(receivedIncome.filter((r) => r.category !== "rent")),
+      chargesRecovered: sum(receivedIncome.filter((r) => r.category === "charges_recovered")),
+      otherIncome: sum(receivedIncome.filter((r) => r.category !== "rent" && r.category !== "charges_recovered")),
       interest: sum(paidExpenses.filter((r) => r.category === "loan_interest" || r.category === "interest")),
       propertyTax: sum(paidExpenses.filter((r) => r.category === "tax")),
       insurance: sum(paidExpenses.filter((r) => r.category === "insurance")),
@@ -496,6 +500,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     if (!preview) return;
     setFinanceRows(preview.rows);
     setGrossRent(preview.grossRent);
+    setChargesRecovered(preview.chargesRecovered);
     setOtherIncome(preview.otherIncome);
     setInterest(preview.interest);
     setPropertyTax(preview.propertyTax);
@@ -707,7 +712,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     if (regime === "pinel") return {
       montantLabel: "Réduction d'impôt annuelle",
       montant: pinelYearlyReduction,
-      montantNote: `${(pinelRate * 100).toFixed(0)} % × ${eur(pinelAcqPrice)} = ${eur(pinelTotalReduction)} sur ${pinelCommitmentYears} ans. Les revenus fonciers (${eur(pinelRevenusBase)}) sont à déclarer séparément.`,
+      montantNote: `${(pinelRate * 100).toFixed(0)} % × ${eur(pinelAcqPriceCapped)}${pinelAcqPrice > 300_000 ? ` (plafond légal 300 000 € appliqué sur ${eur(pinelAcqPrice)})` : ""} = ${eur(pinelTotalReduction)} sur ${pinelCommitmentYears} ans. Les revenus fonciers nets (${eur(pinelRevenusBase)}) sont à déclarer séparément sur la 2044.`,
       formulaire: "2042-C + 2044",
       caseHint: "Cases réduction Pinel (ex : 7QA pour 6 ans, 7QB pour 9 ans, 7QC pour 12 ans) — vérifiez l'année de votre investissement",
       isDeficit: false,
@@ -717,7 +722,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     return null;
   }, [
     regime, receiptsTotal, microBicBase, microFoncierBase, realLmnpBase, realNuBase,
-    pinelYearlyReduction, pinelRevenusBase, pinelTotalReduction, pinelAcqPrice,
+    pinelYearlyReduction, pinelRevenusBase, pinelTotalReduction, pinelAcqPrice, pinelAcqPriceCapped,
     pinelCommitmentYears, pinelRate, locationKind,
   ]);
 
@@ -988,6 +993,33 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                       <option value={12}>12 ans — réduction 21 %</option>
                     </select>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Revenus fonciers Pinel (loyers + charges récupérées) */}
+            {isPinel && (
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Revenus fonciers {year}</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Loyers perçus (€)" value={grossRent} onChange={setGrossRent} />
+                  <Field label="Charges récupérées (€)" value={chargesRecovered} onChange={setChargesRecovered} />
+                  <Field label="Autres recettes (€)" value={otherIncome} onChange={setOtherIncome} />
+                </div>
+              </div>
+            )}
+
+            {/* Charges déductibles Pinel (formulaire 2044, régime réel foncier) */}
+            {isPinel && (
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Charges déductibles (formulaire 2044)</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Intérêts d'emprunt (€)" value={interest} onChange={setInterest} />
+                  <Field label="Assurance (€)" value={insurance} onChange={setInsurance} />
+                  <Field label="Taxe foncière (€)" value={propertyTax} onChange={setPropertyTax} />
+                  <Field label="Charges copropriété (€)" value={copro} onChange={setCopro} />
+                  <Field label="Travaux / réparations (€)" value={repairs} onChange={setRepairs} />
+                  <Field label="Frais de gestion (€)" value={managementFees} onChange={setManagementFees} />
                 </div>
               </div>
             )}
