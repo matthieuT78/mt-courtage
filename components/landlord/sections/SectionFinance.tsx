@@ -768,7 +768,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         .select("*")
         .eq("user_id", userId)
         .order("occurred_at", { ascending: false })
-        .limit(2000);
+        .limit(10000);
 
       if (tErr) throw tErr;
       setTx((tData || []) as any);

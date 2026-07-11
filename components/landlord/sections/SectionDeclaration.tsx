@@ -285,8 +285,8 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   // Résultat fiscal : 0 si amortissements couvrent, bénéfice sinon
   const realLmnpBase = Math.max(0, resultBeforeAmort) - amortizationUsed;
 
-  // Nu réel : intérêts déductibles + CFE déductible
-  const realNuBase = Math.max(0, receiptsTotal - commonCharges - cfe);
+  // Nu réel : résultat net (peut être négatif → déficit foncier imputable 10 700 €/an sur revenu global)
+  const realNuBase = receiptsTotal - commonCharges - cfe;
 
   // Pinel : revenu foncier = same base as nu réel, mais avec réduction d'impôt séparée
   const pinelRate = PINEL_RATES[pinelCommitmentYears] ?? 0.12;
@@ -505,7 +505,9 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       utilities: sum(paidExpenses.filter((r) => r.category === "utilities")),
       otherExpenses: sum(
         paidExpenses.filter(
-          (r) => !["tax", "insurance", "copro", "repairs", "management", "fees", "utilities", "loan_interest", "interest"].includes(r.category)
+          // "loan" = mensualité crédit (capital + intérêts) → non déductible en tant que tel
+          // seul "loan_interest" / "interest" l'est ; exclure "loan" évite de gonfler les charges
+          (r) => !["tax", "insurance", "copro", "repairs", "management", "fees", "utilities", "loan_interest", "interest", "loan"].includes(r.category)
         )
       ),
     };
@@ -681,7 +683,9 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
 
   // Guide de déclaration : montant exact à reporter + formulaire + cases (indicatifs)
   const declarationGuide = useMemo(() => {
-    if (receiptsTotal === 0 && regime !== "pinel") return null;
+    // En LMNP réel, même sans recettes on peut avoir un déficit BIC ou des amortissements à reporter
+    const lmnpReelHasData = regime === "lmnp_reel" && (receiptsTotal > 0 || commonCharges > 0 || amortizationTotal > 0);
+    if (receiptsTotal === 0 && regime !== "pinel" && !lmnpReelHasData) return null;
     if (regime === "pinel" && pinelAcqPrice === 0) return null;
     if (regime === "lmnp_micro") return {
       montantLabel: "Recettes brutes à déclarer",
@@ -760,7 +764,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     regime, receiptsTotal, microBicBase, microFoncierBase, realLmnpBase, realNuBase,
     pinelYearlyReduction, pinelRevenusBase, pinelTotalReduction, pinelAcqPrice, pinelAcqPriceCapped,
     pinelCommitmentYears, pinelRate, locationKind,
-    lmnpBicDeficit, amortizationUsed, amortizationDeferred, amortizationTotal, commonCharges, year,
+    lmnpBicDeficit, amortizationUsed, amortizationDeferred, amortizationTotal, commonCharges, year, cfe,
   ]);
 
 
@@ -972,6 +976,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                   <Field label="Loyers perçus (€)" value={grossRent} onChange={setGrossRent} />
                   <Field label="Charges récupérées (€)" value={chargesRecovered} onChange={setChargesRecovered} />
                   <Field label="Autres recettes (€)" value={otherIncome} onChange={setOtherIncome} />
+                  <Field label="Dépôt de garantie reçu (€)" value={depositReceived} onChange={setDepositReceived} hint="Indicatif — ne pas l'inclure dans les recettes fiscales" />
                 </div>
               </div>
             )}
