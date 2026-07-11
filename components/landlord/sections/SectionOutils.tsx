@@ -486,7 +486,7 @@ function FinanceValidationModal({
       <div className="w-full max-w-2xl overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
           <div>
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-cyan-700">Importer dans Finance</p>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-cyan-700">Enregistrer dans Finance</p>
             <h3 className="mt-1 text-xl font-semibold text-slate-950">{form.title}</h3>
             <p className="mt-1 text-sm text-slate-600">
               L’outil prépare une écriture comptable. Vérifiez le bien, la date, le montant et la catégorie avant validation.
@@ -584,7 +584,7 @@ function FinanceValidationModal({
             Annuler
           </button>
           <button type="button" onClick={save} disabled={saving} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
-            {saving ? "Import en cours..." : "Importer dans Finance"}
+            {saving ? "Enregistrement..." : "Enregistrer dans Finance"}
           </button>
         </div>
       </div>
@@ -795,6 +795,11 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
           ]}
           finance="L’import Finance sert à créer une dépense de charges, une recette attendue de charges récupérables, ou les deux après validation."
         />
+        {total > 0 && denominator === 0 && (
+          <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            Saisissez la base de tantièmes (ex : 1 000) pour calculer les quotes-parts.
+          </div>
+        )}
         <div className="grid gap-3 lg:grid-cols-[1.2fr,1fr,0.8fr,0.8fr]">
           <label className="space-y-1">
             <span className="text-xs font-semibold text-slate-600">Bien / immeuble</span>
@@ -821,7 +826,7 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
             <p className="mt-1 text-xs text-violet-700">{formatPercent(denominator > 0 ? (usedTantiemes / denominator) * 100 : 0)} de la base</p>
           </div>
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">Récupérable locataire</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">À facturer aux locataires</p>
             <p className="mt-1 text-2xl font-semibold text-emerald-950">{formatEuro(recoverableTotal)}</p>
             <p className="mt-1 text-xs text-emerald-700">Somme à appeler selon les lots</p>
           </div>
@@ -993,7 +998,10 @@ function TeomTool({ userId, onBack, onFinanceDraft }: { userId: string; onBack: 
             <input inputMode="decimal" value={propertyTax} onChange={(e) => setPropertyTax(e.target.value)} placeholder="Ex : 1 250" className={toolInputClass} />
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-semibold text-slate-600">Montant TEOM</span>
+            <span className="text-xs font-semibold text-slate-600">
+              Montant TEOM
+              <span className="ml-1 font-normal text-slate-400">(taxe ordures ménagères, incluse dans la taxe foncière)</span>
+            </span>
             <input inputMode="decimal" value={teomAmount} onChange={(e) => setTeomAmount(e.target.value)} placeholder="Ex : 186" className={toolInputClass} />
           </label>
           <label className="space-y-1">
@@ -1185,7 +1193,7 @@ function ChargeRegularizationTool({ userId, onBack, onFinanceDraft }: { userId: 
           </label>
         </div>
         <label className="mt-3 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
-          <input type="checkbox" checked={useManualProvisions} onChange={(e) => setUseManualProvisions(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />
+          <input type="checkbox" checked={useManualProvisions} onChange={(e) => { setUseManualProvisions(e.target.checked); if (e.target.checked) setMonthlyProvision(""); else setManualProvisions(""); }} className="h-4 w-4 rounded border-slate-300" />
           Saisir directement le total des provisions versées
         </label>
 
@@ -1286,10 +1294,22 @@ function computePreavis(bail: BailType, by: CongeBy, motif: BailleurMotif, zoneT
 
 function addMonthsToDate(dateStr: string, months: number): string {
   if (!dateStr) return "";
-  const d = new Date(`${dateStr}T00:00:00`);
-  if (isNaN(d.getTime())) return "";
-  d.setMonth(d.getMonth() + months);
-  return d.toISOString().slice(0, 10);
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return "";
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return "";
+  const targetRaw = month + months;
+  const targetYear = year + Math.floor(targetRaw / 12);
+  const targetMonth = ((targetRaw % 12) + 12) % 12;
+  const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const clampedDay = Math.min(day, daysInMonth);
+  return [
+    String(targetYear).padStart(4, "0"),
+    String(targetMonth + 1).padStart(2, "0"),
+    String(clampedDay).padStart(2, "0"),
+  ].join("-");
 }
 
 function PreavisTool({ onBack }: { onBack: () => void }) {
@@ -2070,6 +2090,7 @@ export function SectionOutils({
     }
 
     setSaving(true);
+    let createdAllocationId: string | null = null;
     try {
       const { data: allocation, error: allocationError } = await supabase
         .from("water_allocations")
@@ -2103,6 +2124,7 @@ export function SectionOutils({
         .single();
       if (allocationError) throw allocationError;
       const savedAllocation = allocation as WaterAllocation;
+      createdAllocationId = savedAllocation.id;
 
       if (invoiceFile) {
         const path = `${userId}/${savedAllocation.id}/invoice/${Date.now()}.${extFromFile(invoiceFile)}`;
@@ -2196,6 +2218,10 @@ export function SectionOutils({
       setCreatingWaterInvoice(false);
       setWaterStep("setup");
     } catch (e: any) {
+      if (createdAllocationId && supabase) {
+        await supabase.from("water_allocation_readings").delete().eq("allocation_id", createdAllocationId).eq("user_id", userId).catch(() => {});
+        await supabase.from("water_allocations").delete().eq("id", createdAllocationId).eq("user_id", userId).catch(() => {});
+      }
       setError(e?.message || "Impossible d’enregistrer la répartition.");
     } finally {
       setSaving(false);
