@@ -5,6 +5,8 @@ import AccountLayout from "../../components/account/AccountLayout";
 import { signOutAll } from "../../lib/authUtils";
 import { useAuthUser } from "../../hooks/useAuthUser";
 import { useProfile } from "../../hooks/useProfile";
+import { supabase } from "../../lib/supabaseClient";
+import { ShieldCheckIcon } from "@heroicons/react/24/outline";
 
 const inputCls =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-colors";
@@ -31,6 +33,64 @@ export default function MonCompteProfilPage() {
   const { loading, profile, error, ok, save, setProfile } = useProfile(user?.id ?? null);
   const [billingSame, setBillingSame] = useState<boolean | null>(null);
   const [showHighlight, setShowHighlight] = useState(false);
+
+  // RIB state
+  const [iban, setIban] = useState("");
+  const [bic, setBic] = useState("");
+  const [ribSaving, setRibSaving] = useState(false);
+  const [ribFeedback, setRibFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [ribLoaded, setRibLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    supabase.from("landlords").select("iban,bic").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+      setIban(data?.iban || "");
+      setBic(data?.bic || "");
+      setRibLoaded(true);
+    });
+  }, [user?.id]);
+
+  const saveRib = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !user?.id) return;
+    setRibSaving(true);
+    setRibFeedback(null);
+    try {
+      const cleanIban = iban.replace(/\s/g, "").toUpperCase();
+      const cleanBic = bic.replace(/\s/g, "").toUpperCase();
+      const { error } = await supabase.from("landlords").upsert(
+        { user_id: user.id, iban: cleanIban || null, bic: cleanBic || null, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
+      if (error) throw error;
+      setIban(cleanIban);
+      setBic(cleanBic);
+      setRibFeedback({ ok: true, msg: cleanIban ? "Coordonnées bancaires enregistrées." : "Coordonnées bancaires supprimées." });
+    } catch (err: any) {
+      setRibFeedback({ ok: false, msg: err?.message || "Erreur lors de l'enregistrement." });
+    } finally {
+      setRibSaving(false);
+    }
+  };
+
+  const clearRib = async () => {
+    setIban("");
+    setBic("");
+    if (!supabase || !user?.id) return;
+    setRibSaving(true);
+    setRibFeedback(null);
+    try {
+      await supabase.from("landlords").upsert(
+        { user_id: user.id, iban: null, bic: null, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
+      setRibFeedback({ ok: true, msg: "Coordonnées bancaires supprimées." });
+    } catch (err: any) {
+      setRibFeedback({ ok: false, msg: err?.message || "Erreur." });
+    } finally {
+      setRibSaving(false);
+    }
+  };
 
   // Champs obligatoires pour le profil bailleur
   const isEmpty = (v: string | null | undefined) => !v?.trim();
@@ -263,6 +323,84 @@ export default function MonCompteProfilPage() {
                   </select>
                 </Field>
               </div>
+            )}
+          </div>
+
+          {/* RIB */}
+          <div className="rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 mb-1">Coordonnées bancaires</p>
+            <p className="text-sm text-slate-500 mb-4">
+              Votre IBAN est affiché dans l'espace locataire pour les instructions de virement. Vous pouvez le supprimer à tout moment.
+            </p>
+            <div className="mb-4 flex gap-2.5 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+              <ShieldCheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" aria-hidden="true" />
+              <p className="text-xs leading-5 text-indigo-800">
+                <span className="font-semibold">Donnée personnelle financière (RGPD).</span> Votre IBAN n'est jamais inclus dans les e-mails.
+                Seul un locataire avec un bail actif en mode virement peut le consulter.
+              </p>
+            </div>
+            {!ribLoaded ? (
+              <p className="text-sm text-slate-400">Chargement…</p>
+            ) : (
+              <form onSubmit={saveRib} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">IBAN</label>
+                    <input
+                      type="text"
+                      value={iban}
+                      onChange={(e) => setIban(e.target.value)}
+                      placeholder="FR76 3000 6000 0112 3456 7890 189"
+                      autoComplete="off"
+                      spellCheck={false}
+                      maxLength={42}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-mono text-sm tracking-wider text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    />
+                    {iban.replace(/\s/g, "").length > 0 && (
+                      <p className="mt-1 font-mono text-[0.68rem] text-slate-500">
+                        {iban.replace(/\s/g, "").replace(/(.{4})/g, "$1 ").trim()}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                      BIC / SWIFT <span className="font-normal text-slate-400">(optionnel)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={bic}
+                      onChange={(e) => setBic(e.target.value)}
+                      placeholder="BNPAFRPPXXX"
+                      autoComplete="off"
+                      spellCheck={false}
+                      maxLength={11}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 font-mono text-sm uppercase tracking-wider text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={ribSaving}
+                    className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60 transition-colors"
+                  >
+                    {ribSaving ? "Enregistrement…" : "Enregistrer le RIB"}
+                  </button>
+                  {(iban || bic) && (
+                    <button
+                      type="button"
+                      onClick={clearRib}
+                      disabled={ribSaving}
+                      className="rounded-full border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60 transition-colors"
+                    >
+                      Supprimer
+                    </button>
+                  )}
+                </div>
+                {ribFeedback && (
+                  <p className={`text-sm ${ribFeedback.ok ? "text-emerald-700" : "text-red-700"}`}>{ribFeedback.msg}</p>
+                )}
+              </form>
             )}
           </div>
 

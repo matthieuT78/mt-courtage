@@ -30,7 +30,6 @@ import { SectionPerformance } from "./sections/SectionPerformance";
 import { SectionEtatDesLieux } from "./sections/SectionEtatDesLieux";
 import { SectionInventaire } from "./sections/SectionInventaire";
 import { SectionOutils } from "./sections/SectionOutils";
-import { SectionParametres } from "./sections/SectionParametres";
 import { SectionDocumentsTemplates } from "./sections/SectionDocumentsTemplates";
 import { SectionCandidatures } from "./sections/SectionCandidatures";
 import { usePermissions } from "../PermissionProvider";
@@ -713,9 +712,6 @@ export function DashboardShell(props: any) {
         return <SectionDocumentsTemplates userId={userId} userEmail={userEmail} properties={properties} tenants={tenants} leases={leases} />;
 
 
-
-      case "parametres":
-        return <SectionParametres userId={userId} navOrder={navOrder} onNavOrderChange={setNavOrder} landlord={landlord} />;
 
       default:
         return (

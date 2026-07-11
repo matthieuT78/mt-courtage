@@ -9,7 +9,7 @@ import AppFooter from "../AppFooter";
 
 type Props = {
   userEmail: string | null;
-  active: "overview" | "profile" | "securite" | "projets" | "abonnement";
+  active: "overview" | "profile" | "securite" | "projets" | "abonnement" | "preferences";
   onLogout: () => Promise<void> | void;
   children: ReactNode;
 };
@@ -64,6 +64,7 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
     : active === "profile" ? "Profil"
     : active === "securite" ? "Sécurité"
     : active === "abonnement" ? "Abonnement"
+    : active === "preferences" ? "Préférences"
     : "Projets";
 
   const handleLogout = async () => {
@@ -90,10 +91,11 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
 
       {/* Navigation */}
       <div className="p-2 space-y-0.5">
-        <NavItem href="/mon-compte"          active={active === "overview"}    label="Vue d'ensemble"  sub="Statut & accès rapide" />
-        <NavItem href="/mon-compte/profil"   active={active === "profile"}     label="Profil"          sub="Identité & adresse" />
-        <NavItem href="/mon-compte/securite" active={active === "securite"}    label="Sécurité"        sub="Mot de passe & compte" />
-        <NavItem href="/mon-compte/abonnement" active={active === "abonnement"} label="Abonnement"    sub="Offre & facturation" />
+        <NavItem href="/mon-compte"               active={active === "overview"}     label="Vue d'ensemble"  sub="Statut & accès rapide" />
+        <NavItem href="/mon-compte/profil"        active={active === "profile"}      label="Profil"          sub="Identité, adresse & RIB" />
+        <NavItem href="/mon-compte/securite"      active={active === "securite"}     label="Sécurité"        sub="Mot de passe & compte" />
+        <NavItem href="/mon-compte/abonnement"    active={active === "abonnement"}   label="Abonnement"      sub="Offre & facturation" />
+        <NavItem href="/mon-compte/preferences"   active={active === "preferences"}  label="Préférences"     sub="Ordre des onglets" />
       </div>
 
       {/* Déconnexion */}

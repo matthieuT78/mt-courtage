@@ -55,7 +55,6 @@ export const DEFAULT_LANDLORD_NAV_ORDER: LandlordSectionKey[] = [
   "messagerie",
   "alertes",
   "inventaire",
-  "parametres",
 ];
 
 export const LANDLORD_NAV_ITEMS: Record<LandlordSectionKey, LandlordNavItem> = {
