@@ -70,7 +70,7 @@ export const LANDLORD_NAV_ITEMS: Record<LandlordSectionKey, LandlordNavItem> = {
   etat_des_lieux: { key: "etat_des_lieux", label: "États des lieux", icon: ClipboardDocumentCheckIcon },
   messagerie: { key: "messagerie", label: "Messages", icon: ChatBubbleLeftRightIcon },
   alertes: { key: "alertes", label: "Alertes", icon: BellAlertIcon },
-  inventaire: { key: "inventaire", label: "Inventaires", icon: ArchiveBoxIcon },
+  inventaire: { key: "inventaire", label: "Inventaire LMNP", icon: ArchiveBoxIcon },
   parametres: { key: "parametres", label: "Paramètres", icon: Cog6ToothIcon },
   documents: { key: "documents", label: "Documents & Modèles", icon: DocumentTextIcon },
 };
