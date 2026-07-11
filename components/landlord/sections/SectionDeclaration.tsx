@@ -785,9 +785,19 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
               </div>
             </div>
           </div>
-          <p className="mt-4 text-[0.67rem] leading-5 text-slate-400">
-            Aide à la préparation uniquement — non un logiciel officiel. Vérifiez sur <strong className="text-slate-500">impots.gouv.fr</strong> avant de déclarer.
-          </p>
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-[0.67rem] leading-5 text-slate-400">
+              Aide à la préparation uniquement — non un logiciel officiel. Vérifiez sur <strong className="text-slate-500">impots.gouv.fr</strong> avant de déclarer.
+            </p>
+            <a
+              href="/guides/declarer-revenus-locatifs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 ml-4 rounded-full border border-[#635bff]/30 bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[#635bff] hover:bg-[#635bff]/5 transition"
+            >
+              Guide complet →
+            </a>
+          </div>
         </section>
       )}
 
@@ -1006,12 +1016,22 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                 {!declarationGuide.needsAccountant && declarationGuide.accountantNote && (
                   <p className="mt-2 text-xs leading-5 text-slate-500">{declarationGuide.accountantNote}</p>
                 )}
-                <p className="mt-3 text-[0.67rem] leading-5 text-slate-400">
-                  <ExclamationTriangleIcon className="mr-1 inline h-3 w-3 text-amber-400" />
-                  Cases indicatives — les numéros changent chaque année. Vérifiez sur{" "}
-                  <strong className="text-slate-500">impots.gouv.fr</strong> avant de déclarer.
-                  lokt.fr n'est pas un logiciel de déclaration officiel.
-                </p>
+                <div className="mt-3 flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-[0.67rem] leading-5 text-slate-400">
+                    <ExclamationTriangleIcon className="mr-1 inline h-3 w-3 text-amber-400" />
+                    Cases indicatives — les numéros changent chaque année. Vérifiez sur{" "}
+                    <strong className="text-slate-500">impots.gouv.fr</strong> avant de déclarer.
+                    lokt.fr n'est pas un logiciel de déclaration officiel.
+                  </p>
+                  <a
+                    href="/guides/declarer-revenus-locatifs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 rounded-full border border-[#635bff]/30 bg-white px-3 py-1.5 text-[0.72rem] font-semibold text-[#635bff] hover:bg-[#635bff]/5 transition"
+                  >
+                    Guide complet →
+                  </a>
+                </div>
               </div>
             ) : receiptsTotal === 0 && !isPinel ? (
               <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center">

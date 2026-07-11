@@ -10,6 +10,7 @@ import {
   KeyIcon,
   WrenchScrewdriverIcon,
   ArrowLeftStartOnRectangleIcon,
+  ReceiptPercentIcon,
 } from "@heroicons/react/24/outline";
 import AppFooter from "../../components/AppFooter";
 import AppHeader from "../../components/AppHeader";
@@ -20,6 +21,7 @@ const CATEGORY_ICONS: Record<GuideCategory, React.ElementType> = {
   arrivee: KeyIcon,
   gestion: WrenchScrewdriverIcon,
   depart: ArrowLeftStartOnRectangleIcon,
+  fiscal: ReceiptPercentIcon,
 };
 
 const CATEGORY_COLORS: Record<GuideCategory, { bg: string; text: string; border: string; num: string }> = {
@@ -27,12 +29,13 @@ const CATEGORY_COLORS: Record<GuideCategory, { bg: string; text: string; border:
   arrivee:   { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", num: "bg-emerald-700" },
   gestion:   { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",  num: "bg-amber-600" },
   depart:    { bg: "bg-rose-50",    text: "text-rose-700",    border: "border-rose-200",   num: "bg-rose-600" },
+  fiscal:    { bg: "bg-violet-50",  text: "text-violet-700",  border: "border-violet-200", num: "bg-violet-700" },
 };
 
 export default function GuidesIndexPage() {
   const metaTitle = "Guide du bailleur : mettre en location et gérer un logement | lokt.fr";
   const description =
-    "13 guides bailleur dans l'ordre du bail : DPE, choix du locataire, quittances, révision IRL, travaux, charges et restitution du dépôt. Checklists incluses.";
+    "14 guides bailleur : du DPE au départ du locataire, plus un guide complet sur la déclaration fiscale des revenus locatifs (LMNP, nu, Pinel). Checklists incluses.";
 
   return (
     <div className="min-h-screen bg-[#f7f7fb] text-slate-950">
@@ -55,7 +58,7 @@ export default function GuidesIndexPage() {
             Louer proprement, sans perdre le fil.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            13 guides pratiques organisés dans l'ordre du bail — de la mise en location au départ du locataire. Chaque guide contient les points de contrôle, les règles clés et une checklist opérationnelle.
+            14 guides pratiques organisés dans l'ordre du bail — de la mise en location au départ du locataire, plus un guide complet sur la fiscalité. Chaque guide contient les points de contrôle, les règles clés et une checklist opérationnelle.
           </p>
 
           {/* Lifecycle pills */}

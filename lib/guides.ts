@@ -1,4 +1,4 @@
-export type GuideCategory = "preparer" | "arrivee" | "gestion" | "depart";
+export type GuideCategory = "preparer" | "arrivee" | "gestion" | "depart" | "fiscal";
 
 export type GuideArticle = {
   slug: string;
@@ -23,6 +23,7 @@ export const GUIDE_CATEGORIES: Array<{ key: GuideCategory; label: string; descri
   { key: "arrivee", label: "Accueillir le locataire", description: "Constituer un dossier propre et réussir la remise des clés." },
   { key: "gestion", label: "Pendant la location", description: "Gérer les loyers, les charges, les travaux et les échéances." },
   { key: "depart", label: "Organiser le départ", description: "Traiter le congé, l'état des lieux et le dépôt de garantie." },
+  { key: "fiscal", label: "Fiscalité et déclaration", description: "Choisir son régime, déclarer ses revenus locatifs et éviter les pénalités." },
 ];
 
 export const GUIDES: GuideArticle[] = [
@@ -1604,6 +1605,162 @@ export const GUIDES: GuideArticle[] = [
       { label: "Service-Public : encadrement des loyers", href: "https://www.service-public.fr/particuliers/vosdroits/F1519" },
       { label: "Service-Public : zones tendues (liste communes)", href: "https://www.service-public.fr/simulateur/calcul/zones-tendues" },
       { label: "ANIL : fixer le loyer d'un logement", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/loyer/fixer-le-loyer/" },
+    ],
+  },
+  {
+    slug: "declarer-revenus-locatifs",
+    category: "fiscal",
+    title: "Déclarer ses revenus locatifs en 2026 : guide complet par régime",
+    shortTitle: "Déclaration revenus locatifs",
+    description:
+      "Comprendre les régimes fiscaux, les formulaires, les dates limites et les pénalités pour déclarer correctement ses revenus locatifs meublés (LMNP) ou nus en 2026.",
+    updatedAt: "2026-07-11",
+    intro:
+      "Tout propriétaire bailleur est tenu de déclarer ses revenus locatifs à l'administration fiscale, quelle que soit leur nature — meublée ou nue, longue durée ou saisonnière. L'obligation s'applique dès le premier euro encaissé. Ignorer cette règle expose à des pénalités qui peuvent atteindre 40 % des impôts dus en cas de bonne foi non reconnue, et 80 % en cas de manœuvres frauduleuses. Ce guide couvre les régimes disponibles, les formulaires à remplir, les délais à respecter et les pénalités encourues. Il ne remplace pas un expert-comptable ou un professionnel du droit : pour toute situation complexe (déficit foncier élevé, transmission, SCI), consultez un spécialiste.",
+    sections: [
+      {
+        title: "1. Qui doit déclarer ses revenus locatifs ?",
+        paragraphs: [
+          "L'obligation de déclaration s'applique à tous les propriétaires qui perçoivent des revenus de la location d'un bien immobilier, qu'il soit meublé ou non. Elle concerne aussi bien les locations à titre de résidence principale que les locations saisonnières, les locations de parking, de cave ou de box, dès lors qu'un loyer est encaissé.",
+          "Les revenus locatifs doivent être déclarés même s'ils sont faibles, même si le bien est en déficit, et même si le bailleur est salarié ou retraité. Il n'existe pas de seuil d'exonération général. La seule exception est la location d'une partie de la résidence principale à titre occasionnel dans certaines conditions très précises (chambre chez l'habitant, valeur locative modique fixée par l'administration), qui peut bénéficier d'une exonération sous conditions.",
+          "En pratique, la déclaration s'effectue dans le cadre de la déclaration annuelle de revenus (formulaire 2042), complétée selon le régime applicable. Le régime ne s'applique pas bien par bien : en France, le choix entre micro et réel s'applique à l'ensemble des biens d'une même catégorie fiscale. Un bailleur qui possède deux appartements meublés déclare l'ensemble sous un seul régime LMNP.",
+        ],
+        bullets: [
+          "Obligation dès le premier euro de loyer encaissé.",
+          "Aucune distinction entre résidence principale du locataire et résidence secondaire.",
+          "Locations saisonnières, meublées de tourisme, chambres chez l'habitant : même obligation.",
+          "Le régime micro ou réel s'applique par catégorie fiscale (LMNP, nu, Pinel), pas par bien.",
+          "La déclaration s'effectue chaque année au printemps, via impots.gouv.fr ou sur papier.",
+        ],
+      },
+      {
+        title: "2. Le calendrier fiscal 2026 : ne pas manquer les délais",
+        paragraphs: [
+          "La campagne de déclaration des revenus s'ouvre généralement début avril et se ferme en mai ou juin selon le département de résidence. En 2026, les dates indicatives pour la déclaration en ligne sont les suivantes : département 01 à 19 — mi-mai ; département 20 à 54 — fin mai ; département 55 à 976 — début juin. La date exacte est publiée chaque année sur impots.gouv.fr.",
+          "Pour les propriétaires au régime réel en LMNP (formulaire 2031), la liasse fiscale doit être déposée auprès du Service des Impôts des Entreprises (SIE) avant la déclaration de revenus. Cette obligation spécifique est distincte de la déclaration personnelle 2042. Le non-dépôt de la liasse 2031 est une infraction distincte, sanctionnée par une amende forfaitaire.",
+          "En cas de première mise en location dans l'année, le bien doit être déclaré dès l'exercice fiscal concerné. Il n'existe pas de délai de grâce pour une première déclaration locative. Si vous avez commencé à percevoir des loyers en 2025, vous devez les déclarer au printemps 2026 lors de la campagne déclarative.",
+        ],
+        bullets: [
+          "Ouverture de la campagne : début avril chaque année.",
+          "Clôture : mi-mai à début juin selon le département (en ligne).",
+          "LMNP réel : liasse 2031 à déposer au SIE avant ou avec la déclaration personnelle.",
+          "Première location : déclaration obligatoire dès le premier exercice, sans délai de grâce.",
+          "Adhésion à un Centre de Gestion Agréé (CGA) recommandée en LMNP réel pour bénéficier de l'abattement de 1/4 d'impôt supprimé depuis 2023 — à vérifier selon l'évolution législative.",
+        ],
+        note: "Les dates exactes changent chaque année. Consultez impots.gouv.fr en début d'année pour confirmer le calendrier en vigueur.",
+      },
+      {
+        title: "3. LMNP micro-BIC : la simplicité avec un abattement forfaitaire",
+        paragraphs: [
+          "Le régime micro-BIC s'applique automatiquement si vos recettes locatives meublées annuelles sont inférieures à 77 700 € (pour les meublés longue durée). Pour les meublés de tourisme classés, le seuil est de 188 700 € avec un abattement de 71 %. Ce régime est le plus simple : vous n'avez pas à détailler vos charges. L'administration fiscale applique un abattement forfaitaire de 50 % sur vos recettes brutes, et vous êtes imposé sur la moitié.",
+          "En pratique, vous reportez sur la déclaration 2042-C-PRO (section « Locations meublées non professionnelles / Micro-BIC ») le total de vos recettes brutes encaissées dans l'année, y compris les charges récupérées sur le locataire. Les impôts calculent eux-mêmes la base imposable en appliquant l'abattement. Si vos loyers annuels s'élèvent à 12 000 €, vous serez imposé sur 6 000 € au micro-BIC standard.",
+          "Le micro-BIC est avantageux si vos charges réelles représentent moins de 50 % de vos recettes. Inversement, si vous avez un crédit immobilier avec des intérêts importants, des travaux ou des frais de gestion élevés, le régime réel peut permettre d'abaisser significativement la base imposable, voire de générer un déficit reportable.",
+        ],
+        bullets: [
+          "Seuil micro-BIC : 77 700 € de recettes annuelles (meublé longue durée).",
+          "Abattement forfaitaire de 50 % sur les recettes brutes.",
+          "Meublé de tourisme classé : seuil 188 700 €, abattement 71 %.",
+          "Formulaire : 2042-C-PRO, section LMNP Micro-BIC.",
+          "Aucune comptabilité détaillée des charges requise.",
+        ],
+      },
+      {
+        title: "4. LMNP réel : déduire ses charges et amortissements",
+        paragraphs: [
+          "Le régime réel simplifié s'applique sur option (ou automatiquement si les recettes dépassent le plafond micro-BIC). Son avantage principal est la déductibilité des charges réelles : intérêts d'emprunt, assurances, taxe foncière, charges de copropriété, frais de gestion, travaux d'entretien et de réparation, et — spécificité importante du LMNP — l'amortissement du mobilier.",
+          "L'amortissement du mobilier permet de déduire chaque année une fraction de la valeur des meubles et équipements, typiquement sur 5 à 10 ans selon leur nature. En revanche, l'amortissement du bien immobilier lui-même n'est pas déductible en LMNP non professionnel : seul le mobilier s'amortit. Cette règle distingue le LMNP non-professionnel du statut LMP (professionnel).",
+          "En régime réel, vous devez déposer une liasse fiscale 2031 auprès du Service des Impôts des Entreprises, puis reporter le résultat (bénéfice ou déficit) sur la déclaration personnelle 2042-C-PRO. Si le résultat est négatif (déficit BIC non professionnel), il n'est pas déductible du revenu global : il se reporte uniquement sur les bénéfices non professionnels des dix années suivantes. Un déficit LMNP ne réduit donc pas directement l'impôt sur les salaires.",
+        ],
+        bullets: [
+          "Charges déductibles : intérêts d'emprunt, assurance, taxe foncière, copro, travaux, gestion.",
+          "Amortissement du mobilier : déductible sur 5 à 10 ans selon les catégories.",
+          "Amortissement immobilier : non déductible en LMNP non-professionnel.",
+          "Formulaires : 2031 (liasse fiscale) + 2042-C-PRO (déclaration personnelle).",
+          "Déficit LMNP : reportable sur les BIC non-pro des 10 années suivantes, pas sur le revenu global.",
+          "Adhésion à un CGA ou accompagnement par un expert-comptable fortement recommandé.",
+        ],
+      },
+      {
+        title: "5. Location nue : micro-foncier et régime réel foncier",
+        paragraphs: [
+          "Les revenus d'une location nue (sans meubles) relèvent des revenus fonciers, non des BIC. Le régime micro-foncier s'applique automatiquement si les recettes brutes annuelles de l'ensemble de vos locations nues sont inférieures à 15 000 €. Il offre un abattement forfaitaire de 30 % sur les recettes brutes. Les recettes sont à reporter case 4BE de la déclaration 2042.",
+          "Si vos recettes dépassent 15 000 €, ou si vous optez pour le régime réel, vous devez remplir le formulaire 2044 (déclaration des revenus fonciers). Ce formulaire détaille ligne par ligne les charges déductibles : intérêts d'emprunt, taxe foncière à votre charge, charges de copropriété non récupérables, primes d'assurance, travaux de réparation et d'entretien (mais pas de construction). Le résultat net est reporté en case 4BA (revenu foncier positif) ou 4BC (déficit imputable sur le revenu global).",
+          "Le déficit foncier présente un avantage important en location nue : la partie due aux charges autres que les intérêts d'emprunt est imputable sur le revenu global dans la limite de 10 700 € par an. Le surplus se reporte sur les revenus fonciers des dix années suivantes. Cette faculté, absente en LMNP non-professionnel, fait de la location nue au réel une stratégie fiscale intéressante pour les propriétaires fortement chargés.",
+        ],
+        bullets: [
+          "Micro-foncier : seuil 15 000 €, abattement 30 %, case 4BE de la 2042.",
+          "Régime réel : formulaire 2044 + report en 2042.",
+          "Déficit foncier imputable sur le revenu global : plafonné à 10 700 €/an.",
+          "Le surplus de déficit se reporte 10 ans sur les revenus fonciers.",
+          "Option pour le réel foncier : irrévocable pendant 3 ans.",
+        ],
+      },
+      {
+        title: "6. Investissement Pinel : réduction d'impôt et revenus fonciers",
+        paragraphs: [
+          "Le dispositif Pinel permet une réduction d'impôt sur le revenu calculée sur le prix d'acquisition du bien, dans la limite de 300 000 € et de 5 500 €/m². La réduction est étalée sur la durée d'engagement : 12 % sur 6 ans, 18 % sur 9 ans, 21 % sur 12 ans (taux applicables aux investissements réalisés avant le 31 décembre 2022). Pour les investissements postérieurs à 2023, vérifiez les taux du Pinel+ qui prévoient une décote progressive.",
+          "La réduction s'impute sur l'impôt dû chaque année. Si elle dépasse l'impôt, le surplus n'est ni remboursé ni reporté : il est perdu. Par exemple, pour un bien acquis à 200 000 € avec un engagement de 9 ans, la réduction annuelle est 200 000 × 18 % / 9 = 4 000 €/an. Si votre impôt est inférieur à 4 000 €, vous ne pouvez pas bénéficier intégralement de la réduction.",
+          "Parallèlement, les loyers perçus d'un bien Pinel sont des revenus fonciers à déclarer selon le régime foncier de droit commun (micro-foncier ou réel). La réduction Pinel est à reporter sur la déclaration 2042-C (cases 7QA pour 6 ans, 7QB pour 9 ans, 7QC pour 12 ans, selon l'année de votre premier engagement). Les revenus fonciers sont déclarés sur le formulaire 2044 le cas échéant.",
+        ],
+        bullets: [
+          "Réduction Pinel : 12 % sur 6 ans, 18 % sur 9 ans, 21 % sur 12 ans (avant 2023).",
+          "Plafond investissement : 300 000 € et 5 500 €/m².",
+          "Cases réduction : 7QA (6 ans), 7QB (9 ans), 7QC (12 ans) — formulaire 2042-C.",
+          "Revenus fonciers Pinel : déclarés séparément sur la 2044 + 2042.",
+          "Réduction non reportable et non remboursable si supérieure à l'impôt dû.",
+        ],
+      },
+      {
+        title: "7. Pénalités en cas d'oubli, d'erreur ou de fraude",
+        paragraphs: [
+          "L'administration fiscale dispose de plusieurs outils pour sanctionner les omissions et erreurs de déclaration. Une déclaration déposée en retard, sans mise en demeure préalable, est majorée de 10 %. Si l'administration adresse une mise en demeure et que le contribuable ne régularise pas dans les 30 jours, la majoration passe à 40 %. Ce taux s'applique également en cas de manquement délibéré reconnu.",
+          "En cas de manœuvres frauduleuses (utilisation de faux documents, dissimulation volontaire, faux en écriture), la majoration atteint 80 % des droits dus. S'y ajoutent des intérêts de retard de 0,20 % par mois (soit 2,4 % par an) calculés depuis la date à laquelle l'impôt aurait dû être payé. Ces intérêts s'appliquent en plus des majorations.",
+          "L'administration fiscale peut procéder à un contrôle fiscal sur les trois dernières années civiles (droit de reprise triennal). En cas de revenus non déclarés, l'ensemble des années non prescrites peut faire l'objet d'un redressement. Si des revenus occultes sont présumés, le délai de reprise peut être étendu à dix ans. La régularisation spontanée avant tout contrôle (via la procédure de correction en ligne ou en contactant l'administration) réduit généralement les pénalités au minimum.",
+        ],
+        bullets: [
+          "Retard sans mise en demeure : majoration de 10 % des droits dus.",
+          "Retard après mise en demeure non respectée : majoration de 40 %.",
+          "Manquement délibéré reconnu : majoration de 40 %.",
+          "Manœuvres frauduleuses : majoration de 80 %.",
+          "Intérêts de retard : 0,20 % par mois (2,4 %/an) en plus des majorations.",
+          "Délai de reprise : 3 ans (général) — 10 ans en cas de revenus occultes présumés.",
+          "Régularisation spontanée : réduit les pénalités, à entreprendre dès que l'oubli est constaté.",
+        ],
+        note: "Ces taux sont ceux en vigueur en 2026. Consultez impots.gouv.fr pour vérifier toute évolution législative.",
+      },
+      {
+        title: "8. Ce que lokt.fr fait — et ne fait pas",
+        paragraphs: [
+          "lokt.fr est un outil de gestion locative et d'aide à la préparation de la déclaration. Il permet de centraliser vos loyers, vos charges, vos quittances et vos documents, et de générer une synthèse de ce que vous devez déclarer selon votre régime fiscal. Il calcule des estimations de base imposable, de déficit et de réduction Pinel à titre indicatif.",
+          "lokt.fr n'est pas un logiciel de déclaration agréé par l'administration fiscale. Il ne transmet aucune donnée à l'administration. Les montants affichés sont des estimations basées sur les informations saisies par l'utilisateur. Les numéros de case indiqués sont fournis à titre indicatif et peuvent changer chaque année : vérifiez toujours sur impots.gouv.fr ou avec votre comptable avant de soumettre votre déclaration.",
+          "lokt.fr ne remplace pas un expert-comptable, un Centre de Gestion Agréé (CGA) ou un conseiller fiscal. Pour une situation impliquant un déficit LMNP élevé, un bien en indivision, une SCI, une transmission ou tout montage complexe, l'accompagnement d'un professionnel est indispensable. lokt.fr ne peut pas être tenu responsable des erreurs ou omissions de déclaration résultant de l'utilisation de ses outils.",
+        ],
+        bullets: [
+          "lokt.fr centralise vos données locatives pour vous aider à préparer votre déclaration.",
+          "Les calculs sont des estimations — non des résultats fiscaux certifiés.",
+          "lokt.fr ne dépose aucune déclaration officielle à votre place.",
+          "Les numéros de case sont indicatifs : vérifiez sur impots.gouv.fr chaque année.",
+          "Pour toute situation complexe, consultez un expert-comptable ou un CGA.",
+        ],
+      },
+    ],
+    checklist: [
+      "Identifié le régime applicable : LMNP micro-BIC, LMNP réel, nu micro-foncier, nu réel ou Pinel.",
+      "Recettes brutes de l'exercice relevées (loyers perçus + charges récupérées).",
+      "Justificatifs des charges rassemblés : factures, relevés de taxe foncière, appels de copropriété.",
+      "Intérêts d'emprunt vérifiés sur le tableau d'amortissement du crédit.",
+      "En LMNP réel : amortissements mobilier calculés ou vérifiés par le comptable.",
+      "Formulaires téléchargés : 2042, 2042-C-PRO (LMNP), 2044 (nu réel), 2042-C (Pinel).",
+      "Date limite de déclaration en ligne vérifiée sur impots.gouv.fr.",
+      "En LMNP réel : liasse 2031 préparée et déposée au SIE avant la déclaration personnelle.",
+      "Dossier transmis à l'expert-comptable si situation complexe (déficit, indivision, SCI).",
+      "Déclaration soumise et accusé de réception conservé.",
+    ],
+    sources: [
+      { label: "impots.gouv.fr : revenus fonciers et BIC", href: "https://www.impots.gouv.fr/particulier/la-location-immobiliere" },
+      { label: "Service-Public : LMNP et déclaration meublée", href: "https://www.service-public.fr/particuliers/vosdroits/F31100" },
+      { label: "ANIL : fiscalité des revenus locatifs", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/fiscalite/" },
+      { label: "Légifrance : article 1729 CGI (pénalités)", href: "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000044981868" },
     ],
   },
 ];
