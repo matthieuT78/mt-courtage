@@ -1131,14 +1131,9 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       const loan = recurring.loan;
       const fixed = recurring.fixed;
       const taxM = recurring.taxM;
-      const lmnpRecurring =
-        Number(fin?.pno_insurance_monthly || 0) +
-        Number(fin?.copro_charges_monthly || 0) +
-        Number(fin?.bank_fees_monthly || 0) +
-        Number(fin?.maintenance_monthly || 0) +
-        Number(fin?.rental_tax_monthly || 0) +
-        Number(fin?.property_tax_yearly || 0) / 12 +
-        Number(fin?.cfe_yearly || 0) / 12;
+      // fixed et taxM viennent de monthlyRecurringByProperty qui applique déjà les guards
+      // insurance/copro/tax — plus fiable que de re-lire property_finance brut
+      const lmnpRecurring = recurring.fixed + recurring.taxM;
 
       const cashflow = incomeBase - v.expense - recurring.total * selectedPeriod.monthCount;
 

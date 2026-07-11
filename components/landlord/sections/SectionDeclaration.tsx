@@ -898,6 +898,67 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
         </section>
       )}
 
+      {/* ── Diagnostic d'orientation ── */}
+      {hasCat && !isPinel && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Orientation régime</p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <p className="mb-2 text-xs font-semibold text-slate-700">Votre bien est-il meublé ?</p>
+              <div className="flex gap-1.5">
+                {([["yes", "Oui — meublé"] , ["no", "Non — nu"]] as const).map(([val, label]) => (
+                  <button key={val} type="button" onClick={() => setFurnishedAnswer(val)}
+                    className={cx("rounded-lg border px-3 py-1.5 text-xs font-semibold transition", furnishedAnswer === val ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100")}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold text-slate-700">Charges / travaux / intérêts ?</p>
+              <div className="flex gap-1.5">
+                {([["high", "Importants"] , ["low", "Peu"]] as const).map(([val, label]) => (
+                  <button key={val} type="button" onClick={() => setExpenseProfile(val)}
+                    className={cx("rounded-lg border px-3 py-1.5 text-xs font-semibold transition", expenseProfile === val ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100")}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold text-slate-700">Avez-vous un comptable ?</p>
+              <div className="flex gap-1.5">
+                {([["accountant", "Oui"] , ["solo", "Non"]] as const).map(([val, label]) => (
+                  <button key={val} type="button" onClick={() => setAccountingProfile(val)}
+                    className={cx("rounded-lg border px-3 py-1.5 text-xs font-semibold transition", accountingProfile === val ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100")}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          {furnishedAnswer !== "unknown" && (
+            <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 px-3 py-2.5">
+              {suggestedRegime === regime
+                ? <CheckCircleIcon className="h-4 w-4 shrink-0 text-emerald-500" />
+                : <SparklesIcon className="h-4 w-4 shrink-0 text-[#635bff]" />}
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-slate-900">
+                  {suggestedRegime === regime ? "Vous êtes sur le régime suggéré" : `Régime suggéré : ${regimeLabel(suggestedRegime)}`}
+                </p>
+                <p className="text-xs text-slate-500">{suggestedReason}</p>
+              </div>
+              {suggestedRegime !== regime && (
+                <button type="button" onClick={() => setRegime(suggestedRegime)}
+                  className="shrink-0 rounded-full bg-[#635bff] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition">
+                  Appliquer
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* ── Onglets catégorie ── */}
       {hasCat && (
         <div className="flex flex-wrap gap-2">
