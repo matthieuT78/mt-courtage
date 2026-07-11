@@ -632,6 +632,7 @@ export function DashboardShell(props: any) {
             initialDepartureTenantId={departureTenantId}
             onDepartureOpened={() => setDepartureTenantId(null)}
             onOpenExitInventory={() => setActive("etat_des_lieux")}
+            onNavigateDeep={navigateDeep}
             onContactTenant={(tenantId) => {
               setMessagingTenantId(tenantId);
               setActive("messagerie");

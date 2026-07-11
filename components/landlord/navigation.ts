@@ -63,7 +63,7 @@ export const LANDLORD_NAV_ITEMS: Record<LandlordSectionKey, LandlordNavItem> = {
   candidatures: { key: "candidatures", label: "Candidatures", icon: FolderOpenIcon },
   locataires: { key: "locataires", label: "Locataires", icon: UserGroupIcon },
   biens: { key: "biens", label: "Logements", shortLabel: "Biens", icon: HomeIcon },
-  baux: { key: "baux", label: "Baux", shortLabel: "Baux", icon: DocumentTextIcon },
+  baux: { key: "baux", label: "Locations", shortLabel: "Locations", icon: DocumentTextIcon },
   quittances: { key: "quittances", label: "Quittances", icon: ReceiptPercentIcon },
   finance: { key: "finance", label: "Finance", icon: BanknotesIcon },
   performance: { key: "performance", label: "Performance", icon: ChartBarIcon },

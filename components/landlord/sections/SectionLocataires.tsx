@@ -6,7 +6,7 @@ import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
-import { ChatBubbleLeftRightIcon, HomeIcon, NoSymbolIcon, PhoneIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ChatBubbleLeftRightIcon, HomeIcon, LinkIcon, NoSymbolIcon, PhoneIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { RentPayment } from "../../../lib/landlord/types";
 
 /* ======================================================
@@ -74,6 +74,7 @@ type Props = {
   onDepartureOpened?: () => void;
   onOpenExitInventory?: () => void;
   deepLink?: { key: number; openCreate?: boolean } | null;
+  onNavigateDeep?: (section: string, link?: { openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string }) => void;
 };
 
 const fmt = (v?: string | null) => (v ? v : "—");
@@ -212,6 +213,7 @@ export function SectionLocataires({
   onDepartureOpened,
   onOpenExitInventory,
   deepLink,
+  onNavigateDeep,
 }: Props) {
   const safeTenants = Array.isArray(tenants) ? tenants : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -1082,6 +1084,19 @@ export function SectionLocataires({
                             </div>
                             <div className="mt-2 flex flex-wrap items-center gap-1.5">
                               {activeLease ? badge("emerald", "Actif") : hasLease ? badge("slate", "Historique") : badge("amber", "Sans bail")}
+                              {!activeLease && !hasLease && safeProperties.length > 0 && onNavigateDeep && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onNavigateDeep("baux", { openCreate: true, prefillTenantId: t.id });
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[0.7rem] font-semibold text-indigo-700 hover:bg-indigo-100 transition"
+                                >
+                                  <LinkIcon className="h-3 w-3 shrink-0" />
+                                  Lier à un logement →
+                                </button>
+                              )}
                               {p ? (
                                 <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-800">
                                   <HomeIcon className="h-3 w-3 shrink-0 text-slate-400" />

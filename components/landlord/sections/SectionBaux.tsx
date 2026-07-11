@@ -2706,9 +2706,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     {contractLeaseId ? <LeaseContractWizard userId={userId} leaseId={contractLeaseId} onClose={() => setContractLeaseId(null)} /> : null}
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
       <SectionTitle
-        kicker="Baux"
+        kicker="Locations"
         title="Créer et suivre une location"
-        desc="Le bail rassemble le logement, le locataire, le loyer et les dates qui pilotent ensuite le suivi mensuel."
+        desc="Chaque location relie un logement, un locataire et un loyer — c'est ce qui pilote le suivi mensuel, les quittances et les alertes."
       />
 
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
@@ -2740,7 +2740,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
           )}
         >
           <DocumentTextIcon className="h-4 w-4" />
-          Créer un bail
+          Créer une location
         </button>
       </div>
 
@@ -2763,7 +2763,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                 <DocumentTextIcon className="h-5 w-5 text-[#635bff]" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-900">Nouveau bail</p>
+                <p className="text-sm font-semibold text-slate-900">Nouvelle location</p>
                 <p className="text-xs text-slate-500">Choisis un bien + un locataire, puis configure les options.</p>
               </div>
             </div>
