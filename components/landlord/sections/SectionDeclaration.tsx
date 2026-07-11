@@ -220,6 +220,8 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   // LMNP réel : amortissements (mobilier uniquement en non-pro)
   const [amortizationMobilier, setAmortizationMobilier] = useState(0);
   const [amortizationImmobilier, setAmortizationImmobilier] = useState(0);
+  // Stock d'amortissements non utilisés des exercices précédents (reportés indéfiniment en LMNP non-pro)
+  const [lmnpCarryForward, setLmnpCarryForward] = useState(0);
 
   // Nu réel : CFE (Cotisation Foncière des Entreprises)
   const [cfe, setCfe] = useState(0);
@@ -269,8 +271,19 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   // Micro-foncier : abattement 30% → base = 70%
   const microFoncierBase = Math.max(0, receiptsTotal * 0.7);
 
-  // LMNP réel : intérêts déductibles, amortissement mobilier déductible (immobilier interdit en non-pro)
-  const realLmnpBase = Math.max(0, receiptsTotal - commonCharges - amortizationMobilier);
+  // LMNP réel : calcul en deux étapes (règle fiscale : amortissements ne peuvent pas créer un déficit BIC non-pro)
+  // Étape 1 : résultat avant amortissements
+  const resultBeforeAmort = receiptsTotal - commonCharges;
+  // Étape 2 : déficit BIC réel (charges > recettes, hors amortissements) — reportable 10 ans sur BIC non-pro
+  const lmnpBicDeficit = Math.min(0, resultBeforeAmort);
+  // Étape 3 : amortissements disponibles = mobilier N + stock reporté des années précédentes
+  const amortizationTotal = amortizationMobilier + lmnpCarryForward;
+  // Étape 4 : amortissements effectivement déduits (plafonnés au résultat disponible)
+  const amortizationUsed = Math.min(amortizationTotal, Math.max(0, resultBeforeAmort));
+  // Étape 5 : stock à reporter sur N+1 (sans limite de durée)
+  const amortizationDeferred = amortizationTotal - amortizationUsed;
+  // Résultat fiscal : 0 si amortissements couvrent, bénéfice sinon
+  const realLmnpBase = Math.max(0, resultBeforeAmort) - amortizationUsed;
 
   // Nu réel : intérêts déductibles + CFE déductible
   const realNuBase = Math.max(0, receiptsTotal - commonCharges - cfe);
@@ -294,7 +307,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   // Charges affichées dans la stat "Charges" (contextualisées)
   const chargesStatDisplay =
     regime === "nu_reel" ? commonCharges + cfe :
-    regime === "lmnp_reel" ? commonCharges + amortizationMobilier :
+    regime === "lmnp_reel" ? commonCharges + amortizationUsed :
     commonCharges;
 
   const recommendedMode = isLmnp
@@ -340,7 +353,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     setGrossRent(0); setChargesRecovered(0); setOtherIncome(0); setDepositReceived(0);
     setInterest(0); setInsurance(0); setPropertyTax(0); setCopro(0);
     setRepairs(0); setManagementFees(0); setUtilities(0); setOtherExpenses(0);
-    setAmortizationMobilier(0); setAmortizationImmobilier(0); setCfe(0);
+    setAmortizationMobilier(0); setAmortizationImmobilier(0); setLmnpCarryForward(0); setCfe(0);
     setPinelCommitmentYears(6);
     // Pinel : auto-fill depuis la fiche bien + Finance plutôt que vider les champs
     if (isPinel && pinelPropertyId) {
@@ -398,6 +411,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       // Backward compat: anciens dossiers avaient "amortization" (sans split)
       setAmortizationMobilier(toNumber(d.amortizationMobilier ?? d.amortization));
       setAmortizationImmobilier(toNumber(d.amortizationImmobilier));
+      setLmnpCarryForward(toNumber(d.lmnpCarryForward));
       setCfe(toNumber(d.cfe));
       setPinelAddress(String(d.pinelAddress || ""));
       setPinelAcqYear(Number.isFinite(d.pinelAcqYear) ? (d.pinelAcqYear as number) : currentYear() - 1);
@@ -441,6 +455,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
           otherExpenses,
           amortizationMobilier,
           amortizationImmobilier,
+          lmnpCarryForward,
           cfe,
           pinelAddress,
           pinelAcqYear,
@@ -568,8 +583,11 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     if (isNu && !isPinel && realNuBase + 1000 < microFoncierBase)
       list.push({ tone: "amber", text: "Le réel foncier semble plus favorable que le micro-foncier. Vérifiez les charges déductibles." });
 
-    if (regime === "lmnp_reel" && amortizationMobilier === 0)
+    if (regime === "lmnp_reel" && amortizationMobilier === 0 && lmnpCarryForward === 0)
       list.push({ tone: "amber", text: "LMNP réel sans amortissement mobilier : le résultat est probablement surévalué. Indiquez les amortissements pratiqués." });
+
+    if (regime === "lmnp_reel" && amortizationDeferred > 0)
+      list.push({ tone: "amber", text: `${eur(amortizationDeferred)} d'amortissements non utilisés à reporter sur ${year + 1}. Notez ce montant pour le pré-renseigner dans le dossier ${year + 1}.` });
 
     if (regime === "lmnp_reel" && amortizationImmobilier > 0)
       list.push({ tone: "red", text: `Amortissement immobilier (${eur(amortizationImmobilier)}) : non déductible en LMNP non-professionnel. Seul le mobilier s'amortit. Vérifiez avec votre comptable.` });
@@ -589,8 +607,8 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     return list;
   }, [
     depositReceived, isNu, receiptsTotal, isLmnp, realLmnpBase, microBicBase, realNuBase, microFoncierBase,
-    amortizationMobilier, amortizationImmobilier, regime, commonCharges, isPinel, pinelAcqPrice,
-    chargesRecovered, interest, isMicro,
+    amortizationMobilier, amortizationImmobilier, amortizationDeferred, lmnpCarryForward,
+    regime, commonCharges, isPinel, pinelAcqPrice, chargesRecovered, interest, isMicro, year,
   ]);
 
   const checklist = useMemo(() => [
@@ -627,7 +645,11 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       ["Eau / élec / internet", csvNum(utilities)],
       ["Autres charges", csvNum(otherExpenses)],
       ...(regime === "lmnp_reel" ? [
-        ["Amortissements mobilier (déductible)", csvNum(amortizationMobilier)],
+        ["Amortissements mobilier N", csvNum(amortizationMobilier)],
+        ["Amortissements reportés N-1", csvNum(lmnpCarryForward)],
+        ["Amortissements total disponibles", csvNum(amortizationTotal)],
+        ["Amortissements effectivement déduits", csvNum(amortizationUsed)],
+        ["Amortissements à reporter N+1", csvNum(amortizationDeferred)],
         ["Amortissements immobilier (non déductible LMNP non-pro)", csvNum(amortizationImmobilier)],
       ] as Array<[string, string]> : []),
       ...(regime === "nu_reel" ? [["CFE (Cotisation Foncière)", csvNum(cfe)]] as Array<[string, string]> : []),
@@ -671,20 +693,34 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       needsAccountant: false,
       accountantNote: null,
     };
-    if (regime === "lmnp_reel") return {
-      montantLabel: realLmnpBase >= 0 ? "Bénéfice à déclarer" : "Déficit à reporter",
-      montant: Math.abs(realLmnpBase),
-      montantNote: realLmnpBase >= 0
-        ? "Résultat net après charges et amortissements mobiliers"
-        : "Le déficit LMNP non-professionnel n'est pas imputable sur le revenu global — il se reporte sur les BIC non-pro des 10 années suivantes",
-      formulaire: "2031 + 2042-C-PRO",
-      caseHint: realLmnpBase >= 0
-        ? "Section « BIC non professionnels / Réel » — case bénéfice (ex : 5NK)"
-        : "Section « BIC non professionnels / Réel » — case déficit (ex : 5NL)",
-      isDeficit: realLmnpBase < 0,
-      needsAccountant: true,
-      accountantNote: "Le formulaire 2031 (liasse fiscale) est obligatoire. Un comptable ou l'adhésion à un CGA est fortement recommandé pour le LMNP réel.",
-    };
+    if (regime === "lmnp_reel") {
+      // Cas A : déficit BIC (charges > recettes, hors amortissements) — reportable 10 ans sur BIC non-pro
+      if (lmnpBicDeficit < 0) return {
+        montantLabel: "Déficit BIC à reporter",
+        montant: Math.abs(lmnpBicDeficit),
+        montantNote: `Vos charges (${eur(commonCharges)}) dépassent vos recettes (${eur(receiptsTotal)}). Ce déficit BIC non-professionnel n'est pas imputable sur le revenu global — il se reporte 10 ans sur les BIC non-pro.${amortizationTotal > 0 ? ` Les ${eur(amortizationTotal)} d'amortissements sont mis en réserve et reportés sans limite de durée.` : ""}`,
+        formulaire: "2031 + 2042-C-PRO",
+        caseHint: "Section « BIC non professionnels / Réel » — case déficit (ex : 5NL)",
+        isDeficit: true,
+        needsAccountant: true,
+        accountantNote: "Le formulaire 2031 (liasse fiscale) est obligatoire. Un comptable ou l'adhésion à un CGA est fortement recommandé.",
+      };
+      // Cas B : résultat positif ou nul après amortissements
+      return {
+        montantLabel: realLmnpBase > 0 ? "Bénéfice à déclarer" : "Résultat nul",
+        montant: realLmnpBase,
+        montantNote: realLmnpBase > 0
+          ? `Résultat net après charges et amortissements mobiliers (${eur(amortizationUsed)} déduits).${amortizationDeferred > 0 ? ` ${eur(amortizationDeferred)} d'amortissements non utilisés sont reportés sur ${year + 1} sans limite de durée.` : ""}`
+          : `Vos amortissements (${eur(amortizationUsed)} déduits sur ${eur(amortizationTotal)} disponibles) couvrent intégralement le résultat.${amortizationDeferred > 0 ? ` ${eur(amortizationDeferred)} sont reportés sur ${year + 1} sans limite de durée.` : ""}`,
+        formulaire: "2031 + 2042-C-PRO",
+        caseHint: realLmnpBase > 0
+          ? "Section « BIC non professionnels / Réel » — case bénéfice (ex : 5NK)"
+          : "Section « BIC non professionnels / Réel » — résultat nul, case bénéfice (ex : 5NK) = 0",
+        isDeficit: false,
+        needsAccountant: true,
+        accountantNote: "Le formulaire 2031 (liasse fiscale) est obligatoire. Un comptable ou l'adhésion à un CGA est fortement recommandé pour le LMNP réel.",
+      };
+    }
     if (regime === "nu_micro") return {
       montantLabel: "Recettes brutes à déclarer",
       montant: receiptsTotal,
@@ -724,6 +760,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     regime, receiptsTotal, microBicBase, microFoncierBase, realLmnpBase, realNuBase,
     pinelYearlyReduction, pinelRevenusBase, pinelTotalReduction, pinelAcqPrice, pinelAcqPriceCapped,
     pinelCommitmentYears, pinelRate, locationKind,
+    lmnpBicDeficit, amortizationUsed, amortizationDeferred, amortizationTotal, commonCharges, year,
   ]);
 
 
@@ -952,7 +989,8 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                   <Field label="Frais de gestion (€)" value={managementFees} onChange={setManagementFees} />
                   <Field label="Eau, électricité, divers (€)" value={utilities} onChange={setUtilities} />
                   <Field label="Autres charges (€)" value={otherExpenses} onChange={setOtherExpenses} />
-                  {isLmnp && <Field label="Amortissements mobilier (€)" value={amortizationMobilier} onChange={setAmortizationMobilier} hint="Mobilier et équipements — déductible en LMNP non-pro" />}
+                  {isLmnp && <Field label="Amortissements mobilier N (€)" value={amortizationMobilier} onChange={setAmortizationMobilier} hint="Mobilier et équipements — déductible en LMNP non-pro" />}
+                  {isLmnp && <Field label="Amortissements reportés N-1 (€)" value={lmnpCarryForward} onChange={setLmnpCarryForward} hint="Stock non utilisé des exercices précédents (reportable sans limite)" />}
                   {isNu && <Field label="CFE (€)" value={cfe} onChange={setCfe} hint="Cotisation Foncière des Entreprises" />}
                 </div>
               </div>
