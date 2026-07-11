@@ -2219,8 +2219,8 @@ export function SectionOutils({
       setWaterStep("setup");
     } catch (e: any) {
       if (createdAllocationId && supabase) {
-        await supabase.from("water_allocation_readings").delete().eq("allocation_id", createdAllocationId).eq("user_id", userId).catch(() => {});
-        await supabase.from("water_allocations").delete().eq("id", createdAllocationId).eq("user_id", userId).catch(() => {});
+        try { await supabase.from("water_allocation_readings").delete().eq("allocation_id", createdAllocationId).eq("user_id", userId); } catch {}
+        try { await supabase.from("water_allocations").delete().eq("id", createdAllocationId).eq("user_id", userId); } catch {}
       }
       setError(e?.message || "Impossible d’enregistrer la répartition.");
     } finally {
