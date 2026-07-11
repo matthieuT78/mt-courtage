@@ -5,6 +5,7 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon,
   SparklesIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import type { Property } from "../../../lib/landlord/types";
@@ -224,6 +225,14 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   const [pinelAcqYear, setPinelAcqYear] = useState<number>(currentYear() - 1);
   const [pinelAcqPrice, setPinelAcqPrice] = useState(0);
   const [pinelCommitmentYears, setPinelCommitmentYears] = useState<number>(6);
+
+  const [showGuide, setShowGuide] = useState(() => {
+    try { return localStorage.getItem("lokt_decl_guide_dismissed") !== "1"; } catch { return true; }
+  });
+  const dismissGuide = () => {
+    setShowGuide(false);
+    try { localStorage.setItem("lokt_decl_guide_dismissed", "1"); } catch { /* noop */ }
+  };
 
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
@@ -734,6 +743,53 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
 
   return (
     <div className="space-y-5">
+
+      {/* ── Guide explicatif (masquable) ── */}
+      {showGuide && (
+        <section className="relative overflow-hidden rounded-3xl border border-[#635bff]/20 bg-gradient-to-br from-[#635bff]/5 via-white to-cyan-50 p-5">
+          <button
+            type="button"
+            onClick={dismissGuide}
+            className="absolute right-4 top-4 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Fermer"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </button>
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Comment ça marche</p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-3">
+            <div className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#635bff] text-xs font-bold text-white">1</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Choisissez votre catégorie</p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                  Vos biens sont classés automatiquement — <strong>LMNP</strong>, <strong>location nue</strong> ou <strong>Pinel</strong> — selon le régime que vous avez configuré dans Finance.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#635bff] text-xs font-bold text-white">2</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Importez vos loyers</p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                  Cliquez <strong>Importer Finance</strong> pour récupérer en un clic vos loyers et charges de l'exercice, ou saisissez-les manuellement. Choisissez ensuite le régime : micro ou réel.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#635bff] text-xs font-bold text-white">3</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Obtenez le montant à déclarer</p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                  Le montant exact, le formulaire et la case à remplir s'affichent automatiquement. Sauvegardez ou exportez en CSV pour votre comptable.
+                </p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-4 text-[0.67rem] leading-5 text-slate-400">
+            Aide à la préparation uniquement — non un logiciel officiel. Vérifiez sur <strong className="text-slate-500">impots.gouv.fr</strong> avant de déclarer.
+          </p>
+        </section>
+      )}
 
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
