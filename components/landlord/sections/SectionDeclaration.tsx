@@ -239,25 +239,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   const isReal = regime.endsWith("reel");
   const isMicro = regime.endsWith("micro");
 
-  // Auto-fill Pinel depuis Finance + fiche bien quand les champs sont vides
   const pinelPropertyId = fiscalGroups.pinel[0] ?? null;
-  useEffect(() => {
-    if (!isPinel || !pinelPropertyId) return;
-    if (pinelAddress === "") {
-      const p = propertyById.get(pinelPropertyId);
-      if (p) {
-        const addr = [p.address_line1, p.postal_code, p.city].filter(Boolean).join(", ");
-        if (addr) setPinelAddress(addr);
-      }
-    }
-    if (pinelAcqPrice === 0) {
-      const fin = (propertyFinance || []).find((f) => f.property_id === pinelPropertyId);
-      if (fin) {
-        const total = (fin.purchase_price || 0) + (fin.notary_fees || 0) + (fin.agency_fees || 0) + (fin.works || 0);
-        if (total > 0) setPinelAcqPrice(total);
-      }
-    }
-  }, [isPinel, pinelPropertyId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Recettes fiscales (hors dépôt de garantie)
   const receiptsTotal = grossRent + chargesRecovered + otherIncome;
@@ -345,7 +327,18 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     setInterest(0); setInsurance(0); setPropertyTax(0); setCopro(0);
     setRepairs(0); setManagementFees(0); setUtilities(0); setOtherExpenses(0);
     setAmortizationMobilier(0); setAmortizationImmobilier(0); setCfe(0);
-    setPinelAddress(""); setPinelAcqPrice(0); setPinelCommitmentYears(6);
+    setPinelCommitmentYears(6);
+    // Pinel : auto-fill depuis la fiche bien + Finance plutôt que vider les champs
+    if (isPinel && pinelPropertyId) {
+      const p = propertyById.get(pinelPropertyId);
+      const addr = p ? [p.address_line1, p.postal_code, p.city].filter(Boolean).join(", ") : "";
+      setPinelAddress(addr || "");
+      const fin = (propertyFinance || []).find((f) => f.property_id === pinelPropertyId);
+      const total = fin ? (fin.purchase_price || 0) + (fin.notary_fees || 0) + (fin.agency_fees || 0) + (fin.works || 0) : 0;
+      setPinelAcqPrice(total);
+    } else {
+      setPinelAddress(""); setPinelAcqPrice(0);
+    }
   };
 
   const load = async () => {
