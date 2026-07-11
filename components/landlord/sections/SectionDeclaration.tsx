@@ -957,8 +957,18 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                 </p>
               </div>
             ) : receiptsTotal === 0 && !isPinel ? (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                Saisissez vos recettes ou importez depuis Finance pour voir le montant à déclarer.
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center">
+                <p className="text-sm text-slate-500">Aucune recette renseignée pour {categoryLabel}.</p>
+                <button
+                  type="button"
+                  onClick={importFromFinance}
+                  disabled={loading}
+                  className={cx("inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold", brandBg, brandText, brandHover, loading && "opacity-60")}
+                >
+                  <ArrowPathIcon className="h-4 w-4" />
+                  Importer depuis Finance
+                </button>
+                <p className="text-xs text-slate-400">ou saisissez les loyers manuellement dans le champ "Recettes" ci-dessus</p>
               </div>
             ) : null}
 
