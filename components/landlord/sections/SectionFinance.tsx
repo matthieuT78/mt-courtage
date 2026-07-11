@@ -1841,8 +1841,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   };
 
   const chapters = [
-    { href: "#finance-ecritures", number: "01", label: "Écritures", sub: `${filteredLedgerSummary.count} ligne${filteredLedgerSummary.count > 1 ? "s" : ""}` },
-    { href: "#finance-charges", number: "02", label: "Charges", sub: "Récupérables" },
+    { href: "#finance-ecritures", number: "01", label: "Mouvements", sub: `${filteredLedgerSummary.count} ligne${filteredLedgerSummary.count > 1 ? "s" : ""}` },
+    { href: "#finance-charges", number: "02", label: "Charges locatives", sub: "Récupérables" },
     { href: "#finance-periode", number: "03", label: "Période", sub: periodLabel },
     { href: "#finance-pilotage", number: "04", label: "Synthèse", sub: "Lecture rapide" },
   ];
