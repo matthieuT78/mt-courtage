@@ -642,7 +642,8 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
 
   // Guide de déclaration : montant exact à reporter + formulaire + cases (indicatifs)
   const declarationGuide = useMemo(() => {
-    if (receiptsTotal === 0) return null;
+    if (receiptsTotal === 0 && regime !== "pinel") return null;
+    if (regime === "pinel" && pinelAcqPrice === 0) return null;
     if (regime === "lmnp_micro") return {
       montantLabel: "Recettes brutes à déclarer",
       montant: receiptsTotal,
