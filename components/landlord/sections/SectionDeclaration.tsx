@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownTrayIcon,
   ArrowPathIcon,
-  CheckCircleIcon,
   ExclamationTriangleIcon,
-  SparklesIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
@@ -17,9 +15,6 @@ type Regime = "lmnp_micro" | "lmnp_reel" | "nu_micro" | "nu_reel" | "pinel";
 // meuble_saisonnier_classe = tourisme classé → abattement 71%
 type LocationKind = "meuble_longue" | "meuble_saisonnier" | "meuble_saisonnier_classe";
 type DeclarationStep = "diagnostic" | "prepare" | "verify" | "export";
-type FurnishedAnswer = "unknown" | "yes" | "no";
-type ExpenseProfile = "low" | "high";
-type AccountingProfile = "solo" | "accountant";
 
 type Stored = {
   id: string;
@@ -197,10 +192,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   }, [regime, fiscalGroups]);
 
   const [locationKind, setLocationKind] = useState<LocationKind>("meuble_longue");
-  const [furnishedAnswer, setFurnishedAnswer] = useState<FurnishedAnswer>("unknown");
-  const [expenseProfile, setExpenseProfile] = useState<ExpenseProfile>("low");
-  const [accountingProfile, setAccountingProfile] = useState<AccountingProfile>("solo");
-
   // Recettes
   const [grossRent, setGrossRent] = useState(0);
   const [chargesRecovered, setChargesRecovered] = useState(0);
@@ -320,24 +311,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       : "Le micro-foncier semble suffisant à ce stade."
     : "";
 
-  const suggestedRegime: Regime =
-    furnishedAnswer === "yes"
-      ? expenseProfile === "high" || accountingProfile === "accountant"
-        ? "lmnp_reel"
-        : "lmnp_micro"
-      : furnishedAnswer === "no"
-      ? expenseProfile === "high" || accountingProfile === "accountant"
-        ? "nu_reel"
-        : "nu_micro"
-      : regime;
-
-  const suggestedReason =
-    furnishedAnswer === "unknown"
-      ? "Répondez aux questions pour obtenir une orientation de départ."
-      : expenseProfile === "high"
-      ? "Vos charges, travaux ou intérêts semblent importants : le réel mérite d'être étudié."
-      : "Avec peu de charges à retraiter, le régime micro peut être un bon point de départ.";
-
   const categoryLabel =
     isLmnp ? `LMNP — ${isMicro ? "Micro-BIC" : "Réel"} (${fiscalGroups.lmnp.length} bien${fiscalGroups.lmnp.length > 1 ? "s" : ""})` :
     isPinel ? `Pinel (${fiscalGroups.pinel.length} bien${fiscalGroups.pinel.length > 1 ? "s" : ""})` :
@@ -347,9 +320,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   const resetFormFields = () => {
     setRowId(null);
     setLocationKind("meuble_longue");
-    setFurnishedAnswer("unknown");
-    setExpenseProfile("low");
-    setAccountingProfile("solo");
     setGrossRent(0); setChargesRecovered(0); setOtherIncome(0); setDepositReceived(0);
     setInterest(0); setInsurance(0); setPropertyTax(0); setCopro(0);
     setRepairs(0); setManagementFees(0); setUtilities(0); setOtherExpenses(0);
@@ -393,9 +363,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       const d = ((data as Stored).data || {}) as Record<string, unknown>;
       setRowId((data as Stored).id);
       setLocationKind((d.locationKind as LocationKind) || "meuble_longue");
-      setFurnishedAnswer((d.furnishedAnswer as FurnishedAnswer) || "unknown");
-      setExpenseProfile((d.expenseProfile as ExpenseProfile) || "low");
-      setAccountingProfile((d.accountingProfile as AccountingProfile) || "solo");
       setGrossRent(toNumber(d.grossRent));
       setChargesRecovered(toNumber(d.chargesRecovered));
       setOtherIncome(toNumber(d.otherIncome));
@@ -438,9 +405,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
         regime,
         data: {
           locationKind,
-          furnishedAnswer,
-          expenseProfile,
-          accountingProfile,
           grossRent,
           chargesRecovered,
           otherIncome,
@@ -895,67 +859,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
             <strong>LMNP</strong> (meublé), <strong>location nue</strong> ou <strong>Pinel</strong>.
             Cette information est nécessaire pour préparer votre déclaration.
           </p>
-        </section>
-      )}
-
-      {/* ── Diagnostic d'orientation ── */}
-      {hasCat && !isPinel && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-4">
-          <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Orientation régime</p>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <p className="mb-2 text-xs font-semibold text-slate-700">Votre bien est-il meublé ?</p>
-              <div className="flex gap-1.5">
-                {([["yes", "Oui — meublé"] , ["no", "Non — nu"]] as const).map(([val, label]) => (
-                  <button key={val} type="button" onClick={() => setFurnishedAnswer(val)}
-                    className={cx("rounded-lg border px-3 py-1.5 text-xs font-semibold transition", furnishedAnswer === val ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100")}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-xs font-semibold text-slate-700">Charges / travaux / intérêts ?</p>
-              <div className="flex gap-1.5">
-                {([["high", "Importants"] , ["low", "Peu"]] as const).map(([val, label]) => (
-                  <button key={val} type="button" onClick={() => setExpenseProfile(val)}
-                    className={cx("rounded-lg border px-3 py-1.5 text-xs font-semibold transition", expenseProfile === val ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100")}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className="mb-2 text-xs font-semibold text-slate-700">Avez-vous un comptable ?</p>
-              <div className="flex gap-1.5">
-                {([["accountant", "Oui"] , ["solo", "Non"]] as const).map(([val, label]) => (
-                  <button key={val} type="button" onClick={() => setAccountingProfile(val)}
-                    className={cx("rounded-lg border px-3 py-1.5 text-xs font-semibold transition", accountingProfile === val ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100")}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          {furnishedAnswer !== "unknown" && (
-            <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 px-3 py-2.5">
-              {suggestedRegime === regime
-                ? <CheckCircleIcon className="h-4 w-4 shrink-0 text-emerald-500" />
-                : <SparklesIcon className="h-4 w-4 shrink-0 text-[#635bff]" />}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-slate-900">
-                  {suggestedRegime === regime ? "Vous êtes sur le régime suggéré" : `Régime suggéré : ${regimeLabel(suggestedRegime)}`}
-                </p>
-                <p className="text-xs text-slate-500">{suggestedReason}</p>
-              </div>
-              {suggestedRegime !== regime && (
-                <button type="button" onClick={() => setRegime(suggestedRegime)}
-                  className="shrink-0 rounded-full bg-[#635bff] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition">
-                  Appliquer
-                </button>
-              )}
-            </div>
-          )}
         </section>
       )}
 
