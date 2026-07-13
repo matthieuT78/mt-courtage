@@ -512,6 +512,9 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       if (!supabase) throw new Error("Supabase non initialisé.");
       if (!userId) throw new Error("userId manquant.");
 
+      await supabase.from("property_finance").delete().eq("property_id", id).eq("user_id", userId);
+      await supabase.from("property_inventory_items").delete().eq("property_id", id).eq("user_id", userId);
+
       const { error } = await supabase.from("properties").delete().eq("id", id).eq("user_id", userId);
       if (error) throw error;
 
