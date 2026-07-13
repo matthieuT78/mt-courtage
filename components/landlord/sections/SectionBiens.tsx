@@ -30,6 +30,7 @@ type Props = {
   photos?: any[];
   onRefresh: () => Promise<void>;
   deepLink?: { key: number; openCreate?: boolean } | null;
+  onGoToBaux?: () => void;
 };
 
 const CREATE_ID = "__create__";
@@ -192,7 +193,7 @@ function rowSignal(row: { currentLease: any; vacancyDays12m: number; turnover12m
   return { tone: "sky" as const, label: "Correct", detail: "Suivi normal du bien." };
 }
 
-export function SectionBiens({ userId, properties, leases, tenants, photos, onRefresh, deepLink }: Props) {
+export function SectionBiens({ userId, properties, leases, tenants, photos, onRefresh, deepLink, onGoToBaux }: Props) {
   const { loading: permissionsLoading, maxActiveProperties } = usePermissions();
   const safeProperties = Array.isArray(properties) ? properties : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -1195,7 +1196,14 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                             Supprimer
                           </button>
                         )
-                      ) : null}
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-500">
+                          Supprimez d&apos;abord le bail
+                          {onGoToBaux ? (
+                            <button type="button" onClick={onGoToBaux} className="font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900">→ Baux</button>
+                          ) : null}
+                        </span>
+                      )}
                     </div>
                   </ExpandableRow>
                 );
@@ -1331,7 +1339,12 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                           </button>
                         )
                       ) : (
-                        <span className="text-[0.75rem] text-slate-500">Données conservées</span>
+                        <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-500">
+                          Supprimez d&apos;abord le bail
+                          {onGoToBaux ? (
+                            <button type="button" onClick={onGoToBaux} className="font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900">→ Baux</button>
+                          ) : null}
+                        </span>
                       )}
                     </div>
                   </ExpandableRow>

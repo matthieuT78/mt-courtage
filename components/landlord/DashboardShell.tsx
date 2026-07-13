@@ -616,7 +616,7 @@ export function DashboardShell(props: any) {
         );
 
       case "biens":
-        return <SectionBiens userId={userId} properties={properties} leases={leases} tenants={tenants} photos={photos} onRefresh={refresh} deepLink={deepLink} />;
+        return <SectionBiens userId={userId} properties={properties} leases={leases} tenants={tenants} photos={photos} onRefresh={refresh} deepLink={deepLink} onGoToBaux={() => setActive("baux")} />;
 
       case "locataires":
         return (

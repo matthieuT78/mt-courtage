@@ -1293,7 +1293,12 @@ export function SectionLocataires({
                           </button>
                         )
                       ) : (
-                        <span className="text-[0.75rem] text-slate-500">Archivez-le pour le masquer</span>
+                        <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-500">
+                          Supprimez d&apos;abord le bail
+                          {onNavigateDeep ? (
+                            <button type="button" onClick={() => onNavigateDeep("baux")} className="font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900">→ Baux</button>
+                          ) : null}
+                        </span>
                       )}
                     </div>
 
@@ -1443,7 +1448,12 @@ export function SectionLocataires({
                           </button>
                         )
                       ) : (
-                        <span className="text-[0.75rem] text-slate-500">Données conservées</span>
+                        <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-500">
+                          Supprimez d&apos;abord le bail
+                          {onNavigateDeep ? (
+                            <button type="button" onClick={() => onNavigateDeep("baux")} className="font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900">→ Baux</button>
+                          ) : null}
+                        </span>
                       )}
                     </div>
                   </ExpandableRow>

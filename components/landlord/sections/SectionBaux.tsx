@@ -1592,6 +1592,36 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                     Gérer le départ
                   </ActionButton>
                 ) : null}
+
+                {confirmDeleteLeaseId === l.id ? (
+                  <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
+                    <span className="text-xs font-medium text-red-700">Confirmer la suppression ?</span>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={(e) => { stop(e); void onDelete(l.id); setConfirmDeleteLeaseId(null); }}
+                      className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                    >
+                      Supprimer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { stop(e); setConfirmDeleteLeaseId(null); }}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Annuler
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={(e) => { stop(e); setConfirmDeleteLeaseId(l.id); }}
+                    className="rounded-full border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                  >
+                    Supprimer
+                  </button>
+                )}
               </div>
 
             </div>
