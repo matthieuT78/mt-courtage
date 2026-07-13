@@ -54,6 +54,12 @@ const jobs = [
     hours: [9],
     minutes: [20],
   },
+  {
+    title: "lokt - alertes Telegram (nouveaux comptes, leads, abonnements)",
+    url: `${siteUrl}/api/cron/telegram-alerts`,
+    hours: [-1],
+    minutes: [0, 10, 20, 30, 40, 50],
+  },
 ];
 
 async function request(url, options = {}) {
