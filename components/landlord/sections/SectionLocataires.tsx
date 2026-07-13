@@ -830,9 +830,6 @@ export function SectionLocataires({
         desc="Coordonnées, bail actif et statut de paiement du mois en cours pour chaque locataire."
       />
 
-      {err ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>
-      ) : null}
       {ok ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div>
       ) : null}
@@ -1519,6 +1516,9 @@ export function SectionLocataires({
                       </p>
                     </div>
                   ) : null}
+                  {err ? (
+                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>
+                  ) : null}
                   <div className="mt-5 flex justify-end">
                     <button
                       type="button"
@@ -1608,6 +1608,9 @@ export function SectionLocataires({
                       />
                       <span>Je souhaite clôturer maintenant et finaliser l’état des lieux de sortie séparément.</span>
                     </label>
+                  ) : null}
+                  {err ? (
+                    <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>
                   ) : null}
                   <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
                     <button type="button" onClick={() => setDepartureStep(2)} className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-50">
