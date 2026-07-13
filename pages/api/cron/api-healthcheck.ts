@@ -3,6 +3,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
+import { sendTelegramMessage } from "../../../lib/telegram";
 
 const ALERT_EMAIL = "matthieu.turbier@gmail.com";
 
@@ -69,6 +70,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   ]);
 
   const failed = checks.filter((c) => !c.ok);
+
+  if (failed.length > 0) {
+    const lines = failed.map((c) => `• <b>${c.name}</b> — ${c.status ? `HTTP ${c.status}` : c.error ?? "timeout"} (${c.latencyMs} ms)`).join("\n");
+    await sendTelegramMessage(`🚨 <b>Lokt.fr — ${failed.length} API KO</b>\n\n${lines}\n\n<i>Healthcheck ${new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" })}</i>`);
+  }
 
   if (failed.length > 0 && RESEND_KEY) {
     const statusColor = (ok: boolean) => (ok ? "#16a34a" : "#dc2626");
