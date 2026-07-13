@@ -239,7 +239,7 @@ export default function InvestissementPage() {
       <main className="flex-1">
         <CalculatorHero
           eyebrow="Calculette rentabilité locative lokt.fr"
-          title={isLoggedIn && displayName ? `${displayName}, mesurez la vraie performance de votre projet.` : "Votre investissement locatif tient-il vraiment la route ?"}
+          title={isLoggedIn && displayName ? `${displayName}, mesurez la vraie performance de votre projet.` : "Calculer la rentabilité de votre investissement locatif"}
           description="Projetez le coût total, les loyers, les charges et le financement pour comparer rendement et cash-flow avec des hypothèses réalistes."
           links={[
             { href: "/", label: "Accueil" },

@@ -216,7 +216,7 @@ export default function PlusValueVenteImmobilierePage() {
       <main className="flex-1">
         <CalculatorHero
           eyebrow="Calculette plus-value immobilière lokt.fr"
-          title={isLoggedIn && displayName ? `${displayName}, estimez ce qu'il vous restera vraiment après la vente.` : "Combien récupérerez-vous réellement après la vente ?"}
+          title={isLoggedIn && displayName ? `${displayName}, estimez ce qu'il vous restera vraiment après la vente.` : "Calculer votre plus-value immobilière après vente"}
           description="Calculez votre cash net vendeur après remboursement du crédit, frais éventuels et fiscalité, au-delà de la seule plus-value théorique."
           links={[
             { href: "/", label: "Accueil" },
