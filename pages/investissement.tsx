@@ -249,7 +249,11 @@ export default function InvestissementPage() {
             { href: "/parc-immobilier", label: "Parc immobilier" },
           ]}
         />
-        <div className="mx-auto -mt-12 max-w-6xl space-y-5 px-3 pb-8 sm:-mt-16 sm:space-y-6 sm:px-4 sm:pb-12">
+        <p className="mx-auto max-w-3xl px-4 pt-4 text-center text-sm leading-6 text-slate-600 sm:pt-6">
+          Calculez le rendement brut, net et net-net de votre investissement locatif, le cash-flow mensuel, le coût total et la durée de retour sur investissement — en tenant compte des charges réelles et du financement.
+        </p>
+
+        <div className="mx-auto -mt-6 max-w-6xl space-y-5 px-3 pb-8 sm:-mt-8 sm:space-y-6 sm:px-4 sm:pb-12">
 
           {/* Calculette */}
           <InvestissementWizard />
