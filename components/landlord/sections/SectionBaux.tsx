@@ -1514,6 +1514,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const onDelete = async (leaseId: string) => {
     if (!userId) return;
 
+    const hasPayments = safePayments.some((p) => p.lease_id === leaseId);
+    const hasReceipts = safeReceipts.some((r) => r.lease_id === leaseId);
+    if (hasPayments || hasReceipts) {
+      setErr("Suppression impossible : ce bail a des loyers ou quittances enregistrés. Archivez-le via 'Gérer le départ' pour préserver la comptabilité.");
+      return;
+    }
+
     setLoading(true);
     setErr(null);
     setOk(null);
@@ -1595,7 +1602,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
                 {confirmDeleteLeaseId === l.id ? (
                   <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
-                    <span className="text-xs font-medium text-red-700">Confirmer la suppression ?</span>
+                    <span className="text-xs font-medium text-red-700">
+                      {isActiveLease(l) ? "Bail actif — supprimer quand même ?" : "Confirmer la suppression ?"}
+                    </span>
                     <button
                       type="button"
                       disabled={loading}
