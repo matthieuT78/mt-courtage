@@ -52,6 +52,7 @@ const staticPagesV1 = [
   "/blog",
   "/guides",
   "/tarifs",
+  "/aide",
   "/a-propos",
   "/cgu",
   "/confidentialite",

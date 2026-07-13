@@ -42,6 +42,25 @@ export default function App({ Component, pageProps }: AppProps) {
       <Head>
         {/* Mobile-first SEO */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "lokt.fr",
+              url: "https://lokt.fr",
+              logo: "https://lokt.fr/lokt-logo.jpg",
+              description: "Outil français de gestion locative gratuit et de simulateurs immobiliers pour propriétaires bailleurs particuliers.",
+              sameAs: [],
+              contactPoint: {
+                "@type": "ContactPoint",
+                contactType: "customer support",
+                availableLanguage: "French",
+              },
+            }),
+          }}
+        />
       </Head>
 
       {/* Google Analytics */}
