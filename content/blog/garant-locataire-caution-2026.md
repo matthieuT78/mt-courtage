@@ -143,4 +143,4 @@ Toute la durée du bail et ses renouvellements, sauf résiliation à date annive
 
 ---
 
-*Suivez les impayés, gérez les alertes de loyer et centralisez les quittances depuis votre [espace bailleur lokt.fr](/outil-gestion-locative).*
+Pour centraliser vos baux, vos quittances et vos alertes de loyer en un seul endroit, l'[espace bailleur lokt.fr](/outil-gestion-locative) est gratuit pour un logement actif.

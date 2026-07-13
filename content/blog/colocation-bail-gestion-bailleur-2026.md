@@ -147,4 +147,4 @@ Oui — vérifiez que le contrat couvre explicitement la solidarité et le turno
 
 ---
 
-*Gérez les baux, quittances et alertes de vos colocations depuis votre [espace bailleur lokt.fr](/outil-gestion-locative).*
+Pour gérer une colocation — baux, quittances, alertes de loyer et suivi des colocataires — l'[espace bailleur lokt.fr](/outil-gestion-locative) est gratuit pour un logement actif.

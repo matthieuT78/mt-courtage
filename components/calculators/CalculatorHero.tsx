@@ -21,7 +21,7 @@ export default function CalculatorHero({ eyebrow, title, description, links = []
         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-white/80">{eyebrow}</p>
         <h1 className="mt-4 max-w-4xl text-3xl font-semibold leading-tight sm:text-5xl">{title}</h1>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-white/85 sm:text-base sm:leading-7">{description}</p>
-        <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-white/90">
+        <div aria-hidden="true" className="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-white/90">
           <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 backdrop-blur">Gratuit</span>
           <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 backdrop-blur">Sans engagement</span>
           <span className="rounded-full border border-white/30 bg-white/15 px-3 py-1.5 backdrop-blur">Résultat immédiat</span>
