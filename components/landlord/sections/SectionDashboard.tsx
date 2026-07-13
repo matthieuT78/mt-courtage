@@ -672,7 +672,11 @@ export function SectionDashboard({
   // ── Conformité inventaire LMNP ────────────────────────────────────────
   useEffect(() => {
     if (!supabase || !userId) return;
-    const activePropertyIds = new Set((properties || []).map((p) => p.id));
+    const activePropertyIds = new Set(
+      (properties || [])
+        .filter((p) => String(p.status || "").toLowerCase() !== "archived")
+        .map((p) => p.id)
+    );
     const lmnpIds = (propertyFinance || [])
       .filter((fin) => (fin.tax_regime === "lmnp_micro" || fin.tax_regime === "lmnp_real") && activePropertyIds.has(fin.property_id))
       .map((fin) => fin.property_id);
