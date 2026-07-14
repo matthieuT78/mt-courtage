@@ -80,9 +80,6 @@ async function api(path: string, body: any) {
   if (!response.ok) throw new Error(json?.error || "Erreur serveur.");
   return json;
 }
-function openUrl(url: string) {
-  window.open(url, "_blank", "noopener,noreferrer");
-}
 
 export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   const [step, setStep] = useState(0);
@@ -97,6 +94,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   const [sigLoading, setSigLoading] = useState(false);
   const [sigSent, setSigSent] = useState(false);
   const [sigError, setSigError] = useState<string | null>(null);
+  const [pdfSignedUrl, setPdfSignedUrl] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const set = (key: string, value: any) =>
     setForm((current) => {
@@ -200,6 +198,21 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
     })();
   }, [leaseId, userId]);
 
+  // Pré-charge l'URL signée dès que le document est connu.
+  // L'URL est valide 600 s — largement suffisant pour une session.
+  useEffect(() => {
+    if (!document?.id) return;
+    (async () => {
+      try {
+        const data = await fetch(
+          `/api/lease-contracts/pdf-url?userId=${encodeURIComponent(userId)}&documentId=${encodeURIComponent(document.id)}`,
+          { headers: await headers() }
+        ).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error); return j; });
+        setPdfSignedUrl(data.signedUrl);
+      } catch { /* silencieux — le lien restera désactivé */ }
+    })();
+  }, [document?.id, userId]);
+
   const save = async () => {
     const data = await api("/api/lease-contracts", { action: "save", userId, leaseId, contractKind: kind, formData: form });
     setDocument(data.document);
@@ -228,18 +241,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
       setDocument(data.document);
       setGeneratedDone(true);
     } catch (error: any) { setErr(error?.message || "Génération impossible."); } finally { setLoading(false); }
-  };
-  const openPdf = async () => {
-    // window.open doit être appelé SYNCHRONEMENT dans le handler du clic,
-    // sinon le navigateur bloque la popup après un await.
-    const win = window.open("", "_blank", "noopener,noreferrer");
-    try {
-      const data = await fetch(`/api/lease-contracts/pdf-url?userId=${encodeURIComponent(userId)}&documentId=${encodeURIComponent(document.id)}`, { headers: await headers() }).then(async (response) => {
-        const json = await response.json(); if (!response.ok) throw new Error(json.error); return json;
-      });
-      if (win) win.location.href = data.signedUrl;
-      else window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-    } catch (error: any) { win?.close(); setErr(error?.message || "Ouverture impossible."); }
   };
 
   const sendForSignature = async () => {
@@ -368,7 +369,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
           <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
           <div className="flex flex-wrap gap-2">
-            {document?.external_pdf_url ? <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le bail importé</button> : null}
+            {document?.external_pdf_url ? <a href={pdfSignedUrl ?? undefined} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold${!pdfSignedUrl ? " pointer-events-none opacity-50" : ""}`}><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le bail importé</a> : null}
             {document?.external_pdf_url ? <button type="button" disabled={loading} onClick={deleteExternal} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"><TrashIcon className="h-4 w-4"/>Supprimer</button> : null}
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><DocumentArrowUpIcon className="h-4 w-4"/>{loading ? "Import..." : document?.external_pdf_url ? "Remplacer le PDF" : "Importer mon bail"}<input type="file" accept="application/pdf" className="hidden" disabled={loading} onChange={(event) => uploadExternal(event.target.files?.[0])}/></label>
             {document?.external_pdf_url
@@ -398,7 +399,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
           <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg bg-slate-950 px-4 py-2 text-xs font-semibold text-white"><XMarkIcon className="h-4 w-4"/>Fermer</button>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le bail signé</button>
+            <a href={pdfSignedUrl ?? undefined} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold${!pdfSignedUrl ? " pointer-events-none opacity-50" : ""}`}><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le bail signé</a>
           </div>
         </div>
       </Modal>
@@ -443,7 +444,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
           <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><XMarkIcon className="h-4 w-4"/>Fermer</button>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le PDF</button>
+            <a href={pdfSignedUrl ?? undefined} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold${!pdfSignedUrl ? " pointer-events-none opacity-50" : ""}`}><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le PDF</a>
           </div>
         </div>
       </Modal>
@@ -473,7 +474,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
-          {document?.pdf_url ? <button type="button" onClick={openPdf} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowDownTrayIcon className="h-4 w-4"/>{document.signed_pdf_url ? "Ouvrir le bail signé" : "Ouvrir le PDF"}</button> : null}
+          {document?.pdf_url ? <a href={pdfSignedUrl ?? undefined} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold${!pdfSignedUrl ? " pointer-events-none opacity-50" : ""}`}><ArrowDownTrayIcon className="h-4 w-4"/>{document.signed_pdf_url ? "Ouvrir le bail signé" : "Ouvrir le PDF"}</a> : null}
           {document?.pdf_url && !document?.signed_pdf_url && form.tenant_email ? (
             sigSent ? (
               <span className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">Liens de signature envoyés ✓</span>
