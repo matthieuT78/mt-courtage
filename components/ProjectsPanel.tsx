@@ -85,6 +85,7 @@ export default function ProjectsPanel() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
+  const [confirmDeleteProjectId, setConfirmDeleteProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -126,10 +127,6 @@ export default function ProjectsPanel() {
   }, []);
 
   const handleDelete = async (project: ProjectRow) => {
-    const ok = window.confirm(
-      "Êtes-vous sûr de vouloir supprimer définitivement ce projet ?"
-    );
-    if (!ok) return;
 
     try {
       setDeleteLoadingId(project.id);
@@ -553,15 +550,22 @@ export default function ProjectsPanel() {
                           Partager le projet
                         </button>
 
-                        <button
-                          onClick={() => handleDelete(project)}
-                          disabled={deleteLoadingId === project.id}
-                          className="inline-flex items-center justify-center rounded-full border border-red-300 bg-red-50 px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
-                        >
-                          {deleteLoadingId === project.id
-                            ? "Suppression…"
-                            : "Supprimer le projet"}
-                        </button>
+                        {confirmDeleteProjectId === project.id ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                            <button type="button" onClick={() => { setConfirmDeleteProjectId(null); void handleDelete(project); }} className="rounded-full bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700">Oui</button>
+                            <button type="button" onClick={() => setConfirmDeleteProjectId(null)} className="rounded-full border px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Non</button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteProjectId(project.id)}
+                            disabled={deleteLoadingId === project.id}
+                            className="inline-flex items-center justify-center rounded-full border border-red-300 bg-red-50 px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+                          >
+                            {deleteLoadingId === project.id ? "Suppression…" : "Supprimer le projet"}
+                          </button>
+                        )}
                       </div>
                       <p className="text-[0.7rem] text-slate-400">
                         Ces simulations sont indicatives et peuvent être

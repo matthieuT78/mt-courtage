@@ -95,6 +95,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   const [sigSent, setSigSent] = useState(false);
   const [sigError, setSigError] = useState<string | null>(null);
   const [pdfSignedUrl, setPdfSignedUrl] = useState<string | null>(null);
+  const [confirmDeleteExternal, setConfirmDeleteExternal] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const set = (key: string, value: any) =>
     setForm((current) => {
@@ -280,7 +281,6 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   };
 
   const deleteExternal = async () => {
-    if (!confirm("Supprimer le bail importé ? Cette action est irréversible.")) return;
     try {
       setLoading(true); setErr(null);
       const result = await api("/api/lease-contracts", { action: "deleteExternal", userId, leaseId });
@@ -370,7 +370,17 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
           <div className="flex flex-wrap gap-2">
             {document?.external_pdf_url ? <a href={pdfSignedUrl ?? undefined} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold${!pdfSignedUrl ? " pointer-events-none opacity-50" : ""}`}><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le bail importé</a> : null}
-            {document?.external_pdf_url ? <button type="button" disabled={loading} onClick={deleteExternal} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"><TrashIcon className="h-4 w-4"/>Supprimer</button> : null}
+            {document?.external_pdf_url ? (
+              confirmDeleteExternal ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                  <button type="button" onClick={() => { setConfirmDeleteExternal(false); void deleteExternal(); }} className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700">Oui</button>
+                  <button type="button" onClick={() => setConfirmDeleteExternal(false)} className="rounded-md border px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">Non</button>
+                </div>
+              ) : (
+                <button type="button" disabled={loading} onClick={() => setConfirmDeleteExternal(true)} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50"><TrashIcon className="h-4 w-4"/>Supprimer</button>
+              )
+            ) : null}
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><DocumentArrowUpIcon className="h-4 w-4"/>{loading ? "Import..." : document?.external_pdf_url ? "Remplacer le PDF" : "Importer mon bail"}<input type="file" accept="application/pdf" className="hidden" disabled={loading} onChange={(event) => uploadExternal(event.target.files?.[0])}/></label>
             {document?.external_pdf_url
               ? <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Contrat juridique enregistré<XMarkIcon className="h-4 w-4"/></button>

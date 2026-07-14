@@ -1462,6 +1462,7 @@ export function SectionOutils({
   const [allocations, setAllocations] = useState<WaterAllocation[]>([]);
   const [readings, setReadings] = useState<Record<string, WaterReading[]>>({});
   const [selectedAllocationId, setSelectedAllocationId] = useState<string | null>(null);
+  const [confirmDeleteAllocation, setConfirmDeleteAllocation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2229,7 +2230,7 @@ export function SectionOutils({
   };
 
   const deleteAllocation = async (allocation: WaterAllocation) => {
-    if (!supabase || !window.confirm("Supprimer cette répartition d’eau ?")) return;
+    if (!supabase) return;
     setError(null);
     setOk(null);
     try {
@@ -2644,9 +2645,17 @@ export function SectionOutils({
                       {formatEuro(Number(selectedAllocation.invoice_total_amount || 0))} · {Number(selectedAllocation.global_consumption || 0).toLocaleString("fr-FR")} m³ · {selectedReadings.length} lot(s)
                     </p>
                   </div>
-                  <button type="button" onClick={() => deleteAllocation(selectedAllocation)} className="w-max rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50" aria-label="Supprimer">
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
+                  {confirmDeleteAllocation ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                      <button type="button" onClick={() => { setConfirmDeleteAllocation(false); void deleteAllocation(selectedAllocation); }} className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700">Oui</button>
+                      <button type="button" onClick={() => setConfirmDeleteAllocation(false)} className="rounded-md border px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">Non</button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => setConfirmDeleteAllocation(true)} className="w-max rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50" aria-label="Supprimer">
+                      <TrashIcon className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
 
                 {selectedAllocation.invoice_storage_path ? (

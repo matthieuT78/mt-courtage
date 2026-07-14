@@ -49,6 +49,7 @@ export default function TenantsSection({
   const [ok, setOk] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [confirmDeleteTenant, setConfirmDeleteTenant] = useState(false);
 
   const selected = useMemo(
     () => tenants.find((t) => t.id === selectedId) || null,
@@ -150,7 +151,6 @@ export default function TenantsSection({
 
   const onDelete = async () => {
     if (!userId || !selectedId) return;
-    if (!confirm("Supprimer ce locataire ? (Les baux liés empêcheront la suppression)")) return;
 
     setLoading(true);
     setErr(null);
@@ -319,14 +319,22 @@ export default function TenantsSection({
               </button>
 
               {selectedId ? (
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  disabled={loading}
-                  className="inline-flex items-center justify-center rounded-full border border-red-300 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                >
-                  Supprimer
-                </button>
+                confirmDeleteTenant ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                    <button type="button" onClick={() => { setConfirmDeleteTenant(false); void onDelete(); }} className="rounded-full bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700">Oui</button>
+                    <button type="button" onClick={() => setConfirmDeleteTenant(false)} className="rounded-full border px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Non</button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteTenant(true)}
+                    disabled={loading}
+                    className="inline-flex items-center justify-center rounded-full border border-red-300 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                  >
+                    Supprimer
+                  </button>
+                )
               ) : null}
             </div>
           </form>

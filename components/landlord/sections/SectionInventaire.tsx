@@ -185,6 +185,8 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
   const [selectedItemIds, setSelectedItemIds] = useState<Record<string, boolean>>({});
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<string | null>(null);
+  const [confirmDeleteBulk, setConfirmDeleteBulk] = useState(false);
 
   useEffect(() => {
     if (!err) return;
@@ -504,7 +506,6 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
 
   const deleteItem = async (itemId: string) => {
     if (!supabase || !userId) return;
-    if (!confirm("Supprimer cet élément de l’inventaire ?")) return;
     setLoading(true);
     setErr(null);
     setOk(null);
@@ -526,7 +527,6 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
     if (ids.length === 0) return;
 
     const label = `${ids.length} élément${ids.length > 1 ? "s" : ""}`;
-    if (!confirm(`Supprimer ${label} de l’inventaire ? Cette action est définitive.`)) return;
 
     setLoading(true);
     setErr(null);
@@ -897,19 +897,27 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
                 Annuler la sélection
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={deleteSelectedItems}
-              disabled={loading || selectedIds.length === 0}
-              className={cx(
-                "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
-                selectedIds.length === 0 ? "bg-slate-200 text-slate-600" : "bg-red-600 text-white hover:bg-red-500",
-                loading && "opacity-60"
-              )}
-            >
-              <TrashIcon className="h-4 w-4" />
-              Supprimer la sélection
-            </button>
+            {confirmDeleteBulk ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-red-700">Supprimer {selectedIds.length} élément(s) ?</span>
+                <button type="button" onClick={() => { setConfirmDeleteBulk(false); void deleteSelectedItems(); }} className="rounded-full bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700">Oui</button>
+                <button type="button" onClick={() => setConfirmDeleteBulk(false)} className="rounded-full border px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">Non</button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteBulk(true)}
+                disabled={loading || selectedIds.length === 0}
+                className={cx(
+                  "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold",
+                  selectedIds.length === 0 ? "bg-slate-200 text-slate-600" : "bg-red-600 text-white hover:bg-red-500",
+                  loading && "opacity-60"
+                )}
+              >
+                <TrashIcon className="h-4 w-4" />
+                Supprimer la sélection
+              </button>
+            )}
           </div>
         </div>
 
@@ -1008,14 +1016,22 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
                             </div>
                             <div className="flex flex-col gap-1">
                               <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400 invisible">—</span>
-                              <button
-                                type="button"
-                                onClick={() => deleteItem(item.id)}
-                                className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
-                                title="Supprimer"
-                              >
-                                <TrashIcon className="h-4 w-4" />
-                              </button>
+                              {confirmDeleteItemId === item.id ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                                  <button type="button" onClick={() => { void deleteItem(item.id); setConfirmDeleteItemId(null); }} className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700">Oui</button>
+                                  <button type="button" onClick={() => setConfirmDeleteItemId(null)} className="rounded-md border px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">Non</button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteItemId(item.id)}
+                                  className="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                                  title="Supprimer"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         </div>
