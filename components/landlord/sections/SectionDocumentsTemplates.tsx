@@ -50,7 +50,7 @@ type VaultDocument = {
   date?: string | null;
   sizeBytes?: number | null;
   source: string;
-  open?: () => Promise<void>;
+  open?: (win?: Window | null) => Promise<void>;
   download?: () => Promise<void>;
 };
 
@@ -459,7 +459,8 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
 
   const locked = !loading && !canUseLandlord;
 
-  const openUrl = (url: string) => {
+  const openUrl = (url: string, win?: Window | null) => {
+    if (win) { win.location.href = url; return; }
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
@@ -551,7 +552,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
             status: doc.status,
             date: doc.signed_at || doc.generated_at || doc.updated_at || doc.created_at,
             source: "Baux",
-            open: doc.pdf_url || doc.signed_pdf_url || doc.external_pdf_url ? async () => openUrl(await getUrl()) : undefined,
+            open: doc.pdf_url || doc.signed_pdf_url || doc.external_pdf_url ? async (win?: Window | null) => openUrl(await getUrl(), win) : undefined,
             download: doc.pdf_url || doc.signed_pdf_url || doc.external_pdf_url ? async () => downloadUrl(await getUrl(), doc.original_file_name || "bail.pdf") : undefined,
           });
         });
@@ -572,7 +573,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
             status: report.status,
             date: report.performed_at || report.updated_at || report.created_at,
             source: "États des lieux",
-            open: report.pdf_url ? async () => openUrl(await getUrl()) : undefined,
+            open: report.pdf_url ? async (win?: Window | null) => openUrl(await getUrl(), win) : undefined,
             download: report.pdf_url ? async () => downloadUrl(await getUrl(), `${title}.pdf`) : undefined,
           });
         });
@@ -590,7 +591,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
             date: dpe.created_at || dpe.updated_at,
             sizeBytes: dpe.size_bytes,
             source: "Logements",
-            open: async () => openUrl(await getUrl()),
+            open: async (win?: Window | null) => openUrl(await getUrl(), win),
             download: async () => downloadUrl(await getUrl(), dpe.file_name || "dpe.pdf"),
           });
         });
@@ -613,7 +614,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
               status: "finalized",
               date: receipt.issued_at || receipt.created_at,
               source: "Quittances",
-              open: async () => openUrl(await getUrl()),
+              open: async (win?: Window | null) => openUrl(await getUrl(), win),
               download: async () => downloadUrl(await getUrl(), `${title}.pdf`),
             });
           });
@@ -633,7 +634,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
             date: doc.created_at || doc.updated_at,
             sizeBytes: doc.size_bytes,
             source: "Finance",
-            open: path ? async () => openUrl(await getUrl()) : undefined,
+            open: path ? async (win?: Window | null) => openUrl(await getUrl(), win) : undefined,
             download: path ? async () => downloadUrl(await getUrl(), doc.file_name || "facture.pdf") : undefined,
           });
         });
@@ -996,9 +997,12 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
                         <button
                           type="button"
                           onClick={async () => {
+                            const win = window.open("about:blank", "_blank", "noopener,noreferrer");
+                            if (win) win.document.write("<p style=\"font-family:system-ui,sans-serif;padding:24px\">Chargement...</p>");
                             try {
-                              await doc.open?.();
+                              await doc.open?.(win);
                             } catch (error: any) {
+                              win?.close();
                               setOk(null);
                               setDocsError(error?.message || "Impossible d’ouvrir le document.");
                             }
