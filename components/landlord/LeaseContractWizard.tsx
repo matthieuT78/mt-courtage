@@ -230,12 +230,16 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
     } catch (error: any) { setErr(error?.message || "Génération impossible."); } finally { setLoading(false); }
   };
   const openPdf = async () => {
+    // window.open doit être appelé SYNCHRONEMENT dans le handler du clic,
+    // sinon le navigateur bloque la popup après un await.
+    const win = window.open("", "_blank", "noopener,noreferrer");
     try {
       const data = await fetch(`/api/lease-contracts/pdf-url?userId=${encodeURIComponent(userId)}&documentId=${encodeURIComponent(document.id)}`, { headers: await headers() }).then(async (response) => {
         const json = await response.json(); if (!response.ok) throw new Error(json.error); return json;
       });
-      openUrl(data.signedUrl);
-    } catch (error: any) { setErr(error?.message || "Ouverture impossible."); }
+      if (win) win.location.href = data.signedUrl;
+      else window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (error: any) { win?.close(); setErr(error?.message || "Ouverture impossible."); }
   };
 
   const sendForSignature = async () => {
