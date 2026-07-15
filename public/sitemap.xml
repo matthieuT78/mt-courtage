@@ -271,6 +271,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://lokt.fr/rendement-locatif/paris</loc>
+    <lastmod>2026-07-15T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://lokt.fr/rendement-locatif/lyon</loc>
     <lastmod>2026-07-09T18:35:28.724Z</lastmod>
     <changefreq>monthly</changefreq>
