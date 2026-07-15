@@ -79,7 +79,7 @@ Le bail meublé standard dure **1 an**, renouvelable tacitement. Le bailleur a p
 
 ### Dépôt de garantie
 
-Plafonné à **2 mois de loyer hors charges** — soit le double du bail vide. Récupérable dans le même délai (1 à 2 mois après état des lieux de sortie).
+Plafonné à **2 mois de loyer hors charges** — soit le double du bail vide. Récupérable dans le même délai (1 à 2 mois après état des lieux de sortie). Notre [calculateur de dépôt de garantie pour location meublée](/depot-garantie-location-meublee) vous donne le montant exact et les délais de restitution.
 
 ### Les meubles obligatoires
 
@@ -201,3 +201,4 @@ Oui, uniquement dans une situation très spécifique : si le bailleur justifie d
 **Modèles utiles :**
 - [Modèle de lettre de congé bailleur](/modele-lettre-conge-bailleur) — pour récupérer votre bien à l'échéance du bail
 - [Modèle de restitution du dépôt de garantie](/modele-restitution-depot-garantie) — décompte et lettre de restitution conformes
+- [Inventaire location meublée](/inventaire-location-meublee) — check-list conforme pour l'état des lieux d'entrée
