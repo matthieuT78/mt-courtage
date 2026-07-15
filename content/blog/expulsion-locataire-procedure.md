@@ -4,6 +4,7 @@ h1: "Expulsion d'un locataire en 2026 : procédure complète, délais réels et 
 description: "Procédure d'expulsion d'un locataire en 2026 : étapes, délais légaux, trêve hivernale, coûts et alternatives. Guide complet pour propriétaires bailleurs."
 date: "2026-07-15"
 category: "Gestion locative"
+coverImage: "/blog/expulsion-locataire-procedure.jpg"
 tags: ["expulsion locataire", "procédure expulsion", "loyer impayé", "commandement de payer", "trêve hivernale"]
 relatedCalculators: ["investissement"]
 faq:
