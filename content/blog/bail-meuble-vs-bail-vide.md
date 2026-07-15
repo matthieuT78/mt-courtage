@@ -197,3 +197,7 @@ Oui, uniquement dans une situation très spécifique : si le bailleur justifie d
 - [IRL 2026 : calcul et révision annuelle du loyer](/blog/irl-indice-reference-loyers-2026)
 - [Charges déductibles en LMNP réel 2026 : liste complète et amortissements](/blog/charges-deductibles-lmnp-regime-reel)
 - [GLI 2026 : assurance loyers impayés — fonctionnement, coût et comparatif](/blog/assurance-loyers-impayes-gli-2026)
+
+**Modèles utiles :**
+- [Modèle de lettre de congé bailleur](/modele-lettre-conge-bailleur) — pour récupérer votre bien à l'échéance du bail
+- [Modèle de restitution du dépôt de garantie](/modele-restitution-depot-garantie) — décompte et lettre de restitution conformes

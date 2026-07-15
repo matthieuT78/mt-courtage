@@ -162,7 +162,7 @@ Vous pouvez réviser le loyer une fois par an, à la date anniversaire du bail, 
 
 **Attention** : si vous oubliez de réviser une année, vous ne pouvez pas rattraper les années précédentes. C'est une perte définitive.
 
-lokt.fr vous envoie une alerte avant la date d'anniversaire du bail pour ne jamais rater cette révision.
+lokt.fr vous envoie une alerte avant la date d'anniversaire du bail pour ne jamais rater cette révision. Une fois le nouveau montant calculé, utilisez le [modèle de notification de révision de loyer](/modele-notification-revision-loyer) pour informer votre locataire dans les règles.
 
 ---
 
