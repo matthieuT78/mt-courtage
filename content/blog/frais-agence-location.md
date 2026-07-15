@@ -4,6 +4,7 @@ h1: "Frais d'agence location 2026 : qui paye quoi ? Le guide complet"
 description: "Frais d'agence location : plafonds légaux par zone, ce que paye le locataire, ce que paye le bailleur, et ce que l'agence ne peut pas facturer. Guide complet loi Alur 2026."
 date: "2026-07-15"
 category: "Gestion locative"
+coverImage: "/blog/frais-agence-location.jpg"
 tags: ["frais d'agence", "location", "loi Alur", "charges locataire", "gestion locative"]
 relatedCalculators: ["investissement", "acheter-ou-louer"]
 faq:
