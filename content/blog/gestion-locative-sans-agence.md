@@ -279,6 +279,8 @@ La gestion locative génère des documents. Voici les durées légales de conser
 
 ## Ce que ça coûte réellement : agence vs gestion en solo
 
+> Pour comprendre exactement ce que l'agence peut légalement vous facturer (et ce qu'elle ne peut pas vous imposer), consultez notre guide [frais d'agence location 2026 : qui paye quoi](/blog/frais-agence-location).
+
 Prenons un bien loué 900 €/mois :
 
 | Poste | Avec agence (8 %) | En solo avec lokt.fr |

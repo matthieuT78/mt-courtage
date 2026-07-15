@@ -185,3 +185,10 @@ Oui, si le locataire quitte sans payer les derniers mois de loyer. Le bailleur d
 ---
 
 *Pour estimer l'impact d'un loyer impayé sur votre rentabilité globale, utilisez notre [simulateur d'investissement locatif](/investissement) — il intègre la vacance locative dans le calcul du cashflow.*
+
+---
+
+## Aller plus loin
+
+- [Procédure d'expulsion locataire 2026 : étapes complètes, délais et coûts](/blog/expulsion-locataire-procedure) — si la GLI ne suffit pas à débloquer la situation
+- [Loyer impayé : que faire étape par étape](/blog/loyer-impaye-que-faire) — checklist des actions de la première relance à l'assignation

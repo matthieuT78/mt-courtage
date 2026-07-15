@@ -223,6 +223,7 @@ Non. Si le locataire est parti (même sans remettre les clés formellement), le 
 ## Outils pratiques
 
 - [Modèle de mise en demeure pour loyer impayé](/modele-mise-en-demeure-loyer-impaye) — lettre recommandée conforme à envoyer à votre locataire
+- [Procédure d'expulsion locataire 2026 : étapes, délais et coûts](/blog/expulsion-locataire-procedure) — le guide complet si la situation n'est pas réglée à l'amiable
 
 
 *Mettez en place un suivi mensuel de vos loyers et déclenchez vos relances au bon moment avec l'[outil de suivi des loyers impayés](/suivi-loyers-impayes) de lokt.fr.*
