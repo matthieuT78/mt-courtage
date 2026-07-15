@@ -1,5 +1,6 @@
 ---
-title: "Calcul prêt relais 2026 : formule et exemples chiffrés"
+title: "Calcul prêt relais 2026 : formule et exemples"
+h1: "Calcul prêt relais 2026 : formule, exemples chiffrés et démarches"
 description: "Calcul prêt relais : formule étape par étape, exemples de 200k à 500k €, taux 2026, différence sec/adossé et démarches pour l'obtenir."
 date: "2026-06-30"
 category: "Crédit immobilier"

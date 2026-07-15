@@ -64,7 +64,7 @@ const faq = [
   },
 ];
 const ogImage = `${siteUrl}/simulateurs-immobiliers-lokt.png`;
-const title = "Calculettes immobilières gratuites 2026 | Capacité d’emprunt, rentabilité locative, prêt relais | lokt.fr";
+const title = "Calculettes immobilières gratuites 2026 | lokt.fr";
 const description =
   "6 simulateurs immobiliers gratuits : capacité d’emprunt, rentabilité locative (rendement net + cash-flow), prêt relais, plus-value et arbitrage acheter/louer. Résultats immédiats, sans inscription.";
 

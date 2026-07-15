@@ -1,5 +1,5 @@
 ---
-title: "Prêt relais : fonctionnement, coûts réels et pièges à éviter"
+title: "Prêt relais : fonctionnement et pièges à éviter"
 description: "Tout ce qu'il faut savoir sur le prêt relais en 2026 : comment ça marche, ce que ça coûte vraiment, les alternatives et les erreurs classiques des vendeurs-acheteurs."
 date: "2026-06-12"
 category: "Crédit immobilier"

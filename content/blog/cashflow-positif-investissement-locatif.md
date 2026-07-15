@@ -1,5 +1,6 @@
 ---
-title: "Cashflow positif immobilier 2026 : calcul brut / net / net-net et 5 leviers concrets"
+title: "Cashflow positif 2026 : calcul et leviers"
+h1: "Cashflow positif en investissement locatif : méthode et leviers 2026"
 description: "Formule brut / net / net-net détaillée, 5 leviers classés par impact réel, exemples à 5 % et 7 % de rendement. Comment atteindre le cashflow positif en locatif — et les 3 erreurs qui le sabotent."
 date: "2026-07-01"
 updatedAt: "2026-07-01"

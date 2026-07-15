@@ -1,5 +1,6 @@
 ---
-title: "IRL 2026 : indice de référence des loyers, calcul et révision du loyer"
+title: "IRL 2026 : indice de référence des loyers"
+h1: "IRL 2026 : indice de référence des loyers, calcul et révision du loyer"
 description: "Valeurs de l'IRL 2026, comment calculer la révision annuelle de votre loyer, délais légaux à respecter et règles en zone d'encadrement. Guide pratique bailleur."
 date: "2026-06-28"
 category: "Gestion locative"
@@ -188,5 +189,11 @@ Le bail continue aux mêmes conditions, et la révision IRL s'applique normaleme
 Non. Les baux mobilité (1 à 10 mois) et les contrats de location saisonnière ne sont pas soumis à la révision IRL.
 
 ---
+
+## Outils pratiques
+
+- [Révision de loyer IRL en ligne](/revision-loyer-irl) — calculez automatiquement le nouveau loyer selon l'IRL en vigueur
+- [Modèle de notification de révision de loyer](/modele-notification-revision-loyer) — lettre type à envoyer à votre locataire
+
 
 *Gérez vos révisions de loyer automatiquement pour chaque bien de votre parc avec notre [outil de gestion locative](/outil-gestion-locative).*

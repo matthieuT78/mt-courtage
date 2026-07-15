@@ -81,7 +81,7 @@ export default function ParcImmobilierPage() {
   const pagePath = "/parc-immobilier";
   const pageUrl = `${siteUrl}${pagePath}`;
 
-  const title = "Simulateur parc immobilier 2026 — analyse multi-biens, cash-flow & ratios | lokt.fr";
+  const title = "Simulateur parc immobilier 2026 : multi-biens | lokt.fr";
   const description =
     "Analysez votre parc immobilier (1 à 20 biens) : valeur, encours, cash-flow global, rendements et indicateurs (DSCR, LTV). Une vue consolidée pour piloter votre patrimoine.";
 

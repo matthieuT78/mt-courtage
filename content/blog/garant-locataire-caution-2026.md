@@ -1,5 +1,6 @@
 ---
-title: "Garant locataire 2026 : caution simple vs solidaire, ressources requises et Visale"
+title: "Garant locataire 2026 : caution et Visale"
+h1: "Garant locataire 2026 : guide complet pour le bailleur"
 description: "Caution simple ou solidaire, ressources exigibles, documents légaux, garantie Visale : tout ce que le bailleur doit savoir avant d'accepter un garant."
 date: "2026-07-07"
 category: "Gestion locative"
@@ -144,3 +145,8 @@ Toute la durée du bail et ses renouvellements, sauf résiliation à date annive
 ---
 
 Pour centraliser vos baux, vos quittances et vos alertes de loyer en un seul endroit, l'[espace bailleur lokt.fr](/outil-gestion-locative) est gratuit pour un logement actif.
+
+
+## Outils pratiques
+
+- [Suivi des cautions et loyers](/cautions-loyers) — centralisez les dépôts de garantie et le suivi des paiements de vos locataires

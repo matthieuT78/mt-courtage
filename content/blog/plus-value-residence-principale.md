@@ -1,5 +1,5 @@
 ---
-title: "Plus-value résidence principale : êtes-vous vraiment exonéré ?"
+title: "Plus-value résidence principale : exonération 2026"
 description: "L'exonération de plus-value sur la résidence principale n'est pas automatique. Conditions exactes, cas particuliers, pièges fréquents et calcul de ce que vous touchez réellement."
 date: "2026-06-10"
 category: "Plus-value immobilière"

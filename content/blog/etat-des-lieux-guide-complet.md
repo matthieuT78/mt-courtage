@@ -1,5 +1,6 @@
 ---
-title: "État des lieux : guide complet entrée, sortie et litiges 2026"
+title: "État des lieux 2026 : guide bailleur complet"
+h1: "État des lieux : guide complet entrée, sortie et litiges 2026"
 description: "Comment réaliser un état des lieux d'entrée et de sortie irréprochable, éviter les litiges sur le dépôt de garantie, et que faire en cas de désaccord avec le locataire."
 date: "2026-06-27"
 category: "Gestion locative"

@@ -5,7 +5,7 @@ import AppHeader from "../components/AppHeader";
 import AppFooter from "../components/AppFooter";
 
 const siteUrl = "https://lokt.fr";
-const metaTitle = "Comparatif logiciels gestion locative 2026 : Rentila, BailFacile, Smovin, Gererseul, Homii, lokt.fr";
+const metaTitle = "Comparatif logiciels gestion locative 2026 | lokt.fr";
 const metaDesc =
   "Comparatif complet des meilleurs logiciels de gestion locative en 2026 : Rentila, BailFacile, Smovin, Gererseul, Homii et lokt.fr. Tableau de fonctionnalités, tarifs, workflow de mise en location et dossiers de candidature — pour les bailleurs indépendants.";
 const pageUrl = `${siteUrl}/comparatif-logiciel-gestion-locative`;

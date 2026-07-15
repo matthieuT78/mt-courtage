@@ -20,7 +20,7 @@ import AppFooter from "../components/AppFooter";
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/gestion-locative-lmnp`;
 const ogImage = `${siteUrl}/espace-bailleur-lokt.png`;
-const title = "Gestion locative LMNP gratuite 2026 : bail meublé, quittances PDF, inventaire | lokt.fr";
+const title = "Gestion locative LMNP 2026 : bail meublé gratuit | lokt.fr";
 const description =
   "Gérez votre LMNP sans tableur : bail meublé, inventaire, quittances PDF, suivi des loyers et bilan financier propriétaire. Gratuit pour un logement actif, sans carte bancaire.";
 

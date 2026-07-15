@@ -1,5 +1,6 @@
 ---
-title: "LMNP ou location nue : quelle fiscalité choisir en 2026 ?"
+title: "LMNP ou location nue : fiscalité 2026"
+h1: "LMNP ou location nue : quelle fiscalité choisir en 2026 ?"
 description: "Comparatif complet LMNP vs location nue : fiscalité, charges déductibles, amortissements, cas pratiques chiffrés et comment choisir selon votre profil."
 date: "2026-06-08"
 category: "Investissement locatif"

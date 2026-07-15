@@ -1,5 +1,6 @@
 ---
-title: "Combien emprunter avec 3 000 €/mois net ? Tableau 2026 + simulation gratuite"
+title: "Emprunter avec 3 000 €/mois : tableau 2026"
+h1: "Combien puis-je emprunter avec 3 000 € par mois ?"
 description: "Avec 3 000 € nets/mois : capacité d'emprunt entre 155 000 et 220 000 € selon la durée. Tableau complet, impact des crédits en cours, villes accessibles et stratégies 2026."
 date: "2026-06-20"
 category: "Capacité d'emprunt"

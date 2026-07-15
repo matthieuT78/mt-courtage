@@ -1,5 +1,5 @@
 ---
-title: "SCI familiale : avantages, inconvénients et quand la créer"
+title: "SCI familiale : avantages, inconvénients 2026"
 description: "La SCI familiale est souvent présentée comme l'outil idéal pour investir à plusieurs. Voici ce qu'elle change vraiment : fiscalité, transmission, gestion et cas où elle ne sert à rien."
 date: "2026-06-23"
 category: "Investissement locatif"

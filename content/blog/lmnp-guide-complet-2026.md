@@ -1,5 +1,6 @@
 ---
-title: "LMNP 2026 : guide complet — statut, fiscalité et gestion"
+title: "LMNP 2026 : statut, fiscalité et gestion"
+h1: "LMNP 2026 : guide complet du statut Loueur en Meublé Non Professionnel"
 description: "Statut LMNP 2026 : conditions, micro-BIC vs régime réel, amortissements, déclaration et obligations du bailleur. Guide complet avec exemples chiffrés."
 date: "2026-06-30"
 updatedAt: "2026-07-01"

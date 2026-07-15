@@ -5,7 +5,7 @@ import AppFooter from "../components/AppFooter";
 
 const siteUrl = "https://lokt.fr";
 const pageUrl = `${siteUrl}/investissement-locatif`;
-const metaTitle = "Investissement locatif 2026 : guide complet, rentabilité et erreurs à éviter | lokt.fr";
+const metaTitle = "Investissement locatif 2026 : guide complet | lokt.fr";
 const metaDesc = "Tout ce qu'il faut savoir avant d'investir dans l'immobilier locatif en 2026 : les 5 étapes, les erreurs classiques, deux profils réels, et comment calculer la vraie rentabilité.";
 
 const faq = [

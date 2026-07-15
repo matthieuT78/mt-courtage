@@ -93,7 +93,7 @@ export default function CapaciteEmpruntPage() {
   const pageUrl = `${siteUrl}${pagePath}`;
 
   // ✅ CTR-first (plus direct)
-  const title = "Calcul capacité d’emprunt 2026 : combien puis-je emprunter ? Simulation gratuite | lokt.fr";
+  const title = "Simulateur capacité d’emprunt 2026 gratuit | lokt.fr";
   const description =
     "Calculez votre capacité d’emprunt immobilier : montant max, mensualité et taux d’endettement en 30 secondes selon vos revenus et votre apport. Gratuit, sans inscription.";
 

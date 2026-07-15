@@ -1,5 +1,5 @@
 ---
-title: "Déficit foncier 2026 : réduire ses impôts avec l'immobilier"
+title: "Déficit foncier 2026 : réduire ses impôts"
 description: "Comment fonctionne le déficit foncier, quels travaux sont déductibles, les plafonds à connaître et les cas où ce mécanisme change vraiment la donne fiscalement."
 date: "2026-06-24"
 updatedAt: "2026-07-01"

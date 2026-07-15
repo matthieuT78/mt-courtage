@@ -1,5 +1,6 @@
 ---
-title: "Préavis locataire 2026 : 1 ou 3 mois — calcul exact, cas particuliers et lettre type"
+title: "Préavis locataire 2026 : 1 ou 3 mois, calcul"
+h1: "Préavis de départ locataire : durée, zones tendues et lettre type 2026"
 description: "Quand le préavis est réduit à 1 mois (zone tendue, mutation, perte d'emploi, RSA…) et quand il reste 3 mois. Comment calculer la date de fin exacte, le loyer du dernier mois et que faire si le locataire ne libère pas les lieux."
 date: "2026-06-27"
 updatedAt: "2026-07-01"
@@ -221,5 +222,10 @@ Seulement dans les cas exceptionnels listés (mutation, perte d'emploi, raison d
 Mise en demeure par recommandé, puis saisine du tribunal judiciaire si nécessaire. Ne jamais couper les services ou forcer l'accès : c'est une voie de fait pénalement sanctionnée.
 
 ---
+
+## Outils pratiques
+
+- [Modèle de lettre de congé du bailleur](/modele-lettre-conge-bailleur) — lettre recommandée conforme pour donner congé à votre locataire
+
 
 *Gérez les alertes de fin de bail, les préavis et les états des lieux de sortie depuis votre [espace bailleur lokt.fr](/outil-gestion-locative) — toutes les échéances sont suivies automatiquement.*

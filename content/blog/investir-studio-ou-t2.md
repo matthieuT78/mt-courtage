@@ -1,5 +1,6 @@
 ---
-title: "Investir dans un studio ou un T2 : ce que disent les chiffres"
+title: "Investir studio ou T2 : les chiffres 2026"
+h1: "Investir dans un studio ou un T2 : ce que disent les chiffres"
 description: "Studio ou T2 pour un premier investissement locatif ? Comparatif de rentabilité, taux de vacance, profils de locataires et villes où chaque format surperforme."
 date: "2026-06-25"
 category: "Investissement locatif"

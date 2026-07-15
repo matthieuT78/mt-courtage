@@ -6,8 +6,8 @@ import { VILLES_DATA } from "../../lib/villesRendement";
 
 const SITE_URL = "https://lokt.fr";
 const pageUrl = `${SITE_URL}/rendement-locatif`;
-const metaTitle = "Rendement locatif par ville 2026 : comparatif des grandes villes françaises | lokt.fr";
-const metaDesc = "Comparez le rendement locatif dans 15 grandes villes françaises : Lyon, Bordeaux, Toulouse, Marseille, Rennes, Lille, Strasbourg, Grenoble et plus. Prix au m², loyers et rentabilité 2026.";
+const metaTitle = "Rendement locatif par ville 2026 : comparatif | lokt.fr";
+const metaDesc = "Comparez le rendement locatif dans 16 grandes villes françaises : Paris, Lyon, Bordeaux, Toulouse, Marseille, Rennes, Lille, Strasbourg, Grenoble et plus. Prix au m², loyers et rentabilité 2026.";
 
 const faq = [
   {

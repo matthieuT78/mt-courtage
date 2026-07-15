@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 
 export type BlogFrontmatter = {
   title: string;
+  h1?: string;
   description?: string;
   date?: string;
   updatedAt?: string;
@@ -82,7 +83,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
   const { data, content } = matter(file);
 
   const processed = await remark().use(remarkGfm).use(html, { sanitize: false }).process(content);
-  const rawHtml = processed.toString();
+  const rawHtml = processed.toString().replace(/^<h1[^>]*>.*?<\/h1>\s*/i, "");
   const contentHtml = addHeadingIds(rawHtml);
   const toc = extractToc(contentHtml);
   const readingTime = computeReadingTime(content);

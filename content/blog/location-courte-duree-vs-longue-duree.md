@@ -1,5 +1,5 @@
 ---
-title: "Location courte durée vs longue durée : le comparatif chiffré 2026"
+title: "Location courte vs longue durée : comparatif 2026"
 description: "Airbnb ou bail classique : comparatif de rentabilité, fiscalité, contraintes de gestion et risques pour choisir le bon modèle selon votre bien et votre profil."
 date: "2026-06-22"
 category: "Investissement locatif"

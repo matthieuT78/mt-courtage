@@ -81,7 +81,7 @@ export default function InvestissementPage() {
   const pageUrl = `${siteUrl}${pagePath}`;
 
   // ✅ CTR-first
-  const title = "Calculette rentabilité locative 2026 – Cash-flow, rendement brut/net, charges | lokt.fr";
+  const title = "Simulateur rentabilité locative 2026 gratuit | lokt.fr";
   const description =
     "Simulateur de rentabilité locative gratuit : rendement brut, net et net-net, cash-flow, charges et financement. Résultat immédiat, sans inscription.";
 

@@ -1,5 +1,6 @@
 ---
-title: "Colocation 2026 : bail solidaire, turnover et gestion — guide complet bailleur"
+title: "Colocation 2026 : bail solidaire et gestion"
+h1: "Colocation 2026 : bail solidaire, turnover et gestion — guide complet bailleur"
 description: "Bail unique ou baux individuels, solidarité entre colocataires, turnover, dépôt de garantie et fiscalité : tout ce que le bailleur doit maîtriser en colocation."
 date: "2026-07-07"
 category: "Gestion locative"
@@ -148,3 +149,8 @@ Oui — vérifiez que le contrat couvre explicitement la solidarité et le turno
 ---
 
 Pour gérer une colocation — baux, quittances, alertes de loyer et suivi des colocataires — l'[espace bailleur lokt.fr](/outil-gestion-locative) est gratuit pour un logement actif.
+
+
+## Outils pratiques
+
+- [Inventaire location meublée](/inventaire-location-meublee) — gérez l'inventaire du mobilier pour votre colocation meublée

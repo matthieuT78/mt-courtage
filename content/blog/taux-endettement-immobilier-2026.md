@@ -1,5 +1,6 @@
 ---
-title: "Taux d'endettement immobilier 2026 : règle des 35 %, calcul exact et leviers pour emprunter plus"
+title: "Taux d'endettement 2026 : règle des 35 %"
+h1: "Taux d'endettement immobilier 2026 : règle des 35 %, calcul exact et leviers pour emprunter plus"
 description: "Comment calculer votre taux d'endettement, pourquoi la règle HCSF fixe le plafond à 35 % et les 5 leviers légaux pour augmenter votre capacité d'emprunt sans toucher à vos revenus."
 date: "2026-07-08"
 updatedAt: "2026-07-08"

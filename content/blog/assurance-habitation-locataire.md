@@ -1,5 +1,6 @@
 ---
-title: "Assurance habitation locataire : obligations, défaut et recours du bailleur 2026"
+title: "Assurance habitation locataire 2026 : guide"
+h1: "Assurance habitation locataire : obligations, défaut et recours du bailleur 2026"
 description: "Le locataire est obligé d'assurer le logement. Que faire s'il ne le fait pas ? Comment vérifier, quelle sanction, et comment se protéger avec une assurance propriétaire non occupant."
 date: "2026-06-27"
 category: "Gestion locative"

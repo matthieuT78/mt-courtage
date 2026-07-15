@@ -1,5 +1,6 @@
 ---
-title: "Comment choisir son logiciel de gestion locative en 2026 : le guide du bailleur indépendant"
+title: "Logiciel gestion locative : comment choisir 2026"
+h1: "Comment choisir son logiciel de gestion locative en 2026"
 description: "Rentila, BailFacile, Smovin, Gererseul, Homii ou lokt.fr : comment choisir le bon outil de gestion locative selon votre profil ? Comparatif complet, critères clés et questions à se poser avant de s'engager."
 date: "2026-07-04"
 category: "Gestion locative"

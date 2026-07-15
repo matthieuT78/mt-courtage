@@ -230,7 +230,7 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
                   {frontmatter.date && <span>{formatDateFR(frontmatter.date)}</span>}
                 </div>
                 <h1 className="mt-2 max-w-3xl text-2xl font-bold leading-tight text-white sm:text-4xl">
-                  {frontmatter.title}
+                  {frontmatter.h1 ?? frontmatter.title}
                 </h1>
               </div>
             </div>
@@ -250,7 +250,7 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
                 {frontmatter.date && <span className="text-slate-400">{formatDateFR(frontmatter.date)}</span>}
               </div>
               <h1 className="mt-3 max-w-3xl text-2xl font-bold leading-tight text-white sm:text-4xl">
-                {frontmatter.title}
+                {frontmatter.h1 ?? frontmatter.title}
               </h1>
               {frontmatter.description && (
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">{frontmatter.description}</p>
@@ -344,6 +344,7 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {[
+                    { slug: "paris", nom: "Paris" },
                     { slug: "lyon", nom: "Lyon" },
                     { slug: "bordeaux", nom: "Bordeaux" },
                     { slug: "toulouse", nom: "Toulouse" },

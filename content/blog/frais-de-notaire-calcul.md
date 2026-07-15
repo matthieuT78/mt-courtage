@@ -1,5 +1,6 @@
 ---
-title: "Frais de notaire 2026 : calcul exact, composition et comment les réduire"
+title: "Frais de notaire 2026 : calcul et comment réduire"
+h1: "Frais de notaire 2026 : calcul exact, composition et comment les réduire"
 description: "Comment calculer les frais de notaire en 2026 : taux par tranche, différence neuf/ancien, frais réductibles et astuces légales pour payer moins."
 date: "2026-06-05"
 updatedAt: "2026-07-01"

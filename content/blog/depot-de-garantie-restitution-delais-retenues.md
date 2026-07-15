@@ -1,5 +1,6 @@
 ---
-title: "Dépôt de garantie : délais de restitution, retenues autorisées et litiges 2026"
+title: "Dépôt de garantie 2026 : restitution et litiges"
+h1: "Dépôt de garantie : délais de restitution, retenues autorisées et litiges 2026"
 description: "Tout savoir sur le dépôt de garantie locatif : montants légaux, délai de restitution (1 ou 2 mois), ce que le bailleur peut retenir, la vétusté et les recours en cas de litige."
 date: "2026-07-01"
 updatedAt: "2026-07-01"
@@ -352,5 +353,11 @@ Le dépôt de garantie n'est ni une cagnotte à disposition du bailleur, ni un d
 - [Service-public.fr — Commission départementale de conciliation](https://www.service-public.fr/particuliers/vosdroits/F1216)
 
 ---
+
+## Outils pratiques
+
+- [Dépôt de garantie location meublée](/depot-garantie-location-meublee) — règles spécifiques au bail meublé (montant, délais)
+- [Modèle de lettre de restitution de dépôt de garantie](/modele-restitution-depot-garantie) — document à envoyer avec ou sans retenues
+
 
 *Gérez vos états des lieux, dépôts de garantie et clôtures de bail depuis votre [espace bailleur lokt.fr](/outil-gestion-locative) — avec un suivi documenté de chaque étape.*

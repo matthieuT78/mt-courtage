@@ -1,5 +1,6 @@
 ---
-title: "Charges déductibles en LMNP réel 2026 : liste complète et amortissements"
+title: "Charges déductibles LMNP 2026 : liste complète"
+h1: "Charges déductibles en LMNP réel 2026 : liste complète et amortissements"
 description: "Toutes les charges déductibles au régime réel LMNP en 2026 : intérêts, taxe foncière, mobilier, travaux, amortissements du bien — avec exemples chiffrés et formulaire 2031."
 date: "2026-06-28"
 category: "Fiscalité locative"

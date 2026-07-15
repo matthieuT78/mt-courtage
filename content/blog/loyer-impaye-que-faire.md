@@ -1,5 +1,5 @@
 ---
-title: "Loyer impayé : que faire étape par étape en 2026 ?"
+title: "Loyer impayé 2026 : que faire étape par étape"
 description: "Locataire qui ne paie plus ? Voici la procédure complète : de la première relance amiable à l'expulsion, avec les délais réels, les erreurs à éviter et comment activer vos garanties."
 date: "2026-06-26"
 category: "Investissement locatif"
@@ -219,5 +219,10 @@ Gardez toutes les preuves : état des lieux de sortie documenté (photos, rappor
 Non. Si le locataire est parti (même sans remettre les clés formellement), le commandement de payer sert uniquement à déclencher la clause résolutoire et la procédure d'expulsion. S'il n'y a plus d'expulsion à faire, vous pouvez aller directement à l'injonction de payer pour récupérer les sommes dues.
 
 ---
+
+## Outils pratiques
+
+- [Modèle de mise en demeure pour loyer impayé](/modele-mise-en-demeure-loyer-impaye) — lettre recommandée conforme à envoyer à votre locataire
+
 
 *Mettez en place un suivi mensuel de vos loyers et déclenchez vos relances au bon moment avec l'[outil de suivi des loyers impayés](/suivi-loyers-impayes) de lokt.fr.*

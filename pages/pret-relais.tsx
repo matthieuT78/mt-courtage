@@ -97,7 +97,7 @@ export default function PretRelaisPage() {
   const pagePath = "/pret-relais";
   const pageUrl = `${siteUrl}${pagePath}`;
 
-  const title = "Simulateur prêt relais 2026 : calcul du montant et des intérêts en 30 sec | lokt.fr";
+  const title = "Simulateur prêt relais 2026 : calcul gratuit | lokt.fr";
   const description =
     "Combien pouvez-vous emprunter avec un prêt relais ? Calculez en 30 secondes : montant du relais, intérêts intercalaires et budget max pour votre prochain bien. Prêt relais sec ou adossé — formules détaillées, sans inscription.";
 

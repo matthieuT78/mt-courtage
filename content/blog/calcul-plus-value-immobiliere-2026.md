@@ -1,5 +1,6 @@
 ---
-title: "Plus-value immobilière 2026 : calcul, abattements et impôt"
+title: "Plus-value immobilière 2026 : calcul et impôt"
+h1: "Plus-value immobilière 2026 : comment la calculer, quels abattements et quel impôt ?"
 description: "Comment calculer la plus-value immobilière : prix de cession, abattements par durée de détention, surtaxe et exemple chiffré complet 2026."
 date: "2026-06-30"
 category: "Plus-value immobilière"

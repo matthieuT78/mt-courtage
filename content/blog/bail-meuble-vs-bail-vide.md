@@ -1,5 +1,6 @@
 ---
-title: "Bail meublé vs bail vide : différences, avantages et comment choisir en 2026"
+title: "Bail meublé vs bail vide : comment choisir 2026"
+h1: "Bail meublé vs bail vide : différences, avantages et comment choisir en 2026"
 description: "Comparatif complet bail meublé vs bail vide : durée, dépôt de garantie, préavis, fiscalité, meubles obligatoires et quel bail choisir selon votre situation."
 date: "2026-06-28"
 category: "Gestion locative"

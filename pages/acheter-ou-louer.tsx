@@ -59,7 +59,7 @@ export default function AcheterOuLouerPage() {
   const pageUrl = `${siteUrl}${pagePath}`;
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
 
-  const title = "Acheter ou louer en 2026 ? Calculette de décision immobilière gratuite | lokt.fr";
+  const title = "Acheter ou louer en 2026 ? Simulation gratuite | lokt.fr";
   const description =
     "Faut-il acheter ou louer ? Notre calculette analyse votre situation professionnelle, votre projet et le marché local pour vous donner une recommandation personnalisée en quelques minutes.";
 

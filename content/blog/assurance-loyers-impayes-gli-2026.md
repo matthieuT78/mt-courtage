@@ -1,5 +1,5 @@
 ---
-title: "GLI 2026 : assurance loyers impayés — fonctionnement, coût et comparatif"
+title: "GLI 2026 : assurance loyers impayés"
 description: "Tout sur la garantie loyers impayés (GLI) en 2026 : ce qu'elle couvre, combien elle coûte, comment choisir entre GLI et caution solidaire, et si c'est déductible."
 date: "2026-06-28"
 category: "Gestion locative"

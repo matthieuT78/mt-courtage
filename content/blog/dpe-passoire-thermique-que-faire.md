@@ -1,5 +1,6 @@
 ---
-title: "DPE et passoires thermiques : ce que les bailleurs doivent faire avant l'interdiction"
+title: "DPE et passoires thermiques 2026 : guide bailleur"
+h1: "DPE et passoires thermiques : ce que les bailleurs doivent faire avant l'interdiction"
 description: "Calendrier des interdictions DPE G, F et E, gel des loyers, MaPrimeRénov' et audit énergétique : tout ce qu'un propriétaire-bailleur doit savoir et faire avant 2028."
 date: "2026-06-27"
 category: "Investissement locatif"

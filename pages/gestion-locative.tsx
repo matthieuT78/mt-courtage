@@ -191,7 +191,7 @@ export default function GestionLocativePage() {
   const [activeStep, setActiveStep] = useState(0);
   const step = STEPS[activeStep];
 
-  const title = "Logiciel de gestion locative gratuit — Workflow complet | lokt.fr";
+  const title = "Logiciel gestion locative gratuit 2026 | lokt.fr";
   const description =
     "Logiciel de gestion locative tout-en-un : candidatures, bail, quittances automatiques, états des lieux et finance bailleur. Gratuit pour les bailleurs particuliers.";
   const pageUrl = `${SITE_URL}/gestion-locative`;

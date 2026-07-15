@@ -81,7 +81,7 @@ export default function PlusValueVenteImmobilierePage() {
   const pageUrl = `${siteUrl}${pagePath}`;
 
   // ✅ CTR-first
-  const title = "Plus-value immobilière 2026 : calculateur gratuit — cash net après impôts et remboursement | lokt.fr";
+  const title = "Calculateur plus-value immobilière 2026 gratuit | lokt.fr";
   const description =
     "Simulez votre plus-value en 2 minutes : entrez le prix de vente, le prix d'achat et les travaux. lokt.fr calcule le cash net après remboursement du crédit et impôts.";
 

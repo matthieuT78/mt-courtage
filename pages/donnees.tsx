@@ -10,7 +10,7 @@ export async function getStaticProps() {
 }
 
 export default function DonneesPage({ donnees }: { donnees: DonneesImmo }) {
-  const title = "Données immobilières France 2026 : loyers, rendements, taux de crédit | lokt.fr";
+  const title = "Données immo France 2026 : loyers & rendements | lokt.fr";
   const description =
     "Loyers médians par ville, rendements locatifs bruts par type de bien, taux de crédit immobilier et capacité d'emprunt par revenus — données de référence T2 2026, librement accessibles via API JSON.";
   const url = "https://lokt.fr/donnees";

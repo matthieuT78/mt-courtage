@@ -587,6 +587,45 @@ export const VILLES_DATA: VilleData[] = [
     population: "345 000 habitants",
     villesProches: ["marseille", "montpellier", "toulouse"],
   },
+  {
+    slug: "paris",
+    name: "Paris",
+    region: "Île-de-France",
+    prixM2: 9600,
+    loyerM2: 29,
+    rendementBrut: 3.6,
+    tensionLocative: "forte",
+    descriptionMarche:
+      "Paris reste le marché locatif le plus tendu de France avec un taux de vacance inférieur à 1 %. Malgré des prix parmi les plus élevés d'Europe, la demande structurelle — étudiants, expatriés, cadres en mobilité — maintient une pression locative exceptionnelle. La correction des prix 2022-2024 (−12 %) a légèrement amélioré les rendements dans les arrondissements périphériques, sans toutefois rattraper les niveaux de province.",
+    analyses: [
+      "Le marché parisien est structurellement sous-offreur : la ville compte 2,2 millions d'habitants pour un parc de logements quasi figé depuis 40 ans. Chaque année, 60 000 à 80 000 ménages cherchent un logement à Paris, pour une rotation du parc locatif privé de seulement 15 %. Cette tension permanente garantit une occupation quasi-continue des biens bien placés, mais comprime les rendements en raison de prix d'achat très élevés. L'encadrement des loyers (actif depuis 2019, renforcé en 2022) plafonne les loyers selon un indice de référence par quartier, type et ancienneté du bien — il est incontournable dans votre stratégie tarifaire.",
+      "La stratégie la plus efficace à Paris en 2026 est le meublé en LMNP réel dans les arrondissements périphériques (13e, 18e, 19e, 20e), où les prix restent sous 9 000 €/m² et les rendements approchent les 4 %. Les studios et T2 meublés destinés aux étudiants (Sorbonne, Jussieu, Tolbiac, Montmartre) et aux jeunes actifs offrent la meilleure liquidité à la revente. Évitez les biens de moins de 9 m² (illégaux à la location), les DPE G (interdits depuis 2025) et privilégiez les copropriétés avec charges maîtrisées.",
+    ],
+    biensPerformants: [
+      { type: "Studio 18-28 m²", detail: "Forte rotation, demande étudiante permanente, rendement 4-5 % dans les arrondissements périphériques." },
+      { type: "T2 meublé 30-45 m²", detail: "Cible expatriés et jeunes cadres, baux mobilité ou meublé, idéal en LMNP réel." },
+      { type: "T3 en colocation", detail: "Particulièrement performant dans les 18e et 19e pour divisions en chambres avec services." },
+    ],
+    quartiers: [
+      { nom: "19e arrondissement", note: "Parmi les prix les plus abordables intra-muros, transports (lignes 5, 7, 11), forte demande locative." },
+      { nom: "13e arrondissement", note: "Universités Paris-Cité et Panthéon-Sorbonne à proximité, quartiers rénovés, bon équilibre prix/rendement." },
+      { nom: "18e arrondissement", note: "Montmartre : fort attrait locatif et touristique, prix hétérogènes, potentiel en location meublée." },
+      { nom: "20e arrondissement", note: "Quartier résidentiel populaire, prix inférieurs à la moyenne parisienne, demande locative soutenue." },
+    ],
+    avantages: [
+      "Vacance locative quasi nulle — occupation garantie toute l'année",
+      "Valeur patrimoniale maximale et revente très liquide",
+      "Demande internationale (étudiants, expatriés) qui soutient les loyers hauts de gamme",
+    ],
+    vigilances: [
+      "Encadrement des loyers obligatoire — vérifier le loyer de référence avant achat",
+      "Prix au m² parmi les plus élevés d'Europe — ticket d'entrée élevé, rendement comprimé",
+      "Charges de copropriété souvent importantes dans les immeubles anciens haussmanniens",
+      "DPE G interdit à la location depuis 2025 — vérifier l'étiquette énergie avant acquisition",
+    ],
+    population: "2 200 000 habitants",
+    villesProches: ["lille", "lyon", "bordeaux"],
+  },
 ];
 
 export function getVilleBySlug(slug: string): VilleData | undefined {

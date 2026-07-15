@@ -1,5 +1,6 @@
 ---
-title: "Déclaration des revenus fonciers 2026 : guide complet (micro-foncier, régime réel, formulaires)"
+title: "Déclaration revenus fonciers 2026 : guide complet"
+h1: "Déclaration des revenus fonciers 2026 : guide complet"
 description: "Tout savoir pour déclarer vos revenus locatifs 2026 en 2027 : micro-foncier ou régime réel, formulaires 2044 et 2042, charges déductibles, déficit foncier. Guide pratique avec exemples chiffrés."
 date: "2026-06-28"
 category: "Fiscalité locative"
