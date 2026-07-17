@@ -105,7 +105,7 @@ type Props = {
   receipts?: RentReceipt[];
   onRefresh: () => Promise<void>;
   onPrepareDeparture?: (tenantId: string) => void;
-  deepLink?: { key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string } | null;
+  deepLink?: { key: number; leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string } | null;
 };
 
 /* ======================================================
@@ -787,7 +787,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       const lease = leases?.find((l) => l.id === leaseId);
       if (lease) {
         setTimeout(() => {
-          openDepositForm(leaseId, "return", lease);
+          openDepositForm(leaseId, deepLink.depositAction ?? "return", lease);
           document.getElementById(`deposit-${leaseId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
           setHighlightDepositLeaseId(leaseId);
           setTimeout(() => setHighlightDepositLeaseId(null), 2500);

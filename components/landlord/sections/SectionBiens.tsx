@@ -707,12 +707,13 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         <label className="mt-3 block space-y-1">
           <span className="text-xs text-slate-700">Loyer de marché estimé (optionnel)</span>
           <input
+            inputMode="decimal"
             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Ex : 850 €/mois, d'après des annonces comparables"
+            placeholder="Loyer mensuel en euros, ex : 850"
             value={form.market_rent_estimate}
             onChange={(e) => setForm((s) => ({ ...s, market_rent_estimate: e.target.value }))}
           />
-          <span className="block text-[0.7rem] text-slate-500">Sert à comparer votre loyer actuel au marché dans Performance.</span>
+          <span className="block text-[0.7rem] text-slate-500">Montant en euros par mois, d’après des annonces comparables. Sert à comparer votre loyer actuel au marché dans Performance.</span>
         </label>
 
         {/* ── Gestion de ce bien ── */}

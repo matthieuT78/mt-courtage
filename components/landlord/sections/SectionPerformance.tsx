@@ -72,7 +72,13 @@ type PropertyFinance = {
   rental_tax_monthly?: number | null;
 };
 
-type NavigateLink = { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillPropertyId?: string };
+type NavigateLink = {
+  leaseId?: string;
+  openPanel?: "irl" | "deposit";
+  depositAction?: "collect" | "return";
+  openCreate?: boolean;
+  prefillPropertyId?: string;
+};
 
 type Props = {
   userId: string;
@@ -125,6 +131,31 @@ function irlLateness(lease: Lease | undefined, today = new Date()): { leaseId: s
   if (handled) return null;
   const monthsLate = Math.floor((today.getTime() - anniversary.getTime()) / (30.44 * 86400_000));
   return monthsLate >= 1 ? { leaseId: lease.id, monthsLate } : null;
+}
+
+// Régularité de paiement sur les derniers loyers échus (retard = paiement après due_date).
+function paymentDelayStats(
+  payments: RentPayment[],
+  leaseId: string,
+  sampleSize = 6
+): { avgDelayDays: number; lateCount: number; totalCount: number } | null {
+  const relevant = payments
+    .filter((p) => p.lease_id === leaseId && p.paid_at && p.due_date)
+    .sort((a, b) => new Date(b.due_date as string).getTime() - new Date(a.due_date as string).getTime())
+    .slice(0, sampleSize);
+  if (relevant.length < 3) return null;
+
+  let totalDelay = 0;
+  let lateCount = 0;
+  for (const p of relevant) {
+    const due = normalizeDate(p.due_date);
+    const paid = normalizeDate(p.paid_at);
+    if (!due || !paid) continue;
+    const delayDays = Math.round((paid.getTime() - due.getTime()) / 86400_000);
+    totalDelay += delayDays;
+    if (delayDays > 3) lateCount += 1;
+  }
+  return { avgDelayDays: totalDelay / relevant.length, lateCount, totalCount: relevant.length };
 }
 
 type PeriodMode = "month" | "last6" | "year" | "custom";
@@ -324,6 +355,9 @@ function buildLoanScenario(
 
 function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): FriendlyAction[] {
   const actions: FriendlyAction[] = [];
+  // Pas de CTA vers Finance pour un bien archivé : sa fiche n'apparaît pas dans la liste
+  // "Paramètres financiers" (réservée aux biens actifs), le lien mènerait dans le vide.
+  const financeCta = row.archived ? undefined : { label: "Ouvrir Finance", section: "finance" as const, link: { prefillPropertyId: row.propertyId } };
 
   // ── 1. PAS DE BAIL ───────────────────────────────────────────────────────
   if (row.activeLeaseCount === 0) {
@@ -359,6 +393,24 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
       title: "Loyer non confirmé en banque",
       detail: `${money(row.expected - confirmedIncome)} restent à pointer. Dès le virement visible, validez-le dans Quittances pour que Finance le prenne en compte.`,
       cta: { label: "Ouvrir Quittances", section: "quittances" },
+    });
+  }
+
+  if (row.paymentDelay && (row.paymentDelay.avgDelayDays >= 5 || row.paymentDelay.lateCount / row.paymentDelay.totalCount >= 0.5)) {
+    actions.push({
+      tone: row.paymentDelay.avgDelayDays >= 10 ? "amber" : "slate",
+      title: `Retards de paiement récurrents — ${Math.round(row.paymentDelay.avgDelayDays)} j en moyenne`,
+      detail: `${row.paymentDelay.lateCount} paiement(s) en retard sur les ${row.paymentDelay.totalCount} derniers échus. Un rappel plus tôt dans le mois ou un passage au prélèvement automatique peut limiter la récurrence.`,
+      cta: { label: "Ouvrir Quittances", section: "quittances" },
+    });
+  }
+
+  if (row.depositUncollected) {
+    actions.push({
+      tone: "amber",
+      title: `Dépôt de garantie non encaissé — ${money(row.depositUncollected.amount)}`,
+      detail: `Le bail est actif mais la caution n’est pas enregistrée comme encaissée. Sans elle, vous n’êtes pas couvert en cas de dégradations ou d’impayés en fin de bail.`,
+      cta: { label: "Ouvrir la location", section: "baux", link: { leaseId: row.depositUncollected.leaseId, openPanel: "deposit", depositAction: "collect" } },
     });
   }
 
@@ -410,26 +462,29 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
     });
   }
 
-  const rateBucket =
-    referenceRates && row.loanRate != null && row.loanRemainingMonths
-      ? closestRateBucket(referenceRates, row.loanRemainingMonths)
-      : null;
-  if (
-    rateBucket &&
-    row.loanRate != null &&
-    row.loanRate - rateBucket.taux_moyen >= 0.3 &&
-    row.loanRemainingMonths &&
-    row.loanMonthlyPI > 0
-  ) {
-    const scenario = buildLoanScenario("renegotiate", row, rateBucket.taux_moyen, row.loanRemainingMonths);
-    if (scenario) {
-      actions.push({
-        tone: row.cashflow < 0 ? "amber" : "slate",
-        title: `Crédit à ${row.loanRate} % — marché actuel ${rateBucket.taux_moyen} % (${rateBucket.duree_ans} ans)`,
-        detail: `À durée restante égale, une renégociation au taux de marché ferait gagner ~${money(scenario.monthlyGain)}/mois, soit ${money(Math.abs(scenario.totalInterestDelta))} d’intérêts économisés sur la durée restante.`,
-        cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
-        loanScenario: scenario,
-      });
+  if (referenceRates) {
+    // Taux de référence chargés : comparaison au marché réel. Si l'écart est trop faible
+    // (ou que le scénario ne peut pas être calculé), on ne montre volontairement rien —
+    // pas de repli sur l'heuristique générique, qui contredirait la donnée réelle.
+    const rateBucket =
+      row.loanRate != null && row.loanRemainingMonths ? closestRateBucket(referenceRates, row.loanRemainingMonths) : null;
+    if (
+      rateBucket &&
+      row.loanRate != null &&
+      row.loanRate - rateBucket.taux_moyen >= 0.3 &&
+      row.loanRemainingMonths &&
+      row.loanMonthlyPI > 0
+    ) {
+      const scenario = buildLoanScenario("renegotiate", row, rateBucket.taux_moyen, row.loanRemainingMonths);
+      if (scenario) {
+        actions.push({
+          tone: row.cashflow < 0 ? "amber" : "slate",
+          title: `Crédit à ${row.loanRate} % — marché actuel ${rateBucket.taux_moyen} % (${rateBucket.duree_ans} ans)`,
+          detail: `À durée restante égale, une renégociation au taux de marché ferait gagner ~${money(scenario.monthlyGain)}/mois, soit ${money(Math.abs(scenario.totalInterestDelta))} d’intérêts économisés sur la durée restante.`,
+          cta: financeCta,
+          loanScenario: scenario,
+        });
+      }
     }
   } else if ((row.loanRate ?? 0) >= 3.5 && row.loanMonthly > 0 && (row.loanRemainingMonths ?? 0) > 24) {
     // Repli sur l'heuristique générique tant que les taux de référence ne sont pas chargés.
@@ -438,7 +493,7 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
       tone: row.cashflow < 0 ? "amber" : "slate",
       title: `Crédit à ${row.loanRate} % — renégociation à évaluer`,
       detail: `Une baisse de 0,5 point peut libérer ~${money(gain)}/mois (${money(gain * 12)}/an) sur ${row.loanRemainingMonths} mois restants. À comparer au coût du rachat de crédit.`,
-      cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
+      cta: financeCta,
     });
   }
 
@@ -456,7 +511,7 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
         tone: row.cashflow < 80 ? "amber" : "slate",
         title: `Rallonger le crédit de 5 ans — ~${money(scenario.monthlyGain)}/mois de plus`,
         detail: `Mensualité ramenée à ${money(scenario.newMonthlyPI + scenario.currentInsurance)} au lieu de ${money(scenario.currentMonthlyPI + scenario.currentInsurance)}, sur ${Math.round(scenario.newRemainingMonths / 12)} ans au lieu de ${Math.round(scenario.currentRemainingMonths / 12)}. Coût : ${money(scenario.totalInterestDelta)} d’intérêts en plus sur la durée — à réserver aux cas où le cashflow immédiat est prioritaire.`,
-        cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
+        cta: financeCta,
         loanScenario: scenario,
       });
     }
@@ -531,7 +586,7 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
       tone: "slate",
       title: "Charges récurrentes non renseignées",
       detail: "Sans crédit, copro et assurance, le rendement est surestimé. Ajoutez-les via Finance > Nouvelle écriture > Charge récurrente.",
-      cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
+      cta: financeCta,
     });
   }
 
@@ -540,7 +595,7 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
       tone: "slate",
       title: "Coût d’acquisition à compléter",
       detail: "Prix d’achat + frais notaire + travaux = base du rendement net. Sans ça, impossible de comparer ce bien à d’autres placements.",
-      cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
+      cta: financeCta,
     });
   }
 
@@ -549,7 +604,7 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
       tone: "slate",
       title: "Régime fiscal non renseigné",
       detail: "LMNP réel, micro-foncier, Pinel… chaque régime change les charges déductibles et la lecture de la rentabilité.",
-      cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
+      cta: financeCta,
     });
   }
 
@@ -558,7 +613,7 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
       tone: "slate",
       title: "Taux du crédit à renseigner",
       detail: "Sans taux, impossible de savoir si une renégociation peut changer l’équilibre de ce bien. À ajouter dans Finance > Paramètres du bien.",
-      cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
+      cta: financeCta,
     });
   }
 
@@ -738,6 +793,9 @@ type PropertyRow = {
   loanMonthlyPI: number;
   loanInsuranceMonthly: number;
   loanPrincipalRemaining: number | null;
+  paymentDelay: { avgDelayDays: number; lateCount: number; totalCount: number } | null;
+  depositUncollected: { amount: number; leaseId: string } | null;
+  archived: boolean;
 };
 
 export function SectionPerformance({ userId, leases, payments, propertyById, onNavigateDeep }: Props) {
@@ -914,6 +972,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
       })
       .filter((id) => !propertyId || id === propertyId)
       .map((id) => {
+        const archived = !isActivePropertyLike(propsById.get(id));
         const propertyLeases = activeLeases.filter((lease) => lease.property_id === id);
         const expected = sum(propertyLeases.map((lease) => monthlyLeaseAmount(lease)));
         const primaryLease = propertyLeases[0] || null;
@@ -1027,6 +1086,13 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
             : null;
         const marketRentEstimate = propsById.get(id)?.market_rent_estimate ?? null;
         const irlLate = irlLateness(primaryLease || undefined);
+        const paymentDelay = primaryLease ? paymentDelayStats(safePayments, primaryLease.id) : null;
+        const leaseStart = primaryLease ? normalizeDate(primaryLease.start_date) : null;
+        const leaseAgeDays = leaseStart ? (Date.now() - leaseStart.getTime()) / 86400_000 : 0;
+        const depositUncollected =
+          primaryLease && Number(primaryLease.deposit_amount || 0) > 0 && !primaryLease.deposit_paid_at && leaseAgeDays >= 30
+            ? { amount: Number(primaryLease.deposit_amount), leaseId: primaryLease.id }
+            : null;
 
         return {
           propertyId: id,
@@ -1058,6 +1124,9 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           loanMonthlyPI,
           loanInsuranceMonthly,
           loanPrincipalRemaining,
+          paymentDelay,
+          depositUncollected,
+          archived,
         };
       })
       .sort((a, b) => b.cashflow - a.cashflow);
@@ -1992,7 +2061,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
             </div>
 
             <p className="mt-3 text-xs text-slate-500">
-              Estimation basée sur le capital restant dû calculé à partir de votre mensualité, taux et durée restante actuels (hors assurance emprunteur, frais de dossier et éventuelles indemnités de remboursement anticipé). À affiner avec votre banque ou un courtier avant toute décision.
+              Estimation basée sur le capital restant dû recalculé à partir de votre mensualité, taux et durée restante actuels (hors frais de dossier et éventuelles indemnités de remboursement anticipé). Si votre crédit est suivi via une écriture récurrente unique plutôt que via les champs dédiés de Finance, l’assurance emprunteur peut être incluse dans ce calcul plutôt qu’isolée. À affiner avec votre banque ou un courtier avant toute décision.
             </p>
           </div>
         </div>
