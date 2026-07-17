@@ -9,6 +9,7 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   HomeModernIcon,
+  PencilSquareIcon,
   PlusIcon,
   UsersIcon,
   XMarkIcon,
@@ -201,6 +202,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
   const safePhotos = Array.isArray(photos) ? photos : [];
 
   const [expandedId, setExpandedId] = useState<string | null>(null); // "__create__" ou propertyId
+  const [editingId, setEditingId] = useState<string | null>(null); // bien en cours d'édition (formulaire visible)
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -386,6 +388,11 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandedId]);
 
+  // referme le formulaire d'édition dès qu'on change de ligne ouverte
+  useEffect(() => {
+    setEditingId(null);
+  }, [expandedId]);
+
   const saveProperty = async (propertyId?: string) => {
     if (!userId) {
       setErr("userId manquant.");
@@ -432,6 +439,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         const { error } = await supabase.from("properties").update(payload).eq("id", propertyId).eq("user_id", userId);
         if (error) throw error;
         setOk("Bien mis à jour ✅");
+        setEditingId(null);
       } else {
         const { data, error } = await supabase.from("properties").insert(payload).select("id").single();
         if (error) throw error;
@@ -786,6 +794,73 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
           </div>
         ) : null}
       </>
+    );
+  };
+
+  const renderPropertyDetails = (p: any) => {
+    const pPhotos = photosByProperty.get(p.id) ?? [];
+    const hasDelegation = (p.delegated_services || []).length > 0 || !!p.delegation_agency_name;
+
+    return (
+      <div className="space-y-3">
+        {p.description ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Description</p>
+            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{p.description}</p>
+          </div>
+        ) : null}
+
+        {p.energy_value || p.ghg_class ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Diagnostic</p>
+            <p className="mt-1 text-sm text-slate-700">
+              {p.energy_value ? `${p.energy_value} kWh/m²/an` : "—"}
+              {p.ghg_class ? ` • GES ${p.ghg_class}` : ""}
+            </p>
+          </div>
+        ) : null}
+
+        {hasDelegation ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Gestion déléguée</p>
+            <p className="mt-1 text-sm font-semibold text-slate-900">{p.delegation_agency_name || "Agence non précisée"}</p>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {(p.delegated_services || []).map((key: string) => {
+                const svc = DELEGATED_SERVICES.find((s) => s.key === key);
+                return svc ? <span key={key}>{badge("sky", svc.label)}</span> : null;
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Photos</p>
+            {badge("slate", `${pPhotos.length} photo(s)`)}
+          </div>
+          {pPhotos.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {pPhotos.slice(0, 10).map((ph: any) => (
+                <a
+                  key={ph.id || ph.url}
+                  href={ph.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-white"
+                  title="Ouvrir"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={ph.url} alt="" className="h-full w-full object-cover" />
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-slate-600">Aucune photo pour l’instant.</p>
+          )}
+        </div>
+
+        <PropertyDpePanel propertyId={p.id} propertyLabel={p.label || ""} />
+      </div>
     );
   };
 
@@ -1145,17 +1220,39 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                     }
                     right={open ? badge("slate", "Ouvert") : null}
                   >
-                    {renderForm(f, (updater) => setEditForms((m) => ({ ...m, [p.id]: updater(m[p.id] ?? f) })), p.id)}
+                    {editingId === p.id
+                      ? renderForm(f, (updater) => setEditForms((m) => ({ ...m, [p.id]: updater(m[p.id] ?? f) })), p.id)
+                      : renderPropertyDetails(p)}
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => saveProperty(p.id)}
-                        disabled={saving}
-                        className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-                      >
-                        {saving ? "Enregistrement…" : "Mettre à jour"}
-                      </button>
+                      {editingId === p.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => saveProperty(p.id)}
+                            disabled={saving}
+                            className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                          >
+                            {saving ? "Enregistrement…" : "Mettre à jour"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="rounded-full border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            Annuler
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(p.id)}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                        >
+                          <PencilSquareIcon className="h-3.5 w-3.5" />
+                          Modifier
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -1278,17 +1375,39 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                     }
                     right={open ? badge("slate", "Ouvert") : null}
                   >
-                    {renderForm(f, (updater) => setEditForms((m) => ({ ...m, [p.id]: updater(m[p.id] ?? f) })), p.id)}
+                    {editingId === p.id
+                      ? renderForm(f, (updater) => setEditForms((m) => ({ ...m, [p.id]: updater(m[p.id] ?? f) })), p.id)
+                      : renderPropertyDetails(p)}
 
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => saveProperty(p.id)}
-                        disabled={saving}
-                        className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-                      >
-                        {saving ? "Enregistrement…" : "Mettre à jour"}
-                      </button>
+                      {editingId === p.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => saveProperty(p.id)}
+                            disabled={saving}
+                            className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                          >
+                            {saving ? "Enregistrement…" : "Mettre à jour"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="rounded-full border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            Annuler
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(p.id)}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                        >
+                          <PencilSquareIcon className="h-3.5 w-3.5" />
+                          Modifier
+                        </button>
+                      )}
 
                       <button
                         type="button"

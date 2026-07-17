@@ -6,7 +6,7 @@ import { ExpandableSection } from "../ui/ExpandableSection";
 import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
-import { ChatBubbleLeftRightIcon, HomeIcon, LinkIcon, NoSymbolIcon, PhoneIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ChatBubbleLeftRightIcon, HomeIcon, LinkIcon, NoSymbolIcon, PencilSquareIcon, PhoneIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { RentPayment } from "../../../lib/landlord/types";
 
 /* ======================================================
@@ -221,6 +221,7 @@ export function SectionLocataires({
   const safePayments = Array.isArray(payments) ? payments : [];
 
   const [expandedId, setExpandedId] = useState<string | null>(null); // row ouverte (create ou tenant id)
+  const [editingId, setEditingId] = useState<string | null>(null); // tenant en cours d'édition (formulaire visible)
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"az" | "recent">("az");
 
@@ -438,6 +439,11 @@ export function SectionLocataires({
     });
   }, [expandedId, safeTenants]);
 
+  // referme le formulaire d'édition dès qu'on change de ligne ouverte
+  useEffect(() => {
+    setEditingId(null);
+  }, [expandedId]);
+
   /* ======================================================
      CRUD
   ====================================================== */
@@ -478,6 +484,7 @@ export function SectionLocataires({
         // @ts-ignore
         if ((res as any)?.error) throw (res as any).error;
         setOk("Locataire mis à jour ✅");
+        setEditingId(null);
       } else {
         const res = await withTimeout(
           Promise.resolve(supabase.from("tenants").insert(payload).select("*").single())
@@ -1194,62 +1201,91 @@ export function SectionLocataires({
                       onToggleMessaging={toggleMessaging}
                     />
 
-                    {/* Form */}
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Prénom</label>
-                        <input
-                          value={f.first_name}
-                          onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, first_name: e.target.value } }))}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Nom</label>
-                        <input
-                          value={f.last_name}
-                          onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, last_name: e.target.value } }))}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Email</label>
-                        <input
-                          type="email"
-                          value={f.email}
-                          onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, email: e.target.value } }))}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[0.7rem] text-slate-700">Téléphone</label>
-                        <input
-                          value={f.phone}
-                          onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, phone: e.target.value } }))}
-                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
+                    {editingId === t.id ? (
+                      <>
+                        {/* Form */}
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1">
+                            <label className="text-[0.7rem] text-slate-700">Prénom</label>
+                            <input
+                              value={f.first_name}
+                              onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, first_name: e.target.value } }))}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[0.7rem] text-slate-700">Nom</label>
+                            <input
+                              value={f.last_name}
+                              onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, last_name: e.target.value } }))}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[0.7rem] text-slate-700">Email</label>
+                            <input
+                              type="email"
+                              value={f.email}
+                              onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, email: e.target.value } }))}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[0.7rem] text-slate-700">Téléphone</label>
+                            <input
+                              value={f.phone}
+                              onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, phone: e.target.value } }))}
+                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                            />
+                          </div>
+                        </div>
 
-                    <div className="mt-3 space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Notes</label>
-                      <textarea
-                        rows={3}
-                        value={f.notes}
-                        onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, notes: e.target.value } }))}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                      />
-                    </div>
+                        <div className="mt-3 space-y-1">
+                          <label className="text-[0.7rem] text-slate-700">Notes</label>
+                          <textarea
+                            rows={3}
+                            value={f.notes}
+                            onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, notes: e.target.value } }))}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                      </>
+                    ) : t.notes ? (
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Notes</p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{t.notes}</p>
+                      </div>
+                    ) : null}
 
                     <div className="mt-3 flex flex-wrap gap-2 items-center">
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => saveTenant(t.id)}
-                        className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-                      >
-                        {loading ? "Enregistrement…" : "Mettre à jour"}
-                      </button>
+                      {editingId === t.id ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => saveTenant(t.id)}
+                            className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                          >
+                            {loading ? "Enregistrement…" : "Mettre à jour"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="rounded-full border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            Annuler
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(t.id)}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                        >
+                          <PencilSquareIcon className="h-3.5 w-3.5" />
+                          Modifier
+                        </button>
+                      )}
 
                       {archiveWorkflow?.tenantId !== t.id ? (
                         <button
