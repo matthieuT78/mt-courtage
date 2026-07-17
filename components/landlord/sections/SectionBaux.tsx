@@ -2078,10 +2078,18 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
           );
         })()}
 
+        <IrlRevisionPanel
+          lease={l}
+          property={p || null}
+          tenant={t || null}
+          openTrigger={deepLink?.leaseId === l.id && deepLink?.openPanel === "irl" ? deepLink.key : undefined}
+          onRefresh={onRefresh}
+        />
+
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Historique du bail</p>
+              <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Historique de la location</p>
               <p className="mt-1 text-sm font-semibold text-slate-900">Paiements, quittances et jalons du bail</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -2094,7 +2102,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                 }}
                 disabled={!history.length}
                 className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                title="Exporter tout l’historique du bail au format CSV compatible Excel"
+                title="Exporter tout l’historique de la location au format CSV compatible Excel"
               >
                 <ArrowDownTrayIcon className="h-4 w-4" aria-hidden="true" />
                 Export Excel
@@ -2141,14 +2149,6 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             </>
           ) : null}
         </div>
-
-        <IrlRevisionPanel
-          lease={l}
-          property={p || null}
-          tenant={t || null}
-          openTrigger={deepLink?.leaseId === l.id && deepLink?.openPanel === "irl" ? deepLink.key : undefined}
-          onRefresh={onRefresh}
-        />
       </div>
     );
   };
