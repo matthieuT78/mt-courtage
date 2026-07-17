@@ -2,7 +2,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, fmtDate } from "../UiBits";
-import { EyeIcon, BanknotesIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
+import {
+  EyeIcon,
+  BanknotesIcon,
+  PaperAirplaneIcon,
+  CheckCircleIcon,
+  BellAlertIcon,
+  DocumentArrowDownIcon,
+  XCircleIcon,
+  EyeSlashIcon,
+  ClockIcon,
+} from "@heroicons/react/24/outline";
 import type { RentReceipt, Lease, Property, Tenant, LandlordSettings } from "../../../lib/landlord/types";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
@@ -61,6 +71,25 @@ function fmtDateTimeFR(val?: string | null) {
   const d = new Date(val);
   if (Number.isNaN(d.getTime())) return String(val);
   return d.toLocaleString("fr-FR");
+}
+
+function fmtDateTimeShortFR(val?: string | null) {
+  if (!val) return "—";
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return String(val);
+  return d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+// Ton visuel d'urgence de la tuile : reflète la même priorité que le tri des lignes,
+// sans dupliquer la logique métier (mêmes booléens déjà calculés sur `row`).
+function rowUrgencyTone(row: any) {
+  if (row.closedByDeposit) return { border: "border-violet-200", bg: "bg-violet-50/50", accent: "bg-violet-500" };
+  if (row.isLate) return { border: "border-red-300", bg: "bg-red-50/60", accent: "bg-red-500" };
+  if (row.pay?.ownerConfirmedUnpaid) return { border: "border-amber-300", bg: "bg-amber-50/60", accent: "bg-amber-500" };
+  if (row.payStatus === "partial") return { border: "border-orange-300", bg: "bg-orange-50/50", accent: "bg-orange-500" };
+  if (row.payStatus === "pending") return { border: "border-sky-200", bg: "bg-white", accent: "bg-sky-400" };
+  if (row.payStatus === "paid" && !row.sent) return { border: "border-emerald-200", bg: "bg-emerald-50/40", accent: "bg-emerald-500" };
+  return { border: "border-slate-200", bg: "bg-white", accent: "bg-slate-300" };
 }
 
 async function safeJson(resp: Response) {
@@ -1540,7 +1569,7 @@ export function SectionQuittances({
           )}
         </Card>
       ) : (
-      <div className="grid gap-5 lg:grid-cols-[1fr,420px]">
+      <div className={cx("grid gap-5", view === "todo" ? "grid-cols-1" : "lg:grid-cols-[1fr,420px]")}>
         <Card
           title={
             <span>
@@ -1573,15 +1602,18 @@ export function SectionQuittances({
                 const pdfReady = row.pdfReady;
                 const canSnooze = canSnoozeReceiptTask(row);
                 const isSnoozed = snoozedReceiptKeys.has(String(row.key));
+                const tone = rowUrgencyTone(row);
 
                 return (
                   <div
                     key={row.key}
-                    className={cx("rounded-2xl border p-3 bg-white flex flex-col gap-2", row.isLate ? "border-red-200" : "border-slate-200")}
+                    className={cx("flex gap-4 rounded-2xl border p-5 shadow-sm", tone.border, tone.bg)}
                   >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{label}</p>
+                    <span className={cx("mt-0.5 w-1 shrink-0 self-stretch rounded-full", tone.accent)} aria-hidden="true" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-3">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0 lg:max-w-2xl">
+                        <p className="text-[0.95rem] font-bold text-slate-900 truncate">{label}</p>
 
                         <p className="text-xs text-slate-500">
                           {fmtMonthLabel(row.month)}
@@ -1589,7 +1621,7 @@ export function SectionQuittances({
                           {" · "}Échéance <span className="font-semibold text-slate-700">{fmtDateShort(row.sched.dueDate)}</span>
                         </p>
 
-                        <p className="mt-1.5 text-base font-bold text-slate-900">
+                        <p className="mt-1.5 text-xl font-extrabold tabular-nums text-slate-900">
                           {fmtEur(row.payStatus === "partial" ? row.pay.receivedTotal : row.pay.expectedTotal)}
                           <span className="ml-1.5 text-xs font-normal text-slate-500">
                             loyer {fmtEur(row.pay.expectedRent)}
@@ -1598,7 +1630,7 @@ export function SectionQuittances({
                         </p>
 
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className={cx("inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold", pillTonePay(row.payStatus))}>
+                          <span className={cx("inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold", pillTonePay(row.payStatus))}>
                             {payLabel(row.payStatus)}
                           </span>
 
@@ -1617,10 +1649,11 @@ export function SectionQuittances({
                             const last = sends[0];
                             return (
                               <span
-                                className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[0.7rem] font-semibold text-indigo-800"
+                                className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[0.7rem] font-semibold text-indigo-800"
                                 title={sends.length > 1 ? `${sends.length} relances envoyées pour cette période` : "Relance envoyée pour cette période"}
                               >
-                                Relancé le {fmtDateTimeFR(last.sent_at)}{sends.length > 1 ? ` (×${sends.length})` : ""}
+                                <ClockIcon className="h-3 w-3" aria-hidden="true" />
+                                Relancé le {fmtDateTimeShortFR(last.sent_at)}{sends.length > 1 ? ` (×${sends.length})` : ""}
                               </span>
                             );
                           })()}
@@ -1681,7 +1714,7 @@ export function SectionQuittances({
                         </div>
                       </div>
 
-                      <div className="flex flex-col gap-2 sm:min-w-[142px]">
+                      <div className="flex flex-wrap items-start gap-2 sm:justify-end lg:shrink-0 lg:flex-nowrap">
                         {row.closedByDeposit ? (
                           <span className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-center text-xs font-semibold text-violet-800">
                             Compensé par caution
@@ -1702,10 +1735,11 @@ export function SectionQuittances({
                                   },
                                 }));
                               }}
-                              className={cx("rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800", loading && "opacity-60")}
-                              title="Confirme le paiement complet recu pour cette periode."
+                              className={cx("inline-flex items-center justify-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800", loading && "opacity-60")}
+                              title="Confirme le paiement complet reçu pour cette période."
                             >
-                              {row.payStatus === "partial" ? "Solde recu" : "Confirmer paye"}
+                              <CheckCircleIcon className="h-4 w-4" aria-hidden="true" />
+                              {row.payStatus === "partial" ? "Solde reçu" : "Confirmer payé"}
                             </button>
                             {!(lease as any).receipts_disabled ? (
                               <button
@@ -1713,7 +1747,7 @@ export function SectionQuittances({
                                 disabled={loading || !canUseReceiptAutomation}
                                 onClick={() => sendPaymentReminderForRow(row)}
                                 className={cx(
-                                  "rounded-full border px-4 py-2 text-xs font-semibold",
+                                  "inline-flex items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-xs font-semibold",
                                   canUseReceiptAutomation
                                     ? "border-orange-200 bg-orange-50 text-orange-900 hover:bg-orange-100"
                                     : "border-slate-200 bg-slate-100 text-slate-500",
@@ -1721,6 +1755,7 @@ export function SectionQuittances({
                                 )}
                                 title={canUseReceiptAutomation ? "Envoie une relance au locataire après validation." : "Relance email réservée aux abonnements payants."}
                               >
+                                <BellAlertIcon className="h-4 w-4" aria-hidden="true" />
                                 {canUseReceiptAutomation ? "Relancer" : "Relance premium"}
                               </button>
                             ) : null}
@@ -1734,9 +1769,10 @@ export function SectionQuittances({
                             type="button"
                             disabled={loading}
                             onClick={() => generatePdfForRow(row)}
-                            className={cx("rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-600", loading && "opacity-60")}
+                            className={cx("inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-600", loading && "opacity-60")}
                             title="Génère la quittance PDF après paiement confirmé."
                           >
+                            <DocumentArrowDownIcon className="h-4 w-4" aria-hidden="true" />
                             Générer PDF
                           </button>
                         ) : !row.sent ? (
@@ -1745,7 +1781,7 @@ export function SectionQuittances({
                             disabled={loading}
                             onClick={() => (canUseReceiptAutomation ? sendReceiptForRow(row) : markManualDeliveredForRow(row))}
                             className={cx(
-                              "rounded-full px-4 py-2 text-xs font-semibold text-white",
+                              "inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-white",
                               canUseReceiptAutomation ? "bg-sky-700 hover:bg-sky-600" : "bg-emerald-700 hover:bg-emerald-600",
                               loading && "opacity-60"
                             )}
@@ -1755,6 +1791,7 @@ export function SectionQuittances({
                                 : "Confirme que tu as remis ou envoyé le PDF au locataire manuellement."
                             }
                           >
+                            <PaperAirplaneIcon className="h-4 w-4" aria-hidden="true" />
                             {canUseReceiptAutomation ? "Envoyer" : "Quittance remise"}
                           </button>
                         ) : (
@@ -1769,12 +1806,13 @@ export function SectionQuittances({
                             disabled={loading || !pdfReady}
                             onClick={() => receipt && openPdf(receipt)}
                             className={cx(
-                              "rounded-full px-4 py-2 text-xs font-semibold",
+                              "inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold",
                               "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
                               (!pdfReady || loading) && "opacity-60"
                             )}
                             title={pdfReady ? "Ouvrir le PDF de quittance" : "PDF indisponible tant que la quittance n’est pas générée"}
                           >
+                            <EyeIcon className="h-4 w-4" aria-hidden="true" />
                             Voir PDF
                           </button>
                         ) : null}
@@ -1785,11 +1823,12 @@ export function SectionQuittances({
                             disabled={loading || (!receipt && !row.payment)}
                             onClick={() => cancelPaymentForRow(row)}
                             className={cx(
-                              "rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50",
+                              "inline-flex items-center justify-center gap-1.5 rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50",
                               (loading || (!receipt && !row.payment)) && "opacity-60"
                             )}
                             title="Annule la confirmation de paiement, supprime le PDF de quittance et retire l’écriture Finance automatique."
                           >
+                            <XCircleIcon className="h-4 w-4" aria-hidden="true" />
                             Annuler paiement
                           </button>
                         ) : null}
@@ -1800,7 +1839,7 @@ export function SectionQuittances({
                             disabled={loading}
                             onClick={() => (isSnoozed ? restoreReceiptTask(row) : snoozeReceiptTask(row))}
                             className={cx(
-                              "rounded-full border px-4 py-2 text-xs font-semibold transition",
+                              "inline-flex items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-xs font-semibold transition",
                               isSnoozed
                                 ? "border-slate-300 bg-slate-50 text-slate-700 hover:bg-white"
                                 : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
@@ -1812,6 +1851,7 @@ export function SectionQuittances({
                                 : "Masque cette quittance si tu ne souhaites pas l’envoyer au locataire."
                             }
                           >
+                            <EyeSlashIcon className="h-4 w-4" aria-hidden="true" />
                             {isSnoozed ? "Réactiver" : "Masquer"}
                           </button>
                         ) : null}
@@ -1836,17 +1876,13 @@ export function SectionQuittances({
                       <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                         Non reçu déclaré · si le virement arrive, clique sur &laquo;&nbsp;Confirmer payé&nbsp;&raquo;.
                       </div>
-                    ) : row.payStatus === "pending" && !row.isLate ? (
-                      <div className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-sky-700">
-                        En attente · loyer dû le <span className="font-semibold">{fmtDateShort(row.sched.dueDate)}</span>.
-                      </div>
                     ) : row.payStatus === "paid" && !pdfReady && !(row.lease as any).receipts_disabled ? (
                       <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                         Paiement confirmé · génère la quittance PDF.
                       </div>
                     ) : pdfReady && !row.sent && !row.lease.receipts_disabled ? (
                       <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-                        {canUseReceiptAutomation ? "PDF pret · envoie la quittance au locataire." : <>PDF pret · remets-le au locataire puis clique sur &laquo;&nbsp;Quittance remise&nbsp;&raquo;.</>}
+                        {canUseReceiptAutomation ? "PDF prêt · envoie la quittance au locataire." : <>PDF prêt · remets-le au locataire puis clique sur &laquo;&nbsp;Quittance remise&nbsp;&raquo;.</>}
                       </div>
                     ) : null}
 
@@ -1914,6 +1950,7 @@ export function SectionQuittances({
                         </div>
                       );
                     })()}
+                    </div>
                   </div>
                 );
               })}
@@ -1921,6 +1958,7 @@ export function SectionQuittances({
           )}
         </Card>
 
+        {view === "month" ? (
         <Card title="Clôturées (période)" right={<span className="text-sm text-slate-500">{sentThisMonth.length}</span>}>
           {sentThisMonth.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
@@ -2012,6 +2050,7 @@ export function SectionQuittances({
             </div>
           ) : null}
         </Card>
+        ) : null}
       </div>
       )}
 
