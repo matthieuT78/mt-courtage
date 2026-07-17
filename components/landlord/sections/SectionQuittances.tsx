@@ -383,13 +383,31 @@ export function SectionQuittances({
 }: Props) {
   const { canUseLandlord } = usePermissions();
   const canUseReceiptAutomation = canUseLandlord;
-  const safeReceipts = Array.isArray(receipts) ? receipts : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safePayments = Array.isArray(payments) ? payments : [];
-  const activeLeases = useMemo(() => safeLeases.filter(isSelectableLeaseLike), [safeLeases]);
 
   const propsById = propertyById instanceof Map ? propertyById : new Map<string, Property>();
   const tenantsById = tenantById instanceof Map ? tenantById : new Map<string, Tenant>();
+
+  const delegatedLeaseIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const lease of safeLeases) {
+      const prop = propsById.get((lease as any).property_id);
+      if (prop && Array.isArray((prop as any).delegated_services) && (prop as any).delegated_services.includes("gestion_courante")) {
+        if (lease.id) ids.add(String(lease.id));
+      }
+    }
+    return ids;
+  }, [safeLeases, propsById]);
+
+  const safeReceipts = useMemo(
+    () => (Array.isArray(receipts) ? receipts : []).filter((r: any) => !delegatedLeaseIds.has(String(r.lease_id))),
+    [receipts, delegatedLeaseIds]
+  );
+  const activeLeases = useMemo(
+    () => safeLeases.filter(isSelectableLeaseLike).filter((l: any) => !delegatedLeaseIds.has(String(l.id))),
+    [safeLeases, delegatedLeaseIds]
+  );
 
   const [view, setView] = useState<"todo" | "month">("todo");
   const [month, setMonth] = useState<string>(toMonthISO(new Date()));
