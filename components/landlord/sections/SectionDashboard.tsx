@@ -591,24 +591,14 @@ export function SectionDashboard({
   }, [doneAtISO, manuallyDismissed, onboarding.percent, properties]);
 
   const linkSuggestions = useMemo(() => {
-    const activeLeasedPropertyIds = new Set(
-      (leases || []).filter(l => String(l.status || "").toLowerCase() === "active").map(l => l.property_id)
-    );
     const activeLeasedTenantIds = new Set(
       (leases || []).filter(l => String(l.status || "").toLowerCase() === "active").map(l => l.tenant_id)
-    );
-    const freeProperties = (properties || []).filter(
-      p => String((p as any).status || "").toLowerCase() !== "archived" && !activeLeasedPropertyIds.has(p.id)
     );
     const freeTenants = Array.from(tenantById.values()).filter(
       t => !(t as any).archived_at && !activeLeasedTenantIds.has(t.id)
     );
-    if (!freeProperties.length || !freeTenants.length) return [];
-    return freeTenants.slice(0, 3).map((tenant, i) => ({
-      tenant,
-      property: freeProperties[i] ?? freeProperties[0],
-    }));
-  }, [leases, properties, tenantById]);
+    return freeTenants.slice(0, 3).map(tenant => ({ tenant }));
+  }, [leases, tenantById]);
 
   useEffect(() => {
     const previous = prevPercentRef.current;
@@ -1591,12 +1581,12 @@ export function SectionDashboard({
       {/* ── Liens manquants ──────────────────────────────────────────────────── */}
       {linkSuggestions.length > 0 && (
         <div className="space-y-2">
-          <p className="px-1 text-[0.68rem] font-semibold uppercase tracking-wider text-slate-400">Liens à créer</p>
-          {linkSuggestions.map(({ tenant, property }) => (
+          <p className="px-1 text-[0.68rem] font-semibold uppercase tracking-wider text-slate-400">Locations à créer</p>
+          {linkSuggestions.map(({ tenant }) => (
             <button
-              key={`${tenant.id}-${property.id}`}
+              key={tenant.id}
               type="button"
-              onClick={() => onNavigateDeep?.("baux", { openCreate: true, prefillTenantId: tenant.id, prefillPropertyId: property.id })}
+              onClick={() => onNavigateDeep?.("baux", { openCreate: true, prefillTenantId: tenant.id })}
               className="flex w-full items-center gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 px-4 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-50 hover:shadow-sm active:scale-[0.99]"
             >
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100">
@@ -1604,9 +1594,9 @@ export function SectionDashboard({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-900">
-                  {tenant.full_name || "Locataire"} · {(property as any).label || (property as any).city || "Logement"}
+                  {tenant.full_name || "Locataire"}
                 </p>
-                <p className="text-xs text-slate-500">Locataire et logement non liés — créer la location</p>
+                <p className="text-xs text-slate-500">Locataire non lié à un bien via une location</p>
               </div>
               <span className="shrink-0 text-xs font-semibold text-indigo-600">Lier →</span>
             </button>
