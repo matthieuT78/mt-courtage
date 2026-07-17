@@ -354,7 +354,7 @@ function ToolTile({
       type="button"
       onClick={onOpen}
       className={
-        "group relative flex h-full min-h-[26rem] flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-gradient-to-br text-left shadow-[0_18px_50px_rgba(15,23,42,0.07)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)] " +
+        "group relative flex h-full min-h-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br text-left shadow-[0_18px_50px_rgba(15,23,42,0.07)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(15,23,42,0.12)] sm:min-h-[26rem] sm:rounded-[1.75rem] " +
         toneClasses.panel +
         " " +
         toneClasses.hover
@@ -362,30 +362,30 @@ function ToolTile({
     >
       <span className={"absolute -right-10 -top-10 h-32 w-32 rounded-full blur-3xl " + toneClasses.glow} />
       <div className={"h-1.5 bg-gradient-to-r " + toneClasses.bar} />
-      <div className="relative flex h-full flex-col p-5 sm:p-6">
-        <div className="flex items-start justify-between gap-4">
-          <span className={"flex h-12 w-12 items-center justify-center rounded-2xl shadow-lg ring-1 " + toneClasses.icon}>
-            {icon ?? <CalculatorIcon className="h-6 w-6" />}
+      <div className="relative flex h-full flex-col p-4 sm:p-6">
+        <div className="flex items-start justify-between gap-3 sm:gap-4">
+          <span className={"flex h-10 w-10 items-center justify-center rounded-2xl shadow-lg ring-1 sm:h-12 sm:w-12 " + toneClasses.icon}>
+            {icon ?? <CalculatorIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
           </span>
-          <span className={"rounded-full border px-3 py-1 text-xs font-semibold " + toneClasses.chip}>
+          <span className={"rounded-full border px-2.5 py-1 text-xs font-semibold sm:px-3 " + toneClasses.chip}>
             {status}
           </span>
         </div>
-        <p className="mt-5 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{eyebrow}</p>
-        <h3 className="mt-2 min-h-[3.5rem] text-xl font-semibold tracking-tight text-slate-950">{title}</h3>
+        <p className="mt-3 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:mt-5">{eyebrow}</p>
+        <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:min-h-[3.5rem]">{title}</h3>
         <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-        <div className="mt-5 rounded-2xl border border-white/70 bg-white/65 px-4 py-3 shadow-sm backdrop-blur">
+        <div className="mt-3 rounded-2xl border border-white/70 bg-white/65 px-3 py-2.5 shadow-sm backdrop-blur sm:mt-5 sm:px-4 sm:py-3">
           <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-slate-500">Sortie produite</p>
           <p className="mt-1 text-sm font-semibold text-slate-950">{metric}</p>
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
           {tags.map((item) => (
-            <span key={item} className="inline-flex min-h-9 items-center rounded-xl border border-white/70 bg-white/70 px-3 py-2 text-xs font-semibold leading-tight text-slate-700 shadow-sm">
+            <span key={item} className="inline-flex min-h-8 items-center rounded-xl border border-white/70 bg-white/70 px-2.5 py-1.5 text-xs font-semibold leading-tight text-slate-700 shadow-sm sm:min-h-9 sm:px-3 sm:py-2">
               {item}
             </span>
           ))}
         </div>
-        <span className={"mt-auto inline-flex pt-5 text-sm font-semibold group-hover:underline " + toneClasses.link}>Ouvrir l’outil →</span>
+        <span className={"mt-auto inline-flex pt-4 text-sm font-semibold group-hover:underline sm:pt-5 " + toneClasses.link}>Ouvrir l’outil →</span>
       </div>
     </button>
   );
@@ -2368,7 +2368,7 @@ export function SectionOutils({
     return (
       <>
         <section>
-          <div className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          <div className="grid items-stretch gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             <ToolTile
               title="Facturation eau"
               eyebrow="Outil historisé"
