@@ -16,6 +16,20 @@ declare global {
   }
 }
 
+function logClientError(message: string, stack?: string, extra?: object) {
+  // Uniquement en production
+  if (process.env.NODE_ENV !== "production") return;
+  try {
+    navigator.sendBeacon(
+      "/api/log-error",
+      new Blob(
+        [JSON.stringify({ source: "client", error_message: message, error_stack: stack, url: window.location.href, user_agent: navigator.userAgent, extra })],
+        { type: "application/json" }
+      )
+    );
+  } catch {}
+}
+
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
@@ -27,6 +41,22 @@ export default function App({ Component, pageProps }: AppProps) {
     router.events.on("routeChangeComplete", handleRouteChange);
     return () => router.events.off("routeChangeComplete", handleRouteChange);
   }, [router.events]);
+
+  useEffect(() => {
+    const onError = (event: ErrorEvent) => {
+      logClientError(event.message, event.error?.stack, { filename: event.filename, lineno: event.lineno });
+    };
+    const onUnhandled = (event: PromiseRejectionEvent) => {
+      const msg = event.reason instanceof Error ? event.reason.message : String(event.reason ?? "Unhandled promise rejection");
+      logClientError(msg, event.reason?.stack);
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onUnhandled);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onUnhandled);
+    };
+  }, []);
 
   // Capture du lien de parrainage (?ref=CODE) pour usage à l'inscription
   useEffect(() => {

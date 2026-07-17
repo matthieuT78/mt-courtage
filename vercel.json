@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/landlord-alerts",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/error-digest",
+      "schedule": "0 8 * * *"
     }
   ]
 }
