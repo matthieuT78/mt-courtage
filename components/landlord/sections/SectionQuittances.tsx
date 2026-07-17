@@ -20,7 +20,9 @@ type ReminderDraft = {
   emailAvailable: boolean;
   messagingAvailable: boolean;
   history: any[];
+  confirmResend: boolean;
 };
+type ReminderSend = { id: string; lease_id: string; period_start: string; period_end: string; sent_at: string; channels: string[]; trigger_type: "manual" | "automatic"; status: string };
 
 type Props = {
   userId: string;
@@ -417,6 +419,7 @@ export function SectionQuittances({
     steps: { label: string; status: "pending" | "loading" | "done" | "error" }[];
   } | null>(null);
   const [reminderSettings, setReminderSettings] = useState<Map<string, ReminderSetting>>(new Map());
+  const [reminderSendsByPeriod, setReminderSendsByPeriod] = useState<Map<string, ReminderSend[]>>(new Map());
   const [reminderDraft, setReminderDraft] = useState<ReminderDraft | null>(null);
   const [snoozedReceiptKeys, setSnoozedReceiptKeys] = useState<Set<string>>(new Set());
   const [confirmOverrideByRow, setConfirmOverrideByRow] = useState<Record<string, { rent: string; charges: string; paymentMethod: string }>>({});
@@ -444,6 +447,28 @@ export function SectionQuittances({
 
   useEffect(() => {
     loadReminderSettings().catch((error) => setErr(error?.message || "Erreur chargement paramètres de relance."));
+  }, [userId, canUseReceiptAutomation]);
+
+  const loadReminderHistory = async () => {
+    if (!canUseReceiptAutomation) return;
+    const headers = await authJsonHeaders();
+    const resp = await fetch(`/api/payments/reminder-history?userId=${encodeURIComponent(userId)}`, { headers });
+    const { raw, json } = await safeJson(resp);
+    throwApiError(resp, raw, json, "Erreur chargement historique de relance.");
+    const map = new Map<string, ReminderSend[]>();
+    for (const send of (json?.sends || []) as ReminderSend[]) {
+      const yyyymm = String(send.period_start || "").slice(0, 7);
+      if (!send.lease_id || !yyyymm) continue;
+      const key = periodKey(String(send.lease_id), yyyymm);
+      const list = map.get(key) || [];
+      list.push(send);
+      map.set(key, list);
+    }
+    setReminderSendsByPeriod(map);
+  };
+
+  useEffect(() => {
+    loadReminderHistory().catch((error) => setErr(error?.message || "Erreur chargement historique de relance."));
   }, [userId, canUseReceiptAutomation]);
 
   useEffect(() => {
@@ -1087,6 +1112,7 @@ export function SectionQuittances({
         emailAvailable: !!json.emailAvailable,
         messagingAvailable: !!json.messagingAvailable,
         history: json.history || [],
+        confirmResend: false,
       });
     } catch (e: any) {
       setErr(e?.message || "Erreur préparation relance.");
@@ -1123,8 +1149,8 @@ export function SectionQuittances({
       const { raw, json } = await safeJson(resp);
       throwApiError(resp, raw, json, "Erreur envoi relance.");
       setReminderDraft(null);
-      setOk(json?.status === "partial" ? "Relance envoyée sur le canal disponible. Vérifie le canal en erreur." : "Relance amiable envoyée au locataire ✅");
-      await onRefresh();
+      setOk(json?.status === "partial" ? "Relance envoyée sur le canal disponible. Vérifie le canal en erreur." : "Relance amiable envoyée au locataire ✅ — la tuile affiche désormais la date d'envoi.");
+      await Promise.all([onRefresh(), loadReminderHistory()]);
     } catch (error: any) {
       setErr(error?.message || "Erreur envoi relance.");
     } finally {
@@ -1584,6 +1610,20 @@ export function SectionQuittances({
                               ⚠ Retards récurrents ({tenantStatsByTenantId.get(String((lease as any).tenant_id))?.lateCount}/{tenantStatsByTenantId.get(String((lease as any).tenant_id))?.totalCount})
                             </span>
                           ) : null}
+
+                          {(() => {
+                            const sends = (reminderSendsByPeriod.get(String(row.key)) || []).slice().sort((a, b) => String(b.sent_at).localeCompare(String(a.sent_at)));
+                            if (!sends.length) return null;
+                            const last = sends[0];
+                            return (
+                              <span
+                                className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[0.7rem] font-semibold text-indigo-800"
+                                title={sends.length > 1 ? `${sends.length} relances envoyées pour cette période` : "Relance envoyée pour cette période"}
+                              >
+                                Relancé le {fmtDateTimeFR(last.sent_at)}{sends.length > 1 ? ` (×${sends.length})` : ""}
+                              </span>
+                            );
+                          })()}
 
                           {row.isLate ? (
                             <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.7rem] font-semibold text-red-800">
@@ -2180,6 +2220,31 @@ export function SectionQuittances({
                 ))}
               </div>
               {!reminderDraft.messagingAvailable ? <p className="text-xs text-amber-700">La messagerie lokt sera disponible après activation de l’espace locataire.</p> : null}
+
+              {reminderDraft.history.length > 0 ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs font-semibold text-amber-900">
+                    ⚠ {reminderDraft.history.length > 1 ? `${reminderDraft.history.length} relances déjà envoyées` : "Une relance a déjà été envoyée"} pour cette période — la dernière le {fmtDateTimeFR(reminderDraft.history[0]?.sent_at)}.
+                  </p>
+                  <div className="mt-2 space-y-1">
+                    {reminderDraft.history.map((entry) => (
+                      <p key={entry.id} className="text-xs text-amber-800">
+                        {fmtDateTimeFR(entry.sent_at)} · {(entry.channels || []).join(" + ")} · {Number(entry.missing_amount || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {entry.trigger_type === "automatic" ? "automatique" : "manuelle"}
+                      </p>
+                    ))}
+                  </div>
+                  <label className="mt-3 flex items-start gap-2 text-xs font-semibold text-amber-900">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5"
+                      checked={reminderDraft.confirmResend}
+                      onChange={(event) => setReminderDraft((draft) => (draft ? { ...draft, confirmResend: event.target.checked } : draft))}
+                    />
+                    Je confirme vouloir envoyer une nouvelle relance malgré l’envoi précédent.
+                  </label>
+                </div>
+              ) : null}
+
               <div>
                 <label className="text-xs font-semibold text-slate-700" htmlFor="payment-reminder-body">Message envoyé</label>
                 <textarea
@@ -2191,25 +2256,18 @@ export function SectionQuittances({
                   className="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 text-sm leading-6 text-slate-800"
                 />
               </div>
-              {reminderDraft.history.length > 0 ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs font-semibold text-slate-900">Historique de cette période</p>
-                  <div className="mt-2 space-y-1">
-                    {reminderDraft.history.map((entry) => (
-                      <p key={entry.id} className="text-xs text-slate-600">
-                        {fmtDateTimeFR(entry.sent_at)} · {(entry.channels || []).join(" + ")} · {Number(entry.missing_amount || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })} · {entry.trigger_type === "automatic" ? "automatique" : "manuelle"}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
             </div>
             <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4">
               <button type="button" disabled={loading} onClick={() => setReminderDraft(null)} className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50">
                 Annuler
               </button>
-              <button type="button" disabled={loading || !reminderDraft.channels.length} onClick={submitPaymentReminder} className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
-                {loading ? "Envoi…" : "Envoyer la relance"}
+              <button
+                type="button"
+                disabled={loading || !reminderDraft.channels.length || (reminderDraft.history.length > 0 && !reminderDraft.confirmResend)}
+                onClick={submitPaymentReminder}
+                className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+              >
+                {loading ? "Envoi…" : reminderDraft.history.length > 0 ? "Renvoyer quand même" : "Envoyer la relance"}
               </button>
             </div>
           </div>
