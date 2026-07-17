@@ -392,11 +392,13 @@ export function DashboardShell(props: any) {
   const onChangeTab = (k: LandlordSectionKey) => {
     setActive(k);
     setMobileMoreOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string }) {
     setActive(section);
     setMobileMoreOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
     let resolvedLink = link;
     if (link?.prefillCandidatureEmail && !link?.prefillTenantId) {
       const email = link.prefillCandidatureEmail.toLowerCase().trim();
