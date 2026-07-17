@@ -21,6 +21,7 @@ import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
 import { SectionTitle, formatEuro } from "../UiBits";
 import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
 import { cx } from "../ui/uiHelpers";
+import type { LandlordSectionKey } from "../navigation";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend);
 
@@ -71,11 +72,14 @@ type PropertyFinance = {
   rental_tax_monthly?: number | null;
 };
 
+type NavigateLink = { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillPropertyId?: string };
+
 type Props = {
   userId: string;
   leases?: Lease[];
   payments?: RentPayment[];
   propertyById?: Map<string, Property>;
+  onNavigateDeep?: (section: LandlordSectionKey, link?: NavigateLink) => void;
 };
 
 const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -93,6 +97,35 @@ const fmtDateFR = (iso?: string | null) => {
   const date = normalizeDate(iso);
   return date ? date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 };
+
+// Dernière date anniversaire du bail déjà passée (null si le bail a moins d'un an).
+function lastLeaseAnniversary(startDate: Date, today: Date): Date | null {
+  const first = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+  if (first > today) return null;
+  let anniversary = first;
+  while (true) {
+    const next = new Date(anniversary.getFullYear() + 1, anniversary.getMonth(), anniversary.getDate());
+    if (next > today) break;
+    anniversary = next;
+  }
+  return anniversary;
+}
+
+// Une révision IRL est considérée en retard si la dernière date anniversaire du bail
+// est passée sans qu'aucun envoi (irl_sent_at) ni application (irl_applied_at) ne l'ait suivie.
+function irlLateness(lease: Lease | undefined, today = new Date()): { leaseId: string; monthsLate: number } | null {
+  if (!lease) return null;
+  const start = normalizeDate(lease.start_date);
+  if (!start) return null;
+  const anniversary = lastLeaseAnniversary(start, today);
+  if (!anniversary) return null;
+  const sentAt = normalizeDate(lease.irl_sent_at);
+  const appliedAt = normalizeDate(lease.irl_applied_at);
+  const handled = (sentAt != null && sentAt >= anniversary) || (appliedAt != null && appliedAt >= anniversary);
+  if (handled) return null;
+  const monthsLate = Math.floor((today.getTime() - anniversary.getTime()) / (30.44 * 86400_000));
+  return monthsLate >= 1 ? { leaseId: lease.id, monthsLate } : null;
+}
 
 type PeriodMode = "month" | "last6" | "year" | "custom";
 
@@ -212,6 +245,7 @@ type FriendlyAction = {
   title: string;
   detail: string;
   tone: "red" | "amber" | "emerald" | "slate";
+  cta?: { label: string; section: LandlordSectionKey; link?: NavigateLink };
 };
 
 function actionsFor(row: PropertyRow): FriendlyAction[] {
@@ -224,18 +258,21 @@ function actionsFor(row: PropertyRow): FriendlyAction[] {
         tone: "red",
         title: "Aucun locataire — charges à découvert",
         detail: `${money(row.recurring)}/mois sortent sans revenu en face. Chaque mois vide coûte ${money(row.recurring)}. Rattachez le bail ou remettez le bien en location.`,
+        cta: { label: "Créer le bail", section: "baux", link: { openCreate: true, prefillPropertyId: row.propertyId } },
       });
     } else {
       actions.push({
         tone: "slate",
         title: "Créer ou rattacher le bail actif",
         detail: "Sans bail, ce bien est à 0 € dans tous vos indicateurs et sort du suivi des quittances.",
+        cta: { label: "Créer le bail", section: "baux", link: { openCreate: true, prefillPropertyId: row.propertyId } },
       });
     }
     actions.push({
       tone: "slate",
       title: "Archiver si le bien est sorti du parc",
       detail: "Un bien sans bail sans suivi alourdit vos tableaux. Archivez-le pour ne tracker que l’actif réel.",
+      cta: { label: "Voir le bien", section: "biens" },
     });
     return actions.slice(0, 3);
   }
@@ -247,6 +284,7 @@ function actionsFor(row: PropertyRow): FriendlyAction[] {
       tone: "amber",
       title: "Loyer non confirmé en banque",
       detail: `${money(row.expected - confirmedIncome)} restent à pointer. Dès le virement visible, validez-le dans Quittances pour que Finance le prenne en compte.`,
+      cta: { label: "Ouvrir Quittances", section: "quittances" },
     });
   }
 
@@ -278,12 +316,33 @@ function actionsFor(row: PropertyRow): FriendlyAction[] {
   }
 
   // ── 3. OPTIMISATIONS (visibles même si cashflow positif) ────────────────
+  if (row.irlLate) {
+    const gainMonthly = row.expected * 0.03;
+    actions.push({
+      tone: row.irlLate.monthsLate >= 6 ? "amber" : "slate",
+      title: `Révision IRL en retard de ${row.irlLate.monthsLate} mois`,
+      detail: `Une révision au rythme habituel (~3 %/an) rapporterait ~${money(gainMonthly)}/mois, soit environ ${money(gainMonthly * row.irlLate.monthsLate)} déjà manqués depuis l’échéance.`,
+      cta: { label: "Réviser l’IRL", section: "baux", link: { leaseId: row.irlLate.leaseId, openPanel: "irl" } },
+    });
+  }
+
+  if (row.marketRentEstimate != null && row.marketRentEstimate > row.expected * 1.05) {
+    const gap = row.marketRentEstimate - row.expected;
+    actions.push({
+      tone: gap > row.expected * 0.15 ? "amber" : "slate",
+      title: `${money(gap)}/mois sous le loyer de marché estimé`,
+      detail: `Loyer actuel ${money(row.expected)} vs ${money(row.marketRentEstimate)} estimé sur le marché. La révision IRL annuelle ne rattrape que ~3 %/an : un changement de locataire est le seul moyen de rattraper l’écart d’un coup.`,
+      cta: row.activeLeaseId ? { label: "Réviser l’IRL", section: "baux", link: { leaseId: row.activeLeaseId, openPanel: "irl" } } : undefined,
+    });
+  }
+
   if ((row.loanRate ?? 0) >= 3.5 && row.loanMonthly > 0 && (row.loanRemainingMonths ?? 0) > 24) {
     const gain = Math.round(row.loanMonthly * 0.08);
     actions.push({
       tone: row.cashflow < 0 ? "amber" : "slate",
       title: `Crédit à ${row.loanRate} % — renégociation à évaluer`,
       detail: `Une baisse de 0,5 point peut libérer ~${money(gain)}/mois (${money(gain * 12)}/an) sur ${row.loanRemainingMonths} mois restants. À comparer au coût du rachat de crédit.`,
+      cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
     });
   }
 
@@ -356,6 +415,7 @@ function actionsFor(row: PropertyRow): FriendlyAction[] {
       tone: "slate",
       title: "Charges récurrentes non renseignées",
       detail: "Sans crédit, copro et assurance, le rendement est surestimé. Ajoutez-les via Finance > Nouvelle écriture > Charge récurrente.",
+      cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
     });
   }
 
@@ -364,6 +424,7 @@ function actionsFor(row: PropertyRow): FriendlyAction[] {
       tone: "slate",
       title: "Coût d’acquisition à compléter",
       detail: "Prix d’achat + frais notaire + travaux = base du rendement net. Sans ça, impossible de comparer ce bien à d’autres placements.",
+      cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
     });
   }
 
@@ -372,6 +433,7 @@ function actionsFor(row: PropertyRow): FriendlyAction[] {
       tone: "slate",
       title: "Régime fiscal non renseigné",
       detail: "LMNP réel, micro-foncier, Pinel… chaque régime change les charges déductibles et la lecture de la rentabilité.",
+      cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
     });
   }
 
@@ -380,6 +442,7 @@ function actionsFor(row: PropertyRow): FriendlyAction[] {
       tone: "slate",
       title: "Taux du crédit à renseigner",
       detail: "Sans taux, impossible de savoir si une renégociation peut changer l’équilibre de ce bien. À ajouter dans Finance > Paramètres du bien.",
+      cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
     });
   }
 
@@ -553,9 +616,12 @@ type PropertyRow = {
   latentGain: number | null;
   holdingYears: number | null;
   irr: number | null;
+  activeLeaseId: string | null;
+  marketRentEstimate: number | null;
+  irlLate: { leaseId: string; monthsLate: number } | null;
 };
 
-export function SectionPerformance({ userId, leases, payments, propertyById }: Props) {
+export function SectionPerformance({ userId, leases, payments, propertyById, onNavigateDeep }: Props) {
   const propsById = propertyById instanceof Map ? propertyById : new Map<string, Property>();
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safePayments = Array.isArray(payments) ? payments : [];
@@ -714,11 +780,9 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
       })
       .filter((id) => !propertyId || id === propertyId)
       .map((id) => {
-        const expected = sum(
-          activeLeases
-            .filter((lease) => lease.property_id === id)
-            .map((lease) => monthlyLeaseAmount(lease))
-        );
+        const propertyLeases = activeLeases.filter((lease) => lease.property_id === id);
+        const expected = sum(propertyLeases.map((lease) => monthlyLeaseAmount(lease)));
+        const primaryLease = propertyLeases[0] || null;
         const { start: pStart, end: pEnd, monthCount } = selectedPeriod;
         const received = sum(
           safePayments
@@ -818,6 +882,8 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
           Number.isFinite(avgAnnualCashflow)
             ? bisectionIRR(investment, avgAnnualCashflow, terminalValue, holdingYears)
             : null;
+        const marketRentEstimate = propsById.get(id)?.market_rent_estimate ?? null;
+        const irlLate = irlLateness(primaryLease || undefined);
 
         return {
           propertyId: id,
@@ -843,10 +909,30 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
           latentGain,
           holdingYears,
           irr,
+          activeLeaseId: primaryLease?.id || null,
+          marketRentEstimate,
+          irlLate,
         };
       })
       .sort((a, b) => b.cashflow - a.cashflow);
   }, [activeLeases, earliestDateByProperty, selectedPeriod, finance, includeArchivedProperties, leaseById, propertyId, propertyOptions, propsById, recurringParentTxByProperty, safeLeases, safePayments, tx]);
+
+  const portfolioSummary = useMemo(() => {
+    const negativeRows = propertyRows.filter((row) => row.cashflow < 0);
+    const totalDeficit = sum(negativeRows.map((row) => row.cashflow));
+    const renegotiableRows = propertyRows.filter(
+      (row) => (row.loanRate ?? 0) >= 3.5 && row.loanMonthly > 0 && (row.loanRemainingMonths ?? 0) > 24
+    );
+    const renegotiableGain = sum(renegotiableRows.map((row) => Math.round(row.loanMonthly * 0.08)));
+    const irlLateRows = propertyRows.filter((row) => row.irlLate);
+    return {
+      negativeCount: negativeRows.length,
+      totalDeficit,
+      renegotiableCount: renegotiableRows.length,
+      renegotiableGain,
+      irlLateCount: irlLateRows.length,
+    };
+  }, [propertyRows]);
 
   const series = useMemo(() => {
     const propertyIds = propertyRows.map((row) => row.propertyId);
@@ -1533,6 +1619,32 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
           </div>
         </div>
 
+        {/* Portfolio summary */}
+        {propertyRows.length > 1 ? (
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Portefeuille</p>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <p className="text-lg font-semibold text-slate-950">
+                {portfolioSummary.negativeCount > 0
+                  ? `${portfolioSummary.negativeCount} bien${portfolioSummary.negativeCount > 1 ? "s" : ""} en cashflow négatif`
+                  : "Tous les biens sont à l’équilibre ou positifs"}
+              </p>
+              {portfolioSummary.negativeCount > 0 ? (
+                <span className="text-sm font-semibold text-rose-700">{money(portfolioSummary.totalDeficit)}/mois au total</span>
+              ) : null}
+            </div>
+            {portfolioSummary.renegotiableGain > 0 ? (
+              <p className="mt-1 text-sm text-slate-600">
+                Premier levier : {portfolioSummary.renegotiableCount} crédit{portfolioSummary.renegotiableCount > 1 ? "s" : ""} à ≥ 3,5 % renégociable{portfolioSummary.renegotiableCount > 1 ? "s" : ""}, soit ~{money(portfolioSummary.renegotiableGain)}/mois potentiels.
+              </p>
+            ) : portfolioSummary.irlLateCount > 0 ? (
+              <p className="mt-1 text-sm text-slate-600">
+                Premier levier : {portfolioSummary.irlLateCount} révision{portfolioSummary.irlLateCount > 1 ? "s" : ""} IRL en retard — voir le détail bien par bien ci-dessous.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         {/* Per-property paired rows */}
         {propertyRows.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">
@@ -1612,9 +1724,18 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
                         <div key={action.title} className={`rounded-2xl border px-3 py-2.5 ${bg}`}>
                           <div className="flex items-start gap-2">
                             <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
-                            <div>
+                            <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-slate-950">{action.title}</p>
                               <p className="mt-0.5 text-sm leading-6 text-slate-600">{action.detail}</p>
+                              {action.cta && onNavigateDeep ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onNavigateDeep(action.cta!.section, action.cta!.link)}
+                                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-900 underline underline-offset-2 hover:text-slate-700"
+                                >
+                                  {action.cta.label} →
+                                </button>
+                              ) : null}
                             </div>
                           </div>
                         </div>

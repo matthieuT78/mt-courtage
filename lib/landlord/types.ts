@@ -32,6 +32,7 @@ export type Property = {
   updated_at: string;
   delegated_services?: string[];
   delegation_agency_name?: string | null;
+  market_rent_estimate?: number | null;
 };
 
 export type PropertyFinance = {
@@ -109,6 +110,9 @@ export type Lease = {
   tenant_receipt_email: string | null;
   timezone: string | null;
   tracking_from_date?: string | null;
+  irl_sent_at?: string | null;
+  irl_applied_at?: string | null;
+  irl_apply_on?: string | null;
   created_at: string;
   updated_at: string;
 };

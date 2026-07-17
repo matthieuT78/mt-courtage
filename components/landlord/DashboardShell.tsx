@@ -696,7 +696,7 @@ export function DashboardShell(props: any) {
         );
 
       case "performance":
-        return <SectionPerformance userId={userId} leases={leases} payments={payments} propertyById={propertyById} />;
+        return <SectionPerformance userId={userId} leases={leases} payments={payments} propertyById={propertyById} onNavigateDeep={navigateDeep} />;
 
       case "outils":
         return <SectionOutils userId={userId} properties={properties} leases={leases} tenants={tenants} plan={plan} onRefresh={refresh} />;

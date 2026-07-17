@@ -139,7 +139,7 @@ type Props = {
   propertyById?: Map<string, Property>;
   properties?: Property[];
   onRefresh?: () => Promise<void> | void;
-  deepLink?: { key: number; openCreate?: boolean } | null;
+  deepLink?: { key: number; openCreate?: boolean; prefillPropertyId?: string } | null;
 };
 
 const toMonthISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -527,6 +527,17 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       document.getElementById("finance-pilotage")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
     setTimeout(() => setHighlightFinanceConfig(false), 2500);
+  }, [deepLink]);
+
+  useEffect(() => {
+    const propertyId = deepLink?.prefillPropertyId;
+    if (!propertyId) return;
+    setTab("finance");
+    setAnalysisPropertyId(propertyId);
+    setOpenFinanceProps((prev) => (prev.has(propertyId) ? prev : new Set(prev).add(propertyId)));
+    setTimeout(() => {
+      document.getElementById(`finance-property-${propertyId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
   }, [deepLink]);
 
   // Filtres liste
@@ -2425,7 +2436,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               ].filter(Boolean);
 
               return (
-                <div key={property.id}>
+                <div key={property.id} id={`finance-property-${property.id}`}>
                   <button
                     type="button"
                     className="w-full px-4 py-3 text-left hover:bg-slate-50"
