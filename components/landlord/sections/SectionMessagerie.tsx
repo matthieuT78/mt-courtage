@@ -1,5 +1,5 @@
 import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChatBubbleLeftRightIcon, NoSymbolIcon, PaperAirplaneIcon, UserPlusIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon, ChatBubbleLeftRightIcon, ChevronRightIcon, NoSymbolIcon, PaperAirplaneIcon, UserPlusIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import { cx } from "../ui/uiHelpers";
@@ -45,6 +45,13 @@ async function authHeaders() {
 function tenantName(tenant?: Tenant | null) {
   if (!tenant) return "Locataire";
   return tenant.full_name || [tenant.first_name, tenant.last_name].filter(Boolean).join(" ") || tenant.email || "Locataire";
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function formatDate(value?: string | null) {
@@ -227,12 +234,12 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
       {err ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
-      <div className="mt-5 grid min-h-[620px] overflow-hidden rounded-2xl border border-slate-200 lg:grid-cols-[310px,1fr]">
-        <aside className="border-b border-slate-200 bg-slate-50 lg:border-b-0 lg:border-r">
+      <div className="mt-5 grid overflow-hidden rounded-2xl border border-slate-200 lg:min-h-[620px] lg:grid-cols-[310px,1fr]">
+        <aside className={cx("border-b border-slate-200 bg-slate-50 lg:border-b-0 lg:border-r", selectedRow ? "hidden lg:block" : "block")}>
           <div className="border-b border-slate-200 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Locataires</p>
           </div>
-          <div className="max-h-[260px] overflow-y-auto lg:max-h-[570px]">
+          <div className="lg:max-h-[570px] lg:overflow-y-auto">
             {rows.length === 0 ? (
               <div className="px-4 py-5 text-sm text-slate-500">Aucun locataire pour l'instant.</div>
             ) : null}
@@ -242,33 +249,57 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
                 type="button"
                 onClick={() => setSelectedTenantId(row.tenant.id)}
                 className={cx(
-                  "w-full border-b border-slate-200 px-4 py-3 text-left transition",
-                  selectedTenantId === row.tenant.id ? "bg-white" : "hover:bg-white/80"
+                  "flex w-full items-center gap-3 border-b border-slate-100 px-4 py-2.5 text-left transition last:border-b-0",
+                  selectedTenantId === row.tenant.id ? "bg-white lg:bg-indigo-50/60" : "hover:bg-white/80"
                 )}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="truncate text-sm font-semibold text-slate-950">{tenantName(row.tenant)}</p>
-                  {row.unreadCount > 0 ? (
-                    <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[0.65rem] font-bold text-white">{row.unreadCount}</span>
-                  ) : null}
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">
+                  {initials(tenantName(row.tenant))}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-semibold text-slate-950">{tenantName(row.tenant)}</p>
+                    {row.unreadCount > 0 ? (
+                      <span className="shrink-0 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[0.65rem] font-bold leading-none text-white">
+                        {row.unreadCount}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="truncate text-xs text-slate-500">
+                    {row.latestMessage?.body || (row.access ? "Aucun message pour l’instant" : "Espace locataire à inviter")}
+                  </p>
                 </div>
-                <p className="mt-1 truncate text-xs text-slate-500">{row.latestMessage?.body || "Aucun message pour l’instant"}</p>
-                <p className="mt-1 text-[0.68rem] font-semibold text-slate-400">
-                  {row.access ? "Espace locataire activé" : "Espace locataire à inviter"}
-                </p>
+                <ChevronRightIcon className="h-4 w-4 shrink-0 text-slate-300 lg:hidden" aria-hidden="true" />
               </button>
             ))}
           </div>
         </aside>
 
-        <section className="flex min-h-[450px] flex-col">
+        <section
+          className={cx(
+            "flex-col",
+            selectedRow
+              ? "fixed inset-0 z-[60] flex bg-white lg:static lg:z-auto lg:min-h-[450px]"
+              : "hidden lg:flex lg:min-h-[450px]"
+          )}
+        >
           {selectedRow ? (
             <>
               <header className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-950">{tenantName(selectedRow.tenant)}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{selectedRow.tenant.email || "Email locataire manquant"}</p>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTenantId(null)}
+                      className="-ml-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 lg:hidden"
+                      aria-label="Retour à la liste des locataires"
+                    >
+                      <ArrowLeftIcon className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-950">{tenantName(selectedRow.tenant)}</p>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">{selectedRow.tenant.email || "Email locataire manquant"}</p>
+                    </div>
                   </div>
                   {!selectedRow.access ? (
                     <button
@@ -347,7 +378,10 @@ export function SectionMessagerie({ initialTenantId, onTenantSelected }: Props) 
                 <div ref={messagesEndRef} />
               </div>
 
-              <form onSubmit={sendMessage} className="flex gap-2 border-t border-slate-200 bg-white p-3">
+              <form
+                onSubmit={sendMessage}
+                className="flex gap-2 border-t border-slate-200 bg-white p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] lg:pb-3"
+              >
                 <textarea
                   rows={2}
                   value={body}
