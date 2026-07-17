@@ -808,6 +808,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const [ok, setOk] = useState<string | null>(null);
   const [contractLeaseId, setContractLeaseId] = useState<string | null>(null);
   const [historyOpenByLease, setHistoryOpenByLease] = useState<Record<string, boolean>>({});
+  const [renewalOpenByLease, setRenewalOpenByLease] = useState<Record<string, boolean>>({});
+  const [quittanceOpenByLease, setQuittanceOpenByLease] = useState<Record<string, boolean>>({});
   const [confirmDeleteLeaseId, setConfirmDeleteLeaseId] = useState<string | null>(null);
   const [confirmCancelDepositByLease, setConfirmCancelDepositByLease] = useState<Record<string, "cancel_collect" | "cancel_return" | null>>({});
 
@@ -1556,6 +1558,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     const renewal = leaseRenewalInfo(l);
     const history = buildLeaseHistory(l, safePayments, safeReceipts);
     const historyOpen = !!historyOpenByLease[l.id];
+    const renewalOpen = renewalOpenByLease[l.id] ?? (renewal.tone === "amber" || renewal.tone === "red");
+    const quittanceOpen = quittanceOpenByLease[l.id] ?? (flow.blockers.length > 0 || flow.warnings.length > 0);
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
@@ -1637,7 +1641,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 text-sm">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 text-sm">
           <div className="rounded-xl border border-slate-200 bg-white p-3">
             <div className="flex items-center justify-between">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Bien</p>
@@ -1684,7 +1688,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
+          <div className="col-span-2 rounded-xl border border-slate-200 bg-white p-3">
             <div className="flex items-center justify-between">
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Montants</p>
               <span className={cx("h-2 w-2 rounded-full", Number(l.rent_amount || 0) > 0 ? "bg-emerald-400" : "bg-amber-400")} />
@@ -1701,39 +1705,60 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <button
+            type="button"
+            onClick={(e) => {
+              stop(e);
+              setRenewalOpenByLease((prev) => ({ ...prev, [l.id]: !prev[l.id] }));
+            }}
+            aria-expanded={renewalOpen}
+            className="flex w-full flex-col gap-3 text-left md:flex-row md:items-start md:justify-between"
+          >
             <div>
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Renouvellement du bail</p>
               <p className="mt-1 text-sm font-semibold text-slate-900">{renewal.status}</p>
               <p className="mt-1 text-xs text-slate-600">{renewal.rule.note}</p>
             </div>
-            {badge(renewal.tone, renewal.detail)}
-          </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {badge(renewal.tone, renewal.detail)}
+              <ChevronDownIcon className={cx("h-4 w-4 text-slate-400 transition-transform", renewalOpen && "rotate-180")} aria-hidden="true" />
+            </div>
+          </button>
 
-          <div className="mt-3 grid gap-3 md:grid-cols-3">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[0.7rem] font-semibold text-slate-500">Nature</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{renewal.rule.short}</p>
-              <p className="text-xs text-slate-600">{renewal.rule.renewalLabel}</p>
+          {renewalOpen ? (
+            <div className="mt-3 grid gap-3 md:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[0.7rem] font-semibold text-slate-500">Nature</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{renewal.rule.short}</p>
+                <p className="text-xs text-slate-600">{renewal.rule.renewalLabel}</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[0.7rem] font-semibold text-slate-500">Suivi lokt.fr</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {renewal.renewalEnabled ? "Reconduction suivie" : "Fin contractuelle suivie"}
+                </p>
+                <p className="text-xs text-slate-600">
+                  {renewal.currentEnd ? `Échéance courante : ${fmtFR(renewal.currentEnd)}` : "Date à compléter"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[0.7rem] font-semibold text-slate-500">Action recommandée</p>
+                <p className="mt-1 text-sm leading-5 text-slate-800">{renewal.nextAction}</p>
+              </div>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[0.7rem] font-semibold text-slate-500">Suivi lokt.fr</p>
-              <p className="mt-1 text-sm font-semibold text-slate-900">
-                {renewal.renewalEnabled ? "Reconduction suivie" : "Fin contractuelle suivie"}
-              </p>
-              <p className="text-xs text-slate-600">
-                {renewal.currentEnd ? `Échéance courante : ${fmtFR(renewal.currentEnd)}` : "Date à compléter"}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[0.7rem] font-semibold text-slate-500">Action recommandée</p>
-              <p className="mt-1 text-sm leading-5 text-slate-800">{renewal.nextAction}</p>
-            </div>
-          </div>
+          ) : null}
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <button
+            type="button"
+            onClick={(e) => {
+              stop(e);
+              setQuittanceOpenByLease((prev) => ({ ...prev, [l.id]: !prev[l.id] }));
+            }}
+            aria-expanded={quittanceOpen}
+            className="flex w-full flex-col gap-3 text-left md:flex-row md:items-start md:justify-between"
+          >
             <div>
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Workflow quittance</p>
               <p className="mt-1 text-sm font-semibold text-slate-900">{flow.modeLabel}</p>
@@ -1742,23 +1767,30 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                 {" • "}Validation bailleur : <span className="font-semibold">{emailOrDash(flow.ownerEmail)}</span>
               </p>
             </div>
-            {badge(flow.tone as any, flow.label)}
-          </div>
-
-          <p className="mt-3 text-xs leading-5 text-slate-600">
-            {flow.auto
-              ? "Après confirmation du paiement par le bailleur, la quittance PDF est générée, archivée puis envoyée au locataire."
-              : "Le paiement et la quittance sont traités manuellement depuis l’onglet Quittances."}
-          </p>
-
-          {flow.blockers.length || flow.warnings.length ? (
-            <div className={cx("mt-3 rounded-xl border px-3 py-2 text-xs", workflowNoticeClass(flow.tone))}>
-              {flow.noticeTitle ? <p className="mb-1 font-semibold">{flow.noticeTitle}</p> : null}
-              {[...flow.blockers, ...flow.warnings].map((m) => (
-                <p key={m}>• {m}</p>
-              ))}
-              {flow.noticeAdvice ? <p className="mt-2 font-medium">{flow.noticeAdvice}</p> : null}
+            <div className="flex shrink-0 items-center gap-2">
+              {badge(flow.tone as any, flow.label)}
+              <ChevronDownIcon className={cx("h-4 w-4 text-slate-400 transition-transform", quittanceOpen && "rotate-180")} aria-hidden="true" />
             </div>
+          </button>
+
+          {quittanceOpen ? (
+            <>
+              <p className="mt-3 text-xs leading-5 text-slate-600">
+                {flow.auto
+                  ? "Après confirmation du paiement par le bailleur, la quittance PDF est générée, archivée puis envoyée au locataire."
+                  : "Le paiement et la quittance sont traités manuellement depuis l’onglet Quittances."}
+              </p>
+
+              {flow.blockers.length || flow.warnings.length ? (
+                <div className={cx("mt-3 rounded-xl border px-3 py-2 text-xs", workflowNoticeClass(flow.tone))}>
+                  {flow.noticeTitle ? <p className="mb-1 font-semibold">{flow.noticeTitle}</p> : null}
+                  {[...flow.blockers, ...flow.warnings].map((m) => (
+                    <p key={m}>• {m}</p>
+                  ))}
+                  {flow.noticeAdvice ? <p className="mt-2 font-medium">{flow.noticeAdvice}</p> : null}
+                </div>
+              ) : null}
+            </>
           ) : null}
         </div>
 
