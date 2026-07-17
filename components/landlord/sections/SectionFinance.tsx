@@ -2133,8 +2133,83 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           </span>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
+        {/* Liste compacte (mobile) — une ligne par écriture */}
+        <div className="divide-y divide-slate-100 px-3 md:hidden">
+          {filteredMonthLedger.length === 0 ? (
+            <p className="px-1 py-4 text-sm text-slate-500">Aucune écriture sur cette période (ou filtres trop restrictifs).</p>
+          ) : (
+            filteredMonthLedger.map((r) => {
+              const docs = txDocsByTransactionId.get(r.id) || [];
+              const canEdit = !r.receipt_id && !DEPOSIT_CATS.includes(r.category);
+              const shortDate = r.occurred_at
+                ? new Date(r.occurred_at.slice(0, 10) + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
+                : "—";
+
+              return (
+                <div key={r.id} className="flex items-center gap-2 py-2">
+                  <button
+                    type="button"
+                    disabled={!canEdit}
+                    title={canEdit ? "Modifier cette écriture" : undefined}
+                    onClick={() => canEdit && openEditTx(r)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    <span className="w-12 shrink-0 text-[0.7rem] text-slate-500">{shortDate}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-slate-900">{r.label || categoryLabel(r.category)}</span>
+                  </button>
+
+                  <span className={cx("shrink-0 text-sm font-semibold", r.direction === "out" ? "text-rose-700" : "text-emerald-700")}>
+                    {r.direction === "out" ? "−" : "+"}{formatEuro(Number(r.amount || 0))}
+                  </span>
+
+                  <label
+                    title={docs.length ? `${docs.length} pièce${docs.length > 1 ? "s" : ""}` : "Joindre une pièce"}
+                    className={cx(
+                      "inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border",
+                      docs.length ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-500",
+                      uploadingDocId === r.id && "opacity-60"
+                    )}
+                  >
+                    <PaperClipIcon className="h-3.5 w-3.5" />
+                    <input
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      disabled={uploadingDocId === r.id}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+                        void attachDocumentFromLedger(r, file);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+
+                  {canEdit ? (
+                    confirmDeleteTxId === r.id ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 text-xs">
+                        <button type="button" disabled={deleteBusy} onClick={() => { setConfirmDeleteTxId(null); deleteOneTx(r); }} className="font-semibold text-red-600 hover:text-red-800 disabled:opacity-40">Oui</button>
+                        <button type="button" onClick={() => setConfirmDeleteTxId(null)} className="text-slate-400 hover:text-slate-600">Non</button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        title="Supprimer cette écriture"
+                        disabled={deleteBusy}
+                        onClick={() => setConfirmDeleteTxId(r.id)}
+                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                      >
+                        <TrashIcon className="h-3.5 w-3.5" />
+                      </button>
+                    )
+                  ) : null}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Table (desktop) */}
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full table-fixed text-sm">
             <thead className="border-b border-slate-200 bg-slate-50">
               <tr className="text-left">
