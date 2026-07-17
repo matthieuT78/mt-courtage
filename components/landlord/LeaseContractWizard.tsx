@@ -382,10 +382,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
               )
             ) : null}
             <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><DocumentArrowUpIcon className="h-4 w-4"/>{loading ? "Import..." : document?.external_pdf_url ? "Remplacer le PDF" : "Importer mon bail"}<input type="file" accept="application/pdf" className="hidden" disabled={loading} onChange={(event) => uploadExternal(event.target.files?.[0])}/></label>
-            {document?.external_pdf_url
-              ? <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Contrat juridique enregistré<XMarkIcon className="h-4 w-4"/></button>
-              : <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><XMarkIcon className="h-4 w-4"/>Fermer</button>
-            }
+            <button type="button" onClick={onClose} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><XMarkIcon className="h-4 w-4"/>Fermer</button>
           </div>
         </div>
       </Modal>
