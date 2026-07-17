@@ -6,6 +6,7 @@ date: "2026-07-15"
 category: "Gestion locative"
 tags: ["révision loyer", "IRL 2026", "augmentation loyer", "bailleur", "indice référence loyers"]
 relatedCalculators: ["parc-immobilier"]
+coverImage: "/blog/irl-revision-loyer.jpg"
 faq:
   - q: "Peut-on réviser son loyer sans clause dans le bail ?"
     a: "Non. La révision annuelle du loyer n'est pas automatique en droit français. Elle doit être expressément prévue par une clause écrite dans le bail. Sans cette clause, le loyer reste figé pendant toute la durée du contrat, quel que soit le niveau de l'IRL."
