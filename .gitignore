@@ -149,3 +149,8 @@ pages/api/admin/*
 # FAVICON WORK FILES (ne pas ignorer les vrais)
 ###############################################
 public/beta-strategy-tyls.html
+
+# Playwright
+tests/.auth/
+playwright-report/
+test-results/
