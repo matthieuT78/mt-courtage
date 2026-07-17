@@ -442,7 +442,9 @@ export function useLandlordDashboard() {
 
     let count = 0;
     for (const lease of activeLeases) {
-      for (const yyyymm of recentMonthKeys(6)) {
+      // Même fenêtre que l'onglet "Actions" de Quittances (SectionQuittances.tsx,
+      // LOOKBACK_MONTHS) pour que ce chiffre corresponde à ce qu'on trouve en cliquant.
+      for (const yyyymm of recentMonthKeys(24)) {
         if (!isLeaseExpectedForMonth(lease, yyyymm)) continue;
 
         const expected = Number(getLeaseRentPeriod(lease, yyyymm)?.total || 0);

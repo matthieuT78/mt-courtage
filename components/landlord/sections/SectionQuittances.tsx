@@ -5,8 +5,10 @@ import { SectionTitle, fmtDate } from "../UiBits";
 import { EyeIcon, BanknotesIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
 import type { RentReceipt, Lease, Property, Tenant, LandlordSettings } from "../../../lib/landlord/types";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
+import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 import { usePermissions } from "../../PermissionProvider";
 import { isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
+import { cx } from "../ui/uiHelpers";
 
 type AnyPayment = Record<string, any>;
 type ReminderChannelSetting = "email" | "messaging" | "both";
@@ -39,10 +41,6 @@ const RECEIPT_SNOOZE_STORAGE_PREFIX = "lokt.receiptSnoozes";
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const toMonthISO = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 
-function cx(...c: Array<string | false | null | undefined>) {
-  return c.filter(Boolean).join(" ");
-}
-
 function parsePdfUrl(pdfUrl?: string | null) {
   // expected: rent-receipts-pdfs:<path>
   if (!pdfUrl) return null;
@@ -54,12 +52,6 @@ function parsePdfUrl(pdfUrl?: string | null) {
 function yyyymmFromReceipt(r: any) {
   const ps = String(r?.period_start || "");
   return ps ? ps.slice(0, 7) : "";
-}
-
-function safeDate(val?: string | null) {
-  if (!val) return null;
-  const d = new Date(val);
-  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function fmtDateTimeFR(val?: string | null) {
@@ -189,8 +181,11 @@ function isLeaseExpectedForMonth(lease: Lease, yyyymm: string) {
 /**
  * Calcul "échéance" + "date génération (J+2)" pour la période yyyymm,
  * selon payment_type :
- * - terme_a_echoir  => échéance dans le mois de la période
- * - terme_echu      => échéance en fin de mois de la période
+ * - terme_a_echoir  => échéance dans le mois de la période (getLeasePaymentDueDate,
+ *                      partagé avec le reste de l'app : décale l'échéance si le bail
+ *                      démarre en cours de mois)
+ * - terme_echu      => même base, décalée d'un mois : le loyer est dû après la période
+ *                      qu'il couvre, pas pendant.
  */
 function scheduleForPeriod(yyyymmPeriod: string, lease: any) {
   const paymentDayRaw = Number(lease?.payment_day || 1);
@@ -202,8 +197,13 @@ function scheduleForPeriod(yyyymmPeriod: string, lease: any) {
   const periodStart = new Date(y, month0, 1);
   const periodEnd = new Date(y, month0 + 1, 0);
 
-  const dueDay = clampDayInMonth(y, month0, paymentDayRaw);
-  const dueDate = new Date(y, month0, dueDay);
+  const canonicalDueDate = getLeasePaymentDueDate(lease, yyyymmPeriod);
+  let dueDate = canonicalDueDate
+    ? new Date(canonicalDueDate.getFullYear(), canonicalDueDate.getMonth(), canonicalDueDate.getDate())
+    : new Date(y, month0, clampDayInMonth(y, month0, paymentDayRaw));
+  if (paymentType === "terme_echu") {
+    dueDate = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, dueDate.getDate());
+  }
 
   const controlAt = new Date(dueDate);
   controlAt.setDate(controlAt.getDate() + 2);
@@ -235,11 +235,6 @@ function statusLabelReceipt(status?: string | null) {
 function isWorkflowReceipt(receipt: any) {
   const status = String(receipt?.status || "").toLowerCase();
   return status === "generated" || status === "sent" || status === "closed_by_deposit";
-}
-
-function paymentTypeLabel(v?: string | null) {
-  const t = String(v || "terme_a_echoir").toLowerCase();
-  return t === "terme_echu" ? "Fin de période (terme échu)" : "Début de période (terme à échoir)";
 }
 
 function fmtMonthLabel(yyyymm: string) {
@@ -409,7 +404,7 @@ export function SectionQuittances({
     [safeLeases, delegatedLeaseIds]
   );
 
-  const [view, setView] = useState<"todo" | "month">("todo");
+  const [view, setView] = useState<"todo" | "month" | "tenants">("todo");
   const [month, setMonth] = useState<string>(toMonthISO(new Date()));
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const [openArchiveMenuId, setOpenArchiveMenuId] = useState<string | null>(null);
@@ -645,6 +640,69 @@ export function SectionQuittances({
 
   const visibleRows = view === "todo" ? todoRows : expectedRows;
 
+  // ---------- Fiabilité par locataire : retards récurrents + impayés cumulés sur 12 mois
+  const tenantStats = useMemo(() => {
+    const months = recentMonths(12);
+    const byTenant = new Map<
+      string,
+      { tenant: Tenant; leaseIds: Set<string>; cumulativeUnpaid: number; lateCount: number; totalCount: number; delaySum: number; delayCount: number }
+    >();
+
+    for (const lease of activeLeases) {
+      const tenantId = String((lease as any).tenant_id || "");
+      const tenant = tenantId ? tenantsById.get(tenantId) : null;
+      if (!tenantId || !tenant) continue;
+
+      let entry = byTenant.get(tenantId);
+      if (!entry) {
+        entry = { tenant, leaseIds: new Set(), cumulativeUnpaid: 0, lateCount: 0, totalCount: 0, delaySum: 0, delayCount: 0 };
+        byTenant.set(tenantId, entry);
+      }
+      entry.leaseIds.add(String(lease.id));
+
+      for (const yyyymm of months) {
+        if (!isLeaseExpectedForMonth(lease, yyyymm)) continue;
+        const period = getLeaseRentPeriod(lease, yyyymm);
+        if (!period) continue;
+
+        const key = periodKey(lease.id, yyyymm);
+        const payment = paymentByPeriod.get(key) || null;
+        const pay = paymentAnalysis(lease, payment, yyyymm);
+        entry.totalCount += 1;
+        entry.cumulativeUnpaid += pay.missingAmount;
+
+        if (payment?.paid_at) {
+          const paidAt = new Date(String(payment.paid_at).slice(0, 10));
+          const sched = scheduleForPeriod(yyyymm, lease);
+          const delayDays = Math.round((paidAt.getTime() - sched.dueDate.getTime()) / 86_400_000);
+          entry.delaySum += delayDays;
+          entry.delayCount += 1;
+          if (delayDays > 3) entry.lateCount += 1;
+        } else {
+          const sched = scheduleForPeriod(yyyymm, lease);
+          if (Date.now() > sched.controlAt.getTime()) entry.lateCount += 1;
+        }
+      }
+    }
+
+    return Array.from(byTenant.values())
+      .map((entry) => ({
+        tenant: entry.tenant,
+        leaseCount: entry.leaseIds.size,
+        cumulativeUnpaid: entry.cumulativeUnpaid,
+        lateCount: entry.lateCount,
+        totalCount: entry.totalCount,
+        avgDelayDays: entry.delayCount > 0 ? entry.delaySum / entry.delayCount : null,
+      }))
+      .sort((a, b) => b.cumulativeUnpaid - a.cumulativeUnpaid || b.lateCount - a.lateCount);
+  }, [activeLeases, tenantsById, paymentByPeriod]);
+
+  const tenantStatsByTenantId = useMemo(() => {
+    const map = new Map<string, (typeof tenantStats)[number]>();
+    for (const stat of tenantStats) map.set(String(stat.tenant.id), stat);
+    return map;
+  }, [tenantStats]);
+
   // ✅ "PDF prêts" = generated (après paiement)
   // ✅ "Envoyées" = sent
   const sentThisMonth = useMemo(() => {
@@ -659,15 +717,8 @@ export function SectionQuittances({
     const sent = visibleRows.filter((row) => row.sent).length;
     const late = visibleRows.filter((row) => row.isLate).length;
 
-    const lastSent = safeReceipts
-      .filter((r: any) => (r.sent_at ? true : false))
-      .map((r: any) => safeDate(r.sent_at))
-      .filter(Boolean) as Date[];
-
-    const lastSentAt = lastSent.length ? new Date(Math.max(...lastSent.map((d) => d.getTime()))) : null;
-
-    return { total, paidCount, pdfReady, sent, late, lastSentAt };
-  }, [visibleRows, safeReceipts]);
+    return { total, paidCount, pdfReady, sent, late };
+  }, [visibleRows]);
 
   // ---------- Archives groupées (Biens -> Année -> Mois)
   const archives = useMemo(() => {
@@ -753,6 +804,8 @@ export function SectionQuittances({
   };
 
   const confirmPaymentForRow = async (row: any, overrideRent?: number, overrideCharges?: number, paymentMethodOverride?: string) => {
+    if (loading) return; // évite un double-clic pendant la confirmation + génération PDF (3-8s)
+    setLoading(true);
     setErr(null);
     setOk(null);
 
@@ -826,6 +879,8 @@ export function SectionQuittances({
     } catch (e: any) {
       setConfirmProgress(null);
       setErr(e?.message || "Erreur confirmation paiement.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1278,8 +1333,8 @@ export function SectionQuittances({
               const setting = reminderSettings.get(String(lease.id));
               return (
                 <div key={lease.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{leaseLabel(lease)}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-900">{leaseLabel(lease)}</p>
                     <p className="text-xs text-slate-600">Une seule relance automatique par période si le paiement reste incomplet à J+3.</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -1345,13 +1400,23 @@ export function SectionQuittances({
             >
               Consulter un mois
             </button>
+            <button
+              type="button"
+              onClick={() => setView("tenants")}
+              className={cx(
+                "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
+                view === "tenants" ? "bg-white shadow-sm ring-1 ring-slate-200/60 text-slate-900" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Locataires
+            </button>
           </div>
 
           {view === "todo" ? (
             <p className="text-xs text-slate-500 max-w-sm">
               Paiements à confirmer, quittances à envoyer et retards — sur les <span className="font-medium text-slate-700">{LOOKBACK_MONTHS} derniers mois</span>. Rien ici = tout est à jour.
             </p>
-          ) : (
+          ) : view === "month" ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <div className="space-y-0.5">
                 <label className="text-[0.7rem] text-slate-500">Mois</label>
@@ -1369,11 +1434,16 @@ export function SectionQuittances({
                 Tous les baux attendus pour <span className="font-medium text-slate-700">{monthLabel}</span> — pour vérifier, retrouver ou agir sur une quittance passée.
               </p>
             </div>
+          ) : (
+            <p className="text-xs text-slate-500 max-w-sm">
+              Fiabilité de paiement et impayés cumulés sur les <span className="font-medium text-slate-700">12 derniers mois</span>, par locataire.
+            </p>
           )}
         </div>
 
       </div>
 
+      {view !== "tenants" ? (
       <div className="grid gap-3 md:grid-cols-5">
         <Kpi label={view === "todo" ? "Actions" : "Baux attendus"} value={dashboard.total} sub={view === "todo" ? "en attente d'action" : "ce mois-ci"} />
         <Kpi label="Payés" value={dashboard.paidCount} sub="source de vérité paiement" />
@@ -1385,8 +1455,65 @@ export function SectionQuittances({
           sub="après J+2, toujours pas payé"
         />
       </div>
+      ) : null}
 
       {/* Bloc principal */}
+      {view === "tenants" ? (
+        <Card title={<span>Locataires <span className="text-slate-500">({tenantStats.length})</span></span>} tone="muted">
+          {tenantStats.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm text-slate-700">
+              Aucun locataire actif à analyser.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {tenantStats.map((stat) => {
+                const recurring = stat.lateCount >= 2;
+                return (
+                  <div
+                    key={String(stat.tenant.id)}
+                    className={cx("rounded-2xl border p-3 bg-white", stat.cumulativeUnpaid > 0 ? "border-red-200" : "border-slate-200")}
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">{stat.tenant.full_name || "Locataire"}</p>
+                        <p className="truncate text-xs text-slate-500">
+                          {stat.leaseCount} bail{stat.leaseCount > 1 ? "aux" : ""} · {stat.totalCount} échéance{stat.totalCount > 1 ? "s" : ""} sur 12 mois
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {recurring ? (
+                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800">
+                              ⚠ Retards récurrents ({stat.lateCount}/{stat.totalCount})
+                            </span>
+                          ) : stat.lateCount > 0 ? (
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.7rem] font-semibold text-slate-600">
+                              {stat.lateCount} retard{stat.lateCount > 1 ? "s" : ""} / {stat.totalCount}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[0.7rem] font-semibold text-emerald-800">
+                              Aucun retard
+                            </span>
+                          )}
+                          {stat.avgDelayDays != null && stat.avgDelayDays > 0 ? (
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.7rem] font-semibold text-slate-600">
+                              {Math.round(stat.avgDelayDays)} j de retard en moyenne
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Impayé cumulé (12 mois)</p>
+                        <p className={cx("text-lg font-semibold", stat.cumulativeUnpaid > 0 ? "text-red-700" : "text-slate-900")}>
+                          {fmtEur(stat.cumulativeUnpaid)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      ) : (
       <div className="grid gap-5 lg:grid-cols-[1fr,420px]">
         <Card
           title={
@@ -1426,7 +1553,7 @@ export function SectionQuittances({
                     key={row.key}
                     className={cx("rounded-2xl border p-3 bg-white flex flex-col gap-2", row.isLate ? "border-red-200" : "border-slate-200")}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-slate-900 truncate">{label}</p>
 
@@ -1448,6 +1575,15 @@ export function SectionQuittances({
                           <span className={cx("inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold", pillTonePay(row.payStatus))}>
                             {payLabel(row.payStatus)}
                           </span>
+
+                          {(tenantStatsByTenantId.get(String((lease as any).tenant_id))?.lateCount ?? 0) >= 2 ? (
+                            <span
+                              className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800"
+                              title="Vu dans l'onglet Locataires : ce locataire a été en retard au moins 2 fois sur les 12 derniers mois."
+                            >
+                              ⚠ Retards récurrents ({tenantStatsByTenantId.get(String((lease as any).tenant_id))?.lateCount}/{tenantStatsByTenantId.get(String((lease as any).tenant_id))?.totalCount})
+                            </span>
+                          ) : null}
 
                           {row.isLate ? (
                             <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.7rem] font-semibold text-red-800">
@@ -1505,7 +1641,7 @@ export function SectionQuittances({
                         </div>
                       </div>
 
-                      <div className="flex min-w-[142px] flex-col gap-2">
+                      <div className="flex flex-col gap-2 sm:min-w-[142px]">
                         {row.closedByDeposit ? (
                           <span className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-center text-xs font-semibold text-violet-800">
                             Compensé par caution
@@ -1837,6 +1973,7 @@ export function SectionQuittances({
           ) : null}
         </Card>
       </div>
+      )}
 
       {/* ARCHIVES */}
       <div className="pt-2">
@@ -1873,15 +2010,15 @@ export function SectionQuittances({
                       <div key={year} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                         <p className="text-sm font-semibold text-slate-900">{year}</p>
 
-                        <div className="mt-2 rounded-2xl border border-slate-200 bg-white">
+                        <div className="mt-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
                           <table className="w-full text-sm">
                             <thead className="bg-slate-50 border-b border-slate-200">
                               <tr className="text-left">
-                                <th className="px-3 py-2 text-xs text-slate-600">Période</th>
-                                <th className="px-3 py-2 text-xs text-slate-600">Locataire</th>
-                                <th className="px-3 py-2 text-xs text-slate-600">Statut</th>
-                                <th className="px-3 py-2 text-xs text-slate-600">Envoyée à</th>
-                                <th className="px-3 py-2 text-xs text-slate-600 text-right">Actions</th>
+                                <th className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">Période</th>
+                                <th className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">Locataire</th>
+                                <th className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">Statut</th>
+                                <th className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">Envoyée le</th>
+                                <th className="px-3 py-2 text-xs text-slate-600 text-right whitespace-nowrap">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
