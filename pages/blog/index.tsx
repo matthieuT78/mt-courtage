@@ -105,29 +105,54 @@ export default function BlogIndex({ posts }: any) {
       <div className="min-h-screen bg-[#f6f9fc]">
 
         {/* ── HERO ── */}
-        <section className="relative overflow-hidden border-b border-slate-200 bg-white px-6 py-14 sm:px-10 sm:py-20">
-          <div aria-hidden className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-[#635bff]/4 to-transparent" />
-          <div className="relative mx-auto max-w-6xl">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">
-              Blog immobilier
-            </p>
-            <h1 className="mt-3 max-w-2xl text-3xl font-bold leading-tight text-slate-950 sm:text-4xl">
-              Guides pratiques pour{" "}
-              <span className="bg-gradient-to-r from-[#635bff] to-[#00b4d8] bg-clip-text text-transparent">
-                investir, gérer et optimiser
-              </span>
-            </h1>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
-              Rendement locatif, LMNP, prêt relais, taux d&apos;endettement, fiscalité — des guides chiffrés avec simulateurs intégrés pour prendre les bonnes décisions.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/calculettes"
-                className="inline-flex items-center gap-2 rounded-full bg-[#635bff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#635bff]/25 transition hover:bg-[#4f46e5]"
-              >
-                Accéder aux simulateurs →
-              </Link>
+        <section className="relative overflow-hidden border-b border-slate-200 bg-white px-6 py-12 sm:px-10 sm:py-16">
+          <div aria-hidden className="pointer-events-none absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-[#635bff]/5 to-transparent" />
+          <div className="relative mx-auto max-w-6xl flex flex-col gap-10 lg:flex-row lg:items-center lg:gap-16">
+
+            {/* Texte gauche */}
+            <div className="flex-1">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">
+                Blog immobilier
+              </p>
+              <h1 className="mt-3 max-w-2xl text-3xl font-bold leading-tight text-slate-950 sm:text-4xl">
+                Guides pratiques pour{" "}
+                <span className="bg-gradient-to-r from-[#635bff] to-[#00b4d8] bg-clip-text text-transparent">
+                  investir, gérer et optimiser
+                </span>
+              </h1>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-slate-500 sm:text-base">
+                Rendement locatif, LMNP, prêt relais, taux d&apos;endettement, fiscalité — des guides chiffrés avec simulateurs intégrés pour prendre les bonnes décisions.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href="/calculettes"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#635bff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#635bff]/25 transition hover:bg-[#4f46e5]"
+                >
+                  Accéder aux simulateurs →
+                </Link>
+              </div>
             </div>
+
+            {/* Stats droite */}
+            <div className="grid grid-cols-2 gap-3 lg:w-72 shrink-0">
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-2xl font-bold text-slate-900">{posts.length}</p>
+                <p className="mt-0.5 text-xs text-slate-500">guides disponibles</p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-2xl font-bold text-slate-900">6</p>
+                <p className="mt-0.5 text-xs text-slate-500">simulateurs gratuits</p>
+              </div>
+              <div className="col-span-2 rounded-xl border border-[#635bff]/15 bg-[#635bff]/5 p-4">
+                <p className="text-xs font-semibold text-[#635bff]">Mis à jour — juillet 2026</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Chiffres, barèmes et exemples actualisés pour l&apos;année en cours.</p>
+              </div>
+              <div className="col-span-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
+                <p className="text-xs font-semibold text-emerald-700">100% gratuit</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Tous les guides et simulateurs sont accessibles sans inscription.</p>
+              </div>
+            </div>
+
           </div>
         </section>
 
