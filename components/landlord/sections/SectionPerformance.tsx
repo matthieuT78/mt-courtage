@@ -17,10 +17,10 @@ import {
   Tooltip,
 } from "chart.js";
 import { supabase } from "../../../lib/supabaseClient";
-import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import type { Lease, Property, RentPayment } from "../../../lib/landlord/types";
 import { SectionTitle, formatEuro } from "../UiBits";
 import { isActivePropertyLike, isSelectableLeaseLike } from "../../../lib/landlord/archiveFilters";
+import { cx } from "../ui/uiHelpers";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend);
 
@@ -89,9 +89,10 @@ const normalizeDate = (value?: string | null) => {
 
 const sum = (values: number[]) => values.reduce((total, value) => total + (Number.isFinite(value) ? value : 0), 0);
 const money = (value: number) => formatEuro(value).replace(",00", "");
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(" ");
-}
+const fmtDateFR = (iso?: string | null) => {
+  const date = normalizeDate(iso);
+  return date ? date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+};
 
 type PeriodMode = "month" | "last6" | "year" | "custom";
 
@@ -741,7 +742,16 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
             .map((row) => Number(row.amount || 0))
         );
         const fin = finance.get(id) || null;
-        const recurringTxs = recurringParentTxByProperty.get(id) || [];
+        // Ne garder que les charges récurrentes dont la fenêtre (recurrence_since/end_date)
+        // recoupe la période sélectionnée, sinon une charge terminée (crédit soldé…) fausse
+        // encore le cashflow alors qu'elle est déjà exclue du graphique de tendance.
+        const recurringTxs = (recurringParentTxByProperty.get(id) || []).filter((t) => {
+          const since = t.recurrence_since ? normalizeDate(t.recurrence_since) : null;
+          const end = t.recurrence_end_date ? normalizeDate(t.recurrence_end_date) : null;
+          if (since && since > pEnd) return false;
+          if (end && end < pStart) return false;
+          return true;
+        });
         // "loan", "tax", "insurance" et "copro" remplacent leur équivalent property_finance
         // si une transaction récurrente de même catégorie existe (évite le double-comptage).
         let loanTx = 0, otherTx = 0;
@@ -1051,12 +1061,8 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
   }, [chartDrillKey, propertyRows, recurringParentTxByProperty, finance]);
 
   const totals = useMemo(() => {
-    const expected = sum(propertyRows.map((row) => row.expected));
-    const received = sum(propertyRows.map((row) => Math.max(row.received, row.ledgerIncome)));
-    const expense = sum(propertyRows.map((row) => row.expense));
     const recurring = sum(propertyRows.map((row) => row.recurring));
-    const cashflow = sum(propertyRows.map((row) => row.cashflow));
-    return { expected, received, expense, recurring, cashflow };
+    return { recurring };
   }, [propertyRows]);
 
   const { monthCount } = selectedPeriod;
@@ -1451,7 +1457,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
             ))}
             <button
               type="button"
-              onClick={() => { setPeriodPickerOpen(true); if (periodMode !== "custom") setPeriodMode("custom"); }}
+              onClick={() => setPeriodPickerOpen(true)}
               className={cx(
                 "rounded-[0.6rem] px-3 py-1.5 text-xs font-semibold transition",
                 periodMode === "custom" ? "bg-white shadow-sm text-slate-900" : "text-slate-600 hover:text-slate-800"
@@ -1541,8 +1547,8 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
                 {/* Left: matrix card */}
                 <div className="rounded-3xl border border-slate-200 bg-white p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-base font-semibold text-slate-950">{row.label}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-semibold text-slate-950">{row.label}</p>
                       <p className="mt-1 text-xs text-slate-500">
                         Loyers mensuels {money(row.expected)} · charges mensuelles {money(row.recurring)}
                       </p>
@@ -1593,8 +1599,8 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
                 {/* Right: advice card */}
                 <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-slate-950">{row.label}</p>
-                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-semibold text-slate-600">
+                    <p className="min-w-0 truncate text-sm font-semibold text-slate-950">{row.label}</p>
+                    <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-semibold text-slate-600">
                       {money(row.cashflow)} / mois
                     </span>
                   </div>
@@ -1683,8 +1689,9 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
               </button>
               <button
                 type="button"
+                disabled={!customStartMonth || !customEndMonth}
                 onClick={() => { setPeriodMode("custom"); setPeriodPickerOpen(false); }}
-                className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Appliquer
               </button>
@@ -1737,7 +1744,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById }: P
                         const propLabel = r.property_id ? (propsById.get(r.property_id)?.label || null) : null;
                         return (
                           <tr key={r.id} className="border-b border-slate-100 last:border-0">
-                            <td className="whitespace-nowrap px-4 py-2.5 text-xs text-slate-500">{r.occurred_at}</td>
+                            <td className="whitespace-nowrap px-4 py-2.5 text-xs text-slate-500">{fmtDateFR(r.occurred_at)}</td>
                             <td className="px-3 py-2.5">
                               <p className="font-medium text-slate-900">{r.label || CATEGORY_LABELS[r.category] || r.category}</p>
                               {propLabel && <p className="text-xs text-indigo-500">{propLabel}</p>}
