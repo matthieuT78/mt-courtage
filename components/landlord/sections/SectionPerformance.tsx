@@ -189,6 +189,22 @@ function remainingLoanMonths(finance: PropertyFinance | null) {
   return Number.isFinite(legacy) && legacy > 0 ? legacy : null;
 }
 
+// Capital restant dû estimé à partir de la mensualité (hors assurance), du taux et de la durée restante.
+function estimateRemainingPrincipal(monthlyPI: number, annualRatePct: number, remainingMonths: number): number | null {
+  if (monthlyPI <= 0 || remainingMonths <= 0) return null;
+  const r = annualRatePct / 100 / 12;
+  const principal = r > 0 ? (monthlyPI * (1 - Math.pow(1 + r, -remainingMonths))) / r : monthlyPI * remainingMonths;
+  return Number.isFinite(principal) && principal > 0 ? principal : null;
+}
+
+// Mensualité (hors assurance) nécessaire pour rembourser `principal` sur `termMonths` au taux `annualRatePct`.
+function estimatePaymentForTerm(principal: number, annualRatePct: number, termMonths: number): number | null {
+  if (principal <= 0 || termMonths <= 0) return null;
+  const r = annualRatePct / 100 / 12;
+  const payment = r > 0 ? (principal * r) / (1 - Math.pow(1 + r, -termMonths)) : principal / termMonths;
+  return Number.isFinite(payment) && payment > 0 ? payment : null;
+}
+
 function recurringMonthly(finance: PropertyFinance | null) {
   if (!finance) return 0;
   return (
@@ -241,14 +257,72 @@ function labelForProperty(property: Property | undefined, fallback = "Bien") {
   return property?.label || property?.address_line1 || fallback;
 }
 
+type RateBucket = { duree_ans: number; taux_moyen: number; taux_bas: number; taux_haut: number };
+
+type LoanScenario = {
+  kind: "renegotiate" | "extend";
+  propertyLabel: string;
+  currentRate: number;
+  currentMonthlyPI: number;
+  currentInsurance: number;
+  currentRemainingMonths: number;
+  principalRemaining: number;
+  newRate: number;
+  newMonthlyPI: number;
+  newRemainingMonths: number;
+  monthlyGain: number;
+  totalInterestOld: number;
+  totalInterestNew: number;
+  totalInterestDelta: number; // négatif = économie, positif = surcoût
+};
+
 type FriendlyAction = {
   title: string;
   detail: string;
   tone: "red" | "amber" | "emerald" | "slate";
   cta?: { label: string; section: LandlordSectionKey; link?: NavigateLink };
+  loanScenario?: LoanScenario;
 };
 
-function actionsFor(row: PropertyRow): FriendlyAction[] {
+// Trouve la durée de référence (15/20/25 ans) la plus proche de la durée restante du crédit.
+function closestRateBucket(rates: RateBucket[], remainingMonths: number): RateBucket | null {
+  if (!rates.length) return null;
+  const remainingYears = remainingMonths / 12;
+  return rates.reduce((best, bucket) =>
+    Math.abs(bucket.duree_ans - remainingYears) < Math.abs(best.duree_ans - remainingYears) ? bucket : best
+  );
+}
+
+function buildLoanScenario(
+  kind: "renegotiate" | "extend",
+  row: PropertyRow,
+  newRate: number,
+  newRemainingMonths: number
+): LoanScenario | null {
+  if (row.loanPrincipalRemaining == null || row.loanRate == null || row.loanRemainingMonths == null) return null;
+  const newMonthlyPI = estimatePaymentForTerm(row.loanPrincipalRemaining, newRate, newRemainingMonths);
+  if (newMonthlyPI == null) return null;
+  const totalInterestOld = row.loanMonthlyPI * row.loanRemainingMonths - row.loanPrincipalRemaining;
+  const totalInterestNew = newMonthlyPI * newRemainingMonths - row.loanPrincipalRemaining;
+  return {
+    kind,
+    propertyLabel: row.label,
+    currentRate: row.loanRate,
+    currentMonthlyPI: row.loanMonthlyPI,
+    currentInsurance: row.loanInsuranceMonthly,
+    currentRemainingMonths: row.loanRemainingMonths,
+    principalRemaining: row.loanPrincipalRemaining,
+    newRate,
+    newMonthlyPI,
+    newRemainingMonths,
+    monthlyGain: row.loanMonthlyPI - newMonthlyPI,
+    totalInterestOld,
+    totalInterestNew,
+    totalInterestDelta: totalInterestNew - totalInterestOld,
+  };
+}
+
+function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): FriendlyAction[] {
   const actions: FriendlyAction[] = [];
 
   // ── 1. PAS DE BAIL ───────────────────────────────────────────────────────
@@ -336,7 +410,29 @@ function actionsFor(row: PropertyRow): FriendlyAction[] {
     });
   }
 
-  if ((row.loanRate ?? 0) >= 3.5 && row.loanMonthly > 0 && (row.loanRemainingMonths ?? 0) > 24) {
+  const rateBucket =
+    referenceRates && row.loanRate != null && row.loanRemainingMonths
+      ? closestRateBucket(referenceRates, row.loanRemainingMonths)
+      : null;
+  if (
+    rateBucket &&
+    row.loanRate != null &&
+    row.loanRate - rateBucket.taux_moyen >= 0.3 &&
+    row.loanRemainingMonths &&
+    row.loanMonthlyPI > 0
+  ) {
+    const scenario = buildLoanScenario("renegotiate", row, rateBucket.taux_moyen, row.loanRemainingMonths);
+    if (scenario) {
+      actions.push({
+        tone: row.cashflow < 0 ? "amber" : "slate",
+        title: `Crédit à ${row.loanRate} % — marché actuel ${rateBucket.taux_moyen} % (${rateBucket.duree_ans} ans)`,
+        detail: `À durée restante égale, une renégociation au taux de marché ferait gagner ~${money(scenario.monthlyGain)}/mois, soit ${money(Math.abs(scenario.totalInterestDelta))} d’intérêts économisés sur la durée restante.`,
+        cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
+        loanScenario: scenario,
+      });
+    }
+  } else if ((row.loanRate ?? 0) >= 3.5 && row.loanMonthly > 0 && (row.loanRemainingMonths ?? 0) > 24) {
+    // Repli sur l'heuristique générique tant que les taux de référence ne sont pas chargés.
     const gain = Math.round(row.loanMonthly * 0.08);
     actions.push({
       tone: row.cashflow < 0 ? "amber" : "slate",
@@ -344,6 +440,26 @@ function actionsFor(row: PropertyRow): FriendlyAction[] {
       detail: `Une baisse de 0,5 point peut libérer ~${money(gain)}/mois (${money(gain * 12)}/an) sur ${row.loanRemainingMonths} mois restants. À comparer au coût du rachat de crédit.`,
       cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
     });
+  }
+
+  if (
+    row.loanRate != null &&
+    row.loanRemainingMonths != null &&
+    row.loanRemainingMonths > 24 &&
+    row.loanPrincipalRemaining != null &&
+    row.loanMonthlyPI > 0
+  ) {
+    const extendedMonths = row.loanRemainingMonths + 60;
+    const scenario = buildLoanScenario("extend", row, row.loanRate, extendedMonths);
+    if (scenario && scenario.monthlyGain >= 20) {
+      actions.push({
+        tone: row.cashflow < 80 ? "amber" : "slate",
+        title: `Rallonger le crédit de 5 ans — ~${money(scenario.monthlyGain)}/mois de plus`,
+        detail: `Mensualité ramenée à ${money(scenario.newMonthlyPI + scenario.currentInsurance)} au lieu de ${money(scenario.currentMonthlyPI + scenario.currentInsurance)}, sur ${Math.round(scenario.newRemainingMonths / 12)} ans au lieu de ${Math.round(scenario.currentRemainingMonths / 12)}. Coût : ${money(scenario.totalInterestDelta)} d’intérêts en plus sur la durée — à réserver aux cas où le cashflow immédiat est prioritaire.`,
+        cta: { label: "Ouvrir Finance", section: "finance", link: { prefillPropertyId: row.propertyId } },
+        loanScenario: scenario,
+      });
+    }
   }
 
   if ((row.loanRemainingMonths ?? 999) <= 36 && (row.loanRemainingMonths ?? 0) > 0 && row.loanMonthly > 0) {
@@ -619,6 +735,9 @@ type PropertyRow = {
   activeLeaseId: string | null;
   marketRentEstimate: number | null;
   irlLate: { leaseId: string; monthsLate: number } | null;
+  loanMonthlyPI: number;
+  loanInsuranceMonthly: number;
+  loanPrincipalRemaining: number | null;
 };
 
 export function SectionPerformance({ userId, leases, payments, propertyById, onNavigateDeep }: Props) {
@@ -636,6 +755,21 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
   const [finance, setFinance] = useState<Map<string, PropertyFinance>>(new Map());
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [referenceRates, setReferenceRates] = useState<RateBucket[] | null>(null);
+  const [loanScenario, setLoanScenario] = useState<LoanScenario | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/donnees?section=taux_credit_immobilier")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (active && Array.isArray(json?.donnees)) setReferenceRates(json.donnees);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const [currentMonth, setCurrentMonth] = useState(() => monthKey(new Date()));
   const [chartDrillKey, setChartDrillKey] = useState<string | null>(null);
@@ -830,6 +964,10 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           else otherTx += monthlyAmt;
         }
         const loanMonthly = hasLoanTx ? loanTx : Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
+        // Part hors-assurance de la mensualité (approximative si le crédit vient d'une écriture récurrente
+        // unique, car elle ne distingue pas assurance et capital+intérêts) — sert au calcul d'amortissement.
+        const loanMonthlyPI = hasLoanTx ? loanTx : Number(fin?.loan_monthly || 0);
+        const loanInsuranceMonthly = hasLoanTx ? 0 : Number(fin?.loan_insurance_monthly || 0);
         const finOtherMonthly =
           (hasTaxTx ? 0 : Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12) +
           Number(fin?.fixed_charges_monthly || 0) +
@@ -847,6 +985,11 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         const netYield = investment > 0 ? ((incomeMonthly - recurring) * 12 * 100) / investment : null;
         const occupancy = computeOccupancySignals(safeLeases, id);
         const loanRemainingMonths = remainingLoanMonths(fin);
+        const loanRatePct = fin?.loan_rate_percent == null ? null : Number(fin.loan_rate_percent);
+        const loanPrincipalRemaining =
+          loanRatePct != null && loanRemainingMonths != null
+            ? estimateRemainingPrincipal(loanMonthlyPI, loanRatePct, loanRemainingMonths)
+            : null;
 
         const grossYield = investment > 0 ? (incomeMonthly * 12 * 100) / investment : null;
         const earliestMs = earliestDateByProperty.get(id);
@@ -912,6 +1055,9 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           activeLeaseId: primaryLease?.id || null,
           marketRentEstimate,
           irlLate,
+          loanMonthlyPI,
+          loanInsuranceMonthly,
+          loanPrincipalRemaining,
         };
       })
       .sort((a, b) => b.cashflow - a.cashflow);
@@ -920,19 +1066,36 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
   const portfolioSummary = useMemo(() => {
     const negativeRows = propertyRows.filter((row) => row.cashflow < 0);
     const totalDeficit = sum(negativeRows.map((row) => row.cashflow));
-    const renegotiableRows = propertyRows.filter(
-      (row) => (row.loanRate ?? 0) >= 3.5 && row.loanMonthly > 0 && (row.loanRemainingMonths ?? 0) > 24
-    );
-    const renegotiableGain = sum(renegotiableRows.map((row) => Math.round(row.loanMonthly * 0.08)));
+
+    let renegotiableCount = 0;
+    let renegotiableGain = 0;
+    for (const row of propertyRows) {
+      if (row.loanRate == null || !row.loanRemainingMonths || row.loanMonthlyPI <= 0) continue;
+      const bucket = referenceRates ? closestRateBucket(referenceRates, row.loanRemainingMonths) : null;
+      const targetRate = bucket && row.loanRate - bucket.taux_moyen >= 0.3 ? bucket.taux_moyen : null;
+      if (targetRate == null) {
+        if (!referenceRates && row.loanRate >= 3.5 && row.loanRemainingMonths > 24) {
+          renegotiableCount += 1;
+          renegotiableGain += Math.round(row.loanMonthly * 0.08);
+        }
+        continue;
+      }
+      const scenario = buildLoanScenario("renegotiate", row, targetRate, row.loanRemainingMonths);
+      if (scenario) {
+        renegotiableCount += 1;
+        renegotiableGain += Math.round(scenario.monthlyGain);
+      }
+    }
+
     const irlLateRows = propertyRows.filter((row) => row.irlLate);
     return {
       negativeCount: negativeRows.length,
       totalDeficit,
-      renegotiableCount: renegotiableRows.length,
+      renegotiableCount,
       renegotiableGain,
       irlLateCount: irlLateRows.length,
     };
-  }, [propertyRows]);
+  }, [propertyRows, referenceRates]);
 
   const series = useMemo(() => {
     const propertyIds = propertyRows.map((row) => row.propertyId);
@@ -1653,7 +1816,7 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
         ) : (
           propertyRows.map((row) => {
             const decision = decisionFor(row);
-            const actions = actionsFor(row);
+            const actions = actionsFor(row, referenceRates);
             return (
               <div key={row.propertyId} className="grid gap-4 xl:grid-cols-[1fr,1fr] xl:items-start">
                 {/* Left: matrix card */}
@@ -1727,15 +1890,26 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold text-slate-950">{action.title}</p>
                               <p className="mt-0.5 text-sm leading-6 text-slate-600">{action.detail}</p>
-                              {action.cta && onNavigateDeep ? (
-                                <button
-                                  type="button"
-                                  onClick={() => onNavigateDeep(action.cta!.section, action.cta!.link)}
-                                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-900 underline underline-offset-2 hover:text-slate-700"
-                                >
-                                  {action.cta.label} →
-                                </button>
-                              ) : null}
+                              <div className="mt-2 flex flex-wrap items-center gap-3">
+                                {action.loanScenario ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setLoanScenario(action.loanScenario!)}
+                                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-900 underline underline-offset-2 hover:text-slate-700"
+                                  >
+                                    Voir le détail du calcul
+                                  </button>
+                                ) : null}
+                                {action.cta && onNavigateDeep ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onNavigateDeep(action.cta!.section, action.cta!.link)}
+                                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-900 underline underline-offset-2 hover:text-slate-700"
+                                  >
+                                    {action.cta.label} →
+                                  </button>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1757,6 +1931,72 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
       </section>
 
       {loading ? <p className="text-xs text-slate-500">Chargement de la performance…</p> : null}
+
+      {/* Loan scenario detail modal */}
+      {loanScenario ? (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
+          <button type="button" className="absolute inset-0" aria-label="Fermer" onClick={() => setLoanScenario(null)} />
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">
+                  {loanScenario.kind === "renegotiate" ? "Renégocier le taux du crédit" : "Rallonger la durée du crédit"}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">{loanScenario.propertyLabel}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLoanScenario(null)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                aria-label="Fermer"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-slate-500">Situation actuelle</p>
+                <p className="mt-1 text-sm text-slate-900">Taux {loanScenario.currentRate.toLocaleString("fr-FR")} %</p>
+                <p className="text-sm text-slate-900">
+                  Mensualité {money(loanScenario.currentMonthlyPI + loanScenario.currentInsurance)}
+                  {loanScenario.currentInsurance > 0 ? ` (${money(loanScenario.currentMonthlyPI)} + ${money(loanScenario.currentInsurance)} assurance)` : ""}
+                </p>
+                <p className="text-sm text-slate-900">
+                  {loanScenario.currentRemainingMonths} mois restants (~{Math.round(loanScenario.currentRemainingMonths / 12)} ans)
+                </p>
+                <p className="mt-1 text-xs text-slate-500">Capital restant dû estimé : {money(loanScenario.principalRemaining)}</p>
+              </div>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                  {loanScenario.kind === "renegotiate" ? "Après renégociation" : "Après allongement"}
+                </p>
+                <p className="mt-1 text-sm text-slate-900">Taux {loanScenario.newRate.toLocaleString("fr-FR")} %</p>
+                <p className="text-sm text-slate-900">Mensualité {money(loanScenario.newMonthlyPI + loanScenario.currentInsurance)}</p>
+                <p className="text-sm text-slate-900">
+                  {loanScenario.newRemainingMonths} mois (~{Math.round(loanScenario.newRemainingMonths / 12)} ans)
+                </p>
+                <p className="mt-1 text-sm font-semibold text-emerald-700">Gain : {money(loanScenario.monthlyGain)}/mois</p>
+              </div>
+            </div>
+
+            <div className={cx("mt-3 rounded-2xl border p-3", loanScenario.totalInterestDelta > 0 ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50")}>
+              <p className={cx("text-sm font-semibold", loanScenario.totalInterestDelta > 0 ? "text-amber-800" : "text-emerald-800")}>
+                {loanScenario.totalInterestDelta > 0
+                  ? `Coût total : ${money(loanScenario.totalInterestDelta)} d’intérêts en plus sur la durée restante.`
+                  : `Économie totale : ${money(Math.abs(loanScenario.totalInterestDelta))} d’intérêts sur la durée restante.`}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">
+                Intérêts restant à payer : {money(loanScenario.totalInterestOld)} aujourd’hui → {money(loanScenario.totalInterestNew)} avec ce scénario.
+              </p>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-500">
+              Estimation basée sur le capital restant dû calculé à partir de votre mensualité, taux et durée restante actuels (hors assurance emprunteur, frais de dossier et éventuelles indemnités de remboursement anticipé). À affiner avec votre banque ou un courtier avant toute décision.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {/* Period picker modal */}
       {periodPickerOpen ? (
