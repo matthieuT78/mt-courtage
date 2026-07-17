@@ -1647,8 +1647,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Bien</p>
               <span className={cx("h-2 w-2 rounded-full", p?.label ? "bg-emerald-400" : "bg-amber-400")} />
             </div>
-            <p className="mt-1 font-semibold text-slate-900">{p?.label || "—"}</p>
-            {p?.city ? <p className="text-xs text-slate-600">{p.city}</p> : null}
+            <p className="mt-1 font-semibold text-slate-900 break-words">{p?.label || "—"}</p>
+            {p?.city ? <p className="break-words text-xs text-slate-600">{p.city}</p> : null}
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">
@@ -1656,8 +1656,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Locataire</p>
               <span className={cx("h-2 w-2 rounded-full", t?.full_name ? "bg-emerald-400" : "bg-amber-400")} />
             </div>
-            <p className="mt-1 font-semibold text-slate-900">{t?.full_name || "—"}</p>
-            {t?.email ? <p className="text-xs text-slate-600">{t.email}</p> : null}
+            <p className="mt-1 font-semibold text-slate-900 break-words">{t?.full_name || "—"}</p>
+            {t?.email ? <p className="break-words text-xs text-slate-600">{t.email}</p> : null}
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-3">
