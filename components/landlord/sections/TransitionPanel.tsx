@@ -57,10 +57,16 @@ function daysDiff(target: Date): number {
   return Math.ceil((target.getTime() - now.getTime()) / 86400000);
 }
 
-function isInTransition(lease: Lease, allLeases: Lease[]): boolean {
+function isInTransition(lease: Lease, allLeases: Lease[], propertyById: Map<string, Property>): boolean {
   const status = String(lease.status || "").toLowerCase();
   if (!["active", "ended"].includes(status)) return false;
   if (!lease.end_date) return false;
+
+  // Un bien archivé n'est plus géré activement — ne pas relancer sa remise
+  // en location (annonce, candidats...) ni sa caution ici. Le propriétaire
+  // a explicitement sorti ce bien de la gestion active.
+  const property = propertyById.get(lease.property_id);
+  if (String(property?.status || "").toLowerCase() === "archived") return false;
 
   const endDate = new Date(lease.end_date + "T00:00:00");
   const now = new Date();
@@ -115,7 +121,7 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
   useEffect(() => {
     if (!supabase || !userId) { setLoading(false); return; }
 
-    const inTransition = leases.filter((l) => isInTransition(l, leases));
+    const inTransition = leases.filter((l) => isInTransition(l, leases, propertyById));
     if (inTransition.length === 0) { setTransitions([]); setLoading(false); return; }
 
     const leaseIds = inTransition.map((l) => l.id);
