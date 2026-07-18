@@ -305,7 +305,7 @@ export default function CapaciteEmpruntPage() {
             <h1 data-scroll-reveal data-reveal-delay="100" className="mt-4 max-w-3xl text-3xl font-semibold leading-tight sm:text-5xl">
               {isLoggedIn && displayName
                 ? `${displayName}, trouvez le budget juste pour votre projet.`
-                : "Combien pouvez-vous emprunter pour votre projet immobilier ?"}
+                : "Simulateur de capacité d'emprunt : combien pouvez-vous emprunter ?"}
             </h1>
             <p data-scroll-reveal data-reveal-delay="200" className="mt-4 max-w-2xl text-sm leading-6 text-white/85 sm:text-base sm:leading-7">
               Revenus, charges, apport et durée : obtenez une estimation structurée de votre mensualité et de votre
