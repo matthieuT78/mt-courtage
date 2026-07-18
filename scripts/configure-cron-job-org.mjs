@@ -60,6 +60,12 @@ const jobs = [
     hours: [-1],
     minutes: [0, 10, 20, 30, 40, 50],
   },
+  {
+    title: "lokt - relance validation email inscription J+1",
+    url: `${siteUrl}/api/cron/signup-confirmation-reminder`,
+    hours: [9],
+    minutes: [25],
+  },
 ];
 
 async function request(url, options = {}) {
