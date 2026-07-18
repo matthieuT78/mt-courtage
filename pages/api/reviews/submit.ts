@@ -35,7 +35,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     comment: comment || null,
   });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    try {
+      await supabaseAdmin.from("error_logs").insert({
+        source: "server",
+        error_message: `reviews/submit insert failed: ${error.message}`,
+        user_id: auth.userId,
+        extra: { rating },
+      });
+    } catch {
+      // Le journal d'erreurs ne doit pas bloquer la réponse d'erreur d'origine.
+    }
+    return res.status(500).json({ error: error.message });
+  }
 
   return res.status(200).json({ ok: true });
 }
