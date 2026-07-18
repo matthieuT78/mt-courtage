@@ -936,7 +936,7 @@ export function SectionDashboard({
           `Prochaine étape : ${onboarding.next.label}`,
         ],
         target: onboarding.next.key === "profil" ? undefined : onboarding.next.key as LandlordSectionKey,
-        onClick: onboarding.next.key === "profil" ? () => router.push("/mon-compte") : undefined,
+        onClick: onboarding.next.key === "profil" ? () => router.push("/mon-compte/profil?highlight=1") : undefined,
         cta: onboarding.next.label,
       });
     }
@@ -1435,7 +1435,7 @@ export function SectionDashboard({
               {onboarding.steps.map((step) => (
                 <button key={step.key} type="button"
                   onClick={() => {
-                    if (step.key === "profil") { router.push("/mon-compte"); return; }
+                    if (step.key === "profil") { router.push("/mon-compte/profil?highlight=1"); return; }
                     const k = step.key as LandlordSectionKey;
                     if (step.done) { onGo(k); return; }
                     const extra = k === "finance" && onboarding.financeIncompletePropertyId
@@ -1482,7 +1482,7 @@ export function SectionDashboard({
               <div className="mt-4 flex justify-end">
                 <button type="button"
                   onClick={() => {
-                    if (onboarding.next!.key === "profil") { router.push("/mon-compte"); return; }
+                    if (onboarding.next!.key === "profil") { router.push("/mon-compte/profil?highlight=1"); return; }
                     const k = onboarding.next!.key as LandlordSectionKey;
                     const extra = k === "finance" && onboarding.financeIncompletePropertyId
                       ? { prefillPropertyId: onboarding.financeIncompletePropertyId }
