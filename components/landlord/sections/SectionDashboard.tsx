@@ -1,7 +1,7 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { ArrowTopRightOnSquareIcon, ArrowTrendingUpIcon, ArrowUturnLeftIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, LinkIcon, NoSymbolIcon, UserCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowTopRightOnSquareIcon, ArrowTrendingUpIcon, ArrowUturnLeftIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, InformationCircleIcon, LinkIcon, NoSymbolIcon, UserCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
@@ -125,6 +125,17 @@ function paymentStatusForLease(lease: Lease, yyyymm: string, payment?: RentPayme
   }
   return { label: "Encaissé", missing: 0, incomplete: false };
 }
+
+// "Pourquoi" plutôt que "quoi" : ces textes s'affichent au survol du petit
+// icône d'info sur chaque étape de la mise en route, pour un nouvel
+// utilisateur qui ne devine pas ce que chaque étape lui apporte.
+const ONBOARDING_STEP_WHY: Record<string, string> = {
+  profil: "Votre nom et votre adresse apparaissent sur les quittances, baux et états des lieux générés. Sans ça, ces documents ne sont pas utilisables tels quels.",
+  biens: "La fiche du bien (adresse, type, surface) sert de base à tout le reste : loyers, quittances, performance, déclarations fiscales.",
+  locataires: "Le dossier locataire (nom, email) permet d'envoyer automatiquement les quittances et les relances de loyer, sans ressaisir l'information à chaque fois.",
+  baux: "Le bail relie le bien, le locataire et le loyer. C'est lui qui déclenche le suivi des paiements, les quittances et les alertes d'échéance.",
+  finance: "Prix d'achat et taux de crédit permettent de calculer votre vraie rentabilité (cash-flow, rendement net) dans l'onglet Performance — sans ça, ces chiffres restent à 0.",
+};
 
 function actionTarget(action?: string): LandlordSectionKey | null {
   const a = (action || "").toLowerCase();
@@ -1445,7 +1456,17 @@ export function SectionDashboard({
                       : <span className="h-2.5 w-2.5 rounded-full bg-white" />}
                   </span>
                   <div className="min-w-0">
-                    <p className={`text-sm font-semibold ${step.done ? "text-emerald-800" : "text-slate-800"}`}>{step.label}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className={`text-sm font-semibold ${step.done ? "text-emerald-800" : "text-slate-800"}`}>{step.label}</p>
+                      {!step.done && ONBOARDING_STEP_WHY[step.key] ? (
+                        <span
+                          title={ONBOARDING_STEP_WHY[step.key]}
+                          className={`inline-flex shrink-0 ${onboarding.next?.key === step.key ? "animate-pulse text-[#635bff]" : "text-slate-300"}`}
+                        >
+                          <InformationCircleIcon className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                      ) : null}
+                    </div>
                     <p className={`mt-0.5 text-xs leading-4 ${step.done ? "text-emerald-600" : "text-slate-500"}`}>
                       {step.key === "profil" ? "Nom, adresse, coordonnées"
                         : step.key === "biens" ? "Adresse, infos, statut"
