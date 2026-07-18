@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
-import { stampPdf, type SignatureAuditEntry } from "../../../lib/pdfStamp";
+import { stampPdf, hashPdfBuffer, type SignatureAuditEntry } from "../../../lib/pdfStamp";
 import { contractPdfPath } from "../../../lib/leaseContract";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
@@ -113,6 +113,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const pdfBytes = new Uint8Array(await pdfBlob.arrayBuffer());
+
+  // Intégrité : le document source ne doit pas avoir changé depuis la création
+  // de la demande de signature (ex : régénération du PDF pendant que la
+  // signature était en cours). Sans ce contrôle, le certificat signerait un
+  // hash qui ne correspond plus au contenu réellement téléchargé.
+  const currentHash = hashPdfBuffer(pdfBytes);
+  if (sigReq.document_hash && currentHash !== sigReq.document_hash) {
+    return res.status(409).json({
+      error: "Le document source a changé depuis l'envoi de cette demande de signature. Elle n'est plus valide — génère une nouvelle demande de signature.",
+    });
+  }
+
   const landlordSignedAt = isLandlord ? new Date(now) : new Date(sigReq.landlord_signed_at);
   const tenantSignedAt = isLandlord ? new Date(sigReq.tenant_signed_at) : new Date(now);
   const landlordIp = isLandlord ? ip : sigReq.landlord_ip;

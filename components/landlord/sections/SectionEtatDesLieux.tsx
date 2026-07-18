@@ -932,6 +932,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       let entryReportId: string | null = null;
       if (type === "exit") {
         entryReportId = await findEntryReportIdForLease(selectedLeaseId);
+        if (!entryReportId) {
+          setErr("Aucun état des lieux d’entrée trouvé pour ce bail. Crée-le d’abord — ou importe un PDF externe si l’entrée a été réalisée hors lokt.fr.");
+          return;
+        }
       }
 
       // créer report
@@ -995,7 +999,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     }
   };
 
-  const createStandaloneReport = async () => {
+  const createStandaloneReport = async (reportTypeOverride?: "entry" | "exit") => {
     if (!supabase || !userId) return;
 
     const propertyLabel = standaloneForm.propertyLabel.trim();
@@ -1020,7 +1024,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         user_id: userId,
         lease_id: null,
         attachment_status: "standalone",
-        report_type: standaloneForm.reportType,
+        report_type: reportTypeOverride ?? standaloneForm.reportType,
         status: "draft",
         performed_at: new Date().toISOString(),
         performed_place: [addressLine1, standaloneForm.addressLine2.trim(), [standaloneForm.postalCode.trim(), standaloneForm.city.trim()].filter(Boolean).join(" ")]
@@ -3715,8 +3719,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                               if (creationMode === "lease" && creationWizardReportType) {
                                 void createReport(creationWizardReportType);
                               } else {
-                                setStandaloneForm((prev) => ({ ...prev, reportType: creationWizardReportType ?? "entry" }));
-                                void createStandaloneReport();
+                                void createStandaloneReport(creationWizardReportType ?? "entry");
                               }
                               resetCreationWizard();
                             }}

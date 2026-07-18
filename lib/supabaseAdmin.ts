@@ -14,5 +14,10 @@ export const supabaseAdmin = (() => {
 
   return createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    // Next.js patche fetch() et met en cache les réponses qui portent des
+    // en-têtes Cache-Control (ex: Supabase Storage), même côté serveur.
+    // Sans ça, un download() répété sur le même chemin peut renvoyer un
+    // contenu périmé pendant toute la durée de vie de l'instance serveur.
+    global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, cache: "no-store" }) },
   });
 })();
