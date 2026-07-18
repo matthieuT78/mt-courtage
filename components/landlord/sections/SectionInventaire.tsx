@@ -16,9 +16,10 @@ import {
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, formatEuro } from "../UiBits";
 import type { Property, PropertyFinance } from "../../../lib/landlord/types";
+import { getLmnpItemStatus, type LmnpInventoryStatus } from "../../../lib/landlord/lmnpInventory";
 
 type InventoryCondition = "neuf" | "tres_bon" | "bon" | "moyen" | "a_remplacer";
-type InventoryStatus = "ok" | "missing" | "partial" | "replace";
+type InventoryStatus = LmnpInventoryStatus;
 
 type PropertyInventoryItem = {
   id: string;
@@ -90,6 +91,58 @@ const EXTRA_PRESETS = [
   { room: "Salle de bain", category: "Linge", label: "Serviettes", required_quantity: 4 },
 ];
 
+// Petit repère visuel par élément : la liste réglementaire est connue et
+// fixe, donc une correspondance exacte par libellé suffit pour l'essentiel.
+// Une correspondance par catégorie prend le relais pour tout élément
+// personnalisé ajouté par l'utilisateur.
+const ITEM_ICON_BY_LABEL: Record<string, string> = {
+  "Literie avec couette ou couverture": "🛏️",
+  "Volets, stores ou rideaux dans les chambres": "🪟",
+  "Plaques de cuisson": "🔥",
+  "Four ou four micro-ondes": "♨️",
+  "Réfrigérateur avec congélateur ou freezer": "🧊",
+  "Assiettes": "🍽️",
+  "Verres": "🥂",
+  "Bols": "🥣",
+  "Fourchettes": "🍴",
+  "Couteaux": "🔪",
+  "Cuillères": "🥄",
+  "Ustensiles de cuisine": "🍳",
+  "Casseroles et poêles": "🥘",
+  "Table": "🛋️",
+  "Sièges": "🪑",
+  "Étagères ou rangements": "🗄️",
+  "Luminaires": "💡",
+  "Matériel d’entretien adapté au logement": "🧹",
+  "Aspirateur": "🧹",
+  "Oreillers": "☁️",
+  "Protège-matelas": "🛏️",
+  "Cafetière": "☕",
+  "Bouilloire": "🫖",
+  "Grille-pain": "🍞",
+  "Serviettes": "🧺",
+};
+
+const ITEM_ICON_BY_CATEGORY: Record<string, string> = {
+  Literie: "🛏️",
+  Occultation: "🪟",
+  Cuisson: "🔥",
+  Froid: "🧊",
+  Vaisselle: "🍽️",
+  Ustensiles: "🍴",
+  Mobilier: "🛋️",
+  Éclairage: "💡",
+  Ménage: "🧹",
+  Électroménager: "🔌",
+  Linge: "🧺",
+};
+
+const DEFAULT_ITEM_ICON = "📦";
+
+function iconForItem(item: { label: string; category: string }): string {
+  return ITEM_ICON_BY_LABEL[item.label] || ITEM_ICON_BY_CATEGORY[item.category] || DEFAULT_ITEM_ICON;
+}
+
 const conditionOptions: Array<{ value: InventoryCondition; label: string }> = [
   { value: "neuf", label: "Neuf" },
   { value: "tres_bon", label: "Très bon" },
@@ -100,12 +153,7 @@ const conditionOptions: Array<{ value: InventoryCondition; label: string }> = [
 
 const conditionLabel = (value: InventoryCondition) => conditionOptions.find((c) => c.value === value)?.label || value;
 
-const statusOf = (item: PropertyInventoryItem): InventoryStatus => {
-  if (item.condition === "a_remplacer") return "replace";
-  if (Number(item.actual_quantity || 0) <= 0) return "missing";
-  if (Number(item.actual_quantity || 0) < Number(item.required_quantity || 0)) return "partial";
-  return "ok";
-};
+const statusOf = (item: PropertyInventoryItem): InventoryStatus => getLmnpItemStatus(item);
 
 function calcItemReplacementQty(item: PropertyInventoryItem): number {
   const missingQty = Math.max(0, Number(item.required_quantity || 0) - Number(item.actual_quantity || 0));
@@ -798,7 +846,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
                 onClick={() => addPreset(preset)}
                 className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
-                + {preset.label}
+                <span aria-hidden="true">{iconForItem(preset)}</span> + {preset.label}
               </button>
             ))}
           </div>
@@ -956,6 +1004,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
                             />
                             <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-base leading-none" aria-hidden="true">{iconForItem(item)}</span>
                               <p className="font-semibold text-slate-900">{item.label}</p>
                               <span className={cx("rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold", statusTone(status))}>{statusLabel(status)}</span>
                               {item.is_required_lmnp ? <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[0.7rem] font-semibold text-cyan-800">LMNP</span> : null}

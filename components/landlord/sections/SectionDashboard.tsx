@@ -11,6 +11,7 @@ import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
 import { isLandlordProfileComplete } from "../../../lib/landlord/profileCompletion";
+import { isLmnpItemCompliant } from "../../../lib/landlord/lmnpInventory";
 import { TransitionPanel } from "./TransitionPanel";
 
 type DashboardAlert = {
@@ -692,10 +693,7 @@ export function SectionDashboard({
         for (const item of data || []) {
           const entry = byProp.get(item.property_id) || { ok: 0, total: 0 };
           entry.total++;
-          const req = Number(item.required_quantity || 0);
-          const actual = Number(item.actual_quantity || 0);
-          const isOk = item.condition !== "a_remplacer" && (req === 0 || actual >= req);
-          if (isOk) entry.ok++;
+          if (isLmnpItemCompliant(item)) entry.ok++;
           byProp.set(item.property_id, entry);
         }
         // Biens sans aucun item inventaire → compliance 0
