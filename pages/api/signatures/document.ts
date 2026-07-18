@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { data, error } = await supabaseAdmin
     .from("signature_requests")
-    .select("original_pdf_url, expires_at, status")
+    .select("original_pdf_url, signed_pdf_url, expires_at, status")
     .or(`landlord_token.eq.${token},tenant_token.eq.${token}`)
     .single();
 
@@ -17,7 +17,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (data.status === "cancelled" || data.status === "expired") return res.status(410).json({ error: "Ce lien n'est plus valide." });
   if (new Date(data.expires_at) < new Date()) return res.status(410).json({ error: "Lien expiré." });
 
-  const [bucket, ...pathParts] = data.original_pdf_url.split(":");
+  const sourceUrl = data.status === "completed" && data.signed_pdf_url ? data.signed_pdf_url : data.original_pdf_url;
+  const [bucket, ...pathParts] = sourceUrl.split(":");
   const storagePath = pathParts.join(":");
 
   const { data: signedUrlData, error: urlErr } = await supabaseAdmin.storage

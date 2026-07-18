@@ -325,6 +325,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
     const { data: document } = await supabaseAdmin.from("lease_contract_documents").select("*").eq("id", documentId).eq("user_id", userId).maybeSingle();
     if (!document) return res.status(404).json({ error: "Contrat introuvable." });
+    if (document.status === "signed" || document.status === "archived" || document.signed_pdf_url) {
+      return res.status(409).json({ error: "Ce bail est déjà signé et ne peut plus être régénéré." });
+    }
     const missing = missingRequiredFields(document);
     if (missing.length) return res.status(400).json({ error: `Contrat incomplet : ${missing.join(", ")}.` });
     const pdf = await makePdf(document);

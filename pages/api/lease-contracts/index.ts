@@ -30,6 +30,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!leaseId) return res.status(400).json({ error: "leaseId requis." });
     const context = await loadContext(String(userId), String(leaseId));
     if (action === "load") return res.status(200).json(context);
+    const isLocked = context.document?.status === "signed" || context.document?.status === "archived";
+    if (isLocked) {
+      return res.status(409).json({ error: "Ce bail est déjà signé et ne peut plus être modifié." });
+    }
     if (action === "confirmSigned") {
       if (!context.document?.id || !signedPdfUrl) return res.status(400).json({ error: "Document et PDF signé requis." });
       const { data, error } = await supabaseAdmin

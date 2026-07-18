@@ -13,8 +13,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { userId, documentId, uploadType = "signed", sizeBytes } = req.body || {};
     const userCheck = requireMatchingUser(auth, String(userId || ""));
     if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
-    const { data: document } = await supabaseAdmin.from("lease_contract_documents").select("id,user_id,lease_id").eq("id", documentId).eq("user_id", userId).maybeSingle();
+    const { data: document } = await supabaseAdmin.from("lease_contract_documents").select("id,user_id,lease_id,status").eq("id", documentId).eq("user_id", userId).maybeSingle();
     if (!document) return res.status(404).json({ error: "Contrat introuvable." });
+    if (document.status === "signed" || document.status === "archived") {
+      return res.status(409).json({ error: "Ce bail est déjà signé et ne peut plus être modifié." });
+    }
     if (!["signed", "external"].includes(String(uploadType))) return res.status(400).json({ error: "Type d’import invalide." });
     const bytes = Number(sizeBytes || 0);
     if (!Number.isFinite(bytes) || bytes <= 0 || bytes > 10 * 1024 * 1024) {
