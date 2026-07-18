@@ -1459,11 +1459,13 @@ export function SectionDashboard({
                     <div className="flex items-center gap-1.5">
                       <p className={`text-sm font-semibold ${step.done ? "text-emerald-800" : "text-slate-800"}`}>{step.label}</p>
                       {!step.done && ONBOARDING_STEP_WHY[step.key] ? (
-                        <span
-                          title={ONBOARDING_STEP_WHY[step.key]}
-                          className={`inline-flex shrink-0 ${onboarding.next?.key === step.key ? "animate-pulse text-[#635bff]" : "text-slate-300"}`}
-                        >
-                          <InformationCircleIcon className="h-4 w-4" aria-hidden="true" />
+                        <span className="group/tip relative inline-flex shrink-0">
+                          <span className={`inline-flex ${onboarding.next?.key === step.key ? "animate-pulse text-[#635bff]" : "text-slate-300"}`}>
+                            <InformationCircleIcon className="h-4 w-4" aria-hidden="true" />
+                          </span>
+                          <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-56 -translate-x-1/2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-normal leading-4 text-white opacity-0 shadow-lg transition-opacity duration-100 group-hover/tip:opacity-100">
+                            {ONBOARDING_STEP_WHY[step.key]}
+                          </span>
                         </span>
                       ) : null}
                     </div>
