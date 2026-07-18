@@ -323,7 +323,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const daysToDue = daysBetween(today, dueDate);
 
           if (!paid && daysToDue < 0) {
-            const scheduleKey = recurringScheduleKey(`late:${lease.id}:${period.start}`, Math.abs(daysToDue), [3, 7], 7);
+            const scheduleKey = recurringScheduleKey(`late:${lease.id}:${period.start}`, Math.abs(daysToDue), [1, 3, 7], 7);
             if (scheduleKey) {
               alerts.push({
                 key: scheduleKey,
@@ -396,7 +396,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           if (!hasPreparedEntryEdl && leaseStart) {
             const daysToStart = daysBetween(today, leaseStart);
-            const scheduleKey = [7, 1, -1, -7].includes(daysToStart) ? `entry-edl:${lease.id}:day-${daysToStart}` : null;
+            // Avant/le jour du début du bail : deux rappels ponctuels de préparation.
+            // Après le début : relance hebdomadaire tant que l'EDL n'est pas fait
+            // (namespace distinct pour ne jamais entrer en collision avec les clés
+            // de préparation ci-dessus).
+            const scheduleKey =
+              daysToStart === 7 || daysToStart === 1
+                ? `entry-edl:${lease.id}:day-${daysToStart}`
+                : daysToStart < 0
+                ? recurringScheduleKey(`entry-edl-overdue:${lease.id}`, -daysToStart, [1, 7], 7)
+                : null;
             if (scheduleKey) {
               alerts.push({
                 key: scheduleKey,
@@ -496,7 +505,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ["active", "ended"].includes(leaseStatus) &&
             (!exitEdl || !["ready", "signed", "archived"].includes(String(exitEdl.status || "").toLowerCase()))
           ) {
-            const scheduleKey = [30, 7, 1, -1, -7].includes(daysToEnd) ? `exit-edl:${lease.id}:day-${daysToEnd}` : null;
+            // Avant/le jour de fin de bail : trois rappels ponctuels de préparation.
+            // Après la fin : relance hebdomadaire tant que non finalisé (namespace
+            // distinct, même logique que pour l'EDL d'entrée ci-dessus).
+            const scheduleKey =
+              [30, 7, 1].includes(daysToEnd)
+                ? `exit-edl:${lease.id}:day-${daysToEnd}`
+                : daysToEnd < 0
+                ? recurringScheduleKey(`exit-edl-overdue:${lease.id}`, -daysToEnd, [1, 7], 7)
+                : null;
             if (scheduleKey) {
               alerts.push({
                 key: scheduleKey,
