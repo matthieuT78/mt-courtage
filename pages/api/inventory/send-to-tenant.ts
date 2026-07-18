@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { buildEdlLocataireEmailHtml, buildEdlLocataireEmailText } from "../../../lib/emails/edl-locataire";
 import { rateLimitEmailSendOrThrow } from "../../../lib/emailRateLimit";
+import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
+import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 function safeStr(v: any) {
   return String(v || "").trim();
@@ -14,30 +16,72 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
+    if (!supabaseAdmin) return res.status(500).json({ ok: false, error: "Supabase admin non configuré." });
+
+    const auth = await requireApiUser(req);
+    if (!auth.ok) return res.status(auth.status).json({ ok: false, error: auth.error });
+
+    const { reportId, userId } = req.body || {};
+    if (!reportId || !userId) {
+      return res.status(400).json({ ok: false, error: "reportId et userId requis." });
+    }
+    const userCheck = requireMatchingUser(auth, String(userId));
+    if (!userCheck.ok) return res.status(userCheck.status).json({ ok: false, error: userCheck.error });
+
     rateLimitEmailSendOrThrow(req);
 
-    const { to, reportType, occupantLabel, propertyLabel, propertyAddress, performedAt, pdfUrl } = req.body || {};
+    const { data: report, error: reportErr } = await supabaseAdmin
+      .from("inventory_reports")
+      .select("id,user_id,status,pdf_url,report_type,occupant_email,occupant_label,property_label,property_address_line1,property_city,performed_at")
+      .eq("id", String(reportId))
+      .single();
 
-    const email = safeStr(to).toLowerCase();
+    if (reportErr || !report) {
+      return res.status(404).json({ ok: false, error: "État des lieux introuvable." });
+    }
+    if (report.user_id !== String(userId)) {
+      return res.status(403).json({ ok: false, error: "Accès refusé." });
+    }
+
+    const status = String(report.status || "").toLowerCase();
+    if (!["ready", "signed", "archived"].includes(status)) {
+      return res.status(409).json({ ok: false, error: "PDF indisponible tant que l’état des lieux n’est pas finalisé." });
+    }
+    if (!report.pdf_url) {
+      return res.status(400).json({ ok: false, error: "Aucun PDF généré pour cet état des lieux." });
+    }
+    if (report.report_type !== "entry" && report.report_type !== "exit") {
+      return res.status(400).json({ ok: false, error: "Type d'EDL invalide." });
+    }
+
+    const email = safeStr(report.occupant_email).toLowerCase();
     if (!email || !email.includes("@")) {
-      return res.status(400).json({ ok: false, error: "Email destinataire invalide" });
+      return res.status(400).json({ ok: false, error: "Aucun email locataire renseigné sur cet état des lieux." });
     }
 
-    if (!pdfUrl || !safeStr(pdfUrl).startsWith("http")) {
-      return res.status(400).json({ ok: false, error: "URL PDF manquante ou invalide" });
+    const raw = String(report.pdf_url);
+    const sepIndex = raw.indexOf(":");
+    if (sepIndex === -1) {
+      return res.status(400).json({ ok: false, error: "pdf_url invalide." });
+    }
+    const bucket = raw.slice(0, sepIndex);
+    const path = raw.slice(sepIndex + 1);
+    const { data: signedData, error: signErr } = await supabaseAdmin.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 7);
+    if (signErr || !signedData?.signedUrl) {
+      return res.status(500).json({ ok: false, error: signErr?.message || "Impossible de générer le lien du PDF." });
     }
 
-    if (reportType !== "entry" && reportType !== "exit") {
-      return res.status(400).json({ ok: false, error: "Type d'EDL invalide" });
-    }
-
+    const reportType = report.report_type as "entry" | "exit";
+    const propertyLabel = safeStr(report.property_label) || safeStr(report.property_address_line1) || "le logement";
+    const propertyAddress = [report.property_address_line1, report.property_city].filter(Boolean).join(", ");
     const typeLabel = reportType === "entry" ? "d'entrée" : "de sortie";
-    const html = buildEdlLocataireEmailHtml({ reportType, occupantLabel: safeStr(occupantLabel), propertyLabel: safeStr(propertyLabel), propertyAddress: safeStr(propertyAddress), performedAt: performedAt || null, pdfUrl: safeStr(pdfUrl) });
-    const text = buildEdlLocataireEmailText({ reportType, occupantLabel: safeStr(occupantLabel), propertyLabel: safeStr(propertyLabel), propertyAddress: safeStr(propertyAddress), performedAt: performedAt || null, pdfUrl: safeStr(pdfUrl) });
+    const occupantLabel = safeStr(report.occupant_label) || email;
+    const html = buildEdlLocataireEmailHtml({ reportType, occupantLabel, propertyLabel, propertyAddress, performedAt: report.performed_at || null, pdfUrl: signedData.signedUrl });
+    const text = buildEdlLocataireEmailText({ reportType, occupantLabel, propertyLabel, propertyAddress, performedAt: report.performed_at || null, pdfUrl: signedData.signedUrl });
 
     const result = await sendEmailViaResend({
       to: email,
-      subject: `État des lieux ${typeLabel} — ${safeStr(propertyLabel)} | lokt.fr`,
+      subject: `État des lieux ${typeLabel} — ${propertyLabel} | lokt.fr`,
       html,
       text,
       replyTo: "contact@lokt.fr",

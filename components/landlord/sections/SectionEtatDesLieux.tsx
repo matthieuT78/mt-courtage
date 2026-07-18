@@ -1459,25 +1459,12 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     setSendingTenant(true);
     setErr(null);
     try {
-      const address = [
-        selectedReport.property_address_line1,
-        selectedReport.property_address_line2,
-        [selectedReport.property_postal_code, selectedReport.property_city].filter(Boolean).join(" "),
-      ]
-        .filter((p) => String(p || "").trim())
-        .join(", ");
-
       const res = await fetch("/api/inventory/send-to-tenant", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await authJsonHeaders(),
         body: JSON.stringify({
-          to: selectedReport.occupant_email,
-          reportType: selectedReport.report_type,
-          occupantLabel: selectedReport.occupant_label || "",
-          propertyLabel: selectedReport.property_label || selectedReport.property_address_line1 || "Logement",
-          propertyAddress: address,
-          performedAt: selectedReport.performed_at,
-          pdfUrl: selectedReport.pdf_url,
+          reportId: selectedReport.id,
+          userId,
         }),
       });
       const data = await res.json();

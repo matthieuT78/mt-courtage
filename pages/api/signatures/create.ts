@@ -66,16 +66,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     inventory_report_id,
     lease_id,
     property_id,
-    original_pdf_url,
-    landlord_email,
     landlord_name,
     tenant_email,
     tenant_name,
   } = req.body as Record<string, string>;
 
-  if (!document_type || !original_pdf_url || !landlord_email || !tenant_email) {
+  if (!document_type || !tenant_email) {
     return res.status(400).json({ error: "Paramètres manquants." });
   }
+
+  // Vérification d'appartenance côté serveur : on ne fait jamais confiance à
+  // original_pdf_url / landlord_email fournis par le client. On les dérive
+  // de la ressource elle-même, après avoir vérifié qu'elle appartient à
+  // l'utilisateur authentifié (évite tout accès cross-utilisateur).
+  let original_pdf_url: string;
+  if (document_type === "bail") {
+    if (!lease_contract_id) return res.status(400).json({ error: "lease_contract_id manquant." });
+    const { data: doc, error: docErr } = await supabaseAdmin
+      .from("lease_contract_documents")
+      .select("id, user_id, pdf_url")
+      .eq("id", lease_contract_id)
+      .maybeSingle();
+    if (docErr || !doc) return res.status(404).json({ error: "Document introuvable." });
+    if (doc.user_id !== auth.userId) return res.status(403).json({ error: "Accès refusé." });
+    if (!doc.pdf_url) return res.status(400).json({ error: "Aucun PDF généré pour ce bail." });
+    original_pdf_url = doc.pdf_url;
+  } else if (document_type === "edl") {
+    if (!inventory_report_id) return res.status(400).json({ error: "inventory_report_id manquant." });
+    const { data: report, error: reportErr } = await supabaseAdmin
+      .from("inventory_reports")
+      .select("id, user_id, pdf_url")
+      .eq("id", inventory_report_id)
+      .maybeSingle();
+    if (reportErr || !report) return res.status(404).json({ error: "État des lieux introuvable." });
+    if (report.user_id !== auth.userId) return res.status(403).json({ error: "Accès refusé." });
+    if (!report.pdf_url) return res.status(400).json({ error: "Aucun PDF généré pour cet état des lieux." });
+    original_pdf_url = report.pdf_url;
+  } else {
+    return res.status(400).json({ error: "document_type invalide." });
+  }
+
+  const landlord_email = auth.email;
+  if (!landlord_email) return res.status(400).json({ error: "Email bailleur introuvable sur le compte." });
 
   // Dedup — éviter plusieurs demandes actives pour le même document
   const dedupField = document_type === "bail" ? "lease_contract_id" : "inventory_report_id";
