@@ -127,7 +127,7 @@ function paymentStatusForLease(lease: Lease, yyyymm: string, payment?: RentPayme
 
 function actionTarget(action?: string): LandlordSectionKey | null {
   const a = (action || "").toLowerCase();
-  if (a.includes("bien")) return "biens";
+  if (a.includes("bien") || a.includes("logement")) return "biens";
   if (a.includes("locataire")) return "locataires";
   if (a.includes("bail")) return "baux";
   if (a.includes("quittance") || a.includes("retard") || a.includes("paiement")) return "quittances";
@@ -1070,6 +1070,18 @@ export function SectionDashboard({
     }
 
     for (const alert of alerts) {
+      // Cas particulier : ne correspond à aucune section interne, direction
+      // la page d'abonnement plutôt que d'être silencieusement ignorée.
+      if (alert.title === "Seuil Pro dépassé") {
+        actions.push({
+          tone: alert.tone === "red" ? "red" : alert.tone === "amber" ? "amber" : "emerald",
+          title: alert.title,
+          desc: alert.desc,
+          onClick: () => router.push("/mon-compte/abonnement"),
+          cta: alert.action,
+        });
+        continue;
+      }
       const target = actionTarget(alert.action);
       if (!target) continue;
       if (onboardingIncomplete && (target === "biens" || target === "locataires" || target === "baux")) continue;

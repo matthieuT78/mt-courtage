@@ -15,6 +15,7 @@ import type {
 import { getLeaseRentPeriod } from "../rentPeriod";
 import { getLeasePaymentDueDate } from "../rentSchedule";
 import { isActivePropertyLike } from "./archiveFilters";
+import { usePermissions } from "../../components/PermissionProvider";
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
 const fmtISO = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -71,6 +72,7 @@ const isLeaseExpectedForMonth = (lease: Lease, yyyymm: string) => {
 
 export function useLandlordDashboard() {
   const router = useRouter();
+  const { maxActiveLeases, loading: permissionsLoading } = usePermissions();
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [user, setUser] = useState<SimpleUser | null>(null);
@@ -546,8 +548,8 @@ export function useLandlordDashboard() {
   ]);
 
   // --- Alerts
-  const leaseLimit = 5;
-  const overLimit = activeLeases.length > leaseLimit;
+  const leaseLimit = maxActiveLeases;
+  const overLimit = !permissionsLoading && leaseLimit > 0 && activeLeases.length > leaseLimit;
 
   const alerts = useMemo(() => {
     const a: {
@@ -626,6 +628,7 @@ export function useLandlordDashboard() {
     receiptWorkflowIssueCount,
     receiptsThisMonth.length,
     overLimit,
+    leaseLimit,
   ]);
 
   return {
