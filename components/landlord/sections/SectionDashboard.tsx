@@ -133,7 +133,7 @@ const ONBOARDING_STEP_WHY: Record<string, string> = {
   profil: "Votre nom et votre adresse apparaissent sur les quittances, baux et états des lieux générés. Sans ça, ces documents ne sont pas utilisables tels quels.",
   biens: "La fiche du bien (adresse, type, surface) sert de base à tout le reste : loyers, quittances, performance, déclarations fiscales.",
   locataires: "Le dossier locataire (nom, email) permet d'envoyer automatiquement les quittances et les relances de loyer, sans ressaisir l'information à chaque fois.",
-  baux: "Le bail relie le bien, le locataire et le loyer. C'est lui qui déclenche le suivi des paiements, les quittances et les alertes d'échéance.",
+  baux: "La location relie le bien, le locataire et le loyer. C'est elle qui déclenche le suivi des paiements, les quittances et les alertes d'échéance.",
   finance: "Prix d'achat et taux de crédit permettent de calculer votre vraie rentabilité (cash-flow, rendement net) dans l'onglet Performance — sans ça, ces chiffres restent à 0.",
 };
 
@@ -523,9 +523,9 @@ export function SectionDashboard({
       Array.isArray((p as any).delegated_services) && (p as any).delegated_services.includes("bail_edl")
     );
     const leaseStepLabel =
-      propertiesWithoutLease.length > 0 || tenantsWithoutLease.length > 0 ? "Créer le nouveau bail" : "Créer un bail";
+      propertiesWithoutLease.length > 0 || tenantsWithoutLease.length > 0 ? "Créer la nouvelle location" : "Créer une location";
     const leaseStepDesc = bailEdlDelegated
-      ? "Renseignez les infos du bail (loyer, dates) pour le suivi financier — même si le document est géré par l’agence."
+      ? "Renseignez les infos de la location (loyer, dates) pour le suivi financier — même si le bail est géré par l’agence."
       : null;
 
     // Profil complet = nom + adresse minimale. On attend le chargement avant de signaler incomplet.
@@ -574,12 +574,12 @@ export function SectionDashboard({
         ? "Ajoutez le locataire : nom, email, téléphone et notes utiles."
         : next?.key === "baux"
         ? propertiesWithoutLease.length > 0 && tenantsWithoutLease.length > 0
-          ? `Créez un bail pour rattacher ${propertiesWithoutLease.length} bien${propertiesWithoutLease.length > 1 ? "s" : ""} et ${tenantsWithoutLease.length} locataire${tenantsWithoutLease.length > 1 ? "s" : ""} encore sans bail.`
+          ? `Créez une location pour rattacher ${propertiesWithoutLease.length} bien${propertiesWithoutLease.length > 1 ? "s" : ""} et ${tenantsWithoutLease.length} locataire${tenantsWithoutLease.length > 1 ? "s" : ""} encore sans location.`
           : propertiesWithoutLease.length > 0
-          ? `Créez un bail pour ${propertiesWithoutLease.length > 1 ? "les nouveaux biens" : "le nouveau bien"} encore sans locataire.`
+          ? `Créez une location pour ${propertiesWithoutLease.length > 1 ? "les nouveaux biens" : "le nouveau bien"} encore sans locataire.`
           : tenantsWithoutLease.length > 0
-          ? `Créez un bail pour ${tenantsWithoutLease.length > 1 ? "les nouveaux locataires" : "le nouveau locataire"} encore sans logement rattaché.`
-          : "Créez le bail : il relie le bien, le locataire, le loyer et les quittances."
+          ? `Créez une location pour ${tenantsWithoutLease.length > 1 ? "les nouveaux locataires" : "le nouveau locataire"} encore sans logement rattaché.`
+          : "Créez la location : elle relie le bien, le locataire, le loyer et les quittances."
         : "Complétez le socle Finance du bien : prix d’achat et taux du crédit. Les autres charges pourront être ajoutées ensuite.";
 
     const cta = next ? { key: next.key, label: next.label } : null;
