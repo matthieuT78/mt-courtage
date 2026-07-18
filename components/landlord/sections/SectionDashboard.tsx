@@ -10,6 +10,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
+import { isLandlordProfileComplete } from "../../../lib/landlord/profileCompletion";
 import { TransitionPanel } from "./TransitionPanel";
 
 type DashboardAlert = {
@@ -445,6 +446,7 @@ export function SectionDashboard({
 
   const [doneAtISO, setDoneAtISO] = useState<string | null>(null);
   const [manuallyDismissed, setManuallyDismissed] = useState(false);
+  const [justCompleted, setJustCompleted] = useState(false);
   const prevPercentRef = useRef<number>(-1);
 
   const dismissedKey = useMemo(() => `imp:onboarding_dismissed:${(userId || "").trim() || "anon"}`, [userId]);
@@ -502,6 +504,9 @@ export function SectionDashboard({
     const financeByProperty = new Map((propertyFinance || []).map((row) => [row.property_id, row]));
     const financeConfigured =
       hasProperty && managedProperties.every((property) => hasFinanceSetup(financeByProperty.get(property.id)));
+    const financeIncompletePropertyId = managedProperties.find(
+      (property) => !hasFinanceSetup(financeByProperty.get(property.id))
+    )?.id;
     const bailEdlDelegated = managedProperties.some((p) =>
       Array.isArray((p as any).delegated_services) && (p as any).delegated_services.includes("bail_edl")
     );
@@ -512,15 +517,7 @@ export function SectionDashboard({
       : null;
 
     // Profil complet = nom + adresse minimale. On attend le chargement avant de signaler incomplet.
-    const profileComplete = !profileLoaded
-      ? true
-      : !!(
-          profile &&
-          (profile.first_name || profile.last_name || profile.full_name) &&
-          profile.address_line1 &&
-          profile.postal_code &&
-          profile.city
-        );
+    const profileComplete = !profileLoaded ? true : isLandlordProfileComplete(profile);
 
     const steps: Array<{ key: LandlordSectionKey | "profil"; label: string; done: boolean; desc?: string | null }> = [
       { key: "profil", label: "Compléter mon profil", done: profileComplete },
@@ -574,10 +571,13 @@ export function SectionDashboard({
         : "Complétez le socle Finance du bien : prix d’achat et taux du crédit. Les autres charges pourront être ajoutées ensuite.";
 
     const cta = next ? { key: next.key, label: next.label } : null;
-    return { steps, doneCount, percent, next, headline, sub, cta };
+    return { steps, doneCount, percent, next, headline, sub, cta, financeIncompletePropertyId };
   }, [activeLeases, properties, propertyFinance, tenantById, profile, profileLoaded]);
 
   const shouldHideOnboarding = useMemo(() => {
+    // Laisse le temps d'afficher l'état "Mise en route terminée" quelques
+    // secondes avant de repasser à la logique de masquage habituelle.
+    if (justCompleted) return false;
     if (manuallyDismissed) return true;
     const activeProps = (properties || []).filter(
       (p) => String(p.status || "").toLowerCase() !== "archived"
@@ -588,7 +588,7 @@ export function SectionDashboard({
     if (doneAtISO && activeProps.length > 0) return true;
     if (onboarding.percent < 100) return false;
     return true;
-  }, [doneAtISO, manuallyDismissed, onboarding.percent, properties]);
+  }, [doneAtISO, manuallyDismissed, onboarding.percent, properties, justCompleted]);
 
   const linkSuggestions = useMemo(() => {
     const activeLeasedTenantIds = new Set(
@@ -608,6 +608,10 @@ export function SectionDashboard({
     if (current === 100 && previous >= 0 && previous < 100) {
       const nowISO = new Date().toISOString();
       setDoneAtISO(nowISO);
+      // Laisse le temps à l'utilisateur de voir "Mise en route terminée"
+      // avant que le widget ne se cache automatiquement.
+      setJustCompleted(true);
+      const timer = setTimeout(() => setJustCompleted(false), 4000);
 
       try {
         window.localStorage.setItem(storageKey, nowISO);
@@ -625,6 +629,7 @@ export function SectionDashboard({
         }
       })();
 
+      return () => clearTimeout(timer);
     }
   }, [onboarding.percent, storageKey, userId]);
 
@@ -1412,7 +1417,10 @@ export function SectionDashboard({
                     if (step.key === "profil") { router.push("/mon-compte"); return; }
                     const k = step.key as LandlordSectionKey;
                     if (step.done) { onGo(k); return; }
-                    if (onNavigateDeep) { onNavigateDeep(k, { openCreate: true }); } else { onGo(k); }
+                    const extra = k === "finance" && onboarding.financeIncompletePropertyId
+                      ? { prefillPropertyId: onboarding.financeIncompletePropertyId }
+                      : {};
+                    if (onNavigateDeep) { onNavigateDeep(k, { openCreate: true, ...extra }); } else { onGo(k); }
                   }}
                   className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 text-left transition ${
                     step.done
@@ -1445,7 +1453,10 @@ export function SectionDashboard({
                   onClick={() => {
                     if (onboarding.next!.key === "profil") { router.push("/mon-compte"); return; }
                     const k = onboarding.next!.key as LandlordSectionKey;
-                    if (onNavigateDeep) { onNavigateDeep(k, { openCreate: true }); } else { onGo(k); }
+                    const extra = k === "finance" && onboarding.financeIncompletePropertyId
+                      ? { prefillPropertyId: onboarding.financeIncompletePropertyId }
+                      : {};
+                    if (onNavigateDeep) { onNavigateDeep(k, { openCreate: true, ...extra }); } else { onGo(k); }
                   }}
                   className="rounded-full bg-gradient-to-r from-[#635bff] to-[#4f46e5] px-6 py-2.5 text-sm font-semibold text-white shadow-md transition hover:from-[#4f46e5] hover:to-[#4338ca] hover:shadow-lg">
                   {onboarding.percent === 0

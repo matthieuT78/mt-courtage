@@ -386,13 +386,14 @@ export default function MonCompteIndexPage() {
       : "Non connecté";
 
   const profileCompletion = useMemo(() => {
+    // Mêmes critères que la checklist "Mise en route" de l'espace bailleur
+    // (lib/landlord/profileCompletion.ts) pour ne jamais afficher un verdict
+    // différent d'une page à l'autre sur le même profil.
     const checks = [
-      !!profile?.first_name,
-      !!profile?.last_name,
+      !!(profile?.first_name || profile?.last_name || profile?.full_name),
       !!profile?.address_line1,
       !!profile?.postal_code,
       !!profile?.city,
-      !!profile?.country,
     ];
     return Math.round((checks.filter(Boolean).length / checks.length) * 100);
   }, [profile]);
