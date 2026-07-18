@@ -534,6 +534,7 @@ export default function ComparatifPage() {
               { label: "Gestion locative LMNP", href: "/gestion-locative-lmnp" },
               { label: "Modèle quittance PDF gratuit", href: "/modele-quittance-loyer-pdf" },
               { label: "Suivi loyers impayés", href: "/suivi-loyers-impayes" },
+              { label: "Suivi du dépôt de garantie / caution", href: "/cautions-loyers" },
               { label: "Simulateur rentabilité locative", href: "/investissement" },
               { label: "Gestion locative pour particulier", href: "/gestion-locative-proprietaire-particulier" },
             ].map(({ label, href }) => (
