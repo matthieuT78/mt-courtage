@@ -31,6 +31,11 @@ const nextConfig = {
         permanent: true,
       },
       {
+        source: "/gestion-locative",
+        destination: "/outil-gestion-locative",
+        permanent: true,
+      },
+      {
         source: "/simulateur/capacite-emprunt/:revenu",
         destination: "/capacite",
         permanent: true,

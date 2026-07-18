@@ -44,8 +44,7 @@ Bailleurs particuliers gérant 1 à 3 logements en France, investisseurs locatif
 - /investissement : calculette rentabilité locative (rendement brut/net/net-net, cash-flow)
 - /plus-value-vente-immobiliere : simulateur plus-value immobilière avec abattements
 - /pret-relais : simulateur prêt relais immobilier
-- /gestion-locative : présentation de l'outil de gestion locative
-- /outil-gestion-locative : fonctionnalités détaillées
+- /outil-gestion-locative : présentation et fonctionnalités détaillées de l'outil de gestion locative
 - /gestion-locative-lmnp : gestion locative meublée (LMNP)
 - /guides : 13 guides pratiques bailleur (DPE, bail, quittances, IRL, dépôt de garantie...)
 - /blog : articles immobilier (investissement, crédit, fiscalité, gestion)
