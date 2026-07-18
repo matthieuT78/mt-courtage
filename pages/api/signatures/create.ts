@@ -29,7 +29,7 @@ function signerEmailHtml(opts: {
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
 <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
   <tr><td style="background:linear-gradient(135deg,#635bff,#00d4ff);padding:28px 32px">
-    <img src="${SITE_URL}/lokt-logo-small.jpg" alt="lokt.fr" height="32" style="display:block;border-radius:6px">
+    <img src="https://lokt.fr/lokt-logo-small.jpg" alt="lokt.fr" height="32" style="display:block;border-radius:6px">
   </td></tr>
   <tr><td style="padding:32px">
     <p style="margin:0 0 8px;font-size:13px;color:#635bff;font-weight:600;text-transform:uppercase;letter-spacing:.08em">Signature électronique</p>
