@@ -636,6 +636,7 @@ export function SectionLocataires({
   }, [initialDepartureTenantId]);
 
   const saveDeparturePlan = async (tenantId: string) => {
+    if (loading) return;
     if (!userId || !archiveWorkflow || archiveWorkflow.tenantId !== tenantId) return;
 
     const activeLease = safeLeases.find((l) => l.id === archiveWorkflow.leaseId) || null;
@@ -677,6 +678,7 @@ export function SectionLocataires({
   };
 
   const completeExitAndArchive = async (tenantId: string) => {
+    if (loading) return;
     if (!userId || !archiveWorkflow || archiveWorkflow.tenantId !== tenantId) return;
 
     const activeLease = safeLeases.find((l) => l.id === archiveWorkflow.leaseId) || null;

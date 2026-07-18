@@ -589,7 +589,9 @@ export function DashboardShell(props: any) {
             onNavigateDeep={navigateDeep}
             onRefresh={refresh}
             planLabel={planLabel}
-            showTransitionPanel={canUseCandidatures}
+            // Toujours affiché : la caution à restituer est une obligation légale
+            // indépendante de l'accès aux candidatures, qui ne doit pas la masquer.
+            showTransitionPanel
             propertiesCount={properties.length}
             properties={properties}
             propertyFinance={propertyFinance}
