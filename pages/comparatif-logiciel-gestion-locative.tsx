@@ -309,7 +309,7 @@ export default function ComparatifPage() {
             </span>
           </div>
           <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-950 sm:text-4xl">
-            Meilleur logiciel de gestion locative en 2026 :<br className="hidden sm:block" /> Rentila, BailFacile, Smovin, Gererseul, Homii ou lokt.fr ?
+            Comparatif logiciels de gestion locative 2026 :<br className="hidden sm:block" /> lokt.fr vs Rentila, BailFacile, Smovin, Gererseul, Homii
           </h1>
           <p className="mt-4 max-w-2xl text-lg leading-relaxed text-slate-600">
             Nous avons testé et comparé les principaux outils utilisés par les bailleurs indépendants en France. Voici ce que chaque solution fait bien, ses limites, et pour quel profil elle convient vraiment.
