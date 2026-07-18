@@ -32,7 +32,7 @@ function mensualite(capital: number, tauxAnnuel = 0.037, dureeAns = 20) {
 
 export default function RendementLocatifVille({ ville }: { ville: VilleData }) {
   const pageUrl = `${SITE_URL}/rendement-locatif/${ville.slug}`;
-  const metaTitle = `Investissement locatif ${ville.name} 2026 : rendement ${ville.rendementBrut}% | lokt.fr`;
+  const metaTitle = `Rendement locatif ${ville.name} 2026 : ${ville.rendementBrut}% | lokt.fr`;
   const metaDesc = `${ville.prixM2.toLocaleString("fr-FR")} €/m², loyer ${ville.loyerM2} €/m²/mois, rendement brut ${ville.rendementBrut} % — tout sur l'investissement locatif à ${ville.name} : meilleurs quartiers, types de biens et simulation de rentabilité gratuite.`;
 
   const faq = [

@@ -101,7 +101,7 @@ function PlanCard({
 
 export default function TarifsPage() {
   const router = useRouter();
-  const title = "Tarifs gestion locative propriétaire bailleur | lokt.fr";
+  const title = "Tarifs gestion locative gratuite 2026 | lokt.fr";
   const description =
     "Comparez les offres lokt.fr : gestion locative gratuite pour un logement actif, lokt·one pour les candidatures et l'automatisation, lokt·plus pour le pilotage et les outils bailleur.";
   const pageUrl = "https://lokt.fr/tarifs";
