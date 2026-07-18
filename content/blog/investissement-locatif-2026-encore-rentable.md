@@ -132,11 +132,11 @@ Pour 135 €/mois d'effort, cet investisseur capitalise 110 000 € de crédit, 
 
 | Ville | Rendement brut moyen | Logique d'investissement |
 |-------|---------------------|--------------------------|
-| Paris | 3,5 à 4,2 % | Plus-value long terme, liquidité maximale |
-| Lyon | 3,8 à 4,5 % | Métropole liquide, marché professionnel |
-| Bordeaux | 3,5 à 4,5 % | Marché en phase de reprise après correction |
-| Nice / Côte d'Azur | 3 à 4,5 % | Meublé de tourisme ou résidence secondaire |
-| Rennes | 3,8 à 4,5 % | Forte croissance, marché dynamique |
+| [Paris](/rendement-locatif/paris) | 3,5 à 4,2 % | Plus-value long terme, liquidité maximale |
+| [Lyon](/rendement-locatif/lyon) | 3,8 à 4,5 % | Métropole liquide, marché professionnel |
+| [Bordeaux](/rendement-locatif/bordeaux) | 3,5 à 4,5 % | Marché en phase de reprise après correction |
+| [Nice](/rendement-locatif/nice) / Côte d'Azur | 3 à 4,5 % | Meublé de tourisme ou résidence secondaire |
+| [Rennes](/rendement-locatif/rennes) | 3,8 à 4,5 % | Forte croissance, marché dynamique |
 
 > **Attention au rendement brut élevé.** Mulhouse, Roubaix ou Saint-Étienne peuvent afficher 8-9 % brut sur le papier. Ce chiffre masque parfois une vacance locative structurelle, des taux d'impayés plus élevés, ou des copropriétés vieillissantes coûteuses. La première visite doit inclure le PV d'assemblée générale de copropriété des 3 dernières années.
 

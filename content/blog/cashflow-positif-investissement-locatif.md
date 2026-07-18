@@ -261,7 +261,7 @@ Rendement brut : (580 × 12) / 65 000 = **10,7 %** → cashflow positif atteigna
 
 ---
 
-**Bien B — T2 à Lyon 6e, 220 000 €, loué meublé 900 €/mois**
+**Bien B — T2 à [Lyon](/rendement-locatif/lyon) 6e, 220 000 €, loué meublé 900 €/mois**
 
 | Poste | Mensuel |
 |-------|---------|

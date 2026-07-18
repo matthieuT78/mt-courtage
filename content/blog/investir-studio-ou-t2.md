@@ -19,7 +19,7 @@ Studio ou T2 : c'est la question que se posent la plupart des primo-investisseur
 
 À prix/m² égal, le studio est presque toujours plus rentable en rendement brut. Le loyer au m² d'un studio dépasse celui d'un T2 de **20 à 35 %** selon les villes.
 
-**Exemple à Lyon :**
+**Exemple à [Lyon](/rendement-locatif/lyon) :**
 - Studio 22 m² acheté 132 000 € (6 000 €/m²), loué 580 €/mois
   → Rendement brut : (580 × 12) / 132 000 = **5,3 %**
 - T2 42 m² acheté 231 000 € (5 500 €/m²), loué 850 €/mois
