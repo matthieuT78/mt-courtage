@@ -63,6 +63,8 @@ export function landlordMaxActiveLeases(plan: Plan): number {
       return 5;
     case "landlord_unlimited":
       return 999999;
+    case "calc_full":
+      return 1;
     default:
       return 0;
   }
