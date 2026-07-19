@@ -3336,6 +3336,7 @@ function PropertyFinanceForm({
 
   const save = async (e: FormEvent) => {
     e.preventDefault();
+    if (hasFieldErrors) return;
     setSaving(true);
     setSaved(false);
     try {
@@ -3377,6 +3378,29 @@ function PropertyFinanceForm({
     (s.purchase_price || 0) + (s.notary_fees || 0) + (s.agency_fees || 0) + (s.works || 0);
   const isLmnpReal = s.tax_regime === "lmnp_real";
 
+  const currentYear = new Date().getFullYear();
+  const fieldErrors: Partial<Record<keyof PropertyFinance, string>> = {};
+  if (s.purchase_price != null && s.purchase_price < 0) fieldErrors.purchase_price = "Ne peut pas être négatif.";
+  if (s.notary_fees != null && s.notary_fees < 0) fieldErrors.notary_fees = "Ne peut pas être négatif.";
+  if (s.agency_fees != null && s.agency_fees < 0) fieldErrors.agency_fees = "Ne peut pas être négatif.";
+  if (s.works != null && s.works < 0) fieldErrors.works = "Ne peut pas être négatif.";
+  if (s.down_payment != null && s.down_payment < 0) {
+    fieldErrors.down_payment = "Ne peut pas être négatif.";
+  } else if (s.down_payment != null && totalInvested > 0 && s.down_payment > totalInvested) {
+    fieldErrors.down_payment = `Ne peut pas dépasser le total investi (${totalInvested.toLocaleString("fr-FR")} €).`;
+  }
+  if (s.loan_rate_percent != null && (s.loan_rate_percent < 0 || s.loan_rate_percent > 20)) {
+    fieldErrors.loan_rate_percent = "Taux hors plage réaliste (0 à 20 %).";
+  }
+  if (s.loan_end_year != null && (s.loan_end_year < currentYear - 1 || s.loan_end_year > currentYear + 40)) {
+    fieldErrors.loan_end_year = `Année entre ${currentYear - 1} et ${currentYear + 40}.`;
+  }
+  if (s.loan_monthly != null && s.loan_monthly < 0) fieldErrors.loan_monthly = "Ne peut pas être négatif.";
+  if (s.loan_interest_monthly != null && s.loan_interest_monthly < 0) {
+    fieldErrors.loan_interest_monthly = "Ne peut pas être négatif.";
+  }
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+
   return (
     <form onSubmit={save} className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
 
@@ -3405,10 +3429,10 @@ function PropertyFinanceForm({
             )}
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="Prix d’achat" value={s.purchase_price} onChange={(v) => setS((p) => ({ ...p, purchase_price: v }))} />
-            <Field label="Frais de notaire" value={s.notary_fees} onChange={(v) => setS((p) => ({ ...p, notary_fees: v }))} />
-            <Field label="Frais d’agence" value={s.agency_fees} onChange={(v) => setS((p) => ({ ...p, agency_fees: v }))} />
-            <Field label="Travaux" value={s.works} onChange={(v) => setS((p) => ({ ...p, works: v }))} />
+            <Field label="Prix d’achat" value={s.purchase_price} onChange={(v) => setS((p) => ({ ...p, purchase_price: v }))} error={fieldErrors.purchase_price} />
+            <Field label="Frais de notaire" value={s.notary_fees} onChange={(v) => setS((p) => ({ ...p, notary_fees: v }))} error={fieldErrors.notary_fees} />
+            <Field label="Frais d’agence" value={s.agency_fees} onChange={(v) => setS((p) => ({ ...p, agency_fees: v }))} error={fieldErrors.agency_fees} />
+            <Field label="Travaux" value={s.works} onChange={(v) => setS((p) => ({ ...p, works: v }))} error={fieldErrors.works} />
           </div>
         </div>
 
@@ -3416,20 +3440,22 @@ function PropertyFinanceForm({
         <div className="py-5">
           <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-400">Financement</p>
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Apport personnel" value={s.down_payment} onChange={(v) => setS((p) => ({ ...p, down_payment: v }))} />
-            <Field label="Taux du crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} />
+            <Field label="Apport personnel" value={s.down_payment} onChange={(v) => setS((p) => ({ ...p, down_payment: v }))} error={fieldErrors.down_payment} />
+            <Field label="Taux du crédit (%)" value={s.loan_rate_percent ?? null} onChange={(v) => setS((p) => ({ ...p, loan_rate_percent: v }))} error={fieldErrors.loan_rate_percent} />
             <Field
               label="Fin du crédit (année)"
               value={s.loan_end_year ?? null}
               integer
               placeholder="Ex. 2043"
               onChange={(v) => setS((p) => ({ ...p, loan_end_year: v == null ? null : Math.round(v) }))}
+              error={fieldErrors.loan_end_year}
             />
             <Field
               label="Mensualité crédit + assurance (€)"
               value={s.loan_monthly ?? null}
               placeholder="Ex. 762.96"
               onChange={(v) => setS((p) => ({ ...p, loan_monthly: v }))}
+              error={fieldErrors.loan_monthly}
             />
           </div>
           <p className="mt-2 text-[0.68rem] leading-4 text-slate-400">
@@ -3462,6 +3488,7 @@ function PropertyFinanceForm({
                 value={s.loan_interest_monthly ?? null}
                 onChange={(v) => setS((p) => ({ ...p, loan_interest_monthly: v }))}
                 hint="Depuis le tableau d’amortissement — pour la déclaration LMNP réel uniquement."
+                error={fieldErrors.loan_interest_monthly}
               />
             )}
           </div>
@@ -3471,15 +3498,19 @@ function PropertyFinanceForm({
 
       {/* Footer enregistrer */}
       <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-5 py-3.5">
-        {saved
-          ? <span className="text-sm font-semibold text-emerald-700">Configuration enregistrée ✓</span>
-          : <span className="text-xs text-slate-400">Ces données calculent le rendement et le cashflow théorique.</span>
-        }
+        {saved ? (
+          <span className="text-sm font-semibold text-emerald-700">Configuration enregistrée ✓</span>
+        ) : hasFieldErrors ? (
+          <span className="text-xs font-semibold text-red-600">Corrigez les champs en rouge avant d’enregistrer.</span>
+        ) : (
+          <span className="text-xs text-slate-400">Ces données calculent le rendement et le cashflow théorique.</span>
+        )}
         <button
           type="submit"
-          disabled={saving}
+          disabled={saving || hasFieldErrors}
           className={cx(
-            "inline-flex min-h-[38px] items-center rounded-full px-5 py-2 text-sm font-semibold text-white transition-colors disabled:cursor-wait disabled:opacity-60",
+            "inline-flex min-h-[38px] items-center rounded-full px-5 py-2 text-sm font-semibold text-white transition-colors disabled:opacity-60",
+            saving ? "cursor-wait" : hasFieldErrors ? "cursor-not-allowed" : "",
             saved ? "bg-emerald-700" : "bg-slate-900 hover:bg-slate-800"
           )}
         >
@@ -3497,6 +3528,7 @@ function Field({
   integer = false,
   placeholder = "—",
   hint,
+  error,
 }: {
   label: string;
   value: number | null;
@@ -3504,6 +3536,7 @@ function Field({
   integer?: boolean;
   placeholder?: string;
   hint?: string;
+  error?: string | null;
 }) {
   const [draft, setDraft] = useState(formatInputNumber(value));
   const [focused, setFocused] = useState(false);
@@ -3550,10 +3583,17 @@ function Field({
           const parsed = nullableNum(v);
           if (parsed != null) onChange(integer ? Math.round(parsed) : parsed);
         }}
-        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+        className={cx(
+          "w-full rounded-lg border bg-white px-3 py-2 text-sm",
+          error ? "border-red-300 focus:border-red-400" : "border-slate-300"
+        )}
         placeholder={placeholder}
       />
-      {hint ? <p className="text-[0.68rem] leading-4 text-slate-500">{hint}</p> : null}
+      {error ? (
+        <p className="text-[0.68rem] leading-4 text-red-600">{error}</p>
+      ) : hint ? (
+        <p className="text-[0.68rem] leading-4 text-slate-500">{hint}</p>
+      ) : null}
     </div>
   );
 }
