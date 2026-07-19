@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireApiUser } from "../../../lib/apiAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { getServerUserPlan } from "../../../lib/serverPermissions";
+import { planAllowsCandidatures } from "../../../lib/permissions";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -8,6 +10,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const auth = await requireApiUser(req);
   if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
+  const plan = await getServerUserPlan(auth.userId);
+  if (!planAllowsCandidatures(plan)) {
+    return res.status(403).json({ error: "Les dossiers de candidature nécessitent un abonnement lokt.one ou supérieur." });
+  }
 
   const { title, address, rent_amount, charges_amount, property_type, surface_m2, available_at, income_ratio, property_id } = req.body || {};
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -14,6 +15,8 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
+import { usePermissions } from "../../PermissionProvider";
+import { planAllowsDocumentSharing } from "../../../lib/permissions";
 import { SectionTitle } from "../UiBits";
 import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
 import { isEDLSelectableLease } from "../../../lib/landlord/archiveFilters";
@@ -506,6 +509,8 @@ function openBlankPdfWindow() {
 // BLOCK 2/4
 // =========================
 export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRefresh, onNavigateToBaux }: Props) {
+  const { plan } = usePermissions();
+  const canShareDocuments = planAllowsDocumentSharing(plan);
   const safeLeases = useMemo(() => (Array.isArray(leases) ? leases : []), [leases]);
   const safeProps = useMemo(() => (Array.isArray(properties) ? properties : []), [properties]);
   const safeTenants = useMemo(() => (Array.isArray(tenants) ? tenants : []), [tenants]);
@@ -1460,6 +1465,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const handleSendToTenant = async () => {
     if (!selectedReport?.occupant_email || !selectedReport.pdf_url) return;
+    if (!canShareDocuments) {
+      setErr("Le partage de documents avec le locataire nécessite un abonnement lokt.one ou supérieur.");
+      return;
+    }
     setSendingTenant(true);
     setErr(null);
     try {
@@ -3861,15 +3870,25 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
 
             {isLocked && hasPdf && effectiveTenantEmail ? (
-              <button
-                type="button"
-                disabled={sendingTenant || !!tenantEmailSent}
-                onClick={handleSendToTenant}
-                className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-4 text-xs font-semibold text-indigo-900 hover:bg-indigo-100 disabled:opacity-60"
-                title={tenantEmailSent ? `Envoyé à ${tenantEmailSent}` : `Envoyer le PDF à ${effectiveTenantEmail}`}
-              >
-                {sendingTenant ? "Envoi…" : tenantEmailSent ? "Email envoyé ✓" : "Envoyer au locataire"}
-              </button>
+              canShareDocuments ? (
+                <button
+                  type="button"
+                  disabled={sendingTenant || !!tenantEmailSent}
+                  onClick={handleSendToTenant}
+                  className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-4 text-xs font-semibold text-indigo-900 hover:bg-indigo-100 disabled:opacity-60"
+                  title={tenantEmailSent ? `Envoyé à ${tenantEmailSent}` : `Envoyer le PDF à ${effectiveTenantEmail}`}
+                >
+                  {sendingTenant ? "Envoi…" : tenantEmailSent ? "Email envoyé ✓" : "Envoyer au locataire"}
+                </button>
+              ) : (
+                <Link
+                  href="/mon-compte/abonnement"
+                  className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-4 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                  title="Le partage de documents avec le locataire nécessite un abonnement lokt.one ou supérieur."
+                >
+                  Envoyer au locataire 🔒
+                </Link>
+              )
             ) : null}
 
             {hasPdf && !isLocked && effectiveTenantEmail ? (

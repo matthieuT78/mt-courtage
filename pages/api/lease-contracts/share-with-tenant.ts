@@ -4,6 +4,8 @@ import { parseStoredLeaseContractUrl } from "../../../lib/leaseContract";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { buildBailLocataireEmailHtml, buildBailLocataireEmailText } from "../../../lib/emails/bail-locataire";
+import { getServerUserPlan } from "../../../lib/serverPermissions";
+import { planAllowsDocumentSharing } from "../../../lib/permissions";
 
 const PORTAL_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lokt.fr";
 
@@ -24,6 +26,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const userCheck = requireMatchingUser(auth, String(userId));
     if (!userCheck.ok) return res.status(userCheck.status).json({ ok: false, error: userCheck.error });
+
+    const plan = await getServerUserPlan(String(userId));
+    if (!planAllowsDocumentSharing(plan)) {
+      return res.status(403).json({ ok: false, error: "Le partage de documents avec le locataire nécessite un abonnement lokt.one ou supérieur." });
+    }
 
     // Fetch document + verify ownership
     const { data: doc } = await supabaseAdmin
