@@ -134,7 +134,7 @@ const ONBOARDING_STEP_WHY: Record<string, string> = {
   biens: "La fiche du bien (adresse, type, surface) sert de base à tout le reste : loyers, quittances, performance, déclarations fiscales.",
   locataires: "Le dossier locataire (nom, email) permet d'envoyer automatiquement les quittances et les relances de loyer, sans ressaisir l'information à chaque fois.",
   baux: "La location relie le bien, le locataire et le loyer. C'est elle qui déclenche le suivi des paiements, les quittances et les alertes d'échéance.",
-  finance: "Prix d'achat et taux de crédit permettent de calculer votre vraie rentabilité (cash-flow, rendement net) dans l'onglet Performance — sans ça, ces chiffres restent à 0.",
+  finance: "Prix d'achat et taux de crédit alimentent votre trésorerie (encaissé vs dépenses) juste ici sur ce tableau de bord, et débloquent l'analyse complète de rentabilité (cash-flow, rendement net) dans Performance.",
 };
 
 function actionTarget(action?: string): LandlordSectionKey | null {
