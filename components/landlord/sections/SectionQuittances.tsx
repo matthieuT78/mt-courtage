@@ -1890,8 +1890,8 @@ export function SectionQuittances({
                       const rowKey = `${row.lease.id}:${row.periodStart}`;
                       const override = confirmOverrideByRow[rowKey];
                       if (!override) return null;
-                      const rentNum = parseFloat(override.rent) || 0;
-                      const chargesNum = parseFloat(override.charges) || 0;
+                      const rentNum = Math.max(0, parseFloat(override.rent) || 0);
+                      const chargesNum = Math.max(0, parseFloat(override.charges) || 0);
                       const closeForm = () => setConfirmOverrideByRow((p) => { const n = { ...p }; delete n[rowKey]; return n; });
                       return (
                         <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-3">

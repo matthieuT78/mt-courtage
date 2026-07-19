@@ -127,7 +127,7 @@ function CongeForm({ userId, onBack }: { userId: string; onBack: () => void }) {
           beneficiaryName: form.beneficiaryName,
           beneficiaryRelationship: form.beneficiaryRelationship,
           beneficiaryCurrentAddress: form.beneficiaryCurrentAddress,
-          salePrice: form.salePrice ? Number(form.salePrice) : undefined,
+          salePrice: form.salePrice ? Math.max(0, Number(form.salePrice)) : undefined,
           saleConditions: form.saleConditions,
           motifDescription: form.motifDescription,
         }),
@@ -351,7 +351,7 @@ function MiseEnDemeureForm({ userId, onBack }: { userId: string; onBack: () => v
   const [err, setErr] = useState<string | null>(null);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
-  const totalAmount = rows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+  const totalAmount = rows.reduce((sum, r) => sum + Math.max(0, parseFloat(r.amount) || 0), 0);
   const addRow = () => setRows((rs) => [...rs, { id: Date.now(), period: "", amount: "" }]);
   const removeRow = (id: number) => setRows((rs) => rs.filter((r) => r.id !== id));
   const setRow = (id: number, k: keyof UnpaidRow, v: string) =>
@@ -842,8 +842,8 @@ function RestitutionDepotForm({ onBack }: { userId: string; onBack: () => void }
 
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
 
-  const depot = parseFloat(form.depotRaw.replace(",", ".")) || 0;
-  const totalRetenues = retenues.reduce((s, r) => s + (parseFloat(r.amount.replace(",", ".")) || 0), 0);
+  const depot = Math.max(0, parseFloat(form.depotRaw.replace(",", ".")) || 0);
+  const totalRetenues = retenues.reduce((s, r) => s + Math.max(0, parseFloat(r.amount.replace(",", ".")) || 0), 0);
   const montantRestitue = Math.max(0, depot - totalRetenues);
   const delaiMois = form.hasIssues ? 2 : 1;
 

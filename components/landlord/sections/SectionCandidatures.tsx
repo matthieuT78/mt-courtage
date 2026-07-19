@@ -492,7 +492,21 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
   }
 
   async function createListing() {
-    if (!form.title || !form.rent_amount) { setCreateErr("Titre et loyer requis."); return; }
+    const rentAmount = parseFloat(form.rent_amount);
+    const chargesAmount = parseFloat(form.charges_amount || "0");
+    const surfaceM2 = form.surface_m2 ? parseFloat(form.surface_m2) : null;
+    if (!form.title || !form.rent_amount || !Number.isFinite(rentAmount) || rentAmount <= 0) {
+      setCreateErr("Titre et loyer (montant positif) requis.");
+      return;
+    }
+    if (!Number.isFinite(chargesAmount) || chargesAmount < 0) {
+      setCreateErr("Les charges ne peuvent pas être négatives.");
+      return;
+    }
+    if (surfaceM2 != null && (!Number.isFinite(surfaceM2) || surfaceM2 <= 0)) {
+      setCreateErr("Surface invalide.");
+      return;
+    }
     setCreating(true);
     setCreateErr(null);
     const headers = await getHeaders();
@@ -501,9 +515,9 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
       headers,
       body: JSON.stringify({
         ...form,
-        rent_amount: parseFloat(form.rent_amount),
-        charges_amount: parseFloat(form.charges_amount || "0"),
-        surface_m2: form.surface_m2 ? parseFloat(form.surface_m2) : null,
+        rent_amount: rentAmount,
+        charges_amount: chargesAmount,
+        surface_m2: surfaceM2,
         income_ratio: parseFloat(form.income_ratio || "3"),
         property_id: form.property_id || null,
       }),

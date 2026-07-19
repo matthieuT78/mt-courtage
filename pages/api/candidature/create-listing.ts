@@ -18,8 +18,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { title, address, rent_amount, charges_amount, property_type, surface_m2, available_at, income_ratio, property_id } = req.body || {};
 
-  if (!title || !rent_amount) {
-    return res.status(400).json({ error: "Titre et loyer obligatoires." });
+  const rentAmountNum = Number(rent_amount);
+  const chargesAmountNum = Number(charges_amount || 0);
+  const surfaceM2Num = surface_m2 ? Number(surface_m2) : null;
+
+  if (!title || !rent_amount || !Number.isFinite(rentAmountNum) || rentAmountNum <= 0) {
+    return res.status(400).json({ error: "Titre et loyer (montant positif) obligatoires." });
+  }
+  if (!Number.isFinite(chargesAmountNum) || chargesAmountNum < 0) {
+    return res.status(400).json({ error: "Les charges ne peuvent pas être négatives." });
+  }
+  if (surfaceM2Num != null && (!Number.isFinite(surfaceM2Num) || surfaceM2Num <= 0)) {
+    return res.status(400).json({ error: "Surface invalide." });
   }
 
   const { data, error } = await supabaseAdmin
@@ -29,10 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       property_id: property_id || null,
       title,
       address: address || null,
-      rent_amount: Number(rent_amount),
-      charges_amount: Number(charges_amount || 0),
+      rent_amount: rentAmountNum,
+      charges_amount: chargesAmountNum,
       property_type: property_type || "vide",
-      surface_m2: surface_m2 ? Number(surface_m2) : null,
+      surface_m2: surfaceM2Num,
       available_at: available_at || null,
       income_ratio: Number(income_ratio || 3),
       status: "active",

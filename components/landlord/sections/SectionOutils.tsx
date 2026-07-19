@@ -747,6 +747,7 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
   const recoverableTotal = computedShares.reduce((sum, line) => sum + line.recoverableAmount, 0);
   const ownerTotal = computedShares.reduce((sum, line) => sum + line.ownerAmount, 0);
   const unallocatedTantiemes = Math.max(0, denominator - usedTantiemes);
+  const overAllocatedTantiemes = baseTantiemes > 0 ? Math.max(0, usedTantiemes - baseTantiemes) : 0;
   const unallocatedAmount = Math.max(0, total - allocated);
   const [copied, setCopied] = useState("");
 
@@ -798,6 +799,11 @@ function ChargesAllocationTool({ userId, onBack, onFinanceDraft }: { userId: str
         {total > 0 && denominator === 0 && (
           <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
             Saisissez la base de tantièmes (ex : 1 000) pour calculer les quotes-parts.
+          </div>
+        )}
+        {overAllocatedTantiemes > 0 && (
+          <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+            Les lots totalisent {usedTantiemes.toLocaleString("fr-FR")} tantièmes pour une base de {baseTantiemes.toLocaleString("fr-FR")} — dépassement de {overAllocatedTantiemes.toLocaleString("fr-FR")}. Vérifiez la saisie.
           </div>
         )}
         <div className="grid gap-3 lg:grid-cols-[1.2fr,1fr,0.8fr,0.8fr]">
@@ -1629,12 +1635,21 @@ export function SectionOutils({
     if (waterStep === "setup" && allocationMethod === "principal_residual" && !principalOccupantLabel.trim()) {
       return setError("Renseignez l’occupant du logement principal calculé par différence.");
     }
+    if (waterStep === "invoice" && globalPreviousReading.trim() && globalCurrentReading.trim() && globalCurrentValue < globalPreviousValue) {
+      return setError("Le relevé général actuel ne peut pas être inférieur au relevé précédent — vérifiez que les deux valeurs ne sont pas inversées.");
+    }
     if (waterStep === "readings") {
       if (lines.some((line) => line.enabled && !line.occupantLabel.trim())) {
         return setError("Chaque compteur individuel inclus doit avoir un occupant à facturer.");
       }
       if (allocationMethod === "principal_residual" && !principalOccupantLabel.trim()) {
         return setError("Renseignez l’occupant du logement principal calculé par différence.");
+      }
+      const invertedLine = lines.find(
+        (line) => line.enabled && line.previous.trim() && line.current.trim() && num(line.current) < num(line.previous)
+      );
+      if (invertedLine) {
+        return setError(`Relevé "${invertedLine.unitLabel || "compteur"}" : le relevé actuel ne peut pas être inférieur au relevé précédent.`);
       }
     }
     setWaterStep(WATER_WIZARD_STEPS[waterStepIndex + 1].key);

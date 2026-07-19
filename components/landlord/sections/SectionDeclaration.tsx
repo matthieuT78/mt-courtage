@@ -77,7 +77,7 @@ function eur(n: number) {
 
 function toNumber(v: unknown) {
   const n = typeof v === "number" ? v : parseFloat(String(v || "").replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
 function currentYear() {
