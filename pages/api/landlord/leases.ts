@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { getServerUserPlan } from "../../../lib/serverPermissions";
-import { landlordMaxActiveLeases } from "../../../lib/permissions";
+import { landlordMaxActiveLeases, planAllowsReceiptAutomation } from "../../../lib/permissions";
 
 type Json = Record<string, any>;
 
@@ -61,6 +61,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!tenant) return res.status(403).json({ error: "Locataire introuvable ou non autorisé." });
 
     const plan = await getServerUserPlan(String(userId));
+    if (!planAllowsReceiptAutomation(plan)) {
+      leasePayload.auto_quittance_enabled = false;
+      leasePayload.auto_reminder_enabled = false;
+    }
     const maxActiveLeases = landlordMaxActiveLeases(plan);
     const { data: existingLeases, error: existingLeasesError } = await supabaseAdmin
       .from("leases")
