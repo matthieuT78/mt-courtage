@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { getServerUserPlan } from "../../../lib/serverPermissions";
+import { landlordMaxActiveLeases } from "../../../lib/permissions";
 
 type Json = Record<string, any>;
 
@@ -57,6 +59,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (tenantError) return res.status(500).json({ error: tenantError.message });
     if (!property) return res.status(403).json({ error: "Bien introuvable ou non autorisé." });
     if (!tenant) return res.status(403).json({ error: "Locataire introuvable ou non autorisé." });
+
+    const plan = await getServerUserPlan(String(userId));
+    const maxActiveLeases = landlordMaxActiveLeases(plan);
+    const { data: existingLeases, error: existingLeasesError } = await supabaseAdmin
+      .from("leases")
+      .select("id,status")
+      .eq("user_id", userId);
+    if (existingLeasesError) return res.status(500).json({ error: existingLeasesError.message });
+    const activeLeaseCount = (existingLeases || []).filter(
+      (l) => String(l.status || "").toLowerCase() === "active"
+    ).length;
+    if (activeLeaseCount >= maxActiveLeases) {
+      return res.status(403).json({
+        error:
+          maxActiveLeases <= 0
+            ? "La création de locations nécessite un abonnement lokt.one ou supérieur."
+            : `Votre abonnement permet ${maxActiveLeases} location(s) active(s). Passez à l’offre supérieure pour en ajouter davantage.`,
+      });
+    }
 
     const inserted = await supabaseAdmin.from("leases").insert(leasePayload).select("id").single();
     if (!inserted.error) return res.status(200).json({ ok: true, id: inserted.data?.id });

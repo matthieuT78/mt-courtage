@@ -113,6 +113,7 @@ type Props = {
 ====================================================== */
 
 const CREATE_ID = "__create__";
+const SUBSCRIPTION_URL = "/mon-compte/abonnement";
 type LeaseKind = "furnished_primary" | "furnished_student" | "mobility" | "empty_primary" | "other";
 
 const LEASE_STATUS_LABELS: Record<string, string> = {
@@ -727,7 +728,7 @@ function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: Rent
 type Mode = "idle" | "create" | "edit";
 
 export function SectionBaux({ userId, userEmail, leases, properties, tenants, payments, receipts, onRefresh, onPrepareDeparture, deepLink }: Props) {
-  const { canUseLandlord } = usePermissions();
+  const { canUseLandlord, maxActiveLeases, loading: permissionsLoading } = usePermissions();
   const canUseReceiptAutomation = canUseLandlord;
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safeProps = Array.isArray(properties) ? properties : [];
@@ -1026,6 +1027,16 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       archives: archives.sort(sortRecent),
     };
   }, [safeLeases, q, propertyById, tenantById]);
+
+  // Nombre de locations actives, indépendant de la recherche (contrairement à filtered.actifs) —
+  // c'est ce chiffre qui doit être comparé à la limite du plan.
+  const activeLeaseCount = useMemo(() => safeLeases.filter(isActiveLease).length, [safeLeases]);
+  const activeLeaseLimit = maxActiveLeases;
+  const hasNoLeaseAccess = activeLeaseLimit <= 0;
+  const freeLimitReached = !permissionsLoading && activeLeaseCount >= activeLeaseLimit;
+  const upgradeMessage = hasNoLeaseAccess
+    ? "La création de locations nécessite un abonnement lokt.one ou supérieur."
+    : `Votre abonnement permet ${pluralFR(activeLeaseLimit, "location active", "locations actives")}. Passez à l’offre supérieure pour en ajouter davantage.`;
 
   const getLeasePaymentStatus = (leaseId: string): "paid" | "overdue" | "pending" => {
     const now = parisNow();
@@ -1369,6 +1380,19 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     if (!userId) {
       setErr("userId manquant.");
       return;
+    }
+    if (mode === "create" && freeLimitReached) {
+      setErr(upgradeMessage);
+      return;
+    }
+    if (mode === "edit" && editingId) {
+      const original = safeLeases.find((l) => l.id === editingId);
+      const wasActive = original ? isActiveLease(original) : false;
+      const willBeActive = (form.status || "active") === "active";
+      if (!wasActive && willBeActive && freeLimitReached) {
+        setErr(upgradeMessage);
+        return;
+      }
     }
 
     setLoading(true);
@@ -2835,7 +2859,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">Nouvelle location</p>
-                <p className="text-xs text-slate-500">Choisis un bien + un locataire, puis configure les options.</p>
+                <p className="text-xs text-slate-500">
+                  {freeLimitReached
+                    ? hasNoLeaseAccess
+                      ? "Fonctionnalité réservée aux abonnements payants."
+                      : `Limite atteinte : ${pluralFR(activeLeaseLimit, "location active", "locations actives")}.`
+                    : "Choisis un bien + un locataire, puis configure les options."}
+                </p>
               </div>
             </div>
             <button
@@ -2849,7 +2879,28 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
           {/* Formulaire */}
           <div className="p-5">
-            {renderLeaseForm()}
+            {freeLimitReached ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                <p className="font-semibold">
+                  {hasNoLeaseAccess
+                    ? "La création de locations n’est pas incluse dans l’offre gratuite."
+                    : `Vous avez déjà ${pluralFR(activeLeaseCount, "location active", "locations actives")}.`}
+                </p>
+                <p className="mt-1">
+                  {hasNoLeaseAccess
+                    ? "Passez sur une offre lokt.one (ou supérieure) pour relier vos biens à un locataire et un loyer."
+                    : "Votre abonnement actuel a atteint sa limite de locations actives. Passez sur une offre supérieure pour continuer."}
+                </p>
+                <Link
+                  href={SUBSCRIPTION_URL}
+                  className="mt-3 inline-flex rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+                >
+                  Voir les abonnements
+                </Link>
+              </div>
+            ) : (
+              renderLeaseForm()
+            )}
           </div>
         </div>
       )}
