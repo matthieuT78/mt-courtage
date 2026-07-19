@@ -1456,6 +1456,24 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       const deposit = toNumberOrNull(form.deposit_amount);
       if (rent <= 0) throw new Error("Le loyer doit être supérieur à 0 €.");
       if (charges < 0) throw new Error("Les charges ne peuvent pas être négatives.");
+      if (deposit != null && deposit < 0) throw new Error("Le dépôt de garantie ne peut pas être négatif.");
+      if (deposit != null && deposit > 0) {
+        if (form.lease_kind === "mobility") {
+          throw new Error("Le bail mobilité ne peut pas avoir de dépôt de garantie (interdit par la loi).");
+        }
+        if (form.lease_kind === "furnished_primary" || form.lease_kind === "furnished_student") {
+          const maxDeposit = rent * 2;
+          if (deposit > maxDeposit) {
+            throw new Error(`Le dépôt de garantie en meublé est plafonné à 2 mois de loyer hors charges, soit ${maxDeposit.toLocaleString("fr-FR")} €.`);
+          }
+        }
+        if (form.lease_kind === "empty_primary") {
+          const maxDeposit = rent;
+          if (deposit > maxDeposit) {
+            throw new Error(`Le dépôt de garantie en location nue est plafonné à 1 mois de loyer hors charges, soit ${maxDeposit.toLocaleString("fr-FR")} €.`);
+          }
+        }
+      }
 
       const startDaysAgo = form.start_date
         ? Math.floor((Date.now() - new Date(form.start_date + "T00:00:00").getTime()) / 86400000)

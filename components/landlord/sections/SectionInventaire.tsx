@@ -516,7 +516,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
         actual_quantity: form.actual_quantity.trim() === "" ? 0 : Math.max(0, Math.round(num(form.actual_quantity))),
         condition: form.condition,
         is_required_lmnp: form.is_required_lmnp,
-        replacement_cost: form.replacement_cost ? num(form.replacement_cost) : null,
+        replacement_cost: form.replacement_cost ? Math.max(0, num(form.replacement_cost)) : null,
         notes: form.notes.trim() || null,
       };
       const { error } = await supabase.from("property_inventory_items").insert(payload);
@@ -1058,7 +1058,7 @@ export function SectionInventaire({ userId, properties, propertyFinance }: Props
                                 inputMode="decimal"
                                 value={item.replacement_cost ?? ""}
                                 disabled={savingId === item.id}
-                                onChange={(e) => updateItem(item.id, { replacement_cost: e.target.value ? num(e.target.value) : null })}
+                                onChange={(e) => updateItem(item.id, { replacement_cost: e.target.value ? Math.max(0, num(e.target.value)) : null })}
                                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                                 placeholder="0 €"
                               />

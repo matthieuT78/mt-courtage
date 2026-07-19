@@ -208,7 +208,9 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
   const [ok, setOk] = useState<string | null>(null);
   const [uploadPhotoProgress, setUploadPhotoProgress] = useState<number | null>(null);
   // Erreurs de validation par champ, indexées par formId ("create" ou propertyId)
-  const [fieldErrors, setFieldErrors] = useState<Record<string, { label?: string; address_line1?: string }>>({});
+  const [fieldErrors, setFieldErrors] = useState<
+    Record<string, { label?: string; address_line1?: string; surface_m2?: string; rooms?: string; energy_value?: string }>
+  >({});
 
   const photosByProperty = useMemo(() => {
     const m = new Map<string, any[]>();
@@ -328,9 +330,31 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
   const validate = (f: typeof EMPTY, formId: string): boolean => {
     const label = (f.label || "").trim();
     const addr1 = (f.address_line1 || "").trim();
-    const errors: { label?: string; address_line1?: string } = {};
+    const errors: { label?: string; address_line1?: string; surface_m2?: string; rooms?: string; energy_value?: string } = {};
     if (!label) errors.label = "Champ obligatoire";
     if (!addr1) errors.address_line1 = "Champ obligatoire";
+
+    const surface = f.surface_m2 ? toNumOrNull(f.surface_m2) : null;
+    if (f.surface_m2 && (surface == null || surface <= 0)) {
+      errors.surface_m2 = "Surface invalide.";
+    } else if (surface != null && surface > 100000) {
+      errors.surface_m2 = "Surface irréaliste.";
+    }
+
+    const rooms = f.rooms ? toNumOrNull(f.rooms) : null;
+    if (f.rooms && (rooms == null || rooms < 0)) {
+      errors.rooms = "Ne peut pas être négatif.";
+    } else if (rooms != null && rooms > 200) {
+      errors.rooms = "Nombre de pièces irréaliste.";
+    }
+
+    const energyValue = f.energy_value ? toNumOrNull(f.energy_value) : null;
+    if (f.energy_value && (energyValue == null || energyValue < 0)) {
+      errors.energy_value = "Ne peut pas être négatif.";
+    } else if (energyValue != null && energyValue > 2000) {
+      errors.energy_value = "Valeur DPE irréaliste (kWh/m²/an).";
+    }
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors((prev) => ({ ...prev, [formId]: errors }));
       return false;
@@ -578,7 +602,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
     }
   };
 
-  const clearFieldError = (formId: string, field: "label" | "address_line1") => {
+  const clearFieldError = (formId: string, field: "label" | "address_line1" | "surface_m2" | "rooms" | "energy_value") => {
     setFieldErrors((prev) => {
       if (!prev[formId]?.[field]) return prev;
       const next = { ...prev, [formId]: { ...prev[formId], [field]: undefined } };
@@ -643,11 +667,12 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
           <label className="space-y-1">
             <span className="text-xs text-slate-700">Surface</span>
             <input
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.surface_m2 ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
               placeholder="Surface (m²)"
               value={form.surface_m2}
-              onChange={(e) => setForm((s) => ({ ...s, surface_m2: e.target.value }))}
+              onChange={(e) => { clearFieldError(formId, "surface_m2"); setForm((s) => ({ ...s, surface_m2: e.target.value })); }}
             />
+            {fErr.surface_m2 ? <p className="text-xs font-medium text-red-600">{fErr.surface_m2}</p> : null}
           </label>
         </div>
 
@@ -655,11 +680,12 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
           <label className="space-y-1">
             <span className="text-xs text-slate-700">Pièces</span>
             <input
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+              className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.rooms ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
               placeholder="Nb. de pièces"
               value={form.rooms}
-              onChange={(e) => setForm((s) => ({ ...s, rooms: e.target.value }))}
+              onChange={(e) => { clearFieldError(formId, "rooms"); setForm((s) => ({ ...s, rooms: e.target.value })); }}
             />
+            {fErr.rooms ? <p className="text-xs font-medium text-red-600">{fErr.rooms}</p> : null}
           </label>
           <label className="space-y-1">
             <span className="text-xs text-slate-700">DPE</span>
@@ -684,12 +710,15 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         />
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="kWh/m²/an"
-            value={form.energy_value}
-            onChange={(e) => setForm((s) => ({ ...s, energy_value: e.target.value }))}
-          />
+          <div className="space-y-1">
+            <input
+              className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.energy_value ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
+              placeholder="kWh/m²/an"
+              value={form.energy_value}
+              onChange={(e) => { clearFieldError(formId, "energy_value"); setForm((s) => ({ ...s, energy_value: e.target.value })); }}
+            />
+            {fErr.energy_value ? <p className="text-xs font-medium text-red-600">{fErr.energy_value}</p> : null}
+          </div>
           <select
             className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             value={form.ghg_class}
