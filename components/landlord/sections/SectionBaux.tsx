@@ -441,6 +441,7 @@ function WorkflowChoice({
   selected,
   tone,
   disabled,
+  errorMessage,
   onClick,
 }: {
   title: string;
@@ -449,6 +450,7 @@ function WorkflowChoice({
   selected: boolean;
   tone: "emerald" | "amber" | "slate";
   disabled?: boolean;
+  errorMessage?: string | null;
   onClick: () => void;
 }) {
   const selectedCls =
@@ -468,7 +470,7 @@ function WorkflowChoice({
       aria-pressed={selected}
       className={cx(
         "group relative min-h-[118px] rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-1",
-        selected ? selectedCls : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
+        errorMessage ? "border-red-300 bg-red-50 ring-2 ring-red-100" : selected ? selectedCls : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
         disabled && "cursor-not-allowed opacity-55 hover:border-slate-200 hover:bg-white"
       )}
     >
@@ -479,6 +481,7 @@ function WorkflowChoice({
         <span className="min-w-0">
           <span className="block text-sm font-semibold text-slate-950">{title}</span>
           <span className="mt-1 block text-xs leading-5 text-slate-600">{description}</span>
+          {errorMessage ? <span className="mt-1.5 block text-xs font-semibold leading-5 text-red-700">{errorMessage}</span> : null}
         </span>
       </div>
       {selected ? (
@@ -807,6 +810,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [autoWorkflowError, setAutoWorkflowError] = useState<string | null>(null);
   const [contractLeaseId, setContractLeaseId] = useState<string | null>(null);
   const [historyOpenByLease, setHistoryOpenByLease] = useState<Record<string, boolean>>({});
   const [renewalOpenByLease, setRenewalOpenByLease] = useState<Record<string, boolean>>({});
@@ -1143,15 +1147,19 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     };
   };
 
-  const guardReceiptEmailForAutomation = (receiptEmail: string | null | undefined, context = "activer le workflow automatique") => {
+  const guardReceiptEmailForAutomation = (
+    receiptEmail: string | null | undefined,
+    context = "activer le workflow automatique",
+    onError: (message: string) => void = setErr
+  ) => {
     const email = String(receiptEmail || "").trim();
     setOk(null);
     if (!email) {
-      setErr(`Impossible de ${context} : renseigne d’abord l’email du locataire destinataire de la quittance.`);
+      onError(`Impossible de ${context} : renseigne d’abord l’email du locataire destinataire de la quittance.`);
       return false;
     }
     if (!isEmailLike(email)) {
-      setErr(`Impossible de ${context} : l’email du locataire est invalide.`);
+      onError(`Impossible de ${context} : l’email du locataire est invalide.`);
       return false;
     }
     return true;
@@ -1253,6 +1261,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const openCreate = () => {
     setErr(null);
     setOk(null);
+    setAutoWorkflowError(null);
     setMode("create");
     setEditingId(null);
     resetForm();
@@ -1262,6 +1271,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     if (!deepLink?.openCreate) return;
     setErr(null);
     setOk(null);
+    setAutoWorkflowError(null);
     setMode("create");
     setEditingId(null);
     const prefillTenantId = deepLink.prefillTenantId ?? "";
@@ -1288,6 +1298,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const openEdit = async (lease: Lease) => {
     setErr(null);
     setOk(null);
+    setAutoWorkflowError(null);
     setMode("edit");
     setEditingId(lease.id);
 
@@ -1319,6 +1330,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   const cancelEdit = () => {
     setMode("idle");
     setEditingId(null);
+    setAutoWorkflowError(null);
     resetForm();
   };
 
@@ -1398,6 +1410,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     setLoading(true);
     setErr(null);
     setOk(null);
+    setAutoWorkflowError(null);
 
     try {
       if (!supabase) throw new Error("Supabase non initialisé.");
@@ -2229,12 +2242,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     const renewal = leaseRenewalInfo(fakeLease as any);
     const leaseRule = getLeaseKindRule(form.lease_kind);
     const enableAutoWorkflow = () => {
+      setAutoWorkflowError(null);
       if (!canUseReceiptAutomation) {
         setOk(null);
         setErr("Le gratuit inclut les quittances manuelles. Les rappels, emails et générations automatiques nécessitent un abonnement payant.");
         return;
       }
-      if (!guardReceiptEmailForAutomation(receiptEmail)) return;
+      if (!guardReceiptEmailForAutomation(receiptEmail, "activer le workflow automatique", setAutoWorkflowError)) return;
       setErr(null);
       setForm((s) => ({ ...s, auto_quittance_enabled: true, auto_reminder_enabled: true }));
     };
@@ -2624,6 +2638,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               tone="emerald"
               selected={form.auto_quittance_enabled && form.auto_reminder_enabled}
               disabled={!canUseReceiptAutomation}
+              errorMessage={autoWorkflowError}
               onClick={() => enableAutoWorkflow()}
             />
 
@@ -2633,7 +2648,10 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               icon={HandRaisedIcon}
               tone="slate"
               selected={!form.auto_quittance_enabled && !form.receipts_disabled}
-              onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false, receipts_disabled: false }))}
+              onClick={() => {
+                setAutoWorkflowError(null);
+                setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false, receipts_disabled: false }));
+              }}
             />
 
             <WorkflowChoice
@@ -2642,7 +2660,10 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               icon={BuildingOfficeIcon}
               tone="slate"
               selected={!!form.receipts_disabled}
-              onClick={() => setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false, receipts_disabled: true }))}
+              onClick={() => {
+                setAutoWorkflowError(null);
+                setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false, receipts_disabled: true }));
+              }}
             />
           </div>
 
