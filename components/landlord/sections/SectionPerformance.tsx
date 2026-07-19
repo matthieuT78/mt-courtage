@@ -452,16 +452,6 @@ function actionsFor(row: PropertyRow, referenceRates: RateBucket[] | null): Frie
     });
   }
 
-  if (row.marketRentEstimate != null && row.marketRentEstimate > row.expected * 1.05) {
-    const gap = row.marketRentEstimate - row.expected;
-    actions.push({
-      tone: gap > row.expected * 0.15 ? "amber" : "slate",
-      title: `${money(gap)}/mois sous le loyer de marché estimé`,
-      detail: `Loyer actuel ${money(row.expected)} vs ${money(row.marketRentEstimate)} estimé sur le marché. La révision IRL annuelle ne rattrape que ~3 %/an : un changement de locataire est le seul moyen de rattraper l’écart d’un coup.`,
-      cta: row.activeLeaseId ? { label: "Réviser l’IRL", section: "baux", link: { leaseId: row.activeLeaseId, openPanel: "irl" } } : undefined,
-    });
-  }
-
   if (referenceRates) {
     // Taux de référence chargés : comparaison au marché réel. Si l'écart est trop faible
     // (ou que le scénario ne peut pas être calculé), on ne montre volontairement rien —
@@ -788,7 +778,6 @@ type PropertyRow = {
   holdingYears: number | null;
   irr: number | null;
   activeLeaseId: string | null;
-  marketRentEstimate: number | null;
   irlLate: { leaseId: string; monthsLate: number } | null;
   loanMonthlyPI: number;
   loanInsuranceMonthly: number;
@@ -1084,7 +1073,6 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           Number.isFinite(avgAnnualCashflow)
             ? bisectionIRR(investment, avgAnnualCashflow, terminalValue, holdingYears)
             : null;
-        const marketRentEstimate = propsById.get(id)?.market_rent_estimate ?? null;
         const irlLate = irlLateness(primaryLease || undefined);
         const paymentDelay = primaryLease ? paymentDelayStats(safePayments, primaryLease.id) : null;
         const leaseStart = primaryLease ? normalizeDate(primaryLease.start_date) : null;
@@ -1119,7 +1107,6 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           holdingYears,
           irr,
           activeLeaseId: primaryLease?.id || null,
-          marketRentEstimate,
           irlLate,
           loanMonthlyPI,
           loanInsuranceMonthly,

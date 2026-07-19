@@ -32,7 +32,6 @@ export type Property = {
   updated_at: string;
   delegated_services?: string[];
   delegation_agency_name?: string | null;
-  market_rent_estimate?: number | null;
 };
 
 export type PropertyFinance = {

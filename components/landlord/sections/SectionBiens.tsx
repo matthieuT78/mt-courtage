@@ -63,7 +63,6 @@ const EMPTY = {
   energy_class: "",
   energy_value: "",
   ghg_class: "",
-  market_rent_estimate: "",
   delegated_services: [] as string[],
   delegation_agency_name: "",
 };
@@ -370,7 +369,6 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
           energy_class: p.energy_class ?? "",
           energy_value: p.energy_value != null ? String(p.energy_value) : "",
           ghg_class: p.ghg_class ?? "",
-          market_rent_estimate: p.market_rent_estimate != null ? String(p.market_rent_estimate) : "",
           delegated_services: Array.isArray(p.delegated_services) ? p.delegated_services : [],
           delegation_agency_name: p.delegation_agency_name ?? "",
         },
@@ -432,7 +430,6 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         energy_class: (form.energy_class || "").trim() || null,
         energy_value: form.energy_value ? toNumOrNull(form.energy_value) : null,
         ghg_class: (form.ghg_class || "").trim() || null,
-        market_rent_estimate: form.market_rent_estimate ? toNumOrNull(form.market_rent_estimate) : null,
         delegated_services: Array.isArray(form.delegated_services) ? form.delegated_services : [],
         delegation_agency_name: (form.delegation_agency_name || "").trim() || null,
         status: isEdit ? (selectedIsArchived ? "archived" : "active") : "active",
@@ -703,18 +700,6 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             ))}
           </select>
         </div>
-
-        <label className="mt-3 block space-y-1">
-          <span className="text-xs text-slate-700">Loyer de marché estimé (optionnel)</span>
-          <input
-            inputMode="decimal"
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            placeholder="Loyer mensuel en euros, ex : 850"
-            value={form.market_rent_estimate}
-            onChange={(e) => setForm((s) => ({ ...s, market_rent_estimate: e.target.value }))}
-          />
-          <span className="block text-[0.7rem] text-slate-500">Montant en euros par mois, d’après des annonces comparables. Sert à comparer votre loyer actuel au marché dans Performance.</span>
-        </label>
 
         {/* ── Gestion de ce bien ── */}
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
@@ -1197,8 +1182,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                   energy_class: p.energy_class ?? "",
                   energy_value: p.energy_value != null ? String(p.energy_value) : "",
                   ghg_class: p.ghg_class ?? "",
-                  market_rent_estimate: p.market_rent_estimate != null ? String(p.market_rent_estimate) : "",
-                  delegated_services: Array.isArray(p.delegated_services) ? p.delegated_services : [],
+                          delegated_services: Array.isArray(p.delegated_services) ? p.delegated_services : [],
                   delegation_agency_name: p.delegation_agency_name ?? "",
                 };
 
@@ -1355,8 +1339,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                   energy_class: p.energy_class ?? "",
                   energy_value: p.energy_value != null ? String(p.energy_value) : "",
                   ghg_class: p.ghg_class ?? "",
-                  market_rent_estimate: p.market_rent_estimate != null ? String(p.market_rent_estimate) : "",
-                  delegated_services: Array.isArray(p.delegated_services) ? p.delegated_services : [],
+                          delegated_services: Array.isArray(p.delegated_services) ? p.delegated_services : [],
                   delegation_agency_name: p.delegation_agency_name ?? "",
                 };
 
