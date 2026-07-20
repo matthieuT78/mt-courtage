@@ -37,7 +37,6 @@ import { getBillingPlan } from "../../lib/billingPlans";
 import { planAllowsPerformance, planAllowsTools, planAllowsDocumentSharing, planAllowsCandidatures } from "../../lib/permissions";
 import ContactChat from "../ChatContact";
 import { ReviewPrompt } from "../ReviewPrompt";
-import { useProfile } from "../../hooks/useProfile";
 
 function MobileBottomNav({
   active,
@@ -230,7 +229,8 @@ export function DashboardShell(props: any) {
   const userId: string = props?.user?.id || "";
   const userEmail: string | undefined = props?.user?.email;
 
-  const { profile, loaded: profileLoaded } = useProfile(userId || null);
+  const profile = props?.profile ?? null;
+  const profileLoaded: boolean = !!props?.profileLoaded;
 
   const properties = Array.isArray(props?.properties) ? props.properties : [];
   const propertyFinance = Array.isArray(props?.propertyFinance) ? props.propertyFinance : [];
@@ -259,7 +259,10 @@ export function DashboardShell(props: any) {
   const activePropertiesCount = properties.filter((property: any) => String(property?.status || "").toLowerCase() !== "archived").length;
   const propertyLimitLabel = maxActiveProperties >= 999999 ? "illimité" : `${maxActiveProperties} logement${maxActiveProperties > 1 ? "s" : ""}`;
   const isFreePlan = plan === "calc_full";
-  const planLabel = getBillingPlan(plan)?.name || plan;
+  // getBillingPlan() ne couvre que les offres payantes — sans ce repli, le
+  // plan gratuit affichait l'identifiant technique brut ("calc_full") dans
+  // l'UI au lieu du nom grand public déjà utilisé sur /tarifs ("Gratuit").
+  const planLabel = getBillingPlan(plan)?.name || (isFreePlan ? "Gratuit" : plan === "agence" ? "Agence" : plan);
   const canUsePerformance = planAllowsPerformance(plan);
   const canUseTools = planAllowsTools(plan);
   const canShareDocuments = planAllowsDocumentSharing(plan);

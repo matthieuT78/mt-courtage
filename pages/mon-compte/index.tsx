@@ -163,6 +163,11 @@ export default function MonCompteIndexPage() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authInfo, setAuthInfo] = useState<string | null>(null);
+  // Après un login réussi, `isLoggedIn` (via useAuthUser) peut passer à true
+  // avant que router.replace() n'ait fini de naviguer, ce qui affiche cette
+  // page (vue compte connecté) pendant une fraction de seconde. Ce flag force
+  // un état de chargement neutre pendant la redirection.
+  const [redirecting, setRedirecting] = useState(false);
 
   // lire query param
   useEffect(() => {
@@ -222,6 +227,7 @@ export default function MonCompteIndexPage() {
       }
 
       // Après login : honore le redirect explicite, sinon va vers l'espace bailleur
+      setRedirecting(true);
       router.replace(redirectPath !== "/" ? redirectPath : "/espace-bailleur");
     } finally {
       setAuthLoading(false);
@@ -230,6 +236,7 @@ export default function MonCompteIndexPage() {
 
   const handleGoogleLogin = async () => {
     if (!supabase) return;
+    setRedirecting(true);
     const dest = redirectPath !== "/" ? redirectPath : "/espace-bailleur";
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -357,6 +364,7 @@ export default function MonCompteIndexPage() {
       }
 
       if (data.session?.user?.id) {
+        setRedirecting(true);
         router.replace(redirectPath || "/espace-bailleur");
         return;
       }
@@ -501,7 +509,11 @@ export default function MonCompteIndexPage() {
   };
 
   return (
-    isLoggedIn && redirectPath === "/" ? (
+    redirecting ? (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 text-sm text-slate-500">
+        Redirection…
+      </div>
+    ) : isLoggedIn && redirectPath === "/" ? (
       renderConnectedOverview()
     ) : (
     <div className="min-h-screen bg-slate-100">

@@ -69,9 +69,8 @@ const EMPTY = {
 
 const DELEGATED_SERVICES = [
   { key: "mise_en_location", label: "Mise en location & candidatures", desc: "Recherche locataire, dossiers de candidature" },
-  { key: "bail_edl", label: "Bail & états des lieux", desc: "Rédaction du bail, état des lieux entrée et sortie" },
+  { key: "bail_edl", label: "Bail & états des lieux", desc: "Rédaction du bail, état des lieux, dépôt de garantie" },
   { key: "gestion_courante", label: "Gestion courante", desc: "Encaissement loyers, quittances, révision IRL" },
-  { key: "depot_garantie", label: "Dépôt de garantie", desc: "Encaissement et restitution" },
 ] as const;
 
 const toNumOrNull = (v: string) => {

@@ -102,13 +102,18 @@ function nextAction(
   leaseId: string,
   submittedCount: number,
   propertyId: string,
+  delegatedListing: boolean,
 ): { label: string; target: LandlordSectionKey; link?: { leaseId?: string; openPanel?: string; openCreate?: boolean; prefillPropertyId?: string } } {
   if (!steps.edl)             return { label: "Faire l'état des lieux", target: "etat_des_lieux" };
   if (!steps.caution)         return { label: "Restituer la caution", target: "baux", link: { leaseId, openPanel: "deposit" } };
-  if (!steps.annonce)         return { label: "Créer l'annonce", target: "candidatures" };
-  if (!steps.candidat_retenu) {
-    if (submittedCount > 0)   return { label: `Analyser ${submittedCount} dossier${submittedCount > 1 ? "s" : ""}`, target: "candidatures" };
-    return { label: "Partager l'annonce", target: "candidatures" };
+  // Mise en location déléguée à un tiers : rien à faire côté bailleur pour
+  // l'annonce et l'analyse des candidatures, on saute directement à la suite.
+  if (!delegatedListing) {
+    if (!steps.annonce)         return { label: "Créer l'annonce", target: "candidatures" };
+    if (!steps.candidat_retenu) {
+      if (submittedCount > 0)   return { label: `Analyser ${submittedCount} dossier${submittedCount > 1 ? "s" : ""}`, target: "candidatures" };
+      return { label: "Partager l'annonce", target: "candidatures" };
+    }
   }
   if (!steps.nouveau_bail)    return { label: "Créer le bail", target: "baux", link: { openCreate: true, prefillPropertyId: propertyId } };
   return { label: "Voir le bail", target: "baux" };
@@ -247,10 +252,16 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
       {transitions.map((t) => {
         if (Object.values(t.steps).every(Boolean)) return null;
 
-        const doneCount = Object.values(t.steps).filter(Boolean).length;
+        // "Mise en location & candidatures" déléguée à un tiers (agence...) :
+        // l'annonce et le tri des candidatures ne sont pas des tâches du
+        // bailleur — on ne les compte pas comme "à faire" pour lui.
+        const delegatedListing = (t.property?.delegated_services || []).includes("mise_en_location");
+        const isDelegatedStep = (key: StepKey) => delegatedListing && (key === "annonce" || key === "candidat_retenu");
+
+        const doneCount = STEPS.filter((s) => t.steps[s.key] || isDelegatedStep(s.key)).length;
         const total = STEPS.length;
         const pct = Math.round((doneCount / total) * 100);
-        const action = nextAction(t.steps, t.lease.id, t.submittedCount, t.lease.property_id);
+        const action = nextAction(t.steps, t.lease.id, t.submittedCount, t.lease.property_id, delegatedListing);
 
         const cautionDays = t.cautionDeadline ? daysDiff(t.cautionDeadline) : null;
         const cautionUrgent = !t.steps.caution && cautionDays !== null && cautionDays <= 7;
@@ -290,8 +301,9 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
               {STEPS.map((s, i) => {
                 const done = t.steps[s.key];
                 const isLast = i === STEPS.length - 1;
+                const delegated = !done && isDelegatedStep(s.key);
                 // "Candidat" step : amber dot when submissions pending but none accepted yet
-                const isPending = s.key === "candidat_retenu" && !done && t.submittedCount > 0;
+                const isPending = s.key === "candidat_retenu" && !done && !delegated && t.submittedCount > 0;
                 return (
                   <React.Fragment key={s.key}>
                     <div className="flex min-w-[52px] flex-col items-center gap-1 text-center">
@@ -299,12 +311,16 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
                         "flex h-7 w-7 items-center justify-center rounded-full border-2 transition",
                         done
                           ? "border-emerald-400 bg-emerald-50"
+                          : delegated
+                          ? "border-indigo-300 bg-indigo-50"
                           : isPending
                           ? "border-amber-400 bg-amber-50"
                           : "border-slate-200 bg-white"
                       )}>
                         {done
                           ? <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
+                          : delegated
+                          ? <span className="h-2 w-2 rounded-full bg-indigo-400" />
                           : isPending
                           ? <span className="h-2 w-2 rounded-full bg-amber-400" />
                           : <span className="h-2 w-2 rounded-full bg-slate-200" />
@@ -312,9 +328,11 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
                       </div>
                       <span className={cx(
                         "text-[0.6rem] font-semibold leading-tight",
-                        done ? "text-emerald-600" : isPending ? "text-amber-600" : "text-slate-400"
+                        done ? "text-emerald-600" : delegated ? "text-indigo-500" : isPending ? "text-amber-600" : "text-slate-400"
                       )}>
-                        {s.key === "candidat_retenu" && isPending
+                        {delegated
+                          ? "Délégué"
+                          : s.key === "candidat_retenu" && isPending
                           ? `${t.submittedCount} dossier${t.submittedCount > 1 ? "s" : ""}`
                           : s.label}
                       </span>
@@ -322,7 +340,7 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
                     {!isLast && (
                       <div className={cx(
                         "mt-3.5 h-px flex-1 min-w-[8px]",
-                        done ? "bg-emerald-200" : "bg-slate-100"
+                        done || delegated ? "bg-emerald-200" : "bg-slate-100"
                       )} />
                     )}
                   </React.Fragment>

@@ -15,7 +15,20 @@ async function loadContext(userId: string, leaseId: string) {
     supabaseAdmin.from("profiles").select("*").eq("id", userId).maybeSingle(),
     supabaseAdmin.from("lease_contract_documents").select("*").eq("lease_id", leaseId).maybeSingle(),
   ]);
-  return { lease, property, tenant, landlord, profile, document };
+  // Une demande de signature encore en cours devient invalide si le PDF est
+  // régénéré entre-temps (le hash ne correspondra plus) — on le signale au
+  // formulaire pour prévenir l'utilisateur avant qu'il ne modifie quoi que ce soit.
+  let pendingSignature = false;
+  if (document?.id) {
+    const { data: sigReq } = await supabaseAdmin
+      .from("signature_requests")
+      .select("id")
+      .eq("lease_contract_id", document.id)
+      .in("status", ["pending", "partially_signed"])
+      .maybeSingle();
+    pendingSignature = !!sigReq;
+  }
+  return { lease, property, tenant, landlord, profile, document, pendingSignature };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

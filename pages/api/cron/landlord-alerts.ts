@@ -135,8 +135,11 @@ const ALERT_SERVICE_MAP: Partial<Record<LandlordAlertPreferenceKey, string>> = {
   expired_active_lease:    "bail_edl",
   entry_inventory_missing: "bail_edl",
   exit_inventory_to_prepare: "bail_edl",
-  deposit_not_collected:   "depot_garantie",
-  deposit_return_overdue:  "depot_garantie",
+  // Le dépôt de garantie est collecté et restitué au même moment que la
+  // signature du bail et les états des lieux — regroupé sous "bail_edl"
+  // plutôt qu'une catégorie de délégation séparée.
+  deposit_not_collected:   "bail_edl",
+  deposit_return_overdue:  "bail_edl",
 };
 
 function isServiceDelegated(propertyId: string | undefined, preferenceKey: LandlordAlertPreferenceKey, propertiesById: Map<string, any>): boolean {

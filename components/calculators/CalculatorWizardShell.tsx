@@ -14,6 +14,7 @@ type CalculatorWizardShellProps = {
   onStepClick?: (index: number) => void;
   canAccessStep?: (index: number) => boolean;
   title?: string;
+  helpPanel?: ReactNode;
 };
 
 export default function CalculatorWizardShell({
@@ -23,10 +24,11 @@ export default function CalculatorWizardShell({
   onStepClick,
   canAccessStep = () => true,
   title = "Votre simulation en quelques étapes.",
+  helpPanel,
 }: CalculatorWizardShellProps) {
   return (
     <section className="relative z-10 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
-      <div className="grid lg:grid-cols-[19rem_minmax(0,1fr)]">
+      <div className={helpPanel ? "grid lg:grid-cols-[19rem_minmax(0,1fr)_18rem]" : "grid lg:grid-cols-[19rem_minmax(0,1fr)]"}>
         <aside className="relative overflow-hidden bg-slate-950 px-5 py-5 text-white sm:px-6 lg:min-h-[39rem] lg:py-7">
           <div className="absolute inset-0 bg-gradient-to-br from-[#635bff] via-[#007ba7] to-[#00a97b] opacity-95" />
           <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,.2),transparent_38%,rgba(255,184,0,.22))]" />
@@ -87,6 +89,11 @@ export default function CalculatorWizardShell({
           </div>
         </aside>
         <div className="min-w-0 bg-white p-5 sm:p-8">{children}</div>
+        {helpPanel ? (
+          <aside className="hidden border-t border-slate-100 bg-slate-50 p-5 lg:block lg:border-l lg:border-t-0">
+            {helpPanel}
+          </aside>
+        ) : null}
       </div>
     </section>
   );

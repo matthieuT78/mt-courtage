@@ -19,7 +19,7 @@ import { usePermissions } from "../../PermissionProvider";
 import { planAllowsDocumentSharing } from "../../../lib/permissions";
 import { SectionTitle } from "../UiBits";
 import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
-import { isEDLSelectableLease } from "../../../lib/landlord/archiveFilters";
+import { isActivePropertyLike, isEDLSelectableLease } from "../../../lib/landlord/archiveFilters";
 import RepairsGuideCard from "../RepairsGuideCard";
 
 /* ======================================================
@@ -1704,8 +1704,15 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const activeOnlyLeases = useMemo(() => activeLeases.filter((l) => (l.status || "active") === "active"), [activeLeases]);
   const endedPendingLeases = useMemo(
-    () => activeLeases.filter((l) => l.status === "ended" && !completedExitLeaseIds.has(l.id)),
-    [activeLeases, completedExitLeaseIds]
+    () =>
+      activeLeases.filter((l) => {
+        if (l.status !== "ended" || completedExitLeaseIds.has(l.id)) return false;
+        // Un bien archivé = le bailleur a explicitement arrêté de le gérer (vendu,
+        // repris...) : pas la peine de continuer à réclamer un EDL de sortie dessus.
+        const property = propertyById.get(l.property_id);
+        return isActivePropertyLike(property);
+      }),
+    [activeLeases, completedExitLeaseIds, propertyById]
   );
   const leaseStarterCards = useMemo(() => activeOnlyLeases.slice(0, 4), [activeOnlyLeases]);
 

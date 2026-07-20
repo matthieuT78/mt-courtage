@@ -76,6 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     ).length;
     if (activeLeaseCount >= maxActiveLeases) {
       return res.status(403).json({
+        code: "plan_limit",
         error:
           maxActiveLeases <= 0
             ? "La création de locations nécessite un abonnement lokt.one ou supérieur."
