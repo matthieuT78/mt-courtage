@@ -365,7 +365,10 @@ export default function MonCompteIndexPage() {
 
       if (data.session?.user?.id) {
         setRedirecting(true);
-        router.replace(redirectPath || "/espace-bailleur");
+        // "/" est la valeur par défaut de redirectPath (aucun ?redirect= dans l'URL) et
+        // est une chaîne non-vide donc toujours "vraie" — un `||` ici ne retombe jamais
+        // sur /espace-bailleur, contrairement au même cas géré par la connexion et Google SSO.
+        router.replace(redirectPath !== "/" ? redirectPath : "/espace-bailleur");
         return;
       }
 
