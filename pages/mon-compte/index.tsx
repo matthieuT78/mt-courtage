@@ -15,7 +15,7 @@ import { useAuthUser } from "../../hooks/useAuthUser";
 import { useProfile } from "../../hooks/useProfile";
 import { usePermissions } from "../../components/PermissionProvider";
 
-type Mode = "login" | "register";
+type Mode = "login" | "register" | "forgot";
 type Role = "bailleur" | "locataire";
 
 /**
@@ -132,6 +132,10 @@ export default function MonCompteIndexPage() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
+  // forgot password
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSent, setForgotSent] = useState(false);
+
   // register (auth)
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
@@ -173,7 +177,7 @@ export default function MonCompteIndexPage() {
   useEffect(() => {
     if (!router.isReady) return;
     const m = router.query.mode as string | undefined;
-    setMode(m === "register" ? "register" : "login");
+    setMode(m === "register" ? "register" : m === "forgot" ? "forgot" : "login");
     setRedirectPath(safeRedirect(router.query.redirect));
   }, [router.isReady, router.query.mode, router.query.redirect]);
 
@@ -205,8 +209,6 @@ export default function MonCompteIndexPage() {
     load();
   }, [user?.id]);
 
-  const forgotPwdHref = useMemo(() => `/mon-compte/securite?mode=forgot`, []);
-
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -229,6 +231,31 @@ export default function MonCompteIndexPage() {
       // Après login : honore le redirect explicite, sinon va vers l'espace bailleur
       setRedirecting(true);
       router.replace(redirectPath !== "/" ? redirectPath : "/espace-bailleur");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setAuthInfo(null);
+
+    if (!supabase) return setAuthError("Auth indisponible.");
+
+    const email = normalizeEmail(forgotEmail);
+    if (!email || !isEmailLike(email)) return setAuthError("Merci de renseigner une adresse e-mail valide.");
+
+    setAuthLoading(true);
+    try {
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/mon-compte/nouveau-mot-de-passe` : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) {
+        setAuthError(error.message || "Erreur lors de l'envoi du lien.");
+        return;
+      }
+      setForgotSent(true);
     } finally {
       setAuthLoading(false);
     }
@@ -535,8 +562,8 @@ export default function MonCompteIndexPage() {
         ) : (
           <div className="mx-auto max-w-2xl">
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-              {/* Toggle Bailleur / Locataire — masqué en mode inscription */}
-              {mode !== "register" && (
+              {/* Toggle Bailleur / Locataire — masqué en mode inscription et mot de passe oublié */}
+              {mode !== "register" && mode !== "forgot" && (
                 <div className="mb-5 flex items-center gap-2 rounded-full bg-slate-100 p-1 text-xs w-fit">
                   <button
                     type="button"
@@ -561,7 +588,71 @@ export default function MonCompteIndexPage() {
                 </div>
               )}
 
-              {role === "locataire" && mode !== "register" ? (
+              {mode === "forgot" ? (
+                <>
+                  <div className="mb-5">
+                    <p className="uppercase tracking-[0.18em] text-[0.7rem] text-sky-700 mb-1">Accès bailleur</p>
+                    <h1 className="text-lg font-semibold text-slate-900">Mot de passe oublié</h1>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Indiquez votre adresse e-mail : si un compte existe, vous recevrez un lien pour choisir un nouveau mot de passe.
+                    </p>
+                  </div>
+
+                  {authError ? (
+                    <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                      {authError}
+                    </div>
+                  ) : null}
+
+                  {forgotSent ? (
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                        Si un compte lokt.fr existe avec cette adresse, un e-mail vient d’être envoyé avec un lien de réinitialisation. Pensez à vérifier vos spams.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setMode("login"); setForgotSent(false); setAuthError(null); }}
+                        className="text-xs text-slate-600 underline"
+                      >
+                        Retour à la connexion
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleForgotPassword} className="space-y-3">
+                      <div className="space-y-1">
+                        <label htmlFor="forgot_email" className="text-xs text-slate-700">
+                          Adresse e-mail
+                        </label>
+                        <input
+                          id="forgot_email"
+                          type="email"
+                          autoComplete="email"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          required
+                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div className="pt-2 flex flex-wrap items-center gap-3">
+                        <button
+                          type="submit"
+                          disabled={authLoading}
+                          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                        >
+                          {authLoading ? "Envoi..." : "Envoyer le lien"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setMode("login"); setAuthError(null); }}
+                          className="text-xs text-slate-600 underline"
+                        >
+                          Retour à la connexion
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </>
+              ) : role === "locataire" && mode !== "register" ? (
                 <TenantLoginInline onSuccess={() => router.replace("/espace-locataire")} />
               ) : (
               <>
@@ -607,9 +698,13 @@ export default function MonCompteIndexPage() {
                   {authError}
                   {authError.toLowerCase().includes("déjà un compte") ? (
                     <div className="mt-2">
-                      <a href={forgotPwdHref} className="underline font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => { setMode("forgot"); setAuthError(null); }}
+                        className="underline font-semibold"
+                      >
                         Mot de passe oublié ?
-                      </a>
+                      </button>
                     </div>
                   ) : null}
                 </div>
@@ -686,9 +781,13 @@ export default function MonCompteIndexPage() {
                       {authLoading ? "Connexion..." : "Se connecter"}
                     </button>
 
-                    <a href={forgotPwdHref} className="text-xs text-slate-600 underline">
+                    <button
+                      type="button"
+                      onClick={() => { setMode("forgot"); setAuthError(null); }}
+                      className="text-xs text-slate-600 underline"
+                    >
                       Mot de passe oublié ?
-                    </a>
+                    </button>
                   </div>
                 </form>
               ) : (
