@@ -6,7 +6,7 @@ import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
 import { supabase } from "../../lib/supabaseClient";
 
-type Mode = "detecting" | "set-password" | "invalid";
+type Mode = "detecting" | "set-password" | "google-account" | "invalid";
 
 export default function NouveauMotDePassePage() {
   const router = useRouter();
@@ -31,11 +31,18 @@ export default function NouveauMotDePassePage() {
 
     let resolved = false;
 
-    const resolveSuccess = () => {
+    const resolveSuccess = async () => {
       if (resolved) return;
       resolved = true;
       clearTimeout(fallback);
-      setMode("set-password");
+      // Un compte lié à Google n'a pas de mot de passe lokt.fr (cf. mon-compte/securite.tsx) :
+      // le lien de récupération y donne quand même accès, mais on ne doit pas laisser
+      // en créer un ici, sous peine de contredire ce que securite.tsx affiche.
+      const { data } = await supabase!.auth.getUser();
+      const u = data.user;
+      const isGoogleUser =
+        u?.app_metadata?.provider === "google" || u?.identities?.some((id: any) => id.provider === "google");
+      setMode(isGoogleUser ? "google-account" : "set-password");
     };
 
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
@@ -110,6 +117,21 @@ export default function NouveauMotDePassePage() {
                 className="mt-4 inline-flex rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
               >
                 Demander un nouveau lien
+              </a>
+            </>
+          ) : mode === "google-account" ? (
+            <>
+              <h1 className="text-lg font-semibold text-slate-900">Compte connecté via Google</h1>
+              <p className="mt-2 text-sm text-slate-600">
+                Ce compte lokt.fr utilise la connexion Google — il n'y a pas de mot de passe lokt.fr à réinitialiser.
+                Connectez-vous avec le bouton « Continuer avec Google ». Pour gérer ce mot de passe, rendez-vous dans
+                les paramètres de votre compte Google.
+              </p>
+              <a
+                href="/mon-compte?mode=login"
+                className="mt-4 inline-flex rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              >
+                Aller à la connexion
               </a>
             </>
           ) : done ? (
