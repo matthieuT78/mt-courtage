@@ -7,10 +7,13 @@
 //   3. Anonymisation des leads liés (conserve les stats métier, efface les PII)
 //   4. Suppression du profil
 //   5. Suppression de l'utilisateur auth Supabase
+//   6. Envoi d'un email de confirmation (best-effort, n'affecte pas le résultat de la suppression)
 // Les lignes de facturation (subscriptions) sont conservées (obligation légale 10 ans).
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser } from "../../../lib/apiAuth";
+import { sendEmailViaResend } from "../../../lib/mailer/resend";
+import { buildCompteSupprimeEmailHtml, buildCompteSupprimeEmailText } from "../../../lib/emails/compte-supprime";
 
 function budgetBucket(amount: number | null): string | null {
   if (!amount || amount <= 0) return null;
@@ -59,6 +62,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const userId = auth.userId;
   const now = new Date().toISOString();
+  const recipientEmail = auth.email || null;
+
+  // Capturé avant suppression du profil (étape 4) pour personnaliser l'email de confirmation.
+  const { data: profileForEmail } = await supabaseAdmin
+    .from("profiles")
+    .select("full_name, first_name")
+    .eq("id", userId)
+    .maybeSingle();
+  const recipientName = (profileForEmail as any)?.full_name || (profileForEmail as any)?.first_name || "";
 
   // 1. Chercher un abonnement Stripe actif
   const { data: sub } = await supabaseAdmin
@@ -143,5 +155,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   console.log(`[account/delete] compte supprimé userId=${userId} (stripe: ${stripeSubId ?? "aucun"})`);
+
+  // 6. Email de confirmation — best-effort : le compte est déjà supprimé, un échec d'envoi
+  // ne doit pas faire échouer la requête (rien à annuler côté suppression).
+  if (recipientEmail) {
+    const payload = { fullName: recipientName, stripeCanceled: !!stripeSubId };
+    const mail = await sendEmailViaResend({
+      to: recipientEmail,
+      subject: "Votre compte lokt.fr a été supprimé",
+      html: buildCompteSupprimeEmailHtml(payload),
+      text: buildCompteSupprimeEmailText(payload),
+    });
+    if (!mail.ok) {
+      console.error("[account/delete] email confirmation error:", mail.error);
+    }
+  }
+
   return res.status(200).json({ ok: true, stripe_canceled: !!stripeSubId });
 }

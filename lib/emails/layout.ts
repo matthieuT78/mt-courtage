@@ -2,8 +2,10 @@ export function emailLayout(params: {
   title: string;
   preheader?: string;
   contentHtml: string;
+  footerText?: string;
 }) {
   const preheader = params.preheader || "";
+  const footerText = params.footerText || "Calculs indicatifs — ne constitue pas une offre de prêt.";
   return `
 <!doctype html>
 <html lang="fr">
@@ -44,7 +46,7 @@ export function emailLayout(params: {
           <tr>
             <td style="padding:14px 20px;border-top:1px solid #e2e8f0;background:#f8fafc;font-family:Arial,sans-serif;">
               <p style="margin:0;font-size:12px;line-height:1.4;color:#64748b;">
-                Calculs indicatifs — ne constitue pas une offre de prêt.
+                ${escapeHtml(footerText)}
               </p>
               <p style="margin:6px 0 0 0;font-size:12px;color:#64748b;">© lokt.fr</p>
             </td>
