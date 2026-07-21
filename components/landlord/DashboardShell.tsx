@@ -8,7 +8,7 @@ import {
   SunIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { LockedPremiumSection, type LockedSectionConfig } from "./LockedPremiumSection";
+import { LockedPremiumSection, StatCard, type LockedSectionConfig } from "./LockedPremiumSection";
 import { SidebarNav, LandlordSectionKey, type SearchItem } from "./SidebarNav";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -531,42 +531,72 @@ export function DashboardShell(props: any) {
     if (active === "performance" && !canUsePerformance) {
       return {
         eyebrow: "Fonctionnalité lokt·plus",
-        title: "Pilotage performance réservé au plan lokt·plus",
+        title: "Sachez enfin si chacun de vos biens vous rapporte vraiment",
         desc:
-          "La section Performance transforme vos données de loyers, charges et crédit en lecture de rentabilité par logement, cash-flow et plan d’action priorisé.",
+          "lokt·plus transforme vos loyers, charges et crédit déjà saisis en rendement, cash-flow et plan d’action concret par logement — plus besoin d’un tableur à jour à côté.",
         requiredPlan: "lokt·plus",
         planId: "landlord_15",
-        cta: "Upgrade vers lokt·plus",
+        cta: "Débloquer le pilotage performance",
         features: ["Rentabilité et cash-flow par logement", "Analyse des charges et du crédit", "Actions prioritaires pour améliorer la gestion", "Jusqu’à 5 logements actifs"],
+        preview: (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatCard label="Rendement brut" value="6,2 %" tone="emerald" />
+            <StatCard label="Cash-flow mensuel" value="+180 €" tone="indigo" />
+            <StatCard label="Charges / loyers" value="18 %" />
+          </div>
+        ),
       };
     }
     if (active === "outils" && !canUseTools) {
       return {
         eyebrow: "Fonctionnalité lokt·plus",
-        title: "Boîte à outils bailleur réservée au plan lokt·plus",
+        title: "Les calculs fastidieux, faits pour vous en quelques secondes",
         desc:
-          "Les outils avancés traitent les cas métier qui demandent de l’historique, des justificatifs et des calculs de répartition : eau, charges, TEOM, régularisation et simulateurs bailleur.",
+          "Répartition d’eau au prorata des relevés, charges par tantièmes, régularisation TEOM… lokt·plus fait le calcul et garde la trace justificative, là où un tableur vous fait tout refaire à la main chaque année.",
         requiredPlan: "lokt·plus",
         planId: "landlord_15",
-        cta: "Upgrade vers lokt·plus",
+        cta: "Débloquer la boîte à outils",
         features: ["Répartition de facture d’eau au prorata des relevés", "Répartition des charges par tantièmes", "TEOM et régularisation locative", "Simulateurs bailleur intégrés"],
+        preview: (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatCard label="Répartition eau" value="42,80 €" tone="indigo" />
+            <StatCard label="TEOM régularisée" value="96,00 €" />
+            <StatCard label="Charges tantièmes" value="211,50 €" tone="emerald" />
+          </div>
+        ),
       };
     }
     if (active === "candidatures" && !canUseCandidatures) {
       return {
         eyebrow: "Fonctionnalité lokt·one",
-        title: "Gestion des candidatures réservée au plan lokt·one",
+        title: "Choisissez votre locataire sur des données, pas sur un feeling",
         desc:
-          "Publiez vos annonces, collectez et analysez les dossiers de candidature avec le score lokt. Suivez le parcours de chaque candidat jusqu’à la signature du bail.",
+          "Publiez votre annonce, recevez les dossiers directement dans lokt et comparez les candidats grâce au score lokt — jusqu’à la signature du bail, sans ressaisie.",
         requiredPlan: "lokt·one",
         planId: "landlord_5",
-        cta: "Passer à lokt·one",
+        cta: "Débloquer les candidatures",
         features: [
           "Annonces de location en ligne",
           "Collecte et scoring des dossiers candidats",
           "Workflow candidature → bail en 1 clic",
           "Suivi du changement de locataire (transition panel)",
         ],
+        preview: (
+          <div className="space-y-2 text-left">
+            {[
+              { name: "Camille R.", score: 92 },
+              { name: "Antoine D.", score: 78 },
+              { name: "Sophie M.", score: 64 },
+            ].map((c) => (
+              <div key={c.name} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-2.5">
+                <span className="text-sm font-medium text-slate-800">{c.name}</span>
+                <span className={`text-sm font-semibold ${c.score >= 85 ? "text-emerald-600" : c.score >= 70 ? "text-amber-600" : "text-slate-500"}`}>
+                  Score {c.score}/100
+                </span>
+              </div>
+            ))}
+          </div>
+        ),
       };
     }
     return null;

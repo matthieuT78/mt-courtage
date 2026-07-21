@@ -5,8 +5,10 @@ import { SectionTitle } from "../UiBits";
 import { ExpandableSection } from "../ui/ExpandableSection";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
-import { ChatBubbleLeftRightIcon, HomeIcon, LinkIcon, NoSymbolIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ChatBubbleLeftRightIcon, HomeIcon, LinkIcon, LockClosedIcon, NoSymbolIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { RentPayment } from "../../../lib/landlord/types";
+import { usePermissions } from "../../PermissionProvider";
+import { planAllowsDocumentSharing } from "../../../lib/permissions";
 
 /* ======================================================
    TYPES
@@ -218,6 +220,9 @@ export function SectionLocataires({
   const safeLeases = Array.isArray(leases) ? leases : [];
   const safeProperties = Array.isArray(properties) ? properties : [];
   const safePayments = Array.isArray(payments) ? payments : [];
+
+  const { plan } = usePermissions();
+  const canUsePortal = planAllowsDocumentSharing(plan);
 
   const [expandedId, setExpandedId] = useState<string | null>(null); // row ouverte (create ou tenant id)
   const [query, setQuery] = useState("");
@@ -1304,6 +1309,7 @@ export function SectionLocataires({
                           access={portalAccessMap.get(t.id) || null}
                           isInviting={portalInviting.has(t.id)}
                           isTogglingMsg={portalTogglingMsg.has(t.id)}
+                          canUsePortal={canUsePortal}
                           onInvite={inviteToPortal}
                           onToggleMessaging={toggleMessaging}
                         />
@@ -1689,6 +1695,7 @@ function PortalPanel({
   access,
   isInviting,
   isTogglingMsg,
+  canUsePortal,
   onInvite,
   onToggleMessaging,
 }: {
@@ -1698,6 +1705,7 @@ function PortalPanel({
   access: any | null;
   isInviting: boolean;
   isTogglingMsg: boolean;
+  canUsePortal: boolean;
   onInvite: (tenantId: string, messagingEnabled: boolean) => Promise<{ ok: boolean; message: string }>;
   onToggleMessaging: (tenantId: string, enabled: boolean) => Promise<{ ok: boolean; message: string }>;
 }) {
@@ -1730,6 +1738,17 @@ function PortalPanel({
 
       {!hasEmail ? (
         <p className="text-xs text-slate-500">Ajoutez un email pour activer le portail.</p>
+
+      ) : !access && !canUsePortal ? (
+        <div className="flex items-start gap-2 rounded-xl border border-indigo-200 bg-white px-3 py-2.5">
+          <LockClosedIcon className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600" />
+          <p className="text-xs leading-5 text-slate-700">
+            Réservé à partir de lokt·one — le locataire accède à son bail, ses quittances et peut vous écrire directement.{" "}
+            <a href="/tarifs" className="font-semibold text-indigo-700 underline decoration-dotted hover:text-indigo-800">
+              Voir les abonnements
+            </a>
+          </p>
+        </div>
 
       ) : !access ? (
         <div className="space-y-2.5">

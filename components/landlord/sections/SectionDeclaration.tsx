@@ -9,7 +9,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import type { Property } from "../../../lib/landlord/types";
 import { usePermissions } from "../../PermissionProvider";
 import { planAllowsPerformance } from "../../../lib/permissions";
-import { LockedPremiumSection } from "../LockedPremiumSection";
+import { LockedPremiumSection, StatCard } from "../LockedPremiumSection";
 
 type Regime = "lmnp_micro" | "lmnp_reel" | "nu_micro" | "nu_reel" | "pinel";
 // meuble_saisonnier_classe = tourisme classé → abattement 71%
@@ -736,17 +736,23 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     return (
       <LockedPremiumSection config={{
         eyebrow: "Fonctionnalité lokt·plus",
-        title: "Aide à la déclaration réservée au plan lokt·plus",
-        desc: "Préparez un dossier fiscal exploitable : import Finance, ventilation par bien, comparaison micro/réel, alertes d'incohérence, checklist justificatifs et export pour votre comptable.",
+        title: "Ne laissez plus votre comptable (ou vous) deviner le meilleur régime",
+        desc: "lokt·plus reprend vos recettes et charges déjà enregistrées, compare micro et régime réel bien par bien, et prépare une synthèse prête à transmettre — plus besoin de tout reconstituer à la main en mars.",
         requiredPlan: "lokt·plus",
         planId: "landlord_15",
-        cta: "Upgrade vers lokt·plus",
+        cta: "Débloquer l’aide à la déclaration",
         features: [
           "Import automatique des recettes et charges Finance",
           "Comparaison micro-BIC / régime réel par bien",
           "Alertes d'incohérence et checklist justificatifs",
           "Export synthèse à transmettre à votre comptable",
         ],
+        preview: (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <StatCard label="Micro-BIC (abattement 50 %)" value="1 840 €" />
+            <StatCard label="Régime réel (charges réelles)" value="1 120 €" tone="emerald" />
+          </div>
+        ),
       }} />
     );
   }

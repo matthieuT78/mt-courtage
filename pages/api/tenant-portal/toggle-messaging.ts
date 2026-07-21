@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireApiUser } from "../../../lib/apiAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { getServerUserPlan } from "../../../lib/serverPermissions";
+import { planAllowsDocumentSharing } from "../../../lib/permissions";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -13,6 +15,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const messagingEnabled = req.body?.messagingEnabled;
     if (!tenantId) return res.status(400).json({ error: "tenantId requis." });
     if (typeof messagingEnabled !== "boolean") return res.status(400).json({ error: "messagingEnabled (boolean) requis." });
+
+    if (messagingEnabled) {
+      const plan = await getServerUserPlan(auth.userId);
+      if (!planAllowsDocumentSharing(plan)) {
+        return res.status(402).json({ error: "La messagerie est réservée aux abonnements payants (à partir de lokt·one)." });
+      }
+    }
 
     const { data, error } = await supabaseAdmin
       .from("tenant_portal_access")

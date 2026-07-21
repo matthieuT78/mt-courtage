@@ -3,6 +3,8 @@ import { requireApiUser } from "../../../lib/apiAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { getOrCreateTenantThread } from "../../../lib/tenantPortal";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
+import { getServerUserPlan } from "../../../lib/serverPermissions";
+import { planAllowsDocumentSharing } from "../../../lib/permissions";
 
 function tenantPortalRedirectUrl(req: NextApiRequest) {
   const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0].trim();
@@ -81,6 +83,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin non configuré." });
     const auth = await requireApiUser(req);
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
+    const plan = await getServerUserPlan(auth.userId);
+    if (!planAllowsDocumentSharing(plan)) {
+      return res.status(402).json({ error: "Le portail locataire est réservé aux abonnements payants (à partir de lokt·one)." });
+    }
 
     const tenantId = String(req.body?.tenantId || "");
     const messagingEnabled = req.body?.messagingEnabled !== false; // défaut true
