@@ -100,8 +100,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const day = Number(l.payment_day || 0);
       if (!day || day < 1 || day > 31) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "no_payment_day", payment_day: l.payment_day }); continue; }
 
-      const targetUtc = new Date(Date.UTC(y, m - 1, day));
-      targetUtc.setUTCDate(targetUtc.getUTCDate() + 1);
+      // `period` is always the current calendar month, so the target date must stay within it —
+      // Date.UTC silently rolls an out-of-range day into the next month (e.g. day=31 in April
+      // becomes May 1), which then never matches `today` while `period` still points at April,
+      // so the reminder silently never fires. Clamp both the due day and the day-after target to
+      // the month's real length instead.
+      const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+      const targetDay = Math.min(day + 1, daysInMonth);
+      const targetUtc = new Date(Date.UTC(y, m - 1, targetDay));
       const targetLocal = yyyymmddInTz(targetUtc, tz);
 
       if (today !== targetLocal) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "wrong_date", today, targetLocal, payment_day: day }); continue; }

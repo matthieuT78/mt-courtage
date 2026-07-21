@@ -233,7 +233,12 @@ function scheduleForPeriod(yyyymmPeriod: string, lease: any) {
     ? new Date(canonicalDueDate.getFullYear(), canonicalDueDate.getMonth(), canonicalDueDate.getDate())
     : new Date(y, month0, clampDayInMonth(y, month0, paymentDayRaw));
   if (paymentType === "terme_echu") {
-    dueDate = new Date(dueDate.getFullYear(), dueDate.getMonth() + 1, dueDate.getDate());
+    // Le jour dû est valide dans le mois d'origine (déjà plafonné par getLeasePaymentDueDate),
+    // mais décaler d'un mois sans replafonner peut déborder (ex: dû le 31 mars -> "31 avril"
+    // n'existe pas, Date le fait glisser au 1er mai) — on replafonne sur la longueur du mois cible.
+    const shiftedYear = dueDate.getFullYear();
+    const shiftedMonth0 = dueDate.getMonth() + 1;
+    dueDate = new Date(shiftedYear, shiftedMonth0, clampDayInMonth(shiftedYear, shiftedMonth0, dueDate.getDate()));
   }
 
   const controlAt = new Date(dueDate);

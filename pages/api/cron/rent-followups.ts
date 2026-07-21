@@ -81,6 +81,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           continue;
         }
 
+        if (lease.property_id) {
+          const { data: prop } = await supabaseAdmin.from("properties").select("delegated_services").eq("id", lease.property_id).maybeSingle();
+          if (Array.isArray(prop?.delegated_services) && prop.delegated_services.includes("gestion_courante")) {
+            skipped++;
+            continue;
+          }
+        }
+
         const rentPeriod = getLeaseRentPeriodFromDate(lease, token.period_start);
         if (!rentPeriod) {
           skipped++;
