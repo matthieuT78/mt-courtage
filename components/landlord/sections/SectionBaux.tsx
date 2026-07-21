@@ -1255,6 +1255,17 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     [activeTenants, safeTenants, form.tenant_id]
   );
 
+  // Si le bien sélectionné délègue la gestion courante (quittances/révision IRL), le workflow
+  // du bail ne peut pas rester sur Auto/Manuel — que ce soit à la création, à l'ouverture d'un
+  // bail existant créé avant la délégation, ou après un changement de bien dans le formulaire.
+  useEffect(() => {
+    if (!form.property_id) return;
+    const isDelegated = (propertyById.get(form.property_id)?.delegated_services || []).includes("gestion_courante");
+    if (isDelegated && !form.receipts_disabled) {
+      setForm((s) => ({ ...s, receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: false }));
+    }
+  }, [form.property_id, form.receipts_disabled, propertyById]);
+
   const resetForm = () => {
     setForm(defaultFormValues());
   };
@@ -2242,6 +2253,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   };
 
   const renderLeaseForm = () => {
+    const isGestionDelegated = (propertyById.get(form.property_id)?.delegated_services || []).includes("gestion_courante");
     const selectedTenant = tenantById.get(form.tenant_id) || null;
     const receiptEmail = form.tenant_receipt_email || getTenantEmail(selectedTenant);
     const ownerEmail = form.reminder_email || String(userEmail || "");
@@ -2308,13 +2320,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               value={form.property_id}
               onChange={(e) => {
                 const pid = e.target.value;
-                const p = propertyById.get(pid);
-                const isGestionDelegated = (p?.delegated_services || []).includes("gestion_courante");
-                setForm((s) => ({
-                  ...s,
-                  property_id: pid,
-                  ...(isGestionDelegated ? { receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: false } : {}),
-                }));
+                setForm((s) => ({ ...s, property_id: pid }));
               }}
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             >
@@ -2639,39 +2645,45 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             <div>
               <p className="text-xs font-semibold text-slate-900">Workflow quittance</p>
               <p className="mt-0.5 text-[0.75rem] text-slate-600">
-                Configuration recommandée : le bailleur confirme le paiement avant génération du PDF et envoi au locataire.
+                {isGestionDelegated
+                  ? "Ce logement délègue déjà la gestion courante — modifiable depuis Biens."
+                  : "Configuration recommandée : le bailleur confirme le paiement avant génération du PDF et envoi au locataire."}
               </p>
             </div>
             {badge(flow.tone as any, flow.label)}
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <WorkflowChoice
-              title="Automatique validé"
-              description={
-                canUseReceiptAutomation
-                  ? "Email bailleur, puis PDF et envoi après confirmation du paiement."
-                  : "Disponible avec lokt·one ou lokt·plus."
-              }
-              icon={ShieldCheckIcon}
-              tone="emerald"
-              selected={form.auto_quittance_enabled && form.auto_reminder_enabled}
-              disabled={!canUseReceiptAutomation}
-              errorMessage={autoWorkflowError}
-              onClick={() => enableAutoWorkflow()}
-            />
+          <div className={cx("grid gap-2", isGestionDelegated ? "sm:grid-cols-1" : "sm:grid-cols-2")}>
+            {!isGestionDelegated ? (
+              <>
+                <WorkflowChoice
+                  title="Automatique validé"
+                  description={
+                    canUseReceiptAutomation
+                      ? "Email bailleur, puis PDF et envoi après confirmation du paiement."
+                      : "Disponible avec lokt·one ou lokt·plus."
+                  }
+                  icon={ShieldCheckIcon}
+                  tone="emerald"
+                  selected={form.auto_quittance_enabled && form.auto_reminder_enabled}
+                  disabled={!canUseReceiptAutomation}
+                  errorMessage={autoWorkflowError}
+                  onClick={() => enableAutoWorkflow()}
+                />
 
-            <WorkflowChoice
-              title="Manuel"
-              description="Génération et envoi depuis Quittances."
-              icon={HandRaisedIcon}
-              tone="slate"
-              selected={!form.auto_quittance_enabled && !form.receipts_disabled}
-              onClick={() => {
-                setAutoWorkflowError(null);
-                setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false, receipts_disabled: false }));
-              }}
-            />
+                <WorkflowChoice
+                  title="Manuel"
+                  description="Génération et envoi depuis Quittances."
+                  icon={HandRaisedIcon}
+                  tone="slate"
+                  selected={!form.auto_quittance_enabled && !form.receipts_disabled}
+                  onClick={() => {
+                    setAutoWorkflowError(null);
+                    setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false, receipts_disabled: false }));
+                  }}
+                />
+              </>
+            ) : null}
 
             <WorkflowChoice
               title="Géré par agence"
@@ -2686,7 +2698,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             />
           </div>
 
-          {!canUseReceiptAutomation ? (
+          {!isGestionDelegated && !canUseReceiptAutomation ? (
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs leading-5 text-slate-600">
