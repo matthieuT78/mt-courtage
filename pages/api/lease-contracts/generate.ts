@@ -102,7 +102,7 @@ function makePdf(payload: any) {
       .strokeColor("#e2e8f0").lineWidth(1).stroke();
     doc.moveDown(0.6);
     doc.fontSize(8).fillColor("#475569").text(
-      "Ce contrat a pleine valeur juridique une fois signé par les deux parties. Avant signature, joignez les annexes obligatoires : notice d’information bailleur-locataire, dossier de diagnostics techniques (dont DPE), état des lieux d’entrée, et inventaire du mobilier si location meublée. Ce modèle ne couvre pas : colocation avec baux individuels, logement conventionné APL/Anah, locataire personne morale, SCI, bail commercial.",
+      "Ce contrat a pleine valeur juridique une fois signé par les deux parties. La notice d’information est jointe en dernière page. Avant signature, joignez également les annexes obligatoires restantes : dossier de diagnostics techniques (dont DPE), état des lieux d’entrée, et inventaire du mobilier si location meublée. Ce modèle ne couvre pas : colocation avec baux individuels, logement conventionné APL/Anah, locataire personne morale, SCI, bail commercial.",
       { align: "left", lineGap: 2 }
     );
 
@@ -119,6 +119,11 @@ function makePdf(payload: any) {
     row("Locataire", d.tenant_name);
     if (d.co_tenant_name) row("Co-locataire", d.co_tenant_name);
     if (d.tenant_email) row("Adresse e-mail du locataire", d.tenant_email);
+    if (d.garant_name) {
+      doc.moveDown(0.4);
+      row("Garant / caution solidaire", d.garant_name);
+      if (d.garant_address) row("Adresse du garant", d.garant_address);
+    }
 
     // ── 2. Logement ──────────────────────────────────────────
     heading("2. Objet du contrat et désignation du logement");
@@ -255,7 +260,7 @@ function makePdf(payload: any) {
     // ── 6. Annexes ───────────────────────────────────────────
     heading("6. Annexes à remettre avec le contrat");
     const annexes: [string, unknown, boolean?][] = [
-      ["Notice d’information bailleur-locataire", d.annex_notice],
+      ["Notice d’information bailleur-locataire (synthèse jointe en dernière page)", true],
       ["Dossier de diagnostic technique (dont DPE)", d.annex_diagnostics],
       ["État des lieux d’entrée", d.annex_inventory_report],
       ["Inventaire et état détaillé du mobilier", d.annex_furniture, payload.contract_kind !== "empty_primary"],
@@ -310,6 +315,58 @@ function makePdf(payload: any) {
       "Ce document doit être complété par les annexes applicables. Pour toute situation particulière (colocation avec baux individuels, logement conventionné, locataire personne morale, clause spécifique), consultez un professionnel du droit.",
       { lineGap: 2 }
     );
+
+    // ── ANNEXE — Notice d'information ─────────────────────────
+    doc.addPage();
+    doc.font("Helvetica-Bold").fontSize(15).fillColor("#0f172a").text("ANNEXE", { align: "center" });
+    doc.moveDown(0.2).fontSize(12.5).fillColor("#334155").text("Notice d'information relative aux droits et obligations des locataires et des bailleurs", { align: "center" });
+    doc.moveDown(0.5);
+    doc.font("Helvetica-Oblique").fontSize(8).fillColor("#64748b").text(
+      "Synthèse informative rédigée par lokt.fr à partir des dispositions de la loi n°89-462 du 6 juillet 1989 et de ses textes d'application. " +
+      "Ce document ne reproduit pas le modèle officiel fixé par l'arrêté du 29 mai 2015 et ne s'y substitue pas juridiquement — il vise à informer " +
+      "les parties de leurs principaux droits et obligations. En cas de doute, consultez un professionnel du droit ou l'ADIL de votre département.",
+      { align: "left", lineGap: 2 }
+    );
+    doc.moveDown(0.6);
+    doc.moveTo(doc.page.margins.left, doc.y)
+      .lineTo(doc.page.margins.left + W, doc.y)
+      .strokeColor("#e2e8f0").lineWidth(1).stroke();
+
+    clause(
+      "1. Dossier de diagnostic technique",
+      "Le bailleur doit annexer au contrat, selon la situation du logement : le diagnostic de performance énergétique (DPE) ; le constat de risque d'exposition au plomb (CREP) pour les immeubles construits avant le 1er janvier 1949 ; un état mentionnant la présence ou l'absence de matériaux amiantés pour les permis de construire antérieurs au 1er juillet 1997 ; l'état de l'installation intérieure d'électricité et de gaz si elle a plus de 15 ans ; l'état des risques naturels, miniers et technologiques (ERP) si le logement est situé dans une zone concernée par un plan de prévention des risques ; un document informant sur les nuisances sonores aériennes le cas échéant."
+    );
+
+    clause(
+      "2. Modalités de délivrance du congé",
+      "Par le locataire : à tout moment, par lettre recommandée avec accusé de réception, acte d'huissier ou remise en main propre, avec un préavis de trois mois (réduit à un mois en zone tendue, ou dans certains cas particuliers : mutation, perte d'emploi, premier emploi, raisons de santé, bénéficiaire du RSA ou de l'AAH, logement social).\nPar le bailleur : uniquement à l'échéance du contrat, pour l'un des trois motifs prévus par la loi : reprise du logement pour l'habiter lui-même ou un proche, vente du logement (le locataire bénéficie alors d'un droit de préemption), ou motif légitime et sérieux. Préavis de six mois pour une location vide, trois mois pour une location meublée."
+    );
+
+    clause(
+      "3. Dépôt de garantie",
+      "Le dépôt de garantie ne peut excéder un mois de loyer hors charges pour une location vide, deux mois pour une location meublée. Il doit être restitué dans un délai maximal d'un mois si l'état des lieux de sortie est conforme à celui d'entrée, ou de deux mois dans le cas contraire, déduction faite le cas échéant des sommes justifiées restant dues au bailleur."
+    );
+
+    clause(
+      "4. Colocation et clause de solidarité",
+      "En cas de pluralité de locataires, une clause de solidarité peut être insérée au contrat : chaque colocataire devient alors responsable de la totalité du loyer et des charges vis-à-vis du bailleur. La solidarité d'un colocataire sortant (et celle de son garant) prend fin à la date d'effet de son congé si un nouveau colocataire le remplace au bail ; à défaut, elle s'éteint au plus tard six mois après cette date."
+    );
+
+    clause(
+      "5. Encadrement des loyers",
+      "Dans les zones où un dispositif d'encadrement est en vigueur, le loyer ne peut dépasser le loyer de référence majoré fixé par arrêté préfectoral, sauf complément de loyer justifié par des caractéristiques exceptionnelles du logement, précisées et motivées dans le contrat."
+    );
+
+    clause(
+      "6. Pièces justificatives pouvant être demandées au candidat locataire",
+      "La liste des pièces exigibles lors de la constitution du dossier de candidature est fixée par le décret n°2015-1437 du 5 novembre 2015. Le bailleur ne peut notamment pas exiger : un extrait de casier judiciaire, une photographie d'identité, la carte Vitale, un contrat de mariage ou de PACS, un dossier médical, un relevé de compte bancaire ou une attestation de bonne tenue de compte."
+    );
+
+    clause(
+      "7. Procédures de conciliation et de recours en cas de litige",
+      "En cas de litige portant sur le loyer, les charges, le dépôt de garantie, l'état des lieux ou la décence du logement, les parties peuvent saisir gratuitement la commission départementale de conciliation (CDC) territorialement compétente avant toute action en justice. L'Agence départementale d'information sur le logement (ADIL) peut également apporter un conseil gratuit et neutre. À défaut d'accord amiable, le tribunal judiciaire peut être saisi."
+    );
+
     doc.end();
   });
 }

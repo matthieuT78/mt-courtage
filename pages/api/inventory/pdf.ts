@@ -331,21 +331,19 @@ function buildHtmlPremiumEDL(params: {
   const followLabel = totalDefects > 0 ? `${totalDefects} point${totalDefects > 1 ? "s" : ""} à suivre` : "Aucun point critique";
 
   const notesHtml = generalNotes ? escapeHtml(generalNotes).replace(/\n/g, "<br/>") : "";
-  const countersHtml = counters.length
-    ? `<div class="infoBlock">
+  const countersHtml = `<div class="infoBlock">
         <div class="infoTitle">Compteurs et clés</div>
         <div class="infoGrid">
           ${counters
             .map(
               (row) => `<div class="infoCell">
                 <div class="infoLabel">${escapeHtml(row.label)}</div>
-                <div class="infoValue">${escapeHtml(row.value || "—")}</div>
+                <div class="infoValue">${escapeHtml(row.value || "Non renseigné")}</div>
               </div>`
             )
             .join("")}
         </div>
-      </div>`
-    : "";
+      </div>`;
 
   // Sommaire (CSS counters + anchors)
   const tocItems = rooms
@@ -906,6 +904,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const subtitleRightTop = `${propertyLabel}`;
     const subtitleRightBottom = `Établi le ${fmtDateTimeFR(report.performed_at)}${safeStr(report.performed_place) ? ` • Lieu : ${safeStr(report.performed_place)}` : ""}`;
     const countersJson = report.counters_json && typeof report.counters_json === "object" ? (report.counters_json as Record<string, any>) : {};
+    // Toujours les 6 lignes, même vides — les masquer donnerait l'impression qu'un
+    // relevé non renseigné n'a jamais été vérifié, ce qui affaiblit la valeur probante
+    // du document en cas de litige sur ce point précis.
     const counters = [
       ["Compteur électricité", countersJson.electricity],
       ["Compteur eau", countersJson.water],
@@ -913,9 +914,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ["Clés", countersJson.keys],
       ["Badges", countersJson.badges],
       ["Télécommandes", countersJson.remotes],
-    ]
-      .map(([label, value]) => ({ label: String(label), value: safeStr(value) }))
-      .filter((row) => row.value);
+    ].map(([label, value]) => ({ label: String(label), value: safeStr(value) }));
 
     // --- photos map by item_id
     const photosByItem = new Map<string, any[]>();

@@ -203,6 +203,8 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
           co_tenant_name: "",
           mandataire_name: "",
           mandataire_address: "",
+          garant_name: "",
+          garant_address: "",
           annual_insurance_clause: true,
           previous_rent: "",
           previous_tenant_departure_date: "",
@@ -491,6 +493,9 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
               )}
               <CollapsibleExtra label="Ajouter un co-locataire ou un mandataire (optionnel)">
                 <Fields form={form} set={set} names={[["co_tenant_name", "Co-locataire (si applicable)"], ["mandataire_name", "Mandataire / gestionnaire (si applicable)"], ["mandataire_address", "Adresse du mandataire"]]} />
+              </CollapsibleExtra>
+              <CollapsibleExtra label="Ajouter un garant / une caution (optionnel)">
+                <Fields form={form} set={set} names={[["garant_name", "Nom du garant"], ["garant_address", "Adresse du garant"]]} />
               </CollapsibleExtra>
             </SectionBlock>
 
