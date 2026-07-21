@@ -426,7 +426,7 @@ const INVENTORY_BUCKET = "inventory-pdfs";
 const INVENTORY_PHOTOS_BUCKET = "inventory-photos";
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_RAW_PHOTO_BYTES = 8 * 1024 * 1024;
-const MAX_STORED_PHOTO_BYTES = 900 * 1024;
+const MAX_STORED_PHOTO_BYTES = 130 * 1024;
 const MAX_PHOTOS_PER_ITEM = 3;
 
 async function compressObservationPhoto(file: File) {
@@ -446,7 +446,7 @@ async function compressObservationPhoto(file: File) {
       img.src = objectUrl;
     });
 
-    const maxSide = 1600;
+    const maxSide = 1000;
     const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
     const width = Math.max(1, Math.round(image.naturalWidth * scale));
     const height = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -459,7 +459,7 @@ async function compressObservationPhoto(file: File) {
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(image, 0, 0, width, height);
 
-    for (const quality of [0.76, 0.68, 0.58, 0.48]) {
+    for (const quality of [0.72, 0.62, 0.52, 0.42, 0.32]) {
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
       if (blob && blob.size <= MAX_STORED_PHOTO_BYTES) return blob;
     }
