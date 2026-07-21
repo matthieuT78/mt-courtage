@@ -82,6 +82,7 @@ export function useLandlordDashboard() {
 
   const [landlord, setLandlord] = useState<LandlordSettings | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
+  const [photos, setPhotos] = useState<any[]>([]);
   const [propertyFinance, setPropertyFinance] = useState<PropertyFinance[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [leases, setLeases] = useState<Lease[]>([]);
@@ -167,6 +168,7 @@ export function useLandlordDashboard() {
         { data: pData, error: pErr },
         { data: tData, error: tErr },
         { data: lData, error: lErr },
+        { data: phData, error: phErr },
       ] = await Promise.all([
         supabase
           .from("properties")
@@ -183,17 +185,24 @@ export function useLandlordDashboard() {
           .select("*")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
+        supabase
+          .from("property_photos")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true }),
       ]);
 
       if (pErr) throw pErr;
       if (tErr) throw tErr;
       if (lErr) throw lErr;
+      if (phErr) console.warn("Impossible de charger les photos des biens.", phErr);
 
       const leasesArr: Lease[] = ((lData as any) ?? []) as Lease[];
       const propertiesArr: Property[] = ((pData as any) ?? []) as Property[];
       setProperties(propertiesArr);
       setTenants(((tData as any) ?? []) as Tenant[]);
       setLeases(leasesArr);
+      setPhotos(((phData as any) ?? []) as any[]);
 
       if (propertiesArr.length === 0) {
         setPropertyFinance([]);
@@ -644,6 +653,7 @@ export function useLandlordDashboard() {
 
     landlord,
     properties,
+    photos,
     propertyFinance,
     tenants,
     leases,

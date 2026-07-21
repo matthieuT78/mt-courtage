@@ -6,18 +6,22 @@ import Link from "next/link";
 import {
   ArrowTrendingUpIcon,
   ChartBarIcon,
+  ChevronDownIcon,
   ClockIcon,
+  CubeIcon,
+  EllipsisHorizontalCircleIcon,
   ExclamationTriangleIcon,
+  HomeIcon,
   HomeModernIcon,
   PencilSquareIcon,
   PlusIcon,
+  TruckIcon,
   UsersIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import { ExpandableSection } from "../ui/ExpandableSection";
-import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { usePermissions } from "../../PermissionProvider";
 import { PropertyDpePanel } from "../PropertyDpePanel";
@@ -31,19 +35,22 @@ type Props = {
   photos?: any[];
   onRefresh: () => Promise<void>;
   deepLink?: { key: number; openCreate?: boolean } | null;
-  onGoToBaux?: () => void;
+  onNavigateDeep?: (section: string, link?: { openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string }) => void;
 };
 
 const CREATE_ID = "__create__";
 const FREE_PROPERTY_LIMIT = 1;
 
-const PROPERTY_TYPE_LABELS: Record<string, string> = {
-  apartment: "Appartement",
-  house: "Maison",
-  garage: "Garage",
-  parking: "Parking",
-  other: "Autre",
-};
+const PROPERTY_TYPES = [
+  { key: "apartment", label: "Appartement", icon: HomeModernIcon, bg: "bg-indigo-100", text: "text-indigo-700" },
+  { key: "house", label: "Maison", icon: HomeIcon, bg: "bg-amber-100", text: "text-amber-700" },
+  { key: "garage", label: "Garage", icon: CubeIcon, bg: "bg-slate-200", text: "text-slate-700" },
+  { key: "parking", label: "Parking", icon: TruckIcon, bg: "bg-sky-100", text: "text-sky-700" },
+  { key: "other", label: "Autre", icon: EllipsisHorizontalCircleIcon, bg: "bg-slate-100", text: "text-slate-600" },
+] as const;
+
+const PROPERTY_TYPE_LABELS: Record<string, string> = Object.fromEntries(PROPERTY_TYPES.map((t) => [t.key, t.label]));
+const propertyTypeMeta = (type?: string | null) => PROPERTY_TYPES.find((t) => t.key === type) || PROPERTY_TYPES[PROPERTY_TYPES.length - 1];
 
 const DPE_OPTIONS = ["", "A", "B", "C", "D", "E", "F", "G"] as const;
 const isNew = (createdAt?: string | null) =>
@@ -72,6 +79,16 @@ const DELEGATED_SERVICES = [
   { key: "bail_edl", label: "Bail & états des lieux", desc: "Rédaction du bail, état des lieux, dépôt de garantie" },
   { key: "gestion_courante", label: "Gestion courante", desc: "Encaissement loyers, quittances, révision IRL" },
 ] as const;
+
+function photoUrl(photo: any): string | null {
+  if (!photo) return null;
+  if (photo.storage_bucket && photo.storage_path) {
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (!base) return null;
+    return `${base}/storage/v1/object/public/${photo.storage_bucket}/${photo.storage_path}`;
+  }
+  return null;
+}
 
 const toNumOrNull = (v: string) => {
   const n = Number(String(v || "").replace(",", "."));
@@ -193,7 +210,7 @@ function rowSignal(row: { currentLease: any; vacancyDays12m: number; turnover12m
   return { tone: "sky" as const, label: "Correct", detail: "Suivi normal du bien." };
 }
 
-export function SectionBiens({ userId, properties, leases, tenants, photos, onRefresh, deepLink, onGoToBaux }: Props) {
+export function SectionBiens({ userId, properties, leases, tenants, photos, onRefresh, deepLink, onNavigateDeep }: Props) {
   const { loading: permissionsLoading, maxActiveProperties } = usePermissions();
   const safeProperties = Array.isArray(properties) ? properties : [];
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -315,6 +332,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
   const [editForms, setEditForms] = useState<Record<string, typeof EMPTY>>({});
   const [highlightCreate, setHighlightCreate] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [archiveBlockedId, setArchiveBlockedId] = useState<string | null>(null);
+  const [occupancyOpen, setOccupancyOpen] = useState(false);
 
   useEffect(() => {
     if (!deepLink?.openCreate) return;
@@ -531,6 +550,16 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
   const hasAnyLeaseForProperty = (propertyId: string) =>
     safeLeases.some((l) => l?.property_id === propertyId);
 
+  const hasActiveLeaseForProperty = (propertyId: string) =>
+    safeLeases.some((l) => l?.property_id === propertyId && String(l?.status || "").toLowerCase() === "active");
+
+  const activeTenantNameForProperty = (propertyId: string) => {
+    const lease = safeLeases.find((l) => l?.property_id === propertyId && String(l?.status || "").toLowerCase() === "active");
+    const tenant = lease ? safeTenants.find((t) => t?.id === lease.tenant_id) : null;
+    if (!tenant) return null;
+    return tenant.full_name || [tenant.first_name, tenant.last_name].filter(Boolean).join(" ") || null;
+  };
+
   const remove = async (id: string) => {
     if (hasAnyLeaseForProperty(id)) {
       setErr("Suppression impossible : ce bien a un historique de bail. Archivez-le pour le masquer des vues actives — les données (quittances, comptabilité) sont conservées.");
@@ -582,14 +611,14 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       await xhrUploadDirect(supabaseUrl, "property-photos", path, accessToken, anonKey, file, (pct) => setUploadPhotoProgress(pct), false);
       setUploadPhotoProgress(null);
 
-      const { data } = supabase.storage.from("property-photos").getPublicUrl(path);
-      const url = data?.publicUrl;
-      if (!url) throw new Error("Impossible d’obtenir l’URL publique de la photo.");
-
       const { error: insErr } = await supabase.from("property_photos").insert({
         user_id: userId,
         property_id: propertyId,
-        url,
+        storage_bucket: "property-photos",
+        storage_path: path,
+        original_name: file.name,
+        mime_type: file.type || null,
+        size_bytes: file.size,
       });
       if (insErr) throw insErr;
 
@@ -620,28 +649,40 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
 
     return (
       <>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <input
-              className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.label ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
-              placeholder="Nom du bien *"
-              value={form.label}
-              onChange={(e) => { clearFieldError(formId, "label"); setForm((s) => ({ ...s, label: e.target.value })); }}
-            />
-            {fErr.label ? <p className="text-xs font-medium text-red-600">{fErr.label}</p> : null}
+        <div className="space-y-1">
+          <span className="text-xs text-slate-700">Type de bien</span>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            {PROPERTY_TYPES.map((t) => {
+              const Icon = t.icon;
+              const selected = form.type === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setForm((s) => ({ ...s, type: t.key }))}
+                  className={cx(
+                    "flex flex-col items-center gap-1.5 rounded-xl border p-3 text-center transition",
+                    selected ? "border-[#635bff] bg-indigo-50/60 ring-1 ring-[#635bff]" : "border-slate-200 bg-white hover:border-slate-300"
+                  )}
+                >
+                  <span className={cx("flex h-9 w-9 items-center justify-center rounded-full", t.bg, t.text)}>
+                    <Icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <span className={cx("text-xs font-medium", selected ? "text-[#635bff]" : "text-slate-700")}>{t.label}</span>
+                </button>
+              );
+            })}
           </div>
+        </div>
 
-          <select
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            value={form.type}
-            onChange={(e) => setForm((s) => ({ ...s, type: e.target.value }))}
-          >
-            <option value="apartment">Appartement</option>
-            <option value="house">Maison</option>
-            <option value="garage">Garage</option>
-            <option value="parking">Parking</option>
-            <option value="other">Autre</option>
-          </select>
+        <div className="mt-3 space-y-1">
+          <input
+            className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.label ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
+            placeholder="Nom du bien *"
+            value={form.label}
+            onChange={(e) => { clearFieldError(formId, "label"); setForm((s) => ({ ...s, label: e.target.value })); }}
+          />
+          {fErr.label ? <p className="text-xs font-medium text-red-600">{fErr.label}</p> : null}
         </div>
 
         <div className="mt-3 space-y-1">
@@ -803,8 +844,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
               <div className="mt-2 flex flex-wrap gap-2">
                 {selectedPhotos.slice(0, 10).map((ph: any) => (
                   <a
-                    key={ph.id || ph.url}
-                    href={ph.url}
+                    key={ph.id || ph.storage_path}
+                    href={photoUrl(ph) || undefined}
                     target="_blank"
                     rel="noreferrer"
                     className="block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-white"
@@ -812,7 +853,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={ph.url} alt="" className="h-full w-full object-cover" />
+                    <img src={photoUrl(ph) || ""} alt="" className="h-full w-full object-cover" />
                   </a>
                 ))}
               </div>
@@ -870,15 +911,15 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             <div className="mt-2 flex flex-wrap gap-2">
               {pPhotos.slice(0, 10).map((ph: any) => (
                 <a
-                  key={ph.id || ph.url}
-                  href={ph.url}
+                  key={ph.id || ph.storage_path}
+                  href={photoUrl(ph) || undefined}
                   target="_blank"
                   rel="noreferrer"
                   className="block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-white"
                   title="Ouvrir"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={ph.url} alt="" className="h-full w-full object-cover" />
+                  <img src={photoUrl(ph) || ""} alt="" className="h-full w-full object-cover" />
                 </a>
               ))}
             </div>
@@ -891,6 +932,123 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       </div>
     );
   };
+
+  const openPropertyModal = (p: any) => {
+    setErr(null);
+    setOk(null);
+    hydrateEditForm(p);
+    setExpandedId(p.id);
+  };
+
+  const closePropertyModal = () => {
+    setExpandedId(null);
+    setEditingId(null);
+    setCreateForm(EMPTY);
+    setConfirmDeleteId(null);
+    setArchiveBlockedId(null);
+    setErr(null);
+    setOk(null);
+  };
+
+  const renderPropertyTile = (p: any, archived: boolean) => {
+    const pPhotos = photosByProperty.get(p.id) ?? [];
+    const meta = propertyTypeMeta(p.type);
+    const Icon = meta.icon;
+    const cover = photoUrl(pPhotos[0]);
+    const statusRow = !archived ? parcStats.rows.find((r) => r.property.id === p.id) : null;
+    const tenantName = statusRow?.currentTenant
+      ? statusRow.currentTenant.full_name ||
+        [statusRow.currentTenant.first_name, statusRow.currentTenant.last_name].filter(Boolean).join(" ") ||
+        "Locataire"
+      : null;
+
+    return (
+      <button
+        key={p.id}
+        type="button"
+        onClick={() => openPropertyModal(p)}
+        className={cx(
+          "flex flex-col overflow-hidden rounded-2xl border text-left transition hover:shadow-md",
+          archived ? "border-slate-200 bg-white opacity-90" : "border-slate-200 bg-white hover:border-slate-300"
+        )}
+      >
+        <div className="relative h-28 w-full shrink-0">
+          {cover ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={cover} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#6072ff] via-[#4d9cff] to-[#5bcbd5]">
+              <Icon className="h-10 w-10 text-white/90" aria-hidden="true" />
+            </div>
+          )}
+          <div
+            className={cx(
+              "absolute inset-x-0 bottom-0 p-3",
+              cover ? "bg-gradient-to-t from-black/70 via-black/20 to-transparent" : "bg-gradient-to-t from-black/25 to-transparent"
+            )}
+          >
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{p.label || "Bien"}</p>
+              {isNew(p.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-200">new</em>}
+            </div>
+            <p className="truncate text-xs text-white/85">
+              {(p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col gap-2 p-4">
+          {archived ? (
+            <p className="text-sm text-slate-500">Bien archivé</p>
+          ) : tenantName ? (
+            <p className="text-sm font-medium text-slate-900">{tenantName} • Bail actif</p>
+          ) : (
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium text-slate-700">Aucun locataire</p>
+              <p className="text-xs text-slate-500">Pas de bail enregistré</p>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-1.5">
+            {badge(archived ? "amber" : "emerald", archived ? "Archivé" : "Actif")}
+            {p.surface_m2 ? badge("slate", `${p.surface_m2} m²`) : null}
+            {p.rooms ? badge("slate", `${p.rooms} pièces`) : null}
+            {pPhotos.length ? badge("emerald", `${pPhotos.length} photo(s)`) : badge("slate", "0 photo")}
+            {p.energy_class
+              ? badge(
+                  ["A", "B", "C", "D"].includes(p.energy_class) ? "emerald" : p.energy_class === "E" ? "amber" : "red",
+                  `DPE ${p.energy_class}`
+                )
+              : null}
+          </div>
+
+          <span className="mt-auto inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white">
+            Gérer ce bien
+          </span>
+        </div>
+      </button>
+    );
+  };
+
+  const activeProperty = expandedId && expandedId !== CREATE_ID ? safeProperties.find((x) => x?.id === expandedId) : null;
+  const activeForm = activeProperty
+    ? editForms[activeProperty.id] ?? {
+        ...EMPTY,
+        id: activeProperty.id,
+        label: activeProperty.label ?? "",
+        address_line1: activeProperty.address_line1 ?? "",
+        postal_code: activeProperty.postal_code ?? "",
+        city: activeProperty.city ?? "",
+        description: activeProperty.description ?? "",
+        surface_m2: activeProperty.surface_m2 != null ? String(activeProperty.surface_m2) : "",
+        rooms: activeProperty.rooms != null ? String(activeProperty.rooms) : "",
+        energy_class: activeProperty.energy_class ?? "",
+        energy_value: activeProperty.energy_value != null ? String(activeProperty.energy_value) : "",
+        ghg_class: activeProperty.ghg_class ?? "",
+        delegated_services: Array.isArray(activeProperty.delegated_services) ? activeProperty.delegated_services : [],
+        delegation_agency_name: activeProperty.delegation_agency_name ?? "",
+      }
+    : null;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-5">
@@ -912,41 +1070,26 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       ) : null}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        <div className="border-b border-slate-100 bg-gradient-to-br from-[#6072ff] via-[#4d9cff] to-[#5bcbd5] px-4 py-4 text-white sm:px-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/18 shadow-sm backdrop-blur">
-                  <ChartBarIcon className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <p className="text-sm font-semibold">Pilotage occupation</p>
-                <span className="rounded-full border border-white/25 bg-white/18 px-2.5 py-1 text-[0.7rem] font-semibold text-white shadow-sm backdrop-blur">
-                  Période connue
-                </span>
-              </div>
-              <p className="mt-2 max-w-2xl text-xs leading-5 text-white/88">
-                Lecture rapide du remplissage, de la vacance et de la stabilité locative sur l’historique réellement renseigné.
-              </p>
-            </div>
-
-            <div className="min-w-[14rem]">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/70">Remplissage global</p>
-                  <p className="mt-1 text-3xl font-bold tabular-nums">{pct(parcStats.occupancyRate12m)}</p>
-                </div>
-                {badge(occupancyTone(parcStats.occupancyRate12m), occupancyLabel(parcStats.occupancyRate12m))}
-              </div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/25">
-                <div
-                  className="h-full rounded-full bg-white"
-                  style={{ width: `${clampPercent(parcStats.occupancyRate12m)}%` }}
-                />
-              </div>
-            </div>
+        <button
+          type="button"
+          onClick={() => setOccupancyOpen((v) => !v)}
+          className="flex w-full flex-wrap items-center justify-between gap-3 bg-gradient-to-br from-[#6072ff] via-[#4d9cff] to-[#5bcbd5] px-4 py-3 text-left text-white sm:px-5"
+        >
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/18 shadow-sm backdrop-blur">
+              <ChartBarIcon className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <p className="text-sm font-semibold">Pilotage occupation</p>
           </div>
-        </div>
+          <div className="flex items-center gap-3">
+            <span className="text-lg font-bold tabular-nums">{pct(parcStats.occupancyRate12m)}</span>
+            {badge(occupancyTone(parcStats.occupancyRate12m), occupancyLabel(parcStats.occupancyRate12m))}
+            <ChevronDownIcon className={cx("h-4 w-4 transition-transform", occupancyOpen ? "rotate-180" : "")} aria-hidden="true" />
+          </div>
+        </button>
 
+        {occupancyOpen ? (
+          <>
         <div className="grid border-b border-slate-200 bg-slate-50 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
@@ -1076,6 +1219,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             </div>
           </div>
         )}
+          </>
+        ) : null}
       </div>
 
       {/* CTA Ajouter un bien */}
@@ -1099,91 +1244,284 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         </button>
       </div>
 
-      {/* Carte création bien */}
-      {expandedId === CREATE_ID && (
+      {expandedId ? (
         <div
-          id="biens-create-form"
-          className={cx(
-            "overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-xl shadow-indigo-50",
-            highlightCreate ? "ring-2 ring-[#635bff] ring-offset-2" : ""
-          )}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) closePropertyModal(); }}
         >
-          {/* Barre gradient */}
-          <div className="h-1 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+          <div
+            id="biens-create-form"
+            className={cx(
+              "max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-indigo-100 bg-white shadow-2xl",
+              highlightCreate ? "ring-2 ring-[#635bff] ring-offset-2" : ""
+            )}
+          >
+            {/* Barre gradient */}
+            <div className="h-1 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
 
-          {/* En-tête */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50">
-                <HomeModernIcon className="h-5 w-5 text-[#635bff]" />
+            {/* En-tête */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50">
+                  {expandedId === CREATE_ID ? (
+                    <HomeModernIcon className="h-5 w-5 text-[#635bff]" />
+                  ) : (
+                    React.createElement(propertyTypeMeta(activeProperty?.type).icon, { className: "h-5 w-5 text-[#635bff]" })
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {expandedId === CREATE_ID ? "Nouveau bien" : activeProperty?.label || "Bien"}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {expandedId === CREATE_ID
+                      ? freeLimitReached
+                        ? hasFreeLimit ? "Limite gratuite atteinte : 1 logement actif." : `Limite atteinte : ${activePropertyLimit} logements actifs.`
+                        : "Nom + Adresse (ligne 1) obligatoires."
+                      : (PROPERTY_TYPE_LABELS[activeProperty?.type] || activeProperty?.type || "—") +
+                        " • " +
+                        (activeProperty?.address_line1 || "Adresse manquante") +
+                        " • " +
+                        (activeProperty?.city || "—")}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">Nouveau bien</p>
-                <p className="text-xs text-slate-500">
-                  {freeLimitReached
-                    ? hasFreeLimit ? "Limite gratuite atteinte : 1 logement actif." : `Limite atteinte : ${activePropertyLimit} logements actifs.`
-                    : "Nom + Adresse (ligne 1) obligatoires."}
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={closePropertyModal}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => { setCreateForm(EMPTY); setExpandedId(null); }}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </button>
-          </div>
 
-          {/* Formulaire */}
-          <div className="p-5">
-            {freeLimitReached ? (
-              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
-                <p className="font-semibold">Vous avez déjà {pluralFR(activePropertyCount, "logement actif")}.</p>
-                <p className="mt-1">
-                  {hasFreeLimit
-                    ? "L’offre gratuite permet de gérer 1 logement. Pour créer un 2e logement et continuer votre gestion locative, passez sur une offre adaptée."
-                    : "Votre abonnement actuel a atteint sa limite de logements actifs. Passez sur une offre supérieure pour continuer."}
-                </p>
-                <Link
-                  href={SUBSCRIPTION_URL}
-                  className="mt-3 inline-flex rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-800"
-                >
-                  Voir les abonnements
-                </Link>
+            {/* Contenu */}
+            <div className="p-5">
+              {err ? (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>
+              ) : null}
+              {ok ? (
+                <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div>
+              ) : null}
+
+              {expandedId === CREATE_ID ? (
+                freeLimitReached ? (
+                  <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                    <p className="font-semibold">Vous avez déjà {pluralFR(activePropertyCount, "logement actif")}.</p>
+                    <p className="mt-1">
+                      {hasFreeLimit
+                        ? "L’offre gratuite permet de gérer 1 logement. Pour créer un 2e logement et continuer votre gestion locative, passez sur une offre adaptée."
+                        : "Votre abonnement actuel a atteint sa limite de logements actifs. Passez sur une offre supérieure pour continuer."}
+                    </p>
+                    <Link
+                      href={SUBSCRIPTION_URL}
+                      className="mt-3 inline-flex rounded-full bg-amber-900 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-800"
+                    >
+                      Voir les abonnements
+                    </Link>
+                  </div>
+                ) : (
+                  renderForm(createForm, (updater) => setCreateForm((prev) => updater(prev)), null)
+                )
+              ) : activeProperty ? (
+                archiveBlockedId === activeProperty.id ? (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-950">
+                    <p className="font-semibold">Impossible d’archiver ce bien</p>
+                    <p className="mt-2 leading-6">
+                      Il y a un bail actif sur ce bien
+                      {activeTenantNameForProperty(activeProperty.id) ? (
+                        <>
+                          {" "}
+                          avec <strong>{activeTenantNameForProperty(activeProperty.id)}</strong>
+                        </>
+                      ) : null}
+                      . Pour archiver ce bien, finalisez d’abord le bail : utilisez le bouton « Gérer le départ » du
+                      locataire dans la section Locataires, et suivez le workflow de départ complet (état des lieux de
+                      sortie, restitution du dépôt de garantie…).
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { onNavigateDeep?.("locataires"); closePropertyModal(); }}
+                        className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                      >
+                        Aller à la section Locataires
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setArchiveBlockedId(null)}
+                        className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                      >
+                        Retour
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { archive(activeProperty.id); setArchiveBlockedId(null); }}
+                      disabled={saving}
+                      className="mt-4 text-xs font-medium text-red-700 underline decoration-dotted hover:text-red-900 disabled:opacity-60"
+                    >
+                      Cas particulier (bien vendu, transfert de gestion…) — archiver quand même
+                    </button>
+                  </div>
+                ) : editingId === activeProperty.id ? (
+                  renderForm(
+                    activeForm!,
+                    (updater) => setEditForms((m) => ({ ...m, [activeProperty.id]: updater(m[activeProperty.id] ?? activeForm!) })),
+                    activeProperty.id
+                  )
+                ) : (
+                  renderPropertyDetails(activeProperty)
+                )
+              ) : null}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {expandedId === CREATE_ID ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => saveProperty(undefined)}
+                      disabled={saving || freeLimitReached}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#635bff] to-[#00d4ff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-100 hover:shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 disabled:pointer-events-none"
+                    >
+                      <PlusIcon className="h-4 w-4" />
+                      {saving ? "Enregistrement…" : freeLimitReached ? "Abonnement requis" : "Créer le bien"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={closePropertyModal}
+                      disabled={saving}
+                      className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60"
+                    >
+                      Annuler
+                    </button>
+                  </>
+                ) : activeProperty ? (
+                  <>
+                    {editingId === activeProperty.id ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => saveProperty(activeProperty.id)}
+                          disabled={saving}
+                          className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                        >
+                          {saving ? "Enregistrement…" : "Mettre à jour"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(null)}
+                          className="rounded-full border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Annuler
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(activeProperty.id)}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                        >
+                          <PencilSquareIcon className="h-3.5 w-3.5" />
+                          Modifier
+                        </button>
+                        <button
+                          type="button"
+                          onClick={closePropertyModal}
+                          className="rounded-full border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Annuler
+                        </button>
+                      </>
+                    )}
+
+                    {isArchived(activeProperty) ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => restore(activeProperty.id)}
+                          disabled={saving || freeLimitReached}
+                          className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                        >
+                          {freeLimitReached ? "Abonnement requis" : "Restaurer"}
+                        </button>
+                        {freeLimitReached ? (
+                          <Link
+                            href={SUBSCRIPTION_URL}
+                            className="rounded-full border border-amber-200 bg-amber-50 px-5 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                          >
+                            Voir les abonnements
+                          </Link>
+                        ) : null}
+                      </>
+                    ) : hasActiveLeaseForProperty(activeProperty.id) ? (
+                      <button
+                        type="button"
+                        onClick={() => setArchiveBlockedId(activeProperty.id)}
+                        disabled={saving}
+                        className="rounded-full border border-amber-300 bg-amber-50 px-5 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-60"
+                        title="Ce bien a un bail actif"
+                      >
+                        Archiver
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => archive(activeProperty.id)}
+                        disabled={saving}
+                        className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        Archiver
+                      </button>
+                    )}
+
+                    {!hasAnyLeaseForProperty(activeProperty.id) ? (
+                      confirmDeleteId === activeProperty.id ? (
+                        <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
+                          <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                          <button
+                            type="button"
+                            onClick={() => { void remove(activeProperty.id); setConfirmDeleteId(null); }}
+                            disabled={saving}
+                            className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                          >
+                            Supprimer
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            Retour
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(activeProperty.id)}
+                          disabled={saving}
+                          className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                        >
+                          Supprimer
+                        </button>
+                      )
+                    ) : null}
+                  </>
+                ) : null}
               </div>
-            ) : renderForm(createForm, (updater) => setCreateForm((prev) => updater(prev)), null)}
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => saveProperty(undefined)}
-                disabled={saving || freeLimitReached}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#635bff] to-[#00d4ff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-100 hover:shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 disabled:pointer-events-none"
-              >
-                <PlusIcon className="h-4 w-4" />
-                {saving ? "Enregistrement…" : freeLimitReached ? "Abonnement requis" : "Créer le bien"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setCreateForm(EMPTY); setExpandedId(null); }}
-                disabled={saving}
-                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60"
-              >
-                Annuler
-              </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       <div className="grid gap-4">
 
         {/* ✅ ACTIFS */}
         <ExpandableSection
           title="Actifs"
-          subtitle="Clique une ligne pour voir / modifier."
+          subtitle="Clique une tuile pour voir / modifier."
           right={badge("emerald", pluralFR(actifs.length, "bien"))}
           defaultOpen={true}
         >
@@ -1192,147 +1530,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
               Aucun logement actif.
             </div>
           ) : (
-            <div className="space-y-2">
-              {actifs.map((p: any) => {
-                const open = expandedId === p.id;
-                const pPhotos = photosByProperty.get(p.id) ?? [];
-
-                const f = editForms[p.id] ?? {
-                  ...EMPTY,
-                  id: p.id,
-                  label: p.label ?? "",
-                  address_line1: p.address_line1 ?? "",
-                  postal_code: p.postal_code ?? "",
-                  city: p.city ?? "",
-                  description: p.description ?? "",
-                  surface_m2: p.surface_m2 != null ? String(p.surface_m2) : "",
-                  rooms: p.rooms != null ? String(p.rooms) : "",
-                  energy_class: p.energy_class ?? "",
-                  energy_value: p.energy_value != null ? String(p.energy_value) : "",
-                  ghg_class: p.ghg_class ?? "",
-                          delegated_services: Array.isArray(p.delegated_services) ? p.delegated_services : [],
-                  delegation_agency_name: p.delegation_agency_name ?? "",
-                };
-
-                return (
-                  <ExpandableRow
-                    key={p.id}
-                    id={p.id}
-                    expandedId={expandedId}
-                    setExpandedId={(id) => {
-                      setErr(null);
-                      setOk(null);
-                      if (id && id !== CREATE_ID) hydrateEditForm(p);
-                      setExpandedId(id);
-                    }}
-                    left={
-                      <div className="min-w-0">
-                        <div className="flex items-baseline gap-1.5 min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate min-w-0">{p.label || "Bien"}</p>
-                          {isNew(p.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
-                        </div>
-                        <p className="mt-0.5 text-xs text-slate-600 truncate">
-                          {(PROPERTY_TYPE_LABELS[p.type] || p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {badge("emerald", "Actif")}
-                          {p.surface_m2 ? badge("slate", `${p.surface_m2} m²`) : null}
-                          {p.rooms ? badge("slate", `${p.rooms} pièces`) : null}
-                          {pPhotos.length ? badge("emerald", `${pPhotos.length} photo(s)`) : badge("slate", "0 photo")}
-                          {p.energy_class ? badge(
-                            ["A","B","C","D"].includes(p.energy_class) ? "emerald" : p.energy_class === "E" ? "amber" : "red",
-                            `DPE ${p.energy_class}`
-                          ) : null}
-                        </div>
-                      </div>
-                    }
-                    right={open ? badge("slate", "Ouvert") : null}
-                  >
-                    {editingId === p.id
-                      ? renderForm(f, (updater) => setEditForms((m) => ({ ...m, [p.id]: updater(m[p.id] ?? f) })), p.id)
-                      : renderPropertyDetails(p)}
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {editingId === p.id ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => saveProperty(p.id)}
-                            disabled={saving}
-                            className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-                          >
-                            {saving ? "Enregistrement…" : "Mettre à jour"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingId(null)}
-                            className="rounded-full border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                          >
-                            Annuler
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(p.id)}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                        >
-                          <PencilSquareIcon className="h-3.5 w-3.5" />
-                          Modifier
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => archive(p.id)}
-                        disabled={saving}
-                        className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-                      >
-                        Archiver
-                      </button>
-
-                      {!hasAnyLeaseForProperty(p.id) ? (
-                        confirmDeleteId === p.id ? (
-                          <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
-                            <span className="text-xs font-medium text-red-700">Confirmer ?</span>
-                            <button
-                              type="button"
-                              onClick={() => { void remove(p.id); setConfirmDeleteId(null); }}
-                              disabled={saving}
-                              className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
-                            >
-                              Supprimer
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(null)}
-                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                            >
-                              Annuler
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteId(p.id)}
-                            disabled={saving}
-                            className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                          >
-                            Supprimer
-                          </button>
-                        )
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-500">
-                          Supprimez d&apos;abord le bail
-                          {onGoToBaux ? (
-                            <button type="button" onClick={onGoToBaux} className="font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900">→ Baux</button>
-                          ) : null}
-                        </span>
-                      )}
-                    </div>
-                  </ExpandableRow>
-                );
-              })}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {actifs.map((p: any) => renderPropertyTile(p, false))}
             </div>
           )}
         </ExpandableSection>
@@ -1349,154 +1548,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
               Aucun bien archivé.
             </div>
           ) : (
-            <div className="space-y-2">
-              {archives.map((p: any) => {
-                const open = expandedId === p.id;
-                const pPhotos = photosByProperty.get(p.id) ?? [];
-
-                const f = editForms[p.id] ?? {
-                  ...EMPTY,
-                  id: p.id,
-                  label: p.label ?? "",
-                  address_line1: p.address_line1 ?? "",
-                  postal_code: p.postal_code ?? "",
-                  city: p.city ?? "",
-                  description: p.description ?? "",
-                  surface_m2: p.surface_m2 != null ? String(p.surface_m2) : "",
-                  rooms: p.rooms != null ? String(p.rooms) : "",
-                  energy_class: p.energy_class ?? "",
-                  energy_value: p.energy_value != null ? String(p.energy_value) : "",
-                  ghg_class: p.ghg_class ?? "",
-                          delegated_services: Array.isArray(p.delegated_services) ? p.delegated_services : [],
-                  delegation_agency_name: p.delegation_agency_name ?? "",
-                };
-
-                return (
-                  <ExpandableRow
-                    key={p.id}
-                    id={p.id}
-                    expandedId={expandedId}
-                    setExpandedId={(id) => {
-                      setErr(null);
-                      setOk(null);
-                      if (id && id !== CREATE_ID) hydrateEditForm(p);
-                      setExpandedId(id);
-                    }}
-                    left={
-                      <div className="min-w-0">
-                        <div className="flex items-baseline gap-1.5 min-w-0">
-                          <p className="text-sm font-semibold text-slate-900 truncate min-w-0">{p.label || "Bien"}</p>
-                          {isNew(p.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
-                        </div>
-                        <p className="mt-0.5 text-xs text-slate-600 truncate">
-                          {(PROPERTY_TYPE_LABELS[p.type] || p.type || "—") + " • " + (p.address_line1 || "Adresse manquante") + " • " + (p.city || "—")}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {badge("amber", "Archivé")}
-                          {pPhotos.length ? badge("slate", `${pPhotos.length} photo(s)`) : badge("slate", "0 photo")}
-                          {p.energy_class ? badge(
-                            ["A","B","C","D"].includes(p.energy_class) ? "emerald" : p.energy_class === "E" ? "amber" : "red",
-                            `DPE ${p.energy_class}`
-                          ) : null}
-                        </div>
-                      </div>
-                    }
-                    right={open ? badge("slate", "Ouvert") : null}
-                  >
-                    {editingId === p.id
-                      ? renderForm(f, (updater) => setEditForms((m) => ({ ...m, [p.id]: updater(m[p.id] ?? f) })), p.id)
-                      : renderPropertyDetails(p)}
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {editingId === p.id ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => saveProperty(p.id)}
-                            disabled={saving}
-                            className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-                          >
-                            {saving ? "Enregistrement…" : "Mettre à jour"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingId(null)}
-                            className="rounded-full border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                          >
-                            Annuler
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(p.id)}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                        >
-                          <PencilSquareIcon className="h-3.5 w-3.5" />
-                          Modifier
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => restore(p.id)}
-                        disabled={saving || freeLimitReached}
-                        className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                      >
-                        {freeLimitReached ? "Abonnement requis" : "Restaurer"}
-                      </button>
-
-                      {freeLimitReached ? (
-                        <Link
-                          href={SUBSCRIPTION_URL}
-                          className="rounded-full border border-amber-200 bg-amber-50 px-5 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
-                        >
-                          Voir les abonnements
-                        </Link>
-                      ) : null}
-
-                      {!hasAnyLeaseForProperty(p.id) ? (
-                        confirmDeleteId === p.id ? (
-                          <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
-                            <span className="text-xs font-medium text-red-700">Confirmer ?</span>
-                            <button
-                              type="button"
-                              onClick={() => { void remove(p.id); setConfirmDeleteId(null); }}
-                              disabled={saving}
-                              className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
-                            >
-                              Supprimer
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(null)}
-                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                            >
-                              Annuler
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteId(p.id)}
-                            disabled={saving}
-                            className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                          >
-                            Supprimer
-                          </button>
-                        )
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-500">
-                          Supprimez d&apos;abord le bail
-                          {onGoToBaux ? (
-                            <button type="button" onClick={onGoToBaux} className="font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900">→ Baux</button>
-                          ) : null}
-                        </span>
-                      )}
-                    </div>
-                  </ExpandableRow>
-                );
-              })}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {archives.map((p: any) => renderPropertyTile(p, true))}
             </div>
           )}
         </ExpandableSection>
