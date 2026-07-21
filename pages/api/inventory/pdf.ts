@@ -1081,8 +1081,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const datePart = toISODateLocal(new Date());
     const tenantSlug = safeFilePart(tenantName);
+    // Le chemin de stockage doit rester stable d'une régénération à l'autre (upsert écrase le
+    // même objet) — un chemin qui varie avec la date du jour laissait l'ancien PDF orphelin en
+    // stockage à chaque régénération sur un jour différent, doublant l'espace utilisé à chaque fois.
     const filename = `etat-des-lieux-${String(report.report_type || "entry")}-${tenantSlug}-${datePart}.pdf`;
-    const storagePath = `${userId}/${report.lease_id || "standalone"}/${reportId}/${filename}`;
+    const storagePath = `${userId}/${report.lease_id || "standalone"}/${reportId}/etat-des-lieux-${String(report.report_type || "entry")}.pdf`;
 
     const up = await supabaseAdmin.storage.from("inventory-pdfs").upload(storagePath, pdfBuf, {
       contentType: "application/pdf",
@@ -1092,6 +1095,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     invalidateStorageCache(String(userId));
 
     const pdfUrl = `inventory-pdfs:${storagePath}`;
+
+    // Nettoie un éventuel ancien PDF orphelin (généré avant ce correctif, ou remplacé entre-temps
+    // par un import externe) si son chemin diffère du nouveau chemin stable.
+    if (report.pdf_url && report.pdf_url !== pdfUrl) {
+      const [oldBucket, ...oldPathParts] = String(report.pdf_url).split(":");
+      const oldPath = oldPathParts.join(":");
+      if (oldBucket === "inventory-pdfs" && oldPath) {
+        await supabaseAdmin.storage.from("inventory-pdfs").remove([oldPath]);
+      }
+    }
 
     const upd = await supabaseAdmin
       .from("inventory_reports")

@@ -1611,6 +1611,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         .eq("user_id", userId);
       if (updateError) throw updateError;
 
+      if (existing?.pdf_url) {
+        fetch("/api/inventory/cleanup-superseded-pdf", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ userId, reportId, previousPdfUrl: existing.pdf_url }),
+        }).catch(() => {
+          // best-effort : un ancien PDF non nettoyé n'est qu'un espace de stockage perdu, pas une erreur bloquante.
+        });
+      }
+
       if (selectedLeaseId) {
         await loadReportsForLease(selectedLeaseId);
       } else {
