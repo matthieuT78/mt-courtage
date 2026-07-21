@@ -599,6 +599,39 @@ export function DashboardShell(props: any) {
         ),
       };
     }
+    if (active === "messagerie" && !canShareDocuments) {
+      return {
+        eyebrow: "Fonctionnalité lokt·one",
+        title: "Un canal direct avec vos locataires, sans donner votre numéro perso",
+        desc:
+          "Chaque locataire invité sur son espace peut vous écrire directement — question sur un paiement, une panne, un document. Tout reste centralisé et tracé dans lokt, pas éparpillé entre SMS et emails.",
+        requiredPlan: "lokt·one",
+        planId: "landlord_5",
+        cta: "Débloquer la messagerie",
+        features: [
+          "Un fil de discussion par locataire, centralisé",
+          "Historique conservé avec le dossier du bail",
+          "Notifications sur les nouveaux messages",
+          "Inclus avec le portail locataire lokt·one",
+        ],
+        preview: (
+          <div className="space-y-2 text-left">
+            {[
+              { name: "Paul T.", msg: "Bonjour, le chauffe-eau fait un bruit bizarre depuis hier.", time: "09:14" },
+              { name: "Camille R.", msg: "Merci pour la quittance, tout est en ordre 👍", time: "Hier" },
+            ].map((c) => (
+              <div key={c.name} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-800">{c.name}</span>
+                  <span className="text-xs text-slate-400">{c.time}</span>
+                </div>
+                <p className="mt-0.5 truncate text-sm text-slate-600">{c.msg}</p>
+              </div>
+            ))}
+          </div>
+        ),
+      };
+    }
     return null;
   }, [active, canUsePerformance, canUseTools, canShareDocuments, canUseCandidatures, permissionsLoading]);
 
