@@ -10,6 +10,7 @@ import {
   ChevronDownIcon,
   DocumentTextIcon,
   HandRaisedIcon,
+  HomeModernIcon,
   PencilSquareIcon,
   PlusIcon,
   PowerIcon,
@@ -2978,22 +2979,27 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                       expandedId={expandedId}
                       setExpandedId={(id) => openRow(id)}
                       left={
-                        <div className="min-w-0">
-                          <div className="flex items-baseline gap-1.5 min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 truncate min-w-0">
-                              {meta.propertyLabel}{" "}
-                              <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
-                            </p>
-                            {isNew(l.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-14 w-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#6072ff] via-[#4d9cff] to-[#5bcbd5]">
+                            <HomeModernIcon className="h-6 w-6 text-white/90" aria-hidden="true" />
                           </div>
-                          <p className="mt-0.5 text-xs text-slate-500 truncate">
-                            {meta.startDateFR ? `depuis le ${meta.startDateFR}` : ""}
-                            {meta.endDateFR ? ` → ${meta.endDateFR}` : ""}
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {badge("emerald", "Actif")}
-                            {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
-                            {(meta.isBailEdlDelegated || meta.isGestionDelegated) && badge("sky", `Délégué${meta.agencyName ? ` · ${meta.agencyName}` : ""}`)}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline gap-1.5 min-w-0">
+                              <p className="text-sm font-semibold text-slate-900 truncate min-w-0">
+                                {meta.propertyLabel}{" "}
+                                <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
+                              </p>
+                              {isNew(l.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
+                            </div>
+                            <p className="mt-0.5 text-xs text-slate-500 truncate">
+                              {meta.startDateFR ? `depuis le ${meta.startDateFR}` : ""}
+                              {meta.endDateFR ? ` → ${meta.endDateFR}` : ""}
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {badge("emerald", "Actif")}
+                              {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
+                              {(meta.isBailEdlDelegated || meta.isGestionDelegated) && badge("sky", `Délégué${meta.agencyName ? ` · ${meta.agencyName}` : ""}`)}
+                            </div>
                           </div>
                         </div>
                       }
@@ -3038,19 +3044,24 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                     expandedId={expandedId}
                     setExpandedId={(id) => openRow(id)}
                     left={
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">
-                          {meta.propertyLabel}{" "}
-                          <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
-                        </p>
-                        <p className="mt-0.5 text-xs text-slate-500 truncate">
-                          {meta.startDateFR ? `du ${meta.startDateFR}` : ""}
-                          {meta.endDateFR ? ` au ${meta.endDateFR}` : ""}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {badge(archiveTone, archiveLabel)}
-                          {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
-                          {(meta.isBailEdlDelegated || meta.isGestionDelegated) && badge("sky", `Délégué${meta.agencyName ? ` · ${meta.agencyName}` : ""}`)}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-14 w-16 shrink-0 items-center justify-center rounded-xl bg-slate-300">
+                          <HomeModernIcon className="h-6 w-6 text-white" aria-hidden="true" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900 truncate">
+                            {meta.propertyLabel}{" "}
+                            <span className="text-slate-500 font-normal">— {meta.tenantName}</span>
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-500 truncate">
+                            {meta.startDateFR ? `du ${meta.startDateFR}` : ""}
+                            {meta.endDateFR ? ` au ${meta.endDateFR}` : ""}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {badge(archiveTone, archiveLabel)}
+                            {meta.total > 0 ? badge("slate", `${formatEuro(meta.total)}/mois`) : null}
+                            {(meta.isBailEdlDelegated || meta.isGestionDelegated) && badge("sky", `Délégué${meta.agencyName ? ` · ${meta.agencyName}` : ""}`)}
+                          </div>
                         </div>
                       </div>
                     }
