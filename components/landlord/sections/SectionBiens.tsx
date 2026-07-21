@@ -33,7 +33,7 @@ type Props = {
   tenants?: any[];
   photos?: any[];
   onRefresh: () => Promise<void>;
-  deepLink?: { key: number; openCreate?: boolean } | null;
+  deepLink?: { key: number; openCreate?: boolean; propertyId?: string; highlightDelegation?: boolean } | null;
   onNavigateDeep?: (section: string, link?: { openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string }) => void;
 };
 
@@ -329,6 +329,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
   const [createForm, setCreateForm] = useState(EMPTY);
   const [editForms, setEditForms] = useState<Record<string, typeof EMPTY>>({});
   const [highlightCreate, setHighlightCreate] = useState(false);
+  const [highlightDelegation, setHighlightDelegation] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [archiveBlockedId, setArchiveBlockedId] = useState<string | null>(null);
   const [occupancyOpen, setOccupancyOpen] = useState(false);
@@ -341,6 +342,20 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       document.getElementById("biens-create-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
     setTimeout(() => setHighlightCreate(false), 2500);
+  }, [deepLink]);
+
+  useEffect(() => {
+    if (!deepLink?.propertyId) return;
+    const p = safeProperties.find((x) => x?.id === deepLink.propertyId);
+    if (!p) return;
+    openPropertyModal(p);
+    if (deepLink.highlightDelegation) {
+      setTimeout(() => {
+        document.getElementById("biens-delegation-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 80);
+      setHighlightDelegation(true);
+      setTimeout(() => setHighlightDelegation(false), 2500);
+    }
   }, [deepLink]);
 
   const validate = (f: typeof EMPTY, formId: string): boolean => {
@@ -765,7 +780,13 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         </div>
 
         {/* ── Gestion de ce bien ── */}
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+        <div
+          id="biens-delegation-section"
+          className={cx(
+            "mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3 transition",
+            highlightDelegation ? "ring-2 ring-orange-400 ring-offset-2" : ""
+          )}
+        >
           <div>
             <p className="text-sm font-semibold text-slate-900">Comment ce bien est géré ?</p>
             <p className="mt-0.5 text-xs text-slate-500">Cochez les services pris en charge par un tiers. lokt désactivera les alertes correspondantes pour ce bien.</p>

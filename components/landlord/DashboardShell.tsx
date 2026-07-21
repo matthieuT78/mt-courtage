@@ -198,7 +198,7 @@ export function DashboardShell(props: any) {
   const [contactOpen, setContactOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const deepLinkKeyRef = useRef(0);
-  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string } | null>(null);
+  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean } | null>(null);
 
   useEffect(() => {
     const updatePad = () => {
@@ -398,7 +398,7 @@ export function DashboardShell(props: any) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string }) {
+  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean }) {
     setActive(section);
     setMobileMoreOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -658,6 +658,7 @@ export function DashboardShell(props: any) {
             receipts={receipts}
             onRefresh={refresh}
             deepLink={deepLink}
+            onNavigateDeep={navigateDeep}
             onPrepareDeparture={(tenantId) => {
               setDepartureTenantId(tenantId);
               setActive("locataires");

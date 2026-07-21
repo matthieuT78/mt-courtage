@@ -107,6 +107,7 @@ type Props = {
   onRefresh: () => Promise<void>;
   onPrepareDeparture?: (tenantId: string) => void;
   deepLink?: { key: number; leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string } | null;
+  onNavigateDeep?: (section: string, link?: { propertyId?: string; highlightDelegation?: boolean }) => void;
 };
 
 /* ======================================================
@@ -731,7 +732,7 @@ function buildLeaseHistory(lease: Lease, payments: RentPayment[], receipts: Rent
 
 type Mode = "idle" | "create" | "edit";
 
-export function SectionBaux({ userId, userEmail, leases, properties, tenants, payments, receipts, onRefresh, onPrepareDeparture, deepLink }: Props) {
+export function SectionBaux({ userId, userEmail, leases, properties, tenants, payments, receipts, onRefresh, onPrepareDeparture, deepLink, onNavigateDeep }: Props) {
   const { canUseLandlord, maxActiveLeases, loading: permissionsLoading } = usePermissions();
   const canUseReceiptAutomation = canUseLandlord;
   const safeLeases = Array.isArray(leases) ? leases : [];
@@ -2645,9 +2646,21 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             <div>
               <p className="text-xs font-semibold text-slate-900">Workflow quittance</p>
               <p className="mt-0.5 text-[0.75rem] text-slate-600">
-                {isGestionDelegated
-                  ? "Ce logement délègue déjà la gestion courante — modifiable depuis Biens."
-                  : "Configuration recommandée : le bailleur confirme le paiement avant génération du PDF et envoi au locataire."}
+                {isGestionDelegated ? (
+                  <>
+                    Ce logement délègue déjà la gestion courante — modifiable depuis{" "}
+                    <button
+                      type="button"
+                      onClick={() => onNavigateDeep?.("biens", { propertyId: form.property_id, highlightDelegation: true })}
+                      className="font-semibold text-slate-900 underline decoration-dotted underline-offset-2 hover:text-slate-700"
+                    >
+                      Biens
+                    </button>
+                    .
+                  </>
+                ) : (
+                  "Configuration recommandée : le bailleur confirme le paiement avant génération du PDF et envoi au locataire."
+                )}
               </p>
             </div>
             {badge(flow.tone as any, flow.label)}
