@@ -1467,7 +1467,7 @@ export function SectionLocataires({
         {/* 1) ACTIFS */}
         <ExpandableSection
           title="Actifs"
-          subtitle="Clique une ligne pour voir / modifier."
+          subtitle="Clique une tuile pour modifier."
           right={badge("emerald", pluralFR(normalized.actifs.length, "locataire"))}
           defaultOpen={true}
         >
