@@ -258,6 +258,42 @@ export function SectionLocataires({
       });
   }, [userId]);
 
+  // Contrats de bail générés / signatures en cours, par lease_id — sert uniquement à
+  // avertir si on modifie l'email d'un locataire dont un bail a déjà un document ou une
+  // demande de signature (ces documents figent l'email au moment où ils ont été créés,
+  // ils ne se mettent pas à jour tout seuls si on corrige l'email ici).
+  const [leaseDocStatusMap, setLeaseDocStatusMap] = useState<Map<string, { hasContract: boolean; pendingSignature: boolean }>>(
+    new Map()
+  );
+
+  useEffect(() => {
+    if (!supabase || !userId) return;
+    let cancelled = false;
+    Promise.all([
+      supabase.from("lease_contract_documents").select("lease_id,pdf_url").eq("user_id", userId),
+      supabase
+        .from("signature_requests")
+        .select("lease_id,status")
+        .eq("landlord_id", userId)
+        .in("status", ["pending", "partially_signed"]),
+    ]).then(([contracts, signatures]) => {
+      if (cancelled) return;
+      const map = new Map<string, { hasContract: boolean; pendingSignature: boolean }>();
+      for (const row of contracts.data || []) {
+        if (!row.lease_id || !row.pdf_url) continue;
+        map.set(row.lease_id, { hasContract: true, pendingSignature: map.get(row.lease_id)?.pendingSignature || false });
+      }
+      for (const row of signatures.data || []) {
+        if (!row.lease_id) continue;
+        map.set(row.lease_id, { hasContract: map.get(row.lease_id)?.hasContract || false, pendingSignature: true });
+      }
+      setLeaseDocStatusMap(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
   const inviteToPortal = async (tenantId: string, messagingEnabled: boolean): Promise<{ ok: boolean; message: string }> => {
     setPortalInviting((s) => new Set(s).add(tenantId));
     try {
@@ -1040,6 +1076,12 @@ export function SectionLocataires({
                     archived_reason: "",
                   } as const);
 
+                const emailChanged = editingId === t.id && f.email.trim() !== (t.email || "").trim();
+                const tenantLeaseDocStatuses = leasesForTenant(t.id).map((l) => leaseDocStatusMap.get(l.id));
+                const emailChangeAffectsPendingSignature = tenantLeaseDocStatuses.some((s) => s?.pendingSignature);
+                const emailChangeAffectsGeneratedContract =
+                  !emailChangeAffectsPendingSignature && tenantLeaseDocStatuses.some((s) => s?.hasContract);
+
                 const paymentStatus = activeLease ? getTenantPaymentStatus(activeLease.id, safePayments) : null;
                 const paymentBadge = open
                   ? badge("slate", "Ouvert")
@@ -1241,6 +1283,19 @@ export function SectionLocataires({
                             />
                           </div>
                         </div>
+
+                        {emailChanged && emailChangeAffectsPendingSignature ? (
+                          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                            Ce locataire a une demande de signature en cours. La changer d&apos;email ne l&apos;annule pas et ne la
+                            renvoie pas à la nouvelle adresse — le bail utilisera encore l&apos;ancien email tant que vous
+                            n&apos;aurez pas régénéré le contrat et envoyé une nouvelle demande de signature.
+                          </p>
+                        ) : emailChanged && emailChangeAffectsGeneratedContract ? (
+                          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                            Ce locataire a déjà un contrat de bail généré avec l&apos;ancien email. Il ne se met pas à jour
+                            automatiquement — pensez à le régénérer pour qu&apos;il reflète la nouvelle adresse.
+                          </p>
+                        ) : null}
 
                         <div className="mt-3 space-y-1">
                           <label className="text-[0.7rem] text-slate-700">Notes</label>
