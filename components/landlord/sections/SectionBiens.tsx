@@ -48,7 +48,7 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
 const DPE_OPTIONS = ["", "A", "B", "C", "D", "E", "F", "G"] as const;
 const isNew = (createdAt?: string | null) =>
   !!createdAt && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
-const SUBSCRIPTION_URL = "/mon-compte/abonnement";
+const SUBSCRIPTION_URL = "/tarifs";
 
 const EMPTY = {
   id: null as string | null,

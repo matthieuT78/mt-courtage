@@ -590,7 +590,7 @@ export function OnboardingWizard({
               {errIsPlanLimit ? (
                 <>
                   {" "}
-                  <a href="/mon-compte/abonnement" className="font-semibold underline underline-offset-2 hover:text-red-800">
+                  <a href="/tarifs" className="font-semibold underline underline-offset-2 hover:text-red-800">
                     Voir les offres →
                   </a>
                 </>

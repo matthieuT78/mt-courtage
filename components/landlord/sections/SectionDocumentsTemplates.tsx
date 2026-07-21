@@ -831,7 +831,7 @@ export function SectionDocumentsTemplates({ userId, properties, tenants, leases 
             Le plan gratuit garde la gestion manuelle du premier logement. Le coffre documentaire complet est inclus dans les abonnements lokt·one et lokt·plus.
           </p>
           <Link
-            href="/mon-compte/abonnement"
+            href="/tarifs"
             className="mt-3 inline-flex rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
           >
             Voir les abonnements

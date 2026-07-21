@@ -992,13 +992,13 @@ export function SectionDashboard({
 
     for (const alert of alerts) {
       // Cas particulier : ne correspond à aucune section interne, direction
-      // la page d'abonnement plutôt que d'être silencieusement ignorée.
+      // la page tarifs plutôt que d'être silencieusement ignorée.
       if (alert.title === "Seuil Pro dépassé") {
         actions.push({
           tone: alert.tone === "red" ? "red" : alert.tone === "amber" ? "amber" : "emerald",
           title: alert.title,
           desc: alert.desc,
-          onClick: () => router.push("/mon-compte/abonnement"),
+          onClick: () => router.push("/tarifs"),
           cta: alert.action,
         });
         continue;

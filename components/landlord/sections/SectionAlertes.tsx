@@ -295,7 +295,7 @@ export function SectionAlertes({ userId, plan }: Props) {
                         <p className="text-xs text-slate-500">{alert.schedule}</p>
                       </div>
                       {!allowed ? (
-                        <Link href="/mon-compte/abonnement?source=alertes" className="mt-1 inline-flex text-xs font-semibold text-[#4f46e5] hover:underline">
+                        <Link href="/tarifs?source=alertes" className="mt-1 inline-flex text-xs font-semibold text-[#4f46e5] hover:underline">
                           Débloquer avec lokt·one
                         </Link>
                       ) : null}

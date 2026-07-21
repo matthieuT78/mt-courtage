@@ -113,7 +113,7 @@ type Props = {
 ====================================================== */
 
 const CREATE_ID = "__create__";
-const SUBSCRIPTION_URL = "/mon-compte/abonnement";
+const SUBSCRIPTION_URL = "/tarifs";
 type LeaseKind = "furnished_primary" | "furnished_student" | "mobility" | "empty_primary" | "other";
 
 const LEASE_STATUS_LABELS: Record<string, string> = {
@@ -407,7 +407,7 @@ function ActionButton({
 function StarterUpgradeLink({ className = "" }: { className?: string }) {
   return (
     <Link
-      href="/mon-compte/abonnement?source=quittance-auto"
+      href="/tarifs?source=quittance-auto"
       className={cx(
         "inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800",
         className

@@ -499,7 +499,7 @@ export default function MonCompteIndexPage() {
                     ok: plan !== "calc_full",
                     title: "Choisir une automatisation si besoin",
                     desc: "Emails, rappels et aide déclaration sont dans les offres payantes.",
-                    href: "/mon-compte/abonnement",
+                    href: "/tarifs",
                   },
                 ].map((item) => (
                   <Link key={item.title} href={item.href} className="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-white">

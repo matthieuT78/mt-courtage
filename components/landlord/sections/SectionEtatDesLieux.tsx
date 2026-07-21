@@ -3889,7 +3889,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 </button>
               ) : (
                 <Link
-                  href="/mon-compte/abonnement"
+                  href="/tarifs"
                   className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-4 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                   title="Le partage de documents avec le locataire nécessite un abonnement lokt.one ou supérieur."
                 >

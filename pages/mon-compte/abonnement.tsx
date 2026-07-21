@@ -140,31 +140,6 @@ function ReferralSection({ userId, referralCode: codeOverride }: { userId: strin
   );
 }
 
-function PlanCard({
-  title,
-  subtitle,
-  children,
-  tone = "slate",
-}: {
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-  tone?: "emerald" | "slate";
-}) {
-  const cls =
-    tone === "emerald"
-      ? "border-emerald-200 bg-emerald-50"
-      : "border-slate-200 bg-white";
-
-  return (
-    <div className={`flex h-full flex-col rounded-2xl border p-4 ${cls}`}>
-      <p className="text-sm font-semibold text-slate-900">{title}</p>
-      <p className="mt-1 text-xs text-slate-600">{subtitle}</p>
-      <div className="mt-3 flex flex-1 flex-col text-sm text-slate-700">{children}</div>
-    </div>
-  );
-}
-
 function formatInvoiceAmount(amount: number | null | undefined, currency: string | null | undefined) {
   const value = Number(amount || 0) / 100;
   return value.toLocaleString("fr-FR", {
@@ -440,25 +415,6 @@ export default function MonCompteAbonnementPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm px-6 py-5 sm:px-8">
-            <p className="text-sm font-semibold text-slate-900">Choisir une facturation</p>
-            <div className="mt-3 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-              {(["monthly", "yearly"] as Billing[]).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setBilling(value)}
-                  className={`rounded-lg px-4 py-2 text-xs font-semibold transition ${
-                    billing === value ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-white"
-                  }`}
-                >
-                  {value === "monthly" ? "Mensuel" : "Annuel"}
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-slate-500">Le paiement, les factures et l’annulation sont gérés par Stripe.</p>
-          </div>
-
           <div className="rounded-3xl border border-slate-200 bg-white shadow-sm px-6 py-6 sm:px-8">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -547,45 +503,16 @@ export default function MonCompteAbonnementPage() {
 
           {user?.id ? <ReferralSection userId={user.id} /> : null}
 
-          <div className="grid gap-3 lg:grid-cols-4">
-            <PlanCard title="Gratuit" subtitle="Pour gérer un premier logement" tone="emerald">
-              <ul className="space-y-1 text-sm">
-                <li>1 logement actif</li>
-                <li>Quittances manuelles, baux, locataires</li>
-                <li>États des lieux, inventaire et finance simple</li>
-                <li className="text-slate-500">Aide déclaration premium non incluse</li>
-              </ul>
-            </PlanCard>
-
-            {PAID_BILLING_PLANS.map((plan) => (
-              <PlanCard key={plan.id} title={plan.name} subtitle={plan.description}>
-                <div className="min-h-[3rem]">
-                  <p className="text-sm font-semibold text-slate-900">
-                    {billing === "yearly" && plan.yearlyPrice != null ? `${plan.yearlyPrice} € / an` : plan.priceLabel}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {plan.monthlyPrice == null ? plan.limitLabel : billing === "yearly" ? "2 mois offerts" : plan.limitLabel}
-                  </p>
-                </div>
-                {plan.monthlyPrice == null ? (
-                  <a
-                    href="mailto:contact@lokt.fr?subject=Offre%20Pro%20Agence%20lokt.fr"
-                    className="mt-auto inline-flex w-full items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-                  >
-                    Nous contacter
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => startCheckout(plan.id)}
-                    disabled={checkoutLoading !== null}
-                    className="mt-auto w-full rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                  >
-                    {checkoutLoading === plan.id ? "Redirection Stripe…" : "Souscrire"}
-                  </button>
-                )}
-              </PlanCard>
-            ))}
+          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm px-6 py-6 sm:px-8 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Changer d’offre</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Comparez les offres et le tarif mensuel/annuel sur la page Tarifs.
+              </p>
+            </div>
+            <Link href="/tarifs" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+              Voir les offres
+            </Link>
           </div>
         </div>
       )}
