@@ -1287,6 +1287,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     setAutoWorkflowError(null);
     setMode("create");
     setEditingId(null);
+    // La carte de création est affichée via expandedId === CREATE_ID (voir openRow), pas via
+    // `mode` — sans ce set, l'effet préparait bien le formulaire mais la carte restait invisible.
+    setExpandedId(CREATE_ID);
     const prefillTenantId = deepLink.prefillTenantId ?? "";
     const prefillPropertyId = deepLink.prefillPropertyId ?? "";
     const prefillProp = prefillPropertyId ? propertyById.get(prefillPropertyId) : null;

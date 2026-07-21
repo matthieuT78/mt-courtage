@@ -1295,7 +1295,7 @@ export function SectionLocataires({
                             className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[0.75rem] font-semibold text-indigo-700 hover:bg-indigo-100 transition"
                           >
                             <LinkIcon className="h-3.5 w-3.5 shrink-0" />
-                            Lier à un logement →
+                            Créer la location →
                           </button>
                         )}
                       </div>
