@@ -3,10 +3,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import { ExpandableSection } from "../ui/ExpandableSection";
-import { ExpandableRow } from "../ui/ExpandableRow";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
-import { ChatBubbleLeftRightIcon, HomeIcon, LinkIcon, NoSymbolIcon, PencilSquareIcon, PhoneIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ChatBubbleLeftRightIcon, HomeIcon, LinkIcon, NoSymbolIcon, UserPlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { RentPayment } from "../../../lib/landlord/types";
 
 /* ======================================================
@@ -221,7 +220,6 @@ export function SectionLocataires({
   const safePayments = Array.isArray(payments) ? payments : [];
 
   const [expandedId, setExpandedId] = useState<string | null>(null); // row ouverte (create ou tenant id)
-  const [editingId, setEditingId] = useState<string | null>(null); // tenant en cours d'édition (formulaire visible)
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<"az" | "recent">("az");
 
@@ -458,9 +456,6 @@ export function SectionLocataires({
 
   // hydrate edit form quand on expand un tenant
   useEffect(() => {
-    setErr(null);
-    setOk(null);
-
     if (!expandedId || expandedId === CREATE_ID) return;
     const t = safeTenants.find((x) => x.id === expandedId);
     if (!t) return;
@@ -474,11 +469,6 @@ export function SectionLocataires({
       };
     });
   }, [expandedId, safeTenants]);
-
-  // referme le formulaire d'édition dès qu'on change de ligne ouverte
-  useEffect(() => {
-    setEditingId(null);
-  }, [expandedId]);
 
   /* ======================================================
      CRUD
@@ -511,6 +501,8 @@ export function SectionLocataires({
         archived_reason: form.archived_reason?.trim() || null,
       };
 
+      let newTenantId: string | null = null;
+
       if (isEdit) {
         const res = await withTimeout(
           Promise.resolve(
@@ -519,8 +511,8 @@ export function SectionLocataires({
         );
         // @ts-ignore
         if ((res as any)?.error) throw (res as any).error;
+        closeTenantModal();
         setOk("Locataire mis à jour ✅");
-        setEditingId(null);
       } else {
         const res = await withTimeout(
           Promise.resolve(supabase.from("tenants").insert(payload).select("*").single())
@@ -529,7 +521,7 @@ export function SectionLocataires({
         if ((res as any)?.error) throw (res as any).error;
 
         const createdTenant = ((res as any)?.data ?? null) as Tenant | null;
-        const newId = createdTenant?.id ?? null;
+        newTenantId = createdTenant?.id ?? null;
 
         setOk("Locataire créé ✅");
         if (createdTenant?.id) {
@@ -539,10 +531,12 @@ export function SectionLocataires({
           }));
         }
         setCreateForm(emptyForm);
-        setExpandedId(newId || null);
       }
 
       await safeRefresh();
+      // Le nouveau locataire n'existe dans `tenants` (prop) qu'après ce refresh — ouvrir la
+      // modale avant provoquerait un rendu avec activeTenant introuvable (crash sur displayName).
+      if (newTenantId) setExpandedId(newTenantId);
     } catch (e: any) {
       console.error("[saveTenant] error:", e);
       setErr(e?.message || "Erreur lors de l’enregistrement.");
@@ -863,6 +857,97 @@ export function SectionLocataires({
     String(archiveWorkflow?.exitReport?.status || "").toLowerCase()
   );
 
+  const openTenantModal = (t: Tenant) => {
+    setErr(null);
+    setOk(null);
+    setExpandedId(t.id);
+  };
+
+  const closeTenantModal = () => {
+    setExpandedId(null);
+    setCreateForm(emptyForm);
+    setConfirmDeleteTenantId(null);
+    setErr(null);
+    setOk(null);
+  };
+
+  const renderTenantTile = (t: Tenant, archived: boolean) => {
+    const activeLease = !archived ? activeLeaseForTenant(t.id) : null;
+    const p = !archived ? activePropertyForTenant(t.id) : null;
+    const hasLease = hasAnyLeaseForTenant(t.id);
+    const paymentStatus = activeLease ? getTenantPaymentStatus(activeLease.id, safePayments) : null;
+    const totalRent = activeLease ? Number(activeLease.rent_amount || 0) + Number(activeLease.charges_amount || 0) : 0;
+    const pa = portalAccessMap.get(t.id);
+
+    return (
+      <button
+        key={t.id}
+        type="button"
+        onClick={() => openTenantModal(t)}
+        className={cx(
+          "flex flex-col overflow-hidden rounded-2xl border text-left transition hover:shadow-md",
+          archived ? "border-slate-200 bg-white opacity-90" : "border-slate-200 bg-white hover:border-slate-300"
+        )}
+      >
+        <div className={cx("relative flex h-28 w-full shrink-0 items-center justify-center", archived ? "bg-slate-300" : avatarColor(displayName(t)))}>
+          <span className="text-3xl font-bold text-white/90">{initials(t.first_name, t.last_name, t.full_name)}</span>
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-3">
+            <div className="flex items-baseline gap-1.5 min-w-0">
+              <p className="truncate text-sm font-semibold text-white">{displayName(t)}</p>
+              {isNew(t.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-200">new</em>}
+            </div>
+            <p className="truncate text-xs text-white/85">{t.email || t.phone || "Aucun contact"}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col gap-2 p-4">
+          {archived ? (
+            <p className="text-sm text-slate-500">Locataire archivé</p>
+          ) : activeLease && p ? (
+            <p className="text-sm font-medium text-slate-900">{p.label} • Bail actif</p>
+          ) : activeLease ? (
+            <p className="text-sm font-medium text-slate-900">Bail actif</p>
+          ) : (
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium text-slate-700">{hasLease ? "Historique de bail" : "Aucun bail"}</p>
+              {!hasLease ? <p className="text-xs text-slate-500">Pas encore de logement lié</p> : null}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-1.5">
+            {archived
+              ? badge("amber", "Archivé")
+              : activeLease
+              ? badge("emerald", "Actif")
+              : hasLease
+              ? badge("slate", "Historique")
+              : badge("amber", "Sans bail")}
+            {totalRent > 0 ? badge("slate", `${formatEuro(totalRent)}/mois`) : null}
+            {!archived && paymentStatus === "paid" ? badge("emerald", "Payé ✓") : null}
+            {!archived && paymentStatus === "overdue" ? badge("red", "En retard") : null}
+            {!archived ? (
+              pa?.status === "invited" ? (
+                badge("amber", "Invitation envoyée")
+              ) : pa ? (
+                badge(pa.messaging_enabled ? "sky" : "slate", pa.messaging_enabled ? "Portail + messagerie" : "Portail actif")
+              ) : (
+                badge("slate", "Portail non activé")
+              )
+            ) : null}
+          </div>
+
+          <span className="mt-auto inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white">
+            Gérer ce locataire
+          </span>
+        </div>
+      </button>
+    );
+  };
+
+  const activeTenant = expandedId && expandedId !== CREATE_ID ? safeTenants.find((x) => x?.id === expandedId) || null : null;
+  const activeTenantForm = activeTenant ? editForms[activeTenant.id] ?? formFromTenant(activeTenant) : null;
+  const activeTenantArchived = activeTenant ? isArchived(activeTenant) : false;
+
   /* ======================================================
      UI
   ====================================================== */
@@ -936,113 +1021,446 @@ export function SectionLocataires({
         </button>
       </div>
 
-      {/* Carte création locataire */}
-      {expandedId === CREATE_ID && (
+      {expandedId && (expandedId === CREATE_ID || activeTenant) ? (
         <div
-          id="locataires-create-form"
-          className={cx(
-            "overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-xl shadow-indigo-50",
-            highlightCreate ? "ring-2 ring-[#635bff] ring-offset-2" : ""
-          )}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) closeTenantModal(); }}
         >
-          {/* Barre gradient */}
-          <div className="h-1 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
+          <div
+            id="locataires-create-form"
+            className={cx(
+              "max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-indigo-100 bg-white shadow-2xl",
+              highlightCreate ? "ring-2 ring-[#635bff] ring-offset-2" : ""
+            )}
+          >
+            <div className="h-1 bg-gradient-to-r from-[#635bff] via-[#00d4ff] to-[#00e5a8]" />
 
-          {/* En-tête */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50">
-                <UserPlusIcon className="h-5 w-5 text-[#635bff]" />
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
+              <div className="flex items-center gap-3">
+                {expandedId === CREATE_ID ? (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-50">
+                    <UserPlusIcon className="h-5 w-5 text-[#635bff]" />
+                  </div>
+                ) : (
+                  <div className={cx("flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white", avatarColor(displayName(activeTenant!)))}>
+                    {initials(activeTenant!.first_name, activeTenant!.last_name, activeTenant!.full_name)}
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {expandedId === CREATE_ID ? "Nouveau locataire" : displayName(activeTenant!)}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {expandedId === CREATE_ID
+                      ? "Remplis les informations ci-dessous"
+                      : (activeTenant!.email || "—") + (activeTenant!.phone ? ` • ${activeTenant!.phone}` : "")}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">Nouveau locataire</p>
-                <p className="text-xs text-slate-500">Remplis les informations ci-dessous</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setExpandedId(null)}
-              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Formulaire */}
-          <div className="p-5">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <label className="text-[0.7rem] font-medium text-slate-600">Prénom</label>
-                <input
-                  value={createForm.first_name}
-                  onChange={(e) => setCreateForm((s) => ({ ...s, first_name: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                  placeholder="Ex : Marie"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[0.7rem] font-medium text-slate-600">Nom</label>
-                <input
-                  value={createForm.last_name}
-                  onChange={(e) => setCreateForm((s) => ({ ...s, last_name: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                  placeholder="Ex : Dupont"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[0.7rem] font-medium text-slate-600">Email</label>
-                <input
-                  type="email"
-                  value={createForm.email}
-                  onChange={(e) => setCreateForm((s) => ({ ...s, email: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                  placeholder="nom@email.fr"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[0.7rem] font-medium text-slate-600">Téléphone</label>
-                <input
-                  value={createForm.phone}
-                  onChange={(e) => setCreateForm((s) => ({ ...s, phone: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                  placeholder="06 00 00 00 00"
-                />
-              </div>
-            </div>
-
-            <div className="mt-3 space-y-1">
-              <label className="text-[0.7rem] font-medium text-slate-600">Notes</label>
-              <textarea
-                rows={3}
-                value={createForm.notes}
-                onChange={(e) => setCreateForm((s) => ({ ...s, notes: e.target.value }))}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              />
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2 items-center">
               <button
                 type="button"
-                disabled={loading}
-                onClick={() => saveTenant(undefined)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#635bff] to-[#00d4ff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-100 hover:shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 disabled:pointer-events-none"
+                onClick={closeTenantModal}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
               >
-                <UserPlusIcon className="h-4 w-4" />
-                {loading ? "Enregistrement…" : "Créer le locataire"}
+                <XMarkIcon className="h-4 w-4" />
               </button>
+            </div>
 
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => setExpandedId(null)}
-                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60"
-              >
-                Annuler
-              </button>
+            <div className="p-5">
+              {err ? (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>
+              ) : null}
+
+              {expandedId === CREATE_ID ? (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] font-medium text-slate-600">Prénom</label>
+                      <input
+                        value={createForm.first_name}
+                        onChange={(e) => setCreateForm((s) => ({ ...s, first_name: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                        placeholder="Ex : Marie"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] font-medium text-slate-600">Nom</label>
+                      <input
+                        value={createForm.last_name}
+                        onChange={(e) => setCreateForm((s) => ({ ...s, last_name: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                        placeholder="Ex : Dupont"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] font-medium text-slate-600">Email</label>
+                      <input
+                        type="email"
+                        value={createForm.email}
+                        onChange={(e) => setCreateForm((s) => ({ ...s, email: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                        placeholder="nom@email.fr"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[0.7rem] font-medium text-slate-600">Téléphone</label>
+                      <input
+                        value={createForm.phone}
+                        onChange={(e) => setCreateForm((s) => ({ ...s, phone: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                        placeholder="06 00 00 00 00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 space-y-1">
+                    <label className="text-[0.7rem] font-medium text-slate-600">Notes</label>
+                    <textarea
+                      rows={3}
+                      value={createForm.notes}
+                      onChange={(e) => setCreateForm((s) => ({ ...s, notes: e.target.value }))}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    />
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2 items-center">
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => saveTenant(undefined)}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#635bff] to-[#00d4ff] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-100 hover:shadow-indigo-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60 disabled:pointer-events-none"
+                    >
+                      <UserPlusIcon className="h-4 w-4" />
+                      {loading ? "Enregistrement…" : "Créer le locataire"}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={closeTenantModal}
+                      className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </>
+              ) : activeTenant && activeTenantArchived ? (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[0.7rem] text-slate-700">Raison d’archivage</label>
+                    <input
+                      value={activeTenantForm!.archived_reason}
+                      onChange={(e) => setEditForms((m) => ({ ...m, [activeTenant.id]: { ...activeTenantForm!, archived_reason: e.target.value } }))}
+                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-2 items-center">
+                    {onContactTenant ? (
+                      <button
+                        type="button"
+                        onClick={() => onContactTenant(activeTenant.id)}
+                        className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
+                      >
+                        Contacter
+                      </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => restoreTenant(activeTenant.id)}
+                      className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      Restaurer
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={closeTenantModal}
+                      className="rounded-full border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Annuler
+                    </button>
+
+                    {!hasAnyLeaseForTenant(activeTenant.id) ? (
+                      confirmDeleteTenantId === activeTenant.id ? (
+                        <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
+                          <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                          <button
+                            type="button"
+                            onClick={() => { void deleteTenant(activeTenant.id); setConfirmDeleteTenantId(null); }}
+                            disabled={loading}
+                            className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                          >
+                            Supprimer
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteTenantId(null)}
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            Retour
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => setConfirmDeleteTenantId(activeTenant.id)}
+                          className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                        >
+                          Supprimer
+                        </button>
+                      )
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-500">
+                        Supprimez d&apos;abord le bail
+                        {onNavigateDeep ? (
+                          <button type="button" onClick={() => onNavigateDeep("baux")} className="font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900">→ Baux</button>
+                        ) : null}
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : activeTenant ? (
+                (() => {
+                  const t = activeTenant;
+                  const f = activeTenantForm!;
+                  const activeLease = activeLeaseForTenant(t.id);
+                  const hasLease = hasAnyLeaseForTenant(t.id);
+                  const emailChanged = f.email.trim() !== (t.email || "").trim();
+                  const tenantLeaseDocStatuses = leasesForTenant(t.id).map((l) => leaseDocStatusMap.get(l.id));
+                  const emailChangeAffectsPendingSignature = tenantLeaseDocStatuses.some((s) => s?.pendingSignature);
+                  const emailChangeAffectsGeneratedContract =
+                    !emailChangeAffectsPendingSignature && tenantLeaseDocStatuses.some((s) => s?.hasContract);
+
+                  return (
+                    <>
+                      {/* Quick actions */}
+                      <div className="flex flex-wrap gap-2">
+                        {onContactTenant ? (
+                          <button
+                            type="button"
+                            onClick={() => onContactTenant(t.id)}
+                            className="rounded-full bg-slate-950 px-3 py-1.5 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
+                          >
+                            Contacter
+                          </button>
+                        ) : null}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            copyToClipboard(t.email || "");
+                            setOk(t.email ? "Email copié ✅" : "Aucun email.");
+                          }}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
+                        >
+                          Copier email
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            copyToClipboard(sanitizePhone(t.phone));
+                            setOk(t.phone ? "Téléphone copié ✅" : "Aucun téléphone.");
+                          }}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
+                        >
+                          Copier tél.
+                        </button>
+
+                        {t.email ? (
+                          <a
+                            href={`mailto:${t.email}`}
+                            className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
+                          >
+                            Envoyer un email
+                          </a>
+                        ) : null}
+
+                        {!activeLease && !hasLease && safeProperties.length > 0 && onNavigateDeep && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onNavigateDeep("baux", { openCreate: true, prefillTenantId: t.id });
+                              closeTenantModal();
+                            }}
+                            className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[0.75rem] font-semibold text-indigo-700 hover:bg-indigo-100 transition"
+                          >
+                            <LinkIcon className="h-3.5 w-3.5 shrink-0" />
+                            Lier à un logement →
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Portail locataire */}
+                      <div className="mt-3">
+                        <PortalPanel
+                          tenantId={t.id}
+                          tenantEmail={t.email}
+                          hasEmail={!!t.email}
+                          access={portalAccessMap.get(t.id) || null}
+                          isInviting={portalInviting.has(t.id)}
+                          isTogglingMsg={portalTogglingMsg.has(t.id)}
+                          onInvite={inviteToPortal}
+                          onToggleMessaging={toggleMessaging}
+                        />
+                      </div>
+
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <label className="text-[0.7rem] text-slate-700">Prénom</label>
+                          <input
+                            value={f.first_name}
+                            onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, first_name: e.target.value } }))}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[0.7rem] text-slate-700">Nom</label>
+                          <input
+                            value={f.last_name}
+                            onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, last_name: e.target.value } }))}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[0.7rem] text-slate-700">Email</label>
+                          <input
+                            type="email"
+                            value={f.email}
+                            onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, email: e.target.value } }))}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[0.7rem] text-slate-700">Téléphone</label>
+                          <input
+                            value={f.phone}
+                            onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, phone: e.target.value } }))}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {emailChanged && emailChangeAffectsPendingSignature ? (
+                        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                          Ce locataire a une demande de signature en cours. La changer d&apos;email ne l&apos;annule pas et ne la
+                          renvoie pas à la nouvelle adresse — le bail utilisera encore l&apos;ancien email tant que vous
+                          n&apos;aurez pas régénéré le contrat et envoyé une nouvelle demande de signature.
+                        </p>
+                      ) : emailChanged && emailChangeAffectsGeneratedContract ? (
+                        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                          Ce locataire a déjà un contrat de bail généré avec l&apos;ancien email. Il ne se met pas à jour
+                          automatiquement — pensez à le régénérer pour qu&apos;il reflète la nouvelle adresse.
+                        </p>
+                      ) : null}
+
+                      <div className="mt-3 space-y-1">
+                        <label className="text-[0.7rem] text-slate-700">Notes</label>
+                        <textarea
+                          rows={3}
+                          value={f.notes}
+                          onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, notes: e.target.value } }))}
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2 items-center">
+                        <button
+                          type="button"
+                          disabled={loading}
+                          onClick={() => saveTenant(t.id)}
+                          className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+                        >
+                          {loading ? "Enregistrement…" : "Mettre à jour"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={closeTenantModal}
+                          className="rounded-full border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Annuler
+                        </button>
+
+                        {archiveWorkflow?.tenantId !== t.id ? (
+                          <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() => archiveTenant(t.id)}
+                            className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            {activeLease ? "Gérer le départ" : "Archiver"}
+                          </button>
+                        ) : null}
+
+                        {!hasLease ? (
+                          confirmDeleteTenantId === t.id ? (
+                            <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
+                              <span className="text-xs font-medium text-red-700">Confirmer ?</span>
+                              <button
+                                type="button"
+                                onClick={() => { void deleteTenant(t.id); setConfirmDeleteTenantId(null); }}
+                                disabled={loading}
+                                className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                              >
+                                Supprimer
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteTenantId(null)}
+                                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                              >
+                                Retour
+                              </button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={loading}
+                              onClick={() => setConfirmDeleteTenantId(t.id)}
+                              className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                            >
+                              Supprimer
+                            </button>
+                          )
+                        ) : null}
+                      </div>
+
+                      {/* History */}
+                      <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-[0.75rem] font-semibold text-slate-900">Historique des baux</p>
+                        <div className="mt-2 space-y-2">
+                          {leasesForTenant(t.id).length === 0 ? (
+                            <p className="text-[0.75rem] text-slate-500">Aucun bail.</p>
+                          ) : (
+                            leasesForTenant(t.id).map((l) => {
+                              const prop = propertyById.get(l.property_id);
+                              return (
+                                <div key={l.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                  <p className="text-[0.75rem] font-semibold text-slate-900 flex items-center gap-1">
+                                    <HomeIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                    {prop?.label || "Bien"} • {LEASE_STATUS_LABELS[String(l.status || "").toLowerCase()] || l.status || "—"}
+                                  </p>
+                                  <p className="text-[0.7rem] text-slate-600">
+                                    Début : {formatDateFR(l.start_date)} • Fin : {formatDateFR(l.end_date)}
+                                  </p>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()
+              ) : null}
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       <div className="grid gap-4">
 
@@ -1058,370 +1476,8 @@ export function SectionLocataires({
               Aucun locataire actif.
             </div>
           ) : (
-            <div className="space-y-2">
-              {normalized.actifs.map((t) => {
-                const open = expandedId === t.id;
-                const activeLease = activeLeaseForTenant(t.id);
-                const p = activePropertyForTenant(t.id);
-                const hasLease = hasAnyLeaseForTenant(t.id);
-
-                const f =
-                  editForms[t.id] ??
-                  ({
-                    first_name: "",
-                    last_name: "",
-                    email: "",
-                    phone: "",
-                    notes: "",
-                    archived_reason: "",
-                  } as const);
-
-                const emailChanged = editingId === t.id && f.email.trim() !== (t.email || "").trim();
-                const tenantLeaseDocStatuses = leasesForTenant(t.id).map((l) => leaseDocStatusMap.get(l.id));
-                const emailChangeAffectsPendingSignature = tenantLeaseDocStatuses.some((s) => s?.pendingSignature);
-                const emailChangeAffectsGeneratedContract =
-                  !emailChangeAffectsPendingSignature && tenantLeaseDocStatuses.some((s) => s?.hasContract);
-
-                const paymentStatus = activeLease ? getTenantPaymentStatus(activeLease.id, safePayments) : null;
-                const paymentBadge = open
-                  ? badge("slate", "Ouvert")
-                  : paymentStatus === "paid"
-                  ? badge("emerald", "Payé ✓")
-                  : paymentStatus === "overdue"
-                  ? badge("red", "En retard")
-                  : null;
-                const totalRent = activeLease
-                  ? Number(activeLease.rent_amount || 0) + Number(activeLease.charges_amount || 0)
-                  : 0;
-
-                return (
-                  <ExpandableRow
-                    key={t.id}
-                    id={t.id}
-                    expandedId={expandedId}
-                    setExpandedId={(id) => {
-                      setErr(null);
-                      setOk(null);
-                      setExpandedId(id);
-                    }}
-                    left={
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start gap-3">
-                          <div className={cx("shrink-0 h-11 w-11 rounded-2xl flex items-center justify-center text-sm font-bold text-white", avatarColor(displayName(t)))}>
-                            {initials(t.first_name, t.last_name, t.full_name)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline gap-1.5 min-w-0">
-                              <p className="text-sm font-semibold text-slate-900 truncate min-w-0">{displayName(t)}</p>
-                              {isNew(t.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-400">new</em>}
-                            </div>
-                            <div className="mt-0.5 flex items-center gap-1.5">
-                              <p className="text-[0.75rem] text-slate-600 truncate">
-                                {t.email || "—"}{t.phone ? ` · ${t.phone}` : ""}
-                              </p>
-                              {t.phone ? (
-                                <a
-                                  href={`tel:${sanitizePhone(t.phone)}`}
-                                  onClick={(e) => e.stopPropagation()}
-                                  title={`Appeler ${t.phone}`}
-                                  className="shrink-0 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition"
-                                >
-                                  <PhoneIcon className="h-3.5 w-3.5" />
-                                </a>
-                              ) : null}
-                            </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                              {activeLease ? badge("emerald", "Actif") : hasLease ? badge("slate", "Historique") : badge("amber", "Sans bail")}
-                              {!activeLease && !hasLease && safeProperties.length > 0 && onNavigateDeep && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onNavigateDeep("baux", { openCreate: true, prefillTenantId: t.id });
-                                  }}
-                                  className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[0.7rem] font-semibold text-indigo-700 hover:bg-indigo-100 transition"
-                                >
-                                  <LinkIcon className="h-3 w-3 shrink-0" />
-                                  Lier à un logement →
-                                </button>
-                              )}
-                              {p ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-800">
-                                  <HomeIcon className="h-3 w-3 shrink-0 text-slate-400" />
-                                  {p.label}
-                                </span>
-                              ) : null}
-                              {totalRent > 0 ? (
-                                <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[0.7rem] font-semibold text-slate-700">
-                                  {formatEuro(totalRent)}/mois
-                                </span>
-                              ) : null}
-                              {(() => {
-                                const pa = portalAccessMap.get(t.id);
-                                if (!pa) return (
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-[0.7rem] font-semibold text-slate-400">
-                                    Portail non activé
-                                  </span>
-                                );
-                                if (pa.status === "invited") return (
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[0.7rem] font-semibold text-amber-700">
-                                    Invitation envoyée
-                                  </span>
-                                );
-                                return (
-                                  <span className={cx(
-                                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.7rem] font-semibold",
-                                    pa.messaging_enabled
-                                      ? "border border-indigo-200 bg-indigo-50 text-indigo-700"
-                                      : "border border-slate-200 bg-slate-50 text-slate-500"
-                                  )}>
-                                    {pa.messaging_enabled
-                                      ? <><ChatBubbleLeftRightIcon className="h-3 w-3" />Portail + messagerie</>
-                                      : <><NoSymbolIcon className="h-3 w-3" />Portail sans messagerie</>}
-                                  </span>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    }
-                    right={paymentBadge}
-                  >
-                    {/* Quick actions */}
-                    <div className="flex flex-wrap gap-2">
-                      {onContactTenant ? (
-                        <button
-                          type="button"
-                          onClick={() => onContactTenant(t.id)}
-                          className="rounded-full bg-slate-950 px-3 py-1.5 text-[0.75rem] font-semibold text-white hover:bg-slate-800"
-                        >
-                          Contacter
-                        </button>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          copyToClipboard(t.email || "");
-                          setOk(t.email ? "Email copié ✅" : "Aucun email.");
-                        }}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
-                      >
-                        Copier email
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          copyToClipboard(sanitizePhone(t.phone));
-                          setOk(t.phone ? "Téléphone copié ✅" : "Aucun téléphone.");
-                        }}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
-                      >
-                        Copier tél.
-                      </button>
-
-                      {t.email ? (
-                        <a
-                          onClick={(e) => e.stopPropagation()}
-                          href={`mailto:${t.email}`}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[0.75rem] font-semibold text-slate-800 hover:bg-slate-50"
-                        >
-                          Envoyer un email
-                        </a>
-                      ) : null}
-                    </div>
-
-                    {/* Portail locataire */}
-                    <PortalPanel
-                      tenantId={t.id}
-                      tenantEmail={t.email}
-                      hasEmail={!!t.email}
-                      access={portalAccessMap.get(t.id) || null}
-                      isInviting={portalInviting.has(t.id)}
-                      isTogglingMsg={portalTogglingMsg.has(t.id)}
-                      onInvite={inviteToPortal}
-                      onToggleMessaging={toggleMessaging}
-                    />
-
-                    {editingId === t.id ? (
-                      <>
-                        {/* Form */}
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-1">
-                            <label className="text-[0.7rem] text-slate-700">Prénom</label>
-                            <input
-                              value={f.first_name}
-                              onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, first_name: e.target.value } }))}
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[0.7rem] text-slate-700">Nom</label>
-                            <input
-                              value={f.last_name}
-                              onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, last_name: e.target.value } }))}
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[0.7rem] text-slate-700">Email</label>
-                            <input
-                              type="email"
-                              value={f.email}
-                              onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, email: e.target.value } }))}
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[0.7rem] text-slate-700">Téléphone</label>
-                            <input
-                              value={f.phone}
-                              onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, phone: e.target.value } }))}
-                              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        {emailChanged && emailChangeAffectsPendingSignature ? (
-                          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-                            Ce locataire a une demande de signature en cours. La changer d&apos;email ne l&apos;annule pas et ne la
-                            renvoie pas à la nouvelle adresse — le bail utilisera encore l&apos;ancien email tant que vous
-                            n&apos;aurez pas régénéré le contrat et envoyé une nouvelle demande de signature.
-                          </p>
-                        ) : emailChanged && emailChangeAffectsGeneratedContract ? (
-                          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-                            Ce locataire a déjà un contrat de bail généré avec l&apos;ancien email. Il ne se met pas à jour
-                            automatiquement — pensez à le régénérer pour qu&apos;il reflète la nouvelle adresse.
-                          </p>
-                        ) : null}
-
-                        <div className="mt-3 space-y-1">
-                          <label className="text-[0.7rem] text-slate-700">Notes</label>
-                          <textarea
-                            rows={3}
-                            value={f.notes}
-                            onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, notes: e.target.value } }))}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                          />
-                        </div>
-                      </>
-                    ) : t.notes ? (
-                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Notes</p>
-                        <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{t.notes}</p>
-                      </div>
-                    ) : null}
-
-                    <div className="mt-3 flex flex-wrap gap-2 items-center">
-                      {editingId === t.id ? (
-                        <>
-                          <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => saveTenant(t.id)}
-                            className="rounded-full bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-                          >
-                            {loading ? "Enregistrement…" : "Mettre à jour"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingId(null)}
-                            className="rounded-full border border-slate-200 bg-white px-5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                          >
-                            Annuler
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(t.id)}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-slate-950 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                        >
-                          <PencilSquareIcon className="h-3.5 w-3.5" />
-                          Modifier
-                        </button>
-                      )}
-
-                      {archiveWorkflow?.tenantId !== t.id ? (
-                        <button
-                          type="button"
-                          disabled={loading}
-                          onClick={() => archiveTenant(t.id)}
-                          className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60"
-                        >
-                          {activeLease ? "Gérer le départ" : "Archiver"}
-                        </button>
-                      ) : null}
-
-                      {!hasLease ? (
-                        confirmDeleteTenantId === t.id ? (
-                          <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
-                            <span className="text-xs font-medium text-red-700">Confirmer ?</span>
-                            <button
-                              type="button"
-                              onClick={() => { void deleteTenant(t.id); setConfirmDeleteTenantId(null); }}
-                              disabled={loading}
-                              className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
-                            >
-                              Supprimer
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteTenantId(null)}
-                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                            >
-                              Annuler
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => setConfirmDeleteTenantId(t.id)}
-                            className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                          >
-                            Supprimer
-                          </button>
-                        )
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-500">
-                          Supprimez d&apos;abord le bail
-                          {onNavigateDeep ? (
-                            <button type="button" onClick={() => onNavigateDeep("baux")} className="font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900">→ Baux</button>
-                          ) : null}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* History */}
-                    <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-[0.75rem] font-semibold text-slate-900">Historique des baux</p>
-                      <div className="mt-2 space-y-2">
-                        {leasesForTenant(t.id).length === 0 ? (
-                          <p className="text-[0.75rem] text-slate-500">Aucun bail.</p>
-                        ) : (
-                          leasesForTenant(t.id).map((l) => {
-                            const prop = propertyById.get(l.property_id);
-                            return (
-                              <div key={l.id} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                                <p className="text-[0.75rem] font-semibold text-slate-900 flex items-center gap-1">
-                                  <HomeIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                  {prop?.label || "Bien"} • {LEASE_STATUS_LABELS[String(l.status || "").toLowerCase()] || l.status || "—"}
-                                </p>
-                                <p className="text-[0.7rem] text-slate-600">
-                                  Début : {formatDateFR(l.start_date)} • Fin : {formatDateFR(l.end_date)}
-                                </p>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-                  </ExpandableRow>
-                );
-              })}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {normalized.actifs.map((t) => renderTenantTile(t, false))}
             </div>
           )}
         </ExpandableSection>
@@ -1438,120 +1494,8 @@ export function SectionLocataires({
               Aucun locataire archivé.
             </div>
           ) : (
-            <div className="space-y-2">
-              {normalized.archives.map((t) => {
-                const f =
-                  editForms[t.id] ??
-                  ({
-                    first_name: "",
-                    last_name: "",
-                    email: "",
-                    phone: "",
-                    notes: "",
-                    archived_reason: t.archived_reason || "",
-                  } as const);
-
-                return (
-                  <ExpandableRow
-                    key={t.id}
-                    id={t.id}
-                    expandedId={expandedId}
-                    setExpandedId={(id) => {
-                      setErr(null);
-                      setOk(null);
-                      setExpandedId(id);
-                    }}
-                    left={
-                      <div className="min-w-0">
-                        <div className="flex items-start gap-3">
-                          <div className="shrink-0 h-10 w-10 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center text-sm font-semibold text-slate-800">
-                            {initials(t.first_name, t.last_name, t.full_name)}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 truncate">{displayName(t)}</p>
-                            <p className="mt-0.5 text-[0.75rem] text-slate-600 truncate">
-                              {(t.email || "—") + (t.phone ? ` • ${t.phone}` : "")}
-                            </p>
-                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                              {badge("amber", "Archivé")}
-                              {t.archived_at ? badge("slate", `Le ${new Date(t.archived_at).toLocaleDateString("fr-FR")}`) : null}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  >
-                    <div className="space-y-1">
-                      <label className="text-[0.7rem] text-slate-700">Raison d’archivage</label>
-                      <input
-                        value={f.archived_reason}
-                        onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, archived_reason: e.target.value } }))}
-                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                      />
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2 items-center">
-                      {onContactTenant ? (
-                        <button
-                          type="button"
-                          onClick={() => onContactTenant(t.id)}
-                          className="rounded-full border border-slate-300 bg-white px-5 py-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
-                        >
-                          Contacter
-                        </button>
-                      ) : null}
-
-                      <button
-                        type="button"
-                        disabled={loading}
-                        onClick={() => restoreTenant(t.id)}
-                        className="rounded-full bg-slate-900 px-5 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                      >
-                        Restaurer
-                      </button>
-
-                      {!hasAnyLeaseForTenant(t.id) ? (
-                        confirmDeleteTenantId === t.id ? (
-                          <span className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5">
-                            <span className="text-xs font-medium text-red-700">Confirmer ?</span>
-                            <button
-                              type="button"
-                              onClick={() => { void deleteTenant(t.id); setConfirmDeleteTenantId(null); }}
-                              disabled={loading}
-                              className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-500 disabled:opacity-60"
-                            >
-                              Supprimer
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteTenantId(null)}
-                              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                            >
-                              Annuler
-                            </button>
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={loading}
-                            onClick={() => setConfirmDeleteTenantId(t.id)}
-                            className="rounded-full border border-red-200 bg-white px-5 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                          >
-                            Supprimer
-                          </button>
-                        )
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-[0.75rem] text-slate-500">
-                          Supprimez d&apos;abord le bail
-                          {onNavigateDeep ? (
-                            <button type="button" onClick={() => onNavigateDeep("baux")} className="font-semibold text-slate-700 underline underline-offset-2 hover:text-slate-900">→ Baux</button>
-                          ) : null}
-                        </span>
-                      )}
-                    </div>
-                  </ExpandableRow>
-                );
-              })}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {normalized.archives.map((t) => renderTenantTile(t, true))}
             </div>
           )}
         </ExpandableSection>
@@ -1777,8 +1721,11 @@ function PortalPanel({
 
   return (
     <div className="mt-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 px-4 py-3">
-      <p className="mb-2.5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-indigo-600">
+      <p className="mb-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-indigo-600">
         Espace locataire
+      </p>
+      <p className="mb-2.5 text-xs leading-5 text-slate-600">
+        Donne au locataire un accès personnel pour consulter son bail, ses quittances et documents.
       </p>
 
       {!hasEmail ? (
@@ -1786,26 +1733,26 @@ function PortalPanel({
 
       ) : !access ? (
         <div className="space-y-2.5">
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={withMessaging}
-                onChange={(e) => setWithMessaging(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 accent-indigo-600"
-              />
-              <span className="text-xs text-slate-700">Inclure la messagerie</span>
-            </label>
-            <button
-              type="button"
-              disabled={isInviting}
-              onClick={handleInvite}
-              className="inline-flex items-center gap-1.5 rounded-full border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
-            >
-              <UserPlusIcon className="h-3.5 w-3.5" />
-              {isInviting ? "Envoi en cours…" : "Activer le portail"}
-            </button>
-          </div>
+          <label className="flex cursor-pointer items-start gap-2">
+            <input
+              type="checkbox"
+              checked={withMessaging}
+              onChange={(e) => setWithMessaging(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-indigo-600"
+            />
+            <span className="text-xs text-slate-700">
+              Inclure la messagerie — le locataire pourra aussi vous écrire directement depuis son espace.
+            </span>
+          </label>
+          <button
+            type="button"
+            disabled={isInviting}
+            onClick={handleInvite}
+            className="inline-flex items-center gap-1.5 rounded-full border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+          >
+            <UserPlusIcon className="h-3.5 w-3.5" />
+            {isInviting ? "Envoi en cours…" : "Activer le portail — envoyer l'invitation"}
+          </button>
           {result ? (
             <p className={`text-xs font-medium ${result.ok ? "text-emerald-700" : "text-red-600"}`}>
               {result.ok ? "✓ " : "✗ "}{result.msg}
@@ -1820,9 +1767,11 @@ function PortalPanel({
             <p className="text-xs text-slate-600">
               {access.status === "invited"
                 ? <>Invitation envoyée à <span className="font-semibold">{tenantEmail}</span> — en attente d'activation.</>
-                : <>Portail actif.</>}
-              {" "}Messagerie :{" "}
-              <span className="font-semibold">{access.messaging_enabled ? "activée" : "désactivée"}</span>.
+                : <>Portail actif — le locataire peut consulter son bail, ses quittances et documents.</>}
+              {" "}
+              <span className="font-semibold">
+                {access.messaging_enabled ? "Il peut aussi vous écrire directement." : "La messagerie est désactivée."}
+              </span>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

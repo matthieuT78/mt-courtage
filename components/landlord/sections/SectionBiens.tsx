@@ -420,19 +420,11 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
 
   // hydrate quand on ouvre une row bien
   useEffect(() => {
-    setErr(null);
-    setOk(null);
-
     if (!expandedId || expandedId === CREATE_ID) return;
     const p = safeProperties.find((x) => x?.id === expandedId);
     if (!p) return;
     hydrateEditForm(p);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandedId]);
-
-  // referme le formulaire d'édition dès qu'on change de ligne ouverte
-  useEffect(() => {
-    setEditingId(null);
   }, [expandedId]);
 
   const saveProperty = async (propertyId?: string) => {
@@ -480,8 +472,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
       if (isEdit) {
         const { error } = await supabase.from("properties").update(payload).eq("id", propertyId).eq("user_id", userId);
         if (error) throw error;
+        closePropertyModal();
         setOk("Bien mis à jour ✅");
-        setEditingId(null);
       } else {
         const { data, error } = await supabase.from("properties").insert(payload).select("id").single();
         if (error) throw error;
