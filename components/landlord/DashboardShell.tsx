@@ -394,6 +394,10 @@ export function DashboardShell(props: any) {
 
   const onChangeTab = (k: LandlordSectionKey) => {
     setActive(k);
+    // Une navigation "plate" (pas via navigateDeep) doit effacer tout deepLink laissé par une
+    // action précédente — sinon un openCreate resté en mémoire se redéclenche silencieusement
+    // au remount de la section suivante, alors que ce clic ne demandait rien de tel.
+    setDeepLink(null);
     setMobileMoreOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -653,7 +657,7 @@ export function DashboardShell(props: any) {
         return (
           <SectionDashboard
             userId={userId}
-            onGo={setActive}
+            onGo={onChangeTab}
             onNavigateDeep={navigateDeep}
             onRefresh={refresh}
             planLabel={planLabel}
@@ -682,7 +686,7 @@ export function DashboardShell(props: any) {
             profileLoaded={profileLoaded}
             onPrepareDeparture={(tenantId) => {
               setDepartureTenantId(tenantId);
-              setActive("locataires");
+              onChangeTab("locataires");
             }}
           />
         );
@@ -702,11 +706,11 @@ export function DashboardShell(props: any) {
             deepLink={deepLink}
             initialDepartureTenantId={departureTenantId}
             onDepartureOpened={() => setDepartureTenantId(null)}
-            onOpenExitInventory={() => setActive("etat_des_lieux")}
+            onOpenExitInventory={() => onChangeTab("etat_des_lieux")}
             onNavigateDeep={navigateDeep}
             onContactTenant={(tenantId) => {
               setMessagingTenantId(tenantId);
-              setActive("messagerie");
+              onChangeTab("messagerie");
             }}
           />
         );
@@ -726,7 +730,7 @@ export function DashboardShell(props: any) {
             onNavigateDeep={navigateDeep}
             onPrepareDeparture={(tenantId) => {
               setDepartureTenantId(tenantId);
-              setActive("locataires");
+              onChangeTab("locataires");
             }}
           />
         );
@@ -773,7 +777,7 @@ export function DashboardShell(props: any) {
         return <SectionOutils userId={userId} properties={properties} leases={leases} tenants={tenants} plan={plan} onRefresh={refresh} />;
 
       case "etat_des_lieux":
-        return <SectionEtatDesLieux userId={userId} leases={leases} properties={properties} tenants={tenants} onRefresh={refresh} onNavigateToBaux={() => setActive("baux")} />;
+        return <SectionEtatDesLieux userId={userId} leases={leases} properties={properties} tenants={tenants} onRefresh={refresh} onNavigateToBaux={() => onChangeTab("baux")} />;
 
       case "inventaire":
         return <SectionInventaire userId={userId} properties={properties} propertyFinance={propertyFinance} />;
