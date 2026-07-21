@@ -137,9 +137,19 @@ async function upsertPaymentAndFinance(params: {
   }
 }
 
-async function markTokenUsed(id: string) {
+// Réclame le token de façon atomique (UPDATE ... WHERE used_at IS NULL) pour empêcher
+// deux requêtes concurrentes (double-clic, préchargement par un scanner de sécurité email,
+// double onglet) de passer toutes les deux la vérification et d'envoyer la quittance deux fois.
+async function claimToken(id: string): Promise<boolean> {
   if (!supabaseAdmin) throw new Error("Supabase admin manquant.");
-  await supabaseAdmin.from("receipt_confirm_tokens").update({ used_at: new Date().toISOString() }).eq("id", id);
+  const upd = await supabaseAdmin
+    .from("receipt_confirm_tokens")
+    .update({ used_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("used_at", null)
+    .select("id")
+    .maybeSingle();
+  return !!upd.data;
 }
 
 function partialForm(params: { token: string; rent: number; charges: number; period: string }) {
@@ -390,26 +400,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { error, row } = await loadToken(token);
       if (error) return res.status(400).json({ ok: false, error });
 
-      const lease = await loadLease(row);
-      const rentPeriod = getLeaseRentPeriodFromDate(lease, row.period_start);
-      if (!rentPeriod) throw new Error("Cette période est en dehors des dates du bail.");
+      const claimed = await claimToken(row.id);
+      if (!claimed) return res.status(400).json({ ok: false, error: "Lien déjà utilisé." });
 
-      const proto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0];
-      const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
-      const generateEndpointUrl = host ? `${proto}://${host}/api/receipts/generate` : null;
-      const internalSecret = process.env.INTERNAL_API_SECRET || null;
+      try {
+        const lease = await loadLease(row);
+        const rentPeriod = getLeaseRentPeriodFromDate(lease, row.period_start);
+        if (!rentPeriod) throw new Error("Cette période est en dehors des dates du bail.");
 
-      const result = await confirmLeasePaymentAndSendReceipt({
-        userId: row.user_id,
-        leaseId: row.lease_id,
-        periodStart: row.period_start,
-        periodEnd: row.period_end,
-        generateEndpointUrl,
-        internalSecret,
-      });
+        const proto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0];
+        const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+        const generateEndpointUrl = host ? `${proto}://${host}/api/receipts/generate` : null;
+        const internalSecret = process.env.INTERNAL_API_SECRET || null;
 
-      await markTokenUsed(row.id);
-      return res.status(200).json({ ok: true, receiptId: result.receiptId, emailOk: result.email.ok });
+        const result = await confirmLeasePaymentAndSendReceipt({
+          userId: row.user_id,
+          leaseId: row.lease_id,
+          periodStart: row.period_start,
+          periodEnd: row.period_end,
+          generateEndpointUrl,
+          internalSecret,
+        });
+
+        return res.status(200).json({ ok: true, receiptId: result.receiptId, emailOk: result.email.ok });
+      } catch (e) {
+        // Le traitement a échoué avant la fin : on libère le token pour permettre un nouveau clic.
+        // Cette requête est la seule à avoir réclamé le token (claimToken est atomique), donc
+        // le remettre à null ici ne peut pas réintroduire la course avec une autre requête.
+        await supabaseAdmin.from("receipt_confirm_tokens").update({ used_at: null }).eq("id", row.id);
+        throw e;
+      }
     }
 
     // ── GET + action=partial → formulaire de saisie ──────────────────────────
@@ -431,6 +451,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (action === "partial") {
       const { error, row } = await loadToken(token);
       if (error) return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "error", reason: error }));
+      const claimed = await claimToken(row.id);
+      if (!claimed) return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "error", reason: "Lien déjà utilisé." }));
       const lease = await loadLease(row);
       const rentPeriod = getLeaseRentPeriodFromDate(lease, row.period_start);
       if (!rentPeriod) throw new Error("Cette période est en dehors des dates du bail.");
@@ -443,7 +465,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         label: "Paiement partiel loyer",
         notes: `Paiement partiel pour ${period}. Quittance bloquée jusqu'au règlement complet.`,
       });
-      await markTokenUsed(row.id);
       return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "partial", month: period, amount: rentReceived + chargesReceived }));
     }
 
@@ -451,6 +472,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     {
       const { error, row } = await loadToken(token);
       if (error) return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "error", reason: error }));
+      const claimed = await claimToken(row.id);
+      if (!claimed) return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "error", reason: "Lien déjà utilisé." }));
       const lease = await loadLease(row);
       const period = String(row.period_start).slice(0, 7);
       await upsertPaymentAndFinance({
@@ -459,7 +482,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         label: "Paiement partiel loyer",
         notes: `Paiement déclaré non reçu pour ${period}.`,
       });
-      await markTokenUsed(row.id);
       return res.redirect(302, redirectToBailleur(req, { tab: "quittances", rentResult: "unpaid", month: period }));
     }
   } catch (e: any) {

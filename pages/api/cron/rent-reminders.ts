@@ -81,6 +81,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const canUseAutomation = await userCanUseReceiptAutomation(String(l.user_id || ""));
       if (!canUseAutomation) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "no_automation_plan" }); continue; }
 
+      if (l.property_id) {
+        const { data: prop } = await supabaseAdmin.from("properties").select("delegated_services").eq("id", l.property_id).maybeSingle();
+        if (Array.isArray(prop?.delegated_services) && prop.delegated_services.includes("gestion_courante")) {
+          skipped++;
+          if (debug) debugResults.push({ leaseId: l.id, skip: "gestion_courante_delegated" });
+          continue;
+        }
+      }
+
       const tz = l.timezone || "Europe/Paris";
       const today = yyyymmddInTz(now, tz);
       const period = yyyymmInTz(now, tz);
