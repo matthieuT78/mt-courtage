@@ -1,5 +1,5 @@
 // components/landlord/sections/SectionQuittances.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, fmtDate } from "../UiBits";
 import {
@@ -12,6 +12,9 @@ import {
   XCircleIcon,
   EyeSlashIcon,
   ClockIcon,
+  CalendarDaysIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import type { RentReceipt, Lease, Property, Tenant, LandlordSettings } from "../../../lib/landlord/types";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
@@ -361,6 +364,94 @@ function Card({
   );
 }
 
+const MONTH_LABELS_SHORT = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
+
+function MonthYearPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [y, m] = value.split("-").map(Number);
+  const [viewYear, setViewYear] = useState(y);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) setViewYear(y);
+  }, [open, y]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const label = new Date(y, m - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-900 hover:bg-slate-50"
+      >
+        <CalendarDaysIcon className="h-4 w-4 text-slate-400" aria-hidden="true" />
+        <span className="capitalize">{label}</span>
+      </button>
+      {open ? (
+        <div className="absolute z-20 mt-1.5 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-lg">
+          <div className="flex items-center justify-between px-1 pb-2">
+            <button
+              type="button"
+              onClick={() => setViewYear((yy) => yy - 1)}
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+              aria-label="Année précédente"
+            >
+              <ChevronLeftIcon className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <span className="text-sm font-semibold text-slate-900">{viewYear}</span>
+            <button
+              type="button"
+              onClick={() => setViewYear((yy) => yy + 1)}
+              className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"
+              aria-label="Année suivante"
+            >
+              <ChevronRightIcon className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {MONTH_LABELS_SHORT.map((lbl, idx) => {
+              const isSelected = viewYear === y && idx + 1 === m;
+              return (
+                <button
+                  key={lbl}
+                  type="button"
+                  onClick={() => {
+                    onChange(`${viewYear}-${String(idx + 1).padStart(2, "0")}`);
+                    setOpen(false);
+                  }}
+                  className={cx(
+                    "rounded-lg px-2 py-1.5 text-sm font-medium transition",
+                    isSelected ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+                  )}
+                >
+                  {lbl}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Kpi({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4">
@@ -440,7 +531,6 @@ export function SectionQuittances({
     [safeLeases, delegatedLeaseIds]
   );
 
-  const [view, setView] = useState<"todo" | "month" | "tenants">("todo");
   const [month, setMonth] = useState<string>(toMonthISO(new Date()));
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const [openArchiveMenuId, setOpenArchiveMenuId] = useState<string | null>(null);
@@ -672,32 +762,7 @@ export function SectionQuittances({
     return buildRowsForMonth(month);
   }, [safeLeases, month, receiptByPeriod, paymentByPeriod]);
 
-  const todoRows = useMemo(() => {
-    const rowRequiresActionNow = (row: any) => {
-      if (row.closedByDeposit) return false;
-      if (row.sent) return false;
-      if (row.lease.receipts_disabled && (row.payStatus === "paid" || (row.payStatus === "pending" && !row.isLate))) return false;
-      if (canSnoozeReceiptTask(row) && snoozedReceiptKeys.has(String(row.key))) return false;
-      if (row.payStatus === "paid") return true;
-      if (row.payStatus === "partial") return true;
-      if (row.payStatus === "pending") return true;
-      if (row.pay?.ownerConfirmedUnpaid) return true;
-      return row.isLate;
-    };
-
-    return recentMonths()
-      .flatMap((yyyymm) => buildRowsForMonth(yyyymm))
-      .filter(rowRequiresActionNow)
-      .sort((a, b) => {
-        if (a.isLate !== b.isLate) return a.isLate ? -1 : 1;
-        if (a.payStatus !== b.payStatus) return a.payStatus === "pending" ? -1 : 1;
-        if (a.pdfReady !== b.pdfReady) return a.pdfReady ? -1 : 1;
-        if (a.month !== b.month) return a.month.localeCompare(b.month);
-        return leaseLabel(a.lease).localeCompare(leaseLabel(b.lease));
-      });
-  }, [safeLeases, receiptByPeriod, paymentByPeriod, propsById, tenantsById, snoozedReceiptKeys]);
-
-  const visibleRows = view === "todo" ? todoRows : expectedRows;
+  const visibleRows = expectedRows;
 
   // ---------- Fiabilité par locataire : retards récurrents + impayés cumulés sur 12 mois
   const tenantStats = useMemo(() => {
@@ -1431,81 +1496,30 @@ export function SectionQuittances({
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
-      {/* Workflow selector + KPI */}
+      {/* Sélecteur de mois + KPI */}
       <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex flex-col gap-3">
-          <div className="inline-flex rounded-2xl bg-slate-100/80 p-1 self-start">
-            <button
-              type="button"
-              onClick={() => setView("todo")}
-              className={cx(
-                "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
-                view === "todo" ? "bg-white shadow-sm ring-1 ring-slate-200/60 text-slate-900" : "text-slate-500 hover:text-slate-700"
-              )}
-            >
-              Actions
-              {todoRows.length > 0 && (
-                <span className={cx("rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold tabular-nums", view === "todo" ? "bg-indigo-50 text-indigo-600" : "bg-slate-200 text-slate-500")}>
-                  {todoRows.length}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("month")}
-              className={cx(
-                "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
-                view === "month" ? "bg-white shadow-sm ring-1 ring-slate-200/60 text-slate-900" : "text-slate-500 hover:text-slate-700"
-              )}
-            >
-              Consulter un mois
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("tenants")}
-              className={cx(
-                "flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition",
-                view === "tenants" ? "bg-white shadow-sm ring-1 ring-slate-200/60 text-slate-900" : "text-slate-500 hover:text-slate-700"
-              )}
-            >
-              Locataires
-            </button>
-          </div>
-
-          {view === "todo" ? (
-            <p className="text-xs text-slate-500 max-w-sm">
-              Paiements à confirmer, quittances à envoyer et retards — sur les <span className="font-medium text-slate-700">{LOOKBACK_MONTHS} derniers mois</span>. Rien ici = tout est à jour.
-            </p>
-          ) : view === "month" ? (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <div className="space-y-0.5">
-                <label className="text-[0.7rem] text-slate-500">Mois</label>
-                <input
-                  type="month"
-                  value={month}
-                  onChange={(e) => {
-                    setSelectedReceiptId(null);
-                    setMonth(e.target.value);
-                  }}
-                  className="block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                />
-              </div>
-              <p className="text-xs text-slate-500 max-w-xs pt-1">
-                Tous les baux attendus pour <span className="font-medium text-slate-700">{monthLabel}</span> — pour vérifier, retrouver ou agir sur une quittance passée.
-              </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div className="space-y-0.5">
+              <label className="text-[0.7rem] text-slate-500">Mois</label>
+              <MonthYearPicker
+                value={month}
+                onChange={(v) => {
+                  setSelectedReceiptId(null);
+                  setMonth(v);
+                }}
+              />
             </div>
-          ) : (
-            <p className="text-xs text-slate-500 max-w-sm">
-              Fiabilité de paiement et impayés cumulés sur les <span className="font-medium text-slate-700">12 derniers mois</span>, par locataire.
+            <p className="text-xs text-slate-500 max-w-xs pt-1">
+              Tous les baux attendus pour <span className="font-medium text-slate-700">{monthLabel}</span> — pour vérifier, retrouver ou agir sur une quittance passée. Les actions à traiter sont signalées dans le cockpit bailleur.
             </p>
-          )}
+          </div>
         </div>
 
       </div>
 
-      {view !== "tenants" ? (
       <div className="grid gap-3 md:grid-cols-5">
-        <Kpi label={view === "todo" ? "Actions" : "Baux attendus"} value={dashboard.total} sub={view === "todo" ? "en attente d'action" : "ce mois-ci"} />
+        <Kpi label="Baux attendus" value={dashboard.total} sub="ce mois-ci" />
         <Kpi label="Payés" value={dashboard.paidCount} sub="source de vérité paiement" />
         <Kpi label="PDF prêts" value={dashboard.pdfReady} sub="après paiement" />
         <Kpi label="Clôturées" value={dashboard.sent} sub={canUseReceiptAutomation ? "email envoyé" : "remise manuelle"} />
@@ -1515,70 +1529,13 @@ export function SectionQuittances({
           sub="après J+2, toujours pas payé"
         />
       </div>
-      ) : null}
 
       {/* Bloc principal */}
-      {view === "tenants" ? (
-        <Card title={<span>Locataires <span className="text-slate-500">({tenantStats.length})</span></span>} tone="muted">
-          {tenantStats.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm text-slate-700">
-              Aucun locataire actif à analyser.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {tenantStats.map((stat) => {
-                const recurring = stat.lateCount >= 2;
-                return (
-                  <div
-                    key={String(stat.tenant.id)}
-                    className={cx("rounded-2xl border p-3 bg-white", stat.cumulativeUnpaid > 0 ? "border-red-200" : "border-slate-200")}
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-900">{stat.tenant.full_name || "Locataire"}</p>
-                        <p className="truncate text-xs text-slate-500">
-                          {stat.leaseCount} bail{stat.leaseCount > 1 ? "aux" : ""} · {stat.totalCount} échéance{stat.totalCount > 1 ? "s" : ""} sur 12 mois
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {recurring ? (
-                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800">
-                              ⚠ Retards récurrents ({stat.lateCount}/{stat.totalCount})
-                            </span>
-                          ) : stat.lateCount > 0 ? (
-                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.7rem] font-semibold text-slate-600">
-                              {stat.lateCount} retard{stat.lateCount > 1 ? "s" : ""} / {stat.totalCount}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[0.7rem] font-semibold text-emerald-800">
-                              Aucun retard
-                            </span>
-                          )}
-                          {stat.avgDelayDays != null && stat.avgDelayDays > 0 ? (
-                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[0.7rem] font-semibold text-slate-600">
-                              {Math.round(stat.avgDelayDays)} j de retard en moyenne
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-[0.7rem] uppercase tracking-[0.14em] text-slate-500">Impayé cumulé (12 mois)</p>
-                        <p className={cx("text-lg font-semibold", stat.cumulativeUnpaid > 0 ? "text-red-700" : "text-slate-900")}>
-                          {fmtEur(stat.cumulativeUnpaid)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      ) : (
-      <div className={cx("grid gap-5", view === "todo" ? "grid-cols-1" : "lg:grid-cols-[1fr,420px]")}>
+      <div className="grid gap-5 lg:grid-cols-[1fr,420px]">
         <Card
           title={
             <span>
-              {view === "todo" ? "Actions en attente" : `Baux · ${monthLabel}`} <span className="text-slate-500">({visibleRows.length})</span>
+              Baux · {monthLabel} <span className="text-slate-500">({visibleRows.length})</span>
             </span>
           }
           right={
@@ -1594,7 +1551,7 @@ export function SectionQuittances({
         >
           {visibleRows.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm text-slate-700">
-              {view === "todo" ? "Tout est à jour — aucune action en attente sur les derniers mois." : `Aucun bail actif trouvé pour ${monthLabel}.`}
+              {`Aucun bail actif trouvé pour ${monthLabel}.`}
             </div>
           ) : (
             <div className="space-y-2">
@@ -1642,7 +1599,7 @@ export function SectionQuittances({
                           {(tenantStatsByTenantId.get(String((lease as any).tenant_id))?.lateCount ?? 0) >= 2 ? (
                             <span
                               className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.7rem] font-semibold text-amber-800"
-                              title="Vu dans l'onglet Locataires : ce locataire a été en retard au moins 2 fois sur les 12 derniers mois."
+                              title="Ce locataire a été en retard au moins 2 fois sur les 12 derniers mois."
                             >
                               ⚠ Retards récurrents ({tenantStatsByTenantId.get(String((lease as any).tenant_id))?.lateCount}/{tenantStatsByTenantId.get(String((lease as any).tenant_id))?.totalCount})
                             </span>
@@ -1838,7 +1795,7 @@ export function SectionQuittances({
                           </button>
                         ) : null}
 
-                        {canSnooze && view === "todo" ? (
+                        {canSnooze ? (
                           <button
                             type="button"
                             disabled={loading}
@@ -1852,8 +1809,8 @@ export function SectionQuittances({
                             )}
                             title={
                               isSnoozed
-                                ? "Réaffiche cette quittance dans les tâches à traiter."
-                                : "Masque cette quittance si tu ne souhaites pas l’envoyer au locataire."
+                                ? "Réaffiche l’alerte correspondante dans le cockpit."
+                                : "Masque l’alerte correspondante dans le cockpit si tu ne souhaites pas l’envoyer au locataire."
                             }
                           >
                             <EyeSlashIcon className="h-4 w-4" aria-hidden="true" />
@@ -1865,7 +1822,7 @@ export function SectionQuittances({
 
                     {isSnoozed ? (
                       <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                        Masquée des actions en attente. Toujours visible ici dans l'historique.{view === "todo" && " Clique sur « Réactiver » pour la remettre dans Actions."}
+                        Masquée des alertes du cockpit. Toujours visible ici dans l'historique. Clique sur « Réactiver » pour la réafficher.
                       </div>
                     ) : null}
 
@@ -1963,7 +1920,6 @@ export function SectionQuittances({
           )}
         </Card>
 
-        {view === "month" ? (
         <Card title="Clôturées (période)" right={<span className="text-sm text-slate-500">{sentThisMonth.length}</span>}>
           {sentThisMonth.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-sm text-slate-700">
@@ -2055,9 +2011,7 @@ export function SectionQuittances({
             </div>
           ) : null}
         </Card>
-        ) : null}
       </div>
-      )}
 
       {/* ARCHIVES */}
       <div className="pt-2">
