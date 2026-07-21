@@ -216,7 +216,10 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
   // document (id inchangé) une fois le PDF prêt — sans ça l'effet ne se
   // redéclenchait jamais et "Ouvrir le PDF" restait grisé indéfiniment.
   useEffect(() => {
-    if (!document?.pdf_url) return;
+    // signed_pdf_url (bail signé) / external_pdf_url (bail importé) / pdf_url (généré par Lokt) :
+    // même priorité que l'API pdf-url.ts, sinon un bail importé n'a jamais de pdf_url et l'effet
+    // ne se déclenche jamais — "Ouvrir le bail importé" reste grisé indéfiniment.
+    if (!document?.signed_pdf_url && !document?.external_pdf_url && !document?.pdf_url) return;
     (async () => {
       try {
         const data = await fetch(
@@ -226,7 +229,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         setPdfSignedUrl(data.signedUrl);
       } catch { /* silencieux — le lien restera désactivé */ }
     })();
-  }, [document?.pdf_url, document?.id, userId]);
+  }, [document?.pdf_url, document?.external_pdf_url, document?.signed_pdf_url, document?.id, userId]);
 
   const save = async () => {
     const data = await api("/api/lease-contracts", { action: "save", userId, leaseId, contractKind: kind, formData: form });
