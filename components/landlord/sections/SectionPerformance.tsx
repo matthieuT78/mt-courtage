@@ -105,12 +105,20 @@ const fmtDateFR = (iso?: string | null) => {
 };
 
 // Dernière date anniversaire du bail déjà passée (null si le bail a moins d'un an).
+// Un bail démarré un 29 février n'a pas d'équivalent exact les années non bissextiles —
+// on plafonne au dernier jour du mois pour éviter que la date calculée ne glisse en mars.
 function lastLeaseAnniversary(startDate: Date, today: Date): Date | null {
-  const first = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+  const clampAnniversary = (year: number, month: number, day: number) => {
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(day, lastDay));
+  };
+  const sm = startDate.getMonth();
+  const sd = startDate.getDate();
+  const first = clampAnniversary(startDate.getFullYear() + 1, sm, sd);
   if (first > today) return null;
   let anniversary = first;
   while (true) {
-    const next = new Date(anniversary.getFullYear() + 1, anniversary.getMonth(), anniversary.getDate());
+    const next = clampAnniversary(anniversary.getFullYear() + 1, sm, sd);
     if (next > today) break;
     anniversary = next;
   }
