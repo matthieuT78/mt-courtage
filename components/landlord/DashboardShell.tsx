@@ -571,15 +571,17 @@ export function DashboardShell(props: any) {
         eyebrow: "Fonctionnalité lokt·one",
         title: "Choisissez votre locataire sur des données, pas sur un feeling",
         desc:
-          "Publiez votre annonce, recevez les dossiers directement dans lokt et comparez les candidats grâce au score lokt — jusqu’à la signature du bail, sans ressaisie.",
+          "Publiez votre annonce, lokt génère un lien unique à partager où vous voulez. Chaque candidat dépose son dossier directement en ligne — plus besoin de courir après les pièces manquantes par email. lokt calcule un score sur 100 pour chaque profil, vous comparez d’un coup d’œil, et un clic suffit pour créer le bail avec les infos du candidat déjà remplies.",
         requiredPlan: "lokt·one",
         planId: "landlord_5",
         cta: "Débloquer les candidatures",
         features: [
-          "Annonces de location en ligne",
-          "Collecte et scoring des dossiers candidats",
-          "Workflow candidature → bail en 1 clic",
-          "Suivi du changement de locataire (transition panel)",
+          "Lien unique généré en 2 minutes, à partager n’importe où",
+          "Le candidat dépose son dossier en ligne, sans allers-retours email",
+          "Score automatique sur 100 (revenus, stabilité, garant, pièces fournies)",
+          "Classement des candidats mis à jour en temps réel",
+          "Un clic pour créer le bail — coordonnées et revenus déjà repris, sans ressaisie",
+          "Dossiers non retenus supprimés automatiquement à la clôture, conforme RGPD",
         ],
         preview: (
           <div className="space-y-2 text-left">
