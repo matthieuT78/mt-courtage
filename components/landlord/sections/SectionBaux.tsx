@@ -106,7 +106,7 @@ type Props = {
   receipts?: RentReceipt[];
   onRefresh: () => Promise<void>;
   onPrepareDeparture?: (tenantId: string) => void;
-  deepLink?: { key: number; leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string } | null;
+  deepLink?: { key: number; leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string } | null;
   onNavigateDeep?: (section: string, link?: { propertyId?: string; highlightDelegation?: boolean }) => void;
 };
 
@@ -788,6 +788,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
   useEffect(() => {
     if (!deepLink?.leaseId) return;
     setExpandedId(deepLink.leaseId);
+    if (deepLink.openContract) {
+      setContractLeaseId(deepLink.leaseId);
+    }
     if (deepLink.openPanel === "deposit") {
       const leaseId = deepLink.leaseId;
       const lease = leases?.find((l) => l.id === leaseId);

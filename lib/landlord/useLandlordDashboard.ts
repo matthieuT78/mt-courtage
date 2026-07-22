@@ -88,6 +88,7 @@ export function useLandlordDashboard() {
   const [leases, setLeases] = useState<Lease[]>([]);
   const [payments, setPayments] = useState<RentPayment[]>([]);
   const [receipts, setReceipts] = useState<RentReceipt[]>([]);
+  const [leaseIdsWithContract, setLeaseIdsWithContract] = useState<Set<string>>(new Set());
   const [receiptSnoozeKeys, setReceiptSnoozeKeys] = useState<Set<string>>(new Set());
 
   // --- Auth (client side)
@@ -225,12 +226,14 @@ export function useLandlordDashboard() {
       if (leaseIds.length === 0) {
         setPayments([]);
         setReceipts([]);
+        setLeaseIdsWithContract(new Set());
         return;
       }
 
       const [
         { data: payData, error: payErr },
         { data: rData, error: rErr },
+        { data: cData, error: cErr },
       ] = await Promise.all([
         supabase
           .from("rent_payments")
@@ -244,13 +247,19 @@ export function useLandlordDashboard() {
           .in("lease_id", leaseIds)
           .order("created_at", { ascending: false })
           .limit(200),
+        supabase
+          .from("lease_contract_documents")
+          .select("lease_id")
+          .in("lease_id", leaseIds),
       ]);
 
       if (payErr) throw payErr;
       if (rErr) throw rErr;
+      if (cErr) console.warn("Impossible de charger les contrats de bail générés.", cErr);
 
       setPayments(((payData as any) ?? []) as RentPayment[]);
       setReceipts(((rData as any) ?? []) as RentReceipt[]);
+      setLeaseIdsWithContract(new Set(((cData as any) ?? []).map((row: any) => row.lease_id)));
     } catch (e: any) {
       setError(
         e?.message ||
@@ -659,6 +668,7 @@ export function useLandlordDashboard() {
     leases,
     payments,
     receipts,
+    leaseIdsWithContract,
 
     propertyById,
     tenantById,

@@ -175,6 +175,7 @@ export function SectionDashboard({
   leases,
   payments,
   receipts,
+  leaseIdsWithContract,
   propertyById,
   tenantById,
   properties,
@@ -203,6 +204,7 @@ export function SectionDashboard({
   leases: Lease[];
   payments: RentPayment[];
   receipts: RentReceipt[];
+  leaseIdsWithContract?: Set<string>;
   propertyById: Map<string, Property>;
   tenantById: Map<string, Tenant>;
   properties: Property[];
@@ -211,7 +213,7 @@ export function SectionDashboard({
   tenantsCount: number;
   leasesCount: number;
   onGo: (k: LandlordSectionKey) => void;
-  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string }) => void;
+  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string }) => void;
   onPrepareDeparture?: (tenantId: string) => void;
   onRefresh?: () => Promise<void>;
   userId?: string;
@@ -853,6 +855,28 @@ export function SectionDashboard({
       });
     }
 
+    const leasesMissingContract = activeLeases.filter((lease) => {
+      if (leaseIdsWithContract?.has(lease.id)) return false;
+      const property = propertyById.get(lease.property_id);
+      const delegated = Array.isArray((property as any)?.delegated_services) ? (property as any).delegated_services : [];
+      return !delegated.includes("bail_edl");
+    });
+
+    for (const lease of leasesMissingContract) {
+      const property = propertyById.get(lease.property_id);
+      const tenant = tenantById.get(lease.tenant_id);
+      const propertyLabel = (property as any)?.label || (property as any)?.address_line1 || "Bien";
+      const tenantName = tenant?.full_name || (lease as any).tenant_name || "Locataire";
+      actions.push({
+        id: `missing-contract-${lease.id}`,
+        tone: "amber",
+        title: "Contrat de bail non généré",
+        desc: `${propertyLabel} · ${tenantName} : cette location est active mais aucun contrat de bail n'a encore été généré ou archivé dans lokt.`,
+        onClick: () => onNavigateDeep?.("baux", { leaseId: lease.id, openContract: true }),
+        cta: "Générer le contrat",
+      });
+    }
+
     if (lateCount > 0) {
       const lateDetails = leaseCards
         .filter((card) => card.paymentStatus === "En retard")
@@ -1040,14 +1064,16 @@ export function SectionDashboard({
 
     return { priorityActions: visibleActions.slice(0, 5), snoozedActions: snoozed };
   }, [
-    activeLeases.length,
+    activeLeases,
     alertSnoozes,
     alerts,
     currentMonthReceipts.length,
     incompletePayments,
     lateCount,
     leaseCards,
+    leaseIdsWithContract,
     monthlyExpected,
+    onNavigateDeep,
     onboarding.doneCount,
     onboarding.next,
     onboarding.percent,
@@ -1060,6 +1086,7 @@ export function SectionDashboard({
     rentsToCollect,
     ratio,
     remainingToCollect,
+    tenantById,
   ]);
 
   const healthDetails = useMemo(() => {

@@ -198,7 +198,7 @@ export function DashboardShell(props: any) {
   const [contactOpen, setContactOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const deepLinkKeyRef = useRef(0);
-  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean } | null>(null);
+  const [deepLink, setDeepLink] = useState<{ key: number; leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean } | null>(null);
 
   useEffect(() => {
     const updatePad = () => {
@@ -253,6 +253,7 @@ export function DashboardShell(props: any) {
   const depositTotal = props?.depositTotal;
   const alerts = props?.alerts;
   const activeLeases = Array.isArray(props?.activeLeases) ? props.activeLeases : [];
+  const leaseIdsWithContract = props?.leaseIdsWithContract instanceof Set ? props.leaseIdsWithContract : new Set();
 
   const healthScore = Number(props?.healthScore || 0);
   const overLimit = !!props?.overLimit;
@@ -402,7 +403,7 @@ export function DashboardShell(props: any) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean }) {
+  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean }) {
     setActive(section);
     setMobileMoreOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -680,6 +681,7 @@ export function DashboardShell(props: any) {
             leases={leases}
             payments={payments}
             receipts={receipts}
+            leaseIdsWithContract={leaseIdsWithContract}
             propertyById={propertyById}
             tenantById={tenantById}
             profile={profile}
@@ -823,6 +825,7 @@ export function DashboardShell(props: any) {
     depositTotal,
     alerts,
     activeLeases,
+    leaseIdsWithContract,
     navOrder,
   ]);
 
