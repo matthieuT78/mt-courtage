@@ -5,15 +5,22 @@
 //   1. Résiliation immédiate de l'abonnement Stripe actif (si existant)
 //   2. Mise à jour du statut subscription en base → "canceled"
 //   3. Anonymisation des leads liés (conserve les stats métier, efface les PII)
-//   4. Suppression du profil
-//   5. Suppression de l'utilisateur auth Supabase
-//   6. Envoi d'un email de confirmation (best-effort, n'affecte pas le résultat de la suppression)
+//   4. Suppression de tous les fichiers de storage (quittances, baux, EDL, DPE,
+//      photos, pièces de candidature) — best-effort, ne bloque pas la suite :
+//      les lignes DB (properties/tenants/leases/rent_receipts...) cascadent déjà
+//      correctement via les FK vers auth.users, mais rien ne nettoyait jusqu'ici
+//      les fichiers Storage associés, qui restaient orphelins indéfiniment malgré
+//      la politique de confidentialité promettant un effacement sous 30 jours.
+//   5. Suppression du profil
+//   6. Suppression de l'utilisateur auth Supabase
+//   7. Envoi d'un email de confirmation (best-effort, n'affecte pas le résultat de la suppression)
 // Les lignes de facturation (subscriptions) sont conservées (obligation légale 10 ans).
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser } from "../../../lib/apiAuth";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { buildCompteSupprimeEmailHtml, buildCompteSupprimeEmailText } from "../../../lib/emails/compte-supprime";
+import { deleteUserStorage } from "../../../lib/deleteUserStorage";
 
 function budgetBucket(amount: number | null): string | null {
   if (!amount || amount <= 0) return null;
@@ -144,10 +151,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  // 4. Supprimer le profil
+  // 4. Supprimer tous les fichiers de storage (best-effort)
+  try {
+    const { removed, errors } = await deleteUserStorage(userId);
+    if (errors.length > 0) {
+      console.error(`[account/delete] storage cleanup partiel userId=${userId} — ${removed} fichier(s) supprimé(s), erreurs:`, errors);
+    } else {
+      console.log(`[account/delete] storage nettoyé userId=${userId} — ${removed} fichier(s) supprimé(s)`);
+    }
+  } catch (e: any) {
+    console.error("[account/delete] storage cleanup error:", e?.message || e);
+  }
+
+  // 5. Supprimer le profil
   await supabaseAdmin.from("profiles").delete().eq("id", userId);
 
-  // 5. Supprimer l'utilisateur auth Supabase
+  // 6. Supprimer l'utilisateur auth Supabase
   const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
   if (deleteError) {
     console.error("[account/delete] deleteUser error:", deleteError);
@@ -156,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   console.log(`[account/delete] compte supprimé userId=${userId} (stripe: ${stripeSubId ?? "aucun"})`);
 
-  // 6. Email de confirmation — best-effort : le compte est déjà supprimé, un échec d'envoi
+  // 7. Email de confirmation — best-effort : le compte est déjà supprimé, un échec d'envoi
   // ne doit pas faire échouer la requête (rien à annuler côté suppression).
   if (recipientEmail) {
     const payload = { fullName: recipientName, stripeCanceled: !!stripeSubId };

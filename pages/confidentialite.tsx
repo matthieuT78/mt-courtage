@@ -134,8 +134,9 @@ export default function ConfidentialitePage() {
                     consentement. Les statistiques agrégées (outil utilisé, date, localisation approximative) sont conservées sans limite pour améliorer le service.
                   </li>
                   <li>
-                    <strong>Données de compte :</strong> conservées pendant toute la durée d’activité du compte. En cas de suppression du compte, les données
-                    personnelles sont effacées ou anonymisées sous 30 jours.
+                    <strong>Données de compte :</strong> conservées pendant toute la durée d’activité du compte. La suppression du compte, accessible depuis
+                    l’espace personnel, efface immédiatement et définitivement le profil, les biens, locataires, baux, quittances, états des lieux et documents
+                    associés (base de données et fichiers stockés), à l’exception des données de facturation conservées pour obligation légale (voir ci-dessous).
                   </li>
                   <li>
                     <strong>Données bailleur et documents :</strong> tant que le compte est actif ou jusqu’à suppression demandée par l’utilisateur. Les données
@@ -207,7 +208,7 @@ export default function ConfidentialitePage() {
                 </p>
                 <ul className="list-disc space-y-1 pl-5">
                   <li>la désactivation immédiate de l'accès ;</li>
-                  <li>l'effacement de votre profil et de vos données bailleur sous 30 jours ;</li>
+                  <li>l'effacement immédiat de votre profil, de vos données bailleur et des documents associés (base de données et fichiers stockés) ;</li>
                   <li>l'anonymisation des simulations liées à votre compte.</li>
                 </ul>
                 <p>
