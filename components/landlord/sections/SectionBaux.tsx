@@ -2169,7 +2169,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                     {depositErr ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">{depositErr}</p> : null}
                     <button
                       type="button"
-                      disabled={depositLoading || (totalRetained === 0 && totalReturned === 0)}
+                      disabled={depositLoading || overRetained || (totalRetained === 0 && totalReturned === 0)}
                       onClick={() => submitDepositAction(l.id, "return")}
                       className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
                     >

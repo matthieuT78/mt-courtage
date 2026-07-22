@@ -46,6 +46,10 @@ function daysBetween(a: Date, b: Date) {
   return Math.round((bb - aa) / DAY_MS);
 }
 
+function addMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, date.getDate());
+}
+
 function parseISODate(v?: string | null) {
   if (!v) return null;
   const [y, m, d] = v.split("-").map(Number);
@@ -451,27 +455,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
 
-        // Caution a restituer : bail termine, caution encaissee mais non restituee depuis >= 30 j
+        // Caution a restituer : bail termine (end_date fiabilisee par le workflow de
+        // depart, qui l'ecrase avec la date effective de sortie saisie par le
+        // bailleur), caution encaissee mais non restituee. Le delai legal (art. 22,
+        // loi du 6 juillet 1989) est de 1 mois si l'EDL de sortie est conforme a
+        // celui d'entree, 2 mois si des degradations sont constatees — l'app ne
+        // detecte pas automatiquement les degradations (aucune comparaison EDL
+        // entree/sortie n'existe), donc les deux seuils sont presentes sans trancher.
         if (
           !active &&
           lease.deposit_paid_at &&
           !lease.deposit_returned_at &&
           leaseEnd
         ) {
-          const daysAfterEnd = daysBetween(leaseEnd, today);
-          if (daysAfterEnd >= 30) {
-            const scheduleKey = recurringScheduleKey(`deposit-return:${lease.id}`, daysAfterEnd, [30, 60], 30);
-            if (scheduleKey) {
-              alerts.push({
-                key: scheduleKey,
-                preferenceKey: "deposit_return_overdue",
-                tone: "red",
-                title: `Caution non restituee - ${labels.property}`,
-                detail: `Le bail de ${labels.tenant} est termine depuis ${daysAfterEnd} jour(s) et le depot de garantie n'a pas encore ete restitue. Delai legal : 1 mois (2 mois si dommages constates).`,
-                href: "/espace-bailleur?tab=locataires",
-                propertyId: lease.property_id,
-              });
-            }
+          const daysAfterOneMonth = daysBetween(addMonths(leaseEnd, 1), today);
+          const daysAfterTwoMonths = daysBetween(addMonths(leaseEnd, 2), today);
+
+          let scheduleKey: string | null = null;
+          let tone: AlertTone = "amber";
+          let title = "";
+          let detail = "";
+
+          if (daysAfterTwoMonths >= 0) {
+            scheduleKey = recurringScheduleKey(`deposit-return-2m:${lease.id}`, daysAfterTwoMonths, [0], 7);
+            tone = "red";
+            title = `Délai légal maximum dépassé — ${labels.property}`;
+            detail = `Le bail de ${labels.tenant} est terminé depuis plus de 2 mois et la caution n'a pas été restituée. C'est le délai légal maximum même en cas de dégradations constatées — une pénalité de 10% du loyer mensuel hors charges est due par mois de retard commencé (art. 22, loi du 6 juillet 1989).`;
+          } else if (daysAfterOneMonth >= 0) {
+            scheduleKey = recurringScheduleKey(`deposit-return-1m:${lease.id}`, daysAfterOneMonth, [0], 7);
+            tone = "amber";
+            title = `Caution à restituer — ${labels.property}`;
+            detail = `Le bail de ${labels.tenant} est terminé depuis plus d'1 mois et la caution n'a pas été restituée. Délai légal : 1 mois si l'état des lieux de sortie est conforme à celui d'entrée, 2 mois si des dégradations ont été constatées.`;
+          }
+
+          if (scheduleKey) {
+            alerts.push({
+              key: scheduleKey,
+              preferenceKey: "deposit_return_overdue",
+              tone,
+              title,
+              detail,
+              href: "/espace-bailleur?tab=locataires",
+              propertyId: lease.property_id,
+            });
           }
         }
 

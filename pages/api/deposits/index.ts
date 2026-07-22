@@ -59,6 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // ── return ─────────────────────────────────────────────────────────────────
     if (action === "return") {
       if (!returned_at) return res.status(400).json({ error: "Date de restitution requise." });
+      if (!lease.deposit_paid_at) return res.status(409).json({ error: "La caution n'a pas encore été encaissée." });
 
       // Structured decompte items (from new UI)
       const imputedMonths: Array<{ period_start: string; period_end: string; amount: number }> =
@@ -76,6 +77,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (retAmt < 0 || retainAmt < 0) return res.status(400).json({ error: "Les montants ne peuvent pas être négatifs." });
       if (retAmt === 0 && retainAmt === 0) return res.status(400).json({ error: "Au moins un montant (restitué ou retenu) est requis." });
 
+      const paidAmount = Number(lease.deposit_paid_amount ?? 0);
+      if (retAmt + retainAmt > paidAmount + 0.01) {
+        return res.status(400).json({ error: `Le total restitué + retenu (${(retAmt + retainAmt).toFixed(2)} €) dépasse la caution encaissée (${paidAmount.toFixed(2)} €).` });
+      }
+
       // Build a human-readable retained_reason from items
       let reasonLabel = safeStr(retained_reason) || null;
       if (hasItems) {
@@ -83,6 +89,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (imputedMonths.length) parts.push(`Loyers/charges : ${imputedMonths.map((m) => `${m.period_start.slice(0, 7)} (${safeNum(m.amount) ?? 0} €)`).join(", ")}`);
         if (damageItems.length) parts.push(`Dommages : ${damageItems.map((d) => `${d.label} (${safeNum(d.amount) ?? 0} €)`).join(", ")}`);
         reasonLabel = parts.join(" — ").slice(0, 500);
+      }
+      if (retainAmt > 0 && !reasonLabel) {
+        return res.status(400).json({ error: "Un motif est requis pour justifier une retenue sur la caution." });
       }
 
       const patch: Record<string, any> = {
