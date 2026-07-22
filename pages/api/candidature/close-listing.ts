@@ -23,12 +23,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!listing) return res.status(404).json({ error: "Annonce introuvable." });
   if (listing.status === "closed") return res.status(409).json({ error: "Annonce déjà clôturée." });
 
-  // Compter les candidatures à supprimer
-  const { count } = await supabaseAdmin
+  // Candidatures à supprimer (avec leurs pièces jointes en stockage)
+  const { data: toDelete } = await supabaseAdmin
     .from("candidatures")
-    .select("id", { count: "exact", head: true })
+    .select("id")
     .eq("listing_id", listing_id)
     .in("status", ["draft", "rejected", "waitlist"]);
+
+  const count = toDelete?.length ?? 0;
+
+  for (const row of toDelete || []) {
+    const folder = `${auth.userId}/${listing_id}/${row.id}`;
+    const { data: files } = await supabaseAdmin.storage.from("candidature-documents").list(folder);
+    if (files && files.length > 0) {
+      await supabaseAdmin.storage.from("candidature-documents").remove(files.map((f) => `${folder}/${f.name}`));
+    }
+  }
 
   // Supprimer les données personnelles des candidats non retenus (RGPD)
   const { error: deleteError } = await supabaseAdmin

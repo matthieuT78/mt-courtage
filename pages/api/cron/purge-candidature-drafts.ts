@@ -1,6 +1,9 @@
 // pages/api/cron/purge-candidature-drafts.ts
 //
-// Supprime les brouillons de candidature abandonnés depuis plus de 30 jours.
+// Supprime les brouillons de candidature abandonnés depuis plus de 30 jours,
+// ainsi que les pièces jointes correspondantes dans le bucket
+// candidature-documents (sinon les fichiers restent orphelins en stockage
+// après la suppression de la ligne en base).
 // Les candidatures soumises (submitted/accepted/rejected/waitlist) ne sont pas touchées.
 // Déclenchement : quotidien via Vercel Cron ou appel manuel.
 
@@ -24,14 +27,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - DRAFT_TTL_DAYS);
 
-  const { count, error } = await supabaseAdmin
+  const { data: expired, error: selectError } = await supabaseAdmin
     .from("candidatures")
-    .delete({ count: "exact" })
+    .select("id, listing_id, rental_listings(user_id)")
     .eq("status", "draft")
     .lt("updated_at", cutoff.toISOString());
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (selectError) return res.status(500).json({ error: selectError.message });
 
-  console.log(`[cron/purge-candidature-drafts] ${count ?? 0} brouillon(s) supprimé(s)`);
-  return res.status(200).json({ ok: true, deleted: count ?? 0 });
+  let filesRemoved = 0;
+  for (const row of expired || []) {
+    const landlordUserId = (row as any).rental_listings?.user_id;
+    if (!landlordUserId) continue;
+    const folder = `${landlordUserId}/${row.listing_id}/${row.id}`;
+    const { data: files } = await supabaseAdmin.storage.from("candidature-documents").list(folder);
+    if (files && files.length > 0) {
+      const paths = files.map((f) => `${folder}/${f.name}`);
+      const { error: removeError } = await supabaseAdmin.storage.from("candidature-documents").remove(paths);
+      if (!removeError) filesRemoved += paths.length;
+    }
+  }
+
+  const ids = (expired || []).map((row) => row.id);
+  const count = ids.length;
+  if (ids.length > 0) {
+    const { error: deleteError } = await supabaseAdmin.from("candidatures").delete().in("id", ids);
+    if (deleteError) return res.status(500).json({ error: deleteError.message });
+  }
+
+  console.log(`[cron/purge-candidature-drafts] ${count} brouillon(s) supprimé(s), ${filesRemoved} pièce(s) jointe(s) supprimée(s)`);
+  return res.status(200).json({ ok: true, deleted: count, filesRemoved });
 }

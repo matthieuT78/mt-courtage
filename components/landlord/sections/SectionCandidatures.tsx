@@ -49,6 +49,12 @@ type Candidature = {
   docs_payslips: boolean;
   docs_tax: boolean;
   docs_address: boolean;
+  docs_identity_path: string | null;
+  docs_tax_path: string | null;
+  docs_address_path: string | null;
+  docs_payslip_1_path: string | null;
+  docs_payslip_2_path: string | null;
+  docs_payslip_3_path: string | null;
   status: string;
   submitted_at: string | null;
   landlord_note: string | null;
@@ -145,26 +151,53 @@ function formatDate(iso: string | null) {
 
 // ── DocsCompleteness ──────────────────────────────────────────────────────────
 
+async function openCandidatureDocument(candidatureId: string, field: string) {
+  try {
+    const res = await fetch("/api/candidature/document-url", {
+      method: "POST",
+      headers: await getHeaders(),
+      body: JSON.stringify({ candidatureId, field }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.signedUrl) throw new Error(json.error || "Ouverture impossible.");
+    window.open(json.signedUrl, "_blank", "noopener,noreferrer");
+  } catch (e: any) {
+    alert(e.message || "Impossible d'ouvrir le document.");
+  }
+}
+
 function DocsCompleteness({ c }: { c: Candidature }) {
   const docs = [
-    { key: "docs_identity", label: "CNI" },
-    { key: "docs_payslips", label: "Fiche de paie" },
-    { key: "docs_tax", label: "Avis impo." },
-    { key: "docs_address", label: "Justif. domicile" },
+    { key: "docs_identity", label: "CNI", path: c.docs_identity_path },
+    { key: "docs_payslips", label: "Fiche de paie", path: c.docs_payslip_1_path },
+    { key: "docs_tax", label: "Avis impo.", path: c.docs_tax_path },
+    { key: "docs_address", label: "Justif. domicile", path: c.docs_address_path },
   ];
   const done = docs.filter((d) => c[d.key as keyof Candidature]).length;
   return (
     <div className="flex flex-wrap gap-1">
-      {docs.map((d) => (
-        <span
-          key={d.key}
-          className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium ${
-            c[d.key as keyof Candidature] ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"
-          }`}
-        >
-          {d.label}
-        </span>
-      ))}
+      {docs.map((d) => {
+        const provided = !!c[d.key as keyof Candidature];
+        const viewable = provided && !!d.path;
+        const commonClass = `rounded-full px-1.5 py-0.5 text-[0.6rem] font-medium ${
+          provided ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"
+        }`;
+        return viewable ? (
+          <button
+            key={d.key}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); openCandidatureDocument(c.id, d.key === "docs_payslips" ? "docs_payslip_1" : d.key); }}
+            className={`${commonClass} underline decoration-dotted underline-offset-2 hover:bg-emerald-200`}
+            title="Voir le document"
+          >
+            {d.label}
+          </button>
+        ) : (
+          <span key={d.key} className={commonClass}>
+            {d.label}
+          </span>
+        );
+      })}
       <span className="text-[0.65rem] text-slate-400 ml-1 self-center">{done}/4</span>
     </div>
   );

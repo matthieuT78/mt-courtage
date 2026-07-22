@@ -84,6 +84,8 @@ export default function CandidaturePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -165,8 +167,8 @@ export default function CandidaturePage() {
   const missingRequired = REQUIRED_FOR_SUBMIT.filter((k) => !isFilled(form, k));
   const canSubmit = missingRequired.length === 0 && form.consent;
 
-  async function saveDraft() {
-    if (!listing) return;
+  async function saveDraft(): Promise<string | null> {
+    if (!listing) return null;
     setSaving(true);
     setSaveError(null);
     try {
@@ -187,10 +189,55 @@ export default function CandidaturePage() {
       setCandidatureToken(newToken);
       localStorage.setItem(STORAGE_KEY(listing.token), newToken);
       setLastSaved(new Date());
+      return newToken;
     } catch (e: any) {
       setSaveError(e.message);
+      return null;
     } finally {
       setSaving(false);
+    }
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || "");
+        resolve(result.slice(result.indexOf(",") + 1));
+      };
+      reader.onerror = () => reject(new Error("Lecture du fichier impossible."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadDocument(field: string, file: File) {
+    setUploadErrors((prev) => ({ ...prev, [field]: "" }));
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadErrors((prev) => ({ ...prev, [field]: "Fichier trop volumineux (10 Mo max)." }));
+      return;
+    }
+    if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setUploadErrors((prev) => ({ ...prev, [field]: "Format non accepté (PDF, JPEG, PNG ou WEBP)." }));
+      return;
+    }
+    setUploadingField(field);
+    try {
+      const token = candidatureToken ?? (await saveDraft());
+      if (!token) throw new Error("Impossible de créer le dossier avant l'envoi.");
+      const fileBase64 = await fileToBase64(file);
+      const res = await fetch("/api/candidature/upload-document", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidature_token: token, field, filename: file.name, contentType: file.type, fileBase64 }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Envoi du document impossible.");
+      set(field, true);
+      if (field.startsWith("docs_payslip_")) set("docs_payslips", true);
+    } catch (e: any) {
+      setUploadErrors((prev) => ({ ...prev, [field]: e.message || "Envoi du document impossible." }));
+    } finally {
+      setUploadingField(null);
     }
   }
 
@@ -421,25 +468,29 @@ export default function CandidaturePage() {
                     { field: "docs_address", label: "Justificatif de domicile", hint: "Facture ou quittance de moins de 3 mois", required: false },
                   ].map(({ label, hint, field, required }) => {
                     const uploaded = form[field as keyof typeof form] as boolean;
+                    const isUploading = uploadingField === field;
+                    const error = uploadErrors[field];
                     return (
-                      <label
-                        key={field}
-                        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
-                          uploaded ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:border-[#635bff]/30"
-                        }`}
-                      >
-                        <input type="file" className="sr-only" accept="image/*,application/pdf"
-                          onChange={(e) => { if (e.target.files?.[0]) set(field, true); }} />
-                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${uploaded ? "bg-emerald-100" : "bg-slate-100"}`}>
-                          {uploaded ? <CheckCircleIcon className="h-5 w-5 text-emerald-600" /> : <DocumentArrowUpIcon className="h-5 w-5 text-slate-400" />}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-sm font-medium ${uploaded ? "text-emerald-800" : "text-slate-800"}`}>
-                            {label}{required && <span className="text-red-400 ml-1">*</span>}
-                          </p>
-                          <p className="text-xs text-slate-400">{uploaded ? "Document joint ✓" : hint}</p>
-                        </div>
-                      </label>
+                      <div key={field}>
+                        <label
+                          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
+                            error ? "border-red-200 bg-red-50" : uploaded ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:border-[#635bff]/30"
+                          } ${isUploading ? "opacity-60 pointer-events-none" : ""}`}
+                        >
+                          <input type="file" className="sr-only" accept="image/*,application/pdf" disabled={isUploading}
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadDocument(field, f); e.target.value = ""; }} />
+                          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${uploaded ? "bg-emerald-100" : "bg-slate-100"}`}>
+                            {uploaded ? <CheckCircleIcon className="h-5 w-5 text-emerald-600" /> : <DocumentArrowUpIcon className="h-5 w-5 text-slate-400" />}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className={`text-sm font-medium ${uploaded ? "text-emerald-800" : "text-slate-800"}`}>
+                              {label}{required && <span className="text-red-400 ml-1">*</span>}
+                            </p>
+                            <p className="text-xs text-slate-400">{isUploading ? "Envoi en cours…" : uploaded ? "Document envoyé ✓" : hint}</p>
+                          </div>
+                        </label>
+                        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+                      </div>
                     );
                   })}
                 </div>
@@ -457,29 +508,33 @@ export default function CandidaturePage() {
                       const monthLabel = months[i];
                       const uploaded = form[field];
                       const isRequired = i === 0;
+                      const isUploading = uploadingField === field;
+                      const error = uploadErrors[field];
                       return (
-                        <label
-                          key={field}
-                          className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border px-3 py-4 text-center transition ${
-                            uploaded ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:border-[#635bff]/30"
-                          }`}
-                        >
-                          <input type="file" className="sr-only" accept="image/*,application/pdf"
-                            onChange={(e) => { if (e.target.files?.[0]) set(field, true); }} />
-                          <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${uploaded ? "bg-emerald-100" : "bg-slate-100"}`}>
-                            {uploaded
-                              ? <CheckCircleIcon className="h-6 w-6 text-emerald-600" />
-                              : <DocumentArrowUpIcon className="h-6 w-6 text-slate-400" />}
-                          </span>
-                          <div>
-                            <p className={`text-xs font-semibold capitalize ${uploaded ? "text-emerald-800" : "text-slate-700"}`}>
-                              {monthLabel}{isRequired && <span className="text-red-400 ml-0.5">*</span>}
-                            </p>
-                            <p className="mt-0.5 text-[0.65rem] text-slate-400">
-                              {uploaded ? "Jointe ✓" : "PDF ou photo"}
-                            </p>
-                          </div>
-                        </label>
+                        <div key={field}>
+                          <label
+                            className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border px-3 py-4 text-center transition ${
+                              error ? "border-red-200 bg-red-50" : uploaded ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:border-[#635bff]/30"
+                            } ${isUploading ? "opacity-60 pointer-events-none" : ""}`}
+                          >
+                            <input type="file" className="sr-only" accept="image/*,application/pdf" disabled={isUploading}
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadDocument(field, f); e.target.value = ""; }} />
+                            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${uploaded ? "bg-emerald-100" : "bg-slate-100"}`}>
+                              {uploaded
+                                ? <CheckCircleIcon className="h-6 w-6 text-emerald-600" />
+                                : <DocumentArrowUpIcon className="h-6 w-6 text-slate-400" />}
+                            </span>
+                            <div>
+                              <p className={`text-xs font-semibold capitalize ${uploaded ? "text-emerald-800" : "text-slate-700"}`}>
+                                {monthLabel}{isRequired && <span className="text-red-400 ml-0.5">*</span>}
+                              </p>
+                              <p className="mt-0.5 text-[0.65rem] text-slate-400">
+                                {isUploading ? "Envoi…" : uploaded ? "Envoyée ✓" : "PDF ou photo"}
+                              </p>
+                            </div>
+                          </label>
+                          {error && <p className="mt-1 text-[0.65rem] text-red-600">{error}</p>}
+                        </div>
                       );
                     })}
                   </div>
