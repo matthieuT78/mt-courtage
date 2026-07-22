@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!supabaseAdmin) return res.status(500).json({ error: "Supabase admin non configuré." });
     const auth = await requireApiUser(req);
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
-    const { userId, leaseId, action, formData, contractKind, signedPdfUrl, externalPdfUrl, fileName } = req.body || {};
+    const { userId, leaseId, action, formData, contractKind, externalPdfUrl, fileName } = req.body || {};
     const userCheck = requireMatchingUser(auth, String(userId || ""));
     if (!userCheck.ok) return res.status(userCheck.status).json({ error: userCheck.error });
     if (!leaseId) return res.status(400).json({ error: "leaseId requis." });
@@ -46,18 +46,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const isLocked = context.document?.status === "signed" || context.document?.status === "archived";
     if (isLocked) {
       return res.status(409).json({ error: "Ce bail est déjà signé et ne peut plus être modifié." });
-    }
-    if (action === "confirmSigned") {
-      if (!context.document?.id || !signedPdfUrl) return res.status(400).json({ error: "Document et PDF signé requis." });
-      const { data, error } = await supabaseAdmin
-        .from("lease_contract_documents")
-        .update({ signed_pdf_url: signedPdfUrl, signed_at: new Date().toISOString(), status: "signed", updated_at: new Date().toISOString() })
-        .eq("id", context.document.id)
-        .eq("user_id", userId)
-        .select("*")
-        .single();
-      if (error) throw error;
-      return res.status(200).json({ ok: true, document: data });
     }
     if (action === "confirmExternal") {
       if (!context.document?.id || !externalPdfUrl) return res.status(400).json({ error: "Document et PDF importé requis." });
