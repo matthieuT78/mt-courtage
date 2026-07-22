@@ -110,7 +110,12 @@ export default function ConfidentialitePage() {
                     <strong>API Adresse — data.gouv.fr</strong> — géocodage des villes françaises (localité → coordonnées GPS). API publique gérée par l’État français ; aucune donnée personnelle n’est transmise.
                   </li>
                 </ul>
-                <p>lokt.fr ne revend pas les données personnelles et ne les partage pas avec des partenaires commerciaux tiers à des fins de prospection.</p>
+                <p>
+                  lokt.fr ne revend pas les données personnelles et ne les partage pas avec des partenaires commerciaux tiers, à l’exception des
+                  utilisateurs des simulateurs (calculettes) ayant explicitement et séparément consenti à être mis en relation avec un conseiller
+                  partenaire pour leur projet. Ce consentement est optionnel, distinct de l’acceptation des CGU, et n’est jamais requis pour accéder
+                  aux résultats de la simulation.
+                </p>
               </Section>
 
               <Section title="5. Transferts hors Union européenne">
