@@ -465,7 +465,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
   });
   const setF = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  type PropertyLite = { id: string; label: string | null; address_line1: string | null; postal_code: string | null; city: string | null; surface_m2: number | null };
+  type PropertyLite = { id: string; label: string | null; address_line1: string | null; postal_code: string | null; city: string | null; surface_m2: number | null; status?: string | null };
   const [properties, setProperties] = useState<PropertyLite[]>([]);
   const [vacantIds, setVacantIds] = useState<Set<string>>(new Set());
   const [propsLoaded, setPropsLoaded] = useState(false);
@@ -474,12 +474,13 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
     if (!showCreate || propsLoaded || !supabase) return;
     (async () => {
       const [propsRes, leasesRes] = await Promise.all([
-        supabase.from("properties").select("id,label,address_line1,postal_code,city,surface_m2").eq("user_id", userId).order("created_at", { ascending: false }),
+        supabase.from("properties").select("id,label,address_line1,postal_code,city,surface_m2,status").eq("user_id", userId).order("created_at", { ascending: false }),
         supabase.from("leases").select("property_id").eq("user_id", userId).eq("status", "active"),
       ]);
       const occupied = new Set<string>((leasesRes.data || []).map((l: any) => l.property_id).filter(Boolean));
-      setVacantIds(new Set((propsRes.data || []).map((p: any) => p.id).filter((id: string) => !occupied.has(id))));
-      setProperties(propsRes.data || []);
+      const nonArchived = (propsRes.data || []).filter((p: any) => String(p.status || "").toLowerCase() !== "archived");
+      setVacantIds(new Set(nonArchived.map((p: any) => p.id).filter((id: string) => !occupied.has(id))));
+      setProperties(nonArchived);
       setPropsLoaded(true);
     })();
   }, [showCreate]);
