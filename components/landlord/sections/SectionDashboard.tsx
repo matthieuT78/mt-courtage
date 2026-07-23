@@ -508,9 +508,13 @@ export function SectionDashboard({
     const activeProps = (properties || []).filter(
       (p) => String(p.status || "").toLowerCase() !== "archived"
     );
-    // Une fois la mise en route complétée, elle disparaît définitivement
-    // tant que l'utilisateur a au moins un bien actif.
-    // Elle ne revient que s'il repart de zéro (0 biens actifs).
+    // Une fois la mise en route complétée une première fois, ce gros widget
+    // disparaît définitivement tant que l'utilisateur a au moins un bien actif
+    // — c'est volontaire : c'est un guide de première prise en main, pas un
+    // rappel permanent. Si l'utilisateur régresse plus tard (ex. plus aucun
+    // bien lié à une location), la relance se fait via la carte d'alerte
+    // "Terminer la mise en route" dans priorityActions (plus bas, basée
+    // uniquement sur onboarding.percent), pas en rouvrant ce widget.
     if (doneAtISO && activeProps.length > 0) return true;
     if (onboarding.percent < 100) return false;
     return true;
@@ -530,6 +534,16 @@ export function SectionDashboard({
     const previous = prevPercentRef.current;
     const current = onboarding.percent;
     prevPercentRef.current = current;
+
+    // Si doneAtISO est déjà connu (restauré depuis localStorage/app_settings),
+    // la mise en route a déjà été complétée par le passé : pas de nouvelle
+    // détection de transition. Sans ce garde-fou, le chargement asynchrone des
+    // données (properties/tenants/leases arrivant après le premier rendu) fait
+    // grimper onboarding.percent en plusieurs étapes à chaque montage, et une
+    // hausse tardive vers 100% était prise pour une "toute nouvelle"
+    // complétion — ça repassait justCompleted à true et rouvrait brièvement
+    // le widget complet alors qu'il avait déjà disparu pour de bon.
+    if (doneAtISO) return;
 
     if (current === 100 && previous >= 0 && previous < 100) {
       const nowISO = new Date().toISOString();
@@ -557,7 +571,7 @@ export function SectionDashboard({
 
       return () => clearTimeout(timer);
     }
-  }, [onboarding.percent, storageKey, userId]);
+  }, [onboarding.percent, storageKey, userId, doneAtISO]);
 
   useEffect(() => {
     if (!supabase || !userId) return;
