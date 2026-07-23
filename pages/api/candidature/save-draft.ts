@@ -10,9 +10,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     candidature_token,
     first_name, last_name, email, phone, birth_date,
     professional_situation, employer_name, net_monthly_income,
-    has_guarantor, guarantor_first_name, guarantor_last_name,
+    has_guarantor, guarantor_type, visale_number,
+    guarantor_first_name, guarantor_last_name,
     guarantor_email, guarantor_situation, guarantor_income,
     docs_identity, docs_payslip_1, docs_payslip_2, docs_payslip_3, docs_tax, docs_address,
+    guarantor_docs_identity, guarantor_docs_payslip_1, guarantor_docs_payslip_2, guarantor_docs_payslip_3, guarantor_docs_tax,
   } = req.body || {};
 
   if (!listing_token) return res.status(400).json({ error: "listing_token requis." });
@@ -38,6 +40,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     employer_name: employer_name?.trim() || null,
     net_monthly_income: net_monthly_income ? Number(net_monthly_income) : null,
     has_guarantor: Boolean(has_guarantor),
+    guarantor_type: has_guarantor ? guarantor_type || null : null,
+    visale_number: has_guarantor && guarantor_type === "visale" ? visale_number?.trim() || null : null,
     guarantor_first_name: guarantor_first_name?.trim() || null,
     guarantor_last_name: guarantor_last_name?.trim() || null,
     guarantor_email: guarantor_email?.trim().toLowerCase() || null,
@@ -50,6 +54,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     docs_payslips: Boolean(docs_payslip_1) || Boolean(docs_payslip_2) || Boolean(docs_payslip_3),
     docs_tax: Boolean(docs_tax),
     docs_address: Boolean(docs_address),
+    guarantor_docs_identity: Boolean(guarantor_docs_identity),
+    guarantor_docs_payslip_1: Boolean(guarantor_docs_payslip_1),
+    guarantor_docs_payslip_2: Boolean(guarantor_docs_payslip_2),
+    guarantor_docs_payslip_3: Boolean(guarantor_docs_payslip_3),
+    guarantor_docs_payslips: Boolean(guarantor_docs_payslip_1) || Boolean(guarantor_docs_payslip_2) || Boolean(guarantor_docs_payslip_3),
+    guarantor_docs_tax: Boolean(guarantor_docs_tax),
     updated_at: new Date().toISOString(),
   };
 

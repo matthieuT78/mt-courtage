@@ -42,6 +42,8 @@ type Candidature = {
   employer_name: string | null;
   net_monthly_income: number | null;
   has_guarantor: boolean;
+  guarantor_type: string | null;
+  visale_number: string | null;
   guarantor_first_name: string | null;
   guarantor_last_name: string | null;
   guarantor_income: number | null;
@@ -55,6 +57,14 @@ type Candidature = {
   docs_payslip_1_path: string | null;
   docs_payslip_2_path: string | null;
   docs_payslip_3_path: string | null;
+  guarantor_docs_identity: boolean;
+  guarantor_docs_payslips: boolean;
+  guarantor_docs_tax: boolean;
+  guarantor_docs_identity_path: string | null;
+  guarantor_docs_tax_path: string | null;
+  guarantor_docs_payslip_1_path: string | null;
+  guarantor_docs_payslip_2_path: string | null;
+  guarantor_docs_payslip_3_path: string | null;
   status: string;
   submitted_at: string | null;
   landlord_note: string | null;
@@ -166,13 +176,19 @@ async function openCandidatureDocument(candidatureId: string, field: string) {
   }
 }
 
-function DocsCompleteness({ c }: { c: Candidature }) {
-  const docs = [
-    { key: "docs_identity", label: "CNI", path: c.docs_identity_path },
-    { key: "docs_payslips", label: "Fiche de paie", path: c.docs_payslip_1_path },
-    { key: "docs_tax", label: "Avis impo.", path: c.docs_tax_path },
-    { key: "docs_address", label: "Justif. domicile", path: c.docs_address_path },
-  ];
+function DocsCompleteness({ c, guarantor = false }: { c: Candidature; guarantor?: boolean }) {
+  const docs = guarantor
+    ? [
+        { key: "guarantor_docs_identity", label: "CNI garant", path: c.guarantor_docs_identity_path, openField: "guarantor_docs_identity" },
+        { key: "guarantor_docs_payslips", label: "Fiche de paie garant", path: c.guarantor_docs_payslip_1_path, openField: "guarantor_docs_payslip_1" },
+        { key: "guarantor_docs_tax", label: "Avis impo. garant", path: c.guarantor_docs_tax_path, openField: "guarantor_docs_tax" },
+      ]
+    : [
+        { key: "docs_identity", label: "CNI", path: c.docs_identity_path, openField: "docs_identity" },
+        { key: "docs_payslips", label: "Fiche de paie", path: c.docs_payslip_1_path, openField: "docs_payslip_1" },
+        { key: "docs_tax", label: "Avis impo.", path: c.docs_tax_path, openField: "docs_tax" },
+        { key: "docs_address", label: "Justif. domicile", path: c.docs_address_path, openField: "docs_address" },
+      ];
   const done = docs.filter((d) => c[d.key as keyof Candidature]).length;
   return (
     <div className="flex flex-wrap gap-1">
@@ -186,7 +202,7 @@ function DocsCompleteness({ c }: { c: Candidature }) {
           <button
             key={d.key}
             type="button"
-            onClick={(e) => { e.stopPropagation(); openCandidatureDocument(c.id, d.key === "docs_payslips" ? "docs_payslip_1" : d.key); }}
+            onClick={(e) => { e.stopPropagation(); openCandidatureDocument(c.id, d.openField); }}
             className={`${commonClass} underline decoration-dotted underline-offset-2 hover:bg-emerald-200`}
             title="Voir le document"
           >
@@ -198,7 +214,7 @@ function DocsCompleteness({ c }: { c: Candidature }) {
           </span>
         );
       })}
-      <span className="text-[0.65rem] text-slate-400 ml-1 self-center">{done}/4</span>
+      <span className="text-[0.65rem] text-slate-400 ml-1 self-center">{done}/{docs.length}</span>
     </div>
   );
 }
@@ -1265,7 +1281,10 @@ function CandidatureRow({ c, listing, updating, converting, hasBail, onUpdateSta
             {c.submitted_at && <Detail label="Déposé le" value={formatDate(c.submitted_at) ?? ""} />}
             {c.employer_name && <Detail label="Employeur" value={c.employer_name} />}
             {income > 0 && <Detail label="Revenus nets" value={`${income.toLocaleString("fr-FR")} €/mois`} />}
-            {c.has_guarantor && (
+            {c.has_guarantor && c.guarantor_type === "visale" && (
+              <Detail label="Garantie" value={`Visale${c.visale_number ? ` — ${c.visale_number}` : ""}`} />
+            )}
+            {c.has_guarantor && c.guarantor_type !== "visale" && (
               <>
                 <Detail label="Garant" value={[c.guarantor_first_name, c.guarantor_last_name].filter(Boolean).join(" ") || "—"} />
                 {c.guarantor_income && <Detail label="Revenus garant" value={`${c.guarantor_income.toLocaleString("fr-FR")} €/mois`} />}
@@ -1273,6 +1292,7 @@ function CandidatureRow({ c, listing, updating, converting, hasBail, onUpdateSta
             )}
           </div>
           <DocsCompleteness c={c} />
+          {c.has_guarantor && c.guarantor_type !== "visale" && <DocsCompleteness c={c} guarantor />}
           <div className="border-t border-slate-200 pt-2">
             <p className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">Détail du score lokt</p>
             <ScoreBreakdown c={c} listing={listing} />

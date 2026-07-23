@@ -9,6 +9,11 @@ const FIELD_TO_PATH_COLUMN: Record<string, string> = {
   docs_payslip_1: "docs_payslip_1_path",
   docs_payslip_2: "docs_payslip_2_path",
   docs_payslip_3: "docs_payslip_3_path",
+  guarantor_docs_identity: "guarantor_docs_identity_path",
+  guarantor_docs_tax: "guarantor_docs_tax_path",
+  guarantor_docs_payslip_1: "guarantor_docs_payslip_1_path",
+  guarantor_docs_payslip_2: "guarantor_docs_payslip_2_path",
+  guarantor_docs_payslip_3: "guarantor_docs_payslip_3_path",
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

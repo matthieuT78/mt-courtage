@@ -11,15 +11,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     candidature_token,
     first_name, last_name, email, phone, birth_date,
     professional_situation, employer_name, net_monthly_income,
-    has_guarantor, guarantor_first_name, guarantor_last_name,
+    has_guarantor, guarantor_type, visale_number,
+    guarantor_first_name, guarantor_last_name,
     guarantor_email, guarantor_situation, guarantor_income,
     docs_identity, docs_payslip_1, docs_payslip_2, docs_payslip_3, docs_tax, docs_address,
+    guarantor_docs_identity, guarantor_docs_payslip_1, guarantor_docs_payslip_2, guarantor_docs_payslip_3, guarantor_docs_tax,
     consent,
   } = req.body || {};
 
   if (
     !listing_token || !first_name || !last_name || !email || !phone || !birth_date ||
-    !professional_situation || !net_monthly_income || !docs_identity || !docs_payslip_1
+    !professional_situation || !docs_identity || !docs_payslip_1
   ) {
     return res.status(400).json({ error: "Champs obligatoires manquants." });
   }
@@ -29,15 +31,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Adresse email invalide." });
   }
 
-  const income = Number(net_monthly_income);
-  if (!Number.isFinite(income) || income <= 0) {
-    return res.status(400).json({ error: "Revenus nets invalides." });
+  // Un étudiant sans revenu propre, adossé à un garant (physique ou Visale),
+  // n'a pas de revenu net mensuel à déclarer — ce n'est plus exigé dans ce cas.
+  const incomeWaived = professional_situation === "etudiant" && Boolean(has_guarantor);
+
+  let income: number | null = null;
+  if (net_monthly_income !== undefined && net_monthly_income !== null && net_monthly_income !== "") {
+    income = Number(net_monthly_income);
+    if (!Number.isFinite(income) || income <= 0) {
+      return res.status(400).json({ error: "Revenus nets invalides." });
+    }
+  } else if (!incomeWaived) {
+    return res.status(400).json({ error: "Revenus nets requis." });
   }
+
   let guarantorIncomeValue: number | null = null;
-  if (guarantor_income !== undefined && guarantor_income !== null && guarantor_income !== "") {
-    guarantorIncomeValue = Number(guarantor_income);
-    if (!Number.isFinite(guarantorIncomeValue) || guarantorIncomeValue < 0) {
-      return res.status(400).json({ error: "Revenus du garant invalides." });
+  if (has_guarantor) {
+    if (guarantor_type !== "individual" && guarantor_type !== "visale") {
+      return res.status(400).json({ error: "Type de garant requis." });
+    }
+    if (guarantor_type === "visale") {
+      if (!visale_number || !String(visale_number).trim()) {
+        return res.status(400).json({ error: "Numéro de visa Visale requis." });
+      }
+    } else {
+      if (!guarantor_first_name || !guarantor_last_name) {
+        return res.status(400).json({ error: "Nom et prénom du garant requis." });
+      }
+      if (!guarantor_docs_identity || !guarantor_docs_payslip_1) {
+        return res.status(400).json({ error: "Pièces du garant manquantes (identité + fiche de paie)." });
+      }
+      if (!guarantor_income) {
+        return res.status(400).json({ error: "Revenus du garant requis." });
+      }
+      guarantorIncomeValue = Number(guarantor_income);
+      if (!Number.isFinite(guarantorIncomeValue) || guarantorIncomeValue <= 0) {
+        return res.status(400).json({ error: "Revenus du garant invalides." });
+      }
     }
   }
 
@@ -92,6 +122,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     employer_name: employer_name?.trim() || null,
     net_monthly_income: income,
     has_guarantor: Boolean(has_guarantor),
+    guarantor_type: has_guarantor ? guarantor_type : null,
+    visale_number: has_guarantor && guarantor_type === "visale" ? String(visale_number).trim() : null,
     guarantor_first_name: guarantor_first_name?.trim() || null,
     guarantor_last_name: guarantor_last_name?.trim() || null,
     guarantor_email: guarantor_email?.trim().toLowerCase() || null,
@@ -104,6 +136,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     docs_payslips: Boolean(docs_payslip_1) || Boolean(docs_payslip_2) || Boolean(docs_payslip_3),
     docs_tax: Boolean(docs_tax),
     docs_address: Boolean(docs_address),
+    guarantor_docs_identity: Boolean(guarantor_docs_identity),
+    guarantor_docs_payslip_1: Boolean(guarantor_docs_payslip_1),
+    guarantor_docs_payslip_2: Boolean(guarantor_docs_payslip_2),
+    guarantor_docs_payslip_3: Boolean(guarantor_docs_payslip_3),
+    guarantor_docs_payslips: Boolean(guarantor_docs_payslip_1) || Boolean(guarantor_docs_payslip_2) || Boolean(guarantor_docs_payslip_3),
+    guarantor_docs_tax: Boolean(guarantor_docs_tax),
     submitted_at: new Date().toISOString(),
     consent_at: new Date().toISOString(),
   };

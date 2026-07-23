@@ -40,10 +40,9 @@ const SITUATIONS = [
 
 const STORAGE_KEY = (listingToken: string) => `lokt_draft_${listingToken}`;
 
-const REQUIRED_FOR_SUBMIT = [
+const BASE_REQUIRED = [
   "first_name", "last_name", "email", "phone", "birth_date",
-  "professional_situation", "net_monthly_income",
-  "docs_identity", "docs_payslip_1",
+  "professional_situation", "docs_identity", "docs_payslip_1",
 ] as const;
 
 const REQUIRED_LABELS: Record<string, string> = {
@@ -56,7 +55,37 @@ const REQUIRED_LABELS: Record<string, string> = {
   net_monthly_income: "Revenus nets",
   docs_identity: "Pièce d'identité",
   docs_payslip_1: "Fiche de paie (mois récent)",
+  guarantor_type: "Type de garant",
+  visale_number: "Numéro de visa Visale",
+  guarantor_first_name: "Prénom du garant",
+  guarantor_last_name: "Nom du garant",
+  guarantor_income: "Revenus du garant",
+  guarantor_docs_identity: "Pièce d'identité du garant",
+  guarantor_docs_payslip_1: "Fiche de paie du garant",
 };
+
+// Un étudiant sans revenu propre, adossé à un garant, n'a pas de revenu net
+// mensuel à déclarer — le champ n'est alors pas obligatoire.
+function computeMissingRequired(form: Record<string, any>): string[] {
+  const missing: string[] = BASE_REQUIRED.filter((k) => !isFilled(form, k));
+
+  const incomeWaived = form.professional_situation === "etudiant" && form.has_guarantor;
+  if (!incomeWaived && !isFilled(form, "net_monthly_income")) missing.push("net_monthly_income");
+
+  if (form.has_guarantor) {
+    if (!isFilled(form, "guarantor_type")) {
+      missing.push("guarantor_type");
+    } else if (form.guarantor_type === "visale") {
+      if (!isFilled(form, "visale_number")) missing.push("visale_number");
+    } else if (form.guarantor_type === "individual") {
+      for (const k of ["guarantor_first_name", "guarantor_last_name", "guarantor_income", "guarantor_docs_identity", "guarantor_docs_payslip_1"]) {
+        if (!isFilled(form, k)) missing.push(k);
+      }
+    }
+  }
+
+  return missing;
+}
 
 function payslipMonths(): [string, string, string] {
   const now = new Date();
@@ -95,11 +124,16 @@ export default function CandidaturePage() {
     first_name: "", last_name: "", email: "", phone: "", birth_date: "",
     professional_situation: "", employer_name: "", net_monthly_income: "",
     has_guarantor: false,
+    guarantor_type: "" as "" | "individual" | "visale",
+    visale_number: "",
     guarantor_first_name: "", guarantor_last_name: "", guarantor_email: "",
     guarantor_situation: "", guarantor_income: "",
     docs_identity: false,
     docs_payslip_1: false, docs_payslip_2: false, docs_payslip_3: false,
     docs_tax: false, docs_address: false,
+    guarantor_docs_identity: false,
+    guarantor_docs_payslip_1: false, guarantor_docs_payslip_2: false, guarantor_docs_payslip_3: false,
+    guarantor_docs_tax: false,
     consent: false,
   });
 
@@ -137,6 +171,8 @@ export default function CandidaturePage() {
             employer_name: c.employer_name ?? "",
             net_monthly_income: c.net_monthly_income != null ? String(c.net_monthly_income) : "",
             has_guarantor: c.has_guarantor ?? false,
+            guarantor_type: c.guarantor_type ?? "",
+            visale_number: c.visale_number ?? "",
             guarantor_first_name: c.guarantor_first_name ?? "",
             guarantor_last_name: c.guarantor_last_name ?? "",
             guarantor_email: c.guarantor_email ?? "",
@@ -148,6 +184,11 @@ export default function CandidaturePage() {
             docs_payslip_3: c.docs_payslip_3 ?? false,
             docs_tax: c.docs_tax ?? false,
             docs_address: c.docs_address ?? false,
+            guarantor_docs_identity: c.guarantor_docs_identity ?? false,
+            guarantor_docs_payslip_1: c.guarantor_docs_payslip_1 ?? (c.guarantor_docs_payslips ?? false),
+            guarantor_docs_payslip_2: c.guarantor_docs_payslip_2 ?? false,
+            guarantor_docs_payslip_3: c.guarantor_docs_payslip_3 ?? false,
+            guarantor_docs_tax: c.guarantor_docs_tax ?? false,
             consent: false,
           });
           setLastSaved(new Date(c.updated_at));
@@ -163,8 +204,9 @@ export default function CandidaturePage() {
   const requiredIncome = listing ? totalRent * listing.income_ratio : 0;
   const candidateIncome = parseFloat(form.net_monthly_income.replace(",", ".")) || 0;
   const isEligible = candidateIncome >= requiredIncome;
+  const incomeWaived = form.professional_situation === "etudiant" && form.has_guarantor;
 
-  const missingRequired = REQUIRED_FOR_SUBMIT.filter((k) => !isFilled(form, k));
+  const missingRequired = computeMissingRequired(form);
   const canSubmit = missingRequired.length === 0 && form.consent;
 
   async function saveDraft(): Promise<string | null> {
@@ -271,6 +313,83 @@ export default function CandidaturePage() {
   const inp = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-[#635bff] focus:outline-none focus:ring-1 focus:ring-[#635bff]/30";
   const lbl = "block space-y-1.5 text-sm font-medium text-slate-700";
   const req = <span className="text-red-400 ml-0.5">*</span>;
+
+  function renderDocTile(field: string, label: string, hint: string, required: boolean) {
+    const uploaded = form[field as keyof typeof form] as boolean;
+    const isUploading = uploadingField === field;
+    const error = uploadErrors[field];
+    return (
+      <div key={field}>
+        <label
+          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
+            error ? "border-red-200 bg-red-50" : uploaded ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:border-[#635bff]/30"
+          } ${isUploading ? "opacity-60 pointer-events-none" : ""}`}
+        >
+          <input type="file" className="sr-only" accept="image/*,application/pdf" disabled={isUploading}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadDocument(field, f); e.target.value = ""; }} />
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${uploaded ? "bg-emerald-100" : "bg-slate-100"}`}>
+            {uploaded ? <CheckCircleIcon className="h-5 w-5 text-emerald-600" /> : <DocumentArrowUpIcon className="h-5 w-5 text-slate-400" />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className={`text-sm font-medium ${uploaded ? "text-emerald-800" : "text-slate-800"}`}>
+              {label}{required && <span className="text-red-400 ml-1">*</span>}
+            </p>
+            <p className="text-xs text-slate-400">{isUploading ? "Envoi en cours…" : uploaded ? "Document envoyé ✓" : hint}</p>
+          </div>
+        </label>
+        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      </div>
+    );
+  }
+
+  function renderPayslipGrid(prefix: "docs_payslip_" | "guarantor_docs_payslip_", title: string) {
+    const fields = [1, 2, 3].map((n) => `${prefix}${n}` as keyof typeof form);
+    return (
+      <div className="mt-4">
+        <p className="text-sm font-medium text-slate-700">
+          {title}
+          <span className="text-red-400 ml-1">*</span>
+          <span className="ml-1.5 text-xs font-normal text-slate-400">(la plus récente est obligatoire)</span>
+        </p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+          {fields.map((field, i) => {
+            const months = payslipMonths();
+            const monthLabel = months[i];
+            const uploaded = form[field] as boolean;
+            const isRequired = i === 0;
+            const isUploading = uploadingField === field;
+            const error = uploadErrors[field as string];
+            return (
+              <div key={field}>
+                <label
+                  className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border px-3 py-4 text-center transition ${
+                    error ? "border-red-200 bg-red-50" : uploaded ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:border-[#635bff]/30"
+                  } ${isUploading ? "opacity-60 pointer-events-none" : ""}`}
+                >
+                  <input type="file" className="sr-only" accept="image/*,application/pdf" disabled={isUploading}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadDocument(field as string, f); e.target.value = ""; }} />
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${uploaded ? "bg-emerald-100" : "bg-slate-100"}`}>
+                    {uploaded
+                      ? <CheckCircleIcon className="h-6 w-6 text-emerald-600" />
+                      : <DocumentArrowUpIcon className="h-6 w-6 text-slate-400" />}
+                  </span>
+                  <div>
+                    <p className={`text-xs font-semibold capitalize ${uploaded ? "text-emerald-800" : "text-slate-700"}`}>
+                      {monthLabel}{isRequired && <span className="text-red-400 ml-0.5">*</span>}
+                    </p>
+                    <p className="mt-0.5 text-[0.65rem] text-slate-400">
+                      {isUploading ? "Envoi…" : uploaded ? "Envoyée ✓" : "PDF ou photo"}
+                    </p>
+                  </div>
+                </label>
+                {error && <p className="mt-1 text-[0.65rem] text-red-600">{error}</p>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   if (loadError) {
     return (
@@ -398,13 +517,14 @@ export default function CandidaturePage() {
                   <label className={lbl}>Employeur / établissement
                     <input className={inp} value={form.employer_name} onChange={(e) => set("employer_name", e.target.value)} placeholder="Nom de l'employeur" />
                   </label>
-                  <label className={`${lbl} sm:col-span-2`}>Revenus nets mensuels (€) {req}
+                  <label className={`${lbl} sm:col-span-2`}>
+                    Revenus nets mensuels (€) {incomeWaived ? <span className="text-sm font-normal text-slate-400">(non applicable — garant déclaré)</span> : req}
                     <input
                       className={inp}
                       inputMode="decimal"
                       value={form.net_monthly_income}
                       onChange={(e) => set("net_monthly_income", e.target.value)}
-                      placeholder="2 500"
+                      placeholder={incomeWaived ? "Optionnel" : "2 500"}
                     />
                     {candidateIncome > 0 && (
                       <span className={`mt-1 block text-xs font-medium ${isEligible ? "text-emerald-600" : "text-amber-600"}`}>
@@ -426,7 +546,7 @@ export default function CandidaturePage() {
                     id="has_guarantor"
                     type="checkbox"
                     checked={form.has_guarantor}
-                    onChange={(e) => set("has_guarantor", e.target.checked)}
+                    onChange={(e) => { set("has_guarantor", e.target.checked); if (!e.target.checked) set("guarantor_type", ""); }}
                     className="h-4 w-4 rounded border-slate-300 text-[#635bff] focus:ring-[#635bff]"
                   />
                   <label htmlFor="has_guarantor" className="text-base font-semibold text-slate-950 cursor-pointer select-none">
@@ -434,19 +554,67 @@ export default function CandidaturePage() {
                   </label>
                 </div>
                 {form.has_guarantor && (
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <label className={lbl}>Prénom du garant
-                      <input className={inp} value={form.guarantor_first_name} onChange={(e) => set("guarantor_first_name", e.target.value)} />
-                    </label>
-                    <label className={lbl}>Nom du garant
-                      <input className={inp} value={form.guarantor_last_name} onChange={(e) => set("guarantor_last_name", e.target.value)} />
-                    </label>
-                    <label className={lbl}>Email du garant
-                      <input type="email" className={inp} value={form.guarantor_email} onChange={(e) => set("guarantor_email", e.target.value)} />
-                    </label>
-                    <label className={lbl}>Revenus nets du garant (€/mois)
-                      <input inputMode="decimal" className={inp} value={form.guarantor_income} onChange={(e) => set("guarantor_income", e.target.value)} />
-                    </label>
+                  <div className="mt-4 space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: "individual", label: "Garant personne physique" },
+                        { value: "visale", label: "Garantie Visale" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => set("guarantor_type", opt.value)}
+                          className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition ${
+                            form.guarantor_type === opt.value
+                              ? "border-[#635bff] bg-[#635bff]/5 text-[#635bff]"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-[#635bff]/30"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {form.guarantor_type === "visale" && (
+                      <label className={lbl}>Numéro de visa Visale {req}
+                        <input
+                          className={inp}
+                          value={form.visale_number}
+                          onChange={(e) => set("visale_number", e.target.value)}
+                          placeholder="Ex : VIS-XXXXXXXX"
+                        />
+                        <span className="block text-xs text-slate-400">Disponible sur votre visa Visale (Action Logement) — aucun justificatif de revenu du garant n'est nécessaire dans ce cas.</span>
+                      </label>
+                    )}
+
+                    {form.guarantor_type === "individual" && (
+                      <>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <label className={lbl}>Prénom du garant {req}
+                            <input className={inp} value={form.guarantor_first_name} onChange={(e) => set("guarantor_first_name", e.target.value)} />
+                          </label>
+                          <label className={lbl}>Nom du garant {req}
+                            <input className={inp} value={form.guarantor_last_name} onChange={(e) => set("guarantor_last_name", e.target.value)} />
+                          </label>
+                          <label className={lbl}>Email du garant
+                            <input type="email" className={inp} value={form.guarantor_email} onChange={(e) => set("guarantor_email", e.target.value)} />
+                          </label>
+                          <label className={lbl}>Revenus nets du garant (€/mois) {req}
+                            <input inputMode="decimal" className={inp} value={form.guarantor_income} onChange={(e) => set("guarantor_income", e.target.value)} />
+                          </label>
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-medium text-slate-700">Pièces justificatives du garant</p>
+                          <p className="mt-1 text-xs text-slate-500">Mêmes pièces que pour vous : identité et fiches de paie du garant.</p>
+                          <div className="mt-3 grid gap-3">
+                            {renderDocTile("guarantor_docs_identity", "Pièce d'identité du garant", "CNI recto-verso ou passeport", true)}
+                            {renderDocTile("guarantor_docs_tax", "Avis d'imposition du garant", "Dernier avis disponible (impots.gouv.fr)", false)}
+                          </div>
+                          {renderPayslipGrid("guarantor_docs_payslip_", "3 dernières fiches de paie du garant")}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </section>
@@ -462,83 +630,12 @@ export default function CandidaturePage() {
 
                 {/* Docs fixes */}
                 <div className="mt-4 grid gap-3">
-                  {[
-                    { field: "docs_identity", label: "Pièce d'identité", hint: "CNI recto-verso ou passeport", required: true },
-                    { field: "docs_tax", label: "Avis d'imposition", hint: "Dernier avis disponible (impots.gouv.fr)", required: false },
-                    { field: "docs_address", label: "Justificatif de domicile", hint: "Facture ou quittance de moins de 3 mois", required: false },
-                  ].map(({ label, hint, field, required }) => {
-                    const uploaded = form[field as keyof typeof form] as boolean;
-                    const isUploading = uploadingField === field;
-                    const error = uploadErrors[field];
-                    return (
-                      <div key={field}>
-                        <label
-                          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
-                            error ? "border-red-200 bg-red-50" : uploaded ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:border-[#635bff]/30"
-                          } ${isUploading ? "opacity-60 pointer-events-none" : ""}`}
-                        >
-                          <input type="file" className="sr-only" accept="image/*,application/pdf" disabled={isUploading}
-                            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadDocument(field, f); e.target.value = ""; }} />
-                          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${uploaded ? "bg-emerald-100" : "bg-slate-100"}`}>
-                            {uploaded ? <CheckCircleIcon className="h-5 w-5 text-emerald-600" /> : <DocumentArrowUpIcon className="h-5 w-5 text-slate-400" />}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className={`text-sm font-medium ${uploaded ? "text-emerald-800" : "text-slate-800"}`}>
-                              {label}{required && <span className="text-red-400 ml-1">*</span>}
-                            </p>
-                            <p className="text-xs text-slate-400">{isUploading ? "Envoi en cours…" : uploaded ? "Document envoyé ✓" : hint}</p>
-                          </div>
-                        </label>
-                        {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-                      </div>
-                    );
-                  })}
+                  {renderDocTile("docs_identity", "Pièce d'identité", "CNI recto-verso ou passeport", true)}
+                  {renderDocTile("docs_tax", "Avis d'imposition", "Dernier avis disponible (impots.gouv.fr)", false)}
+                  {renderDocTile("docs_address", "Justificatif de domicile", "Facture ou quittance de moins de 3 mois", false)}
                 </div>
 
-                {/* Fiches de paie — 3 mois glissants */}
-                <div className="mt-4">
-                  <p className="text-sm font-medium text-slate-700">
-                    3 dernières fiches de paie
-                    <span className="text-red-400 ml-1">*</span>
-                    <span className="ml-1.5 text-xs font-normal text-slate-400">(la plus récente est obligatoire)</span>
-                  </p>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                    {(["docs_payslip_1", "docs_payslip_2", "docs_payslip_3"] as const).map((field, i) => {
-                      const months = payslipMonths();
-                      const monthLabel = months[i];
-                      const uploaded = form[field];
-                      const isRequired = i === 0;
-                      const isUploading = uploadingField === field;
-                      const error = uploadErrors[field];
-                      return (
-                        <div key={field}>
-                          <label
-                            className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border px-3 py-4 text-center transition ${
-                              error ? "border-red-200 bg-red-50" : uploaded ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-white hover:border-[#635bff]/30"
-                            } ${isUploading ? "opacity-60 pointer-events-none" : ""}`}
-                          >
-                            <input type="file" className="sr-only" accept="image/*,application/pdf" disabled={isUploading}
-                              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadDocument(field, f); e.target.value = ""; }} />
-                            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${uploaded ? "bg-emerald-100" : "bg-slate-100"}`}>
-                              {uploaded
-                                ? <CheckCircleIcon className="h-6 w-6 text-emerald-600" />
-                                : <DocumentArrowUpIcon className="h-6 w-6 text-slate-400" />}
-                            </span>
-                            <div>
-                              <p className={`text-xs font-semibold capitalize ${uploaded ? "text-emerald-800" : "text-slate-700"}`}>
-                                {monthLabel}{isRequired && <span className="text-red-400 ml-0.5">*</span>}
-                              </p>
-                              <p className="mt-0.5 text-[0.65rem] text-slate-400">
-                                {isUploading ? "Envoi…" : uploaded ? "Envoyée ✓" : "PDF ou photo"}
-                              </p>
-                            </div>
-                          </label>
-                          {error && <p className="mt-1 text-[0.65rem] text-red-600">{error}</p>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                {renderPayslipGrid("docs_payslip_", "3 dernières fiches de paie")}
               </section>
 
               <hr className="border-slate-100" />
