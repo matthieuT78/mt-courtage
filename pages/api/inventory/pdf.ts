@@ -56,6 +56,18 @@ function conditionClass(c: string) {
   }
 }
 
+const CONDITION_RANK: Record<string, number> = {
+  neuf: 0,
+  tres_bon: 1,
+  bon: 2,
+  moyen: 3,
+  mauvais: 4,
+};
+
+function entryComparisonKey(roomName: string, category: string, label: string) {
+  return `${String(roomName || "").trim().toLowerCase()}|${String(category || "").trim().toLowerCase()}|${String(label || "").trim().toLowerCase()}`;
+}
+
 function yn(v: any) {
   if (v === true) return "Oui";
   if (v === false) return "Non";
@@ -254,6 +266,8 @@ function buildHtmlPremiumEDL(params: {
         description: string;
         defects: string;
         photos: Array<{ signedUrl: string; important: boolean }>;
+        is_lmnp_required: boolean;
+        degradedFromEntry: string | null;
       }>;
     }>;
   }>;
@@ -271,6 +285,8 @@ function buildHtmlPremiumEDL(params: {
         description: string;
         defects: string;
         photos: Array<{ signedUrl: string; important: boolean }>;
+        is_lmnp_required: boolean;
+        degradedFromEntry: string | null;
       }>;
     }>;
   }>;
@@ -402,8 +418,16 @@ function buildHtmlPremiumEDL(params: {
                     <span class="statePill ${conditionClass(it.condition)}">${escapeHtml(conditionLabel(it.condition))}</span>
                     <span class="miniBadge">Propre ${escapeHtml(yn(it.is_clean))}</span>
                     <span class="miniBadge">Fonct. ${escapeHtml(yn(it.is_functional))}</span>
+                    ${it.is_lmnp_required ? `<span class="miniBadge lmnp">LMNP obligatoire</span>` : ""}
                   </div>
                 </div>
+                ${
+                  it.degradedFromEntry
+                    ? `<div class="degradedNote">⚠ Dégradation depuis l'entrée : ${escapeHtml(
+                        conditionLabel(it.degradedFromEntry)
+                      )} → ${escapeHtml(conditionLabel(it.condition))}</div>`
+                    : ""
+                }
                 <div class="colObs ${hasDefects ? "hasDefects" : ""}">${obsHtml}</div>
                 ${photoWrap}
               </article>`;
@@ -495,6 +519,7 @@ function buildHtmlPremiumEDL(params: {
                         <span class="statePill ${conditionClass(it.condition)}">${escapeHtml(conditionLabel(it.condition))}</span>
                         <span class="miniBadge">Propre ${escapeHtml(yn(it.is_clean))}</span>
                         <span class="miniBadge">Fonct. ${escapeHtml(yn(it.is_functional))}</span>
+                        ${it.is_lmnp_required ? `<span class="miniBadge lmnp">LMNP obligatoire</span>` : ""}
                       </div>
                     </div>
                     <div class="colObs ${hasDefects ? "hasDefects" : ""}">${obsHtml}</div>
@@ -665,6 +690,11 @@ function buildHtmlPremiumEDL(params: {
     display:inline-flex; border-radius:999px; padding:4px 7px; font-size:9.5px; font-weight:800;
     border:1px solid #e2e8f0; background:#f8fafc; color:#475569;
   }
+  .miniBadge.lmnp{ border-color:#c7d2fe; background:#eef2ff; color:#4338ca; }
+  .degradedNote{
+    margin-top:6px; border-radius:8px; padding:5px 8px; font-size:10.5px; font-weight:800;
+    border:1px solid #fecaca; background:#fef2f2; color:var(--danger);
+  }
   .colObs{ margin-top:8px; border-top:1px solid #eef2f7; padding-top:8px; font-size:11px; line-height:1.45; color:#334155; }
   .hasDefects{ color:var(--ink); }
   .hasDefects b, .hasDefects strong{ color:var(--danger); }
@@ -773,14 +803,10 @@ function buildHtmlPremiumEDL(params: {
     </div>
   </div>
 
-  ${
-    notesHtml
-      ? `<div class="notes">
-          <div class="notesTitle">Notes générales</div>
-          <div class="notesBody">${notesHtml}</div>
-        </div>`
-      : ``
-  }
+  <div class="notes">
+    <div class="notesTitle">Notes générales</div>
+    <div class="notesBody">${notesHtml || "Non renseigné"}</div>
+  </div>
   ${countersHtml}
 
   <div class="toc">
@@ -820,7 +846,7 @@ function buildHtmlPremiumEDL(params: {
   </section>
 
   <div class="footer">
-    <div>lokt.fr • État des lieux</div>
+    <div>lokt.fr • ${escapeHtml(title)}</div>
     <div>${footerLogo}</div>
   </div>
 </body>
@@ -850,6 +876,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(409).json({ error: "Génération PDF autorisée uniquement lorsque le statut est “Prêt”." });
     }
 
+    // Une signature électronique est déjà en cours (une ou deux parties ont
+    // potentiellement déjà signé le PDF actuel) : le régénérer romprait le hash
+    // vérifié à la complétion et invaliderait silencieusement une signature déjà
+    // recueillie. Il faut d'abord annuler la demande en cours.
+    const { data: pendingSig } = await supabaseAdmin
+      .from("signature_requests")
+      .select("id, status")
+      .eq("inventory_report_id", reportId)
+      .in("status", ["pending", "partially_signed"])
+      .maybeSingle();
+    if (pendingSig) {
+      return res.status(409).json({
+        error: "Une demande de signature est en cours pour ce document. Annule-la avant de régénérer le PDF.",
+        pendingSignatureRequestId: pendingSig.id,
+      });
+    }
+
     // --- rooms/items/photos
     const [{ data: rooms, error: roomsErr }, { data: items, error: itemsErr }, { data: photos, error: photosErr }] = await Promise.all([
       supabaseAdmin.from("inventory_rooms").select("*").eq("report_id", reportId).order("sort_order", { ascending: true }),
@@ -859,10 +902,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     if (roomsErr) return res.status(500).json({ error: `rooms: ${roomsErr.message}` });
     if (itemsErr) return res.status(500).json({ error: `items: ${itemsErr.message}` });
+    // Les photos sont une pièce à conviction potentielle — une erreur ici ne doit
+    // jamais produire silencieusement un PDF "officiel" sans aucune photo.
+    if (photosErr) return res.status(500).json({ error: `photos: ${photosErr.message}` });
 
     const safeRooms = (rooms || []) as any[];
     const safeItems = (items || []) as any[];
-    const safePhotos = photosErr ? [] : ((photos || []) as any[]);
+    const safePhotos = (photos || []) as any[];
+
+    // --- comparatif entrée/sortie (EDL de sortie rattaché à un bail uniquement) —
+    // le PDF est le document officiel/signé, il doit porter la même information
+    // de dégradation que l'écran d'édition, pas seulement l'app.
+    const entryComparisonMap = new Map<string, string>();
+    if (String(report.report_type) === "exit" && report.lease_id) {
+      const { data: pairedEntry } = await supabaseAdmin
+        .from("inventory_reports")
+        .select("id")
+        .eq("lease_id", report.lease_id)
+        .eq("report_type", "entry")
+        .neq("id", reportId)
+        .maybeSingle();
+      if (pairedEntry?.id) {
+        const [{ data: entryRooms }, { data: entryItems }] = await Promise.all([
+          supabaseAdmin.from("inventory_rooms").select("id, name").eq("report_id", pairedEntry.id),
+          supabaseAdmin.from("inventory_items").select("room_id, category, label, condition").eq("report_id", pairedEntry.id),
+        ]);
+        const entryRoomNameById = new Map((entryRooms || []).map((r: any) => [String(r.id), r.name]));
+        for (const it of (entryItems || []) as any[]) {
+          const roomName = entryRoomNameById.get(String(it.room_id)) || "";
+          entryComparisonMap.set(entryComparisonKey(roomName, it.category, it.label), String(it.condition));
+        }
+      }
+    }
 
     // --- lease + property + tenant + landlord
     let lease: any = null;
@@ -884,10 +955,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         tenant = r.data || null;
       }
     }
-    const rLand = await supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle();
+    const [rLand, rProfile] = await Promise.all([
+      supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle(),
+      supabaseAdmin.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+    ]);
     landlord = rLand.data || null;
 
-    const landlordName = safeStr(landlord?.display_name) || "Bailleur";
+    // "landlords.display_name" n'est renseigné par aucune UI du site (seuls IBAN/BIC
+    // y sont écrits) — se rabattre sur profiles.full_name (rempli à l'onboarding)
+    // avant le libellé générique, sinon le PDF affiche littéralement "Bailleur".
+    const landlordName = safeStr(landlord?.display_name) || safeStr(rProfile.data?.full_name) || "Bailleur";
     const tenantName = safeStr(tenant?.full_name) || safeStr(report.occupant_label) || "Occupant";
     const propertyLabel = safeStr(property?.label) || safeStr(report.property_label) || "Logement";
     const propertyAddress =
@@ -946,6 +1023,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       itemsByRoom.set(rid, arr);
     }
 
+    // `list` arrive déjà trié par created_at (ordre d'insertion = ordre naturel
+    // de visite d'une pièce : Sol/Mur/Plafond/Porte/Fenêtre/Électricité/Chauffage
+    // puis équipements). On préserve cet ordre plutôt que de trier alphabétiquement
+    // (qui mélangerait "Chauffage" avant "Sol", et "Interrupteurs" avant "Prises
+    // électriques") — un Map conserve l'ordre d'insertion des clés en JS.
     function groupByCategory(list: any[]) {
       const byCat = new Map<string, any[]>();
       for (const it of list) {
@@ -954,11 +1036,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         arr.push(it);
         byCat.set(cat, arr);
       }
-      const cats = Array.from(byCat.keys()).sort((a, b) => a.localeCompare(b, "fr"));
-      return cats.map((name) => {
-        const its = (byCat.get(name) || []).slice().sort((a, b) => safeStr(a.label).localeCompare(safeStr(b.label), "fr"));
-        return { name, items: its };
-      });
+      return Array.from(byCat.entries()).map(([name, its]) => ({ name, items: its }));
     }
 
     const enrichedRooms = await Promise.all(
@@ -986,6 +1064,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
                   if (url) signedPhotos.push({ signedUrl: url, important: important && signedPhotos.length === 0 });
                 }
 
+                const entryCondition = entryComparisonMap.get(entryComparisonKey(r.name, it.category, it.label)) || null;
+                const degradedVsEntry =
+                  entryCondition && CONDITION_RANK[safeStr(it.condition)] > CONDITION_RANK[entryCondition] ? entryCondition : null;
+
                 return {
                   label: safeStr(it.label),
                   condition: safeStr(it.condition),
@@ -996,6 +1078,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
                   description,
                   defects,
                   photos: signedPhotos,
+                  is_lmnp_required: !!it.is_lmnp_required,
+                  degradedFromEntry: degradedVsEntry,
                 };
               })
             );
@@ -1047,6 +1131,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               description,
               defects,
               photos: signedPhotos,
+              is_lmnp_required: !!it.is_lmnp_required,
+              degradedFromEntry: null as string | null,
             };
           })
         );

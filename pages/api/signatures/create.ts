@@ -109,18 +109,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const landlord_email = auth.email;
   if (!landlord_email) return res.status(400).json({ error: "Email bailleur introuvable sur le compte." });
 
-  // Dedup — éviter plusieurs demandes actives pour le même document
+  // Dedup — éviter plusieurs demandes actives pour le même document. Une demande
+  // expirée ne doit jamais bloquer indéfiniment une nouvelle tentative : on la
+  // marque "expired" au passage plutôt que de renvoyer un 409 permanent.
   const dedupField = document_type === "bail" ? "lease_contract_id" : "inventory_report_id";
   const dedupValue = document_type === "bail" ? lease_contract_id : inventory_report_id;
   if (dedupValue) {
     const { data: existing } = await supabaseAdmin
       .from("signature_requests")
-      .select("id, status")
+      .select("id, status, expires_at")
       .eq(dedupField, dedupValue)
       .in("status", ["pending", "partially_signed"])
       .maybeSingle();
     if (existing) {
-      return res.status(409).json({ error: "Une demande de signature est déjà en cours pour ce document. Vérifiez vos emails ou attendez qu'elle expire." });
+      if (new Date(existing.expires_at) < new Date()) {
+        await supabaseAdmin.from("signature_requests").update({ status: "expired" }).eq("id", existing.id);
+      } else {
+        return res.status(409).json({
+          error: "Une demande de signature est déjà en cours pour ce document. Vérifiez vos emails, attendez qu'elle expire, ou annulez-la.",
+          existingRequestId: existing.id,
+        });
+      }
     }
   }
 
@@ -187,5 +196,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "La demande a été créée mais l'envoi des emails a échoué. Vérifiez la configuration Resend." });
   }
 
-  return res.status(200).json({ id: sigReq.id, status: sigReq.status });
+  // Un seul des deux emails a échoué : la demande existe bel et bien (donc pas
+  // d'erreur 500), mais il faut le signaler au bailleur — sinon il croit à tort
+  // que les deux parties ont reçu leur lien.
+  let emailWarning: string | null = null;
+  if (emailErrors.length === 1) {
+    const landlordFailed = emailResults[0].status === "rejected";
+    emailWarning = landlordFailed
+      ? `L'email n'a pas pu être envoyé à ${landlord_email} (bailleur). Le locataire a bien reçu le sien.`
+      : `L'email n'a pas pu être envoyé à ${tenant_email} (locataire). Le bailleur a bien reçu le sien.`;
+  }
+
+  return res.status(200).json({ id: sigReq.id, status: sigReq.status, emailWarning });
 }

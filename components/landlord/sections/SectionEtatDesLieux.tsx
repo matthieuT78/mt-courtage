@@ -697,6 +697,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   const [tenantEmailSent, setTenantEmailSent] = useState<string | null>(null);
   const [sigEdlLoading, setSigEdlLoading] = useState(false);
   const [sigEdlSent, setSigEdlSent] = useState(false);
+  const [sigEdlRequestId, setSigEdlRequestId] = useState<string | null>(null);
+  const [sigEdlWarning, setSigEdlWarning] = useState<string | null>(null);
+  const [sigEdlCancelLoading, setSigEdlCancelLoading] = useState(false);
   const [lmnpSyncLoading, setLmnpSyncLoading] = useState(false);
   const [lmnpSyncDone, setLmnpSyncDone] = useState(false);
   const [lmnpInventoryEmptyForProperty, setLmnpInventoryEmptyForProperty] = useState(false);
@@ -843,6 +846,33 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   const effectiveTenantEmail = selectedReport?.occupant_email
     || (selectedLease?.tenant_id ? tenantById.get(selectedLease.tenant_id)?.email || null : null)
     || null;
+
+  // L'état "déjà envoyé en signature" ne doit pas dépendre uniquement de l'action
+  // en session (sinon fermer puis rouvrir le dossier fait disparaître l'info et
+  // le bouton "Annuler la demande" avec elle) — on relit la demande active en base
+  // à chaque changement de rapport sélectionné.
+  useEffect(() => {
+    if (!supabase || !selectedReport?.id || !hasPdf) {
+      setSigEdlSent(false);
+      setSigEdlRequestId(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("signature_requests")
+        .select("id, status")
+        .eq("inventory_report_id", selectedReport.id)
+        .in("status", ["pending", "partially_signed"])
+        .maybeSingle();
+      if (cancelled) return;
+      setSigEdlSent(!!data);
+      setSigEdlRequestId(data?.id || null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedReport?.id, hasPdf]);
   const selectedWorkflow = workflowUi(selectedReport);
   const entryReport = useMemo(() => reports.find((r) => r.report_type === "entry") || null, [reports]);
   const exitReport = useMemo(() => reports.find((r) => r.report_type === "exit") || null, [reports]);
@@ -1824,9 +1854,31 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
     }
   };
 
+  const cancelEdlSignature = async () => {
+    if (!sigEdlRequestId) return;
+    setSigEdlCancelLoading(true); setSigEdlError(null);
+    try {
+      const res = await fetch("/api/signatures/cancel", {
+        method: "POST",
+        headers: await authJsonHeaders(),
+        body: JSON.stringify({ id: sigEdlRequestId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || "Annulation impossible.");
+      setSigEdlSent(false);
+      setSigEdlRequestId(null);
+      setSigEdlWarning(null);
+      setOk("Demande de signature annulée ✅ Tu peux en renvoyer une nouvelle.");
+    } catch (e: any) {
+      setSigEdlError(e?.message || "Annulation impossible.");
+    } finally {
+      setSigEdlCancelLoading(false);
+    }
+  };
+
   const sendEdlForSignature = async () => {
     if (!selectedReport?.pdf_url || !effectiveTenantEmail) return;
-    setSigEdlLoading(true); setSigEdlError(null);
+    setSigEdlLoading(true); setSigEdlError(null); setSigEdlWarning(null);
     try {
       const { data: sessionData } = await supabase!.auth.getSession();
       const landlordEmail = sessionData.session?.user?.email;
@@ -1853,9 +1905,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
         }),
       });
       const json = await res.json().catch(() => ({}));
-      if (res.status === 409) { setSigEdlSent(true); return; } // déjà envoyé
+      if (res.status === 409) {
+        // Déjà envoyé (ou demande bloquée) — on garde l'id pour permettre l'annulation.
+        setSigEdlSent(true);
+        if (json?.existingRequestId) setSigEdlRequestId(json.existingRequestId);
+        return;
+      }
       if (!res.ok) throw new Error(json?.error || "Erreur lors de l'envoi.");
       setSigEdlSent(true);
+      if (json?.id) setSigEdlRequestId(json.id);
+      if (json?.emailWarning) setSigEdlWarning(json.emailWarning);
     } catch (e: any) {
       setSigEdlError(e?.message || "Envoi impossible.");
     } finally {
@@ -3815,9 +3874,21 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                             </button>
                             {!isLocked && effectiveTenantEmail ? (
                               sigEdlSent ? (
-                                <span className="inline-flex min-h-[40px] items-center rounded-full border border-emerald-200 bg-white px-4 text-xs font-semibold text-emerald-800">
-                                  Liens de signature envoyés ✓
-                                </span>
+                                <>
+                                  <span className="inline-flex min-h-[40px] items-center rounded-full border border-emerald-200 bg-white px-4 text-xs font-semibold text-emerald-800">
+                                    Liens de signature envoyés ✓
+                                  </span>
+                                  {sigEdlRequestId && (
+                                    <button
+                                      type="button"
+                                      disabled={sigEdlCancelLoading}
+                                      onClick={cancelEdlSignature}
+                                      className="text-xs font-semibold text-slate-500 underline hover:text-slate-700 disabled:opacity-60"
+                                    >
+                                      {sigEdlCancelLoading ? "Annulation…" : "Annuler la demande"}
+                                    </button>
+                                  )}
+                                </>
                               ) : (
                                 <button
                                   type="button"
@@ -3830,6 +3901,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                               )
                             ) : null}
                           </div>
+                          {sigEdlWarning ? <p className="mt-2 text-xs text-amber-700">⚠ {sigEdlWarning}</p> : null}
                           {sigEdlError ? <p className="mt-2 text-xs text-red-600">{sigEdlError}</p> : null}
                         </div>
                       ) : (
@@ -4570,9 +4642,21 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
 
             {hasPdf && !isLocked && effectiveTenantEmail ? (
               sigEdlSent ? (
-                <span className="inline-flex min-h-[36px] items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 text-xs font-semibold text-emerald-800">
-                  Liens de signature envoyés ✓
-                </span>
+                <>
+                  <span className="inline-flex min-h-[36px] items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 text-xs font-semibold text-emerald-800">
+                    Liens de signature envoyés ✓
+                  </span>
+                  {sigEdlRequestId && (
+                    <button
+                      type="button"
+                      disabled={sigEdlCancelLoading}
+                      onClick={cancelEdlSignature}
+                      className="text-xs font-semibold text-slate-500 underline hover:text-slate-700 disabled:opacity-60"
+                    >
+                      {sigEdlCancelLoading ? "Annulation…" : "Annuler la demande"}
+                    </button>
+                  )}
+                </>
               ) : (
                 <button
                   type="button"
@@ -4584,6 +4668,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                 </button>
               )
             ) : null}
+            {sigEdlWarning ? <span className="text-xs text-amber-700">⚠ {sigEdlWarning}</span> : null}
             {sigEdlError ? <span className="text-xs text-red-600">{sigEdlError}</span> : null}
           </div>
         </div>

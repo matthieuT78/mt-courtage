@@ -175,10 +175,11 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
   const lease: any = leaseRes.data;
   if (String(lease.user_id) !== userId) throw new Error("Accès refusé.");
 
-  const [{ data: tenant }, { data: property }, { data: landlord }] = await Promise.all([
+  const [{ data: tenant }, { data: property }, { data: landlord }, { data: landlordProfile }] = await Promise.all([
     supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).maybeSingle(),
     supabaseAdmin.from("properties").select("*").eq("id", lease.property_id).maybeSingle(),
     supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle(),
+    supabaseAdmin.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
   ]);
 
   const rentPeriod = getLeaseRentPeriodFromDate(lease, periodStart);
@@ -189,7 +190,9 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
   const issueDate = todayISO();
 
   const tenantName = safeStr((tenant as any)?.full_name) || "Locataire";
-  const landlordName = safeStr((landlord as any)?.display_name) || "Bailleur";
+  // "landlords.display_name" n'est renseigné par aucune UI du site — se rabattre
+  // sur profiles.full_name avant le libellé générique "Bailleur".
+  const landlordName = safeStr((landlord as any)?.display_name) || safeStr((landlordProfile as any)?.full_name) || "Bailleur";
   const propertyCity = safeStr((property as any)?.city);
   const yyyymm = normalizedPeriodStart.slice(0, 7);
   const label = receiptLabel(tenantName, propertyCity, yyyymm);
