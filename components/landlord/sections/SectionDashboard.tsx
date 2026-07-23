@@ -622,9 +622,7 @@ export function SectionDashboard({
         .filter((p) => String(p.status || "").toLowerCase() !== "archived")
         .map((p) => p.id)
     );
-    const lmnpIds = Array.from(activePropertyIds).filter((propertyId) =>
-      propertyRequiresLmnpInventory(propertyId, propertyFinance?.find((fin) => fin.property_id === propertyId)?.tax_regime, leases)
-    );
+    const lmnpIds = Array.from(activePropertyIds).filter((propertyId) => propertyRequiresLmnpInventory(propertyId, leases));
     if (!lmnpIds.length) { setLmnpInventoryCompliance([]); return; }
 
     let mounted = true;

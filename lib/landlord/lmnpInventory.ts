@@ -32,24 +32,20 @@ export type LmnpLeaseLike = {
 };
 
 // Un bien doit respecter la liste des 18 meubles obligatoires s'il est loué
-// meublé — déterminé par le type de bail actif (furnished_primary,
+// meublé — déterminé UNIQUEMENT par le type de bail actif (furnished_primary,
 // furnished_student, mobility — un bail mobilité est toujours meublé par la
-// loi), pas seulement par le régime fiscal LMNP choisi en Finance : les deux
-// notions sont liées mais indépendantes (un bien peut être meublé sans être
-// déclaré en LMNP pour des raisons fiscales propres au bailleur). On combine
-// les deux signaux plutôt que de remplacer l'un par l'autre, pour ne jamais
-// faire perdre la visibilité à un bien déjà suivi via son régime fiscal.
-export function propertyRequiresLmnpInventory(
-  propertyId: string,
-  taxRegime: string | null | undefined,
-  leases: LmnpLeaseLike[] | null | undefined
-): boolean {
-  const isLmnpTaxRegime = taxRegime === "lmnp_micro" || taxRegime === "lmnp_real";
-  const hasFurnishedActiveLease = (leases || []).some(
+// loi). Le régime fiscal choisi en Finance (property_finance.tax_regime :
+// lmnp_micro/lmnp_real/nu_micro/nu_real/pinel) répond à une question
+// différente — "quel régime fiscal le bailleur a-t-il choisi" — et reste
+// facultatif/souvent non renseigné, contrairement au type de bail qui est
+// obligatoire à la création. Volontairement une seule source de vérité ici :
+// pas de second signal fiscal qui rendrait le déclenchement imprévisible
+// selon que Finance a été rempli ou non.
+export function propertyRequiresLmnpInventory(propertyId: string, leases: LmnpLeaseLike[] | null | undefined): boolean {
+  return (leases || []).some(
     (l) =>
       l.property_id === propertyId &&
       String(l.status || "").toLowerCase() === "active" &&
       FURNISHED_LEASE_KINDS.has(String(l.lease_kind || ""))
   );
-  return isLmnpTaxRegime || hasFurnishedActiveLease;
 }

@@ -202,20 +202,18 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-export function SectionInventaire({ userId, properties, propertyFinance, leases }: Props) {
+export function SectionInventaire({ userId, properties, leases }: Props) {
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
 
   const lmnpPropertyIds = useMemo(() => {
-    const financeByProperty = new Map((propertyFinance || []).map((fin) => [fin.property_id, fin]));
     const ids = new Set<string>();
     for (const p of properties || []) {
-      const taxRegime = financeByProperty.get(p.id)?.tax_regime;
-      if (propertyRequiresLmnpInventory(p.id, taxRegime, leases)) ids.add(p.id);
+      if (propertyRequiresLmnpInventory(p.id, leases)) ids.add(p.id);
     }
     return ids;
-  }, [properties, propertyFinance, leases]);
+  }, [properties, leases]);
 
   const safeProperties = useMemo(() =>
     (Array.isArray(properties) ? properties : []).filter(

@@ -797,8 +797,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   // que de laisser l'EDL paraître vide sans explication.
   useEffect(() => {
     if (!supabase || !userId || !selectedProperty?.id) { setLmnpInventoryEmptyForProperty(false); return; }
-    const taxRegime = propertyFinance?.find((f) => f.property_id === selectedProperty.id)?.tax_regime;
-    if (!propertyRequiresLmnpInventory(selectedProperty.id, taxRegime, leases)) {
+    if (!propertyRequiresLmnpInventory(selectedProperty.id, leases)) {
       setLmnpInventoryEmptyForProperty(false);
       return;
     }
@@ -813,7 +812,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
       if (mounted) setLmnpInventoryEmptyForProperty(!count);
     })();
     return () => { mounted = false; };
-  }, [selectedProperty?.id, propertyFinance, leases, userId]);
+  }, [selectedProperty?.id, leases, userId]);
   const standalonePlaceLabel = selectedReport
     ? [
         selectedReport.property_address_line1,
@@ -1333,11 +1332,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
           console.error(copyErr);
           setOk("EDL de sortie créé ✅ (copie entrée impossible — tu peux compléter manuellement)");
         }
-      } else if (
-        type === "entry" &&
-        _property?.id &&
-        propertyRequiresLmnpInventory(_property.id, propertyFinance?.find((f) => f.property_id === _property.id)?.tax_regime, leases)
-      ) {
+      } else if (type === "entry" && _property?.id && propertyRequiresLmnpInventory(_property.id, leases)) {
         try {
           const { itemsCreated } = await prefillLmnpItemsForEntry(_property.id, reportId);
           setOk(
