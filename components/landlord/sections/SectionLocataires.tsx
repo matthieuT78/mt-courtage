@@ -506,8 +506,6 @@ export function SectionLocataires({
         archived_reason: form.archived_reason?.trim() || null,
       };
 
-      let newTenantId: string | null = null;
-
       if (isEdit) {
         const res = await withTimeout(
           Promise.resolve(
@@ -526,7 +524,6 @@ export function SectionLocataires({
         if ((res as any)?.error) throw (res as any).error;
 
         const createdTenant = ((res as any)?.data ?? null) as Tenant | null;
-        newTenantId = createdTenant?.id ?? null;
 
         setOk("Locataire créé ✅");
         if (createdTenant?.id) {
@@ -536,12 +533,13 @@ export function SectionLocataires({
           }));
         }
         setCreateForm(emptyForm);
+        // Referme la modale plutôt que de rouvrir immédiatement en mode édition —
+        // le locataire apparaît comme une tuile dans la liste (avec le badge "nouveau"),
+        // pas besoin d'une seconde confirmation juste après la création.
+        closeTenantModal();
       }
 
       await safeRefresh();
-      // Le nouveau locataire n'existe dans `tenants` (prop) qu'après ce refresh — ouvrir la
-      // modale avant provoquerait un rendu avec activeTenant introuvable (crash sur displayName).
-      if (newTenantId) setExpandedId(newTenantId);
     } catch (e: any) {
       console.error("[saveTenant] error:", e);
       setErr(e?.message || "Erreur lors de l’enregistrement.");
