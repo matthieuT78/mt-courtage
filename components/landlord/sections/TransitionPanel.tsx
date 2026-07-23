@@ -27,7 +27,12 @@ type TransitionData = {
   property: Property | null;
   tenant: Tenant | null;
   steps: Record<StepKey, boolean>;
-  cautionDeadline: Date | null;
+  // Délai légal de restitution : 1 mois si l'EDL de sortie ne révèle aucune
+  // dégradation, 2 mois sinon (art. 22, loi du 6 juillet 1989). L'app ne
+  // compare pas automatiquement les EDL entrée/sortie, donc on ne peut pas
+  // trancher — on affiche les deux seuils plutôt que d'en présumer un.
+  cautionOneMonthDeadline: Date | null;
+  cautionTwoMonthDeadline: Date | null;
   hasNewLease: boolean;
   submittedCount: number;
 };
@@ -45,9 +50,9 @@ function fmtDate(iso: string | null | undefined) {
   return new Date(iso + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function addDays(iso: string, n: number): Date {
+function addMonths(iso: string, n: number): Date {
   const d = new Date(iso + "T00:00:00");
-  d.setDate(d.getDate() + n);
+  d.setMonth(d.getMonth() + n);
   return d;
 }
 
@@ -102,20 +107,22 @@ function nextAction(
   leaseId: string,
   submittedCount: number,
   propertyId: string,
-  delegatedListing: boolean,
+  isDelegatedStep: (key: StepKey) => boolean,
 ): { label: string; target: LandlordSectionKey; link?: { leaseId?: string; openPanel?: string; openCreate?: boolean; prefillPropertyId?: string } } {
-  if (!steps.edl)             return { label: "Faire l'état des lieux", target: "etat_des_lieux" };
-  if (!steps.caution)         return { label: "Restituer la caution", target: "baux", link: { leaseId, openPanel: "deposit" } };
-  // Mise en location déléguée à un tiers : rien à faire côté bailleur pour
-  // l'annonce et l'analyse des candidatures, on saute directement à la suite.
-  if (!delegatedListing) {
-    if (!steps.annonce)         return { label: "Créer l'annonce", target: "candidatures" };
-    if (!steps.candidat_retenu) {
-      if (submittedCount > 0)   return { label: `Analyser ${submittedCount} dossier${submittedCount > 1 ? "s" : ""}`, target: "candidatures" };
-      return { label: "Partager l'annonce", target: "candidatures" };
-    }
+  // Une étape déléguée à un tiers (agence...) n'est pas une tâche du
+  // bailleur — on ne la propose jamais comme prochaine action.
+  if (!steps.edl && !isDelegatedStep("edl"))
+    return { label: "Faire l'état des lieux", target: "etat_des_lieux" };
+  if (!steps.caution && !isDelegatedStep("caution"))
+    return { label: "Restituer la caution", target: "baux", link: { leaseId, openPanel: "deposit" } };
+  if (!isDelegatedStep("annonce") && !steps.annonce)
+    return { label: "Créer l'annonce", target: "candidatures" };
+  if (!isDelegatedStep("candidat_retenu") && !steps.candidat_retenu) {
+    if (submittedCount > 0)  return { label: `Analyser ${submittedCount} dossier${submittedCount > 1 ? "s" : ""}`, target: "candidatures" };
+    return { label: "Partager l'annonce", target: "candidatures" };
   }
-  if (!steps.nouveau_bail)    return { label: "Créer le bail", target: "baux", link: { openCreate: true, prefillPropertyId: propertyId } };
+  if (!steps.nouveau_bail && !isDelegatedStep("nouveau_bail"))
+    return { label: "Créer le bail", target: "baux", link: { openCreate: true, prefillPropertyId: propertyId } };
   return { label: "Voir le bail", target: "baux" };
 }
 
@@ -199,7 +206,8 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
         );
         const hasNewLease = !!newLease;
         const candidatRetenuDone = acceptedCount > 0 || hasNewLease;
-        const cautionDeadline = lease.end_date ? addDays(lease.end_date, 30) : null;
+        const cautionOneMonthDeadline = lease.end_date ? addMonths(lease.end_date, 1) : null;
+        const cautionTwoMonthDeadline = lease.end_date ? addMonths(lease.end_date, 2) : null;
 
         return {
           lease,
@@ -212,7 +220,8 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
             candidat_retenu: candidatRetenuDone,
             nouveau_bail: hasNewLease,
           },
-          cautionDeadline,
+          cautionOneMonthDeadline,
+          cautionTwoMonthDeadline,
           hasNewLease,
           submittedCount,
         };
@@ -252,20 +261,33 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
       {transitions.map((t) => {
         if (Object.values(t.steps).every(Boolean)) return null;
 
-        // "Mise en location & candidatures" déléguée à un tiers (agence...) :
-        // l'annonce et le tri des candidatures ne sont pas des tâches du
-        // bailleur — on ne les compte pas comme "à faire" pour lui.
-        const delegatedListing = (t.property?.delegated_services || []).includes("mise_en_location");
-        const isDelegatedStep = (key: StepKey) => delegatedListing && (key === "annonce" || key === "candidat_retenu");
+        // Services délégués à un tiers (agence...) : les tâches couvertes ne
+        // sont pas à faire par le bailleur. "Mise en location & candidatures"
+        // couvre l'annonce et le tri des dossiers ; "Bail & états des lieux"
+        // couvre l'EDL sortie, la caution et le nouveau bail.
+        const delegatedServices = t.property?.delegated_services || [];
+        const delegatedListing = delegatedServices.includes("mise_en_location");
+        const delegatedBailEdl = delegatedServices.includes("bail_edl");
+        const isDelegatedStep = (key: StepKey) =>
+          (delegatedListing && (key === "annonce" || key === "candidat_retenu")) ||
+          (delegatedBailEdl && (key === "edl" || key === "caution" || key === "nouveau_bail"));
 
         const doneCount = STEPS.filter((s) => t.steps[s.key] || isDelegatedStep(s.key)).length;
         const total = STEPS.length;
         const pct = Math.round((doneCount / total) * 100);
-        const action = nextAction(t.steps, t.lease.id, t.submittedCount, t.lease.property_id, delegatedListing);
+        const action = nextAction(t.steps, t.lease.id, t.submittedCount, t.lease.property_id, isDelegatedStep);
 
-        const cautionDays = t.cautionDeadline ? daysDiff(t.cautionDeadline) : null;
-        const cautionUrgent = !t.steps.caution && cautionDays !== null && cautionDays <= 7;
-        const cautionOverdue = !t.steps.caution && cautionDays !== null && cautionDays < 0;
+        const daysUntilOneMonth = t.cautionOneMonthDeadline ? daysDiff(t.cautionOneMonthDeadline) : null;
+        const daysUntilTwoMonths = t.cautionTwoMonthDeadline ? daysDiff(t.cautionTwoMonthDeadline) : null;
+        const cautionShow = !t.steps.caution && !isDelegatedStep("caution") && daysUntilOneMonth !== null;
+        // Délai légal maximum (2 mois) dépassé : vraiment en retard, quel que
+        // soit le contexte. Entre 1 et 2 mois : le délai est atteint si l'EDL
+        // ne révèle aucune dégradation, mais encore dans les clous sinon — on
+        // ne tranche pas (l'app ne compare pas les EDL entrée/sortie), d'où un
+        // ton amber "à restituer" plutôt qu'un rouge "en retard".
+        const cautionOverdue = daysUntilTwoMonths !== null && daysUntilTwoMonths < 0;
+        const cautionDue = !cautionOverdue && daysUntilOneMonth !== null && daysUntilOneMonth <= 0;
+        const cautionUrgent = !cautionOverdue && !cautionDue && daysUntilOneMonth !== null && daysUntilOneMonth <= 7;
 
         const propLabel = t.property?.label || t.property?.city || "Bien";
         const tenantName = t.tenant?.full_name || "Locataire";
@@ -350,21 +372,23 @@ export function TransitionPanel({ leases, propertyById, tenantById, userId, onGo
 
             {/* Footer */}
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-2.5">
-              {!t.steps.caution && t.cautionDeadline ? (
+              {cautionShow ? (
                 <div className={cx(
                   "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
                   cautionOverdue
                     ? "bg-red-100 text-red-700"
-                    : cautionUrgent
+                    : cautionDue || cautionUrgent
                     ? "bg-amber-100 text-amber-700"
                     : "bg-slate-100 text-slate-600"
                 )}>
                   <ClockIcon className="h-3.5 w-3.5 shrink-0" />
                   {cautionOverdue
-                    ? `Caution en retard (${Math.abs(cautionDays!)}j)`
-                    : cautionDays === 0
-                    ? "Caution à restituer aujourd'hui"
-                    : `Caution à restituer dans ${cautionDays}j`
+                    ? `Délai légal maximum dépassé (${Math.abs(daysUntilTwoMonths!)}j)`
+                    : cautionDue
+                    ? "Caution à restituer — délai légal atteint (1 mois, 2 si dégradations)"
+                    : daysUntilOneMonth === 0
+                    ? "Caution à restituer aujourd'hui (délai légal min.)"
+                    : `Caution à restituer dans ${daysUntilOneMonth}j (délai légal min.)`
                   }
                 </div>
               ) : (
