@@ -14,10 +14,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     has_guarantor, guarantor_first_name, guarantor_last_name,
     guarantor_email, guarantor_situation, guarantor_income,
     docs_identity, docs_payslip_1, docs_payslip_2, docs_payslip_3, docs_tax, docs_address,
+    consent,
   } = req.body || {};
 
-  if (!listing_token || !first_name || !last_name || !email) {
-    return res.status(400).json({ error: "Champs obligatoires manquants (prénom, nom, email)." });
+  if (
+    !listing_token || !first_name || !last_name || !email || !phone || !birth_date ||
+    !professional_situation || !net_monthly_income || !docs_identity || !docs_payslip_1
+  ) {
+    return res.status(400).json({ error: "Champs obligatoires manquants." });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(String(email).trim())) {
+    return res.status(400).json({ error: "Adresse email invalide." });
+  }
+
+  const income = Number(net_monthly_income);
+  if (!Number.isFinite(income) || income <= 0) {
+    return res.status(400).json({ error: "Revenus nets invalides." });
+  }
+  let guarantorIncomeValue: number | null = null;
+  if (guarantor_income !== undefined && guarantor_income !== null && guarantor_income !== "") {
+    guarantorIncomeValue = Number(guarantor_income);
+    if (!Number.isFinite(guarantorIncomeValue) || guarantorIncomeValue < 0) {
+      return res.status(400).json({ error: "Revenus du garant invalides." });
+    }
+  }
+
+  if (!consent) {
+    return res.status(400).json({ error: "Le consentement au traitement des données est requis." });
   }
 
   // Récupérer l'annonce
@@ -65,13 +90,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     birth_date: birth_date || null,
     professional_situation: professional_situation || null,
     employer_name: employer_name?.trim() || null,
-    net_monthly_income: net_monthly_income ? Number(net_monthly_income) : null,
+    net_monthly_income: income,
     has_guarantor: Boolean(has_guarantor),
     guarantor_first_name: guarantor_first_name?.trim() || null,
     guarantor_last_name: guarantor_last_name?.trim() || null,
     guarantor_email: guarantor_email?.trim().toLowerCase() || null,
     guarantor_situation: guarantor_situation || null,
-    guarantor_income: guarantor_income ? Number(guarantor_income) : null,
+    guarantor_income: guarantorIncomeValue,
     docs_identity: Boolean(docs_identity),
     docs_payslip_1: Boolean(docs_payslip_1),
     docs_payslip_2: Boolean(docs_payslip_2),
@@ -80,6 +105,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     docs_tax: Boolean(docs_tax),
     docs_address: Boolean(docs_address),
     submitted_at: new Date().toISOString(),
+    consent_at: new Date().toISOString(),
   };
 
   let data, error;
