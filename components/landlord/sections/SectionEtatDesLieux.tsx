@@ -1242,16 +1242,25 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   // bien, pour les seuls éléments qui y avaient été rattachés à l'entrée
   // (is_lmnp_required). Ne modifie que la condition — la quantité reste de
   // la responsabilité du bailleur dans la section Inventaire.
-  const syncLmnpInventoryFromExit = async (propertyId: string, lmnpItemsInReport: InventoryItem[]) => {
+  // Le filtre porte aussi sur la pièce (`roomName`), pas seulement le libellé :
+  // deux éléments LMNP peuvent légitimement partager le même libellé dans des
+  // pièces différentes (ex. "Couette" en Chambre 1 et Chambre 2) — sans ce
+  // filtre, mettre à jour l'un écrasait silencieusement l'état de l'autre.
+  const syncLmnpInventoryFromExit = async (
+    propertyId: string,
+    lmnpItemsInReport: Array<InventoryItem & { roomName?: string | null }>
+  ) => {
     if (!supabase || !userId || !lmnpItemsInReport.length) return { updated: 0 };
     let updated = 0;
     for (const it of lmnpItemsInReport) {
-      const { error, count } = await supabase
+      let query = supabase
         .from("property_inventory_items")
         .update({ condition: EDL_CONDITION_TO_LMNP[it.condition] || "bon" }, { count: "exact" })
         .eq("user_id", userId)
         .eq("property_id", propertyId)
         .eq("label", it.label);
+      if (it.roomName) query = query.eq("room", it.roomName);
+      const { error, count } = await query;
       if (!error && count) updated += count;
     }
     return { updated };
@@ -1457,7 +1466,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
     setOk(null);
 
     try {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("inventory_reports")
         .update({
           lease_id: leaseId,
@@ -1474,8 +1483,32 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
           occupant_phone: tenant?.phone || null,
         })
         .eq("id", reportId)
-        .eq("user_id", userId);
+        .eq("user_id", userId)
+        .select("report_type")
+        .single();
       if (error) throw error;
+
+      // Un EDL libre rattaché après coup à un bail meublé n'a jamais pu recevoir
+      // le préremplissage LMNP (aucun bien réel n'existait à sa création) — on le
+      // fait maintenant, seulement s'il s'agit d'une entrée et qu'aucun élément
+      // LMNP n'a déjà été ajouté (évite un double-préremplissage).
+      let lmnpMessage = "";
+      if (lease.property_id && updated?.report_type === "entry" && propertyRequiresLmnpInventory(lease.property_id, leases)) {
+        try {
+          const { count } = await supabase
+            .from("inventory_items")
+            .select("id", { count: "exact", head: true })
+            .eq("report_id", reportId)
+            .eq("is_lmnp_required", true);
+          if (!count) {
+            const { itemsCreated } = await prefillLmnpItemsForEntry(lease.property_id, reportId);
+            if (itemsCreated > 0) lmnpMessage = ` (${itemsCreated} élément(s) LMNP obligatoire(s) prérempli(s))`;
+          }
+        } catch (lmnpErr) {
+          console.error(lmnpErr);
+          // Non bloquant : le rattachement lui-même a réussi, seul le préremplissage a échoué.
+        }
+      }
 
       setSelectedLeaseId(leaseId);
       setAttachLeaseId("");
@@ -1483,7 +1516,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
       await loadReportsForLease(leaseId);
       await loadReportDetails(reportId);
       setSelectedReportId(reportId);
-      setOk("État des lieux rattaché au bail ✅");
+      setOk(`État des lieux rattaché au bail ✅${lmnpMessage}`);
     } catch (e: any) {
       setErr(e?.message || "Impossible de rattacher l’état des lieux.");
     } finally {
@@ -2675,7 +2708,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
 
   const handleSyncLmnpFromExit = async () => {
     if (!selectedReport?.property_id) return;
-    const lmnpItemsInReport = items.filter((it) => it.is_lmnp_required);
+    const roomNameById = new Map(rooms.map((r) => [r.id, r.name]));
+    const lmnpItemsInReport = items
+      .filter((it) => it.is_lmnp_required)
+      .map((it) => ({ ...it, roomName: it.room_id ? roomNameById.get(it.room_id) || null : null }));
     if (!lmnpItemsInReport.length) return;
     setLmnpSyncLoading(true);
     setErr(null);
