@@ -25,6 +25,15 @@ export type Tenant = {
   notes: string | null;
   archived_at?: string | null;
   archived_reason?: string | null;
+  guarantor_type?: string | null;
+  visale_number?: string | null;
+  guarantor_first_name?: string | null;
+  guarantor_last_name?: string | null;
+  guarantor_email?: string | null;
+  guarantor_phone?: string | null;
+  guarantor_address_line1?: string | null;
+  guarantor_postal_code?: string | null;
+  guarantor_city?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -429,6 +438,16 @@ export function SectionLocataires({
     phone: "",
     notes: "",
     archived_reason: "",
+    has_guarantor: false,
+    guarantor_type: "" as "" | "individual" | "visale",
+    visale_number: "",
+    guarantor_first_name: "",
+    guarantor_last_name: "",
+    guarantor_email: "",
+    guarantor_phone: "",
+    guarantor_address_line1: "",
+    guarantor_postal_code: "",
+    guarantor_city: "",
   };
 
   const [createForm, setCreateForm] = useState(emptyForm);
@@ -445,7 +464,7 @@ export function SectionLocataires({
     setTimeout(() => setHighlightCreate(false), 2500);
   }, [deepLink]);
 
-  const formFromTenant = (t: Tenant) => {
+  const formFromTenant = (t: Tenant): typeof emptyForm => {
     const fromCols = { first_name: (t.first_name || "").trim(), last_name: (t.last_name || "").trim() };
     const fromFull = splitFullName(t.full_name);
 
@@ -456,6 +475,16 @@ export function SectionLocataires({
       phone: t.phone || "",
       notes: t.notes || "",
       archived_reason: t.archived_reason || "",
+      has_guarantor: !!t.guarantor_type,
+      guarantor_type: (t.guarantor_type as "" | "individual" | "visale") || "",
+      visale_number: t.visale_number || "",
+      guarantor_first_name: t.guarantor_first_name || "",
+      guarantor_last_name: t.guarantor_last_name || "",
+      guarantor_email: t.guarantor_email || "",
+      guarantor_phone: t.guarantor_phone || "",
+      guarantor_address_line1: t.guarantor_address_line1 || "",
+      guarantor_postal_code: t.guarantor_postal_code || "",
+      guarantor_city: t.guarantor_city || "",
     };
   };
 
@@ -504,6 +533,15 @@ export function SectionLocataires({
         phone: form.phone?.trim() || null,
         notes: form.notes?.trim() || null,
         archived_reason: form.archived_reason?.trim() || null,
+        guarantor_type: form.has_guarantor ? form.guarantor_type || null : null,
+        visale_number: form.has_guarantor && form.guarantor_type === "visale" ? form.visale_number?.trim() || null : null,
+        guarantor_first_name: form.has_guarantor ? form.guarantor_first_name?.trim() || null : null,
+        guarantor_last_name: form.has_guarantor ? form.guarantor_last_name?.trim() || null : null,
+        guarantor_email: form.has_guarantor ? form.guarantor_email?.trim() || null : null,
+        guarantor_phone: form.has_guarantor ? form.guarantor_phone?.trim() || null : null,
+        guarantor_address_line1: form.has_guarantor ? form.guarantor_address_line1?.trim() || null : null,
+        guarantor_postal_code: form.has_guarantor ? form.guarantor_postal_code?.trim() || null : null,
+        guarantor_city: form.has_guarantor ? form.guarantor_city?.trim() || null : null,
       };
 
       if (isEdit) {
@@ -951,6 +989,94 @@ export function SectionLocataires({
   const activeTenantForm = activeTenant ? editForms[activeTenant.id] ?? formFromTenant(activeTenant) : null;
   const activeTenantArchived = activeTenant ? isArchived(activeTenant) : false;
 
+  const tenantInputClass = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100";
+  const tenantLabelClass = "text-[0.7rem] font-medium text-slate-600";
+
+  function renderGuarantorFields(form: typeof emptyForm, update: (patch: Partial<typeof emptyForm>) => void) {
+    return (
+      <div className="mt-3 space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={form.has_guarantor}
+            onChange={(e) => update({ has_guarantor: e.target.checked, guarantor_type: e.target.checked ? form.guarantor_type : "" })}
+            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-400"
+          />
+          <span className="text-sm font-medium text-slate-700">Ce locataire a un garant</span>
+        </label>
+
+        {form.has_guarantor && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: "individual", label: "Personne physique" },
+                { value: "visale", label: "Garantie Visale" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => update({ guarantor_type: opt.value as "individual" | "visale" })}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                    form.guarantor_type === opt.value
+                      ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-indigo-300"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {form.guarantor_type === "visale" && (
+              <div className="space-y-1">
+                <label className={tenantLabelClass}>Numéro de visa Visale</label>
+                <input
+                  value={form.visale_number}
+                  onChange={(e) => update({ visale_number: e.target.value })}
+                  className={tenantInputClass}
+                  placeholder="Ex : VIS-XXXXXXXX"
+                />
+              </div>
+            )}
+
+            {form.guarantor_type === "individual" && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className={tenantLabelClass}>Prénom du garant</label>
+                  <input value={form.guarantor_first_name} onChange={(e) => update({ guarantor_first_name: e.target.value })} className={tenantInputClass} />
+                </div>
+                <div className="space-y-1">
+                  <label className={tenantLabelClass}>Nom du garant</label>
+                  <input value={form.guarantor_last_name} onChange={(e) => update({ guarantor_last_name: e.target.value })} className={tenantInputClass} />
+                </div>
+                <div className="space-y-1">
+                  <label className={tenantLabelClass}>Email du garant</label>
+                  <input type="email" value={form.guarantor_email} onChange={(e) => update({ guarantor_email: e.target.value })} className={tenantInputClass} />
+                </div>
+                <div className="space-y-1">
+                  <label className={tenantLabelClass}>Téléphone du garant</label>
+                  <input value={form.guarantor_phone} onChange={(e) => update({ guarantor_phone: e.target.value })} className={tenantInputClass} placeholder="06 00 00 00 00" />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className={tenantLabelClass}>Adresse du garant</label>
+                  <input value={form.guarantor_address_line1} onChange={(e) => update({ guarantor_address_line1: e.target.value })} className={tenantInputClass} />
+                </div>
+                <div className="space-y-1">
+                  <label className={tenantLabelClass}>Code postal</label>
+                  <input value={form.guarantor_postal_code} onChange={(e) => update({ guarantor_postal_code: e.target.value })} className={tenantInputClass} />
+                </div>
+                <div className="space-y-1">
+                  <label className={tenantLabelClass}>Ville</label>
+                  <input value={form.guarantor_city} onChange={(e) => update({ guarantor_city: e.target.value })} className={tenantInputClass} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   /* ======================================================
      UI
   ====================================================== */
@@ -1125,6 +1251,8 @@ export function SectionLocataires({
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
                     />
                   </div>
+
+                  {renderGuarantorFields(createForm, (patch) => setCreateForm((s) => ({ ...s, ...patch })))}
 
                   <div className="mt-4 flex flex-wrap gap-2 items-center">
                     <button
@@ -1371,6 +1499,8 @@ export function SectionLocataires({
                           className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
                         />
                       </div>
+
+                      {renderGuarantorFields(f, (patch) => setEditForms((m) => ({ ...m, [t.id]: { ...f, ...patch } })))}
 
                       <div className="mt-3 flex flex-wrap gap-2 items-center">
                         <button

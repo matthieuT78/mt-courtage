@@ -63,6 +63,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       last_name: candidature.last_name ?? null,
       email: candidature.email ?? null,
       phone: candidature.phone ?? null,
+      guarantor_type: candidature.has_guarantor ? candidature.guarantor_type ?? null : null,
+      visale_number: candidature.has_guarantor && candidature.guarantor_type === "visale" ? candidature.visale_number ?? null : null,
+      guarantor_first_name: candidature.has_guarantor ? candidature.guarantor_first_name ?? null : null,
+      guarantor_last_name: candidature.has_guarantor ? candidature.guarantor_last_name ?? null : null,
+      guarantor_email: candidature.has_guarantor ? candidature.guarantor_email ?? null : null,
     })
     .select("*")
     .single();
