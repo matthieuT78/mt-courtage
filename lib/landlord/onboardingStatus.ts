@@ -58,15 +58,16 @@ export function computeOnboardingStatus({
   const workflowLeases = (activeLeases || []).filter(
     (lease) => String(lease.status || "active").toLowerCase() === "active"
   );
-  const leasedPropertyIds = new Set(workflowLeases.map((lease) => lease.property_id));
-  const leasedTenantIds = new Set(workflowLeases.map((lease) => lease.tenant_id));
-  const propertiesWithoutLease = managedProperties.filter((property) => !leasedPropertyIds.has(property.id));
-  const tenantsWithoutLease = managedTenants.filter((tenant) => !leasedTenantIds.has(tenant.id));
 
   const hasProperty = managedProperties.length > 0;
   const hasTenant = managedTenants.length > 0;
   const hasLease = workflowLeases.length > 0;
-  const leaseWorkflowReady = hasLease && propertiesWithoutLease.length === 0 && tenantsWithoutLease.length === 0;
+  // Une seule location active suffit à valider cette étape — c'est un guide de
+  // première prise en main, pas un objectif "100% du portefeuille loué". Un
+  // bailleur avec plusieurs biens dont certains restent volontairement vacants
+  // ne doit pas voir cette étape (et donc toute la mise en route) rester
+  // bloquée indéfiniment.
+  const leaseWorkflowReady = hasLease;
   const financeByProperty = new Map((propertyFinance || []).map((row) => [row.property_id, row]));
   const financeConfigured =
     hasProperty && managedProperties.every((property) => hasFinanceSetup(financeByProperty.get(property.id)));
@@ -76,8 +77,7 @@ export function computeOnboardingStatus({
   const bailEdlDelegated = managedProperties.some((p) =>
     Array.isArray((p as any).delegated_services) && (p as any).delegated_services.includes("bail_edl")
   );
-  const leaseStepLabel =
-    propertiesWithoutLease.length > 0 || tenantsWithoutLease.length > 0 ? "Créer la nouvelle location" : "Créer une location";
+  const leaseStepLabel = "Créer une location";
   const leaseStepDesc = bailEdlDelegated
     ? "Renseignez les infos de la location (loyer, dates) pour le suivi financier — même si le bail est géré par l'agence."
     : null;
@@ -114,8 +114,6 @@ export function computeOnboardingStatus({
       ? "Commencez par votre profil bailleur"
       : next?.key === "finance"
       ? "Dernière étape : fiabiliser les calculs"
-      : next?.key === "baux" && hasLease
-      ? "Nouveau dossier à rattacher"
       : percent >= 50
       ? "Plus qu'une étape avant votre premier workflow complet"
       : percent >= 25
@@ -132,13 +130,7 @@ export function computeOnboardingStatus({
       : next?.key === "locataires"
       ? "Ajoutez le locataire : nom, email, téléphone et notes utiles."
       : next?.key === "baux"
-      ? propertiesWithoutLease.length > 0 && tenantsWithoutLease.length > 0
-        ? `Créez une location pour rattacher ${propertiesWithoutLease.length} bien${propertiesWithoutLease.length > 1 ? "s" : ""} et ${tenantsWithoutLease.length} locataire${tenantsWithoutLease.length > 1 ? "s" : ""} encore sans location.`
-        : propertiesWithoutLease.length > 0
-        ? `Créez une location pour ${propertiesWithoutLease.length > 1 ? "les nouveaux biens" : "le nouveau bien"} encore sans locataire.`
-        : tenantsWithoutLease.length > 0
-        ? `Créez une location pour ${tenantsWithoutLease.length > 1 ? "les nouveaux locataires" : "le nouveau locataire"} encore sans logement rattaché.`
-        : "Créez la location : elle relie le bien, le locataire, le loyer et les quittances."
+      ? "Créez la location : elle relie le bien, le locataire, le loyer et les quittances."
       : "Complétez le socle Finance du bien : prix d'achat et taux du crédit. Les autres charges pourront être ajoutées ensuite.";
 
   const cta = next ? { key: next.key, label: next.label } : null;
