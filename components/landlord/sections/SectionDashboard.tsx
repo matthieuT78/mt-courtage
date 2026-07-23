@@ -12,7 +12,7 @@ import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
 import { isLmnpItemCompliant } from "../../../lib/landlord/lmnpInventory";
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
-import { TransitionPanel } from "./TransitionPanel";
+import { TransitionPanel, isInTransition } from "./TransitionPanel";
 
 type DashboardAlert = {
   tone: "emerald" | "amber" | "red";
@@ -853,8 +853,12 @@ export function SectionDashboard({
       snoozable?: boolean;
     }> = [];
     const onboardingIncomplete = onboarding.percent < 100;
+    // Si un logement est déjà en transition (départ locataire en cours), ce
+    // panneau dédié guide déjà le bailleur vers la remise en location — pas
+    // besoin de faire doublon avec une relance générique "mise en route".
+    const anyLeaseInTransition = leases.some((lease) => isInTransition(lease, leases, propertyById));
 
-    if (onboardingIncomplete && onboarding.next) {
+    if (onboardingIncomplete && onboarding.next && !anyLeaseInTransition) {
       actions.push({
         tone: "indigo",
         title: "Terminer la mise en route",
@@ -1086,6 +1090,7 @@ export function SectionDashboard({
     lateCount,
     leaseCards,
     leaseIdsWithContract,
+    leases,
     monthlyExpected,
     onNavigateDeep,
     onboarding.doneCount,

@@ -57,7 +57,7 @@ function daysDiff(target: Date): number {
   return Math.ceil((target.getTime() - now.getTime()) / 86400000);
 }
 
-function isInTransition(lease: Lease, allLeases: Lease[], propertyById: Map<string, Property>): boolean {
+export function isInTransition(lease: Lease, allLeases: Lease[], propertyById: Map<string, Property>): boolean {
   const status = String(lease.status || "").toLowerCase();
   if (!["active", "ended"].includes(status)) return false;
   if (!lease.end_date) return false;
