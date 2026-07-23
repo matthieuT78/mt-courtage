@@ -7,6 +7,7 @@ import {
   ArrowPathIcon,
   ArrowUpCircleIcon,
   BanknotesIcon,
+  CheckCircleIcon,
   DocumentArrowUpIcon,
   DocumentMagnifyingGlassIcon,
   PaperClipIcon,
@@ -509,6 +510,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [txDocuments, setTxDocuments] = useState<TransactionDocument[]>([]);
   const [pf, setPf] = useState<Map<string, PropertyFinance>>(new Map());
   const [openFinanceProps, setOpenFinanceProps] = useState<Set<string>>(new Set());
+  const [financePanelForceOpen, setFinancePanelForceOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -587,6 +589,12 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     [propsById]
   );
   const activePropertyOptions = useMemo(() => propertyOptions.filter(isActivePropertyLike), [propertyOptions]);
+  const financeConfiguredCount = useMemo(
+    () => activePropertyOptions.filter((p) => { const f = pf.get(p.id); return !!f?.purchase_price && !!f?.loan_rate_percent; }).length,
+    [activePropertyOptions, pf]
+  );
+  const financeAllConfigured = activePropertyOptions.length > 0 && financeConfiguredCount === activePropertyOptions.length;
+  const financePanelVisible = activePropertyOptions.length === 0 || !financeAllConfigured || financePanelForceOpen;
   const activePropertyIdSet = useMemo(() => new Set(activePropertyOptions.map((property) => property.id)), [activePropertyOptions]);
 
   const leasePropertyById = useMemo(() => {
@@ -1482,7 +1490,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
     await loadFinance();
     await onRefresh?.();
-    setOk("Configuration financière enregistrée ✅ Mise en route mise à jour.");
   };
 
   const periodLabel = selectedPeriod.label;
@@ -1907,6 +1914,133 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           );
         })}
       </div>
+
+      {/* ── Configuration financière des biens ───────────────────────── */}
+      {financeAllConfigured ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+              <CheckCircleIcon className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-emerald-900">Configuration finance faite</p>
+              <p className="text-xs text-emerald-700">
+                {financeConfiguredCount}/{activePropertyOptions.length} bien{activePropertyOptions.length > 1 ? "s" : ""} configuré{activePropertyOptions.length > 1 ? "s" : ""} — prix d'achat et taux de crédit renseignés.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFinancePanelForceOpen((v) => !v)}
+            className="shrink-0 rounded-full border border-emerald-300 bg-white px-4 py-1.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+          >
+            {financePanelForceOpen ? "Réduire" : "Modifier"}
+          </button>
+        </div>
+      ) : activePropertyOptions.length > 0 ? (
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-white">
+              <BanknotesIcon className="h-4.5 w-4.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-indigo-900">
+                {financeConfiguredCount === 0 ? "Configurez la finance de vos biens" : "Configuration finance à terminer"}
+              </p>
+              <p className="mt-0.5 text-xs leading-5 text-indigo-700">
+                Renseignez le prix d'achat et le taux de crédit de chaque bien pour débloquer les calculs de rentabilité et le suivi de trésorerie.
+                {" "}{financeConfiguredCount}/{activePropertyOptions.length} bien{activePropertyOptions.length > 1 ? "s" : ""} déjà configuré{activePropertyOptions.length > 1 ? "s" : ""}.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {financePanelVisible && (
+        <div id="finance-pilotage" className={`overflow-hidden rounded-2xl border bg-white transition-shadow duration-500 ${highlightFinanceConfig ? "border-red-400 ring-2 ring-red-400 ring-offset-2" : "border-slate-200"}`}>
+          <div className="border-b border-slate-200 px-4 py-3">
+            <p className="text-sm font-semibold text-slate-900">Paramètres financiers</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Prix d'achat, crédit, assurances, taxes — ces données alimentent Performance et les calculs de rentabilité.
+            </p>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {activePropertyOptions.length === 0 ? (
+              <p className="px-4 py-5 text-sm text-slate-500">Créez d'abord un bien pour renseigner ses paramètres financiers.</p>
+            ) : (
+              activePropertyOptions.map((property) => {
+                const existing = pf.get(property.id) || null;
+                const recurringData = monthlyRecurringByProperty.get(property.id);
+                const hasLoanRecurringTx = (recurringParentTxByProperty.get(property.id) || []).some((t) => t.category === "loan");
+                const loanMonthly = recurringData?.loan || 0;
+                const taxesMonthly = recurringData?.taxM || 0;
+                const operatingMonthly = recurringData?.fixed || 0;
+                const monthlyTotal = loanMonthly + taxesMonthly + operatingMonthly;
+                const missing = [
+                  !existing?.purchase_price ? "prix d'achat" : "",
+                  !existing?.loan_rate_percent ? "taux crédit" : "",
+                ].filter(Boolean);
+                const optionalMissing = [
+                  !hasLoanRecurringTx && !existing?.loan_monthly ? "crédit" : "",
+                  !existing?.tax_regime ? "régime" : "",
+                ].filter(Boolean);
+
+                return (
+                  <div key={property.id} id={`finance-property-${property.id}`}>
+                    <button
+                      type="button"
+                      className="w-full px-4 py-3 text-left hover:bg-slate-50"
+                      onClick={() => setOpenFinanceProps((prev) => {
+                        const next = new Set(prev);
+                        next.has(property.id) ? next.delete(property.id) : next.add(property.id);
+                        return next;
+                      })}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <svg className={cx("h-3 w-3 shrink-0 text-slate-400 transition-transform", openFinanceProps.has(property.id) && "rotate-90")} viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 1l4 4-4 4"/></svg>
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700">
+                            {(property.label || property.address_line1 || "B").slice(0, 1).toUpperCase()}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900">{property.label || property.address_line1 || "Bien"}</p>
+                            <p className="truncate text-xs text-slate-500">
+                              {missing.length
+                                ? `À renseigner : ${missing.join(", ")}`
+                                : optionalMissing.length
+                                ? `À affiner : ${optionalMissing.join(", ")}`
+                                : "Paramètres complets"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="hidden grid-cols-[5.5rem_5rem_4rem_3.5rem_7rem] gap-x-4 text-xs text-slate-600 sm:grid">
+                            <LineMetric label="Total/mois" value={formatEuro(monthlyTotal)} strong />
+                            <LineMetric label="Crédit" value={formatEuro(loanMonthly)} />
+                            <LineMetric label="Taxes" value={formatEuro(taxesMonthly)} />
+                            <LineMetric label="Taux" value={existing?.loan_rate_percent ? `${Number(existing.loan_rate_percent).toLocaleString("fr-FR")} %` : "—"} />
+                            <LineMetric label="Régime" value={existing?.tax_regime ? taxRegimeLabel(existing.tax_regime) : "—"} />
+                          </div>
+                          {!openFinanceProps.has(property.id) && (
+                            <span className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                              Modifier
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                    {openFinanceProps.has(property.id) && (
+                      <div className="border-t border-slate-100 bg-slate-50 px-4 pb-4">
+                        <PropertyFinanceForm propertyId={property.id} existing={existing} onSave={upsertPropertyFinance} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Déclaration tab ───────────────────────────────────────── */}
       {tab === "declaration" && <SectionDeclaration userId={userId} properties={properties} propertyFinance={Array.from(pf.values()).filter((fin) => activePropertyIdSet.has(fin.property_id))} />}
@@ -2406,90 +2540,6 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         </div>
       )}
 
-      {/* Paramètres financiers par bien */}
-      <div id="finance-pilotage" className={`overflow-hidden rounded-2xl border bg-white transition-shadow duration-500 ${highlightFinanceConfig ? "border-red-400 ring-2 ring-red-400 ring-offset-2" : "border-slate-200"}`}>
-        <div className="border-b border-slate-200 px-4 py-3">
-          <p className="text-sm font-semibold text-slate-900">Paramètres financiers</p>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Prix d'achat, crédit, assurances, taxes — ces données alimentent Performance et les calculs de rentabilité.
-          </p>
-        </div>
-        <div className="divide-y divide-slate-100">
-          {activePropertyOptions.length === 0 ? (
-            <p className="px-4 py-5 text-sm text-slate-500">Créez d'abord un bien pour renseigner ses paramètres financiers.</p>
-          ) : (
-            activePropertyOptions.map((property) => {
-              const existing = pf.get(property.id) || null;
-              const recurringData = monthlyRecurringByProperty.get(property.id);
-              const hasLoanRecurringTx = (recurringParentTxByProperty.get(property.id) || []).some((t) => t.category === "loan");
-              const loanMonthly = recurringData?.loan || 0;
-              const taxesMonthly = recurringData?.taxM || 0;
-              const operatingMonthly = recurringData?.fixed || 0;
-              const monthlyTotal = loanMonthly + taxesMonthly + operatingMonthly;
-              const missing = [
-                !existing?.purchase_price ? "prix d'achat" : "",
-                !existing?.loan_rate_percent ? "taux crédit" : "",
-              ].filter(Boolean);
-              const optionalMissing = [
-                !hasLoanRecurringTx && !existing?.loan_monthly ? "crédit" : "",
-                !existing?.tax_regime ? "régime" : "",
-              ].filter(Boolean);
-
-              return (
-                <div key={property.id} id={`finance-property-${property.id}`}>
-                  <button
-                    type="button"
-                    className="w-full px-4 py-3 text-left hover:bg-slate-50"
-                    onClick={() => setOpenFinanceProps((prev) => {
-                      const next = new Set(prev);
-                      next.has(property.id) ? next.delete(property.id) : next.add(property.id);
-                      return next;
-                    })}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <svg className={cx("h-3 w-3 shrink-0 text-slate-400 transition-transform", openFinanceProps.has(property.id) && "rotate-90")} viewBox="0 0 6 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 1l4 4-4 4"/></svg>
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700">
-                          {(property.label || property.address_line1 || "B").slice(0, 1).toUpperCase()}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-900">{property.label || property.address_line1 || "Bien"}</p>
-                          <p className="truncate text-xs text-slate-500">
-                            {missing.length
-                              ? `À renseigner : ${missing.join(", ")}`
-                              : optionalMissing.length
-                              ? `À affiner : ${optionalMissing.join(", ")}`
-                              : "Paramètres complets"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="hidden grid-cols-[5.5rem_5rem_4rem_3.5rem_7rem] gap-x-4 text-xs text-slate-600 sm:grid">
-                          <LineMetric label="Total/mois" value={formatEuro(monthlyTotal)} strong />
-                          <LineMetric label="Crédit" value={formatEuro(loanMonthly)} />
-                          <LineMetric label="Taxes" value={formatEuro(taxesMonthly)} />
-                          <LineMetric label="Taux" value={existing?.loan_rate_percent ? `${Number(existing.loan_rate_percent).toLocaleString("fr-FR")} %` : "—"} />
-                          <LineMetric label="Régime" value={existing?.tax_regime ? taxRegimeLabel(existing.tax_regime) : "—"} />
-                        </div>
-                        {!openFinanceProps.has(property.id) && (
-                          <span className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                            Modifier
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                  {openFinanceProps.has(property.id) && (
-                    <div className="border-t border-slate-100 bg-slate-50 px-4 pb-4">
-                      <PropertyFinanceForm propertyId={property.id} existing={existing} onSave={upsertPropertyFinance} />
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
 
       {txWizardOpen ? (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/50 px-3 py-4 backdrop-blur-sm sm:items-center">
