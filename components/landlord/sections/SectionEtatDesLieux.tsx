@@ -18,8 +18,9 @@ import { supabase } from "../../../lib/supabaseClient";
 import { usePermissions } from "../../PermissionProvider";
 import { planAllowsDocumentSharing } from "../../../lib/permissions";
 import { SectionTitle } from "../UiBits";
-import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
+import type { Lease, Property, PropertyFinance, Tenant } from "../../../lib/landlord/types";
 import { isActivePropertyLike, isEDLSelectableLease } from "../../../lib/landlord/archiveFilters";
+import { propertyRequiresLmnpInventory } from "../../../lib/landlord/lmnpInventory";
 import RepairsGuideCard from "../RepairsGuideCard";
 
 /* ======================================================
@@ -78,6 +79,7 @@ type InventoryItem = {
   recommended_action: string | null;
   estimated_cost: number | null;
   severity: number | null;
+  is_lmnp_required?: boolean;
 };
 
 type InventoryPhoto = {
@@ -98,8 +100,10 @@ type Props = {
   leases?: Lease[];
   properties?: Property[];
   tenants?: Tenant[];
+  propertyFinance?: PropertyFinance[];
   onRefresh?: () => Promise<void>;
   onNavigateToBaux?: () => void;
+  onNavigateToInventaire?: () => void;
 };
 
 async function authJsonHeaders() {
@@ -135,13 +139,132 @@ const conditionOptions: Array<{ v: InventoryItem["condition"]; label: string }> 
   { v: "mauvais", label: "Mauvais" },
 ];
 
-const FIELD_STRUCTURE_PRESETS = [
-  { kind: "mur" as const, category: "Mur", label: "État général" },
-  { kind: "sol" as const, category: "Sol", label: "Revêtement" },
-  { kind: "plafond" as const, category: "Plafond", label: "État général" },
-  { kind: "porte" as const, category: "Porte", label: "Ouverture / serrure" },
-  { kind: "fenetre" as const, category: "Fenêtre", label: "Ouverture / vitrage" },
+// "neuf"/"tres_bon" sont des nuances de "bon" (rien à signaler) — seul "moyen"/"mauvais"
+// signale un problème qui justifie de documenter usure/propreté/fonctionnement/photos.
+const CONDITION_NEEDS_DETAIL: Record<InventoryItem["condition"], boolean> = {
+  neuf: false,
+  tres_bon: false,
+  bon: false,
+  moyen: true,
+  mauvais: true,
+};
+
+function ConditionTapButtons({
+  value,
+  onChange,
+}: {
+  value: InventoryItem["condition"];
+  onChange: (v: InventoryItem["condition"]) => void;
+}) {
+  const isGoodTier = value === "bon" || value === "neuf" || value === "tres_bon";
+  return (
+    <div className="space-y-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
+        <button
+          type="button"
+          onClick={() => onChange("bon")}
+          className={cx(
+            "min-h-[40px] rounded-xl border px-2 text-sm font-semibold transition-colors",
+            isGoodTier
+              ? "border-emerald-600 bg-emerald-600 text-white"
+              : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+          )}
+        >
+          Bon
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange("moyen")}
+          className={cx(
+            "min-h-[40px] rounded-xl border px-2 text-sm font-semibold transition-colors",
+            value === "moyen"
+              ? "border-amber-500 bg-amber-500 text-white"
+              : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+          )}
+        >
+          Moyen
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange("mauvais")}
+          className={cx(
+            "min-h-[40px] rounded-xl border px-2 text-sm font-semibold transition-colors",
+            value === "mauvais"
+              ? "border-red-600 bg-red-600 text-white"
+              : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+          )}
+        >
+          Mauvais
+        </button>
+      </div>
+      {isGoodTier && (
+        <div className="flex flex-wrap gap-1.5">
+          {(["neuf", "tres_bon"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => onChange(value === v ? "bon" : v)}
+              className={cx(
+                "rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold transition-colors",
+                value === v
+                  ? "border-emerald-600 bg-emerald-50 text-emerald-800"
+                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+              )}
+            >
+              {v === "neuf" ? "Neuf" : "Très bon"}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Éléments structurels communs à toute pièce — créés automatiquement dès
+// qu'une pièce est ajoutée, pour guider le bailleur au lieu de lui demander
+// d'inventer la liste sur place (état "bon" par défaut, à ajuster d'un tap).
+const STRUCTURAL_TEMPLATE: Array<{ category: string; label: string }> = [
+  { category: "Sol", label: "Revêtement" },
+  { category: "Mur", label: "État général" },
+  { category: "Plafond", label: "État général" },
+  { category: "Porte", label: "Ouverture / serrure" },
+  { category: "Fenêtre", label: "Ouverture / vitrage" },
+  { category: "Électricité", label: "Prises électriques" },
+  { category: "Électricité", label: "Interrupteurs" },
+  { category: "Électricité", label: "Luminaires" },
+  { category: "Chauffage", label: "Radiateur" },
 ];
+
+// Équipements propres à certains types de pièce, ajoutés en plus du socle
+// structurel ci-dessus.
+const ROOM_EQUIPMENT_TEMPLATE: Partial<Record<RoomPresetKey, Array<{ category: string; label: string }>>> = {
+  cuisine: [
+    { category: "Cuisson", label: "Plaques de cuisson" },
+    { category: "Cuisson", label: "Four ou four micro-ondes" },
+    { category: "Froid", label: "Réfrigérateur" },
+    { category: "Équipement", label: "Évier" },
+    { category: "Rangement", label: "Meubles hauts et bas" },
+  ],
+  sdb: [
+    { category: "Équipement", label: "Douche ou baignoire" },
+    { category: "Équipement", label: "Lavabo / meuble vasque" },
+    { category: "Équipement", label: "Miroir" },
+    { category: "Ventilation", label: "VMC" },
+  ],
+  wc: [
+    { category: "Équipement", label: "Cuvette" },
+    { category: "Équipement", label: "Chasse d'eau" },
+  ],
+  chambre: [{ category: "Rangement", label: "Placard / penderie" }],
+  dressing: [{ category: "Rangement", label: "Penderie / étagères" }],
+  buanderie: [{ category: "Rangement", label: "Meuble / rangement" }],
+  entree: [{ category: "Rangement", label: "Placard / rangement" }],
+};
+
+function templateItemsForRoomKey(key: RoomPresetKey): Array<{ category: string; label: string }> {
+  return [...STRUCTURAL_TEMPLATE, ...(ROOM_EQUIPMENT_TEMPLATE[key] || [])];
+}
+
 
 const statusUi = (s?: InventoryReport["status"] | null) => {
   const v = (s || "draft").toLowerCase() as InventoryReport["status"];
@@ -367,7 +490,7 @@ function RoomIllustration({
    WIZARD HELPERS
 ====================================================== */
 
-type WizardStep = "plan" | "rooms" | "finalize";
+type WizardStep = "intro" | "config" | "rooms" | "finalize";
 
 type RoomPresetKey =
   | "entree"
@@ -508,7 +631,7 @@ function openBlankPdfWindow() {
 // =========================
 // BLOCK 2/4
 // =========================
-export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRefresh, onNavigateToBaux }: Props) {
+export function SectionEtatDesLieux({ userId, leases, properties, tenants, propertyFinance, onRefresh, onNavigateToBaux, onNavigateToInventaire }: Props) {
   const { plan } = usePermissions();
   const canShareDocuments = planAllowsDocumentSharing(plan);
   const safeLeases = useMemo(() => (Array.isArray(leases) ? leases : []), [leases]);
@@ -574,11 +697,18 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   const [tenantEmailSent, setTenantEmailSent] = useState<string | null>(null);
   const [sigEdlLoading, setSigEdlLoading] = useState(false);
   const [sigEdlSent, setSigEdlSent] = useState(false);
+  const [lmnpSyncLoading, setLmnpSyncLoading] = useState(false);
+  const [lmnpSyncDone, setLmnpSyncDone] = useState(false);
+  const [lmnpInventoryEmptyForProperty, setLmnpInventoryEmptyForProperty] = useState(false);
   const [sigEdlError, setSigEdlError] = useState<string | null>(null);
 
   const [reports, setReports] = useState<InventoryReport[]>([]);
   const [standaloneReports, setStandaloneReports] = useState<InventoryReport[]>([]);
   const [completedExitLeaseIds, setCompletedExitLeaseIds] = useState<Set<string>>(new Set());
+  // Baux ayant déjà au moins un état des lieux — sert à distinguer "dossier
+  // existant" (panneau de gauche) de "rien encore créé" (le bail n'apparaît
+  // alors que dans le sélecteur du formulaire de création, à droite).
+  const [leaseIdsWithReport, setLeaseIdsWithReport] = useState<Set<string>>(new Set());
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
   const [rooms, setRooms] = useState<InventoryRoom[]>([]);
@@ -588,6 +718,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   const [photoFeedback, setPhotoFeedback] = useState<Record<string, { tone: "error" | "success"; message: string }>>({});
 
   const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<string | null>(null);
+  // Éléments repliés par défaut (résumé seulement) : évite qu'un clic sur
+  // "Pièce OK" (5 éléments d'un coup) n'affiche 5 formulaires complets à la
+  // fois. On déplie un élément uniquement quand le bailleur veut l'ajuster.
+  const [expandedItemIds, setExpandedItemIds] = useState<Record<string, boolean>>({});
+  const toggleItemExpanded = (id: string) =>
+    preserveWizardScroll(() => setExpandedItemIds((prev) => ({ ...prev, [id]: !prev[id] })));
+  // Usure/propreté/fonctionnement/observations/tags/photos ne s'affichent que si
+  // l'état tapé est Moyen/Mauvais, ou si le bailleur force l'ouverture pour un
+  // élément en bon état (ex : vouloir quand même ajouter une photo).
+  const [forcedDetailItemIds, setForcedDetailItemIds] = useState<Record<string, boolean>>({});
   const [confirmDeletePhotoId, setConfirmDeletePhotoId] = useState<string | null>(null);
   const [confirmReplaceExternalPdf, setConfirmReplaceExternalPdf] = useState<{ type: "entry" | "exit"; file: File } | null>(null);
   const [confirmDeleteRoomsOpen, setConfirmDeleteRoomsOpen] = useState(false);
@@ -596,7 +736,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   const [search, setSearch] = useState("");
   const [creationMode, setCreationMode] = useState<"lease" | "standalone">("lease");
   const [attachLeaseId, setAttachLeaseId] = useState("");
-  const [creationWizardStep, setCreationWizardStep] = useState<0 | 1 | 2 | 3 | null>(null);
+  const [creationWizardStep, setCreationWizardStep] = useState<1 | 2 | null>(null);
   const [creationWizardReportType, setCreationWizardReportType] = useState<"entry" | "exit" | null>(null);
   const externalCreationWizardFileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -624,12 +764,53 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     if (selectedLease.end_date && new Date(selectedLease.end_date) < new Date()) return true;
     return false;
   }, [selectedLease]);
-  const startWizardStep3 = (type: "entry" | "exit") => {
-    setCreationMode("lease");
+  // Choisit entre créer/reprendre directement (cas courant : bail, pas
+  // délégué, pas d'entrée externe à réimporter) et passer par l'écran
+  // "Comment souhaitez-vous créer ?" (cas standalone, délégué à une agence,
+  // ou sortie après une entrée importée en PDF externe — dans ces cas la
+  // saisie guidée n'est pas la seule option, il faut laisser le choix).
+  const startOrCreateReport = (type: "entry" | "exit", mode: "lease" | "standalone") => {
     setCreationWizardReportType(type);
-    setCreationWizardStep(3);
+    setCreationMode(mode);
+    if (mode === "lease") {
+      const existing = reports.find((r) => r.report_type === type);
+      const delegatedImportOnly =
+        !!selectedProperty?.delegated_services?.includes("bail_edl") ||
+        (type === "exit" && entryReport?.document_source === "external");
+      if (existing || !delegatedImportOnly) {
+        void createReport(type);
+        resetCreationWizard();
+        return;
+      }
+    }
+    setCreationWizardStep(2);
   };
+  const startWizardStep3 = (type: "entry" | "exit") => startOrCreateReport(type, "lease");
   const selectedProperty = selectedLease ? propertyById.get(selectedLease.property_id) || null : null;
+
+  // Le bien est-il censé être suivi en LMNP, mais sans aucun élément
+  // obligatoire encore configuré dans la section Inventaire ? Dans ce cas,
+  // le préremplissage de l'EDL entrée n'a rien à copier — on prévient plutôt
+  // que de laisser l'EDL paraître vide sans explication.
+  useEffect(() => {
+    if (!supabase || !userId || !selectedProperty?.id) { setLmnpInventoryEmptyForProperty(false); return; }
+    const taxRegime = propertyFinance?.find((f) => f.property_id === selectedProperty.id)?.tax_regime;
+    if (!propertyRequiresLmnpInventory(selectedProperty.id, taxRegime, leases)) {
+      setLmnpInventoryEmptyForProperty(false);
+      return;
+    }
+    let mounted = true;
+    (async () => {
+      const { count } = await supabase
+        .from("property_inventory_items")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("property_id", selectedProperty.id)
+        .eq("is_required_lmnp", true);
+      if (mounted) setLmnpInventoryEmptyForProperty(!count);
+    })();
+    return () => { mounted = false; };
+  }, [selectedProperty?.id, propertyFinance, leases, userId]);
   const standalonePlaceLabel = selectedReport
     ? [
         selectedReport.property_address_line1,
@@ -726,7 +907,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     if (!supabase || !userId) return;
 
     try {
-      const [{ data: standalone, error: e1 }, { data: exitDone, error: e2 }] = await Promise.all([
+      const [{ data: standalone, error: e1 }, { data: exitDone, error: e2 }, { data: withReport, error: e3 }] = await Promise.all([
         supabase
           .from("inventory_reports")
           .select("*")
@@ -740,11 +921,18 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
           .eq("report_type", "exit")
           .in("status", ["signed", "archived"])
           .not("lease_id", "is", null),
+        supabase
+          .from("inventory_reports")
+          .select("lease_id")
+          .eq("user_id", userId)
+          .not("lease_id", "is", null),
       ]);
       if (e1) throw e1;
       if (e2) throw e2;
+      if (e3) throw e3;
       setStandaloneReports(((standalone || []) as InventoryReport[]) || []);
       setCompletedExitLeaseIds(new Set((exitDone || []).map((r: any) => r.lease_id)));
+      setLeaseIdsWithReport(new Set((withReport || []).map((r: any) => r.lease_id)));
     } catch (e: any) {
       setErr(e?.message || "Impossible de charger les états des lieux libres.");
     }
@@ -821,6 +1009,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     setTenantEmailSent(null);
     setSigEdlSent(false);
     setSigEdlError(null);
+    setLmnpSyncDone(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedReportId]);
 
@@ -901,6 +1090,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       recommended_action: it.recommended_action,
       estimated_cost: it.estimated_cost,
       severity: it.severity ?? 0,
+      is_lmnp_required: it.is_lmnp_required ?? false,
     }));
 
     if (payloadItems.length) {
@@ -909,6 +1099,133 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     }
 
     return { roomsCopied: rRooms.length, itemsCopied: payloadItems.length };
+  };
+
+  /* ======================================================
+     MUTATIONS : pont avec l'inventaire LMNP du bien
+====================================================== */
+
+  const LMNP_CONDITION_TO_EDL: Record<string, InventoryItem["condition"]> = {
+    neuf: "neuf",
+    tres_bon: "tres_bon",
+    bon: "bon",
+    moyen: "moyen",
+    a_remplacer: "mauvais",
+  };
+
+  // Préremplit l'EDL d'entrée avec les éléments obligatoires LMNP déjà
+  // enregistrés sur le bien (section Inventaire), plutôt que de les faire
+  // ressaisir. Les lignes créées sont taguées is_lmnp_required pour pouvoir
+  // les repérer plus tard (comparatif + resynchronisation à la sortie).
+  const prefillLmnpItemsForEntry = async (propertyId: string, reportId: string) => {
+    if (!supabase || !userId) return { roomsCreated: 0, itemsCreated: 0 };
+
+    const { data: lmnpItems, error } = await supabase
+      .from("property_inventory_items")
+      .select("room, category, label, required_quantity, condition")
+      .eq("user_id", userId)
+      .eq("property_id", propertyId)
+      .eq("is_required_lmnp", true);
+    if (error) throw error;
+    if (!lmnpItems || !lmnpItems.length) return { roomsCreated: 0, itemsCreated: 0 };
+
+    const roomNames = Array.from(new Set(lmnpItems.map((it: any) => (it.room || "").trim() || "Autre")));
+    const roomIdByName = new Map<string, string>();
+    for (let i = 0; i < roomNames.length; i++) {
+      const { data: newRoom, error: eIns } = await supabase
+        .from("inventory_rooms")
+        .insert({ report_id: reportId, name: roomNames[i], floor_level: null, notes: null, sort_order: i })
+        .select("id")
+        .single();
+      if (eIns) throw eIns;
+      roomIdByName.set(roomNames[i], (newRoom as any).id);
+    }
+
+    const payload = lmnpItems.map((it: any) => ({
+      report_id: reportId,
+      room_id: roomIdByName.get((it.room || "").trim() || "Autre") || null,
+      category: it.category || "",
+      label: it.label,
+      condition: LMNP_CONDITION_TO_EDL[it.condition] || "bon",
+      wear_level: null,
+      description: `Élément LMNP obligatoire — quantité requise : ${it.required_quantity || 1}.`,
+      defect_tags: [],
+      is_clean: true,
+      is_functional: true,
+      recommended_action: null,
+      estimated_cost: null,
+      severity: 0,
+      is_lmnp_required: true,
+    }));
+
+    const { error: eInsItems } = await supabase.from("inventory_items").insert(payload);
+    if (eInsItems) throw eInsItems;
+
+    // Checklist structurelle standard (Sol/Mur/Plafond/Porte/Fenêtre/Électricité/
+    // Chauffage + équipements par type de pièce), en plus des items LMNP — pour
+    // que ces pièces préremplies aient la même base que celles créées via
+    // "Ajouter des pièces" (applyAddSuggestions/addCustomRoom).
+    const structuralPayload = roomNames.flatMap((name) => {
+      const roomId = roomIdByName.get(name);
+      if (!roomId) return [];
+      const key = guessPresetKeyFromRoomName(name);
+      const lmnpKeysForRoom = new Set(
+        lmnpItems
+          .filter((it: any) => ((it.room || "").trim() || "Autre") === name)
+          .map((it: any) => `${(it.category || "").trim().toLowerCase()}|${(it.label || "").trim().toLowerCase()}`)
+      );
+      return templateItemsForRoomKey(key)
+        .filter((t) => !lmnpKeysForRoom.has(`${t.category.trim().toLowerCase()}|${t.label.trim().toLowerCase()}`))
+        .map((t) => ({
+          report_id: reportId,
+          room_id: roomId,
+          category: t.category,
+          label: t.label,
+          condition: "bon" as const,
+          wear_level: 1,
+          description: "",
+          defect_tags: [],
+          is_clean: true,
+          is_functional: true,
+          recommended_action: null,
+          estimated_cost: null,
+          severity: 0,
+        }));
+    });
+
+    if (structuralPayload.length) {
+      const { error: eInsStruct } = await supabase.from("inventory_items").insert(structuralPayload);
+      if (eInsStruct) throw eInsStruct;
+    }
+
+    return { roomsCreated: roomNames.length, itemsCreated: payload.length + structuralPayload.length };
+  };
+
+  const EDL_CONDITION_TO_LMNP: Record<string, string> = {
+    neuf: "neuf",
+    tres_bon: "tres_bon",
+    bon: "bon",
+    moyen: "moyen",
+    mauvais: "a_remplacer",
+  };
+
+  // Reporte l'état constaté à la sortie sur l'inventaire LMNP permanent du
+  // bien, pour les seuls éléments qui y avaient été rattachés à l'entrée
+  // (is_lmnp_required). Ne modifie que la condition — la quantité reste de
+  // la responsabilité du bailleur dans la section Inventaire.
+  const syncLmnpInventoryFromExit = async (propertyId: string, lmnpItemsInReport: InventoryItem[]) => {
+    if (!supabase || !userId || !lmnpItemsInReport.length) return { updated: 0 };
+    let updated = 0;
+    for (const it of lmnpItemsInReport) {
+      const { error, count } = await supabase
+        .from("property_inventory_items")
+        .update({ condition: EDL_CONDITION_TO_LMNP[it.condition] || "bon" }, { count: "exact" })
+        .eq("user_id", userId)
+        .eq("property_id", propertyId)
+        .eq("label", it.label);
+      if (!error && count) updated += count;
+    }
+    return { updated };
   };
 
   const createReport = async (type: "entry" | "exit") => {
@@ -985,6 +1302,22 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
         } catch (copyErr: any) {
           console.error(copyErr);
           setOk("EDL de sortie créé ✅ (copie entrée impossible — tu peux compléter manuellement)");
+        }
+      } else if (
+        type === "entry" &&
+        _property?.id &&
+        propertyRequiresLmnpInventory(_property.id, propertyFinance?.find((f) => f.property_id === _property.id)?.tax_regime, leases)
+      ) {
+        try {
+          const { itemsCreated } = await prefillLmnpItemsForEntry(_property.id, reportId);
+          setOk(
+            itemsCreated > 0
+              ? `État des lieux créé ✅ (${itemsCreated} élément(s) LMNP obligatoire(s) prérempli(s) depuis l'inventaire du bien)`
+              : "État des lieux créé ✅"
+          );
+        } catch (prefillErr: any) {
+          console.error(prefillErr);
+          setOk("État des lieux créé ✅ (préremplissage LMNP impossible — tu peux compléter manuellement)");
         }
       } else {
         setOk("État des lieux créé ✅");
@@ -1712,6 +2045,15 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     return Math.round((okRooms / rooms.length) * 100);
   }, [rooms, itemsByRoomId]);
 
+  // Nombre d'éléments LMNP déjà préremplis dans ce dossier — affiché comme
+  // "endroit dédié" à l'inventaire LMNP sur l'écran de configuration.
+  const editingReportLmnpItemsCount = useMemo(() => items.filter((it) => it.is_lmnp_required).length, [items]);
+
+  // Total réel des obligations LMNP du bien (même source que la section
+  // Inventaire) — sert à contextualiser la carte ci-dessous avec un "X sur Y",
+  // pour ne pas laisser croire que le prérempli couvre toute l'obligation.
+  const [lmnpTotalRequiredCount, setLmnpTotalRequiredCount] = useState(0);
+
   const activeOnlyLeases = useMemo(() => activeLeases.filter((l) => (l.status || "active") === "active"), [activeLeases]);
   const endedPendingLeases = useMemo(
     () =>
@@ -1724,7 +2066,13 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       }),
     [activeLeases, completedExitLeaseIds, propertyById]
   );
-  const leaseStarterCards = useMemo(() => activeOnlyLeases.slice(0, 4), [activeOnlyLeases]);
+  // Uniquement les baux ayant déjà un dossier EDL réel — un bail sans EDL n'a
+  // "rien à ouvrir" et ne doit apparaître que dans le sélecteur du formulaire
+  // de création (à droite), pas ici.
+  const leaseStarterCards = useMemo(
+    () => activeOnlyLeases.filter((l) => leaseIdsWithReport.has(l.id)).slice(0, 4),
+    [activeOnlyLeases, leaseIdsWithReport]
+  );
 
   /* ======================================================
      VIEW (lecture seule)
@@ -1829,7 +2177,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   ====================================================== */
 
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [wizardStep, setWizardStep] = useState<WizardStep>("plan");
+  const [wizardStep, setWizardStep] = useState<WizardStep>("rooms");
   const [wizardReportId, setWizardReportId] = useState<string | null>(null);
   const [wizardRoomIndex, setWizardRoomIndex] = useState(0);
 
@@ -1842,11 +2190,30 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   // Ajout manuel
   const [customRoomName, setCustomRoomName] = useState("");
 
+  useEffect(() => {
+    if (!supabase || !userId || wizardStep !== "config" || !selectedReport?.property_id) return;
+    let cancelled = false;
+    (async () => {
+      const { count } = await supabase
+        .from("property_inventory_items")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("property_id", selectedReport.property_id)
+        .eq("is_required_lmnp", true);
+      if (!cancelled) setLmnpTotalRequiredCount(count || 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wizardStep, selectedReport?.property_id, userId]);
+
   const wizardStepsMeta = useMemo(() => {
     return [
-      { key: "plan" as const, label: "Pièces", desc: "Ajouter / supprimer des pièces" },
-      { key: "rooms" as const, label: "Décrire", desc: "Ajouter structure, équipements, observations" },
-      { key: "finalize" as const, label: "Finaliser", desc: "Générer le PDF à imprimer" },
+      { key: "intro" as const, label: "Bienvenue", desc: "Comment se déroule l'état des lieux" },
+      { key: "config" as const, label: "Configuration du logement", desc: "Choisir les pièces à visiter" },
+      { key: "rooms" as const, label: "Pièces & détails", desc: "Décrire chaque élément, pièce par pièce" },
+      { key: "finalize" as const, label: "Finaliser", desc: "Générer le PDF et signer" },
     ];
   }, []);
 
@@ -1855,7 +2222,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     return Math.round(((idx + 1) / wizardStepsMeta.length) * 100);
   }, [wizardStep, wizardStepsMeta]);
 
-  const openWizard = (reportId: string, preferredStep?: WizardStep) => {
+  const openWizard = async (reportId: string, preferredStep?: WizardStep) => {
     // Vérifier le statut du rapport CIBLE, pas du rapport actuellement sélectionné.
     // isLocked dépend du rendu courant (stale closure) et est faux quand on vient de créer
     // un nouveau rapport (ex : EDL sortie) alors que l’EDL d’entrée signé était sélectionné.
@@ -1867,25 +2234,28 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       setErr("Document verrouillé : l’assistant est désactivé.");
       return;
     }
+
+    let startStep: WizardStep = preferredStep || "rooms";
+    if (!preferredStep && supabase) {
+      // Dossier vide (jamais aucune pièce) → écran d'accueil + configuration.
+      // Dossier déjà entamé → on saute directement au détail des pièces.
+      const { count } = await supabase
+        .from("inventory_rooms")
+        .select("id", { count: "exact", head: true })
+        .eq("report_id", reportId);
+      startStep = (count || 0) === 0 ? "intro" : "rooms";
+    }
+
     setWizardReportId(reportId);
     setWizardOpen(true);
-
-    if (preferredStep) {
-      setWizardStep(preferredStep);
-      setWizardRoomIndex(0);
-    } else if (rooms.length > 0) {
-      setWizardStep("rooms");
-      setWizardRoomIndex(0);
-    } else {
-      setWizardStep("plan");
-      setWizardRoomIndex(0);
-    }
+    setWizardStep(startStep);
+    setWizardRoomIndex(0);
   };
 
   const closeWizard = async () => {
     setWizardOpen(false);
     setWizardReportId(null);
-    setWizardStep("plan");
+    setWizardStep("rooms");
     setWizardRoomIndex(0);
     if (selectedReportId) await loadReportDetails(selectedReportId);
   };
@@ -1907,10 +2277,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wizardOpen, wizardReportId]);
 
-  // Hydrate step plan
+  // Hydrate l'étape "config" (choix des pièces du logement)
   useEffect(() => {
     if (!wizardOpen) return;
-    if (wizardStep !== "plan") return;
+    if (wizardStep !== "config") return;
 
     const current = (rooms || []).map((r) => ({
       id: r.id,
@@ -1930,6 +2300,62 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     setCustomRoomName("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wizardOpen, wizardStep, rooms.length]);
+
+  // Comparatif entrée/sortie : charge les éléments de l'EDL d'entrée en lecture
+  // seule pour signaler, sur chaque élément de l'EDL de sortie, une dégradation
+  // par rapport à l'état constaté à l'entrée — sans dupliquer ni modifier les
+  // données d'entrée.
+  const [entryComparisonMap, setEntryComparisonMap] = useState<Map<string, InventoryItem["condition"]>>(new Map());
+
+  const entryComparisonKey = (roomName: string, category: string, label: string) =>
+    `${(roomName || "").trim().toLowerCase()}|${(category || "").trim().toLowerCase()}|${(label || "").trim().toLowerCase()}`;
+
+  useEffect(() => {
+    if (!supabase) return;
+    if (!wizardOpen || selectedReport?.report_type !== "exit" || !entryReport?.id) {
+      setEntryComparisonMap(new Map());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const [{ data: entryRooms }, { data: entryItems }] = await Promise.all([
+        supabase.from("inventory_rooms").select("id, name").eq("report_id", entryReport.id),
+        supabase.from("inventory_items").select("room_id, category, label, condition").eq("report_id", entryReport.id),
+      ]);
+      if (cancelled) return;
+      const roomNameById = new Map((entryRooms || []).map((r: any) => [r.id, r.name]));
+      const map = new Map<string, InventoryItem["condition"]>();
+      for (const it of entryItems || []) {
+        const roomName = roomNameById.get((it as any).room_id) || "";
+        map.set(entryComparisonKey(roomName, (it as any).category, (it as any).label), (it as any).condition);
+      }
+      setEntryComparisonMap(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wizardOpen, selectedReport?.report_type, entryReport?.id]);
+
+  const CONDITION_RANK: Record<InventoryItem["condition"], number> = {
+    neuf: 0,
+    tres_bon: 1,
+    bon: 2,
+    moyen: 3,
+    mauvais: 4,
+  };
+
+  const degradedItemsCount = useMemo(() => {
+    if (selectedReport?.report_type !== "exit" || !entryComparisonMap.size) return 0;
+    const roomNameById = new Map((rooms || []).map((r) => [r.id, r.name]));
+    let count = 0;
+    for (const it of items) {
+      const roomName = roomNameById.get(it.room_id || "") || "";
+      const entryCondition = entryComparisonMap.get(entryComparisonKey(roomName, it.category, it.label));
+      if (entryCondition && CONDITION_RANK[it.condition] > CONDITION_RANK[entryCondition]) count++;
+    }
+    return count;
+  }, [items, rooms, entryComparisonMap, selectedReport?.report_type]);
 
   const selectedRoomsCount = useMemo(() => roomRows.filter((r) => r.selected).length, [roomRows]);
   const selectedItemsCount = useMemo(() => {
@@ -1964,7 +2390,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
       setOk("Pièces supprimées ✅");
       await loadReportDetails(selectedReportId);
-      setWizardStep("plan");
     } catch (e: any) {
       setErr(e?.message || "Impossible de supprimer les pièces.");
     } finally {
@@ -1990,16 +2415,14 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     try {
       const existingNames = new Set((rooms || []).map((r) => (r.name || "").trim().toLowerCase()));
 
-      const payload = toAdd
-        .map((r) => ({ name: r.name.trim() }))
-        .filter((r) => !existingNames.has(r.name.toLowerCase()))
-        .map((r, idx) => ({
-          report_id: reportId,
-          name: r.name,
-          floor_level: null,
-          notes: null,
-          sort_order: rooms.length + idx,
-        }));
+      const toInsert = toAdd.filter((r) => !existingNames.has(r.name.trim().toLowerCase()));
+      const payload = toInsert.map((r, idx) => ({
+        report_id: reportId,
+        name: r.name.trim(),
+        floor_level: null,
+        notes: null,
+        sort_order: rooms.length + idx,
+      }));
 
       if (!payload.length) {
         setOk("Toutes ces pièces existent déjà (pas de doublons).");
@@ -2009,8 +2432,33 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       const { data: inserted, error } = await supabase.from("inventory_rooms").insert(payload).select("*");
       if (error) throw error;
 
-      setRooms((prev) => [...prev, ...((inserted || []) as any)]);
-      setOk(`${(inserted || []).length} pièce(s) ajoutée(s) ✅`);
+      // Checklist standard préremplie pour chaque pièce ajoutée, plutôt que
+      // de demander au bailleur de construire la liste lui-même sur place.
+      const itemPayloads = (inserted || []).flatMap((room: any, idx: number) => {
+        const key = toInsert[idx]?.key || guessPresetKeyFromRoomName(room.name);
+        return templateItemsForRoomKey(key).map((t) => ({
+          report_id: reportId,
+          room_id: room.id,
+          category: t.category,
+          label: t.label,
+          condition: "bon" as const,
+          wear_level: 1,
+          description: "",
+          defect_tags: [],
+          is_clean: true,
+          is_functional: true,
+          recommended_action: null,
+          estimated_cost: null,
+          severity: 0,
+        }));
+      });
+      if (itemPayloads.length) {
+        const { error: eItems } = await supabase.from("inventory_items").insert(itemPayloads);
+        if (eItems) throw eItems;
+      }
+
+      setOk(`${(inserted || []).length} pièce(s) ajoutée(s) ✅ (checklist préremplie)`);
+      await loadReportDetails(reportId);
     } catch (e: any) {
       setErr(e?.message || "Impossible d’ajouter les pièces.");
     } finally {
@@ -2047,9 +2495,30 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       }).select("*").single();
       if (error) throw error;
 
+      const key = guessPresetKeyFromRoomName(name);
+      const itemPayloads = templateItemsForRoomKey(key).map((t) => ({
+        report_id: reportId,
+        room_id: (inserted as any).id,
+        category: t.category,
+        label: t.label,
+        condition: "bon" as const,
+        wear_level: 1,
+        description: "",
+        defect_tags: [],
+        is_clean: true,
+        is_functional: true,
+        recommended_action: null,
+        estimated_cost: null,
+        severity: 0,
+      }));
+      if (itemPayloads.length) {
+        const { error: eItems } = await supabase.from("inventory_items").insert(itemPayloads);
+        if (eItems) throw eItems;
+      }
+
       setCustomRoomName("");
-      setRooms((prev) => [...prev, inserted as any]);
-      setOk("Pièce ajoutée ✅");
+      setOk("Pièce ajoutée ✅ (checklist préremplie)");
+      await loadReportDetails(reportId);
     } catch (e: any) {
       setErr(e?.message || "Impossible d’ajouter la pièce.");
     } finally {
@@ -2074,39 +2543,22 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     return "À faire";
   };
 
-  const roomHasCategory = (roomId: string, category: string) => {
-    const wanted = category.trim().toLowerCase();
-    return (itemsByRoomId.get(roomId) || []).some((it) => (it.category || "").trim().toLowerCase() === wanted);
+  const roomHasCategoryLabel = (roomId: string, category: string, label: string) => {
+    const wantedCategory = category.trim().toLowerCase();
+    const wantedLabel = label.trim().toLowerCase();
+    return (itemsByRoomId.get(roomId) || []).some(
+      (it) => (it.category || "").trim().toLowerCase() === wantedCategory && (it.label || "").trim().toLowerCase() === wantedLabel
+    );
   };
 
-  const quickAddStructure = async (roomId: string, kind: "mur" | "sol" | "plafond" | "fenetre" | "porte" | "radiateur") => {
-    if (isLocked) return;
-
-    const presets: Record<string, { category: string; label: string }> = {
-      ...FIELD_STRUCTURE_PRESETS.reduce((acc, p) => ({ ...acc, [p.kind]: { category: p.category, label: p.label } }), {}),
-      radiateur: { category: "Radiateur", label: "Fixation / fonctionnement" },
-    };
-
-    const p = presets[kind];
-    await addItem({
-      room_id: roomId,
-      category: p.category,
-      label: p.label,
-      condition: "bon",
-      wear_level: 2,
-      is_clean: true,
-      is_functional: true,
-      description: "",
-      defect_tags: [],
-      severity: 0,
-    });
-  };
+  const missingTemplateItemsForRoom = (roomId: string, key: RoomPresetKey) =>
+    templateItemsForRoomKey(key).filter((t) => !roomHasCategoryLabel(roomId, t.category, t.label));
 
   const markCurrentRoomOk = async () => {
     if (!currentRoom || isLocked) return;
-    const missing = FIELD_STRUCTURE_PRESETS.filter((p) => !roomHasCategory(currentRoom.id, p.category));
+    const missing = missingTemplateItemsForRoom(currentRoom.id, wizardRoomKey);
     if (!missing.length) {
-      setOk("Cette pièce possède déjà la structure minimale.");
+      setOk("Cette pièce possède déjà la checklist standard.");
       return;
     }
 
@@ -2128,16 +2580,30 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
 
   const goPrevWizard = async () => {
     if (wizardStep === "finalize") return setWizardStep("rooms");
-    if (wizardStep === "rooms") return setWizardStep("plan");
+    if (wizardStep === "rooms") return setWizardStep("config");
+    if (wizardStep === "config") return setWizardStep("intro");
   };
 
   const goNextWizard = async () => {
-    if (wizardStep === "plan") {
+    if (wizardStep === "intro") {
+      setWizardStep("config");
+      return;
+    }
+    if (wizardStep === "config") {
+      if (!rooms.length) {
+        setErr("Ajoute au moins une pièce avant de continuer.");
+        return;
+      }
+      setErr(null);
       setWizardStep("rooms");
-      setWizardRoomIndex(0);
       return;
     }
     if (wizardStep === "rooms") {
+      if (!rooms.length) {
+        setErr("Ajoute au moins une pièce avant de continuer.");
+        return;
+      }
+      setErr(null);
       setWizardStep("finalize");
       return;
     }
@@ -2147,6 +2613,28 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
     if (!currentRoom) return "sejour" as RoomPresetKey;
     return guessPresetKeyFromRoomName(currentRoom.name);
   }, [currentRoom]);
+
+  const currentRoomMissingTemplateCount = useMemo(() => {
+    if (!currentRoom) return 0;
+    return missingTemplateItemsForRoom(currentRoom.id, wizardRoomKey).length;
+  }, [currentRoom, wizardRoomKey, itemsByRoomId]);
+
+  const handleSyncLmnpFromExit = async () => {
+    if (!selectedReport?.property_id) return;
+    const lmnpItemsInReport = items.filter((it) => it.is_lmnp_required);
+    if (!lmnpItemsInReport.length) return;
+    setLmnpSyncLoading(true);
+    setErr(null);
+    try {
+      const { updated } = await syncLmnpInventoryFromExit(selectedReport.property_id, lmnpItemsInReport);
+      setOk(`Inventaire LMNP mis à jour ✅ (${updated} élément(s))`);
+      setLmnpSyncDone(true);
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de mettre à jour l'inventaire LMNP.");
+    } finally {
+      setLmnpSyncLoading(false);
+    }
+  };
 
   /* ======================================================
      FINALISATION : READY => PDF AUTO (à imprimer)
@@ -2213,7 +2701,6 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       await loadReportDetails(selectedReportId);
 
       setOk("EDL finalisé ✅ PDF généré (à imprimer)");
-      await closeWizard();
     } catch (e: any) {
       try {
         if (previousStatus !== "ready") {
@@ -2238,6 +2725,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
   ====================================================== */
 
   const [addOpen, setAddOpen] = useState(false);
+  const [addDraftForceDetail, setAddDraftForceDetail] = useState(false);
   const [addDraft, setAddDraft] = useState({
     category: "Mur",
     label: "",
@@ -2265,6 +2753,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
       defect_tags: preset?.defect_tags ?? "",
       severity: preset?.severity ?? 0,
     });
+    setAddDraftForceDetail(false);
     setAddOpen(true);
   };
 
@@ -2335,7 +2824,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 </div>
               </div>
 
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {wizardStepsMeta.map((s, idx) => (
                   <StepPill key={s.key} idx={idx} step={s} />
                 ))}
@@ -2361,15 +2850,66 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               {err ? <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
               {ok ? <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
-              {/* STEP: PLAN */}
-              {wizardStep === "plan" ? (
-                <div className="grid gap-5 lg:grid-cols-[1fr,420px]">
-                  {/* Colonne gauche : pièces actuelles */}
-                  <div className="space-y-4">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">Pièces actuelles</p>
+              {/* STEP: INTRO */}
+              {wizardStep === "intro" ? (
+                <div className="mx-auto max-w-2xl space-y-5">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                    <p className="text-[0.7rem] uppercase tracking-[0.18em] text-indigo-600">Comment ça se passe</p>
+                    <h3 className="mt-2 text-lg font-semibold text-slate-900">Un état des lieux, pièce par pièce</h3>
+                    <ol className="mt-4 space-y-3 text-sm text-slate-700">
+                      <li className="flex gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">1</span>
+                        <span>Choisis les pièces du logement (salon, cuisine, chambres...) — on te propose une liste, modifiable à tout moment.</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">2</span>
+                        <span>Chaque pièce arrive avec une checklist déjà remplie (sol, mur, plafond, équipements...) — tu ajustes seulement ce qui n'est pas en bon état.</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">3</span>
+                        <span>Une fois toutes les pièces passées en revue, tu génères le PDF officiel.</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">4</span>
+                        <span>Tu peux ensuite l'envoyer en signature électronique au locataire, si besoin.</span>
+                      </li>
+                    </ol>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* STEP: CONFIG (choix des pièces du logement) */}
+              {wizardStep === "config" ? (
+                <div className="space-y-4">
+                  {editingReportLmnpItemsCount > 0 && (
+                    <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+                      <p className="text-sm font-semibold text-indigo-900">
+                        Inventaire LMNP : {editingReportLmnpItemsCount}
+                        {lmnpTotalRequiredCount > 0 ? ` sur ${lmnpTotalRequiredCount}` : ""} élément(s) obligatoire(s) déjà repris dans cet EDL
+                      </p>
+                      <p className="mt-1 text-xs text-indigo-700">
+                        {lmnpTotalRequiredCount > editingReportLmnpItemsCount
+                          ? `${lmnpTotalRequiredCount - editingReportLmnpItemsCount} élément(s) obligatoire(s) de l'inventaire LMNP ne sont pas (ou plus) dans cet EDL — vérifie les pièces concernées.`
+                          : "Ajoutés automatiquement depuis l'inventaire LMNP du bien, dans les pièces correspondantes."}
+                      </p>
+                      {onNavigateToInventaire && (
+                        <button
+                          type="button"
+                          onClick={onNavigateToInventaire}
+                          className="mt-2 text-xs font-semibold text-indigo-700 underline hover:text-indigo-900"
+                        >
+                          Voir l'inventaire LMNP →
+                        </button>
+                      )}
+                    </div>
+                  )}
+                      <div className="grid gap-5 lg:grid-cols-[1fr,420px]">
+                        {/* Colonne gauche : pièces actuelles */}
+                        <div className="space-y-4">
+                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">Pièces actuelles</p>
                           <p className="text-xs text-slate-600 mt-1">Sélection multiple possible. Supprimer une pièce supprime ses éléments.</p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
@@ -2525,57 +3065,48 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     </div>
                   </div>
                 </div>
+                </div>
               ) : null}
 
-              {/* STEP: ROOMS */}
+              {/* STEP: ROOMS (détail pièce par pièce, navigation par onglets) */}
               {wizardStep === "rooms" ? (
-                <div className="grid gap-4 lg:grid-cols-[340px,1fr]">
-                  <aside className="space-y-3 lg:sticky lg:top-0 lg:self-start">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                    <div className="flex items-center justify-between gap-2">
                       <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Progression</p>
-                      <div className="mt-2 flex items-center justify-between">
-                        <Badge tone="emerald">{roomsCompletionPct}% pièces avec au moins 1 élément</Badge>
-                        <div className="h-2 w-28 rounded-full bg-slate-200 overflow-hidden">
-                          <div className="h-full bg-emerald-500" style={{ width: `${roomsCompletionPct}%` }} />
-                        </div>
-                      </div>
-                      <p className="mt-2 text-xs text-slate-600">Objectif : au moins 1 élément par pièce (structure minimale).</p>
+                      <span className="text-xs font-semibold text-slate-700">{roomsCompletionPct}% pièces avec au moins 1 élément</span>
                     </div>
+                    <div className="mt-2 h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                      <div className="h-full bg-emerald-500" style={{ width: `${roomsCompletionPct}%` }} />
+                    </div>
+                  </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Pièces</p>
-                      <div className="mt-2 flex gap-2 overflow-x-auto pb-1 pr-1 lg:block lg:max-h-[420px] lg:space-y-2 lg:overflow-auto" style={{ overflowAnchor: "none" }}>
-                        {rooms.map((r, idx) => {
-                          const active = idx === wizardRoomIndex;
-                          const tone = roomCompletionBadgeTone(r.id);
-                          return (
-                            <button
-                              key={r.id}
-                              type="button"
-                              onClick={() => preserveWizardScroll(() => setWizardRoomIndex(idx))}
-                              className={cx(
-                                "min-w-[180px] text-left rounded-2xl border px-3 py-3 transition lg:w-full",
-                                active ? "border-slate-900 bg-white" : "border-slate-200 bg-white/70 hover:bg-white"
-                              )}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-slate-900 truncate">{r.name}</p>
-                                  <p className="text-xs text-slate-600 mt-1">{(itemsByRoomId.get(r.id) || []).length} élément(s)</p>
-                                </div>
-                                <Badge tone={tone}>{roomCompletionLabel(r.id)}</Badge>
-                              </div>
-                            </button>
-                          );
-                        })}
-                        {!rooms.length ? (
-                          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
-                            Aucune pièce. Ajoute-en dans l’onglet "Pièces".
-                          </div>
-                        ) : null}
+                  {/* Onglets pièces */}
+                  <div className="flex flex-wrap gap-2" style={{ overflowAnchor: "none" }}>
+                    {rooms.map((r, idx) => {
+                      const active = idx === wizardRoomIndex;
+                      const tone = roomCompletionBadgeTone(r.id);
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => preserveWizardScroll(() => setWizardRoomIndex(idx))}
+                          className={cx(
+                            "rounded-full border px-4 py-2 text-sm font-semibold transition",
+                            active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          )}
+                        >
+                          {r.name}
+                          <span className={cx("ml-2 inline-block h-1.5 w-1.5 rounded-full align-middle", active ? "bg-white/70" : tone === "emerald" ? "bg-emerald-500" : tone === "amber" ? "bg-amber-500" : "bg-slate-300")} />
+                        </button>
+                      );
+                    })}
+                    {!rooms.length ? (
+                      <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-3 text-sm text-slate-700">
+                        Aucune pièce. Reviens à l'étape précédente pour en ajouter.
                       </div>
-                    </div>
-                  </aside>
+                    ) : null}
+                  </div>
 
                   <section className="space-y-4">
                     {!currentRoom ? (
@@ -2608,61 +3139,50 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                                 </div>
                               </div>
 
-                              <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
-                                <button
-                                  type="button"
-                                  disabled={loading || isLocked}
-                                  onClick={markCurrentRoomOk}
-                                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 sm:rounded-full sm:text-xs"
-                                >
-                                  <CheckCircleIcon className="h-5 w-5" aria-hidden="true" />
-                                  Pièce OK
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => openAddForRoom(currentRoom.id)}
-                                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 sm:rounded-full sm:text-xs"
-                                >
-                                  <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
-                                  Ajouter un élément
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    openAddForRoom(currentRoom.id, {
-                                      category: "Défaut",
-                                      label: "",
-                                      condition: "moyen",
-                                      wear_level: 3,
-                                      is_clean: false,
-                                      is_functional: true,
-                                      severity: 3,
-                                    })
-                                  }
-                                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 sm:rounded-full sm:text-xs"
-                                >
-                                  <ExclamationTriangleIcon className="h-5 w-5" aria-hidden="true" />
-                                  Ajouter un dégât
-                                </button>
-
-                                <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
-                                  {[
-                                    ["mur", "Mur"],
-                                    ["sol", "Sol"],
-                                    ["plafond", "Plafond"],
-                                    ["fenetre", "Fenêtre"],
-                                    ["porte", "Porte"],
-                                    ["radiateur", "Radiateur"],
-                                  ].map(([k, label]) => (
-                                    <button
-                                      key={k}
-                                      type="button"
-                                      onClick={() => quickAddStructure(currentRoom.id, k as any)}
-                                      className="min-h-[40px] rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 sm:rounded-full"
-                                    >
-                                      + {label}
-                                    </button>
-                                  ))}
+                              <div className="mt-4">
+                                <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-start">
+                                  {currentRoomMissingTemplateCount > 0 && (
+                                    <div>
+                                      <button
+                                        type="button"
+                                        disabled={loading || isLocked}
+                                        onClick={markCurrentRoomOk}
+                                        className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 sm:w-auto sm:rounded-full sm:text-xs"
+                                      >
+                                        <CheckCircleIcon className="h-5 w-5" aria-hidden="true" />
+                                        Compléter la checklist
+                                      </button>
+                                      <p className="mt-1 text-[0.68rem] text-slate-500">
+                                        {currentRoomMissingTemplateCount} élément(s) standard manquant(s) — état neutre
+                                      </p>
+                                    </div>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      openAddForRoom(currentRoom.id, {
+                                        category: "Défaut",
+                                        label: "",
+                                        condition: "moyen",
+                                        wear_level: 3,
+                                        is_clean: false,
+                                        is_functional: true,
+                                        severity: 3,
+                                      })
+                                    }
+                                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 sm:rounded-full sm:text-xs"
+                                  >
+                                    <ExclamationTriangleIcon className="h-5 w-5" aria-hidden="true" />
+                                    Ajouter un dégât
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openAddForRoom(currentRoom.id)}
+                                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 sm:rounded-full sm:text-xs"
+                                  >
+                                    <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
+                                    Ajouter un élément
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -2738,104 +3258,121 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                               </div>
                             </div>
 
-                            <div className="grid gap-3 sm:grid-cols-3">
-                              <div className="space-y-1">
-                                <label className="text-[0.7rem] text-slate-700">État</label>
-                                <select
-                                  value={addDraft.condition}
-                                  onChange={(e) => preserveWizardScroll(() => setAddDraft((s) => ({ ...s, condition: e.target.value as any })))}
-                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                >
-                                  {conditionOptions.map((o) => (
-                                    <option key={o.v} value={o.v}>
-                                      {o.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              <div className="space-y-1">
-                                <label className="text-[0.7rem] text-slate-700">Usure (0–5)</label>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={5}
-                                  value={addDraft.wear_level ?? ""}
-                                  onWheel={(e) => {
-                                    e.preventDefault();
-                                    (e.currentTarget as HTMLInputElement).blur();
-                                  }}
-                                  onChange={(e) =>
-                                    preserveWizardScroll(() =>
-                                      setAddDraft((s) => ({ ...s, wear_level: e.target.value === "" ? null : Number(e.target.value) }))
-                                    )
-                                  }
-                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                />
-                              </div>
-
-                              <div className="space-y-1">
-                                <label className="text-[0.7rem] text-slate-700">Gravité (0–5)</label>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={5}
-                                  value={addDraft.severity ?? 0}
-                                  onWheel={(e) => {
-                                    e.preventDefault();
-                                    (e.currentTarget as HTMLInputElement).blur();
-                                  }}
-                                  onChange={(e) =>
-                                    preserveWizardScroll(() =>
-                                      setAddDraft((s) => ({ ...s, severity: e.target.value === "" ? 0 : Number(e.target.value) }))
-                                    )
-                                  }
-                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                                <input
-                                  type="checkbox"
-                                  checked={!!addDraft.is_clean}
-                                  onChange={(e) => preserveWizardScroll(() => setAddDraft((s) => ({ ...s, is_clean: e.target.checked })))}
-                                  className="h-4 w-4"
-                                />
-                                Propre
-                              </label>
-
-                              <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-                                <input
-                                  type="checkbox"
-                                  checked={!!addDraft.is_functional}
-                                  onChange={(e) => preserveWizardScroll(() => setAddDraft((s) => ({ ...s, is_functional: e.target.checked })))}
-                                  className="h-4 w-4"
-                                />
-                                Fonctionnel
-                              </label>
-                            </div>
-
                             <div className="space-y-1">
-                              <label className="text-[0.7rem] text-slate-700">Observations</label>
-                              <textarea
-                                rows={3}
-                                value={addDraft.description}
-                                onChange={(e) => preserveWizardScroll(() => setAddDraft((s) => ({ ...s, description: e.target.value })))}
-                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                              <label className="text-[0.7rem] text-slate-700">État</label>
+                              <ConditionTapButtons
+                                value={addDraft.condition}
+                                onChange={(v) =>
+                                  preserveWizardScroll(() =>
+                                    setAddDraft((s) => ({
+                                      ...s,
+                                      condition: v,
+                                      severity: CONDITION_NEEDS_DETAIL[v] ? Math.max(s.severity ?? 0, 3) : 0,
+                                    }))
+                                  )
+                                }
                               />
                             </div>
 
-                            <div className="space-y-1">
-                              <label className="text-[0.7rem] text-slate-700">Tags défauts (virgules)</label>
-                              <input
-                                value={addDraft.defect_tags}
-                                onChange={(e) => preserveWizardScroll(() => setAddDraft((s) => ({ ...s, defect_tags: e.target.value })))}
-                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                placeholder="tache, fissure, trou..."
-                              />
-                            </div>
+                            {!(CONDITION_NEEDS_DETAIL[addDraft.condition] || addDraftForceDetail) ? (
+                              <button
+                                type="button"
+                                onClick={() => setAddDraftForceDetail(true)}
+                                className="text-xs font-semibold text-slate-600 underline"
+                              >
+                                + Ajouter usure, propreté ou note
+                              </button>
+                            ) : (
+                              <>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div className="space-y-1">
+                                    <label className="text-[0.7rem] text-slate-700">Usure (0–5)</label>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={5}
+                                      value={addDraft.wear_level ?? ""}
+                                      onWheel={(e) => {
+                                        e.preventDefault();
+                                        (e.currentTarget as HTMLInputElement).blur();
+                                      }}
+                                      onChange={(e) =>
+                                        preserveWizardScroll(() =>
+                                          setAddDraft((s) => ({ ...s, wear_level: e.target.value === "" ? null : Number(e.target.value) }))
+                                        )
+                                      }
+                                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    />
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    <label className="text-[0.7rem] text-slate-700">Gravité (0–5)</label>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={5}
+                                      value={addDraft.severity ?? 0}
+                                      onWheel={(e) => {
+                                        e.preventDefault();
+                                        (e.currentTarget as HTMLInputElement).blur();
+                                      }}
+                                      onChange={(e) =>
+                                        preserveWizardScroll(() =>
+                                          setAddDraft((s) => ({ ...s, severity: e.target.value === "" ? 0 : Number(e.target.value) }))
+                                        )
+                                      }
+                                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="grid gap-2 sm:grid-cols-2">
+                                  <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!addDraft.is_clean}
+                                      onChange={(e) => preserveWizardScroll(() => setAddDraft((s) => ({ ...s, is_clean: e.target.checked })))}
+                                      className="h-4 w-4"
+                                    />
+                                    Propre
+                                  </label>
+
+                                  <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!addDraft.is_functional}
+                                      onChange={(e) => preserveWizardScroll(() => setAddDraft((s) => ({ ...s, is_functional: e.target.checked })))}
+                                      className="h-4 w-4"
+                                    />
+                                    Fonctionnel
+                                  </label>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-[0.7rem] text-slate-700">Observations</label>
+                                  <textarea
+                                    rows={3}
+                                    value={addDraft.description}
+                                    onChange={(e) => preserveWizardScroll(() => setAddDraft((s) => ({ ...s, description: e.target.value })))}
+                                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-[0.7rem] text-slate-700">Tags défauts (virgules)</label>
+                                  <input
+                                    value={addDraft.defect_tags}
+                                    onChange={(e) => preserveWizardScroll(() => setAddDraft((s) => ({ ...s, defect_tags: e.target.value })))}
+                                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                    placeholder="tache, fissure, trou..."
+                                  />
+                                </div>
+
+                                <p className="text-[0.7rem] text-slate-500">
+                                  Les photos pourront être ajoutées juste après, depuis la fiche de l'élément.
+                                </p>
+                              </>
+                            )}
                           </div>
                         </Modal>
 
@@ -2871,6 +3408,19 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                                         {it.is_clean ? <Badge tone="emerald">Propre</Badge> : <Badge tone="amber">À nettoyer</Badge>}
                                         {it.is_functional ? <Badge tone="emerald">Fonctionnel</Badge> : <Badge tone="red">Non OK</Badge>}
                                       </div>
+                                      {selectedReport?.report_type === "exit" && currentRoom && (() => {
+                                        const entryCondition = entryComparisonMap.get(
+                                          entryComparisonKey(currentRoom.name, it.category, it.label)
+                                        );
+                                        if (!entryCondition || entryCondition === it.condition) return null;
+                                        const degraded = CONDITION_RANK[it.condition] > CONDITION_RANK[entryCondition];
+                                        const entryLabel = conditionOptions.find((x) => x.v === entryCondition)?.label || entryCondition;
+                                        return (
+                                          <p className={cx("mt-1.5 text-[0.7rem] font-semibold", degraded ? "text-red-700" : "text-emerald-700")}>
+                                            {degraded ? "⚠ Dégradation" : "Amélioration"} depuis l'entrée : {entryLabel} → {conditionOptions.find((x) => x.v === it.condition)?.label || it.condition}
+                                          </p>
+                                        );
+                                      })()}
                                     </div>
 
                                     {confirmDeleteItemId === it.id ? (
@@ -2879,32 +3429,55 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                                         <button type="button" onClick={() => setConfirmDeleteItemId(null)} className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Non</button>
                                       </div>
                                     ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => setConfirmDeleteItemId(it.id)}
-                                        className="shrink-0 rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
-                                      >
-                                        Supprimer
-                                      </button>
+                                      <div className="flex shrink-0 items-center gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleItemExpanded(it.id)}
+                                          className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                        >
+                                          {expandedItemIds[it.id] ? "Réduire" : "Modifier"}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setConfirmDeleteItemId(it.id)}
+                                          className="rounded-full border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50"
+                                        >
+                                          Supprimer
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
 
-                                  <div className="grid gap-2 sm:grid-cols-2">
-                                    <div className="space-y-1">
-                                      <label className="text-[0.7rem] text-slate-700">État</label>
-                                      <select
-                                        value={it.condition}
-                                        onChange={(e) => preserveWizardScroll(() => updateItem(it.id, { condition: e.target.value as any }))}
-                                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                                      >
-                                        {conditionOptions.map((o) => (
-                                          <option key={o.v} value={o.v}>
-                                            {o.label}
-                                          </option>
-                                        ))}
-                                      </select>
-                                    </div>
+                                  {expandedItemIds[it.id] && (
+                                  <>
+                                  <div className="space-y-1">
+                                    <label className="text-[0.7rem] text-slate-700">État</label>
+                                    <ConditionTapButtons
+                                      value={it.condition}
+                                      onChange={(v) =>
+                                        preserveWizardScroll(() =>
+                                          updateItem(it.id, {
+                                            condition: v,
+                                            severity: CONDITION_NEEDS_DETAIL[v] ? Math.max(it.severity ?? 0, 3) : 0,
+                                          })
+                                        )
+                                      }
+                                    />
+                                  </div>
 
+                                  {!(CONDITION_NEEDS_DETAIL[it.condition] || forcedDetailItemIds[it.id]) ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        preserveWizardScroll(() => setForcedDetailItemIds((prev) => ({ ...prev, [it.id]: true })))
+                                      }
+                                      className="text-xs font-semibold text-slate-600 underline"
+                                    >
+                                      + Ajouter usure, propreté, note ou photo
+                                    </button>
+                                  ) : (
+                                  <>
+                                  <div className="grid gap-2 sm:grid-cols-2">
                                     <div className="space-y-1">
                                       <label className="text-[0.7rem] text-slate-700">Usure (0–5)</label>
                                       <input
@@ -3051,6 +3624,10 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                                       </label>
                                     ) : null}
                                   </div>
+                                  </>
+                                  )}
+                                  </>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -3098,7 +3675,40 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         <Badge tone="emerald">Complétude : {completeness}%</Badge>
                         <Badge tone="slate">{rooms.length} pièce(s)</Badge>
                         <Badge tone="slate">{items.length} élément(s)</Badge>
+                        {degradedItemsCount > 0 && (
+                          <Badge tone="red">⚠ {degradedItemsCount} dégradation(s) vs entrée</Badge>
+                        )}
                       </div>
+
+                      {selectedReport?.report_type === "exit" && (() => {
+                        const lmnpItemsInReport = items.filter((it) => it.is_lmnp_required);
+                        if (!lmnpItemsInReport.length) return null;
+                        const lmnpDegraded = lmnpItemsInReport.filter((it) => it.condition === "mauvais");
+                        const canSync = selectedReport.status === "ready" || selectedReport.status === "signed" || selectedReport.status === "archived";
+                        return (
+                          <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
+                            <p className="text-xs font-semibold text-indigo-900">
+                              Inventaire LMNP : {lmnpItemsInReport.length} élément(s) obligatoire(s) suivi(s) dans cet EDL
+                              {lmnpDegraded.length > 0 ? ` — ${lmnpDegraded.length} en mauvais état` : ""}
+                            </p>
+                            {lmnpDegraded.length > 0 && (
+                              <p className="mt-1 text-[0.7rem] text-indigo-700">
+                                {lmnpDegraded.map((it) => it.label).join(", ")}
+                              </p>
+                            )}
+                            {canSync && (
+                              <button
+                                type="button"
+                                disabled={lmnpSyncLoading || lmnpSyncDone}
+                                onClick={() => void handleSyncLmnpFromExit()}
+                                className="mt-2 text-xs font-semibold text-indigo-700 hover:text-indigo-900 disabled:opacity-50"
+                              >
+                                {lmnpSyncDone ? "Inventaire LMNP mis à jour ✓" : lmnpSyncLoading ? "Mise à jour…" : "Mettre à jour l'inventaire LMNP depuis cet EDL →"}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {selectedReport ? (
                         <div className="mt-4 space-y-4">
@@ -3188,12 +3798,48 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         </div>
                       ) : null}
 
-                      <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
-                        <p className="text-xs font-semibold text-slate-900">Signature électronique</p>
-                        <p className="mt-1 text-xs text-slate-700">
-                          Une fois le PDF généré, ferme le wizard et clique sur <span className="font-semibold">Envoyer pour signature</span> depuis la fiche EDL.
-                        </p>
-                      </div>
+                      {hasPdf ? (
+                        <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                          <p className="text-xs font-semibold text-emerald-900">PDF généré ✅</p>
+                          <p className="mt-1 text-xs text-emerald-800">
+                            Tu peux l'ouvrir, le télécharger, ou l'envoyer directement en signature électronique.
+                          </p>
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={loading}
+                              onClick={openPdf}
+                              className="inline-flex min-h-[40px] items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-900 hover:bg-slate-50"
+                            >
+                              Ouvrir le PDF
+                            </button>
+                            {!isLocked && effectiveTenantEmail ? (
+                              sigEdlSent ? (
+                                <span className="inline-flex min-h-[40px] items-center rounded-full border border-emerald-200 bg-white px-4 text-xs font-semibold text-emerald-800">
+                                  Liens de signature envoyés ✓
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={sigEdlLoading}
+                                  onClick={sendEdlForSignature}
+                                  className="inline-flex min-h-[40px] items-center justify-center gap-1.5 rounded-full border border-[#635bff]/30 bg-white px-4 text-xs font-semibold text-[#635bff] hover:bg-[#635bff]/10 disabled:opacity-60"
+                                >
+                                  {sigEdlLoading ? "Envoi…" : "Signature électronique →"}
+                                </button>
+                              )
+                            ) : null}
+                          </div>
+                          {sigEdlError ? <p className="mt-2 text-xs text-red-600">{sigEdlError}</p> : null}
+                        </div>
+                      ) : (
+                        <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-3">
+                          <p className="text-xs font-semibold text-slate-900">Signature électronique</p>
+                          <p className="mt-1 text-xs text-slate-700">
+                            Disponible juste après avoir généré le PDF ci-dessous.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -3214,7 +3860,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  disabled={loading || wizardStep === "plan"}
+                  disabled={loading || wizardStep === "intro"}
                   onClick={goPrevWizard}
                   className="min-h-[44px] rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs"
                 >
@@ -3229,7 +3875,15 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                       onClick={goNextWizard}
                       className="min-h-[44px] rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 sm:min-h-0 sm:rounded-full sm:text-xs"
                     >
-                      {wizardStep === "plan" ? "Continuer →" : "Finaliser →"}
+                      {wizardStep === "intro" ? "Commencer →" : wizardStep === "config" ? "Continuer →" : "Finaliser →"}
+                    </button>
+                  ) : hasPdf ? (
+                    <button
+                      type="button"
+                      onClick={closeWizard}
+                      className="min-h-[44px] rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 sm:min-h-0 sm:rounded-full sm:text-xs"
+                    >
+                      Fermer
                     </button>
                   ) : confirmFinalizeEmptyRooms ? (
                     <div className="flex flex-wrap items-center gap-2">
@@ -3315,7 +3969,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 Choisis un bail pour préremplir le logement et le locataire, ou crée un état des lieux libre si le bail n’est pas encore prêt.
               </p>
 
-              {selectedLeaseId || selectedReportId ? (
+              {(selectedLeaseId || selectedReportId) && creationWizardStep === null ? (
                 <div className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4">
                   {/* Header */}
                   <div className="flex items-start justify-between gap-3">
@@ -3465,24 +4119,27 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                     </div>
                   )}
                 </div>
-              ) : leaseStarterCards.length || endedPendingLeases.length ? (
+              ) : creationWizardStep !== null ? null : leaseStarterCards.length || endedPendingLeases.length ? (
                 <>
                   {leaseStarterCards.length > 0 && (
-                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                      {leaseStarterCards.map((l) => (
-                        <button
-                          key={l.id}
-                          type="button"
-                          onClick={() => setSelectedLeaseId(l.id)}
-                          className="group min-h-[72px] rounded-2xl border border-slate-200 bg-white/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md"
-                        >
-                          <span className="block text-sm font-semibold text-slate-950">{leaseLabel(l)}</span>
-                          <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#635bff]">
-                            Ouvrir ce dossier
-                            <ArrowRightIcon className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
-                          </span>
-                        </button>
-                      ))}
+                    <div className="mt-4">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Dossiers en cours</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {leaseStarterCards.map((l) => (
+                          <button
+                            key={l.id}
+                            type="button"
+                            onClick={() => setSelectedLeaseId(l.id)}
+                            className="group min-h-[72px] rounded-2xl border border-slate-200 bg-white/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md"
+                          >
+                            <span className="block text-sm font-semibold text-slate-950">{leaseLabel(l)}</span>
+                            <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#635bff]">
+                              Ouvrir ce dossier
+                              <ArrowRightIcon className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                   {endedPendingLeases.length > 0 && (
@@ -3509,13 +4166,15 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                 </>
               ) : (
                 <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-white/80 p-4 text-sm text-slate-700">
-                  {safeLeases.length
+                  {!safeLeases.length
+                    ? "Aucun bail disponible. Crée d’abord un bail dans la section Baux pour préparer un état des lieux."
+                    : !activeOnlyLeases.length
                     ? "Aucun bail actif disponible. Les baux définitivement archivés ne sont plus proposés ici."
-                    : "Aucun bail disponible. Crée d’abord un bail dans la section Baux pour préparer un état des lieux."}
+                    : "Aucun dossier commencé pour l'instant. Utilise « + Créer un état des lieux » à droite pour démarrer, en choisissant le bail concerné."}
                 </div>
               )}
 
-              {!selectedLeaseId && standaloneReports.length ? (
+              {!selectedLeaseId && creationWizardStep === null && standaloneReports.length ? (
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">À rattacher</p>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -3573,123 +4232,102 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                   {/* Progress indicator */}
                   <div className="flex items-center justify-between">
                     <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Étape {creationWizardStep}/3
+                      Étape {creationWizardStep}/2
                     </p>
                     <button type="button" onClick={resetCreationWizard} className="text-xs text-slate-400 hover:text-slate-600">
                       Annuler
                     </button>
                   </div>
                   <div className="flex gap-1">
-                    {[1, 2, 3].map((s) => (
+                    {[1, 2].map((s) => (
                       <div key={s} className={"h-1 flex-1 rounded-full transition-colors " + (s <= (creationWizardStep ?? 0) ? "bg-slate-950" : "bg-slate-200")} />
                     ))}
                   </div>
 
-                  {/* ── Step 1 : bail à rattacher ? ───────────────────── */}
+                  {/* ── Step 1 : bail + entrée ou sortie, en un seul écran ── */}
                   {creationWizardStep === 1 && (
                     <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-900">Avez-vous un bail à rattacher ?</p>
+                      <p className="text-sm font-semibold text-slate-900">Quel bail, et entrée ou sortie ?</p>
                       <p className="text-xs text-slate-500">Le bail pré-remplit le logement et le locataire. Le rattachement peut aussi être fait plus tard.</p>
                       <div className="grid gap-2">
-                        <div className="space-y-2">
-                          <select
-                            value={selectedLeaseId}
-                            onChange={(e) => setSelectedLeaseId(e.target.value)}
-                            className="min-h-[48px] w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-[#635bff] focus:outline-none focus:ring-4 focus:ring-[#635bff]/10"
-                          >
-                            <option value="">— Sélectionner un bail —</option>
-                            {[...activeOnlyLeases, ...endedPendingLeases].map((l) => (
-                              <option key={l.id} value={l.id}>{leaseLabel(l)}</option>
-                            ))}
-                          </select>
-                          {selectedLeaseId && (
-                            <button
-                              type="button"
-                              onClick={() => { setCreationMode("lease"); setCreationWizardStep(2); }}
-                              className="inline-flex min-h-[46px] w-full items-center justify-center rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white hover:bg-slate-800"
-                            >
-                              Continuer avec ce bail →
-                            </button>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => { setCreationMode("standalone"); setSelectedLeaseId(""); setCreationWizardStep(2); }}
-                          className="inline-flex min-h-[46px] w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        <select
+                          value={selectedLeaseId}
+                          onChange={(e) => { setSelectedLeaseId(e.target.value); setCreationMode("lease"); }}
+                          className="min-h-[48px] w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-[#635bff] focus:outline-none focus:ring-4 focus:ring-[#635bff]/10"
                         >
-                          Continuer sans bail (rattacher plus tard)
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── Step 2 : entrée ou sortie ? ───────────────────── */}
-                  {creationWizardStep === 2 && (
-                    <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-900">Entrée ou sortie ?</p>
-
-                      {/* Bail sélectionné + lien changer */}
-                      {creationMode === "lease" && selectedLeaseId && (
-                        <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                          <span className="truncate text-xs text-slate-700">
-                            {selectedLeaseNiceLabel}
-                          </span>
+                          <option value="">— Sélectionner un bail —</option>
+                          {[...activeOnlyLeases, ...endedPendingLeases].map((l) => (
+                            <option key={l.id} value={l.id}>{leaseLabel(l)}</option>
+                          ))}
+                        </select>
+                        {!selectedLeaseId && creationMode !== "standalone" && (
                           <button
                             type="button"
-                            onClick={() => setCreationWizardStep(1)}
-                            className="ml-2 shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                            onClick={() => setCreationMode("standalone")}
+                            className="inline-flex min-h-[46px] w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                           >
-                            Changer
+                            Continuer sans bail (rattacher plus tard)
                           </button>
-                        </div>
-                      )}
-                      {selectedProperty && Array.isArray(selectedProperty.delegated_services) && selectedProperty.delegated_services.includes("bail_edl") && (
-                        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
-                          <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
-                          <p className="text-xs leading-5 text-amber-800">
-                            États des lieux délégués{selectedProperty.delegation_agency_name ? ` à ${selectedProperty.delegation_agency_name}` : " à votre gestionnaire"} — la saisie guidée est désactivée pour ce bien. Importez le PDF fourni par votre gestionnaire.
-                          </p>
-                        </div>
-                      )}
-
-                      {creationMode === "standalone" && (
-                        <p className="text-xs text-slate-500">Sans bail rattaché, les deux sont possibles.</p>
-                      )}
-                      {creationMode === "lease" && !entryReport && (
-                        <p className="text-xs text-amber-600">Aucune entrée existante — créez-la d’abord pour pouvoir copier les pièces lors de la sortie.</p>
-                      )}
-                      <div className="grid gap-2">
-                        <button
-                          type="button"
-                          onClick={() => { setCreationWizardReportType("entry"); setCreationWizardStep(3); }}
-                          disabled={creationMode === "lease" && (entryReport?.status === "signed" || entryReport?.status === "archived")}
-                          className={cx(
-                            "inline-flex min-h-[46px] w-full items-center justify-between rounded-2xl border px-4 text-sm font-semibold transition disabled:opacity-40",
-                            entryReport ? "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100" : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
-                          )}
-                        >
-                          <span>État des lieux d’entrée</span>
-                          {entryReport ? <span className="text-xs font-normal text-emerald-600">Reprendre</span> : <span className="text-slate-400">→</span>}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setCreationWizardReportType("exit"); setCreationWizardStep(3); }}
-                          disabled={creationMode === "lease" && (!entryReport || exitReport?.status === "signed" || exitReport?.status === "archived")}
-                          className={cx(
-                            "inline-flex min-h-[46px] w-full items-center justify-between rounded-2xl border px-4 text-sm font-semibold transition disabled:opacity-40",
-                            exitReport ? "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100" : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
-                          )}
-                        >
-                          <span>État des lieux de sortie</span>
-                          {exitReport ? <span className="text-xs font-normal text-emerald-600">Reprendre</span> : <span className="text-slate-400">→</span>}
-                        </button>
+                        )}
+                        {creationMode === "standalone" && !selectedLeaseId && (
+                          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                            <span className="text-xs text-slate-700">État des lieux libre, sans bail</span>
+                            <button type="button" onClick={() => setCreationMode("lease")} className="ml-2 shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                              Choisir un bail
+                            </button>
+                          </div>
+                        )}
                       </div>
-                      <button type="button" onClick={() => setCreationWizardStep(1)} className="text-xs text-slate-400 hover:text-slate-600">← Retour</button>
+
+                      {(selectedLeaseId || creationMode === "standalone") && (
+                        <div className="space-y-3 border-t border-slate-100 pt-3">
+                          {selectedProperty && Array.isArray(selectedProperty.delegated_services) && selectedProperty.delegated_services.includes("bail_edl") && (
+                            <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                              <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+                              <p className="text-xs leading-5 text-amber-800">
+                                États des lieux délégués{selectedProperty.delegation_agency_name ? ` à ${selectedProperty.delegation_agency_name}` : " à votre gestionnaire"} — la saisie guidée est désactivée pour ce bien. Importez le PDF fourni par votre gestionnaire.
+                              </p>
+                            </div>
+                          )}
+                          {creationMode === "standalone" && (
+                            <p className="text-xs text-slate-500">Sans bail rattaché, les deux sont possibles.</p>
+                          )}
+                          {creationMode === "lease" && !entryReport && (
+                            <p className="text-xs text-amber-600">Aucune entrée existante — créez-la d’abord pour pouvoir copier les pièces lors de la sortie.</p>
+                          )}
+                          <div className="grid gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startOrCreateReport("entry", creationMode)}
+                              disabled={creationMode === "lease" && (entryReport?.status === "signed" || entryReport?.status === "archived")}
+                              className={cx(
+                                "inline-flex min-h-[46px] w-full items-center justify-between rounded-2xl border px-4 text-sm font-semibold transition disabled:opacity-40",
+                                entryReport ? "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100" : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+                              )}
+                            >
+                              <span>État des lieux d’entrée</span>
+                              {entryReport ? <span className="text-xs font-normal text-emerald-600">Reprendre</span> : <span className="text-slate-400">→</span>}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => startOrCreateReport("exit", creationMode)}
+                              disabled={creationMode === "lease" && (!entryReport || exitReport?.status === "signed" || exitReport?.status === "archived")}
+                              className={cx(
+                                "inline-flex min-h-[46px] w-full items-center justify-between rounded-2xl border px-4 text-sm font-semibold transition disabled:opacity-40",
+                                exitReport ? "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100" : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+                              )}
+                            >
+                              <span>État des lieux de sortie</span>
+                              {exitReport ? <span className="text-xs font-normal text-emerald-600">Reprendre</span> : <span className="text-slate-400">→</span>}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {/* ── Step 3 : lokt.fr ou PDF ? ─────────────────────── */}
-                  {creationWizardStep === 3 && (
+                  {creationWizardStep === 2 && (
                     <div className="space-y-3">
                       <p className="text-sm font-semibold text-slate-900">
                         Comment souhaitez-vous {creationWizardReportType === "entry" ? "créer l’entrée" : "créer la sortie"} ?
@@ -3708,6 +4346,28 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                           >
                             Changer
                           </button>
+                        </div>
+                      )}
+
+                      {/* Bien LMNP sans inventaire configuré : rien à préremplir dans cet EDL */}
+                      {creationWizardReportType === "entry" && lmnpInventoryEmptyForProperty && (
+                        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                          <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs leading-5 text-amber-800">
+                              Ce bien est suivi en LMNP mais la liste des 18 éléments obligatoires n'est pas encore configurée dans la
+                              section Inventaire — cet état des lieux sera créé sans préremplissage LMNP.
+                            </p>
+                            {onNavigateToInventaire && (
+                              <button
+                                type="button"
+                                onClick={onNavigateToInventaire}
+                                className="mt-1 text-xs font-semibold text-amber-900 underline hover:no-underline"
+                              >
+                                Configurer l'inventaire LMNP →
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
 
@@ -3792,7 +4452,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, onRef
                         </div>
                       )}
 
-                      <button type="button" onClick={() => setCreationWizardStep(2)} className="text-xs text-slate-400 hover:text-slate-600">← Retour</button>
+                      <button type="button" onClick={() => setCreationWizardStep(1)} className="text-xs text-slate-400 hover:text-slate-600">← Retour</button>
                     </div>
                   )}
                 </div>
