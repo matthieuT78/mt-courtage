@@ -1016,24 +1016,27 @@ export function SectionDashboard({
       .map((d) => {
         const property = propertyById.get(d.propertyId);
         const label = (property as any)?.label || (property as any)?.address_line1 || "Bien";
-        const fin = (propertyFinance || []).find((f) => f.property_id === d.propertyId);
-        const regime = fin?.tax_regime === "lmnp_real" ? "LMNP réel" : "LMNP micro-BIC";
-        return { label, compliance: d.compliance, missingCount: d.missingCount, regime };
+        return { label, compliance: d.compliance, missingCount: d.missingCount };
       });
 
     if (lmnpInventoryIssues.length > 0) {
       const allEmpty = lmnpInventoryIssues.every((b) => b.compliance === 0 && b.missingCount === 0);
+      const shown = lmnpInventoryIssues.slice(0, 3);
+      const remaining = lmnpInventoryIssues.length - shown.length;
       actions.push({
         tone: "amber",
         title: `Inventaire LMNP${lmnpInventoryIssues.length > 1 ? ` (${lmnpInventoryIssues.length} biens)` : ""} non conforme`,
         desc: allEmpty
           ? "Vos biens meublés n'ont pas encore d'inventaire réglementaire. La liste des 18 éléments obligatoires garantit la qualification LMNP en cas de contrôle."
           : "L'inventaire de mobilier obligatoire n'est pas complet sur certains biens meublés. Un bien non conforme peut perdre son statut LMNP.",
-        details: lmnpInventoryIssues.slice(0, 3).map((b) =>
-          b.compliance === 0 && b.missingCount === 0
-            ? `${b.label} · inventaire à créer`
-            : `${b.label} · ${b.compliance}% conforme · ${b.missingCount} élément${b.missingCount > 1 ? "s" : ""} manquant${b.missingCount > 1 ? "s" : ""}`
-        ),
+        details: [
+          ...shown.map((b) =>
+            b.compliance === 0 && b.missingCount === 0
+              ? `${b.label} · inventaire à créer`
+              : `${b.label} · ${b.compliance}% conforme · ${b.missingCount} élément${b.missingCount > 1 ? "s" : ""} manquant${b.missingCount > 1 ? "s" : ""}`
+          ),
+          ...(remaining > 0 ? [`+ ${remaining} autre${remaining > 1 ? "s" : ""} bien${remaining > 1 ? "s" : ""} non conforme${remaining > 1 ? "s" : ""}`] : []),
+        ],
         target: "inventaire",
         cta: "Vérifier l'inventaire",
         snoozable: true,
@@ -1749,7 +1752,11 @@ export function SectionDashboard({
                         </div>
                         <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600">{action.desc}</p>
                         {action.details?.length ? (
-                          <p className="mt-1.5 break-words text-xs font-semibold text-slate-500 sm:truncate">{action.details.join(" · ")}</p>
+                          <ul className="mt-1.5 space-y-0.5">
+                            {action.details.map((d, i) => (
+                              <li key={i} className="break-words text-xs font-semibold text-slate-500">{d}</li>
+                            ))}
+                          </ul>
                         ) : null}
                       </div>
                     </div>

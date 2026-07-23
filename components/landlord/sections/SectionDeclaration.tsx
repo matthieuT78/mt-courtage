@@ -10,6 +10,7 @@ import type { Property } from "../../../lib/landlord/types";
 import { usePermissions } from "../../PermissionProvider";
 import { planAllowsPerformance } from "../../../lib/permissions";
 import { LockedPremiumSection, StatCard } from "../LockedPremiumSection";
+import { isLmnpItemCompliant } from "../../../lib/landlord/lmnpInventory";
 
 type Regime = "lmnp_micro" | "lmnp_reel" | "nu_micro" | "nu_reel" | "pinel";
 // meuble_saisonnier_classe = tourisme classé → abattement 71%
@@ -531,6 +532,35 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, year, regime, permissionsLoading, isPremium]);
 
+  // Conformité réelle de l'inventaire LMNP obligatoire, agrégée sur tous les
+  // biens du régime sélectionné — remplace l'ancien "ok: true" codé en dur qui
+  // ne vérifiait jamais rien (la checklist affichait toujours cette case cochée).
+  const [lmnpInventoryCompliant, setLmnpInventoryCompliant] = useState(false);
+  useEffect(() => {
+    if (!supabase || !userId || !isLmnp || relevantPropertyIds.size === 0) {
+      setLmnpInventoryCompliant(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("property_inventory_items")
+        .select("actual_quantity, required_quantity, condition")
+        .eq("user_id", userId)
+        .eq("is_required_lmnp", true)
+        .in("property_id", Array.from(relevantPropertyIds));
+      if (cancelled) return;
+      if (error || !data || !data.length) {
+        setLmnpInventoryCompliant(false);
+        return;
+      }
+      setLmnpInventoryCompliant(data.every((item) => isLmnpItemCompliant(item as any)));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, isLmnp, relevantPropertyIds]);
+
   const alerts = useMemo(() => {
     const list: Array<{ tone: "amber" | "red" | "emerald"; text: string }> = [];
 
@@ -587,10 +617,11 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     { label: "Intérêts d'emprunt (si crédit)",        ok: interest > 0 || !isReal,             skipIf: isMicro },
     { label: "Amortissements mobilier",               ok: amortizationMobilier > 0,            skipIf: regime !== "lmnp_reel" },
     { label: "Prix d'acquisition Pinel",              ok: pinelAcqPrice > 0,                   skipIf: !isPinel },
-    { label: "Inventaire LMNP du logement meublé",   ok: true,                                skipIf: !isLmnp },
+    { label: "Inventaire LMNP du logement meublé",   ok: lmnpInventoryCompliant,              skipIf: !isLmnp },
   ].filter((item) => !item.skipIf), [
     grossRent, propertyTax, insurance, copro, repairs, managementFees,
     interest, amortizationMobilier, pinelAcqPrice, isMicro, isReal, isLmnp, isPinel, regime,
+    lmnpInventoryCompliant,
   ]);
 
   const exportDossier = () => {
