@@ -536,22 +536,32 @@ export function SectionDashboard({
     prevPercentRef.current = current;
 
     // Si doneAtISO est déjà connu (restauré depuis localStorage/app_settings),
-    // la mise en route a déjà été complétée par le passé : pas de nouvelle
-    // détection de transition. Sans ce garde-fou, le chargement asynchrone des
-    // données (properties/tenants/leases arrivant après le premier rendu) fait
-    // grimper onboarding.percent en plusieurs étapes à chaque montage, et une
-    // hausse tardive vers 100% était prise pour une "toute nouvelle"
-    // complétion — ça repassait justCompleted à true et rouvrait brièvement
-    // le widget complet alors qu'il avait déjà disparu pour de bon.
+    // la mise en route a déjà été complétée par le passé : rien à enregistrer
+    // de plus.
     if (doneAtISO) return;
 
-    if (current === 100 && previous >= 0 && previous < 100) {
+    // On enregistre dès qu'on observe 100%, même si la transition depuis un
+    // état incomplet n'a pas eu lieu sur CE composant (ex. la dernière étape
+    // a été complétée depuis un autre onglet — Finance, Locataires… — puis
+    // l'utilisateur navigue ensuite vers le tableau de bord : au premier
+    // montage, percent vaut déjà 100 et `previous` reste à sa valeur initiale
+    // -1, donc l'ancienne condition `previous >= 0 && previous < 100` ne se
+    // déclenchait jamais). Sans cet enregistrement, doneAtISO ne serait jamais
+    // posé, et une régression ultérieure (ex. départ locataire) rouvrirait le
+    // gros widget faute de mémoire d'une complétion pourtant bien réelle.
+    if (current === 100) {
       const nowISO = new Date().toISOString();
       setDoneAtISO(nowISO);
-      // Laisse le temps à l'utilisateur de voir "Mise en route terminée"
-      // avant que le widget ne se cache automatiquement.
-      setJustCompleted(true);
-      const timer = setTimeout(() => setJustCompleted(false), 4000);
+
+      // L'animation "Mise en route terminée" ne s'affiche que si on a
+      // réellement vu la transition en direct sur ce composant — sinon
+      // l'utilisateur verrait une célébration pour un travail déjà fait plus
+      // tôt, sur un autre onglet.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      if (previous >= 0 && previous < 100) {
+        setJustCompleted(true);
+        timer = setTimeout(() => setJustCompleted(false), 4000);
+      }
 
       try {
         window.localStorage.setItem(storageKey, nowISO);
@@ -569,7 +579,7 @@ export function SectionDashboard({
         }
       })();
 
-      return () => clearTimeout(timer);
+      return () => { if (timer) clearTimeout(timer); };
     }
   }, [onboarding.percent, storageKey, userId, doneAtISO]);
 
