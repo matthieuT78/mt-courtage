@@ -15,8 +15,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle, formatEuro } from "../UiBits";
-import type { Property, PropertyFinance } from "../../../lib/landlord/types";
-import { getLmnpItemStatus, type LmnpInventoryStatus } from "../../../lib/landlord/lmnpInventory";
+import type { Lease, Property, PropertyFinance } from "../../../lib/landlord/types";
+import { getLmnpItemStatus, propertyRequiresLmnpInventory, type LmnpInventoryStatus } from "../../../lib/landlord/lmnpInventory";
 
 type InventoryCondition = "neuf" | "tres_bon" | "bon" | "moyen" | "a_remplacer";
 type InventoryStatus = LmnpInventoryStatus;
@@ -58,6 +58,7 @@ type Props = {
   userId: string;
   properties?: Property[];
   propertyFinance?: PropertyFinance[];
+  leases?: Lease[];
 };
 
 const LMNP_REQUIRED_ITEMS = [
@@ -201,18 +202,20 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-export function SectionInventaire({ userId, properties, propertyFinance }: Props) {
+export function SectionInventaire({ userId, properties, propertyFinance, leases }: Props) {
   const brandBg = "bg-gradient-to-r from-indigo-700 to-cyan-500";
   const brandText = "text-white";
   const brandHover = "hover:opacity-95";
 
   const lmnpPropertyIds = useMemo(() => {
+    const financeByProperty = new Map((propertyFinance || []).map((fin) => [fin.property_id, fin]));
     const ids = new Set<string>();
-    for (const fin of propertyFinance || []) {
-      if (fin.tax_regime === "lmnp_micro" || fin.tax_regime === "lmnp_real") ids.add(fin.property_id);
+    for (const p of properties || []) {
+      const taxRegime = financeByProperty.get(p.id)?.tax_regime;
+      if (propertyRequiresLmnpInventory(p.id, taxRegime, leases)) ids.add(p.id);
     }
     return ids;
-  }, [propertyFinance]);
+  }, [properties, propertyFinance, leases]);
 
   const safeProperties = useMemo(() =>
     (Array.isArray(properties) ? properties : []).filter(

@@ -1604,6 +1604,22 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     try {
       if (!supabase) throw new Error("Supabase non initialisé.");
 
+      // La suppression d'un bail supprime en cascade ses états des lieux —
+      // y compris un EDL déjà signé, un document légal (preuve en cas de
+      // litige sur le dépôt de garantie). On bloque plutôt que de le
+      // détruire silencieusement.
+      const { count: edlCount, error: edlErr } = await supabase
+        .from("inventory_reports")
+        .select("id", { count: "exact", head: true })
+        .eq("lease_id", leaseId)
+        .eq("user_id", userId);
+      if (edlErr) throw edlErr;
+      if ((edlCount || 0) > 0) {
+        setErr("Suppression impossible : ce bail a un ou plusieurs états des lieux enregistrés (parfois signés). Archivez-le via 'Gérer le départ' pour les préserver.");
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase.from("leases").delete().eq("id", leaseId).eq("user_id", userId);
       if (error) throw error;
 

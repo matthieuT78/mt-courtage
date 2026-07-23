@@ -10,7 +10,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
-import { isLmnpItemCompliant } from "../../../lib/landlord/lmnpInventory";
+import { isLmnpItemCompliant, propertyRequiresLmnpInventory } from "../../../lib/landlord/lmnpInventory";
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
 import { TransitionPanel, isInTransition } from "./TransitionPanel";
 
@@ -622,9 +622,9 @@ export function SectionDashboard({
         .filter((p) => String(p.status || "").toLowerCase() !== "archived")
         .map((p) => p.id)
     );
-    const lmnpIds = (propertyFinance || [])
-      .filter((fin) => (fin.tax_regime === "lmnp_micro" || fin.tax_regime === "lmnp_real") && activePropertyIds.has(fin.property_id))
-      .map((fin) => fin.property_id);
+    const lmnpIds = Array.from(activePropertyIds).filter((propertyId) =>
+      propertyRequiresLmnpInventory(propertyId, propertyFinance?.find((fin) => fin.property_id === propertyId)?.tax_regime, leases)
+    );
     if (!lmnpIds.length) { setLmnpInventoryCompliance([]); return; }
 
     let mounted = true;
@@ -659,7 +659,7 @@ export function SectionDashboard({
       }
     })();
     return () => { mounted = false; };
-  }, [userId, propertyFinance, properties]);
+  }, [userId, propertyFinance, properties, leases]);
 
   const accountingMonths = useMemo(() => {
     const now = new Date();

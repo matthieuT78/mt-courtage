@@ -22,3 +22,34 @@ export function getLmnpItemStatus(item: LmnpInventoryItemLike): LmnpInventorySta
 export function isLmnpItemCompliant(item: LmnpInventoryItemLike): boolean {
   return getLmnpItemStatus(item) === "ok";
 }
+
+const FURNISHED_LEASE_KINDS = new Set(["furnished_primary", "furnished_student", "mobility"]);
+
+export type LmnpLeaseLike = {
+  property_id: string;
+  status?: string | null;
+  lease_kind?: string | null;
+};
+
+// Un bien doit respecter la liste des 18 meubles obligatoires s'il est loué
+// meublé — déterminé par le type de bail actif (furnished_primary,
+// furnished_student, mobility — un bail mobilité est toujours meublé par la
+// loi), pas seulement par le régime fiscal LMNP choisi en Finance : les deux
+// notions sont liées mais indépendantes (un bien peut être meublé sans être
+// déclaré en LMNP pour des raisons fiscales propres au bailleur). On combine
+// les deux signaux plutôt que de remplacer l'un par l'autre, pour ne jamais
+// faire perdre la visibilité à un bien déjà suivi via son régime fiscal.
+export function propertyRequiresLmnpInventory(
+  propertyId: string,
+  taxRegime: string | null | undefined,
+  leases: LmnpLeaseLike[] | null | undefined
+): boolean {
+  const isLmnpTaxRegime = taxRegime === "lmnp_micro" || taxRegime === "lmnp_real";
+  const hasFurnishedActiveLease = (leases || []).some(
+    (l) =>
+      l.property_id === propertyId &&
+      String(l.status || "").toLowerCase() === "active" &&
+      FURNISHED_LEASE_KINDS.has(String(l.lease_kind || ""))
+  );
+  return isLmnpTaxRegime || hasFurnishedActiveLease;
+}
