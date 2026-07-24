@@ -9,7 +9,7 @@ import AppFooter from "../AppFooter";
 
 type Props = {
   userEmail: string | null;
-  active: "overview" | "profile" | "securite" | "projets" | "abonnement" | "preferences";
+  active: "overview" | "profile" | "securite" | "abonnement" | "preferences";
   onLogout: () => Promise<void> | void;
   children: ReactNode;
 };
@@ -64,8 +64,7 @@ export default function AccountLayout({ userEmail, active, onLogout, children }:
     : active === "profile" ? "Profil"
     : active === "securite" ? "Sécurité"
     : active === "abonnement" ? "Abonnement"
-    : active === "preferences" ? "Préférences"
-    : "Projets";
+    : "Préférences";
 
   const handleLogout = async () => {
     if (loggingOut) return;

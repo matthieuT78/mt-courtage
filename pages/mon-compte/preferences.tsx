@@ -41,7 +41,10 @@ export default function MonComptePreferencesPage() {
 
   const handleLogout = async () => { await signOutAll(); };
 
-  // Load order from localStorage then Supabase
+  // Affiche immédiatement le cache local (évite un flash sur l'ordre par défaut), puis
+  // fait toujours confiance à Supabase si une valeur y existe — sinon un appareil qui n'a
+  // pas été retouché depuis un réordonnancement fait ailleurs resterait bloqué sur son
+  // ancien cache local indéfiniment, sans jamais revoir la valeur la plus récente.
   useEffect(() => {
     if (!user?.id) return;
     const key = navStorageKey(user.id);
@@ -51,8 +54,6 @@ export default function MonComptePreferencesPage() {
         const parsed = normalizeLandlordNavOrder(JSON.parse(raw));
         setNavOrder(parsed);
         latestOrderRef.current = parsed;
-        setOrderLoaded(true);
-        return;
       }
     } catch {}
 
@@ -67,6 +68,7 @@ export default function MonComptePreferencesPage() {
           const parsed = normalizeLandlordNavOrder(data.value_json.order);
           setNavOrder(parsed);
           latestOrderRef.current = parsed;
+          try { localStorage.setItem(key, JSON.stringify(parsed)); } catch {}
         }
         setOrderLoaded(true);
       });

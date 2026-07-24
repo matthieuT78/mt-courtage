@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import AccountLayout from "../../components/account/AccountLayout";
 import { supabase } from "../../lib/supabaseClient";
 import { signOutAll } from "../../lib/authUtils";
+import { useProfile } from "../../hooks/useProfile";
 
 const inputCls =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-colors";
@@ -25,10 +26,8 @@ export default function MonCompteSecuritePage() {
   const [pwdError, setPwdError] = useState<string | null>(null);
   const [pwdOk, setPwdOk] = useState<string | null>(null);
 
+  const { profile, save: saveProfile, loading: prefsLoading, error: prefsError, ok: prefsOk } = useProfile(user?.id ?? null);
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
-  const [prefsLoading, setPrefsLoading] = useState(false);
-  const [prefsError, setPrefsError] = useState<string | null>(null);
-  const [prefsOk, setPrefsOk] = useState<string | null>(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -49,7 +48,6 @@ export default function MonCompteSecuritePage() {
         if (error) throw error;
         const u = data.user ?? null;
         setUser(u);
-        if (u) setNewsletterOptIn(!!u.user_metadata?.newsletter_opt_in);
       } catch {
         setUser(null);
       } finally {
@@ -58,6 +56,10 @@ export default function MonCompteSecuritePage() {
     };
     run();
   }, []);
+
+  useEffect(() => {
+    if (profile) setNewsletterOptIn(!!profile.marketing_opt_in);
+  }, [profile]);
 
   const handleLogout = async () => { await signOutAll(); };
   const goLogin = () => router.push("/mon-compte?mode=login&redirect=/mon-compte/securite");
@@ -108,20 +110,7 @@ export default function MonCompteSecuritePage() {
 
   const handleSavePreferences = async (e: FormEvent) => {
     e.preventDefault();
-    setPrefsError(null);
-    setPrefsOk(null);
-    if (!supabase) return setPrefsError("Auth indisponible.");
-    if (!isLoggedIn) return setPrefsError("Vous devez être connecté.");
-    setPrefsLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ data: { newsletter_opt_in: newsletterOptIn } });
-      if (error) throw error;
-      setPrefsOk("Préférences enregistrées ✓");
-    } catch (err: any) {
-      setPrefsError(err?.message || "Erreur de mise à jour.");
-    } finally {
-      setPrefsLoading(false);
-    }
+    await saveProfile({ marketing_opt_in: newsletterOptIn });
   };
 
   const handleDeleteAccount = async () => {

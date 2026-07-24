@@ -263,14 +263,19 @@ export default function MonCompteIndexPage() {
 
   const handleGoogleLogin = async () => {
     if (!supabase) return;
+    setAuthError(null);
     setRedirecting(true);
     const dest = redirectPath !== "/" ? redirectPath : "/espace-bailleur";
-    await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(dest)}`,
       },
     });
+    if (error) {
+      setRedirecting(false);
+      setAuthError(error.message || "Connexion Google impossible. Réessayez.");
+    }
   };
 
   const upsertProfileForUser = async (userId: string) => {
@@ -403,6 +408,8 @@ export default function MonCompteIndexPage() {
       setMode("login");
       setLoginEmail(email);
       setLoginPassword("");
+    } catch (e: any) {
+      setAuthError(e?.message || "Erreur lors de la vérification de l'adresse e-mail. Réessayez.");
     } finally {
       setAuthLoading(false);
     }
@@ -925,14 +932,19 @@ export default function MonCompteIndexPage() {
                         <label htmlFor="reg_country" className="text-xs text-slate-700">
                           Pays
                         </label>
-                        <input
+                        <select
                           id="reg_country"
                           name="country"
                           autoComplete="country"
                           value={country}
                           onChange={(e) => setCountry(e.target.value)}
                           className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
+                        >
+                          <option value="FR">France</option>
+                          <option value="BE">Belgique</option>
+                          <option value="CH">Suisse</option>
+                          <option value="LU">Luxembourg</option>
+                        </select>
                       </div>
 
                       <label className="mt-6 inline-flex items-center gap-2 text-sm text-slate-800">
@@ -992,13 +1004,18 @@ export default function MonCompteIndexPage() {
                           <label htmlFor="bill_country" className="text-xs text-slate-700">
                             Pays
                           </label>
-                          <input
+                          <select
                             id="bill_country"
                             name="billing_country"
                             value={billCountry}
                             onChange={(e) => setBillCountry(e.target.value)}
                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                          />
+                          >
+                            <option value="FR">France</option>
+                            <option value="BE">Belgique</option>
+                            <option value="CH">Suisse</option>
+                            <option value="LU">Luxembourg</option>
+                          </select>
                         </div>
                       </div>
                     ) : null}
