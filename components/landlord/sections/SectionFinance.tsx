@@ -560,6 +560,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
   const [uploadDocProgress, setUploadDocProgress] = useState<number | null>(null);
+  const [docsMenuOpenId, setDocsMenuOpenId] = useState<string | null>(null);
 
   // Edit recurring transaction
   const [editRecurTx, setEditRecurTx] = useState<Transaction | null>(null);
@@ -1322,6 +1323,121 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     } finally {
       setUploadingDocId(null);
     }
+  };
+
+  const openTransactionDocument = async (doc: TransactionDocument) => {
+    if (!supabase) return;
+    setErr(null);
+    const { data, error: signedError } = await supabase.storage
+      .from(doc.storage_bucket)
+      .createSignedUrl(doc.storage_path, 60 * 10);
+    if (signedError || !data?.signedUrl) {
+      setErr(signedError?.message || "Impossible d’ouvrir ce document.");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const deleteTransactionDocument = async (doc: TransactionDocument) => {
+    if (!supabase) return;
+    setErr(null);
+    setOk(null);
+    try {
+      const { error: removeError } = await supabase.storage.from(doc.storage_bucket).remove([doc.storage_path]);
+      if (removeError) throw removeError;
+      const { error: deleteError } = await supabase.from("transaction_documents").delete().eq("id", doc.id);
+      if (deleteError) throw deleteError;
+      setOk("Pièce jointe supprimée ✅");
+      await loadFinance();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de supprimer cette pièce jointe.");
+    }
+  };
+
+  const renderDocsControl = (r: Transaction, docs: TransactionDocument[], compact: boolean) => {
+    const isMenuOpen = docsMenuOpenId === r.id;
+    const uploadInput = (
+      <input
+        type="file"
+        accept="application/pdf,image/jpeg,image/png,image/webp"
+        className="hidden"
+        disabled={uploadingDocId === r.id}
+        onChange={(event) => {
+          const file = event.target.files?.[0] || null;
+          void attachDocumentFromLedger(r, file);
+          event.currentTarget.value = "";
+        }}
+      />
+    );
+
+    return (
+      <div className="relative">
+        {docs.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setDocsMenuOpenId(isMenuOpen ? null : r.id)}
+            title={`${docs.length} pièce${docs.length > 1 ? "s" : ""}`}
+            className={cx(
+              compact
+                ? "inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800"
+            )}
+          >
+            <PaperClipIcon className="h-3.5 w-3.5" />
+            {!compact ? `${docs.length} pièce${docs.length > 1 ? "s" : ""}` : null}
+          </button>
+        ) : (
+          <label
+            title="Joindre une pièce"
+            className={cx(
+              compact
+                ? "inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500"
+                : "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50",
+              uploadingDocId === r.id && "opacity-60"
+            )}
+          >
+            <PaperClipIcon className="h-3.5 w-3.5" />
+            {!compact ? (uploadingDocId === r.id ? (uploadDocProgress !== null ? `${uploadDocProgress}%` : "…") : "Joindre") : null}
+            {uploadInput}
+          </label>
+        )}
+
+        {isMenuOpen && docs.length > 0 ? (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setDocsMenuOpenId(null)} />
+            <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+              <div className="max-h-48 space-y-1 overflow-y-auto">
+                {docs.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50">
+                    <button
+                      type="button"
+                      onClick={() => void openTransactionDocument(doc)}
+                      className="min-w-0 flex-1 truncate text-left text-xs text-slate-700 hover:text-indigo-700"
+                      title={doc.file_name}
+                    >
+                      {doc.file_name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { if (window.confirm("Supprimer cette pièce jointe ?")) void deleteTransactionDocument(doc); }}
+                      title="Supprimer"
+                      className="shrink-0 rounded-full p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <XMarkIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <label className="mt-1.5 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-2 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-50">
+                <PaperClipIcon className="h-3.5 w-3.5" />
+                Ajouter une pièce
+                {uploadInput}
+              </label>
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
   };
 
   // ========= Edit manual transaction =========
@@ -2307,27 +2423,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                     {r.direction === "out" ? "−" : "+"}{formatEuro(Number(r.amount || 0))}
                   </span>
 
-                  <label
-                    title={docs.length ? `${docs.length} pièce${docs.length > 1 ? "s" : ""}` : "Joindre une pièce"}
-                    className={cx(
-                      "inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full border",
-                      docs.length ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-500",
-                      uploadingDocId === r.id && "opacity-60"
-                    )}
-                  >
-                    <PaperClipIcon className="h-3.5 w-3.5" />
-                    <input
-                      type="file"
-                      accept="application/pdf,image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      disabled={uploadingDocId === r.id}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] || null;
-                        void attachDocumentFromLedger(r, file);
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
+                  <div className="shrink-0">{renderDocsControl(r, docs, true)}</div>
 
                   {canEdit ? (
                     confirmDeleteTxId === r.id ? (
@@ -2398,25 +2494,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
                       </td>
                       <td className="px-3 py-2 text-slate-700">{statusLabel(r.status)}</td>
                       <td className="px-3 py-2">
-                        <label className={cx(
-                          "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
-                          docs.length ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                          uploadingDocId === r.id && "opacity-60"
-                        )}>
-                          <PaperClipIcon className="h-3.5 w-3.5" />
-                          {uploadingDocId === r.id ? (uploadDocProgress !== null ? `${uploadDocProgress}%` : "…") : docs.length ? `${docs.length} pièce${docs.length > 1 ? "s" : ""}` : "Joindre"}
-                          <input
-                            type="file"
-                            accept="application/pdf,image/jpeg,image/png,image/webp"
-                            className="hidden"
-                            disabled={uploadingDocId === r.id}
-                            onChange={(event) => {
-                              const file = event.target.files?.[0] || null;
-                              void attachDocumentFromLedger(r, file);
-                              event.currentTarget.value = "";
-                            }}
-                          />
-                        </label>
+                        {renderDocsControl(r, docs, false)}
                       </td>
                       <td className="px-3 py-2 text-right font-semibold">
                         <span className={r.direction === "out" ? "text-rose-700" : "text-emerald-700"}>

@@ -639,6 +639,23 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
     }
   };
 
+  const deletePhoto = async (photo: any) => {
+    setErr(null);
+    setOk(null);
+    try {
+      if (!supabase) throw new Error("Supabase non initialisé.");
+      if (photo.storage_bucket && photo.storage_path) {
+        await supabase.storage.from(photo.storage_bucket).remove([photo.storage_path]);
+      }
+      const { error: delErr } = await supabase.from("property_photos").delete().eq("id", photo.id);
+      if (delErr) throw delErr;
+      setOk("Photo supprimée ✅");
+      await safeRefresh();
+    } catch (e: any) {
+      setErr(e?.message || "Erreur lors de la suppression de la photo.");
+    }
+  };
+
   const clearFieldError = (formId: string, field: "label" | "address_line1" | "surface_m2" | "rooms" | "energy_value") => {
     setFieldErrors((prev) => {
       if (!prev[formId]?.[field]) return prev;
@@ -855,18 +872,31 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             {selectedPhotos.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-2">
                 {selectedPhotos.slice(0, 10).map((ph: any) => (
-                  <a
-                    key={ph.id || ph.storage_path}
-                    href={photoUrl(ph) || undefined}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-white"
-                    title="Ouvrir"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photoUrl(ph) || ""} alt="" className="h-full w-full object-cover" />
-                  </a>
+                  <div key={ph.id || ph.storage_path} className="group relative h-16 w-16 shrink-0">
+                    <a
+                      href={photoUrl(ph) || undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-white"
+                      title="Ouvrir"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={photoUrl(ph) || ""} alt="" className="h-full w-full object-cover" />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm("Supprimer cette photo ?")) deletePhoto(ph);
+                      }}
+                      title="Supprimer la photo"
+                      aria-label="Supprimer la photo"
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white shadow-sm opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-600"
+                    >
+                      <XMarkIcon className="h-3 w-3" aria-hidden="true" />
+                    </button>
+                  </div>
                 ))}
               </div>
             ) : (
