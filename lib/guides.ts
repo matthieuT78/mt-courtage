@@ -513,7 +513,7 @@ export const GUIDES: GuideArticle[] = [
     title: "Choisir son locataire : critères légaux, analyse du dossier et décision",
     shortTitle: "Choisir son locataire",
     description: "Comment sélectionner un locataire dans le respect de la loi : pièces autorisées, taux d'effort, comparaison des dossiers, garant, GLI et notification de la décision.",
-    updatedAt: "2026-06-29",
+    updatedAt: "2026-07-23",
     intro:
       "Choisir son locataire est souvent perçu comme une décision intuitive, mais elle repose sur un cadre légal précis. Le bailleur peut exiger certaines pièces, évaluer la solvabilité, demander un garant — et pas davantage. Dépasser ces limites expose à des sanctions pénales. Rester en deçà, c'est risquer de retenir un dossier insuffisant. Ce guide détaille les critères légaux, les pièces autorisées, la méthode pour comparer plusieurs candidatures et les bonnes pratiques pour notifier une décision.",
     sections: [
@@ -605,6 +605,7 @@ export const GUIDES: GuideArticle[] = [
           "Le garant (ou caution) est une personne physique ou morale qui s'engage à régler les dettes locatives du locataire à défaut de paiement. Vous pouvez en exiger un si vous n'avez pas souscrit de garantie loyers impayés (GLI) — et seulement dans ce cas, sauf si le locataire est étudiant ou apprenti.",
           "La caution doit signer un acte de cautionnement qui reprend le montant du loyer et ses obligations. La loi exige que le garant recopie de sa main une mention précise (article 22-1 de la loi du 6 juillet 1989). Si la mention manuscrite est absente ou incomplète, la caution est nulle et inopposable. Vérifiez ce point avant la signature du bail.",
           "Vous pouvez également vous appuyer sur le dispositif Visale (Action Logement), une garantie gratuite proposée aux locataires de moins de 30 ans (ou plus si mutations professionnelles). En cas d'impayé, Action Logement règle les loyers et engage ensuite une procédure de recouvrement auprès du locataire. C'est une alternative solide à la caution solidaire classique.",
+          "Sur lokt.fr, le candidat déclare son garant directement depuis le formulaire de candidature, en choisissant entre deux types : garant individuel (personne physique, avec les mêmes pièces que le candidat lui-même — identité, avis d'imposition et 3 dernières fiches de paie) ou garantie Visale (numéro de visa uniquement, aucun justificatif de revenu du garant à fournir). Si le candidat est étudiant et déclare un garant — quel que soit son type — son propre justificatif de revenu n'est plus exigé dans le dossier. Ces informations sont ensuite reprises automatiquement dans la fiche locataire lors de la conversion du candidat retenu.",
         ],
         bullets: [
           "Garant autorisé : si pas de GLI souscrite par le bailleur (sauf locataire étudiant ou apprenti).",
@@ -612,6 +613,7 @@ export const GUIDES: GuideArticle[] = [
           "Caution à durée limitée (bail) ou indéterminée : dans les deux cas, une résiliation par LRAR est possible avec un délai de préavis.",
           "Visale : garantie gratuite d'Action Logement, éligible sous conditions, alternative solide.",
           "Caution solidaire vs simple : la solidaire est immédiatement actionnable ; la simple impose une mise en demeure infructueuse du locataire d'abord.",
+          "Sur lokt : le candidat choisit le type de garant (individuel avec pièces, ou Visale avec numéro de visa) ; le revenu propre d'un candidat étudiant est automatiquement dispensé dès qu'un garant est déclaré.",
         ],
       },
       {
