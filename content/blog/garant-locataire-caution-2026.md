@@ -150,3 +150,4 @@ Pour centraliser vos baux, vos quittances et vos alertes de loyer en un seul end
 ## Outils pratiques
 
 - [Suivi des cautions et loyers](/cautions-loyers) — centralisez les dépôts de garantie et le suivi des paiements de vos locataires
+- [Guide complet : choisir son locataire](/guides/choisir-son-locataire) — critères légaux, pièces autorisées, comparaison des dossiers et rôle du garant dans la décision

@@ -154,7 +154,7 @@ Au micro-foncier ou micro-BIC, les primes ne sont pas déductibles en détail (a
 ## Comment souscrire une GLI ?
 
 1. **Choisissez le moment** : avant la signature du bail ou dans les premiers jours suivant la remise des clés (selon assureurs)
-2. **Constituez le dossier locataire** : justificatifs de revenus (3 derniers bulletins de salaire, dernier avis d'imposition), contrat de travail, pièce d'identité
+2. **Constituez le dossier locataire** : justificatifs de revenus (3 derniers bulletins de salaire, dernier avis d'imposition), contrat de travail, pièce d'identité — voir notre [guide complet pour choisir son locataire](/guides/choisir-son-locataire) pour la liste des pièces autorisées et la méthode d'analyse du dossier
 3. **Faites analyser le dossier** par l'assureur avant de valider le bail si possible
 4. **Gardez l'état des lieux d'entrée** : indispensable pour activer la garantie dégradations
 
@@ -192,3 +192,4 @@ Oui, si le locataire quitte sans payer les derniers mois de loyer. Le bailleur d
 
 - [Procédure d'expulsion locataire 2026 : étapes complètes, délais et coûts](/blog/expulsion-locataire-procedure) — si la GLI ne suffit pas à débloquer la situation
 - [Loyer impayé : que faire étape par étape](/blog/loyer-impaye-que-faire) — checklist des actions de la première relance à l'assignation
+- [Choisir son locataire : critères légaux et analyse du dossier](/guides/choisir-son-locataire) — réduire le risque d'impayé dès la sélection du candidat

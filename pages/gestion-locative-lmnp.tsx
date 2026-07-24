@@ -729,6 +729,14 @@ export default function GestionLocativeLmnpPage() {
                 <p className="mt-2 text-[0.78rem] font-semibold text-indigo-600">Comparer les baux →</p>
               </div>
             </a>
+            <a href="/guides/choisir-son-locataire" className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 text-lg">🔍</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Choisir son locataire</p>
+                <p className="mt-0.5 text-[0.8rem] text-slate-500">Pièces autorisées, taux d'effort, comparaison des dossiers, garant et notification de la décision.</p>
+                <p className="mt-2 text-[0.78rem] font-semibold text-indigo-600">Voir les critères →</p>
+              </div>
+            </a>
           </div>
         </div>
       </div>

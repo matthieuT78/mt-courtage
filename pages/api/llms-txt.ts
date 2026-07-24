@@ -46,7 +46,7 @@ Bailleurs particuliers gérant 1 à 3 logements en France, investisseurs locatif
 - /pret-relais : simulateur prêt relais immobilier
 - /outil-gestion-locative : présentation et fonctionnalités détaillées de l'outil de gestion locative
 - /gestion-locative-lmnp : gestion locative meublée (LMNP)
-- /guides : 13 guides pratiques bailleur (DPE, bail, quittances, IRL, dépôt de garantie...)
+- /guides : 16 guides pratiques bailleur (DPE, bail, choix du locataire, quittances, IRL, dépôt de garantie...)
 - /blog : articles immobilier (investissement, crédit, fiscalité, gestion)
 - /donnees : données immobilières de référence France ${periode}
 
