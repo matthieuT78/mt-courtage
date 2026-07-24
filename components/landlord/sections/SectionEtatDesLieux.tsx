@@ -20,7 +20,7 @@ import { planAllowsDocumentSharing } from "../../../lib/permissions";
 import { SectionTitle } from "../UiBits";
 import type { Lease, Property, PropertyFinance, Tenant } from "../../../lib/landlord/types";
 import { isActivePropertyLike, isEDLSelectableLease } from "../../../lib/landlord/archiveFilters";
-import { propertyRequiresLmnpInventory } from "../../../lib/landlord/lmnpInventory";
+import { propertyRequiresLmnpInventory, getLmnpItemStatus } from "../../../lib/landlord/lmnpInventory";
 import AddressAutocomplete from "../../forms/AddressAutocomplete";
 import RepairsGuideCard from "../RepairsGuideCard";
 
@@ -1152,7 +1152,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
 
     const { data: lmnpItems, error } = await supabase
       .from("property_inventory_items")
-      .select("room, category, label, required_quantity, condition")
+      .select("room, category, label, required_quantity, actual_quantity, condition")
       .eq("user_id", userId)
       .eq("property_id", propertyId)
       .eq("is_required_lmnp", true);
@@ -1171,22 +1171,34 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
       roomIdByName.set(roomNames[i], (newRoom as any).id);
     }
 
-    const payload = lmnpItems.map((it: any) => ({
-      report_id: reportId,
-      room_id: roomIdByName.get((it.room || "").trim() || "Autre") || null,
-      category: it.category || "",
-      label: it.label,
-      condition: LMNP_CONDITION_TO_EDL[it.condition] || "bon",
-      wear_level: null,
-      description: `Élément LMNP obligatoire — quantité requise : ${it.required_quantity || 1}.`,
-      defect_tags: [],
-      is_clean: true,
-      is_functional: true,
-      recommended_action: null,
-      estimated_cost: null,
-      severity: 0,
-      is_lmnp_required: true,
-    }));
+    const payload = lmnpItems.map((it: any) => {
+      const required = Number(it.required_quantity || 1);
+      const actual = Number(it.actual_quantity || 0);
+      const status = getLmnpItemStatus({ required_quantity: required, actual_quantity: actual, condition: it.condition });
+      const isMissing = status === "missing";
+      const isPartial = status === "partial";
+      const description = isMissing
+        ? `Élément LMNP obligatoire — quantité requise : ${required}, quantité constatée : 0. ⚠ Absent de l'inventaire à ce jour.`
+        : isPartial
+        ? `Élément LMNP obligatoire — quantité requise : ${required}, quantité constatée : ${actual}. ⚠ Incomplet.`
+        : `Élément LMNP obligatoire — quantité requise : ${required}.`;
+      return {
+        report_id: reportId,
+        room_id: roomIdByName.get((it.room || "").trim() || "Autre") || null,
+        category: it.category || "",
+        label: it.label,
+        condition: LMNP_CONDITION_TO_EDL[it.condition] || "bon",
+        wear_level: null,
+        description,
+        defect_tags: isMissing ? ["Manquant"] : isPartial ? ["Quantité incomplète"] : [],
+        is_clean: true,
+        is_functional: !isMissing,
+        recommended_action: null,
+        estimated_cost: null,
+        severity: isMissing ? 3 : isPartial ? 2 : 0,
+        is_lmnp_required: true,
+      };
+    });
 
     const { error: eInsItems } = await supabase.from("inventory_items").insert(payload);
     if (eInsItems) throw eInsItems;
@@ -2226,7 +2238,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                           </p>
                           <p className="text-xs text-slate-700 mt-1">
                             État : {conditionOptions.find((x) => x.v === it.condition)?.label || it.condition} • Usure : {it.wear_level ?? "—"}/5 •
-                            Gravité : {it.severity ?? 0}/5
+                            Gravité : {it.severity ?? 0}/3
                           </p>
                           {it.description ? <p className="text-xs text-slate-700 mt-2">{it.description}</p> : null}
                           {(it.defect_tags || []).length ? (
@@ -3397,11 +3409,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                                   </div>
 
                                   <div className="space-y-1">
-                                    <label className="text-[0.7rem] text-slate-700">Gravité (0–5)</label>
+                                    <label className="text-[0.7rem] text-slate-700">Gravité (0–3)</label>
                                     <input
                                       type="number"
                                       min={0}
-                                      max={5}
+                                      max={3}
                                       value={addDraft.severity ?? 0}
                                       onWheel={(e) => {
                                         e.preventDefault();
@@ -4824,7 +4836,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                                 </p>
                                 <p className="text-xs text-slate-600">
                                   État : {conditionOptions.find((x) => x.v === it.condition)?.label || it.condition} • Usure : {it.wear_level ?? "—"}/5 •
-                                  Gravité : {it.severity ?? 0}/5
+                                  Gravité : {it.severity ?? 0}/3
                                 </p>
                                 {it.description ? <p className="text-xs text-slate-700">{it.description}</p> : null}
                               </div>

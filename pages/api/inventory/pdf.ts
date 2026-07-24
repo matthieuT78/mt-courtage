@@ -412,7 +412,7 @@ function buildHtmlPremiumEDL(params: {
                     <div class="elTitle">${escapeHtml(it.label || "—")}</div>
                     <div class="muted small">Usure : ${escapeHtml(String(it.wear_level ?? "—"))}/5 • Gravité : ${escapeHtml(
                 String(it.severity ?? 0)
-              )}/5</div>
+              )}/3</div>
                   </div>
                   <div class="itemBadges">
                     <span class="statePill ${conditionClass(it.condition)}">${escapeHtml(conditionLabel(it.condition))}</span>
@@ -513,7 +513,7 @@ function buildHtmlPremiumEDL(params: {
                         <div class="elTitle">${escapeHtml(it.label || "—")}</div>
                         <div class="muted small">Usure : ${escapeHtml(String(it.wear_level ?? "—"))}/5 • Gravité : ${escapeHtml(
                     String(it.severity ?? 0)
-                  )}/5</div>
+                  )}/3</div>
                       </div>
                       <div class="itemBadges">
                         <span class="statePill ${conditionClass(it.condition)}">${escapeHtml(conditionLabel(it.condition))}</span>
@@ -575,25 +575,23 @@ function buildHtmlPremiumEDL(params: {
     margin-top:14px;
     border-radius:24px;
     padding:20px;
-    color:white;
-    background:
-      radial-gradient(circle at 86% 18%, rgba(6,182,212,.62), transparent 30%),
-      linear-gradient(135deg,#111827 0%,#1e3a8a 54%,#0891b2 100%);
-    box-shadow:0 18px 44px rgba(15,23,42,.16);
+    color:var(--ink);
+    background:#fff;
+    border:1.5px solid var(--brand);
   }
-  .docKicker{ font-size:10px; font-weight:900; letter-spacing:0.16em; text-transform:uppercase; color:#bae6fd; }
+  .docKicker{ font-size:10px; font-weight:900; letter-spacing:0.16em; text-transform:uppercase; color:var(--brand); }
   .title{ margin-top:6px; max-width:82%; font-size:31px; line-height:1.02; font-weight:950; letter-spacing:-0.04em; }
-  .legalNote{ margin-top:10px; max-width:86%; font-size:11px; line-height:1.55; color:rgba(255,255,255,.84); }
+  .legalNote{ margin-top:10px; max-width:86%; font-size:11px; line-height:1.55; color:var(--muted); }
   .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:13px; }
-  .stat{ border:1px solid rgba(255,255,255,.28); border-radius:15px; padding:10px; background:rgba(255,255,255,0.13); backdrop-filter:blur(4px); }
-  .statLabel{ font-size:8px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,.72); }
-  .statValue{ margin-top:4px; font-size:17px; font-weight:950; color:white; }
+  .stat{ border:1px solid var(--line); border-radius:15px; padding:10px; background:var(--soft); }
+  .statLabel{ font-size:8px; font-weight:900; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  .statValue{ margin-top:4px; font-size:17px; font-weight:950; color:var(--ink); }
   .followPill{
     display:inline-flex; align-items:center; margin-top:12px; border-radius:999px; padding:7px 10px;
-    font-size:10px; font-weight:900; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.24);
+    font-size:10px; font-weight:900; background:var(--soft); border:1px solid var(--line);
   }
-  .followPill.ok{ color:#bbf7d0; }
-  .followPill.warn{ color:#fde68a; }
+  .followPill.ok{ color:var(--green); }
+  .followPill.warn{ color:var(--warn); }
 
   .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
   .card{ border:1px solid var(--line); border-radius:16px; padding:12px; background:#fff; box-shadow:0 8px 20px rgba(15,23,42,.035); }
@@ -638,7 +636,7 @@ function buildHtmlPremiumEDL(params: {
   .room:first-of-type{ margin-top:14px; }
   .roomHeader{
     display:flex; justify-content:space-between; gap:14px; align-items:flex-start;
-    border:1px solid #bfdbfe; border-radius:18px; padding:13px; background:linear-gradient(135deg, #eff6ff, #ffffff 58%, #ecfeff);
+    border:1.5px solid var(--brand); border-radius:18px; padding:13px; background:#fff;
     margin-top:10px;
     break-after:avoid;
   }
