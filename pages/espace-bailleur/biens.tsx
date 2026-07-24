@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import AppHeader from "../../components/AppHeader";
-import PostalCodeCityFields from "../../components/forms/PostalCodeCityFields";
+import AddressAutocomplete from "../../components/forms/AddressAutocomplete";
 import { supabase } from "../../lib/supabaseClient";
 
 type SimpleUser = { id: string; email?: string };
@@ -349,9 +349,15 @@ export default function EspaceBailleurBiensPage() {
 
                 <div className="space-y-1">
                   <label className="text-[0.7rem] text-slate-700">Adresse (ligne 1)</label>
-                  <input
-                    value={form.address_line1}
-                    onChange={(e) => setForm((s) => ({ ...s, address_line1: e.target.value }))}
+                  <AddressAutocomplete
+                    id="biens_address1"
+                    hint={false}
+                    addressLine1={form.address_line1}
+                    postalCode={form.postal_code}
+                    city={form.city}
+                    onAddressLine1Change={(v) => setForm((s) => ({ ...s, address_line1: v }))}
+                    onPostalCodeChange={(v) => setForm((s) => ({ ...s, postal_code: v }))}
+                    onCityChange={(v) => setForm((s) => ({ ...s, city: v }))}
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                   />
                 </div>
@@ -365,15 +371,6 @@ export default function EspaceBailleurBiensPage() {
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
-
-                  <PostalCodeCityFields
-                    idPrefix={`property_page_${selectedId || "new"}`}
-                    postalCode={form.postal_code}
-                    city={form.city}
-                    onPostalCodeChange={(value) => setForm((s) => ({ ...s, postal_code: value }))}
-                    onCityChange={(value) => setForm((s) => ({ ...s, city: value }))}
-                    className="grid gap-3 sm:grid-cols-2"
-                  />
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">

@@ -24,7 +24,7 @@ import { ExpandableSection } from "../ui/ExpandableSection";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
 import { usePermissions } from "../../PermissionProvider";
 import { PropertyDpePanel } from "../PropertyDpePanel";
-import PostalCodeCityFields from "../../forms/PostalCodeCityFields";
+import AddressAutocomplete from "../../forms/AddressAutocomplete";
 
 type Props = {
   userId: string;
@@ -685,9 +685,10 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         </div>
 
         <div className="mt-3 space-y-1">
+          <span className="text-xs text-slate-700">Nom du bien *</span>
           <input
             className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.label ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
-            placeholder="Nom du bien *"
+            placeholder="Ex : Appartement rue Victor Hugo"
             value={form.label}
             onChange={(e) => { clearFieldError(formId, "label"); setForm((s) => ({ ...s, label: e.target.value })); }}
           />
@@ -695,24 +696,23 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
         </div>
 
         <div className="mt-3 space-y-1">
-          <input
+          <span className="text-xs text-slate-700">Adresse (ligne 1) *</span>
+          <AddressAutocomplete
+            id={`property_${propertyId || "new"}_address1`}
+            hint={false}
+            placeholder="Numéro et rue"
             className={`w-full rounded-xl border px-3 py-2 text-sm bg-white ${fErr.address_line1 ? "border-red-400 ring-1 ring-red-300" : "border-slate-300"}`}
-            placeholder="Adresse (ligne 1) *"
-            value={form.address_line1}
-            onChange={(e) => { clearFieldError(formId, "address_line1"); setForm((s) => ({ ...s, address_line1: e.target.value })); }}
+            addressLine1={form.address_line1}
+            postalCode={form.postal_code}
+            city={form.city}
+            onAddressLine1Change={(v) => { clearFieldError(formId, "address_line1"); setForm((s) => ({ ...s, address_line1: v })); }}
+            onPostalCodeChange={(v) => setForm((s) => ({ ...s, postal_code: v }))}
+            onCityChange={(v) => setForm((s) => ({ ...s, city: v }))}
           />
           {fErr.address_line1 ? <p className="text-xs font-medium text-red-600">{fErr.address_line1}</p> : null}
         </div>
 
-        <div className="mt-3 grid gap-3 lg:grid-cols-[1fr,180px]">
-          <PostalCodeCityFields
-            idPrefix={`property_${propertyId || "new"}`}
-            postalCode={form.postal_code}
-            city={form.city}
-            onPostalCodeChange={(value) => setForm((s) => ({ ...s, postal_code: value }))}
-            onCityChange={(value) => setForm((s) => ({ ...s, city: value }))}
-            className="grid gap-3 sm:grid-cols-3"
-          />
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <label className="space-y-1">
             <span className="text-xs text-slate-700">Surface</span>
             <input
@@ -723,9 +723,6 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             />
             {fErr.surface_m2 ? <p className="text-xs font-medium text-red-600">{fErr.surface_m2}</p> : null}
           </label>
-        </div>
-
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="space-y-1">
             <span className="text-xs text-slate-700">Pièces</span>
             <input

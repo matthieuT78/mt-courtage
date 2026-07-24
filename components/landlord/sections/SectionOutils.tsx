@@ -27,6 +27,7 @@ import type { Plan } from "../../../lib/permissions";
 import { SectionSimulateursBailleur } from "./SectionSimulateursBailleur";
 import { xhrUploadDirect } from "../../../lib/uploadWithProgress";
 import { UploadProgressBar } from "../../UploadProgressBar";
+import AddressAutocomplete from "../../forms/AddressAutocomplete";
 
 const WATER_BUCKET = "water-tools";
 const DEFAULT_SITE_NAME = "Compteur eau principal";
@@ -3011,24 +3012,25 @@ export function SectionOutils({
                   </label>
                 </div>
               ) : null}
-              <label className="space-y-1 sm:col-span-2">
+              <div className="space-y-1 sm:col-span-2">
                 <span className="text-xs font-semibold text-slate-600">Adresse</span>
-                <input value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} placeholder="Numéro et rue" className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-              </label>
+                <AddressAutocomplete
+                  id="outils_site_address1"
+                  hint={false}
+                  addressLine1={addressLine1}
+                  postalCode={postalCode}
+                  city={city}
+                  onAddressLine1Change={setAddressLine1}
+                  onPostalCodeChange={setPostalCode}
+                  onCityChange={setCity}
+                  placeholder="Numéro et rue"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
               <label className="space-y-1">
                 <span className="text-xs font-semibold text-slate-600">Complément</span>
                 <input value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} placeholder="Bâtiment, entrée, étage..." className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
               </label>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-600">Code postal</span>
-                  <input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs font-semibold text-slate-600">Ville</span>
-                  <input value={city} onChange={(e) => setCity(e.target.value)} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm" />
-                </label>
-              </div>
             </div>
             <div className="mt-5 flex flex-col gap-2 border-t border-cyan-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs leading-5 text-slate-500">La configuration peut être enregistrée pour les prochaines factures.</p>

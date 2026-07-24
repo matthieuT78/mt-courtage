@@ -6,7 +6,7 @@ import Link from "next/link";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
 import AccountLayout from "../../components/account/AccountLayout";
-import PostalCodeCityFields from "../../components/forms/PostalCodeCityFields";
+import AddressAutocomplete from "../../components/forms/AddressAutocomplete";
 import { StorageUsagePanel } from "../../components/account/StorageUsagePanel";
 import { supabase } from "../../lib/supabaseClient";
 import { supabaseTenant } from "../../lib/supabaseTenantClient";
@@ -891,17 +891,16 @@ export default function MonCompteIndexPage() {
                       Utilisée pour préremplir vos quittances, états des lieux et documents bailleur. Vous pourrez la modifier à tout moment.
                     </p>
 
-                    <div className="mt-3 space-y-1">
-                      <label htmlFor="reg_address1" className="text-xs text-slate-700">
-                        Adresse (ligne 1) *
-                      </label>
-                      <input
+                    <div className="mt-3">
+                      <AddressAutocomplete
                         id="reg_address1"
-                        name="address_line1"
-                        autoComplete="address-line1"
-                        value={address1}
-                        onChange={(e) => setAddress1(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        label="Adresse (ligne 1) *"
+                        addressLine1={address1}
+                        postalCode={postalCode}
+                        city={city}
+                        onAddressLine1Change={setAddress1}
+                        onPostalCodeChange={setPostalCode}
+                        onCityChange={setCity}
                       />
                     </div>
 
@@ -918,14 +917,6 @@ export default function MonCompteIndexPage() {
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                       />
                     </div>
-
-                    <PostalCodeCityFields
-                      idPrefix="reg"
-                      postalCode={postalCode}
-                      city={city}
-                      onPostalCodeChange={setPostalCode}
-                      onCityChange={setCity}
-                    />
 
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1">
@@ -964,16 +955,16 @@ export default function MonCompteIndexPage() {
                       <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
                         <p className="text-xs font-semibold text-slate-900">Adresse de facturation</p>
 
-                        <div className="mt-3 space-y-1">
-                          <label htmlFor="bill_address1" className="text-xs text-slate-700">
-                            Adresse (ligne 1) *
-                          </label>
-                          <input
+                        <div className="mt-3">
+                          <AddressAutocomplete
                             id="bill_address1"
-                            name="billing_address_line1"
-                            value={billAddress1}
-                            onChange={(e) => setBillAddress1(e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                            label="Adresse (ligne 1) *"
+                            addressLine1={billAddress1}
+                            postalCode={billPostalCode}
+                            city={billCity}
+                            onAddressLine1Change={setBillAddress1}
+                            onPostalCodeChange={setBillPostalCode}
+                            onCityChange={setBillCity}
                           />
                         </div>
 
@@ -989,16 +980,6 @@ export default function MonCompteIndexPage() {
                             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
                           />
                         </div>
-
-                        <PostalCodeCityFields
-                          idPrefix="bill"
-                          postalCode={billPostalCode}
-                          city={billCity}
-                          postalCodeName="billing_postal_code"
-                          cityName="billing_city"
-                          onPostalCodeChange={setBillPostalCode}
-                          onCityChange={setBillCity}
-                        />
 
                         <div className="mt-3 space-y-1">
                           <label htmlFor="bill_country" className="text-xs text-slate-700">

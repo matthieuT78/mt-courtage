@@ -9,6 +9,7 @@ import { ChatBubbleLeftRightIcon, HomeIcon, LinkIcon, LockClosedIcon, NoSymbolIc
 import type { RentPayment } from "../../../lib/landlord/types";
 import { usePermissions } from "../../PermissionProvider";
 import { planAllowsDocumentSharing } from "../../../lib/permissions";
+import AddressAutocomplete from "../../forms/AddressAutocomplete";
 
 /* ======================================================
    TYPES
@@ -1059,15 +1060,17 @@ export function SectionLocataires({
                 </div>
                 <div className="space-y-1 sm:col-span-2">
                   <label className={tenantLabelClass}>Adresse du garant</label>
-                  <input value={form.guarantor_address_line1} onChange={(e) => update({ guarantor_address_line1: e.target.value })} className={tenantInputClass} />
-                </div>
-                <div className="space-y-1">
-                  <label className={tenantLabelClass}>Code postal</label>
-                  <input value={form.guarantor_postal_code} onChange={(e) => update({ guarantor_postal_code: e.target.value })} className={tenantInputClass} />
-                </div>
-                <div className="space-y-1">
-                  <label className={tenantLabelClass}>Ville</label>
-                  <input value={form.guarantor_city} onChange={(e) => update({ guarantor_city: e.target.value })} className={tenantInputClass} />
+                  <AddressAutocomplete
+                    id="tenant_guarantor_address1"
+                    hint={false}
+                    addressLine1={form.guarantor_address_line1}
+                    postalCode={form.guarantor_postal_code}
+                    city={form.guarantor_city}
+                    onAddressLine1Change={(v) => update({ guarantor_address_line1: v })}
+                    onPostalCodeChange={(v) => update({ guarantor_postal_code: v })}
+                    onCityChange={(v) => update({ guarantor_city: v })}
+                    className={tenantInputClass}
+                  />
                 </div>
               </div>
             )}

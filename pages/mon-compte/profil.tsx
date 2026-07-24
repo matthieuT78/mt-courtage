@@ -7,6 +7,7 @@ import { useAuthUser } from "../../hooks/useAuthUser";
 import { useProfile } from "../../hooks/useProfile";
 import { supabase } from "../../lib/supabaseClient";
 import { ShieldCheckIcon } from "@heroicons/react/24/outline";
+import AddressAutocomplete from "../../components/forms/AddressAutocomplete";
 
 const inputCls =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-colors";
@@ -258,30 +259,22 @@ export default function MonCompteProfilPage() {
           <div className="rounded-3xl border border-slate-200 bg-white px-6 py-6 shadow-sm sm:px-8">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 mb-5">Adresse du propriétaire</p>
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Adresse ligne 1" full>
-                <input
+              <div className="sm:col-span-2">
+                <AddressAutocomplete
+                  id="profil_address1"
+                  label="Adresse ligne 1"
+                  addressLine1={profile?.address_line1 ?? ""}
+                  postalCode={profile?.postal_code ?? ""}
+                  city={profile?.city ?? ""}
+                  onAddressLine1Change={(v) => set({ address_line1: v })}
+                  onPostalCodeChange={(v) => set({ postal_code: v })}
+                  onCityChange={(v) => set({ city: v })}
                   className={inputC(profile?.address_line1)}
-                  {...(isEmpty(profile?.address_line1) && showHighlight ? { "data-highlight-empty": "" } : {})}
-                  value={profile?.address_line1 ?? ""} placeholder="12 rue de la Paix"
-                  onChange={(e) => set({ address_line1: e.target.value })} />
-              </Field>
+                />
+              </div>
               <Field label="Adresse ligne 2" full>
                 <input className={inputCls} value={profile?.address_line2 ?? ""} placeholder="Appartement 3B"
                   onChange={(e) => set({ address_line2: e.target.value })} />
-              </Field>
-              <Field label="Code postal">
-                <input
-                  className={inputC(profile?.postal_code)}
-                  {...(isEmpty(profile?.postal_code) && showHighlight ? { "data-highlight-empty": "" } : {})}
-                  value={profile?.postal_code ?? ""} placeholder="75001"
-                  onChange={(e) => set({ postal_code: e.target.value })} />
-              </Field>
-              <Field label="Ville">
-                <input
-                  className={inputC(profile?.city)}
-                  {...(isEmpty(profile?.city) && showHighlight ? { "data-highlight-empty": "" } : {})}
-                  value={profile?.city ?? ""} placeholder="Paris"
-                  onChange={(e) => set({ city: e.target.value })} />
               </Field>
               <Field label="Pays" full>
                 <select className={selectCls} value={profile?.country ?? "FR"} onChange={(e) => set({ country: e.target.value })}>
@@ -313,21 +306,21 @@ export default function MonCompteProfilPage() {
               <p className="text-sm text-slate-400">Adresse de facturation identique à l'adresse du propriétaire.</p>
             ) : (
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Adresse ligne 1" full>
-                  <input className={inputCls} value={profile?.billing_address_line1 ?? ""} placeholder="12 rue de la Paix"
-                    onChange={(e) => set({ billing_address_line1: e.target.value })} />
-                </Field>
+                <div className="sm:col-span-2">
+                  <AddressAutocomplete
+                    id="profil_billing_address1"
+                    label="Adresse ligne 1"
+                    addressLine1={profile?.billing_address_line1 ?? ""}
+                    postalCode={profile?.billing_postal_code ?? ""}
+                    city={profile?.billing_city ?? ""}
+                    onAddressLine1Change={(v) => set({ billing_address_line1: v })}
+                    onPostalCodeChange={(v) => set({ billing_postal_code: v })}
+                    onCityChange={(v) => set({ billing_city: v })}
+                  />
+                </div>
                 <Field label="Adresse ligne 2" full>
                   <input className={inputCls} value={profile?.billing_address_line2 ?? ""} placeholder="Appartement 3B"
                     onChange={(e) => set({ billing_address_line2: e.target.value })} />
-                </Field>
-                <Field label="Code postal">
-                  <input className={inputCls} value={profile?.billing_postal_code ?? ""} placeholder="75001"
-                    onChange={(e) => set({ billing_postal_code: e.target.value })} />
-                </Field>
-                <Field label="Ville">
-                  <input className={inputCls} value={profile?.billing_city ?? ""} placeholder="Paris"
-                    onChange={(e) => set({ billing_city: e.target.value })} />
                 </Field>
                 <Field label="Pays" full>
                   <select className={selectCls} value={profile?.billing_country ?? "FR"}

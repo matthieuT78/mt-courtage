@@ -13,7 +13,7 @@ import {
   PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import CalculatorWizardShell from "../../calculators/CalculatorWizardShell";
-import PostalCodeCityFields from "../../forms/PostalCodeCityFields";
+import AddressAutocomplete from "../../forms/AddressAutocomplete";
 import { LeaseContractOnboarding } from "./LeaseContractOnboarding";
 import { supabase } from "../../../lib/supabaseClient";
 import type { Lease, Property, PropertyFinance, Tenant } from "../../../lib/landlord/types";
@@ -620,14 +620,16 @@ export function OnboardingWizard({
                 placeholder="SCI des Lilas"
                 hint="Optionnel — si vous gérez vos biens via une société, le nom apparaîtra sur les documents."
               />
-              <TextField label="Adresse" value={addressLine1} onChange={setAddressLine1} required />
-              <PostalCodeCityFields
-                idPrefix="wizard_profil"
+              <AddressAutocomplete
+                id="wizard_profil_address1"
+                label="Adresse *"
+                addressLine1={addressLine1}
                 postalCode={postalCode}
                 city={city}
+                onAddressLine1Change={setAddressLine1}
                 onPostalCodeChange={setPostalCode}
                 onCityChange={setCity}
-                className="grid gap-3 sm:grid-cols-2"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               />
             </StepShell>
           ) : null}
@@ -651,14 +653,16 @@ export function OnboardingWizard({
                   />
                 ))}
               </div>
-              <TextField label="Adresse" value={propertyAddress} onChange={setPropertyAddress} required />
-              <PostalCodeCityFields
-                idPrefix="wizard_bien"
+              <AddressAutocomplete
+                id="wizard_bien_address1"
+                label="Adresse *"
+                addressLine1={propertyAddress}
                 postalCode={propertyPostalCode}
                 city={propertyCity}
+                onAddressLine1Change={setPropertyAddress}
                 onPostalCodeChange={setPropertyPostalCode}
                 onCityChange={setPropertyCity}
-                className="grid gap-3 sm:grid-cols-2"
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               />
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">

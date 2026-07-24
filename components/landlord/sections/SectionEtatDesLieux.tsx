@@ -21,6 +21,7 @@ import { SectionTitle } from "../UiBits";
 import type { Lease, Property, PropertyFinance, Tenant } from "../../../lib/landlord/types";
 import { isActivePropertyLike, isEDLSelectableLease } from "../../../lib/landlord/archiveFilters";
 import { propertyRequiresLmnpInventory } from "../../../lib/landlord/lmnpInventory";
+import AddressAutocomplete from "../../forms/AddressAutocomplete";
 import RepairsGuideCard from "../RepairsGuideCard";
 
 /* ======================================================
@@ -4542,14 +4543,18 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                           <p className="text-xs font-semibold text-slate-600">Informations du logement</p>
                           <input value={standaloneForm.propertyLabel} onChange={(e) => setStandaloneForm((p) => ({ ...p, propertyLabel: e.target.value }))}
                             placeholder="Nom du logement" className="min-h-[40px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900" />
-                          <input value={standaloneForm.addressLine1} onChange={(e) => setStandaloneForm((p) => ({ ...p, addressLine1: e.target.value }))}
-                            placeholder="Adresse" className="min-h-[40px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900" />
-                          <div className="grid gap-2 sm:grid-cols-[110px,1fr]">
-                            <input value={standaloneForm.postalCode} onChange={(e) => setStandaloneForm((p) => ({ ...p, postalCode: e.target.value }))}
-                              placeholder="CP" className="min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900" />
-                            <input value={standaloneForm.city} onChange={(e) => setStandaloneForm((p) => ({ ...p, city: e.target.value }))}
-                              placeholder="Ville" className="min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900" />
-                          </div>
+                          <AddressAutocomplete
+                            id="edl_standalone_address1"
+                            hint={false}
+                            addressLine1={standaloneForm.addressLine1}
+                            postalCode={standaloneForm.postalCode}
+                            city={standaloneForm.city}
+                            onAddressLine1Change={(v) => setStandaloneForm((p) => ({ ...p, addressLine1: v }))}
+                            onPostalCodeChange={(v) => setStandaloneForm((p) => ({ ...p, postalCode: v }))}
+                            onCityChange={(v) => setStandaloneForm((p) => ({ ...p, city: v }))}
+                            placeholder="Adresse"
+                            className="min-h-[40px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900"
+                          />
                           <input value={standaloneForm.occupantLabel} onChange={(e) => setStandaloneForm((p) => ({ ...p, occupantLabel: e.target.value }))}
                             placeholder="Nom de l’occupant" className="min-h-[40px] w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900" />
                         </div>
