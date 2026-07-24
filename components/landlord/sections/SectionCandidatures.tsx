@@ -607,9 +607,13 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
     const json = await res.json();
     setConvertingId(null);
     if (res.ok) {
-      setConvertResult({ candidatureId: candidature_id, tenantName, alreadyExists: json.already_exists, tenantId: json.tenant?.id ?? null, propertyId: propertyId ?? null });
-      onRefresh?.();
+      // Le nouveau locataire doit être présent dans `tenants` (props du cockpit)
+      // AVANT d'afficher "Créer le bail" — sinon le menu déroulant du bail ne
+      // trouve pas encore cet id et paraît vide, alors que le préremplissage
+      // interne est en fait correct (bug déjà rencontré).
+      await onRefresh?.();
       await load();
+      setConvertResult({ candidatureId: candidature_id, tenantName, alreadyExists: json.already_exists, tenantId: json.tenant?.id ?? null, propertyId: propertyId ?? null });
     }
   }
 

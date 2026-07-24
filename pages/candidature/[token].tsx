@@ -1,6 +1,6 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRightIcon,
   CheckCircleIcon,
@@ -139,6 +139,11 @@ export default function CandidaturePage() {
 
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Empêche deux appels concurrents (ex: deux uploads de documents lancés
+  // avant la première réponse) de créer chacun leur propre brouillon en base —
+  // un appel déjà en cours est réutilisé au lieu d'en déclencher un second.
+  const saveDraftPromiseRef = useRef<Promise<string | null> | null>(null);
+
   useEffect(() => {
     if (!token || typeof token !== "string") return;
     fetch(`/api/candidature/listing?token=${token}`)
@@ -209,7 +214,16 @@ export default function CandidaturePage() {
   const missingRequired = computeMissingRequired(form);
   const canSubmit = missingRequired.length === 0 && form.consent;
 
-  async function saveDraft(): Promise<string | null> {
+  function saveDraft(): Promise<string | null> {
+    if (saveDraftPromiseRef.current) return saveDraftPromiseRef.current;
+    const promise = doSaveDraft().finally(() => {
+      saveDraftPromiseRef.current = null;
+    });
+    saveDraftPromiseRef.current = promise;
+    return promise;
+  }
+
+  async function doSaveDraft(): Promise<string | null> {
     if (!listing) return null;
     setSaving(true);
     setSaveError(null);

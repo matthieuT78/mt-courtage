@@ -32,6 +32,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Surface invalide." });
   }
 
+  if (property_id) {
+    const { data: property } = await supabaseAdmin
+      .from("properties")
+      .select("id")
+      .eq("id", property_id)
+      .eq("user_id", auth.userId)
+      .maybeSingle();
+    if (!property) return res.status(403).json({ error: "Bien introuvable ou non autorisé." });
+  }
+
   const { data, error } = await supabaseAdmin
     .from("rental_listings")
     .insert({
