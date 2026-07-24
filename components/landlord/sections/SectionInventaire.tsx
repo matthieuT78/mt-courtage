@@ -67,12 +67,15 @@ const LMNP_REQUIRED_ITEMS = [
   { room: "Cuisine", category: "Cuisson", label: "Plaques de cuisson", required_quantity: 1 },
   { room: "Cuisine", category: "Cuisson", label: "Four ou four micro-ondes", required_quantity: 1 },
   { room: "Cuisine", category: "Froid", label: "Réfrigérateur avec congélateur ou freezer", required_quantity: 1 },
-  { room: "Cuisine", category: "Vaisselle", label: "Assiettes", required_quantity: 12 },
-  { room: "Cuisine", category: "Vaisselle", label: "Verres", required_quantity: 12 },
-  { room: "Cuisine", category: "Vaisselle", label: "Bols", required_quantity: 6 },
-  { room: "Cuisine", category: "Ustensiles", label: "Fourchettes", required_quantity: 12 },
-  { room: "Cuisine", category: "Ustensiles", label: "Couteaux", required_quantity: 12 },
-  { room: "Cuisine", category: "Ustensiles", label: "Cuillères", required_quantity: 12 },
+  // Le décret n° 2015-981 impose une "vaisselle nécessaire à la prise des repas"
+  // sans fixer de quantité — la pratique du secteur retient 4 à 6 couverts pour
+  // un studio (majorité du parc LMNP) ; on part sur 4, borne basse prudente.
+  { room: "Cuisine", category: "Vaisselle", label: "Assiettes", required_quantity: 4 },
+  { room: "Cuisine", category: "Vaisselle", label: "Verres", required_quantity: 4 },
+  { room: "Cuisine", category: "Vaisselle", label: "Bols", required_quantity: 4 },
+  { room: "Cuisine", category: "Ustensiles", label: "Fourchettes", required_quantity: 4 },
+  { room: "Cuisine", category: "Ustensiles", label: "Couteaux", required_quantity: 4 },
+  { room: "Cuisine", category: "Ustensiles", label: "Cuillères", required_quantity: 4 },
   { room: "Cuisine", category: "Ustensiles", label: "Ustensiles de cuisine", required_quantity: 1 },
   { room: "Cuisine", category: "Cuisson", label: "Casseroles et poêles", required_quantity: 1 },
   { room: "Séjour", category: "Mobilier", label: "Table", required_quantity: 1 },
