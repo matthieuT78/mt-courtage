@@ -38,22 +38,6 @@ type PropertyInventoryItem = {
   updated_at: string;
 };
 
-type PropertyInventorySnapshot = {
-  id: string;
-  user_id: string;
-  property_id: string;
-  snapshot_type: "entry" | "exit" | "control";
-  snapshot_date: string;
-  tenant_name: string | null;
-  deposit_amount: number | null;
-  items: any[];
-  missing_count: number;
-  replace_count: number;
-  replacement_budget: number;
-  notes: string | null;
-  created_at: string;
-};
-
 type Props = {
   userId: string;
   properties?: Property[];
@@ -267,15 +251,6 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
     replacement_cost: "",
     notes: "",
   });
-  const [snapshots, setSnapshots] = useState<PropertyInventorySnapshot[]>([]);
-  const [snapshotForm, setSnapshotForm] = useState({
-    snapshot_type: "control" as PropertyInventorySnapshot["snapshot_type"],
-    snapshot_date: new Date().toISOString().slice(0, 10),
-    tenant_name: "",
-    deposit_amount: "",
-    notes: "",
-  });
-
   const autoInitDoneRef = useRef<Set<string>>(new Set());
 
   const selectedProperty = selectedPropertyId ? propertyById.get(selectedPropertyId) || null : null;
@@ -369,11 +344,6 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
     return actions.slice(0, 4);
   }, [propertyItems, summary]);
 
-  const propertySnapshots = useMemo(
-    () => snapshots.filter((snapshot) => snapshot.property_id === selectedPropertyId),
-    [selectedPropertyId, snapshots]
-  );
-
   const loadInventory = async () => {
     if (!supabase || !userId) return;
     setLoading(true);
@@ -390,15 +360,6 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
         .order("label", { ascending: true });
       if (error) throw error;
       setItems(((data || []) as PropertyInventoryItem[]) || []);
-
-      const { data: sData, error: sErr } = await supabase
-        .from("property_inventory_snapshots")
-        .select("*")
-        .eq("user_id", userId)
-        .order("snapshot_date", { ascending: false })
-        .order("created_at", { ascending: false });
-      if (sErr) throw sErr;
-      setSnapshots(((sData || []) as PropertyInventorySnapshot[]) || []);
     } catch (e: any) {
       setErr(e?.message || "Impossible de charger l’inventaire. Vérifiez que les migrations d’inventaire sont appliquées.");
     } finally {
@@ -668,67 +629,6 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
     setOk(`Export inventaire prêt ✅ (${filteredItems.length} ligne${filteredItems.length > 1 ? "s" : ""})`);
   };
 
-  const createSnapshot = async () => {
-    if (!supabase || !userId || !selectedPropertyId) return;
-    if (propertyItems.length === 0) {
-      setErr("Ajoutez d’abord des éléments à l’inventaire avant de créer un état daté.");
-      return;
-    }
-
-    setLoading(true);
-    setErr(null);
-    setOk(null);
-
-    try {
-      const snapshotItems = propertyItems.map((item) => {
-        const status = statusOf(item);
-        return {
-          room: item.room,
-          category: item.category,
-          label: item.label,
-          required_quantity: item.required_quantity,
-          actual_quantity: item.actual_quantity,
-          status,
-          condition: item.condition,
-          replacement_cost: item.replacement_cost,
-          replacement_total: calcItemReplacementQty(item) * Number(item.replacement_cost || 0),
-          notes: item.notes,
-        };
-      });
-
-      const missingCount = snapshotItems.filter((item) => item.status === "missing" || item.status === "partial").length;
-      const replaceCount = snapshotItems.filter((item) => item.status === "replace").length;
-      const replacementBudget = calcReplacementBudget(propertyItems);
-
-      const { error } = await supabase.from("property_inventory_snapshots").insert({
-        user_id: userId,
-        property_id: selectedPropertyId,
-        snapshot_type: snapshotForm.snapshot_type,
-        snapshot_date: snapshotForm.snapshot_date,
-        tenant_name: snapshotForm.tenant_name.trim() || null,
-        deposit_amount: snapshotForm.deposit_amount ? num(snapshotForm.deposit_amount) : null,
-        items: snapshotItems,
-        missing_count: missingCount,
-        replace_count: replaceCount,
-        replacement_budget: replacementBudget,
-        notes: snapshotForm.notes.trim() || null,
-      });
-      if (error) throw error;
-      setOk("État daté créé ✅ L’inventaire reste modifiable.");
-      await loadInventory();
-    } catch (e: any) {
-      setErr(e?.message || "Impossible de créer l’état daté.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const snapshotTypeLabel = (type: PropertyInventorySnapshot["snapshot_type"]) => {
-    if (type === "entry") return "Entrée";
-    if (type === "exit") return "Sortie";
-    return "Contrôle";
-  };
-
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
       <SectionTitle
@@ -762,8 +662,8 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
             <ArchiveBoxArrowDownIcon className="h-5 w-5 text-emerald-600" />
           </div>
-          <p className="mt-4 text-sm font-bold text-emerald-950">Archiver un état daté</p>
-          <p className="mt-1 text-xs leading-5 text-emerald-900/60">Photo à l’instant T avant entrée ou sortie — l’inventaire reste modifiable après.</p>
+          <p className="mt-4 text-sm font-bold text-emerald-950">Formaliser via l’état des lieux</p>
+          <p className="mt-1 text-xs leading-5 text-emerald-900/60">L’entrée et la sortie se documentent dans le module État des lieux, déjà relié à cet inventaire — PDF et signature inclus.</p>
         </div>
       </div>
 
@@ -1141,95 +1041,6 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
         )}
       </section>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5">
-        <div className="grid gap-4 xl:grid-cols-[1fr,0.9fr]">
-          <div>
-            <div className="flex items-center gap-2">
-              <ArchiveBoxArrowDownIcon className="h-5 w-5 text-emerald-500" />
-              <p className="text-sm font-semibold text-slate-900">Créer un état daté de l’inventaire</p>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              Copie d’archive à la date choisie — n’empêche pas de modifier l’inventaire ensuite. À utiliser à l’entrée, à la sortie ou lors d’un contrôle intermédiaire.
-            </p>
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <select
-                value={snapshotForm.snapshot_type}
-                onChange={(e) => setSnapshotForm((s) => ({ ...s, snapshot_type: e.target.value as PropertyInventorySnapshot["snapshot_type"] }))}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-              >
-                <option value="entry">Entrée locataire</option>
-                <option value="exit">Sortie locataire</option>
-                <option value="control">Contrôle intermédiaire</option>
-              </select>
-              <input
-                type="date"
-                value={snapshotForm.snapshot_date}
-                onChange={(e) => setSnapshotForm((s) => ({ ...s, snapshot_date: e.target.value }))}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-              />
-              <input
-                value={snapshotForm.tenant_name}
-                onChange={(e) => setSnapshotForm((s) => ({ ...s, tenant_name: e.target.value }))}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="Locataire (optionnel)"
-              />
-              <input
-                inputMode="decimal"
-                value={snapshotForm.deposit_amount}
-                onChange={(e) => setSnapshotForm((s) => ({ ...s, deposit_amount: e.target.value }))}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="Dépôt de garantie"
-              />
-              <input
-                value={snapshotForm.notes}
-                onChange={(e) => setSnapshotForm((s) => ({ ...s, notes: e.target.value }))}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm md:col-span-2"
-                placeholder="Note : remise des clés, réserve, contexte..."
-              />
-            </div>
-            <button
-              type="button"
-              onClick={createSnapshot}
-              disabled={!selectedPropertyId || loading || propertyItems.length === 0}
-              className={cx("mt-4 rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover, (!selectedPropertyId || loading || propertyItems.length === 0) && "opacity-60")}
-            >
-              Créer l’état daté
-            </button>
-          </div>
-
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-900">Historique du bien</p>
-            {propertySnapshots.length === 0 ? (
-              <p className="mt-3 text-sm text-slate-600">Aucun état daté. Créez une entrée ou une sortie quand l’inventaire est prêt.</p>
-            ) : (
-              <div className="mt-3 space-y-2">
-                {propertySnapshots.slice(0, 5).map((snapshot) => (
-                  <div key={snapshot.id} className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {snapshotTypeLabel(snapshot.snapshot_type)} · {new Date(snapshot.snapshot_date).toLocaleDateString("fr-FR")}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-600">
-                          {snapshot.tenant_name || "Sans locataire"} · {snapshot.missing_count} manquant(s) · {snapshot.replace_count} à remplacer
-                        </p>
-                      </div>
-                      <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">
-                        {formatEuro(Number(snapshot.replacement_budget || 0))}
-                      </span>
-                    </div>
-                    {snapshot.deposit_amount ? (
-                      <p className="mt-2 text-xs text-slate-600">
-                        Dépôt : {formatEuro(Number(snapshot.deposit_amount))} · remplacement estimé : {formatEuro(Number(snapshot.replacement_budget || 0))}
-                      </p>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
