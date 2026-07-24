@@ -230,6 +230,10 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
   const [filterStatus, setFilterStatus] = useState<InventoryStatus | "">("");
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
+  // Saisie locale des champs numériques (quantité, coût) : on ne sauvegarde
+  // qu'au blur, pas à chaque frappe — sinon l'input se désactive pendant
+  // l'aller-retour Supabase et perd le focus à chaque caractère tapé.
+  const [numDrafts, setNumDrafts] = useState<Record<string, { required_quantity?: string; actual_quantity?: string; replacement_cost?: string }>>({});
   const [addOpen, setAddOpen] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<Record<string, boolean>>({});
   const [err, setErr] = useState<string | null>(null);
@@ -551,6 +555,33 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
     } finally {
       setSavingId(null);
     }
+  };
+
+  const clearNumDraft = (itemId: string, field: "required_quantity" | "actual_quantity" | "replacement_cost") => {
+    setNumDrafts((prev) => {
+      const entry = prev[itemId];
+      if (!entry || !(field in entry)) return prev;
+      const { [field]: _drop, ...rest } = entry;
+      const next = { ...prev };
+      if (Object.keys(rest).length) next[itemId] = rest; else delete next[itemId];
+      return next;
+    });
+  };
+
+  const commitQuantityField = (
+    item: PropertyInventoryItem,
+    field: "required_quantity" | "actual_quantity",
+    rawValue: string
+  ) => {
+    clearNumDraft(item.id, field);
+    const parsed = field === "actual_quantity" && rawValue.trim() === "" ? 0 : Math.max(0, Math.round(num(rawValue)));
+    if (Number(item[field] ?? 0) !== parsed) void updateItem(item.id, { [field]: parsed } as Partial<PropertyInventoryItem>);
+  };
+
+  const commitReplacementCost = (item: PropertyInventoryItem, rawValue: string) => {
+    clearNumDraft(item.id, "replacement_cost");
+    const parsed = rawValue.trim() === "" ? null : Math.max(0, num(rawValue));
+    if ((item.replacement_cost ?? null) !== parsed) void updateItem(item.id, { replacement_cost: parsed });
   };
 
   const deleteItem = async (itemId: string) => {
@@ -1022,9 +1053,13 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
                               <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Attendu</span>
                               <input
                                 inputMode="numeric"
-                                value={item.required_quantity}
+                                value={numDrafts[item.id]?.required_quantity ?? String(item.required_quantity)}
                                 disabled={savingId === item.id}
-                                onChange={(e) => updateItem(item.id, { required_quantity: Math.max(0, Math.round(num(e.target.value))) })}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setNumDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], required_quantity: v } }));
+                                }}
+                                onBlur={(e) => commitQuantityField(item, "required_quantity", e.target.value)}
                                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                               />
                             </div>
@@ -1032,9 +1067,13 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
                               <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Réel</span>
                               <input
                                 inputMode="numeric"
-                                value={item.actual_quantity ?? ""}
+                                value={numDrafts[item.id]?.actual_quantity ?? String(item.actual_quantity ?? "")}
                                 disabled={savingId === item.id}
-                                onChange={(e) => updateItem(item.id, { actual_quantity: e.target.value.trim() === "" ? 0 : Math.max(0, Math.round(num(e.target.value))) })}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setNumDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], actual_quantity: v } }));
+                                }}
+                                onBlur={(e) => commitQuantityField(item, "actual_quantity", e.target.value)}
                                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                               />
                             </div>
@@ -1057,9 +1096,13 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
                               <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">Coût unit.</span>
                               <input
                                 inputMode="decimal"
-                                value={item.replacement_cost ?? ""}
+                                value={numDrafts[item.id]?.replacement_cost ?? String(item.replacement_cost ?? "")}
                                 disabled={savingId === item.id}
-                                onChange={(e) => updateItem(item.id, { replacement_cost: e.target.value ? Math.max(0, num(e.target.value)) : null })}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setNumDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], replacement_cost: v } }));
+                                }}
+                                onBlur={(e) => commitReplacementCost(item, e.target.value)}
                                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                                 placeholder="0 €"
                               />
