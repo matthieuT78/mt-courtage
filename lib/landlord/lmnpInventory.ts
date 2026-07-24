@@ -31,6 +31,11 @@ export type LmnpLeaseLike = {
   lease_kind?: string | null;
 };
 
+export type LmnpPropertyLike = {
+  id: string;
+  delegated_services?: string[] | null;
+};
+
 // Un bien doit respecter la liste des 18 meubles obligatoires s'il est loué
 // meublé — déterminé UNIQUEMENT par le type de bail actif (furnished_primary,
 // furnished_student, mobility — un bail mobilité est toujours meublé par la
@@ -41,7 +46,21 @@ export type LmnpLeaseLike = {
 // obligatoire à la création. Volontairement une seule source de vérité ici :
 // pas de second signal fiscal qui rendrait le déclenchement imprévisible
 // selon que Finance a été rempli ou non.
-export function propertyRequiresLmnpInventory(propertyId: string, leases: LmnpLeaseLike[] | null | undefined): boolean {
+//
+// Exception : un bien dont le bail ET l'état des lieux sont délégués à une
+// agence (delegated_services contient "bail_edl") n'est jamais soumis à
+// l'inventaire LMNP de lokt.fr, quel que soit lease_kind — ce n'est pas le
+// bailleur qui gère ce document légal ici, donc lokt.fr n'a pas à lui
+// imposer son propre suivi.
+export function propertyRequiresLmnpInventory(
+  propertyId: string,
+  leases: LmnpLeaseLike[] | null | undefined,
+  properties?: LmnpPropertyLike[] | null
+): boolean {
+  if (properties) {
+    const property = properties.find((p) => p.id === propertyId);
+    if (property?.delegated_services?.includes("bail_edl")) return false;
+  }
   return (leases || []).some(
     (l) =>
       l.property_id === propertyId &&

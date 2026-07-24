@@ -798,7 +798,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   // que de laisser l'EDL paraître vide sans explication.
   useEffect(() => {
     if (!supabase || !userId || !selectedProperty?.id) { setLmnpInventoryEmptyForProperty(false); return; }
-    if (!propertyRequiresLmnpInventory(selectedProperty.id, leases)) {
+    if (!propertyRequiresLmnpInventory(selectedProperty.id, leases, properties)) {
       setLmnpInventoryEmptyForProperty(false);
       return;
     }
@@ -1354,7 +1354,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
           console.error(copyErr);
           setOk("EDL de sortie créé ✅ (copie entrée impossible — tu peux compléter manuellement)");
         }
-      } else if (type === "entry" && _property?.id && propertyRequiresLmnpInventory(_property.id, leases)) {
+      } else if (type === "entry" && _property?.id && propertyRequiresLmnpInventory(_property.id, leases, properties)) {
         try {
           const { itemsCreated } = await prefillLmnpItemsForEntry(_property.id, reportId);
           setOk(
@@ -1506,7 +1506,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
       // fait maintenant, seulement s'il s'agit d'une entrée et qu'aucun élément
       // LMNP n'a déjà été ajouté (évite un double-préremplissage).
       let lmnpMessage = "";
-      if (lease.property_id && updated?.report_type === "entry" && propertyRequiresLmnpInventory(lease.property_id, leases)) {
+      if (lease.property_id && updated?.report_type === "entry" && propertyRequiresLmnpInventory(lease.property_id, leases, properties)) {
         try {
           const { count } = await supabase
             .from("inventory_items")

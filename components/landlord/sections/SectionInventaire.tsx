@@ -197,7 +197,7 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
   const lmnpPropertyIds = useMemo(() => {
     const ids = new Set<string>();
     for (const p of properties || []) {
-      if (propertyRequiresLmnpInventory(p.id, leases)) ids.add(p.id);
+      if (propertyRequiresLmnpInventory(p.id, leases, properties)) ids.add(p.id);
     }
     return ids;
   }, [properties, leases]);
