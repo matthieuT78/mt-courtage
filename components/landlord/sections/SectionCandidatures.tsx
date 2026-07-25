@@ -124,15 +124,21 @@ function computeScoreBreakdown(c: Candidature, listing: Listing) {
   const required = totalRent * listing.income_ratio;
   const candidateIncome = c.net_monthly_income ?? 0;
 
+  // Un garant individuel n'apporte un vrai crédit financier que si son identité et sa
+  // fiche de paie sont fournies — sinon son revenu déclaré n'est qu'une affirmation non
+  // vérifiée et ne doit pas gonfler le score. Le Visale, lui, ne demande aucune pièce de
+  // revenu par construction (garantie Action Logement), donc pas de vérification à faire.
+  const guarantorDocsVerified = Boolean(c.guarantor_docs_identity && c.guarantor_docs_payslips);
+
   // Revenus : 40 pts — ratio = revenu de référence / seuil requis, donc ratio=1 = seuil exact atteint.
-  // Avec un garant individuel, son revenu couvre aussi le loyer : on retient le plus
-  // favorable des deux plutôt que le seul revenu du candidat (sinon un étudiant sans
+  // Avec un garant individuel vérifié, son revenu couvre aussi le loyer : on retient le
+  // plus favorable des deux plutôt que le seul revenu du candidat (sinon un étudiant sans
   // revenu propre mais avec un garant solide tombe artificiellement à 0, alors que son
   // dossier est en réalité bien couvert). Le Visale garantit le paiement par Action
   // Logement en cas de défaut : on considère le seuil requis comme atteint (ratio 1),
   // sans le surestimer au niveau d'un revenu élevé prouvé.
   let referenceIncome = candidateIncome;
-  if (c.has_guarantor && c.guarantor_type === "individual" && c.guarantor_income) {
+  if (c.has_guarantor && c.guarantor_type === "individual" && c.guarantor_income && guarantorDocsVerified) {
     referenceIncome = Math.max(candidateIncome, c.guarantor_income);
   } else if (c.has_guarantor && c.guarantor_type === "visale") {
     referenceIncome = Math.max(candidateIncome, required);
@@ -153,7 +159,12 @@ function computeScoreBreakdown(c: Candidature, listing: Listing) {
   // de son revenu déjà pris en compte ci-dessus dans le score revenus.
   const guarantorScore = c.has_guarantor ? 10 : 0;
 
-  return { incomeScore, situScore, docsScore, guarantorScore };
+  // Le dossier n'est vraiment "complet" que si les pièces du garant individuel
+  // déclaré sont aussi là — sinon la moitié du dossier reste non vérifiée.
+  const isFullyComplete =
+    docsScore === 20 && (!c.has_guarantor || c.guarantor_type !== "individual" || guarantorDocsVerified);
+
+  return { incomeScore, situScore, docsScore, guarantorScore, referenceIncome, required, isFullyComplete };
 }
 
 function scoreProfile(c: Candidature, listing: Listing): number {
@@ -252,9 +263,9 @@ function SynthesisPanel({ candidatures, listing }: { candidatures: Candidature[]
 
   const best = scored[0];
   const badge = profileBadge(best.score);
-  const totalRent = listing.rent_amount + listing.charges_amount;
-  const ratio = best.c.net_monthly_income
-    ? (best.c.net_monthly_income / (totalRent * listing.income_ratio)).toFixed(1)
+  const bestBreakdown = computeScoreBreakdown(best.c, listing);
+  const ratio = bestBreakdown.referenceIncome > 0 && bestBreakdown.required > 0
+    ? (bestBreakdown.referenceIncome / bestBreakdown.required).toFixed(1)
     : null;
 
   const reasons: string[] = [];
@@ -262,8 +273,7 @@ function SynthesisPanel({ candidatures, listing }: { candidatures: Candidature[]
     reasons.push(SITUATION_LABELS[best.c.professional_situation] ?? best.c.professional_situation);
   }
   if (ratio) reasons.push(`revenus à ${ratio}× le seuil`);
-  const docsCount = [best.c.docs_identity, best.c.docs_payslips, best.c.docs_tax, best.c.docs_address].filter(Boolean).length;
-  if (docsCount === 4) reasons.push("dossier complet");
+  if (bestBreakdown.isFullyComplete) reasons.push("dossier complet");
   if (best.c.has_guarantor) reasons.push("avec garant");
 
   const isClose = scored.length >= 2 && scored[0].score - scored[1].score <= 8;
