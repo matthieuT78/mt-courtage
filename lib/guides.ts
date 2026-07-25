@@ -518,7 +518,7 @@ export const GUIDES: GuideArticle[] = [
       "Choisir son locataire est souvent perçu comme une décision intuitive, mais elle repose sur un cadre légal précis. Le bailleur peut exiger certaines pièces, évaluer la solvabilité, demander un garant — et pas davantage. Dépasser ces limites expose à des sanctions pénales. Rester en deçà, c'est risquer de retenir un dossier insuffisant. Ce guide détaille les critères légaux, les pièces autorisées, la méthode pour comparer plusieurs candidatures et les bonnes pratiques pour notifier une décision.",
     sections: [
       {
-        title: "1. Les pièces justificatives autorisées par la loi",
+        title: "1. Les critères légaux : les pièces justificatives autorisées",
         paragraphs: [
           "Le décret du 5 novembre 2015 (décret Alur) définit la liste limitative des pièces qu'un bailleur peut demander à un candidat locataire. Demander une pièce non listée — ou refuser de louer faute d'une pièce interdite — constitue une pratique discriminatoire ou illégale susceptible d'être sanctionnée.",
           "Pour justifier de son identité, le candidat peut fournir une CNI (recto-verso) ou un passeport en cours de validité. Pour sa situation professionnelle, les justificatifs autorisés sont le contrat de travail (ou à défaut, une attestation employeur), les trois derniers bulletins de salaire, et le dernier avis d'imposition ou de non-imposition. Si le candidat est indépendant ou dirigeant, les deux derniers bilans ou une attestation comptable sont acceptés.",
@@ -553,7 +553,7 @@ export const GUIDES: GuideArticle[] = [
         ],
       },
       {
-        title: "3. Évaluer la solvabilité : la règle des 3x et ses nuances",
+        title: "3. Le critère de solvabilité : la règle des 3x et ses nuances",
         paragraphs: [
           "La règle des 3x est un usage professionnel, non une obligation légale. Elle signifie que les revenus nets mensuels du candidat doivent être au moins égaux à 3 fois le loyer charges comprises. Pour un loyer de 900 € cc, le revenu minimum attendu est de 2 700 € net/mois. Cette règle s'applique aux revenus du foyer si plusieurs personnes cohabitent.",
           "Certains profils solvables peuvent ne pas atteindre ce seuil sans pour autant présenter un risque réel. Un retraité avec une pension stable de 1 800 € pour un loyer de 700 € est objectivement plus fiable qu'un CDI à 2 800 € en période d'essai. Regardez la stabilité des revenus dans la durée, pas seulement le montant brut.",
@@ -584,7 +584,7 @@ export const GUIDES: GuideArticle[] = [
         ],
       },
       {
-        title: "5. Comparer plusieurs dossiers objectivement",
+        title: "5. Comparer les dossiers selon des critères objectifs",
         paragraphs: [
           "Lorsque plusieurs candidatures sont reçues simultanément, la comparaison doit reposer sur des critères objectifs et homogènes. Définissez à l'avance vos critères de sélection (revenus, stabilité professionnelle, complétude du dossier, garant) et appliquez-les à tous les candidats de la même façon.",
           "Un tableau de comparaison simple suffit : pour chaque candidat, notez le ratio revenus/loyer, la situation professionnelle, la présence d'un garant et la complétude du dossier. Cela vous permet de justifier votre choix par écrit si un candidat non retenu conteste la décision.",

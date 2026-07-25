@@ -65,7 +65,7 @@ Le turnover est le principal défi de la colocation. Voici la procédure standar
 
 1. **Préavis** : le colocataire sortant envoie son préavis par LRAR (1 mois en meublé, 1 ou 3 mois en vide selon zone). Le préavis court à compter de la réception.
 2. **Solidarité prolongée** : il reste solidaire jusqu'à l'arrivée d'un remplaçant, ou 6 mois après le préavis si aucun remplaçant n'est trouvé. C'est une incitation forte à trouver lui-même son successeur.
-3. **Recherche du remplaçant** : le bailleur garde le droit d'accepter ou refuser le candidat proposé (mêmes critères que pour une nouvelle location). Il n'est pas obligé d'accepter le choix des colocataires.
+3. **Recherche du remplaçant** : le bailleur garde le droit d'accepter ou refuser le candidat proposé, selon les [mêmes critères légaux que pour une nouvelle location](/guides/choisir-son-locataire). Il n'est pas obligé d'accepter le choix des colocataires.
 4. **Avenant de substitution** : signé par le bailleur, les colocataires restants ET le nouvel entrant. Ce document remplace officiellement le colocataire sortant et le libère de ses obligations futures.
 
 ### Ce qu'il ne faut pas faire

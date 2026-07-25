@@ -79,6 +79,8 @@ La loi encadre ce que vous pouvez demander ([décret du 5 novembre 2015](https:/
 - Ruptures d'emploi récurrentes sans explication
 - Dernier quittancement manquant
 
+Pour le détail des critères légaux de sélection et la méthode pour comparer plusieurs dossiers, voir notre [guide complet : choisir son locataire](/guides/choisir-son-locataire).
+
 ### Organiser les visites
 
 Regroupez les visites sur un créneau unique (samedi matin par exemple). Cela crée une dynamique positive et vous évite 10 allers-retours. Préparez un formulaire de candidature simple à remettre sur place.
