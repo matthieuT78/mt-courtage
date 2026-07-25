@@ -116,13 +116,28 @@ const SITUATION_SCORE: Record<string, number> = {
   etudiant: 6, autre: 5,
 };
 
-function scoreProfile(c: Candidature, listing: Listing): number {
+// Source unique de vérité pour le détail du score — utilisée à la fois pour le
+// score global (scoreProfile) et pour l'affichage du détail (ScoreBreakdown),
+// pour ne jamais afficher deux calculs différents pour le même dossier.
+function computeScoreBreakdown(c: Candidature, listing: Listing) {
   const totalRent = listing.rent_amount + listing.charges_amount;
   const required = totalRent * listing.income_ratio;
-  const income = c.net_monthly_income ?? 0;
-  const ratio = required > 0 ? income / required : 0;
+  const candidateIncome = c.net_monthly_income ?? 0;
 
-  // Revenus : 40 pts — ratio = income / required, donc ratio=1 = seuil exact atteint
+  // Revenus : 40 pts — ratio = revenu de référence / seuil requis, donc ratio=1 = seuil exact atteint.
+  // Avec un garant individuel, son revenu couvre aussi le loyer : on retient le plus
+  // favorable des deux plutôt que le seul revenu du candidat (sinon un étudiant sans
+  // revenu propre mais avec un garant solide tombe artificiellement à 0, alors que son
+  // dossier est en réalité bien couvert). Le Visale garantit le paiement par Action
+  // Logement en cas de défaut : on considère le seuil requis comme atteint (ratio 1),
+  // sans le surestimer au niveau d'un revenu élevé prouvé.
+  let referenceIncome = candidateIncome;
+  if (c.has_guarantor && c.guarantor_type === "individual" && c.guarantor_income) {
+    referenceIncome = Math.max(candidateIncome, c.guarantor_income);
+  } else if (c.has_guarantor && c.guarantor_type === "visale") {
+    referenceIncome = Math.max(candidateIncome, required);
+  }
+  const ratio = required > 0 ? referenceIncome / required : 0;
   const incomeScore =
     ratio >= 1.5 ? 40 : ratio >= 1.25 ? 35 : ratio >= 1.0 ? 28 :
     ratio >= 0.85 ? 18 : ratio >= 0.67 ? 8 : 0;
@@ -134,9 +149,15 @@ function scoreProfile(c: Candidature, listing: Listing): number {
   const docs = [c.docs_identity, c.docs_payslips, c.docs_tax, c.docs_address];
   const docsScore = docs.filter(Boolean).length * 5;
 
-  // Garant : 10 pts bonus
+  // Garant : 10 pts bonus — présence d'un second recours juridique, indépendamment
+  // de son revenu déjà pris en compte ci-dessus dans le score revenus.
   const guarantorScore = c.has_guarantor ? 10 : 0;
 
+  return { incomeScore, situScore, docsScore, guarantorScore };
+}
+
+function scoreProfile(c: Candidature, listing: Listing): number {
+  const { incomeScore, situScore, docsScore, guarantorScore } = computeScoreBreakdown(c, listing);
   return Math.min(100, incomeScore + situScore + docsScore + guarantorScore);
 }
 
@@ -1361,15 +1382,7 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 
 function ScoreBreakdown({ c, listing }: { c: Candidature; listing: Listing }) {
-  const totalRent = listing.rent_amount + listing.charges_amount;
-  const required = totalRent * listing.income_ratio;
-  const income = c.net_monthly_income ?? 0;
-  const ratio = required > 0 ? income / required : 0;
-
-  const incomeScore = ratio >= 1.5 ? 40 : ratio >= 1.25 ? 35 : ratio >= 1.0 ? 28 : ratio >= 0.85 ? 18 : ratio >= 0.67 ? 8 : 0;
-  const situScore = SITUATION_SCORE[c.professional_situation ?? ""] ?? 0;
-  const docsScore = [c.docs_identity, c.docs_payslips, c.docs_tax, c.docs_address].filter(Boolean).length * 5;
-  const guarantorScore = c.has_guarantor ? 10 : 0;
+  const { incomeScore, situScore, docsScore, guarantorScore } = computeScoreBreakdown(c, listing);
 
   const items = [
     { label: "Revenus", score: incomeScore, max: 40 },
