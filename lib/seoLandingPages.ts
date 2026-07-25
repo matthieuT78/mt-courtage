@@ -719,7 +719,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     title: "Modèle mise en demeure loyer impayé 2026 — Lettre officielle à envoyer en LRAR",
     metaTitle: "Modèle mise en demeure loyer impayé 2026 : lettre officielle LRAR | lokt.fr",
     description:
-      "Rédigez votre mise en demeure pour loyer impayé conforme à l'article 24 de la loi du 6 juillet 1989. Contenu obligatoire, délai de règlement, procédure après mise en demeure. Modèle complet et générateur de courrier.",
+      "Mise en demeure pour loyer impayé : contenu obligatoire, délai de règlement, procédure. Modèle conforme à l'article 24 de la loi de 1989, prêt en 2 min.",
     eyebrow: "Loyer impayé",
     h1: "Mise en demeure loyer impayé : modèle 2026 et guide juridique",
     intro:
@@ -835,7 +835,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     title: "Modèle notification révision du loyer IRL 2026 — Calcul et courrier officiel",
     metaTitle: "Modèle notification révision loyer IRL 2026 : calcul et courrier | lokt.fr",
     description:
-      "Calculez la révision annuelle de votre loyer selon l'indice IRL publié par l'INSEE et rédigez la notification officielle à envoyer à votre locataire. Conforme à l'article 17-1 de la loi du 6 juillet 1989. Modèle 2026 complet.",
+      "Calculez la révision annuelle de votre loyer selon l'IRL de l'INSEE et générez la notification officielle, conforme à l'article 17-1 de la loi de 1989.",
     eyebrow: "Révision du loyer",
     h1: "Notification de révision du loyer IRL 2026 : calcul et modèle de lettre",
     intro:
@@ -951,7 +951,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     title: "Modèle restitution dépôt de garantie 2026 — Délais, retenues et lettre officielle",
     metaTitle: "Modèle restitution dépôt de garantie 2026 : délais, retenues, lettre | lokt.fr",
     description:
-      "Restituez le dépôt de garantie de votre locataire dans les délais légaux. Retenues autorisées, justificatifs nécessaires, pénalités en cas de dépassement. Modèle de courrier 2026 conforme à l'article 22 de la loi du 6 juillet 1989.",
+      "Restituez le dépôt de garantie dans les délais légaux : retenues autorisées, justificatifs, pénalités. Modèle conforme à l'article 22 de la loi de 1989.",
     eyebrow: "Dépôt de garantie",
     h1: "Restitution du dépôt de garantie 2026 : délais, retenues autorisées et modèle de lettre",
     intro:
@@ -1067,7 +1067,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     title: "Modèle lettre de congé bailleur 2026 — Reprise, vente, motif légitime",
     metaTitle: "Lettre de congé bailleur 2026 : modèle PDF gratuit, prêt en 2 min | lokt.fr",
     description:
-      "Congé pour reprise, vente ou motif légitime : générez la lettre conforme à la loi du 6 juillet 1989 en 2 minutes. PDF prêt à envoyer en recommandé — sans risque d'erreur sur les délais de préavis.",
+      "Congé pour reprise, vente ou motif légitime : générez la lettre conforme à la loi de 1989 en 2 min. PDF prêt à envoyer, sans erreur sur les délais.",
     eyebrow: "Congé bailleur",
     h1: "Lettre de congé bailleur : modèle 2026 conforme à la loi",
     intro:
