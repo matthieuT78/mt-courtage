@@ -244,7 +244,7 @@ export default function GestionLocativeLmnpPage() {
                   Location meublée et LMNP
                 </div>
                 <h1 className="mt-5 max-w-3xl font-semibold leading-[0.99] text-slate-950 sm:mt-6">
-                  <span className="block text-[2.55rem] sm:text-6xl">Gestion locative LMNP.</span>
+                  <span className="block text-[2.55rem] sm:text-6xl">Gestion locative LMNP.</span>{" "}
                   <span className="mt-1 block text-[2rem] bg-clip-text text-transparent bg-gradient-to-r from-[#635bff] to-[#00b4d8] sm:text-5xl">Le meublé sans tableur dispersé.</span>
                 </h1>
                 <p className="mt-5 max-w-xl text-[0.98rem] leading-7 text-slate-600 sm:mt-6 sm:text-lg">
