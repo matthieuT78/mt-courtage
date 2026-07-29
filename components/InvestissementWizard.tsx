@@ -1043,7 +1043,7 @@ export default function InvestissementWizard() {
     ];
 
     const body = encodeURIComponent(bodyLines.join("\n"));
-    window.location.href = `mailto:mtcourtage@gmail.com?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:contact@lokt.fr?subject=${subject}&body=${body}`;
   };
 
 

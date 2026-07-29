@@ -159,8 +159,8 @@ export default function EspaceBailleurPage() {
                 <p className="mt-1 text-sm text-red-700">{d.error}</p>
                 <p className="mt-3 text-xs text-slate-500">
                   Si le problème persiste, contactez-nous :{" "}
-                  <a href="mailto:mtcourtage@gmail.com" className="underline">
-                    mtcourtage@gmail.com
+                  <a href="mailto:contact@lokt.fr" className="underline">
+                    contact@lokt.fr
                   </a>
                 </p>
               </div>
@@ -198,8 +198,8 @@ export default function EspaceBailleurPage() {
         <p>© {new Date().getFullYear()} lokt.fr – Espace bailleur.</p>
         <p className="mt-1">
           Contact :{" "}
-          <a href="mailto:mtcourtage@gmail.com" className="underline">
-            mtcourtage@gmail.com
+          <a href="mailto:contact@lokt.fr" className="underline">
+            contact@lokt.fr
           </a>
         </p>
       </footer>
