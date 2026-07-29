@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireApiUser, requireMatchingUser } from "../../../lib/apiAuth";
 import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
-import { removeTrackedPartialPaymentTransactions } from "../../../lib/rentPaymentFinance";
+import { removeTrackedPartialPaymentTransactions, syncDelegatedRentTransaction } from "../../../lib/rentPaymentFinance";
 import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 
 type Json = Record<string, any>;
@@ -57,6 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       .maybeSingle();
 
     const now = paidAt || new Date().toISOString();
+    let paymentId: string;
 
     if (existing.data?.id) {
       const upd = await supabaseAdmin
@@ -74,38 +75,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .eq("id", existing.data.id);
 
       if (upd.error) return res.status(500).json({ error: upd.error.message });
-      await removeTrackedPartialPaymentTransactions({
-        leaseId,
-        periodStart: normalizedPeriodStart,
-        periodEnd: normalizedPeriodEnd,
-      });
-      return res.status(200).json({ ok: true, payment_id: existing.data.id });
+      paymentId = existing.data.id;
+    } else {
+      const ins = await supabaseAdmin
+        .from("rent_payments")
+        .insert({
+          lease_id: leaseId,
+          period_start: normalizedPeriodStart,
+          period_end: normalizedPeriodEnd,
+          rent_amount: rent,
+          charges_amount: charges,
+          total_amount: total,
+          due_date: dueDate,
+          paid_at: now,
+          payment_method: lease.payment_method || null,
+          source: "manual_confirm",
+        })
+        .select("id")
+        .single();
+
+      if (ins.error || !ins.data) return res.status(500).json({ error: ins.error?.message || "Insert rent_payments échoué" });
+      paymentId = ins.data.id;
     }
 
-    const ins = await supabaseAdmin
-      .from("rent_payments")
-      .insert({
-        lease_id: leaseId,
-        period_start: normalizedPeriodStart,
-        period_end: normalizedPeriodEnd,
-        rent_amount: rent,
-        charges_amount: charges,
-        total_amount: total,
-        due_date: dueDate,
-        paid_at: now,
-        payment_method: lease.payment_method || null,
-        source: "manual_confirm",
-      })
-      .select("id")
-      .single();
-
-    if (ins.error || !ins.data) return res.status(500).json({ error: ins.error?.message || "Insert rent_payments échoué" });
     await removeTrackedPartialPaymentTransactions({
       leaseId,
       periodStart: normalizedPeriodStart,
       periodEnd: normalizedPeriodEnd,
     });
-    return res.status(200).json({ ok: true, payment_id: ins.data.id });
+
+    // Quittances déléguées à une agence : aucune quittance/PDF lokt n'est générée,
+    // donc pas de sync Finance possible via rent_receipts. On écrit directement
+    // la ligne Finance ici pour que le paiement reste visible dans la section Finance.
+    if (lease.receipts_disabled) {
+      await syncDelegatedRentTransaction({
+        userId,
+        propertyId: lease.property_id ?? null,
+        leaseId,
+        periodStart: normalizedPeriodStart,
+        periodEnd: normalizedPeriodEnd,
+        amount: total,
+      });
+    }
+
+    return res.status(200).json({ ok: true, payment_id: paymentId });
   } catch (e: any) {
     console.error("[api/payments/confirm] error:", e);
     return res.status(500).json({ error: e?.message || "Erreur interne" });

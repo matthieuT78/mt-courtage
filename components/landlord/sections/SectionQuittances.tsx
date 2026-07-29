@@ -933,11 +933,18 @@ export function SectionQuittances({
     setErr(null);
     setOk(null);
 
-    const steps = [
-      { label: "Enregistrement du paiement", status: "loading" as const },
-      { label: "Mise à jour Finance", status: "pending" as const },
-      { label: "Génération de la quittance PDF", status: "pending" as const },
-    ];
+    const receiptsDisabled = !!row.lease?.receipts_disabled;
+
+    const steps = receiptsDisabled
+      ? [
+          { label: "Enregistrement du paiement", status: "loading" as const },
+          { label: "Mise à jour Finance", status: "pending" as const },
+        ]
+      : [
+          { label: "Enregistrement du paiement", status: "loading" as const },
+          { label: "Mise à jour Finance", status: "pending" as const },
+          { label: "Génération de la quittance PDF", status: "pending" as const },
+        ];
     setConfirmProgress({ visible: true, steps });
 
     const updateStep = (index: number, status: "loading" | "done" | "error") => {
@@ -972,6 +979,14 @@ export function SectionQuittances({
       // Étape 2 : refresh des données (en parallèle avec la génération PDF)
       updateStep(1, "loading");
       const refreshPromise = onRefresh().then(() => updateStep(1, "done")).catch(() => updateStep(1, "done"));
+
+      // Quittances gérées par l'agence : pas de PDF ni de quittance lokt à générer
+      if (receiptsDisabled) {
+        await refreshPromise;
+        setOk("Paiement confirmé ✅ (quittance gérée par l'agence, Finance mise à jour).");
+        setTimeout(() => setConfirmProgress(null), 900);
+        return;
+      }
 
       // Étape 3 : génération PDF (lente, 3-8s) — démarre sans attendre le refresh
       updateStep(2, "loading");

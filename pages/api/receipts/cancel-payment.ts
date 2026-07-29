@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { requireApiUser } from "../../../lib/apiAuth";
-import { removeTrackedPartialPaymentTransactions } from "../../../lib/rentPaymentFinance";
+import { removeTrackedPartialPaymentTransactions, syncDelegatedRentTransaction } from "../../../lib/rentPaymentFinance";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { invalidateStorageCache } from "../../../lib/storageQuota";
 
@@ -89,6 +89,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (leaseRes.error || !leaseRes.data) return res.status(404).json({ ok: false, error: "Bail introuvable." });
     if (String(leaseRes.data.user_id) !== userId) return res.status(403).json({ ok: false, error: "Accès refusé." });
 
+    if (!receipt && leaseId && periodStart && periodEnd) {
+      const yyyymm = periodStart.slice(0, 7);
+      const receiptLookup = await supabaseAdmin
+        .from("rent_receipts")
+        .select("*")
+        .eq("lease_id", leaseId)
+        .eq("period_start", periodStart)
+        .gte("period_end", `${yyyymm}-01`)
+        .lte("period_end", `${yyyymm}-31`)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (receiptLookup.data) receipt = receiptLookup.data;
+    }
+
     const paymentId = safeStr(receipt?.payment_id) || paymentIdFromBody || null;
     const parsedPdf = parsePdfUrl(receipt?.pdf_url);
     let deletedPdf = false;
@@ -143,12 +158,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     }
 
-    const txDelete = await supabaseAdmin
-      .from("transactions")
-      .delete()
-      .eq("user_id", userId)
-      .eq("receipt_id", receipt?.id || "__no_receipt__");
-    if (txDelete.error) return res.status(500).json({ ok: false, error: `Suppression Finance échouée: ${txDelete.error.message}` });
+    if (receipt?.id) {
+      const txDelete = await supabaseAdmin
+        .from("transactions")
+        .delete()
+        .eq("user_id", userId)
+        .eq("receipt_id", receipt.id);
+      if (txDelete.error) return res.status(500).json({ ok: false, error: `Suppression Finance échouée: ${txDelete.error.message}` });
+    } else if (leaseId && (periodStart || periodEnd)) {
+      // Bail en quittances déléguées : la ligne Finance a été écrite directement
+      // (pas de receipt_id), on la retire de la même façon.
+      await syncDelegatedRentTransaction({ userId, leaseId, periodStart, periodEnd, amount: 0 });
+    }
 
     await removeTrackedPartialPaymentTransactions({ leaseId, periodStart, periodEnd });
 
