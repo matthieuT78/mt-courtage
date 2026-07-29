@@ -2,6 +2,10 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
+// useLayoutEffect ne fait rien côté serveur (SSR) et React log un warning
+// dans ce cas — on bascule sur useEffect quand `window` n'existe pas.
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 function hasLocalSupabaseSession(): boolean {
   try {
     return Object.keys(localStorage).some((k) => k.startsWith("sb-"));
@@ -16,7 +20,7 @@ export function useAuthUser() {
 
   // Avant le premier rendu visible : si aucune clé sb-* en localStorage,
   // on est sûrement déconnecté — on skip le skeleton immédiatement.
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!hasLocalSupabaseSession()) {
       setChecking(false);
     }

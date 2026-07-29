@@ -91,7 +91,7 @@ function rowUrgencyTone(row: any) {
   if (row.pay?.ownerConfirmedUnpaid) return { border: "border-amber-300", bg: "bg-amber-50/60", accent: "bg-amber-500" };
   if (row.payStatus === "partial") return { border: "border-orange-300", bg: "bg-orange-50/50", accent: "bg-orange-500" };
   if (row.payStatus === "pending") return { border: "border-sky-200", bg: "bg-white", accent: "bg-sky-400" };
-  if (row.payStatus === "paid" && !row.sent) return { border: "border-emerald-200", bg: "bg-emerald-50/40", accent: "bg-emerald-500" };
+  if (row.payStatus === "paid" && !row.sent && !row.lease?.receipts_disabled) return { border: "border-emerald-200", bg: "bg-emerald-50/40", accent: "bg-emerald-500" };
   return { border: "border-slate-200", bg: "bg-white", accent: "bg-slate-300" };
 }
 
