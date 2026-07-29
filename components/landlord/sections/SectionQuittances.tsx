@@ -53,6 +53,7 @@ type Props = {
 
 const LOOKBACK_MONTHS = 24;
 const RECEIPT_SNOOZE_STORAGE_PREFIX = "lokt.receiptSnoozes";
+const DELEGATED_NOTICE_STORAGE_PREFIX = "lokt.hideDelegatedReceiptNotice";
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const toMonthISO = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 
@@ -547,12 +548,31 @@ export function SectionQuittances({
   const [reminderDraft, setReminderDraft] = useState<ReminderDraft | null>(null);
   const [snoozedReceiptKeys, setSnoozedReceiptKeys] = useState<Set<string>>(new Set());
   const [confirmOverrideByRow, setConfirmOverrideByRow] = useState<Record<string, { rent: string; charges: string; paymentMethod: string }>>({});
+  const [hideDelegatedNotice, setHideDelegatedNotice] = useState(false);
+  const [dontRemindDelegated, setDontRemindDelegated] = useState(false);
+  const [pendingDelegatedConfirm, setPendingDelegatedConfirm] = useState<{
+    row: any;
+    rentNum: number;
+    chargesNum: number;
+    paymentMethod: string;
+    rowKey: string;
+  } | null>(null);
 
   const selectedReceipt = useMemo(
     () => safeReceipts.find((r: any) => r.id === selectedReceiptId) || null,
     [safeReceipts, selectedReceiptId]
   );
   const receiptSnoozeStorageKey = useMemo(() => `${RECEIPT_SNOOZE_STORAGE_PREFIX}:${userId}`, [userId]);
+  const delegatedNoticeStorageKey = useMemo(() => `${DELEGATED_NOTICE_STORAGE_PREFIX}:${userId}`, [userId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setHideDelegatedNotice(window.localStorage.getItem(delegatedNoticeStorageKey) === "1");
+    } catch {
+      setHideDelegatedNotice(false);
+    }
+  }, [delegatedNoticeStorageKey]);
 
   const leaseLabel = (lease: Lease) => {
     const p = propsById.get((lease as any).property_id);
@@ -1021,6 +1041,26 @@ export function SectionQuittances({
     } finally {
       setLoading(false);
     }
+  };
+
+  const confirmDelegatedPending = () => {
+    if (!pendingDelegatedConfirm) return;
+    const { row, rentNum, chargesNum, paymentMethod, rowKey } = pendingDelegatedConfirm;
+
+    if (dontRemindDelegated && typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(delegatedNoticeStorageKey, "1");
+      } catch {}
+      setHideDelegatedNotice(true);
+    }
+
+    setConfirmOverrideByRow((p) => {
+      const n = { ...p };
+      delete n[rowKey];
+      return n;
+    });
+    setPendingDelegatedConfirm(null);
+    confirmPaymentForRow(row, rentNum, chargesNum, paymentMethod);
   };
 
   const cancelPaymentForRow = async (row: any) => {
@@ -1915,7 +1955,16 @@ export function SectionQuittances({
                             <button
                               type="button"
                               disabled={loading}
-                              onClick={() => { closeForm(); confirmPaymentForRow(row, rentNum, chargesNum, override.paymentMethod); }}
+                              onClick={() => {
+                                const receiptsDisabled = !!(row.lease as any)?.receipts_disabled;
+                                if (receiptsDisabled && !hideDelegatedNotice) {
+                                  setDontRemindDelegated(false);
+                                  setPendingDelegatedConfirm({ row, rentNum, chargesNum, paymentMethod: override.paymentMethod, rowKey });
+                                  return;
+                                }
+                                closeForm();
+                                confirmPaymentForRow(row, rentNum, chargesNum, override.paymentMethod);
+                              }}
                               className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
                             >
                               {loading ? "Enregistrement..." : "Confirmer"}
@@ -2281,6 +2330,43 @@ export function SectionQuittances({
                 className="rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
               >
                 {loading ? "Envoi…" : reminderDraft.history.length > 0 ? "Renvoyer quand même" : "Envoyer la relance"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {pendingDelegatedConfirm ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" role="dialog" aria-modal="true" aria-label="Quittance gérée par l'agence">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+            <p className="text-base font-semibold text-slate-900">Quittance gérée par l'agence</p>
+            <p className="mt-2 text-sm text-slate-600">
+              Ce bien a la gestion des quittances déléguée à une agence. Le paiement sera bien enregistré et la section Finance mise à jour, mais{" "}
+              <span className="font-semibold">aucune quittance PDF ne sera générée par lokt</span> pour cette période.
+            </p>
+            <label className="mt-4 flex items-center gap-2 text-xs font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={dontRemindDelegated}
+                onChange={(e) => setDontRemindDelegated(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              Ne plus me rappeler
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDelegatedConfirm(null)}
+                className="rounded-lg border px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmDelegatedPending}
+                className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+              >
+                Confirmer le paiement
               </button>
             </div>
           </div>
