@@ -501,6 +501,10 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
   const [closeResult, setCloseResult] = useState<{ listingId: string; deleted: number } | null>(null);
   const [convertingId, setConvertingId] = useState<string | null>(null);
   const [convertResult, setConvertResult] = useState<{ candidatureId: string; tenantName: string; alreadyExists: boolean; tenantId: string | null; propertyId: string | null } | null>(null);
+  const [manualTenantDraft, setManualTenantDraft] = useState<{ listingId: string; firstName: string; lastName: string; email: string; phone: string } | null>(null);
+  const [manualTenantSaving, setManualTenantSaving] = useState(false);
+  const [manualTenantErr, setManualTenantErr] = useState<string | null>(null);
+  const [manualTenantResult, setManualTenantResult] = useState<{ listingId: string; tenantId: string; tenantName: string; propertyId: string | null } | null>(null);
 
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [expandedArchive, setExpandedArchive] = useState<string | null>(null);
@@ -626,6 +630,61 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
       setCloseResult({ listingId: listing_id, deleted: json.deleted_count });
       await load();
     }
+  }
+
+  async function saveManualTenant() {
+    if (!manualTenantDraft) return;
+    const firstName = manualTenantDraft.firstName.trim();
+    const lastName = manualTenantDraft.lastName.trim();
+    if (!firstName && !lastName) {
+      setManualTenantErr("Indiquez au moins un nom ou un prénom.");
+      return;
+    }
+    setManualTenantSaving(true);
+    setManualTenantErr(null);
+
+    const { data: tenant, error } = await supabase
+      .from("tenants")
+      .insert({
+        user_id: userId,
+        first_name: firstName || null,
+        last_name: lastName || null,
+        email: manualTenantDraft.email.trim() || null,
+        phone: manualTenantDraft.phone.trim() || null,
+      })
+      .select("*")
+      .single();
+
+    if (error || !tenant) {
+      setManualTenantErr(error?.message || "Création du locataire échouée.");
+      setManualTenantSaving(false);
+      return;
+    }
+
+    const listing = listings.find((l) => l.id === manualTenantDraft.listingId);
+    const headers = await getHeaders();
+    const res = await fetch("/api/candidature/close-listing", {
+      method: "POST", headers,
+      body: JSON.stringify({ listing_id: manualTenantDraft.listingId }),
+    });
+    const json = await res.json();
+    setManualTenantSaving(false);
+
+    if (!res.ok) {
+      setManualTenantErr(json.error || "Locataire créé mais la clôture de l'annonce a échoué.");
+      return;
+    }
+
+    setCloseResult({ listingId: manualTenantDraft.listingId, deleted: json.deleted_count });
+    await onRefresh?.();
+    await load();
+    setManualTenantResult({
+      listingId: manualTenantDraft.listingId,
+      tenantId: tenant.id,
+      tenantName: `${firstName} ${lastName}`.trim(),
+      propertyId: listing?.property_id ?? null,
+    });
+    setManualTenantDraft(null);
   }
 
   async function convertToTenant(candidature_id: string, tenantName: string, propertyId?: string | null) {
@@ -873,6 +932,32 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                 </div>
               )}
 
+              {/* Bannière création locataire hors annonce réussie */}
+              {manualTenantResult?.listingId === currentListing.id && (
+                <div className="flex items-start gap-3 rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 p-4 text-sm">
+                  <UserPlusIcon className="h-5 w-5 shrink-0 mt-0.5 text-[#635bff]" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-slate-900">{manualTenantResult.tenantName} ajouté à vos locataires</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Le candidat n'est jamais passé par lokt — l'annonce a été clôturée directement.</p>
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const tid = manualTenantResult.tenantId;
+                          const pid = manualTenantResult.propertyId ?? undefined;
+                          setManualTenantResult(null);
+                          if (onNavigateDeep) onNavigateDeep("baux", { openCreate: true, prefillTenantId: tid, prefillPropertyId: pid });
+                          else onNavigate?.("baux");
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800"
+                      >
+                        Créer le bail
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Bannière conversion locataire réussie */}
               {convertResult && (
                 <div className="flex items-start gap-3 rounded-xl border border-[#635bff]/20 bg-[#635bff]/5 p-4 text-sm">
@@ -1064,17 +1149,87 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                             Clôturer
                           </button>
                         </div>
+                      ) : manualTenantDraft?.listingId === currentListing.id ? (
+                        <div className="w-full rounded-xl border border-indigo-200 bg-indigo-50 p-3 space-y-3">
+                          <p className="text-xs font-semibold text-slate-900">Locataire trouvé hors lokt</p>
+                          <p className="text-xs text-slate-600">
+                            Le locataire retenu n'a pas candidaté via le lien (pas digital, envoi rapide des pièces...). Créez-le directement : il sera ajouté à vos locataires et l'annonce sera clôturée (données des autres candidats supprimées, RGPD).
+                          </p>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+                              Prénom
+                              <input
+                                value={manualTenantDraft.firstName}
+                                onChange={(e) => setManualTenantDraft((d) => (d ? { ...d, firstName: e.target.value } : d))}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal"
+                              />
+                            </label>
+                            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+                              Nom
+                              <input
+                                value={manualTenantDraft.lastName}
+                                onChange={(e) => setManualTenantDraft((d) => (d ? { ...d, lastName: e.target.value } : d))}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal"
+                              />
+                            </label>
+                            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+                              Email
+                              <input
+                                type="email"
+                                value={manualTenantDraft.email}
+                                onChange={(e) => setManualTenantDraft((d) => (d ? { ...d, email: e.target.value } : d))}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal"
+                              />
+                            </label>
+                            <label className="block space-y-1 text-xs font-semibold text-slate-700">
+                              Téléphone
+                              <input
+                                value={manualTenantDraft.phone}
+                                onChange={(e) => setManualTenantDraft((d) => (d ? { ...d, phone: e.target.value } : d))}
+                                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal"
+                              />
+                            </label>
+                          </div>
+                          {manualTenantErr && <p className="text-xs font-semibold text-red-600">{manualTenantErr}</p>}
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              disabled={manualTenantSaving}
+                              onClick={saveManualTenant}
+                              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                            >
+                              {manualTenantSaving ? "Création…" : "Créer le locataire et clôturer l'annonce"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setManualTenantDraft(null); setManualTenantErr(null); }}
+                              className="rounded-lg border px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-white"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
                       ) : (
-                        <div className="ml-auto">
+                        <>
                           <button
                             type="button"
-                            onClick={() => setCloseConfirm(currentListing.id)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition"
+                            onClick={() => { setManualTenantErr(null); setManualTenantDraft({ listingId: currentListing.id, firstName: "", lastName: "", email: "", phone: "" }); }}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 transition"
                           >
-                            <LockClosedIcon className="h-3.5 w-3.5" />
-                            Clôturer l'annonce et supprimer les données
+                            <UserPlusIcon className="h-3.5 w-3.5" />
+                            Créer un locataire hors annonce
                           </button>
-                        </div>
+                          <div className="ml-auto">
+                            <button
+                              type="button"
+                              onClick={() => setCloseConfirm(currentListing.id)}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition"
+                            >
+                              <LockClosedIcon className="h-3.5 w-3.5" />
+                              Clôturer l'annonce et supprimer les données
+                            </button>
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
