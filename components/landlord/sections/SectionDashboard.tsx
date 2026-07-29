@@ -321,14 +321,18 @@ export function SectionDashboard({
 
     const totalKnownDays = rows.reduce((sum, row) => sum + row.analysisDays, 0);
     const totalOccupiedDays = rows.reduce((sum, row) => sum + row.occupiedDays, 0);
+    // Taux 12 mois glissants — vue "performance" moyenne, cf. SectionBiens.tsx (occupancyRate12m).
     const rate = totalKnownDays > 0 ? Math.round((totalOccupiedDays / totalKnownDays) * 100) : 0;
     const vacantCount = rows.filter((row) => !row.currentLease).length;
     const occupiedCount = rows.length - vacantCount;
+    // Taux instant T — y a-t-il un bien sans bail actif maintenant.
+    const instantRate = rows.length > 0 ? Math.round((occupiedCount / rows.length) * 100) : 0;
     const shortHistoryCount = rows.filter((row) => row.currentLease && row.historyIsShort).length;
 
     return {
       total: rows.length,
       rate,
+      instantRate,
       occupiedCount,
       vacantCount,
       shortHistoryCount,
@@ -1163,11 +1167,11 @@ export function SectionDashboard({
       },
       {
         label: "Occupation",
-        value: `${occupancySnapshot.rate}%`,
-        tone: occupancySnapshot.rate >= 80 ? "emerald" : occupancySnapshot.rate >= 60 ? "amber" : "red",
+        value: occupancySnapshot.total > 0 ? `${occupancySnapshot.occupiedCount}/${occupancySnapshot.total}` : "—",
+        tone: occupancySnapshot.vacantCount === 0 ? "emerald" : occupancySnapshot.vacantCount === 1 ? "amber" : "red",
         desc: occupancySnapshot.vacantCount
-          ? `${occupancySnapshot.vacantCount} logement${occupancySnapshot.vacantCount > 1 ? "s" : ""} sans bail actif.`
-          : "Tous les biens connus ont un bail actif.",
+          ? `${occupancySnapshot.vacantCount} logement${occupancySnapshot.vacantCount > 1 ? "s" : ""} sans bail actif · moy. 12 mois ${occupancySnapshot.rate}%.`
+          : `Tous les biens connus ont un bail actif · moy. 12 mois ${occupancySnapshot.rate}%.`,
         target: occupancySnapshot.vacantCount || occupancySnapshot.rate < 100 ? ("biens" as LandlordSectionKey) : null,
       },
     ] as const;
@@ -1267,16 +1271,22 @@ export function SectionDashboard({
 
           <button type="button" onClick={() => onGo("biens")}
             className="flex min-h-[108px] flex-col gap-1 rounded-2xl bg-white px-4 py-4 text-left shadow-sm transition hover:shadow-md active:scale-[0.98]">
-            <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-400">Occupation</p>
-            <p className={`text-2xl font-extrabold ${occupancySnapshot.rate >= 80 ? "text-emerald-600" : occupancySnapshot.rate >= 60 ? "text-amber-600" : "text-red-600"}`}>
-              {occupancySnapshot.rate}%
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-slate-400">Occupation</p>
+              <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[0.6rem] font-semibold text-slate-500">
+                12 mois {occupancySnapshot.rate}%
+              </span>
+            </div>
+            <p className={`text-2xl font-extrabold ${occupancySnapshot.vacantCount === 0 ? "text-emerald-600" : occupancySnapshot.vacantCount === 1 ? "text-amber-600" : "text-red-600"}`}>
+              {occupancySnapshot.total > 0 ? `${occupancySnapshot.occupiedCount}/${occupancySnapshot.total}` : "—"}
             </p>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-              <div className={`h-full rounded-full ${occupancySnapshot.rate >= 80 ? "bg-emerald-500" : occupancySnapshot.rate >= 60 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${occupancySnapshot.rate}%` }} />
+              <div className={`h-full rounded-full ${occupancySnapshot.vacantCount === 0 ? "bg-emerald-500" : occupancySnapshot.vacantCount === 1 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${occupancySnapshot.instantRate}%` }} />
             </div>
             <p className="text-[0.68rem] text-slate-500">
-              {occupancySnapshot.occupiedCount}/{occupancySnapshot.total} logement{occupancySnapshot.total > 1 ? "s" : ""}
-              {occupancySnapshot.vacantCount > 0 ? ` · ${occupancySnapshot.vacantCount} vacant` : ""}
+              {occupancySnapshot.vacantCount > 0
+                ? `${occupancySnapshot.vacantCount} logement${occupancySnapshot.vacantCount > 1 ? "s" : ""} vacant${occupancySnapshot.vacantCount > 1 ? "s" : ""} maintenant`
+                : "Tout est loué maintenant"}
             </p>
           </button>
 
