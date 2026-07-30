@@ -1523,8 +1523,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         status: form.status || "active",
         auto_quittance_enabled: canUseReceiptAutomation ? !!form.auto_quittance_enabled : false,
         // Délégué à une agence : pas de quittance auto, mais le rappel email de confirmation
-        // paiement (Finance) reste actif — les deux ne sont plus liés dans ce cas précis.
-        auto_reminder_enabled: canUseReceiptAutomation ? (!!form.auto_quittance_enabled || !!form.receipts_disabled) : false,
+        // paiement (Finance) reste indépendamment réglable via sa propre case à cocher.
+        auto_reminder_enabled: canUseReceiptAutomation ? !!form.auto_reminder_enabled : false,
         receipts_disabled: !!form.receipts_disabled,
         reminder_day_of_month: reminderDayNum,
         reminder_email: ownerEmail || null,
@@ -2737,6 +2737,29 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               }}
             />
           </div>
+
+          {form.receipts_disabled ? (
+            <label className={cx(
+              "flex items-start gap-2 rounded-xl border px-3 py-2.5 text-sm",
+              canUseReceiptAutomation ? "border-slate-200 bg-white cursor-pointer" : "border-slate-200 bg-slate-50 text-slate-400"
+            )}>
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={!!form.auto_reminder_enabled}
+                disabled={!canUseReceiptAutomation}
+                onChange={(e) => setForm((s) => ({ ...s, auto_reminder_enabled: e.target.checked }))}
+              />
+              <span>
+                <span className="block font-semibold text-slate-900">Recevoir un rappel email pour confirmer le paiement</span>
+                <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+                  {canUseReceiptAutomation
+                    ? "Un email mensuel pour confirmer que le loyer est arrivé — met à jour votre suivi Finance, sans générer de quittance (gérée par l'agence)."
+                    : "Disponible avec lokt·one ou lokt·plus."}
+                </span>
+              </span>
+            </label>
+          ) : null}
 
           {!isGestionDelegated && !canUseReceiptAutomation ? (
             <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
