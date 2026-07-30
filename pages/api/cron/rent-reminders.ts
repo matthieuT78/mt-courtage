@@ -64,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 1) baux éligibles
     const { data: leases, error } = await supabaseAdmin
       .from("leases")
-      .select("id,user_id,property_id,tenant_id,start_date,end_date,rent_amount,charges_amount,payment_day,timezone,auto_reminder_enabled,reminder_email,last_auto_sent_period,status")
+      .select("id,user_id,property_id,tenant_id,start_date,end_date,rent_amount,charges_amount,payment_day,timezone,auto_reminder_enabled,reminder_email,last_auto_sent_period,status,receipts_disabled")
       .eq("auto_reminder_enabled", true)
       .neq("status", "draft");
 
@@ -81,14 +81,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const canUseAutomation = await userCanUseReceiptAutomation(String(l.user_id || ""));
       if (!canUseAutomation) { skipped++; if (debug) debugResults.push({ leaseId: l.id, skip: "no_automation_plan" }); continue; }
 
-      if (l.property_id) {
-        const { data: prop } = await supabaseAdmin.from("properties").select("delegated_services").eq("id", l.property_id).maybeSingle();
-        if (Array.isArray(prop?.delegated_services) && prop.delegated_services.includes("gestion_courante")) {
-          skipped++;
-          if (debug) debugResults.push({ leaseId: l.id, skip: "gestion_courante_delegated" });
-          continue;
-        }
-      }
+      // Note : les baux "quittances agence" (receipts_disabled) ne sont PAS exclus ici —
+      // ils reçoivent un rappel adapté (pas de mention de quittance) pour que le bailleur
+      // puisse confirmer le paiement et alimenter Finance, cf. lib/receiptWorkflow.ts.
 
       const tz = l.timezone || "Europe/Paris";
       const today = yyyymmddInTz(now, tz);
@@ -156,6 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         expectedCharges: rentPeriod.charges,
         fullUrl,
         partialUrl,
+        receiptsDisabled: !!l.receipts_disabled,
       });
 
       const mail = await sendEmailViaResend({

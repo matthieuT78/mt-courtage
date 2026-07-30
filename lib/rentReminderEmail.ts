@@ -9,6 +9,9 @@ type RentReminderEmailParams = {
   partialUrl: string;
   isTest?: boolean;
   isFollowup?: boolean;
+  // Bail en "quittances agence" : aucune quittance ne sera générée ni envoyée au
+  // locataire — cette confirmation ne sert qu'à alimenter le suivi Finance.
+  receiptsDisabled?: boolean;
 };
 
 function esc(v: unknown) {
@@ -43,7 +46,21 @@ export function buildRentReminderOwnerEmail(params: RentReminderEmailParams) {
 
   const subject = `${params.isTest ? "[TEST] " : ""}${params.isFollowup ? "Rappel - " : ""}Validation du paiement du loyer - ${periodLabel} | lokt.fr`;
 
-  const text = `
+  const text = params.receiptsDisabled ? `
+Bonjour,
+
+${params.isFollowup ? "Nous attendons toujours votre réponse concernant le paiement" : "Le paiement"} du loyer de ${periodLabel} est-il arrivé ? Cette confirmation met à jour votre suivi Finance — la quittance reste gérée par votre agence, elle n'est pas générée par lokt.fr.
+
+Logement : ${propertyLabel}
+Locataire : ${tenantName}
+Montant attendu : ${euro(expectedTotal)}
+
+Choix disponibles :
+- Loyer reçu complet : ${params.fullUrl}
+- Paiement incomplet : ${params.partialUrl}
+
+lokt.fr
+  `.trim() : `
 Bonjour,
 
 ${params.isFollowup ? "Nous attendons toujours votre réponse concernant le paiement" : "Le paiement"} du loyer de ${periodLabel} doit être validé avant de générer une quittance.
@@ -74,7 +91,9 @@ lokt.fr
           ${params.isFollowup ? "Rappel : " : ""}le loyer de ${esc(periodLabel)} a-t-il été reçu ?
         </h1>
         <p style="margin:10px 0 0;font-size:14px;line-height:1.55;color:#475569;">
-          ${params.isFollowup ? "Nous n'avons pas encore reçu votre réponse. " : ""}Confirmez le statut du paiement avant toute génération de quittance. Une quittance vaut reçu : elle ne doit être créée qu'après paiement complet.
+          ${params.receiptsDisabled
+            ? `${params.isFollowup ? "Nous n'avons pas encore reçu votre réponse. " : ""}Cette confirmation met à jour votre suivi Finance uniquement — la quittance reste gérée par votre agence, elle n'est pas générée par lokt.fr.`
+            : `${params.isFollowup ? "Nous n'avons pas encore reçu votre réponse. " : ""}Confirmez le statut du paiement avant toute génération de quittance. Une quittance vaut reçu : elle ne doit être créée qu'après paiement complet.`}
         </p>
       </div>
 
@@ -116,7 +135,9 @@ lokt.fr
         </div>
 
         <div style="margin-top:18px;padding:13px 14px;border-radius:14px;background:#fffbeb;border:1px solid #fde68a;color:#78350f;font-size:13px;line-height:1.5;">
-          En cas de paiement incomplet, lokt.fr bloque la quittance et alimente le suivi Finance. Vous pourrez confirmer le solde depuis la section Quittances.
+          ${params.receiptsDisabled
+            ? "En cas de paiement incomplet, indiquez le montant réellement reçu — ça alimente votre suivi Finance. Vous pourrez ajuster depuis la section Quittances."
+            : "En cas de paiement incomplet, lokt.fr bloque la quittance et alimente le suivi Finance. Vous pourrez confirmer le solde depuis la section Quittances."}
         </div>
       </div>
 

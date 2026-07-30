@@ -1,13 +1,15 @@
 import PDFDocument from "pdfkit";
 import { supabaseAdmin } from "./supabaseAdmin";
 import { getLeaseRentPeriodFromDate } from "./rentPeriod";
-import { removeTrackedPartialPaymentTransactions } from "./rentPaymentFinance";
+import { removeTrackedPartialPaymentTransactions, syncDelegatedRentTransaction } from "./rentPaymentFinance";
 
 type Result = {
   ok: true;
   receiptId: string;
   paymentId: string | null;
   status: "generated" | "sent";
+  // Bail en "quittances agence" : aucune quittance n'a été générée, seule la Finance a été mise à jour.
+  delegated?: boolean;
   email: {
     attempted: boolean;
     ok: boolean;
@@ -187,6 +189,65 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
   const normalizedPeriodStart = rentPeriod.periodStart;
   const normalizedPeriodEnd = rentPeriod.periodEnd;
   const { rent, charges, total } = rentPeriod;
+
+  // Quittances déléguées à une agence : jamais de PDF ni d'envoi au locataire — cette
+  // confirmation (déclenchée par un lien email ou l'app) ne sert qu'à alimenter la Finance
+  // du bailleur, exactement comme la confirmation manuelle depuis la section Quittances.
+  if (lease.receipts_disabled) {
+    const existingPayment = await supabaseAdmin
+      .from("rent_payments")
+      .select("id")
+      .eq("lease_id", leaseId)
+      .eq("period_start", normalizedPeriodStart)
+      .eq("period_end", normalizedPeriodEnd)
+      .maybeSingle();
+
+    const paymentPayload = {
+      lease_id: leaseId,
+      period_start: normalizedPeriodStart,
+      period_end: normalizedPeriodEnd,
+      rent_amount: rent,
+      charges_amount: charges,
+      total_amount: total,
+      due_date: normalizedPeriodStart,
+      paid_at: new Date().toISOString(),
+      payment_method: lease.payment_method || null,
+      source: "owner_confirm_email",
+      updated_at: new Date().toISOString(),
+    };
+
+    let paymentId: string;
+    if (existingPayment.data?.id) {
+      paymentId = existingPayment.data.id;
+      const updPay = await supabaseAdmin.from("rent_payments").update(paymentPayload).eq("id", paymentId);
+      if (updPay.error) throw updPay.error;
+    } else {
+      const insPay = await supabaseAdmin.from("rent_payments").insert(paymentPayload).select("id").single();
+      if (insPay.error || !insPay.data) throw new Error(insPay.error?.message || "Création paiement échouée.");
+      paymentId = insPay.data.id;
+    }
+
+    await removeTrackedPartialPaymentTransactions({ leaseId, periodStart: normalizedPeriodStart, periodEnd: normalizedPeriodEnd });
+    await syncDelegatedRentTransaction({
+      userId,
+      propertyId: lease.property_id ?? null,
+      leaseId,
+      periodStart: normalizedPeriodStart,
+      periodEnd: normalizedPeriodEnd,
+      amount: total,
+    });
+
+    return {
+      ok: true,
+      receiptId: "",
+      paymentId,
+      status: "generated",
+      delegated: true,
+      email: { attempted: false, ok: false, disabled: true, error: null, to: null, cc: null },
+      signedUrl: null,
+    };
+  }
+
   const issueDate = todayISO();
 
   const tenantName = safeStr((tenant as any)?.full_name) || "Locataire";

@@ -1266,7 +1266,10 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     if (!form.property_id) return;
     const isDelegated = (propertyById.get(form.property_id)?.delegated_services || []).includes("gestion_courante");
     if (isDelegated && !form.receipts_disabled) {
-      setForm((s) => ({ ...s, receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: false }));
+      // auto_reminder_enabled reste actif : même délégué, le bailleur garde le rappel email
+      // pour confirmer le paiement et alimenter Finance — seule la quittance (auto_quittance_enabled)
+      // est désactivée, puisque celle-ci est gérée par l'agence.
+      setForm((s) => ({ ...s, receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: true }));
     }
   }, [form.property_id, form.receipts_disabled, propertyById]);
 
@@ -1301,7 +1304,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       ...defaultFormValues(),
       property_id: prefillPropertyId,
       tenant_id: prefillTenantId,
-      ...(prefillGestionDelegated ? { receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: false } : {}),
+      ...(prefillGestionDelegated ? { receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: true } : {}),
     });
     // Si le locataire vient d'être créé et n'est pas encore dans la liste, on rafraîchit
     if (prefillTenantId && !tenants?.some((t) => t.id === prefillTenantId)) {
@@ -1519,7 +1522,9 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         payment_type: form.payment_type || null,
         status: form.status || "active",
         auto_quittance_enabled: canUseReceiptAutomation ? !!form.auto_quittance_enabled : false,
-        auto_reminder_enabled: canUseReceiptAutomation ? !!form.auto_quittance_enabled : false,
+        // Délégué à une agence : pas de quittance auto, mais le rappel email de confirmation
+        // paiement (Finance) reste actif — les deux ne sont plus liés dans ce cas précis.
+        auto_reminder_enabled: canUseReceiptAutomation ? (!!form.auto_quittance_enabled || !!form.receipts_disabled) : false,
         receipts_disabled: !!form.receipts_disabled,
         reminder_day_of_month: reminderDayNum,
         reminder_email: ownerEmail || null,
@@ -2728,7 +2733,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
               selected={!!form.receipts_disabled}
               onClick={() => {
                 setAutoWorkflowError(null);
-                setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: false, receipts_disabled: true }));
+                setForm((s) => ({ ...s, auto_quittance_enabled: false, auto_reminder_enabled: true, receipts_disabled: true }));
               }}
             />
           </div>

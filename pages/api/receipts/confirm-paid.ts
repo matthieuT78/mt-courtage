@@ -309,7 +309,9 @@ function spinnerPage(params: {
         const json = await r.json().catch(() => ({}));
         document.getElementById('s-loading').style.display = 'none';
         if (json.ok) {
-          document.getElementById('success-msg').textContent = json.emailOk
+          document.getElementById('success-msg').textContent = json.delegated
+            ? 'Paiement enregistré ✅ Finance mise à jour. Quittance gérée par votre agence.'
+            : json.emailOk
             ? 'Quittance envoyée à ${escapeJs(tenantName)}. Vous êtes en copie.'
             : 'Paiement enregistré. La quittance est disponible sur lokt.fr.';
           document.getElementById('s-success').style.display = 'block';
@@ -422,7 +424,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           internalSecret,
         });
 
-        return res.status(200).json({ ok: true, receiptId: result.receiptId, emailOk: result.email.ok });
+        return res.status(200).json({ ok: true, receiptId: result.receiptId, emailOk: result.email.ok, delegated: !!result.delegated });
       } catch (e) {
         // Le traitement a échoué avant la fin : on libère le token pour permettre un nouveau clic.
         // Cette requête est la seule à avoir réclamé le token (claimToken est atomique), donc
