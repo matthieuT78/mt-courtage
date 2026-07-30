@@ -2031,7 +2031,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         })}
       </div>
 
-      {/* ── Configuration financière des biens ───────────────────────── */}
+      {/* ── Configuration financière des biens (uniquement onglet Livre de comptes) ── */}
+      {tab === "finance" && <>
       {financeAllConfigured ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
           <div className="flex items-center gap-2.5">
@@ -2157,6 +2158,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           </div>
         </div>
       )}
+      </>}
 
       {/* ── Déclaration tab ───────────────────────────────────────── */}
       {tab === "declaration" && <SectionDeclaration userId={userId} properties={properties} propertyFinance={Array.from(pf.values()).filter((fin) => activePropertyIdSet.has(fin.property_id))} />}
