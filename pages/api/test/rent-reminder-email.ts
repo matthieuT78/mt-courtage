@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: lease, error } = await supabaseAdmin
       .from("leases")
-      .select("id,user_id,property_id,tenant_id,reminder_email,rent_amount,charges_amount")
+      .select("id,user_id,property_id,tenant_id,reminder_email,rent_amount,charges_amount,receipts_disabled")
       .eq("id", String(leaseId))
       .eq("user_id", String(userId))
       .maybeSingle();
@@ -92,6 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       fullUrl: link("full"),
       partialUrl: link("partial"),
       isTest: true,
+      receiptsDisabled: !!(lease as any).receipts_disabled,
     });
 
     const sent = await sendEmailViaResend({
