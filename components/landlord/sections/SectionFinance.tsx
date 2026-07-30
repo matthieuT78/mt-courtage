@@ -140,7 +140,7 @@ type Props = {
   propertyById?: Map<string, Property>;
   properties?: Property[];
   onRefresh?: () => Promise<void> | void;
-  deepLink?: { key: number; openCreate?: boolean; prefillPropertyId?: string } | null;
+  deepLink?: { key: number; openCreate?: boolean; prefillPropertyId?: string; financeTab?: "finance" | "declaration" } | null;
 };
 
 const toMonthISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -540,6 +540,11 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     setTimeout(() => {
       document.getElementById(`finance-property-${propertyId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 80);
+  }, [deepLink]);
+
+  useEffect(() => {
+    if (!deepLink?.financeTab) return;
+    setTab(deepLink.financeTab);
   }, [deepLink]);
 
   // Filtres liste

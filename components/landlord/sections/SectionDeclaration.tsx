@@ -244,6 +244,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   };
 
   const [loading, setLoading] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [rowId, setRowId] = useState<string | null>(null);
@@ -560,6 +561,66 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, year, regime, permissionsLoading, isPremium]);
 
+  // Vue d'ensemble transversale : statut par catégorie fiscale (LMNP / Nu / Pinel) pour
+  // l'année sélectionnée, sans devoir cliquer sur chaque onglet pour le découvrir.
+  type CategorySummary = { hasData: boolean; receiptsTotal: number; savedRegime: Regime | null };
+  const emptySummary: CategorySummary = { hasData: false, receiptsTotal: 0, savedRegime: null };
+  const [categorySummaries, setCategorySummaries] = useState<Record<"lmnp" | "nu" | "pinel", CategorySummary>>({
+    lmnp: emptySummary,
+    nu: emptySummary,
+    pinel: emptySummary,
+  });
+
+  useEffect(() => {
+    if (!supabase || !userId || !isPremium) return;
+    const hasAnyCat = fiscalGroups.lmnp.length > 0 || fiscalGroups.nu.length > 0 || fiscalGroups.pinel.length > 0;
+    if (!hasAnyCat) return;
+    let cancelled = false;
+
+    (async () => {
+      const regimesToFetch: Regime[] = [];
+      if (fiscalGroups.lmnp.length > 0) regimesToFetch.push("lmnp_reel", "lmnp_micro");
+      if (fiscalGroups.nu.length > 0) regimesToFetch.push("nu_reel", "nu_micro");
+      if (fiscalGroups.pinel.length > 0) regimesToFetch.push("pinel");
+
+      const { data, error } = await supabase
+        .from("tax_declarations")
+        .select("regime,data")
+        .eq("user_id", userId)
+        .eq("year", year)
+        .in("regime", regimesToFetch);
+      if (cancelled || error) return;
+
+      const byRegime = new Map<string, Record<string, unknown>>(
+        (data || []).map((row: any) => [row.regime as string, (row.data || {}) as Record<string, unknown>])
+      );
+
+      const summarize = (regimes: Regime[]): CategorySummary => {
+        for (const r of regimes) {
+          const d = byRegime.get(r);
+          if (!d) continue;
+          const gross = toNumber(d.grossRent) + toNumber(d.chargesRecovered) + toNumber(d.otherIncome);
+          const hasData = r === "pinel" ? toNumber(d.pinelAcqPrice) > 0 : gross > 0;
+          if (hasData) return { hasData: true, receiptsTotal: gross, savedRegime: r };
+        }
+        return emptySummary;
+      };
+
+      if (!cancelled) {
+        setCategorySummaries({
+          lmnp: summarize(["lmnp_reel", "lmnp_micro"]),
+          nu: summarize(["nu_reel", "nu_micro"]),
+          pinel: summarize(["pinel"]),
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, year, isPremium, fiscalGroups]);
+
   const alerts = useMemo(() => {
     const list: Array<{ tone: "amber" | "red" | "emerald"; text: string }> = [];
 
@@ -746,6 +807,65 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     lmnpBicDeficit, amortizationUsed, amortizationDeferred, amortizationTotal, commonCharges, year, cfe,
   ]);
 
+  // Récap PDF prêt à imprimer/transmettre — distinct du CSV (données brutes pour import
+  // comptable) : ici on veut un document lisible pour ses propres archives.
+  const exportPdf = async () => {
+    setPdfExporting(true);
+    setErr(null);
+    try {
+      const rows: Array<[string, string]> = [
+        ["Recettes loyers", eur(grossRent)],
+        ["Charges récupérées", eur(chargesRecovered)],
+        ["Autres recettes", eur(otherIncome)],
+        ...(isReal ? [
+          ["Intérêts d'emprunt", eur(interest)],
+          ["Assurance", eur(insurance)],
+          ["Taxe foncière", eur(propertyTax)],
+          ["Copropriété", eur(copro)],
+          ["Travaux / réparations", eur(repairs)],
+          ["Frais de gestion", eur(managementFees)],
+          ["Eau, électricité, divers", eur(utilities)],
+          ["Autres charges", eur(otherExpenses)],
+        ] as Array<[string, string]> : []),
+        ...(regime === "lmnp_reel" ? [
+          ["Amortissements mobilier N", eur(amortizationMobilier)],
+          ["Amortissements reportés N-1", eur(lmnpCarryForward)],
+          ["Amortissements effectivement déduits", eur(amortizationUsed)],
+          ["Amortissements à reporter N+1", eur(amortizationDeferred)],
+        ] as Array<[string, string]> : []),
+        ...(regime === "nu_reel" ? [["CFE (Cotisation Foncière)", eur(cfe)]] as Array<[string, string]> : []),
+        ...(isPinel ? [
+          ["Prix d'acquisition retenu (plafonné)", eur(pinelAcqPriceCapped)],
+          ["Réduction Pinel totale", eur(pinelTotalReduction)],
+          ["Réduction Pinel annuelle", eur(pinelYearlyReduction)],
+        ] as Array<[string, string]> : []),
+      ];
+
+      const { data: sessionData } = await supabase!.auth.getSession();
+      const res = await fetch("/api/declaration/export-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionData.session?.access_token}` },
+        body: JSON.stringify({ year, categoryLabel, regimeLabel: regimeLabel(regime), rows, guide: declarationGuide }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error || "Export PDF impossible.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `declaration-${year}-${regime}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: unknown) {
+      setErr((e as Error)?.message || "Export PDF impossible.");
+    } finally {
+      setPdfExporting(false);
+    }
+  };
 
   if (!permissionsLoading && !isPremium) {
     return (
@@ -883,25 +1003,52 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
         </section>
       )}
 
-      {/* ── Onglets catégorie ── */}
+      {/* ── Vue d'ensemble par catégorie fiscale ── */}
       {hasCat && (
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           {fiscalGroups.lmnp.length > 0 && (
-            <button type="button" onClick={() => setRegime(isLmnp ? regime : "lmnp_micro")}
-              className={cx("rounded-full border px-4 py-2 text-sm font-semibold transition", isLmnp ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>
-              Meublé LMNP{fiscalGroups.lmnp.length > 1 ? ` — ${fiscalGroups.lmnp.length} biens` : ""}
+            <button type="button" onClick={() => setRegime(isLmnp ? regime : categorySummaries.lmnp.savedRegime || "lmnp_micro")}
+              className={cx("rounded-2xl border-2 p-4 text-left transition", isLmnp ? "border-[#635bff] bg-[#635bff]/5" : "border-slate-200 bg-white hover:border-slate-300")}>
+              <p className="text-xs font-semibold text-slate-500">
+                Meublé LMNP{fiscalGroups.lmnp.length > 1 ? ` · ${fiscalGroups.lmnp.length} biens` : ""}
+              </p>
+              <p className="mt-1 text-xl font-bold text-slate-950">
+                {categorySummaries.lmnp.hasData ? eur(categorySummaries.lmnp.receiptsTotal) : "—"}
+              </p>
+              <span className={cx("mt-2 inline-block rounded-full px-2 py-0.5 text-[0.65rem] font-semibold",
+                categorySummaries.lmnp.hasData ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800")}>
+                {categorySummaries.lmnp.hasData ? "Prêt" : "À compléter"}
+              </span>
             </button>
           )}
           {fiscalGroups.nu.length > 0 && (
-            <button type="button" onClick={() => setRegime(isNu ? regime : "nu_micro")}
-              className={cx("rounded-full border px-4 py-2 text-sm font-semibold transition", isNu ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>
-              Location nue{fiscalGroups.nu.length > 1 ? ` — ${fiscalGroups.nu.length} biens` : ""}
+            <button type="button" onClick={() => setRegime(isNu ? regime : categorySummaries.nu.savedRegime || "nu_micro")}
+              className={cx("rounded-2xl border-2 p-4 text-left transition", isNu ? "border-[#635bff] bg-[#635bff]/5" : "border-slate-200 bg-white hover:border-slate-300")}>
+              <p className="text-xs font-semibold text-slate-500">
+                Location nue{fiscalGroups.nu.length > 1 ? ` · ${fiscalGroups.nu.length} biens` : ""}
+              </p>
+              <p className="mt-1 text-xl font-bold text-slate-950">
+                {categorySummaries.nu.hasData ? eur(categorySummaries.nu.receiptsTotal) : "—"}
+              </p>
+              <span className={cx("mt-2 inline-block rounded-full px-2 py-0.5 text-[0.65rem] font-semibold",
+                categorySummaries.nu.hasData ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800")}>
+                {categorySummaries.nu.hasData ? "Prêt" : "À compléter"}
+              </span>
             </button>
           )}
           {fiscalGroups.pinel.length > 0 && (
             <button type="button" onClick={() => setRegime("pinel")}
-              className={cx("rounded-full border px-4 py-2 text-sm font-semibold transition", isPinel ? "border-[#635bff]/30 bg-[#635bff]/10 text-indigo-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")}>
-              Pinel{fiscalGroups.pinel.length > 1 ? ` — ${fiscalGroups.pinel.length} biens` : ""}
+              className={cx("rounded-2xl border-2 p-4 text-left transition", isPinel ? "border-[#635bff] bg-[#635bff]/5" : "border-slate-200 bg-white hover:border-slate-300")}>
+              <p className="text-xs font-semibold text-slate-500">
+                Pinel{fiscalGroups.pinel.length > 1 ? ` · ${fiscalGroups.pinel.length} biens` : ""}
+              </p>
+              <p className="mt-1 text-xl font-bold text-slate-950">
+                {categorySummaries.pinel.hasData ? eur(categorySummaries.pinel.receiptsTotal) : "—"}
+              </p>
+              <span className={cx("mt-2 inline-block rounded-full px-2 py-0.5 text-[0.65rem] font-semibold",
+                categorySummaries.pinel.hasData ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800")}>
+                {categorySummaries.pinel.hasData ? "Prêt" : "À compléter"}
+              </span>
             </button>
           )}
         </div>
@@ -1169,6 +1316,11 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                 <button type="button" onClick={save} disabled={loading}
                   className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60">
                   {loading ? "Sauvegarde…" : "Sauvegarder"}
+                </button>
+                <button type="button" onClick={exportPdf} disabled={pdfExporting}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:opacity-60">
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  {pdfExporting ? "Génération…" : "Exporter PDF"}
                 </button>
                 <button type="button" onClick={exportDossier}
                   className={cx("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold", brandBg, brandText, brandHover)}>

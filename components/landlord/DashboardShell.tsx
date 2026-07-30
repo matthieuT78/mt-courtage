@@ -403,7 +403,7 @@ export function DashboardShell(props: any) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean }) {
+  function navigateDeep(section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; depositAction?: "collect" | "return"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; propertyId?: string; highlightDelegation?: boolean; financeTab?: "finance" | "declaration" }) {
     setActive(section);
     setMobileMoreOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });

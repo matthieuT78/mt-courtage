@@ -213,7 +213,7 @@ export function SectionDashboard({
   tenantsCount: number;
   leasesCount: number;
   onGo: (k: LandlordSectionKey) => void;
-  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string }) => void;
+  onNavigateDeep?: (section: LandlordSectionKey, link?: { leaseId?: string; openPanel?: "irl" | "deposit"; openCreate?: boolean; openContract?: boolean; prefillTenantId?: string; prefillPropertyId?: string; prefillCandidatureEmail?: string; financeTab?: "finance" | "declaration" }) => void;
   onPrepareDeparture?: (tenantId: string) => void;
   onRefresh?: () => Promise<void>;
   userId?: string;
@@ -347,6 +347,24 @@ export function SectionDashboard({
   const [openAlertMenuId, setOpenAlertMenuId] = useState<string | null>(null);
   const [showSnoozedModal, setShowSnoozedModal] = useState(false);
   const [scoreHovered, setScoreHovered] = useState(false);
+  // Bandeau saisonnier "aide à la déclaration" — la campagne de déclaration en ligne se
+  // déroule environ d'avril à mi-juin. Fenêtre volontairement large (pas de date exacte
+  // par département) plutôt qu'une date en dur à maintenir chaque année.
+  const declarationYear = new Date().getFullYear() - 1;
+  const isDeclarationSeason = (() => {
+    const now = new Date();
+    const m = now.getMonth(); // 0 = janvier
+    return (m === 3 || m === 4) || (m === 5 && now.getDate() <= 15); // avril, mai, 1-15 juin
+  })();
+  const declarationBannerStorageKey = `lokt.declarationBannerDismissed.${declarationYear}`;
+  const [declarationBannerDismissed, setDeclarationBannerDismissed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem(declarationBannerStorageKey) === "1"; } catch { return false; }
+  });
+  const dismissDeclarationBanner = () => {
+    setDeclarationBannerDismissed(true);
+    try { window.localStorage.setItem(declarationBannerStorageKey, "1"); } catch { /* noop */ }
+  };
   const [news, setNews] = useState<import("../../../pages/api/content/lokt-feed").LoktFeedItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [weatherAlerts, setWeatherAlerts] = useState<import("../../../pages/api/weather/alerts").WeatherAlert[]>([]);
@@ -1361,6 +1379,38 @@ export function SectionDashboard({
         </div>
       )}
       </div>{/* end relative wrapper */}
+
+      {/* ── Bandeau saisonnier déclaration fiscale ────────────── */}
+      {isDeclarationSeason && !declarationBannerDismissed && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-white">
+              <CalendarDaysIcon className="h-4.5 w-4.5" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-indigo-900">Déclaration {declarationYear} : c'est la saison</p>
+              <p className="text-xs text-indigo-700">Préparez vos revenus locatifs avec l'aide à la déclaration — recettes, charges et régime comparés automatiquement.</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => (onNavigateDeep ? onNavigateDeep("finance", { financeTab: "declaration" }) : onGo("finance"))}
+              className="rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+            >
+              Préparer ma déclaration
+            </button>
+            <button
+              type="button"
+              onClick={dismissDeclarationBanner}
+              className="rounded-full p-1.5 text-indigo-400 hover:bg-indigo-100 hover:text-indigo-600"
+              aria-label="Masquer"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Mise en route ─────────────────────────────────────── */}
       {!shouldHideOnboarding && (
