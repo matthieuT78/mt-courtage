@@ -10,12 +10,10 @@ import type { Property } from "../../../lib/landlord/types";
 import { usePermissions } from "../../PermissionProvider";
 import { planAllowsPerformance } from "../../../lib/permissions";
 import { LockedPremiumSection, StatCard } from "../LockedPremiumSection";
-import { isLmnpItemCompliant } from "../../../lib/landlord/lmnpInventory";
 
 type Regime = "lmnp_micro" | "lmnp_reel" | "nu_micro" | "nu_reel" | "pinel";
 // meuble_saisonnier_classe = tourisme classé → abattement 71%
 type LocationKind = "meuble_longue" | "meuble_saisonnier" | "meuble_saisonnier_classe";
-type DeclarationStep = "diagnostic" | "prepare" | "verify" | "export";
 
 type Stored = {
   id: string;
@@ -148,8 +146,21 @@ function statusToneClass(tone: "emerald" | "amber" | "red" | "slate") {
 // Catégories Finance qui ne sont pas des revenus fiscaux
 const DEPOSIT_CATEGORIES = new Set(["deposit_collected", "deposit_returned", "deposit"]);
 
-// Taux de réduction d'impôt Pinel selon durée d'engagement
-const PINEL_RATES: Record<number, number> = { 6: 0.12, 9: 0.18, 12: 0.21 };
+// Taux de réduction d'impôt Pinel "classique" selon durée d'engagement et année d'acquisition —
+// le dispositif a été dégressif en 2023 puis 2024 avant sa fermeture aux nouveaux investissements
+// au 1er janvier 2025. Le "Pinel+" (logements répondant à des critères renforcés) conserve les
+// taux d'origine même en 2023/2024, mais ce statut n'est pas saisi ici : à vérifier avec l'acte.
+const PINEL_RATES_DEFAULT: Record<number, number> = { 6: 0.12, 9: 0.18, 12: 0.21 }; // ≤ 2022 et Pinel+
+const PINEL_RATES_BY_YEAR: Record<number, Record<number, number>> = {
+  2023: { 6: 0.105, 9: 0.15, 12: 0.175 },
+  2024: { 6: 0.09, 9: 0.12, 12: 0.14 },
+};
+
+function pinelRateFor(acqYear: number, commitmentYears: number): number {
+  if (acqYear >= 2025) return 0; // dispositif fermé aux nouveaux investissements depuis 2025
+  const byYear = PINEL_RATES_BY_YEAR[acqYear];
+  return (byYear ?? PINEL_RATES_DEFAULT)[commitmentYears] ?? PINEL_RATES_DEFAULT[commitmentYears] ?? 0.12;
+}
 
 export function SectionDeclaration({ userId, properties, propertyFinance }: Props) {
   const { loading: permissionsLoading, plan } = usePermissions();
@@ -209,9 +220,9 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   const [utilities, setUtilities] = useState(0);
   const [otherExpenses, setOtherExpenses] = useState(0);
 
-  // LMNP réel : amortissements (mobilier uniquement en non-pro)
+  // LMNP réel : amortissements (mobilier uniquement en non-pro — l'immobilier n'est pas
+  // déductible en LMNP non-professionnel, pas de champ dédié pour cette raison)
   const [amortizationMobilier, setAmortizationMobilier] = useState(0);
-  const [amortizationImmobilier, setAmortizationImmobilier] = useState(0);
   // Stock d'amortissements non utilisés des exercices précédents (reportés indéfiniment en LMNP non-pro)
   const [lmnpCarryForward, setLmnpCarryForward] = useState(0);
 
@@ -236,9 +247,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   const [info, setInfo] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [rowId, setRowId] = useState<string | null>(null);
-  const [financeRows, setFinanceRows] = useState<Transaction[]>([]);
   const [importPreview, setImportPreview] = useState<ImportTotals | null>(null);
-  const [activeStep, setActiveStep] = useState<DeclarationStep>("diagnostic");
 
   const isLmnp = regime.startsWith("lmnp");
   const isNu = regime.startsWith("nu");
@@ -281,7 +290,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
   const realNuBase = receiptsTotal - commonCharges - cfe;
 
   // Pinel : revenu foncier = same base as nu réel, mais avec réduction d'impôt séparée
-  const pinelRate = PINEL_RATES[pinelCommitmentYears] ?? 0.12;
+  const pinelRate = pinelRateFor(pinelAcqYear, pinelCommitmentYears);
   const pinelAcqPriceCapped = Math.min(pinelAcqPrice, 300_000);
   const pinelTotalReduction = pinelAcqPriceCapped * pinelRate;
   const pinelYearlyReduction = pinelCommitmentYears > 0 ? Math.round(pinelTotalReduction / pinelCommitmentYears) : 0;
@@ -324,7 +333,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     setGrossRent(0); setChargesRecovered(0); setOtherIncome(0); setDepositReceived(0);
     setInterest(0); setInsurance(0); setPropertyTax(0); setCopro(0);
     setRepairs(0); setManagementFees(0); setUtilities(0); setOtherExpenses(0);
-    setAmortizationMobilier(0); setAmortizationImmobilier(0); setLmnpCarryForward(0); setCfe(0);
+    setAmortizationMobilier(0); setLmnpCarryForward(0); setCfe(0);
     setPinelCommitmentYears(6);
     // Pinel : auto-fill depuis la fiche bien + Finance plutôt que vider les champs
     if (isPinel && pinelPropertyId) {
@@ -378,7 +387,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       setOtherExpenses(toNumber(d.otherExpenses));
       // Backward compat: anciens dossiers avaient "amortization" (sans split)
       setAmortizationMobilier(toNumber(d.amortizationMobilier ?? d.amortization));
-      setAmortizationImmobilier(toNumber(d.amortizationImmobilier));
       setLmnpCarryForward(toNumber(d.lmnpCarryForward));
       setCfe(toNumber(d.cfe));
       setPinelAddress(String(d.pinelAddress || ""));
@@ -419,7 +427,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
           utilities,
           otherExpenses,
           amortizationMobilier,
-          amortizationImmobilier,
           lmnpCarryForward,
           cfe,
           pinelAddress,
@@ -480,7 +487,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
 
   const applyImportPreview = (preview = importPreview) => {
     if (!preview) return;
-    setFinanceRows(preview.rows);
     setGrossRent(preview.grossRent);
     setChargesRecovered(preview.chargesRecovered);
     setOtherIncome(preview.otherIncome);
@@ -532,35 +538,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, year, regime, permissionsLoading, isPremium]);
 
-  // Conformité réelle de l'inventaire LMNP obligatoire, agrégée sur tous les
-  // biens du régime sélectionné — remplace l'ancien "ok: true" codé en dur qui
-  // ne vérifiait jamais rien (la checklist affichait toujours cette case cochée).
-  const [lmnpInventoryCompliant, setLmnpInventoryCompliant] = useState(false);
-  useEffect(() => {
-    if (!supabase || !userId || !isLmnp || relevantPropertyIds.size === 0) {
-      setLmnpInventoryCompliant(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("property_inventory_items")
-        .select("actual_quantity, required_quantity, condition")
-        .eq("user_id", userId)
-        .eq("is_required_lmnp", true)
-        .in("property_id", Array.from(relevantPropertyIds));
-      if (cancelled) return;
-      if (error || !data || !data.length) {
-        setLmnpInventoryCompliant(false);
-        return;
-      }
-      setLmnpInventoryCompliant(data.every((item) => isLmnpItemCompliant(item as any)));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, isLmnp, relevantPropertyIds]);
-
   const alerts = useMemo(() => {
     const list: Array<{ tone: "amber" | "red" | "emerald"; text: string }> = [];
 
@@ -585,11 +562,14 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     if (regime === "lmnp_reel" && amortizationDeferred > 0)
       list.push({ tone: "amber", text: `${eur(amortizationDeferred)} d'amortissements non utilisés à reporter sur ${year + 1}. Notez ce montant pour le pré-renseigner dans le dossier ${year + 1}.` });
 
-    if (regime === "lmnp_reel" && amortizationImmobilier > 0)
-      list.push({ tone: "red", text: `Amortissement immobilier (${eur(amortizationImmobilier)}) : non déductible en LMNP non-professionnel. Seul le mobilier s'amortit. Vérifiez avec votre comptable.` });
-
     if (isPinel && pinelAcqPrice === 0)
       list.push({ tone: "amber", text: "Renseignez le prix d'acquisition pour calculer votre réduction d'impôt Pinel." });
+
+    if (isPinel && pinelAcqYear >= 2025)
+      list.push({ tone: "red", text: "Le dispositif Pinel est fermé aux nouveaux investissements depuis le 1ᵉʳ janvier 2025 : aucune réduction d'impôt Pinel classique n'est possible pour cette acquisition." });
+
+    if (isPinel && (pinelAcqYear === 2023 || pinelAcqYear === 2024))
+      list.push({ tone: "amber", text: `Taux Pinel dégressif ${pinelAcqYear} appliqué (${(pinelRate * 100).toFixed(1)} %). Si votre logement est labellisé "Pinel+", les taux d'origine (12/18/21 %) s'appliquent à la place — vérifiez votre acte d'acquisition.` });
 
     if (chargesRecovered > 0 && isNu)
       list.push({ tone: "amber", text: `Charges récupérées (${eur(chargesRecovered)}) : en location nue, elles s'ajoutent aux revenus fonciers mais ne sont pas déductibles comme charges propriétaire.` });
@@ -603,25 +583,8 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     return list;
   }, [
     depositReceived, isNu, receiptsTotal, isLmnp, realLmnpBase, microBicBase, realNuBase, microFoncierBase,
-    amortizationMobilier, amortizationImmobilier, amortizationDeferred, lmnpCarryForward,
-    regime, commonCharges, isPinel, pinelAcqPrice, chargesRecovered, interest, isMicro, year,
-  ]);
-
-  const checklist = useMemo(() => [
-    { label: "Quittances / loyers encaissés",         ok: grossRent > 0 },
-    { label: "Taxe foncière",                         ok: propertyTax > 0 || isMicro,          skipIf: isMicro },
-    { label: "Assurance PNO / GLI",                   ok: insurance > 0 || isMicro,            skipIf: isMicro },
-    { label: "Copropriété / appels de fonds",         ok: copro > 0 || isMicro,                skipIf: isMicro },
-    { label: "Factures travaux / entretien",          ok: repairs > 0 || isMicro,              skipIf: isMicro },
-    { label: "Frais gestion / agence",                ok: managementFees > 0 || isMicro,       skipIf: isMicro },
-    { label: "Intérêts d'emprunt (si crédit)",        ok: interest > 0 || !isReal,             skipIf: isMicro },
-    { label: "Amortissements mobilier",               ok: amortizationMobilier > 0,            skipIf: regime !== "lmnp_reel" },
-    { label: "Prix d'acquisition Pinel",              ok: pinelAcqPrice > 0,                   skipIf: !isPinel },
-    { label: "Inventaire LMNP du logement meublé",   ok: lmnpInventoryCompliant,              skipIf: !isLmnp },
-  ].filter((item) => !item.skipIf), [
-    grossRent, propertyTax, insurance, copro, repairs, managementFees,
-    interest, amortizationMobilier, pinelAcqPrice, isMicro, isReal, isLmnp, isPinel, regime,
-    lmnpInventoryCompliant,
+    amortizationMobilier, amortizationDeferred, lmnpCarryForward,
+    regime, commonCharges, isPinel, pinelAcqPrice, pinelAcqYear, pinelRate, chargesRecovered, interest, isMicro, year,
   ]);
 
   const exportDossier = () => {
@@ -647,7 +610,6 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
         ["Amortissements total disponibles", csvNum(amortizationTotal)],
         ["Amortissements effectivement déduits", csvNum(amortizationUsed)],
         ["Amortissements à reporter N+1", csvNum(amortizationDeferred)],
-        ["Amortissements immobilier (non déductible LMNP non-pro)", csvNum(amortizationImmobilier)],
       ] as Array<[string, string]> : []),
       ...(regime === "nu_reel" ? [["CFE (Cotisation Foncière)", csvNum(cfe)]] as Array<[string, string]> : []),
       ["---", "---"],
@@ -775,7 +737,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
         features: [
           "Import automatique des recettes et charges Finance",
           "Comparaison micro-BIC / régime réel par bien",
-          "Alertes d'incohérence et checklist justificatifs",
+          "Alertes d'incohérence sur vos montants saisis",
           "Export synthèse à transmettre à votre comptable",
         ],
         preview: (
