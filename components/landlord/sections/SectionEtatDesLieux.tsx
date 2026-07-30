@@ -552,6 +552,7 @@ const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_RAW_PHOTO_BYTES = 8 * 1024 * 1024;
 const MAX_STORED_PHOTO_BYTES = 130 * 1024;
 const MAX_PHOTOS_PER_ITEM = 3;
+const COUNTER_KEYS = ["electricity", "water", "gas"] as const;
 
 async function compressObservationPhoto(file: File) {
   if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
@@ -720,6 +721,9 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   const [photos, setPhotos] = useState<InventoryPhoto[]>([]);
   const [photoBusyItemId, setPhotoBusyItemId] = useState<string | null>(null);
   const [photoFeedback, setPhotoFeedback] = useState<Record<string, { tone: "error" | "success"; message: string }>>({});
+  const [counterPhotoBusyKey, setCounterPhotoBusyKey] = useState<string | null>(null);
+  const [counterPhotoFeedback, setCounterPhotoFeedback] = useState<Record<string, { tone: "error" | "success"; message: string }>>({});
+  const [counterPhotoUrls, setCounterPhotoUrls] = useState<Record<string, string>>({});
 
   const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<string | null>(null);
   // Éléments repliés par défaut (résumé seulement) : évite qu'un clic sur
@@ -882,6 +886,33 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
       : "Reprendre la saisie"
     : "Créer l’état des lieux";
   const counters = (selectedReport?.counters_json && typeof selectedReport.counters_json === "object" ? selectedReport.counters_json : {}) as Record<string, any>;
+
+  useEffect(() => {
+    if (!supabase) return;
+    const paths = COUNTER_KEYS.map((key) => [key, String(counters[`${key}_photo_path`] || "")] as const).filter(([, path]) => !!path);
+    if (paths.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        paths.map(async ([key, path]) => {
+          const { data } = await supabase.storage.from(INVENTORY_PHOTOS_BUCKET).createSignedUrl(path, 60 * 60);
+          return [key, data?.signedUrl || ""] as const;
+        })
+      );
+      if (cancelled) return;
+      setCounterPhotoUrls((prev) => {
+        const next = { ...prev };
+        for (const [key, url] of entries) {
+          if (url) next[key] = url;
+        }
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [counters.electricity_photo_path, counters.water_photo_path, counters.gas_photo_path]);
 
   // ✅ Scroll preserve (wizard) + anti "retour en haut"
   const wizardScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1564,6 +1595,75 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   const updateCounterField = async (key: string, value: string) => {
     const next = { ...counters, [key]: value };
     await updateReport({ counters_json: next as any });
+  };
+
+  // Photo de compteur : stockée directement dans counters_json (clé `${key}_photo_path`),
+  // pas via inventory_photos — cette table exige un item_id réel (observation de pièce),
+  // ce qui ne correspond pas à un relevé de compteur. Le bucket storage accepte déjà
+  // n'importe quel chemin sous `${userId}/...` (policy RLS basée sur le dossier, pas sur
+  // l'existence d'un item), donc aucune migration n'est nécessaire.
+  const uploadCounterPhoto = async (key: string, file: File) => {
+    if (!supabase || !userId || !selectedReportId) return;
+    if (isLocked) {
+      setCounterPhotoFeedback((prev) => ({ ...prev, [key]: { tone: "error", message: "Ce document est verrouillé : les photos ne peuvent plus être modifiées." } }));
+      return;
+    }
+
+    setCounterPhotoBusyKey(key);
+    setCounterPhotoFeedback((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
+    const previousPath = String(counters[`${key}_photo_path`] || "") || null;
+    let storagePath: string | null = null;
+    try {
+      const compressed = await compressObservationPhoto(file);
+      storagePath = `${userId}/${selectedReportId}/counters/${key}-${Date.now()}.jpg`;
+      const { error: uploadError } = await supabase.storage.from(INVENTORY_PHOTOS_BUCKET).upload(storagePath, compressed, {
+        cacheControl: "3600",
+        contentType: "image/jpeg",
+        upsert: false,
+      });
+      if (uploadError) throw uploadError;
+
+      await updateCounterField(`${key}_photo_path`, storagePath);
+      if (previousPath) await supabase.storage.from(INVENTORY_PHOTOS_BUCKET).remove([previousPath]);
+
+      setCounterPhotoFeedback((prev) => ({ ...prev, [key]: { tone: "success", message: "Photo du relevé ajoutée." } }));
+    } catch (e: any) {
+      if (storagePath) await supabase.storage.from(INVENTORY_PHOTOS_BUCKET).remove([storagePath]);
+      setCounterPhotoFeedback((prev) => ({ ...prev, [key]: { tone: "error", message: e?.message || "Impossible d’ajouter la photo." } }));
+    } finally {
+      setCounterPhotoBusyKey(null);
+    }
+  };
+
+  const deleteCounterPhoto = async (key: string) => {
+    if (!supabase) return;
+    const path = String(counters[`${key}_photo_path`] || "");
+    if (!path) return;
+    if (isLocked) {
+      setCounterPhotoFeedback((prev) => ({ ...prev, [key]: { tone: "error", message: "Ce document est verrouillé : les photos ne peuvent plus être modifiées." } }));
+      return;
+    }
+    setCounterPhotoBusyKey(key);
+    try {
+      const { error: deleteFileError } = await supabase.storage.from(INVENTORY_PHOTOS_BUCKET).remove([path]);
+      if (deleteFileError) throw deleteFileError;
+      await updateCounterField(`${key}_photo_path`, "");
+      setCounterPhotoUrls((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setCounterPhotoFeedback((prev) => ({ ...prev, [key]: { tone: "success", message: "Photo supprimée." } }));
+    } catch (e: any) {
+      setCounterPhotoFeedback((prev) => ({ ...prev, [key]: { tone: "error", message: e?.message || "Impossible de supprimer la photo." } }));
+    } finally {
+      setCounterPhotoBusyKey(null);
+    }
   };
 
   const addItem = async (payload: {
@@ -3850,18 +3950,65 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                                 ["electricity", "Électricité", "Ex : 12 345 kWh"],
                                 ["water", "Eau", "Ex : 1 234 m³"],
                                 ["gas", "Gaz", "Ex : 456 m³"],
-                              ].map(([key, label, placeholder]) => (
-                                <div key={key} className="space-y-1">
-                                  <label className="text-[0.7rem] text-slate-700">{label}</label>
-                                  <input
-                                    disabled={isLocked}
-                                    value={String(counters[key] || "")}
-                                    onChange={(e) => updateCounterField(key, e.target.value)}
-                                    placeholder={placeholder}
-                                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
-                                  />
-                                </div>
-                              ))}
+                              ].map(([key, label, placeholder]) => {
+                                const photoPath = String(counters[`${key}_photo_path`] || "");
+                                const photoUrl = counterPhotoUrls[key];
+                                const busy = counterPhotoBusyKey === key;
+                                const feedback = counterPhotoFeedback[key];
+                                return (
+                                  <div key={key} className="space-y-1">
+                                    <label className="text-[0.7rem] text-slate-700">{label}</label>
+                                    <input
+                                      disabled={isLocked}
+                                      value={String(counters[key] || "")}
+                                      onChange={(e) => updateCounterField(key, e.target.value)}
+                                      placeholder={placeholder}
+                                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100"
+                                    />
+                                    {photoPath ? (
+                                      <div className="flex items-center gap-2">
+                                        {photoUrl ? (
+                                          <a href={photoUrl} target="_blank" rel="noreferrer">
+                                            <img src={photoUrl} alt={`Photo compteur ${label}`} className="h-12 w-12 rounded-lg border border-slate-200 object-cover" />
+                                          </a>
+                                        ) : (
+                                          <div className="h-12 w-12 animate-pulse rounded-lg border border-slate-200 bg-slate-100" />
+                                        )}
+                                        {!isLocked ? (
+                                          <button
+                                            type="button"
+                                            disabled={busy}
+                                            onClick={() => void deleteCounterPhoto(key)}
+                                            className="text-[0.68rem] font-semibold text-red-600 hover:underline disabled:opacity-50"
+                                          >
+                                            Supprimer la photo
+                                          </button>
+                                        ) : null}
+                                      </div>
+                                    ) : !isLocked ? (
+                                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 py-1.5 text-[0.68rem] font-semibold text-slate-700 hover:bg-slate-50">
+                                        <PhotoIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                                        {busy ? "Envoi..." : "Photo du relevé"}
+                                        <input
+                                          type="file"
+                                          accept="image/jpeg,image/png,image/webp"
+                                          capture="environment"
+                                          disabled={busy}
+                                          className="sr-only"
+                                          onChange={(e) => {
+                                            const file = e.currentTarget.files?.[0];
+                                            e.currentTarget.value = "";
+                                            if (file) void uploadCounterPhoto(key, file);
+                                          }}
+                                        />
+                                      </label>
+                                    ) : null}
+                                    {feedback ? (
+                                      <p className={`text-[0.65rem] ${feedback.tone === "error" ? "text-red-600" : "text-emerald-600"}`}>{feedback.message}</p>
+                                    ) : null}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
 
