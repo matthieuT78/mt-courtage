@@ -446,7 +446,29 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
 
       if (error) throw error;
       setRowId((data as { id: string })?.id || null);
-      setInfo("Dossier déclaration sauvegardé ✅");
+
+      // Report automatique du stock d'amortissements non utilisés sur le dossier N+1 —
+      // évite de compter sur le bailleur pour se souvenir de retaper ce montant lui-même.
+      let carryForwardNote = "";
+      if (regime === "lmnp_reel" && amortizationDeferred > 0) {
+        const nextYear = year + 1;
+        const { data: nextRow, error: nextErr } = await supabase
+          .from("tax_declarations")
+          .select("data")
+          .eq("user_id", userId)
+          .eq("year", nextYear)
+          .eq("regime", regime)
+          .maybeSingle();
+        if (!nextErr) {
+          const nextData = { ...((nextRow as Stored | null)?.data || {}), lmnpCarryForward: amortizationDeferred };
+          const { error: carryErr } = await supabase
+            .from("tax_declarations")
+            .upsert({ user_id: userId, year: nextYear, regime, data: nextData, updated_at: new Date().toISOString() }, { onConflict: "user_id,year,regime" });
+          if (!carryErr) carryForwardNote = ` · ${eur(amortizationDeferred)} reporté automatiquement sur ${nextYear}`;
+        }
+      }
+
+      setInfo(`Dossier déclaration sauvegardé ✅${carryForwardNote}`);
     } catch (e: unknown) {
       setErr((e as Error)?.message || "Erreur de sauvegarde.");
     } finally {
@@ -560,7 +582,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
       list.push({ tone: "amber", text: "LMNP réel sans amortissement mobilier : le résultat est probablement surévalué. Indiquez les amortissements pratiqués." });
 
     if (regime === "lmnp_reel" && amortizationDeferred > 0)
-      list.push({ tone: "amber", text: `${eur(amortizationDeferred)} d'amortissements non utilisés à reporter sur ${year + 1}. Notez ce montant pour le pré-renseigner dans le dossier ${year + 1}.` });
+      list.push({ tone: "amber", text: `${eur(amortizationDeferred)} d'amortissements non utilisés à reporter sur ${year + 1}. Ce montant sera reporté automatiquement dans le dossier ${year + 1} lors de la sauvegarde.` });
 
     if (isPinel && pinelAcqPrice === 0)
       list.push({ tone: "amber", text: "Renseignez le prix d'acquisition pour calculer votre réduction d'impôt Pinel." });
@@ -930,6 +952,41 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                 )}
               </div>
             )}
+
+            {/* Comparaison visuelle micro / réel */}
+            {!isPinel && (receiptsTotal > 0 || commonCharges > 0) && (() => {
+              const microVal = isLmnp ? microBicBase : microFoncierBase;
+              const reelVal = isLmnp ? realLmnpBase : realNuBase;
+              const microBetter = microVal <= reelVal;
+              const microKey = (isLmnp ? "lmnp_micro" : "nu_micro") as Regime;
+              const reelKey = (isLmnp ? "lmnp_reel" : "nu_reel") as Regime;
+              return (
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Comparaison des régimes</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button type="button" onClick={() => setRegime(microKey)}
+                      className={cx("rounded-2xl border-2 p-4 text-left transition", regime === microKey ? "border-[#635bff] bg-[#635bff]/5" : "border-slate-200 bg-white hover:border-slate-300")}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-slate-500">{isLmnp ? "Micro-BIC" : "Micro-foncier"}</p>
+                        {microBetter && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-800">Plus favorable</span>}
+                      </div>
+                      <p className="mt-1 text-2xl font-bold text-slate-950">{eur(microVal)}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">base imposable estimée</p>
+                    </button>
+                    <button type="button" onClick={() => setRegime(reelKey)}
+                      className={cx("rounded-2xl border-2 p-4 text-left transition", regime === reelKey ? "border-[#635bff] bg-[#635bff]/5" : "border-slate-200 bg-white hover:border-slate-300")}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-slate-500">Réel</p>
+                        {!microBetter && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-800">Plus favorable</span>}
+                      </div>
+                      <p className="mt-1 text-2xl font-bold text-slate-950">{eur(reelVal)}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">résultat net estimé</p>
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[0.68rem] text-slate-400">Comparaison indicative sur les montants déjà saisis — cliquez une carte pour basculer de régime.</p>
+                </div>
+              );
+            })()}
 
             {/* Recettes */}
             {!isPinel && (
