@@ -630,6 +630,12 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     if (isNu && receiptsTotal > 15000 && isMicro)
       list.push({ tone: "red", text: "Plafond micro-foncier dépassé : les recettes > 15 000 € imposent le régime réel foncier." });
 
+    if (isLmnp && isMicro) {
+      const microBicCeiling = locationKind === "meuble_saisonnier_classe" ? 188_700 : 77_700;
+      if (receiptsTotal > microBicCeiling)
+        list.push({ tone: "red", text: `Plafond micro-BIC dépassé : les recettes > ${eur(microBicCeiling)} imposent le régime réel.` });
+    }
+
     if (isMicro && interest > 0)
       list.push({ tone: "amber", text: `Intérêts d'emprunt (${eur(interest)}) : non déductibles en régime micro (abattement forfaitaire). Inutile de les saisir sauf pour comparaison réel.` });
 
@@ -666,7 +672,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
     return list;
   }, [
     depositReceived, isNu, receiptsTotal, isLmnp, realLmnpBase, microBicBase, realNuBase, microFoncierBase,
-    amortizationMobilier, amortizationDeferred, lmnpCarryForward,
+    amortizationMobilier, amortizationDeferred, lmnpCarryForward, locationKind,
     regime, commonCharges, isPinel, pinelAcqPrice, pinelAcqYear, pinelRate, chargesRecovered, interest, isMicro, year,
   ]);
 
@@ -910,13 +916,13 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
             <XMarkIcon className="h-4 w-4" />
           </button>
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Comment ça marche</p>
-          <div className="mt-3 grid gap-4 sm:grid-cols-3">
+          <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="flex gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#635bff] text-xs font-bold text-white">1</span>
               <div>
-                <p className="text-sm font-semibold text-slate-900">Choisissez votre catégorie</p>
+                <p className="text-sm font-semibold text-slate-900">Choisissez la catégorie à traiter</p>
                 <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                  Vos biens sont classés automatiquement — <strong>LMNP</strong>, <strong>location nue</strong> ou <strong>Pinel</strong> — selon le régime que vous avez configuré dans Finance.
+                  Vos biens sont classés automatiquement — <strong>LMNP</strong>, <strong>location nue</strong> ou <strong>Pinel</strong> — selon le régime configuré dans Finance. La carte "À compléter" indique ce qu'il reste à faire.
                 </p>
               </div>
             </div>
@@ -925,16 +931,25 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
               <div>
                 <p className="text-sm font-semibold text-slate-900">Importez vos loyers</p>
                 <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                  Cliquez <strong>Importer Finance</strong> pour récupérer en un clic vos loyers et charges de l'exercice, ou saisissez-les manuellement. Choisissez ensuite le régime : micro ou réel.
+                  Cliquez <strong>Importer Finance</strong> pour récupérer en un clic vos loyers et charges de l'exercice, ou saisissez-les manuellement.
                 </p>
               </div>
             </div>
             <div className="flex gap-3">
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#635bff] text-xs font-bold text-white">3</span>
               <div>
+                <p className="text-sm font-semibold text-slate-900">Choisissez micro ou réel</p>
+                <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                  Les deux options sont comparées automatiquement, avec un badge "Plus favorable" sur celle qui vous fait payer le moins d'impôt.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#635bff] text-xs font-bold text-white">4</span>
+              <div>
                 <p className="text-sm font-semibold text-slate-900">Obtenez le montant à déclarer</p>
                 <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                  Le montant exact, le formulaire et la case à remplir s'affichent automatiquement. Sauvegardez ou exportez en CSV pour votre comptable.
+                  Le montant exact, le formulaire et la case à remplir s'affichent automatiquement. Sauvegardez, puis exportez en PDF (vos archives) ou CSV (votre comptable).
                 </p>
               </div>
             </div>
@@ -1140,10 +1155,10 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
               <div>
                 <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Recettes {year}</p>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <Field label="Loyers perçus (€)" value={grossRent} onChange={setGrossRent} />
-                  <Field label="Charges récupérées (€)" value={chargesRecovered} onChange={setChargesRecovered} />
-                  <Field label="Autres recettes (€)" value={otherIncome} onChange={setOtherIncome} />
-                  <Field label="Dépôt de garantie reçu (€)" value={depositReceived} onChange={setDepositReceived} hint="Indicatif — ne pas l'inclure dans les recettes fiscales" />
+                  <Field label="Loyers perçus (€)" value={grossRent} onChange={setGrossRent} hint="Total des loyers hors charges encaissés sur l'année (utilisez « Importer Finance » pour le remplir automatiquement)." />
+                  <Field label="Charges récupérées (€)" value={chargesRecovered} onChange={setChargesRecovered} hint="Provisions sur charges payées par le locataire et que vous récupérez (eau, entretien parties communes...)." />
+                  <Field label="Autres recettes (€)" value={otherIncome} onChange={setOtherIncome} hint="Indemnités, remboursements d'assurance ou tout autre revenu lié à ce bien." />
+                  <Field label="Dépôt de garantie reçu (€)" value={depositReceived} onChange={setDepositReceived} hint="Indicatif — ne pas l'inclure dans les recettes fiscales." />
                 </div>
               </div>
             )}
@@ -1153,17 +1168,17 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
               <div>
                 <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Charges déductibles</p>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <Field label="Intérêts d'emprunt (€)" value={interest} onChange={setInterest} />
-                  <Field label="Assurance (€)" value={insurance} onChange={setInsurance} />
-                  <Field label="Taxe foncière (€)" value={propertyTax} onChange={setPropertyTax} />
-                  <Field label="Charges copropriété (€)" value={copro} onChange={setCopro} />
-                  <Field label="Travaux / réparations (€)" value={repairs} onChange={setRepairs} />
-                  <Field label="Frais de gestion (€)" value={managementFees} onChange={setManagementFees} />
-                  <Field label="Eau, électricité, divers (€)" value={utilities} onChange={setUtilities} />
-                  <Field label="Autres charges (€)" value={otherExpenses} onChange={setOtherExpenses} />
-                  {isLmnp && <Field label="Amortissements mobilier N (€)" value={amortizationMobilier} onChange={setAmortizationMobilier} hint="Mobilier et équipements — déductible en LMNP non-pro" />}
-                  {isLmnp && <Field label="Amortissements reportés N-1 (€)" value={lmnpCarryForward} onChange={setLmnpCarryForward} hint="Stock non utilisé des exercices précédents (reportable sans limite)" />}
-                  {isNu && <Field label="CFE (€)" value={cfe} onChange={setCfe} hint="Cotisation Foncière des Entreprises" />}
+                  <Field label="Intérêts d'emprunt (€)" value={interest} onChange={setInterest} hint="Part intérêts de vos mensualités de crédit — le capital remboursé n'est jamais déductible." />
+                  <Field label="Assurance (€)" value={insurance} onChange={setInsurance} hint="Assurance propriétaire non occupant (PNO), garantie loyers impayés (GLI)..." />
+                  <Field label="Taxe foncière (€)" value={propertyTax} onChange={setPropertyTax} hint="Montant payé dans l'année, hors part refacturée au locataire (ordures ménagères)." />
+                  <Field label="Charges copropriété (€)" value={copro} onChange={setCopro} hint="Appels de fonds courants payés à la copropriété." />
+                  <Field label="Travaux / réparations (€)" value={repairs} onChange={setRepairs} hint="Entretien et réparations — pas les travaux d'agrandissement, non déductibles de la même façon." />
+                  <Field label="Frais de gestion (€)" value={managementFees} onChange={setManagementFees} hint="Honoraires d'agence, frais de comptabilité, adhésion à un centre de gestion agréé..." />
+                  <Field label="Eau, électricité, divers (€)" value={utilities} onChange={setUtilities} hint="Charges locatives que vous payez et ne récupérez pas auprès du locataire." />
+                  <Field label="Autres charges (€)" value={otherExpenses} onChange={setOtherExpenses} hint="Tout autre frais réel lié à la location non listé ci-dessus." />
+                  {isLmnp && <Field label="Amortissements mobilier N (€)" value={amortizationMobilier} onChange={setAmortizationMobilier} hint="Mobilier et équipements de l'année — déductible en LMNP non-pro (l'immobilier ne l'est pas)." />}
+                  {isLmnp && <Field label="Amortissements reportés N-1 (€)" value={lmnpCarryForward} onChange={setLmnpCarryForward} hint="Stock non utilisé des exercices précédents (reportable sans limite) — pré-rempli automatiquement depuis l'année dernière." />}
+                  {isNu && <Field label="CFE (€)" value={cfe} onChange={setCfe} hint="Cotisation Foncière des Entreprises, si vous y êtes soumis en location nue au réel." />}
                 </div>
               </div>
             )}
@@ -1175,6 +1190,7 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-700">Adresse du bien</label>
+                    <p className="text-[0.7rem] text-slate-500 leading-4">Sert uniquement de repère visuel dans vos dossiers — n'affecte aucun calcul.</p>
                     <input value={pinelAddress} onChange={(e) => setPinelAddress(e.target.value)}
                       className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
                       placeholder="Ex : 12 rue des Lilas, 75011 Paris" />
@@ -1183,9 +1199,9 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                       <p className="mt-1 text-[0.68rem] text-slate-400">Récupéré depuis la fiche bien</p>
                     )}
                   </div>
-                  <Field label="Année d'acquisition" value={pinelAcqYear} onChange={setPinelAcqYear} />
+                  <Field label="Année d'acquisition" value={pinelAcqYear} onChange={setPinelAcqYear} hint="Détermine le taux de réduction : il a baissé en 2023 puis 2024, et le dispositif est fermé depuis 2025." />
                   <div>
-                    <Field label="Prix d'acquisition (€)" value={pinelAcqPrice} onChange={setPinelAcqPrice} />
+                    <Field label="Prix d'acquisition (€)" value={pinelAcqPrice} onChange={setPinelAcqPrice} hint="Prix d'achat + frais de notaire + travaux, plafonné à 300 000 € pour le calcul de la réduction." />
                     {pinelAcqPrice > 0 && (() => {
                       const fin = (propertyFinance || []).find((f) => f.property_id === pinelPropertyId);
                       const total = (fin?.purchase_price || 0) + (fin?.notary_fees || 0) + (fin?.agency_fees || 0) + (fin?.works || 0);
@@ -1196,11 +1212,12 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-700">Durée d'engagement</label>
+                    <p className="text-[0.7rem] text-slate-500 leading-4">Plus l'engagement est long, plus la réduction totale est élevée — mais votre argent reste bloqué plus longtemps dans ce bien.</p>
                     <select value={pinelCommitmentYears} onChange={(e) => setPinelCommitmentYears(Number(e.target.value))}
                       className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm">
-                      <option value={6}>6 ans — réduction 12 %</option>
-                      <option value={9}>9 ans — réduction 18 %</option>
-                      <option value={12}>12 ans — réduction 21 %</option>
+                      <option value={6}>6 ans — réduction {(pinelRateFor(pinelAcqYear, 6) * 100).toFixed(1).replace(/\.0$/, "")} %</option>
+                      <option value={9}>9 ans — réduction {(pinelRateFor(pinelAcqYear, 9) * 100).toFixed(1).replace(/\.0$/, "")} %</option>
+                      <option value={12}>12 ans — réduction {(pinelRateFor(pinelAcqYear, 12) * 100).toFixed(1).replace(/\.0$/, "")} %</option>
                     </select>
                   </div>
                 </div>
@@ -1212,9 +1229,9 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
               <div>
                 <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Revenus fonciers {year}</p>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <Field label="Loyers perçus (€)" value={grossRent} onChange={setGrossRent} />
-                  <Field label="Charges récupérées (€)" value={chargesRecovered} onChange={setChargesRecovered} />
-                  <Field label="Autres recettes (€)" value={otherIncome} onChange={setOtherIncome} />
+                  <Field label="Loyers perçus (€)" value={grossRent} onChange={setGrossRent} hint="Total des loyers hors charges encaissés sur l'année." />
+                  <Field label="Charges récupérées (€)" value={chargesRecovered} onChange={setChargesRecovered} hint="Provisions sur charges payées par le locataire et que vous récupérez." />
+                  <Field label="Autres recettes (€)" value={otherIncome} onChange={setOtherIncome} hint="Indemnités, remboursements d'assurance ou tout autre revenu lié à ce bien." />
                 </div>
               </div>
             )}
@@ -1224,12 +1241,12 @@ export function SectionDeclaration({ userId, properties, propertyFinance }: Prop
               <div>
                 <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Charges déductibles (formulaire 2044)</p>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <Field label="Intérêts d'emprunt (€)" value={interest} onChange={setInterest} />
-                  <Field label="Assurance (€)" value={insurance} onChange={setInsurance} />
-                  <Field label="Taxe foncière (€)" value={propertyTax} onChange={setPropertyTax} />
-                  <Field label="Charges copropriété (€)" value={copro} onChange={setCopro} />
-                  <Field label="Travaux / réparations (€)" value={repairs} onChange={setRepairs} />
-                  <Field label="Frais de gestion (€)" value={managementFees} onChange={setManagementFees} />
+                  <Field label="Intérêts d'emprunt (€)" value={interest} onChange={setInterest} hint="Part intérêts de vos mensualités de crédit — le capital remboursé n'est jamais déductible." />
+                  <Field label="Assurance (€)" value={insurance} onChange={setInsurance} hint="Assurance propriétaire non occupant (PNO), garantie loyers impayés (GLI)..." />
+                  <Field label="Taxe foncière (€)" value={propertyTax} onChange={setPropertyTax} hint="Montant payé dans l'année, hors part refacturée au locataire." />
+                  <Field label="Charges copropriété (€)" value={copro} onChange={setCopro} hint="Appels de fonds courants payés à la copropriété." />
+                  <Field label="Travaux / réparations (€)" value={repairs} onChange={setRepairs} hint="Entretien et réparations — pas les travaux d'agrandissement." />
+                  <Field label="Frais de gestion (€)" value={managementFees} onChange={setManagementFees} hint="Honoraires d'agence, frais de comptabilité..." />
                 </div>
               </div>
             )}
