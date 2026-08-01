@@ -45,8 +45,8 @@ const ALERTS: AlertConfig[] = [
   {
     key: "due_soon",
     title: "Loyer à venir",
-    desc: "Votre date d'encaissement approche. Un rappel pour préparer le suivi.",
-    schedule: "3 jours avant · la veille · le jour même",
+    desc: "Votre date d'encaissement approche. Un rappel préventif, sans action requise.",
+    schedule: "Un seul rappel, 3 jours avant l'échéance",
     group: "Paiements et loyers",
     level: "Anticipation",
   },

@@ -21,6 +21,7 @@ type AlertItem = {
   detail: string;
   href: string;
   propertyId?: string;
+  actionable?: boolean; // false pour les alertes purement informatives (rien à traiter côté lokt)
 };
 
 type LeaseRow = Record<string, any>;
@@ -167,18 +168,27 @@ function renderEmail(alert: AlertItem) {
   const baseUrl = appUrl();
   const color = alert.tone === "red" ? "#b91c1c" : alert.tone === "amber" ? "#92400e" : "#334155";
   const bg = alert.tone === "red" ? "#fef2f2" : alert.tone === "amber" ? "#fffbeb" : "#f8fafc";
+  const actionable = alert.actionable !== false;
+
+  const intro = actionable
+    ? "Une action nécessite votre attention dans votre espace bailleur."
+    : "Voici un rappel concernant votre espace bailleur — rien à traiter pour l'instant.";
+  const linkLabel = actionable ? "Traiter cette action sur lokt.fr" : "Consulter dans lokt.fr";
+  const footer = actionable
+    ? "Cet email automatique suit l'échéancier métier de cette alerte. Il disparaît dès que l'action est traitée."
+    : "Cet email automatique est un simple rappel préventif. Aucune action n'est requise tant que l'échéance n'est pas dépassée.";
 
   return `
     <div style="font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.5;color:#0f172a">
       <p>Bonjour,</p>
-      <p>Une action nécessite votre attention dans votre espace bailleur.</p>
+      <p>${intro}</p>
       <div style="padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:${bg}">
         <p style="margin:0 0 4px;font-weight:700;color:${color}">${alert.title}</p>
         <p style="margin:0 0 10px;color:#334155;font-size:14px;line-height:1.45">${alert.detail}</p>
-        <a href="${baseUrl}${alert.href}" style="font-size:13px;color:#0f172a;font-weight:700">Traiter cette action sur lokt.fr</a>
+        <a href="${baseUrl}${alert.href}" style="font-size:13px;color:#0f172a;font-weight:700">${linkLabel}</a>
       </div>
       <p style="margin-top:16px;font-size:12px;color:#64748b">
-        Cet email automatique suit l'échéancier métier de cette alerte. Il disparaît dès que l'action est traitée.
+        ${footer}
       </p>
     </div>
   `;
@@ -342,15 +352,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 propertyId: lease.property_id,
               });
             }
-          } else if (!paid && [3, 1, 0].includes(daysToDue)) {
+          } else if (!paid && daysToDue === 3) {
+            // Rappel unique et anticipé : inutile de relancer par email à J-1 et J-0,
+            // ça ne devient une vraie action à traiter que si le loyer passe en retard.
             alerts.push({
               key: `due-soon:${lease.id}:${period.start}:day-${daysToDue}`,
               preferenceKey: "due_soon",
               tone: "amber",
               title: `Loyer bientôt exigible - ${labels.property}`,
-              detail: `${labels.tenant} doit régler le loyer dans ${daysToDue} jour(s).`,
+              detail: `${labels.tenant} doit régler le loyer d'ici ${daysToDue} jours.`,
               href: "/espace-bailleur",
               propertyId: lease.property_id,
+              actionable: false,
             });
           }
 
