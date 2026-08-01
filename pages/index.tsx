@@ -476,7 +476,7 @@ export default function Home() {
   const pageUrl = `${siteUrl}/`;
 
   const title =
-    "Gestion locative gratuite et simulateurs | lokt.fr";
+    "lokt.fr : gestion locative gratuite et simulateurs";
   const description =
     "Gérez vos locations sans agence : quittances, baux et finance automatisés. Simulez rentabilité et capacité d’emprunt. Essai gratuit.";
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
