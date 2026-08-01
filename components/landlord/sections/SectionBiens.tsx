@@ -832,6 +832,11 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-slate-900">{svc.label}</p>
                     <p className="text-xs text-slate-500">{svc.desc}</p>
+                    {checked && (
+                      <p className="mt-1 text-xs font-medium text-[#635bff]">
+                        → Pris en charge par un tiers, alertes lokt désactivées pour ce service.
+                      </p>
+                    )}
                   </div>
                 </label>
               );
