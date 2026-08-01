@@ -5,19 +5,21 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MIN_AGE_MS = DAY_MS; // relance au bout de 24h
 const MAX_AGE_MS = 30 * DAY_MS; // au-delà, on considère l'inscription abandonnée
+const REMINDER_INTERVAL_MS = 7 * DAY_MS; // une relance par semaine tant que le compte n'est pas confirmé
 
 function appUrl() {
   return (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://lokt.fr").replace(/\/$/, "");
 }
 
-async function alreadySent(userId: string) {
+// Retourne la date de la dernière relance envoyée à cet utilisateur, ou null si aucune.
+async function lastSentAt(userId: string) {
   const { data, error } = await supabaseAdmin!
     .from("signup_confirmation_reminder_sends")
-    .select("id")
+    .select("sent_at")
     .eq("user_id", userId)
     .maybeSingle();
   if (error) throw error;
-  return !!data;
+  return data ? new Date(data.sent_at).getTime() : null;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -57,7 +59,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     for (const user of candidates) {
       try {
-        if (await alreadySent(user.id)) {
+        const last = await lastSentAt(user.id);
+        if (last !== null && now - last < REMINDER_INTERVAL_MS) {
           skipped++;
           continue;
         }
@@ -69,11 +72,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         if (resendError) throw resendError;
 
-        const { error: insertError } = await supabaseAdmin.from("signup_confirmation_reminder_sends").insert({
-          user_id: user.id,
-          email: user.email,
-        });
-        if (insertError) throw insertError;
+        // upsert (pas insert) : une seule ligne par utilisateur, on met juste à jour la date
+        // de dernière relance à chaque envoi hebdomadaire.
+        const { error: upsertError } = await supabaseAdmin.from("signup_confirmation_reminder_sends").upsert(
+          { user_id: user.id, email: user.email, sent_at: new Date().toISOString() },
+          { onConflict: "user_id" }
+        );
+        if (upsertError) throw upsertError;
 
         sent++;
         results.push({ userId: user.id, email: user.email, sent: true });
