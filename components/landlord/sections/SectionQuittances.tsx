@@ -1628,8 +1628,8 @@ export function SectionQuittances({
                   >
                     <span className={cx("mt-0.5 w-1 shrink-0 self-stretch rounded-full", tone.accent)} aria-hidden="true" />
                     <div className="flex min-w-0 flex-1 flex-col gap-3">
-                    <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-4">
-                      <div className="min-w-0 lg:max-w-2xl">
+                    <div className="flex flex-col gap-3">
+                      <div className="min-w-0">
                         <p className="text-[0.95rem] font-bold text-slate-900 truncate">{label}</p>
 
                         <p className="text-xs text-slate-500">
@@ -1731,7 +1731,7 @@ export function SectionQuittances({
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-start gap-2 justify-end">
+                      <div className="flex flex-wrap items-center gap-2 justify-end">
                         {row.closedByDeposit ? (
                           <span className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-center text-xs font-semibold text-violet-800">
                             Compensé par caution
