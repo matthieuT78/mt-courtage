@@ -60,7 +60,7 @@ const WIZARD_STEP_HELP: Record<StepKey, { title: string; items: string[] }> = {
     title: "Pourquoi créer un bien ?",
     items: [
       "La fiche du bien sert de base à tout le reste : loyers, quittances, performance, déclarations fiscales.",
-      "Vous pourrez compléter surface, DPE et description plus tard depuis Logements.",
+      "Vous pourrez compléter DPE et description plus tard depuis Logements.",
     ],
   },
   locataires: {
@@ -343,6 +343,8 @@ export function OnboardingWizard({
   const [propertyAddress, setPropertyAddress] = useState("");
   const [propertyPostalCode, setPropertyPostalCode] = useState("");
   const [propertyCity, setPropertyCity] = useState("");
+  const [propertySurface, setPropertySurface] = useState("");
+  const [propertyRooms, setPropertyRooms] = useState("");
   const [delegatedServices, setDelegatedServices] = useState<string[]>([]);
   const [delegationAgencyName, setDelegationAgencyName] = useState("");
   const [createdPropertyId, setCreatedPropertyId] = useState<string | null>(null);
@@ -431,6 +433,8 @@ export function OnboardingWizard({
           address_line1: propertyAddress.trim(),
           postal_code: propertyPostalCode.trim() || null,
           city: propertyCity.trim() || null,
+          surface_m2: propertySurface.trim() ? Number(propertySurface.trim().replace(",", ".")) || null : null,
+          rooms: propertyRooms.trim() ? Number(propertyRooms.trim()) || null : null,
           delegated_services: delegatedServices,
           delegation_agency_name: delegationAgencyName.trim() || null,
           status: "active",
@@ -637,7 +641,7 @@ export function OnboardingWizard({
           {activeStepKey === "biens" ? (
             <StepShell
               title="Votre premier bien"
-              desc="Vous pourrez ajouter surface, DPE et description plus tard."
+              desc="Vous pourrez ajouter DPE et description plus tard."
               footer={<PrimaryButton onClick={submitBien} disabled={saving}>{saving ? "Enregistrement…" : "Continuer"}</PrimaryButton>}
             >
               <TextField label="Nom du bien" value={propertyLabel} onChange={setPropertyLabel} placeholder="Ex : Appartement rue Victor Hugo" required />
@@ -664,6 +668,10 @@ export function OnboardingWizard({
                 onCityChange={setPropertyCity}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <TextField label="Surface (m²)" value={propertySurface} onChange={setPropertySurface} placeholder="Ex : 45" type="number" />
+                <TextField label="Nombre de pièces" value={propertyRooms} onChange={setPropertyRooms} placeholder="Ex : 2" type="number" />
+              </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
                 <div>
