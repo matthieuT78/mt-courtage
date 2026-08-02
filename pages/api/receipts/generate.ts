@@ -131,7 +131,7 @@ function initials(name: string) {
     .toUpperCase() || "?";
 }
 
-function htmlTemplatePremium(params: {
+export function htmlTemplatePremium(params: {
   receiptNumber: string;
   periodLabel: string;
   issueDateLabel: string;
@@ -189,36 +189,37 @@ function htmlTemplatePremium(params: {
     line-height: 1.5;
   }
 
-  /* ── EN-TÊTE COLORÉ ── */
+  /* ── EN-TÊTE ── */
+  .top-accent { height: 3px; background: #4f46e5; }
   .accent-bar {
-    background: #4f46e5;
-    padding: 18px 26px 16px;
+    padding: 18px 26px 14px;
+    border-bottom: 2px solid #0f172a;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-end;
     gap: 16px;
   }
   .doc-title {
-    font-size: 19px;
-    font-weight: 900;
-    letter-spacing: -0.02em;
-    color: white;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #0f172a;
     line-height: 1.1;
   }
   .doc-number {
-    font-size: 10px;
-    color: rgba(255,255,255,0.65);
+    font-size: 9.5px;
+    color: #64748b;
     margin-top: 3px;
     font-weight: 500;
     letter-spacing: 0.04em;
   }
   .accent-meta {
     text-align: right;
-    color: rgba(255,255,255,0.75);
+    color: #475569;
     font-size: 10px;
     line-height: 1.65;
   }
-  .accent-meta strong { color: white; font-size: 11px; font-weight: 700; }
+  .accent-meta strong { color: #0f172a; font-size: 11px; font-weight: 700; }
 
   /* ── CORPS ── */
   .body { padding: 18px 26px 22px; }
@@ -227,19 +228,13 @@ function htmlTemplatePremium(params: {
   .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
   .party-card {
     border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border-radius: 6px;
     padding: 11px 13px;
     background: white;
   }
-  .party-header { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
-  .avatar {
-    width: 28px; height: 28px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10.5px; font-weight: 800; flex-shrink: 0; letter-spacing: -0.01em;
-  }
-  .av-landlord { background: #ede9fe; color: #4f46e5; }
-  .av-tenant   { background: #dcfce7; color: #16a34a; }
   .party-role {
+    display: block;
+    margin-bottom: 7px;
     font-size: 8.5px; font-weight: 800; letter-spacing: 0.14em;
     text-transform: uppercase; color: #94a3b8;
   }
@@ -248,15 +243,9 @@ function htmlTemplatePremium(params: {
 
   /* ── LOGEMENT ── */
   .property-card {
-    border: 1px solid #e2e8f0; border-radius: 12px;
+    border: 1px solid #e2e8f0; border-radius: 6px;
     padding: 9px 13px; background: #f8fafc;
-    display: flex; align-items: center; gap: 10px;
     margin-bottom: 10px;
-  }
-  .property-icon {
-    width: 28px; height: 28px; border-radius: 8px;
-    background: #ede9fe; display: flex; align-items: center;
-    justify-content: center; flex-shrink: 0;
   }
   .prop-role {
     font-size: 8.5px; font-weight: 800; letter-spacing: 0.14em;
@@ -265,7 +254,7 @@ function htmlTemplatePremium(params: {
   .prop-addr { font-size: 11px; font-weight: 600; color: #0f172a; }
 
   /* ── MONTANTS ── */
-  .amounts-wrap { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .amounts-wrap { border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
   .amounts-head {
     background: #f8fafc; padding: 7px 14px;
     font-size: 8.5px; font-weight: 800; letter-spacing: 0.14em;
@@ -276,16 +265,15 @@ function htmlTemplatePremium(params: {
   td { padding: 8px 14px; border-top: 1px solid #f1f5f9; font-size: 11px; color: #334155; }
   td:last-child { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; color: #0f172a; }
   .total-row td {
-    background: #4f46e5; color: white;
-    font-weight: 800; font-size: 12.5px; border-top: none; padding: 10px 14px;
+    font-weight: 800; font-size: 12.5px; border-top: 2px solid #0f172a; padding: 10px 14px;
+    color: #0f172a;
   }
-  .total-row td:last-child { color: white; }
+  .total-row td:last-child { color: #0f172a; }
 
   /* ── TEXTE LÉGAL ── */
   .legal {
     border: 1px solid #e2e8f0;
-    border-left: 3px solid #4f46e5;
-    border-radius: 0 12px 12px 0;
+    border-radius: 6px;
     padding: 12px 14px;
     background: #fafafa;
     margin-bottom: 10px;
@@ -296,7 +284,7 @@ function htmlTemplatePremium(params: {
 
   /* ── SIGNATURE ── */
   .sig-wrap {
-    border: 1px solid #e2e8f0; border-radius: 12px;
+    border: 1px solid #e2e8f0; border-radius: 6px;
     padding: 13px 16px 12px; background: white;
     display: flex; justify-content: space-between; align-items: flex-end;
     min-height: 72px; margin-bottom: 18px;
@@ -320,6 +308,7 @@ function htmlTemplatePremium(params: {
 </head>
 <body>
 
+<div class="top-accent"></div>
 <div class="accent-bar">
   <div>
     <div class="doc-title">Quittance de loyer</div>
@@ -335,34 +324,20 @@ function htmlTemplatePremium(params: {
 
   <div class="parties">
     <div class="party-card">
-      <div class="party-header">
-        <div class="avatar av-landlord">${escapeHtml(landlordInitials)}</div>
-        <div class="party-role">Bailleur</div>
-      </div>
+      <div class="party-role">Bailleur</div>
       <div class="party-name">${escapeHtml(landlordName || "—")}</div>
       <div class="party-addr">${escapeHtml(landlordAddress || "—")}</div>
     </div>
     <div class="party-card">
-      <div class="party-header">
-        <div class="avatar av-tenant">${escapeHtml(tenantInitials)}</div>
-        <div class="party-role">Locataire</div>
-      </div>
+      <div class="party-role">Locataire</div>
       <div class="party-name">${escapeHtml(tenantName || "—")}</div>
       <div class="party-addr">${escapeHtml(tenantAddress || "—")}</div>
     </div>
   </div>
 
   <div class="property-card">
-    <div class="property-icon">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-        <polyline points="9 22 9 12 15 12 15 22"/>
-      </svg>
-    </div>
-    <div>
-      <div class="prop-role">Logement</div>
-      <div class="prop-addr">${escapeHtml(propertyAddress || "—")}</div>
-    </div>
+    <div class="prop-role">Logement</div>
+    <div class="prop-addr">${escapeHtml(propertyAddress || "—")}</div>
   </div>
 
   <div class="amounts-wrap">
@@ -399,7 +374,7 @@ function htmlTemplatePremium(params: {
  * ✅ Render HTML -> PDF
  * Règle OR : sur mac/windows => puppeteer full (pas de sparticuz)
  */
-async function renderPdfFromHtml(html: string) {
+export async function renderPdfFromHtml(html: string) {
   if (String(process.env.NEXT_RUNTIME || "").toLowerCase() === "edge") {
     throw new Error("Runtime Edge incompatible avec Chromium. Utilise runtime Node.js pour /api/receipts/generate.");
   }
