@@ -43,7 +43,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const tenant: any = tenantRes.data || null;
 
     const tenantEmail = tenant?.email || null;
-    const ccOwner = lease.reminder_email || null;
+    let ccOwner = lease.reminder_email || null;
+    if (!ccOwner) {
+      const ownerRes = await supabaseAdmin.auth.admin.getUserById(lease.user_id);
+      ccOwner = ownerRes.data?.user?.email || null;
+    }
 
     // 1) Upsert transaction rent (Finance) — uniquement ici
     const payload = {

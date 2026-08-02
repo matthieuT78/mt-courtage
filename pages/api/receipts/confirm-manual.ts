@@ -334,8 +334,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const property: any = (propertyRes as any).data || null;
     const toEmail = safeStr(tenant?.email);
 
-    // Bailleur CC : priorité body, sinon lease.reminder_email, sinon null
-    const ccEmail = landlordEmailFromBody || safeStr(lease.reminder_email) || null;
+    // Bailleur CC : priorité body, sinon lease.reminder_email, sinon email du compte
+    let ccEmail = landlordEmailFromBody || safeStr(lease.reminder_email) || null;
+    if (!ccEmail) {
+      const ownerRes = await supabaseAdmin.auth.admin.getUserById(userId);
+      ccEmail = safeStr(ownerRes.data?.user?.email) || null;
+    }
 
     // 8) Signed URL + download for attachment
     const signed = await supabaseAdmin.storage.from("rent-receipts-pdfs").createSignedUrl(parsed.path, 60 * 10);
