@@ -1462,30 +1462,33 @@ export function SectionQuittances({
         desc="La quittance est le reçu du locataire : elle se prépare uniquement quand le paiement du mois est confirmé."
       />
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="relative overflow-hidden rounded-2xl bg-indigo-50 p-5">
-          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-indigo-100">1</span>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100">
-            <EyeIcon className="h-5 w-5 text-indigo-600" />
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="flex items-start gap-2.5 rounded-xl bg-indigo-50 p-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-100">
+            <EyeIcon className="h-4 w-4 text-indigo-600" />
           </div>
-          <p className="mt-4 text-sm font-bold text-indigo-950">Vérifier le mois</p>
-          <p className="mt-1 text-xs leading-5 text-indigo-900/60">Le bien, le locataire, la période et le montant attendu.</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-indigo-950">Vérifier le mois</p>
+            <p className="mt-0.5 text-xs leading-4 text-indigo-900/60">Le bien, le locataire, la période et le montant attendu.</p>
+          </div>
         </div>
-        <div className="relative overflow-hidden rounded-2xl bg-violet-50 p-5">
-          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-violet-100">2</span>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
-            <BanknotesIcon className="h-5 w-5 text-violet-600" />
+        <div className="flex items-start gap-2.5 rounded-xl bg-violet-50 p-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100">
+            <BanknotesIcon className="h-4 w-4 text-violet-600" />
           </div>
-          <p className="mt-4 text-sm font-bold text-violet-950">Confirmer l’encaissement</p>
-          <p className="mt-1 text-xs leading-5 text-violet-900/60">Marquez le mois payé quand le loyer et les charges sont réellement encaissés.</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-violet-950">Confirmer l’encaissement</p>
+            <p className="mt-0.5 text-xs leading-4 text-violet-900/60">Marquez le mois payé quand le loyer et les charges sont réellement encaissés.</p>
+          </div>
         </div>
-        <div className="relative overflow-hidden rounded-2xl bg-emerald-50 p-5">
-          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-emerald-100">3</span>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
-            <PaperAirplaneIcon className="h-5 w-5 text-emerald-600" />
+        <div className="flex items-start gap-2.5 rounded-xl bg-emerald-50 p-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+            <PaperAirplaneIcon className="h-4 w-4 text-emerald-600" />
           </div>
-          <p className="mt-4 text-sm font-bold text-emerald-950">Remettre la quittance</p>
-          <p className="mt-1 text-xs leading-5 text-emerald-900/60">Générez le PDF et envoyez-le, ou indiquez une remise manuelle.</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-emerald-950">Remettre la quittance</p>
+            <p className="mt-0.5 text-xs leading-4 text-emerald-900/60">Générez le PDF et envoyez-le, ou indiquez une remise manuelle.</p>
+          </div>
         </div>
       </div>
 
