@@ -640,30 +640,33 @@ export function SectionInventaire({ userId, properties, leases }: Props) {
       {err ? <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div> : null}
       {ok ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{ok}</div> : null}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="relative overflow-hidden rounded-2xl bg-indigo-50 p-5">
-          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-indigo-100">1</span>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100">
-            <ListBulletIcon className="h-5 w-5 text-indigo-600" />
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="flex items-start gap-2.5 rounded-xl bg-indigo-50 p-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-100">
+            <ListBulletIcon className="h-4 w-4 text-indigo-600" />
           </div>
-          <p className="mt-4 text-sm font-bold text-indigo-950">Créer la dotation</p>
-          <p className="mt-1 text-xs leading-5 text-indigo-900/60">Charger les obligations LMNP minimales puis ajouter les équipements réellement fournis.</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-indigo-950">Créer la dotation</p>
+            <p className="mt-0.5 text-xs leading-4 text-indigo-900/60">Charger les obligations LMNP minimales puis ajouter les équipements réellement fournis.</p>
+          </div>
         </div>
-        <div className="relative overflow-hidden rounded-2xl bg-violet-50 p-5">
-          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-violet-100">2</span>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
-            <MagnifyingGlassIcon className="h-5 w-5 text-violet-600" />
+        <div className="flex items-start gap-2.5 rounded-xl bg-violet-50 p-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100">
+            <MagnifyingGlassIcon className="h-4 w-4 text-violet-600" />
           </div>
-          <p className="mt-4 text-sm font-bold text-violet-950">Contrôler les quantités</p>
-          <p className="mt-1 text-xs leading-5 text-violet-900/60">Attendu vs réel, état de chaque élément, coût unitaire de remplacement.</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-violet-950">Contrôler les quantités</p>
+            <p className="mt-0.5 text-xs leading-4 text-violet-900/60">Attendu vs réel, état de chaque élément, coût unitaire de remplacement.</p>
+          </div>
         </div>
-        <div className="relative overflow-hidden rounded-2xl bg-emerald-50 p-5">
-          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-emerald-100">3</span>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
-            <ArchiveBoxArrowDownIcon className="h-5 w-5 text-emerald-600" />
+        <div className="flex items-start gap-2.5 rounded-xl bg-emerald-50 p-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+            <ArchiveBoxArrowDownIcon className="h-4 w-4 text-emerald-600" />
           </div>
-          <p className="mt-4 text-sm font-bold text-emerald-950">Formaliser via l’état des lieux</p>
-          <p className="mt-1 text-xs leading-5 text-emerald-900/60">L’entrée et la sortie se documentent dans le module État des lieux, déjà relié à cet inventaire — PDF et signature inclus.</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-emerald-950">Formaliser via l’état des lieux</p>
+            <p className="mt-0.5 text-xs leading-4 text-emerald-900/60">L’entrée et la sortie se documentent dans le module État des lieux, déjà relié à cet inventaire — PDF et signature inclus.</p>
+          </div>
         </div>
       </div>
 

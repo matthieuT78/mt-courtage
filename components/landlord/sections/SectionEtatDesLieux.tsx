@@ -4190,30 +4190,33 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
       />
 
       {!selectedLeaseId && !selectedReportId && (
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="relative overflow-hidden rounded-2xl bg-indigo-50 p-5">
-          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-indigo-100">1</span>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100">
-            <FolderOpenIcon className="h-5 w-5 text-indigo-600" />
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="flex items-start gap-2.5 rounded-xl bg-indigo-50 p-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-100">
+            <FolderOpenIcon className="h-4 w-4 text-indigo-600" />
           </div>
-          <p className="mt-4 text-sm font-bold text-indigo-950">Choisir le dossier</p>
-          <p className="mt-1 text-xs leading-5 text-indigo-900/60">Bail actif, état des lieux existant ou dossier libre si la location n’est pas encore rattachée.</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-indigo-950">Choisir le dossier</p>
+            <p className="mt-0.5 text-xs leading-4 text-indigo-900/60">Bail actif, état des lieux existant ou dossier libre si la location n’est pas encore rattachée.</p>
+          </div>
         </div>
-        <div className="relative overflow-hidden rounded-2xl bg-violet-50 p-5">
-          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-violet-100">2</span>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100">
-            <ClipboardDocumentListIcon className="h-5 w-5 text-violet-600" />
+        <div className="flex items-start gap-2.5 rounded-xl bg-violet-50 p-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100">
+            <ClipboardDocumentListIcon className="h-4 w-4 text-violet-600" />
           </div>
-          <p className="mt-4 text-sm font-bold text-violet-950">Faire la visite</p>
-          <p className="mt-1 text-xs leading-5 text-violet-900/60">Pièces, équipements, compteurs, clés, photos et observations.</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-violet-950">Faire la visite</p>
+            <p className="mt-0.5 text-xs leading-4 text-violet-900/60">Pièces, équipements, compteurs, clés, photos et observations.</p>
+          </div>
         </div>
-        <div className="relative overflow-hidden rounded-2xl bg-emerald-50 p-5">
-          <span className="pointer-events-none absolute -right-2 -top-3 select-none text-8xl font-black leading-none text-emerald-100">3</span>
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100">
-            <DocumentCheckIcon className="h-5 w-5 text-emerald-600" />
+        <div className="flex items-start gap-2.5 rounded-xl bg-emerald-50 p-3">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100">
+            <DocumentCheckIcon className="h-4 w-4 text-emerald-600" />
           </div>
-          <p className="mt-4 text-sm font-bold text-emerald-950">Finaliser le document</p>
-          <p className="mt-1 text-xs leading-5 text-emerald-900/60">Générez ou importez le PDF. Une fois signé ou archivé, il est verrouillé.</p>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-emerald-950">Finaliser le document</p>
+            <p className="mt-0.5 text-xs leading-4 text-emerald-900/60">Générez ou importez le PDF. Une fois signé ou archivé, il est verrouillé.</p>
+          </div>
         </div>
       </div>
       )}

@@ -436,32 +436,17 @@ function WorkflowOnboarding({ onStart }: { onStart: () => void }) {
       </div>
 
       {/* Steps */}
-      <div className="grid gap-0 sm:grid-cols-4">
-        {STEPS.map((step, i) => {
+      <div className="grid gap-2 p-3 sm:grid-cols-4">
+        {STEPS.map((step) => {
           const Icon = step.icon;
-          const isLast = i === STEPS.length - 1;
           return (
-            <div
-              key={step.n}
-              className={`relative flex flex-col gap-3 p-5 ${!isLast ? "border-b border-slate-100 sm:border-b-0 sm:border-r" : ""}`}
-            >
-              {/* Number + connector */}
-              <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#635bff]/10 text-[0.68rem] font-bold text-[#635bff]">
-                  {step.n}
-                </span>
-                {!isLast && (
-                  <div className="hidden sm:block flex-1 border-t border-dashed border-[#635bff]/20" />
-                )}
+            <div key={step.n} className="flex items-start gap-2.5 rounded-xl bg-slate-50 p-3">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-100 bg-white">
+                <Icon className="h-4 w-4 text-slate-500" />
               </div>
-              {/* Icon */}
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
-                <Icon className="h-4.5 w-4.5 text-slate-500" />
-              </div>
-              {/* Text */}
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-900">{step.title}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{step.desc}</p>
+                <p className="mt-0.5 text-xs leading-4 text-slate-500">{step.desc}</p>
               </div>
             </div>
           );
