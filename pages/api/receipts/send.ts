@@ -127,7 +127,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const toEmail = safeStr(tenant?.email);
     if (!toEmail) return res.status(400).json({ error: "Le locataire n’a pas d’email." });
 
-    const ccEmail = safeStr(lease.reminder_email) || null;
+    let ccEmail = safeStr(lease.reminder_email) || null;
+    if (!ccEmail) {
+      const ownerRes = await supabaseAdmin.auth.admin.getUserById(userId);
+      ccEmail = safeStr(ownerRes.data?.user?.email) || null;
+    }
 
     // 4) signed url + download pdf from storage
     if (!receipt.pdf_url) return res.status(400).json({ error: "PDF manquant. Génère d’abord le PDF." });

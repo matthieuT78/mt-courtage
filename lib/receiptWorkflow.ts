@@ -437,7 +437,11 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
   }
 
   const toEmail = safeStr(lease.tenant_receipt_email) || safeStr((tenant as any)?.email);
-  const ccEmail = safeStr(params.landlordEmail) || safeStr(lease.reminder_email) || null;
+  let ccEmail = safeStr(params.landlordEmail) || safeStr(lease.reminder_email) || null;
+  if (!ccEmail) {
+    const ownerRes = await supabaseAdmin.auth.admin.getUserById(userId);
+    ccEmail = safeStr(ownerRes.data?.user?.email) || null;
+  }
   const alreadySent = String(receipt.status || "").toLowerCase() === "sent" && !!receipt.sent_at;
 
   let email = { ok: false, disabled: false, error: "Email non tenté." };
