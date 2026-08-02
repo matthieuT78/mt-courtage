@@ -1682,7 +1682,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                     setContractLeaseId(l.id);
                   }}
                 >
-                  Contrat
+                  Bail
                 </ActionButton>
 
                 {isActiveLease(l) ? (
