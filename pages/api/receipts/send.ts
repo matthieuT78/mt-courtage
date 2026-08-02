@@ -187,6 +187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         lease_id: receipt.lease_id,
         receipt_id: receipt.id,
         to_email: toEmail,
+        cc_email: ccEmail,
         subject,
         body_preview: `Quittance ${yyyymm}`,
         status: logStatus,

@@ -2015,7 +2015,7 @@ export function SectionQuittances({
                       {fmtDate(r.period_start)} → {fmtDate(r.period_end)}
                     </p>
                     <p className="text-xs text-slate-500">
-                      Last sent : <span className="font-semibold">{r.sent_at ? fmtDateTimeFR(r.sent_at) : "—"}</span>
+                      Dernier envoi : <span className="font-semibold">{r.sent_at ? fmtDateTimeFR(r.sent_at) : "—"}</span>
                     </p>
                   </button>
                 );

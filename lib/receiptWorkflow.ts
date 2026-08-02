@@ -515,6 +515,7 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
         lease_id: leaseId,
         receipt_id: receipt.id,
         to_email: toEmail,
+        cc_email: ccEmail,
         subject: `Quittance de loyer - ${periodStart.slice(0, 7)}`,
         body_preview: `Quittance ${periodStart.slice(0, 7)}`,
         sent_at: new Date().toISOString(),
