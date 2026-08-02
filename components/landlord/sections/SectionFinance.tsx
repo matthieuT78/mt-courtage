@@ -2063,7 +2063,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
         <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-white">
-              <BanknotesIcon className="h-4.5 w-4.5" />
+              <BanknotesIcon className="h-4 w-4" />
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-indigo-900">
