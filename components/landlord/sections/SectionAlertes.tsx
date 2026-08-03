@@ -109,8 +109,8 @@ const ALERTS: AlertConfig[] = [
   {
     key: "deposit_return_overdue",
     title: "Restitution du dépôt de garantie en retard",
-    desc: "Le délai légal de restitution du dépôt de garantie est dépassé.",
-    schedule: "30 jours après la fin du bail, puis tous les 30 jours tant que non restitué",
+    desc: "Le délai légal de restitution du dépôt de garantie est dépassé. Passe en alerte légale maximale à partir de 2 mois (pénalité de 10 % du loyer par mois de retard, art. 22 loi du 6 juillet 1989).",
+    schedule: "1 mois après la fin du bail, puis chaque semaine tant que non restitué",
     group: "Dépôt de garantie",
     level: "Urgent",
   },
