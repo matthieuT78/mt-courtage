@@ -38,7 +38,7 @@ const ALERTS: AlertConfig[] = [
     key: "late_payment",
     title: "Loyer en retard",
     desc: "Un loyer n'a pas été encaissé après sa date d'échéance. Vous recevez un rappel pour agir.",
-    schedule: "Le lendemain · à 3 jours · à 7 jours · puis toutes les semaines",
+    schedule: "À 3 jours · à 7 jours · à 14 jours · puis toutes les semaines",
     group: "Paiements et loyers",
     level: "Urgent",
   },

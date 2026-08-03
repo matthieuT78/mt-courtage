@@ -340,7 +340,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const daysToDue = daysBetween(today, dueDate);
 
           if (!paid && daysToDue < 0) {
-            const scheduleKey = recurringScheduleKey(`late:${lease.id}:${period.start}`, Math.abs(daysToDue), [1, 3, 7], 7);
+            // Premier palier à J+3 (pas J+1) : laisse le temps au mail de confirmation
+            // de paiement (envoyé à J+1) de faire son travail avant de parler de retard.
+            const scheduleKey = recurringScheduleKey(`late:${lease.id}:${period.start}`, Math.abs(daysToDue), [3, 7, 14], 7);
             if (scheduleKey) {
               alerts.push({
                 key: scheduleKey,
