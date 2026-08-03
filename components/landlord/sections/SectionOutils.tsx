@@ -248,6 +248,15 @@ const daysInclusive = (start: string, end: string) => {
   if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime < startTime) return 0;
   return Math.floor((endTime - startTime) / 86400000) + 1;
 };
+// Jours communs aux deux périodes (pas juste la durée la plus courte) : si les deux
+// plages ne se chevauchent pas du tout, le résultat doit être 0, pas une fraction
+// calculée sur une durée sans rapport avec la période réellement commune.
+const overlapDaysInclusive = (aStart: string, aEnd: string, bStart: string, bEnd: string) => {
+  if (!aStart || !aEnd || !bStart || !bEnd) return 0;
+  const start = aStart > bStart ? aStart : bStart;
+  const end = aEnd < bEnd ? aEnd : bEnd;
+  return daysInclusive(start, end);
+};
 const copyToolSummary = async (summary: string, onDone: (message: string) => void) => {
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(summary);
@@ -952,7 +961,7 @@ function TeomTool({ userId, onBack, onFinanceDraft }: { userId: string; onBack: 
   const teom = num(teomAmount);
   const share = clampPercent(lotShare);
   const periodDays = daysInclusive(periodStart, periodEnd);
-  const occupiedDays = Math.min(periodDays, daysInclusive(occupancyStart, occupancyEnd));
+  const occupiedDays = overlapDaysInclusive(periodStart, periodEnd, occupancyStart, occupancyEnd);
   const occupancyRate = periodDays > 0 ? occupiedDays / periodDays : 0;
   const recoverable = teom * (share / 100) * occupancyRate;
   const ownerPart = teom - recoverable;
