@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { sendEmailViaResend } from "../../../../lib/mailer/resend";
+import { buildVisitIcs } from "../../../../lib/ics";
 
 function safeStr(v: unknown) {
   return String(v ?? "").trim();
@@ -91,6 +92,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const safePhone = payload.phone ? escapeHtml(payload.phone) : null;
 
   try {
+    const ics = buildVisitIcs({
+      uid: `visit-${booking.id}@lokt.fr`,
+      startsAt: slot.starts_at,
+      durationMinutes: slot.duration_minutes,
+      summary: `Visite — ${listing.title}`,
+      location: address,
+      description: `Visite du logement organisée via lokt.fr.`,
+    });
+
     await sendEmailViaResend({
       to: payload.email,
       subject: `Visite confirmée — ${listing.title}`,
@@ -101,10 +111,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           <p style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px">
             <strong>${visitDate}</strong><br/>${safeAddress}
           </p>
+          <p>Le fichier joint vous permet d'ajouter ce rendez-vous directement à votre agenda (Google Calendar, Outlook, Apple Calendar...).</p>
           <p style="font-size:12px;color:#94a3b8">lokt.fr · Gestion locative simplifiée</p>
         </div>
       `,
       text: `Visite confirmée pour "${listing.title}" le ${visitDate} — ${address}.`,
+      attachments: [{ filename: "visite.ics", content: Buffer.from(ics, "utf8").toString("base64") }],
     });
   } catch {
     // non bloquant

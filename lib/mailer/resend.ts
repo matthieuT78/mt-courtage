@@ -4,6 +4,7 @@ type SendEmailParams = {
   html: string;
   text?: string;
   replyTo?: string;
+  attachments?: { filename: string; content: string }[];
 };
 
 function isResendDisabled(data: any) {
@@ -31,6 +32,7 @@ export async function sendEmailViaResend(params: SendEmailParams) {
       html: params.html,
       text: params.text,
       reply_to: replyTo, // Resend accepte reply_to
+      ...(params.attachments?.length ? { attachments: params.attachments } : {}),
     }),
   });
 
