@@ -101,6 +101,146 @@ function isFilled(form: Record<string, any>, key: string): boolean {
   return !!v && String(v).trim() !== "";
 }
 
+type PublicVisitSlot = { id: string; starts_at: string; duration_minutes: number; remaining: number };
+
+function VisitBookingCard({
+  listingToken,
+  firstName,
+  lastName,
+  email,
+  phone,
+}: {
+  listingToken: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}) {
+  const storageKey = `lokt_visit_booked:${listingToken}`;
+  const [slots, setSlots] = useState<PublicVisitSlot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [booking, setBooking] = useState(false);
+  const [bookError, setBookError] = useState<string | null>(null);
+  // Restaure l'état "déjà réservé" si le candidat revient sur le même lien
+  // (rechargement, fermeture du navigateur) — sinon il perd toute trace visuelle
+  // de sa réservation alors qu'elle existe bien côté serveur.
+  const [bookedAt, setBookedAt] = useState<string | null>(() => {
+    try {
+      if (typeof window === "undefined") return null;
+      const raw = window.localStorage.getItem(storageKey);
+      return raw ? JSON.parse(raw)?.startsAt || null : null;
+    } catch {
+      return null;
+    }
+  });
+  const identityReady = !!firstName.trim() && !!lastName.trim() && !!email.trim();
+
+  useEffect(() => {
+    if (!listingToken) return;
+    fetch(`/api/candidature/visits/public?token=${listingToken}`)
+      .then((r) => r.json())
+      .then((j) => setSlots(j.slots || []))
+      .catch(() => setSlots([]))
+      .finally(() => setLoading(false));
+  }, [listingToken]);
+
+  const book = async () => {
+    if (!selectedSlot || !firstName.trim() || !lastName.trim() || !email.trim()) {
+      setBookError("Prénom, nom et email sont requis.");
+      return;
+    }
+    setBooking(true);
+    setBookError(null);
+    try {
+      const resp = await fetch("/api/candidature/visits/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listing_token: listingToken,
+          slot_id: selectedSlot,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          email: email.trim(),
+          phone: phone.trim() || null,
+        }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || "Impossible de réserver ce créneau.");
+      setBookedAt(json.starts_at);
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify({ startsAt: json.starts_at }));
+      } catch {}
+    } catch (e: any) {
+      setBookError(e?.message || "Impossible de réserver ce créneau.");
+    } finally {
+      setBooking(false);
+    }
+  };
+
+  if (bookedAt) {
+    return (
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center shadow-sm sm:p-6">
+        <CheckCircleIcon className="mx-auto h-8 w-8 text-emerald-500" />
+        <p className="mt-2 text-sm font-semibold text-emerald-950">Visite confirmée</p>
+        <p className="mt-1 text-sm text-emerald-800">
+          {new Date(bookedAt).toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+        </p>
+        <p className="mt-1 text-xs text-emerald-700">Un email de confirmation vous a été envoyé.</p>
+      </div>
+    );
+  }
+
+  if (loading || slots.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <p className="text-sm font-semibold text-slate-950">Réserver une visite</p>
+      <p className="mt-1 text-xs text-slate-500">Choisissez un créneau, indiquez vos coordonnées, c'est confirmé immédiatement.</p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {slots.map((slot) => (
+          <button
+            key={slot.id}
+            type="button"
+            onClick={() => setSelectedSlot(slot.id)}
+            className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
+              selectedSlot === slot.id
+                ? "border-[#635bff] bg-[#635bff]/10 text-[#635bff]"
+                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+            }`}
+          >
+            {new Date(slot.starts_at).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+          </button>
+        ))}
+      </div>
+
+      {selectedSlot && (
+        <div className="mt-4 space-y-2">
+          {!identityReady ? (
+            <p className="text-xs font-semibold text-amber-700">
+              Renseignez votre prénom, nom et email ci-dessus pour confirmer la visite.
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Confirmation envoyée à <strong>{email}</strong> ({firstName} {lastName}).
+            </p>
+          )}
+          {bookError && <p className="text-xs font-semibold text-red-700">{bookError}</p>}
+          <button
+            type="button"
+            onClick={book}
+            disabled={booking || !identityReady}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+          >
+            {booking ? "Réservation…" : "Confirmer la visite"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CandidaturePage() {
   const router = useRouter();
   const { token } = router.query;
@@ -461,11 +601,6 @@ export default function CandidaturePage() {
                 {listing.property_type === "meuble" ? "Meublé" : "Vide"}
               </span>
             </div>
-            <p className="mt-3 text-xs text-slate-400">
-              Revenus nets mensuels requis :{" "}
-              <strong className="text-slate-700">{euro(requiredIncome)}</strong>{" "}
-              ({listing.income_ratio}× le loyer charges comprises)
-            </p>
           </div>
 
           {done ? (
@@ -513,6 +648,15 @@ export default function CandidaturePage() {
                   <label className={`${lbl} sm:col-span-2`}>Date de naissance {req}
                     <input type="date" className={inp} value={form.birth_date} onChange={(e) => set("birth_date", e.target.value)} />
                   </label>
+                </div>
+                <div className="mt-4">
+                  <VisitBookingCard
+                    listingToken={token as string}
+                    firstName={form.first_name}
+                    lastName={form.last_name}
+                    email={form.email}
+                    phone={form.phone}
+                  />
                 </div>
               </section>
 

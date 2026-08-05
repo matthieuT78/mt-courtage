@@ -3,6 +3,7 @@ import {
   ArrowRightIcon,
   ArrowTopRightOnSquareIcon,
   BookOpenIcon,
+  CalendarDaysIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
@@ -394,6 +395,311 @@ function SharePanel({ listing, copied, onCopy }: {
   );
 }
 
+// ── VisitSlotsPanel ───────────────────────────────────────────────────────────
+
+type VisitBooking = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+};
+
+type VisitSlot = {
+  id: string;
+  starts_at: string;
+  duration_minutes: number;
+  capacity: number;
+  bookings: VisitBooking[];
+};
+
+function fmtSlotDate(iso: string) {
+  return new Date(iso).toLocaleString("fr-FR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function fmtSlotTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function fmtDayHeading(iso: string) {
+  const label = new Date(iso).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+// Regroupe une liste de créneaux triés par jour calendaire, pour un affichage
+// scannable au lieu d'une liste plate qui répète la date à chaque ligne.
+function groupSlotsByDay<T extends { starts_at: string }>(slotsList: T[]) {
+  const groups: { dayKey: string; items: T[] }[] = [];
+  for (const slot of slotsList) {
+    const dayKey = slot.starts_at.slice(0, 10);
+    const lastGroup = groups[groups.length - 1];
+    if (lastGroup && lastGroup.dayKey === dayKey) lastGroup.items.push(slot);
+    else groups.push({ dayKey, items: [slot] });
+  }
+  return groups;
+}
+
+function VisitSlotsPanel({ userId, listing, onBookingsChanged }: { userId: string; listing: Listing; onBookingsChanged?: () => void }) {
+  const [slots, setSlots] = useState<VisitSlot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("10:00");
+  const [endTime, setEndTime] = useState("");
+  const [duration, setDuration] = useState("30");
+  const [capacity, setCapacity] = useState("1");
+
+  // Calcule les horaires de départ de chaque créneau à générer, à partir d'une
+  // plage "de ... à ..." — un bailleur bloque une plage de dispo (ex: 14h-17h),
+  // pas des créneaux un par un. Si "à" est vide ou avant "de", un seul créneau.
+  const plannedTimes = (() => {
+    if (!time) return [];
+    const [h1, m1] = time.split(":").map(Number);
+    if (Number.isNaN(h1) || Number.isNaN(m1)) return [];
+    const startMinutes = h1 * 60 + m1;
+    const durationMin = Number(duration) > 0 ? Number(duration) : 30;
+
+    if (!endTime) return [startMinutes];
+    const [h2, m2] = endTime.split(":").map(Number);
+    if (Number.isNaN(h2) || Number.isNaN(m2)) return [startMinutes];
+    const endMinutes = h2 * 60 + m2;
+    if (endMinutes <= startMinutes) return [startMinutes];
+
+    const times: number[] = [];
+    for (let t = startMinutes; t + durationMin <= endMinutes; t += durationMin) times.push(t);
+    return times.length > 0 ? times : [startMinutes];
+  })();
+
+  const load = async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const headers = await getHeaders();
+      const resp = await fetch(`/api/candidature/visits/slots?userId=${userId}&listingId=${listing.id}`, { headers });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || "Erreur de chargement.");
+      setSlots(json.slots || []);
+    } catch (e: any) {
+      setErr(e?.message || "Erreur de chargement.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing.id]);
+
+  const createSlots = async () => {
+    if (!date || !time || plannedTimes.length === 0) return setErr("Date et heure de début requises.");
+    setSaving(true);
+    setErr(null);
+    try {
+      const startsAt = plannedTimes.map((minutes) => {
+        const h = Math.floor(minutes / 60);
+        const m = minutes % 60;
+        return new Date(`${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`).toISOString();
+      });
+      const headers = await getHeaders();
+      const resp = await fetch("/api/candidature/visits/slots", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ userId, listingId: listing.id, startsAt, durationMinutes: Number(duration), capacity: Number(capacity) }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || "Impossible de créer les créneaux.");
+      setSlots((prev) => [...prev, ...(json.slots || [])].sort((a, b) => a.starts_at.localeCompare(b.starts_at)));
+      setDate("");
+      setEndTime("");
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de créer les créneaux.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteSlot = async (slotId: string) => {
+    setErr(null);
+    try {
+      const headers = await getHeaders();
+      const resp = await fetch("/api/candidature/visits/slots", {
+        method: "DELETE",
+        headers,
+        body: JSON.stringify({ userId, slotId }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) throw new Error(json.error || "Impossible de supprimer le créneau.");
+      setSlots((prev) => prev.filter((s) => s.id !== slotId));
+      onBookingsChanged?.();
+    } catch (e: any) {
+      setErr(e?.message || "Impossible de supprimer le créneau.");
+    }
+  };
+
+  const upcoming = slots.filter((s) => new Date(s.starts_at).getTime() >= Date.now() - 3600_000);
+  // Historique : seuls les créneaux passés ayant eu au moins une réservation
+  // méritent d'être gardés visibles — un créneau passé et jamais réservé n'a
+  // aucune valeur à conserver à l'écran.
+  const past = slots.filter((s) => new Date(s.starts_at).getTime() < Date.now() - 3600_000 && s.bookings.length > 0);
+  const [showPast, setShowPast] = useState(false);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50">
+            <CalendarDaysIcon className="h-4 w-4 text-indigo-600" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Agenda de visite</p>
+            <p className="text-xs text-slate-500">Les candidats réservent un créneau depuis le lien de candidature.</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowForm((v) => !v)}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+        >
+          <PlusIcon className="h-3.5 w-3.5" />
+          Ajouter un créneau
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs text-slate-500">
+            Bloquez une plage horaire (ex : jeudi de 14h à 17h) — les créneaux se découpent automatiquement selon la durée choisie.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-5">
+            <label className="space-y-1">
+              <span className="text-[0.65rem] font-semibold uppercase text-slate-500">Date</span>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm" />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[0.65rem] font-semibold uppercase text-slate-500">De</span>
+              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm" />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[0.65rem] font-semibold uppercase text-slate-500">
+                À <span className="font-normal normal-case text-slate-400">(optionnel)</span>
+              </span>
+              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm" />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[0.65rem] font-semibold uppercase text-slate-500">Durée (min)</span>
+              <input type="number" min={5} value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm" />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[0.65rem] font-semibold uppercase text-slate-500">
+                Capacité <span className="font-normal normal-case text-slate-400">(groupée)</span>
+              </span>
+              <input type="number" min={1} value={capacity} onChange={(e) => setCapacity(e.target.value)} className="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm" />
+            </label>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={createSlots}
+              disabled={saving || plannedTimes.length === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+            >
+              {saving
+                ? "Ajout…"
+                : plannedTimes.length > 1
+                ? `Créer ${plannedTimes.length} créneaux`
+                : "Créer le créneau"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {err ? <p className="text-xs font-semibold text-red-700">{err}</p> : null}
+
+      {loading ? (
+        <p className="text-xs text-slate-400">Chargement…</p>
+      ) : upcoming.length === 0 ? (
+        <p className="text-xs text-slate-400">Aucun créneau proposé pour l'instant.</p>
+      ) : (
+        <div className="space-y-3">
+          {groupSlotsByDay(upcoming).map((group) => (
+            <div key={group.dayKey}>
+              <p className="text-[0.68rem] font-semibold uppercase tracking-wide text-slate-400">{fmtDayHeading(group.items[0].starts_at)}</p>
+              <div className="mt-1 divide-y divide-slate-100">
+                {group.items.map((slot) => {
+                  const bookedCount = slot.bookings.length;
+                  return (
+                    <div key={slot.id} className="flex items-start justify-between gap-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900">
+                          {fmtSlotTime(slot.starts_at)} <span className="text-slate-400">· {slot.duration_minutes} min</span>
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {bookedCount}/{slot.capacity} réservé{bookedCount > 1 ? "s" : ""}
+                          {bookedCount > 0 ? ` — ${slot.bookings.map((b) => `${b.first_name} ${b.last_name}`).join(", ")}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            bookedCount > 0 &&
+                            !window.confirm(`${bookedCount} candidat(s) ont réservé ce créneau. Le supprimer les préviendra par email de l'annulation. Continuer ?`)
+                          ) {
+                            return;
+                          }
+                          void deleteSlot(slot.id);
+                        }}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <TrashIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {past.length > 0 && (
+        <div className="border-t border-slate-100 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowPast((v) => !v)}
+            className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+          >
+            {showPast ? "Masquer" : "Voir"} l'historique des visites ({past.length})
+          </button>
+          {showPast && (
+            <div className="mt-2 divide-y divide-slate-100">
+              {past.map((slot) => (
+                <div key={slot.id} className="py-2">
+                  <p className="text-sm text-slate-600">
+                    {fmtSlotDate(slot.starts_at)} <span className="text-slate-400">· {slot.duration_minutes} min</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    {slot.bookings.map((b) => `${b.first_name} ${b.last_name}`).join(", ")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── WorkflowOnboarding ────────────────────────────────────────────────────────
 
 const STEPS = [
@@ -494,6 +800,32 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [expandedArchive, setExpandedArchive] = useState<string | null>(null);
   const [activeLeasePropIds, setActiveLeasePropIds] = useState<Set<string>>(new Set());
+  // clé "listingId|email" -> date de la prochaine visite réservée, pour croiser
+  // l'agenda de visite avec la liste des candidatures (jointure par email).
+  const [visitByEmail, setVisitByEmail] = useState<Map<string, string>>(new Map());
+
+  const loadVisitBookings = async () => {
+    try {
+      const headers = await getHeaders();
+      const resp = await fetch(`/api/candidature/visits/bookings-summary?userId=${userId}`, { headers });
+      const json = await resp.json();
+      if (!resp.ok) return;
+      const map = new Map<string, string>();
+      for (const b of json.bookings || []) {
+        if (!b.email || !b.listing_id || !b.starts_at) continue;
+        const key = `${b.listing_id}|${b.email}`;
+        const existing = map.get(key);
+        if (!existing || b.starts_at < existing) map.set(key, b.starts_at);
+      }
+      setVisitByEmail(map);
+    } catch {
+      // non bloquant : l'absence de badge de visite ne doit jamais empêcher d'afficher les candidatures
+    }
+  };
+
+  useEffect(() => {
+    if (userId) void loadVisitBookings();
+  }, [userId]);
 
   const [form, setForm] = useState({
     title: "", address: "", rent_amount: "", charges_amount: "",
@@ -1024,6 +1356,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                             updating={false}
                             converting={convertingId === c.id}
                             hasBail={!!(currentListing.property_id && activeLeasePropIds.has(currentListing.property_id))}
+                            visitAt={visitByEmail.get(`${currentListing.id}|${(c.email || "").toLowerCase()}`)}
                             onUpdateStatus={() => {}}
                             onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
                             onCreateBail={() => navigateToBailCreate(c, currentListing.property_id)}
@@ -1040,6 +1373,8 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                 /* ── Vue annonce active ── */
                 <>
                   <SharePanel listing={currentListing} copied={copied} onCopy={copyLink} />
+
+                  <VisitSlotsPanel userId={userId} listing={currentListing} onBookingsChanged={loadVisitBookings} />
 
                   <SynthesisPanel candidatures={currentListing.candidatures} listing={currentListing} />
 
@@ -1078,6 +1413,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                               updating={updatingId === c.id}
                               converting={convertingId === c.id}
                               hasBail={!!(currentListing.property_id && activeLeasePropIds.has(currentListing.property_id))}
+                              visitAt={visitByEmail.get(`${currentListing.id}|${(c.email || "").toLowerCase()}`)}
                               onUpdateStatus={(status) => updateStatus(c.id, status)}
                               onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
                               onCreateBail={() => navigateToBailCreate(c, currentListing.property_id)}
@@ -1101,6 +1437,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                             updating={updatingId === c.id}
                             converting={convertingId === c.id}
                             hasBail={!!(currentListing.property_id && activeLeasePropIds.has(currentListing.property_id))}
+                            visitAt={visitByEmail.get(`${currentListing.id}|${(c.email || "").toLowerCase()}`)}
                             onUpdateStatus={(status) => updateStatus(c.id, status)}
                             onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), currentListing.property_id)}
                             onCreateBail={() => navigateToBailCreate(c, currentListing.property_id)}
@@ -1299,6 +1636,7 @@ export function SectionCandidatures({ userId, onNavigate, onNavigateDeep, onRefr
                                   updating={false}
                                   converting={convertingId === c.id}
                                   hasBail={!!(l.property_id && activeLeasePropIds.has(l.property_id))}
+                                  visitAt={visitByEmail.get(`${l.id}|${(c.email || "").toLowerCase()}`)}
                                   onUpdateStatus={() => {}}
                                   onConvert={() => convertToTenant(c.id, `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim(), l.property_id)}
                                   onCreateBail={() => navigateToBailCreate(c, l.property_id)}
@@ -1359,12 +1697,13 @@ const SITUATION_SHORT: Record<string, string> = {
   etudiant: "Étud.", retraite: "Retraité", autre: "Autre",
 };
 
-function CandidatureRow({ c, listing, updating, converting, hasBail, onUpdateStatus, onConvert, onCreateBail }: {
+function CandidatureRow({ c, listing, updating, converting, hasBail, visitAt, onUpdateStatus, onConvert, onCreateBail }: {
   c: Candidature;
   listing: Listing;
   updating: boolean;
   converting: boolean;
   hasBail?: boolean;
+  visitAt?: string;
   onUpdateStatus: (status: string) => void;
   onConvert: () => void;
   onCreateBail?: () => void;
@@ -1401,6 +1740,20 @@ function CandidatureRow({ c, listing, updating, converting, hasBail, onUpdateSta
               <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[0.62rem] font-semibold text-indigo-700">
                 <ShieldCheckIcon className="h-3 w-3" />
                 Garant
+              </span>
+            )}
+            {visitAt && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.62rem] font-semibold ${
+                  new Date(visitAt).getTime() < Date.now() ? "bg-slate-100 text-slate-600" : "bg-cyan-50 text-cyan-700"
+                }`}
+                title={new Date(visitAt).toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+              >
+                <CalendarDaysIcon className="h-3 w-3" />
+                {new Date(visitAt).getTime() < Date.now() ? "Visité le " : "Visite le "}
+                {new Date(visitAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                {" à "}
+                {new Date(visitAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
               </span>
             )}
           </div>
