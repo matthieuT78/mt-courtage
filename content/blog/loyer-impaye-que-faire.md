@@ -140,6 +140,8 @@ Avant toute demande d'expulsion, vous devez faire délivrer un **commandement de
 
 Coût : 150 à 300 € selon l'huissier.
 
+**Si le locataire semble avoir quitté les lieux sans donner de nouvelles** (courrier non relevé, logement visiblement inoccupé), une autre voie existe : la [procédure d'abandon de logement](/blog/abandon-de-logement-locataire-parti-sans-prevenir), souvent plus rapide qu'une expulsion classique lorsque personne ne se manifeste jamais.
+
 ---
 
 ## Étape 7 — L'audience et le jugement

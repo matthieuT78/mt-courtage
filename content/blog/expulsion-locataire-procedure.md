@@ -40,6 +40,8 @@ La loi française protège fortement le locataire. L'expulsion n'est possible qu
 
 **Occupation sans droit ni titre** : pour les squatteurs (qui n'ont jamais eu de bail), une procédure plus rapide existe depuis la loi du 27 juillet 2023 — mais elle ne s'applique pas aux locataires qui avaient un bail et sont restés.
 
+**À l'inverse, si le locataire a disparu** sans donner de nouvelles et que le logement semble inoccupé, ce n'est pas l'expulsion classique qui s'applique mais la [procédure d'abandon de logement](/blog/abandon-de-logement-locataire-parti-sans-prevenir), plus rapide dans ce cas précis.
+
 ---
 
 ## La procédure complète étape par étape
