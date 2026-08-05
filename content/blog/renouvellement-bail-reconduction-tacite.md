@@ -64,7 +64,7 @@ C'est le sujet qui génère le plus de confusion. Beaucoup de bailleurs pensent,
 
 ### Le principe : la révision annuelle IRL continue de s'appliquer normalement
 
-Que le bail soit reconduit tacitement ou non, la clause de révision annuelle indexée sur l'**indice de référence des loyers (IRL)** publié trimestriellement par l'Insee continue de s'appliquer exactement comme en cours de bail, à la date anniversaire prévue au contrat. Le renouvellement du bail n'a, en lui-même, aucun effet sur cette mécanique : ni accélérateur, ni frein.
+Que le bail soit reconduit tacitement ou non, la clause de révision annuelle indexée sur l'[indice de référence des loyers (IRL)](/blog/irl-indice-reference-loyers-2026) publié trimestriellement par l'Insee continue de s'appliquer exactement comme en cours de bail, à la date anniversaire prévue au contrat. Le renouvellement du bail n'a, en lui-même, aucun effet sur cette mécanique : ni accélérateur, ni frein.
 
 ### L'exception : la réévaluation d'un loyer manifestement sous-évalué
 
@@ -73,7 +73,7 @@ L'article 17-2 de la loi de 1989 ouvre une possibilité de réévaluation plus s
 - Le bailleur doit démontrer que le loyer actuel est **manifestement sous-évalué** par comparaison avec au moins trois références de loyers de logements comparables dans le même secteur géographique (par leurs caractéristiques : surface, prestations, date de construction).
 - La notification doit être envoyée **au moins 6 mois avant l'échéance du bail**, par lettre recommandée avec accusé de réception ou acte de commissaire de justice, en précisant le montant du loyer proposé et les références justificatives.
 - La hausse ne peut pas être appliquée en une seule fois si elle dépasse un certain seuil : elle est **étalée sur plusieurs années** (par tiers ou par sixième selon les cas, avec un plancher de hausse annuelle minimale garanti au bailleur), afin de ne pas déstabiliser brutalement le budget du locataire.
-- Cette procédure est **totalement inapplicable dans les zones tendues** soumises à l'encadrement des loyers (Paris, la plupart des grandes métropoles) : dans ces zones, le loyer de relocation et de renouvellement est plafonné par référence à un loyer médian de référence, ce qui rend la démonstration d'une sous-évaluation largement sans effet pratique.
+- Cette procédure est **totalement inapplicable dans les [zones tendues soumises à l'encadrement des loyers](/blog/encadrement-des-loyers-2026-guide)** (Paris, la plupart des grandes métropoles) : dans ces zones, le loyer de relocation et de renouvellement est plafonné par référence à un loyer médian de référence, ce qui rend la démonstration d'une sous-évaluation largement sans effet pratique.
 - Cette procédure est également **inapplicable si le logement est classé F ou G au DPE** (voir plus bas) : le gel du loyer prime sur toute tentative de réévaluation, quelle que soit la sous-évaluation réelle par rapport au marché.
 
 En pratique, cette voie de réévaluation reste peu utilisée : elle est lourde à mettre en œuvre, nécessite de solides références comparables, et son bénéfice financier est étalé sur plusieurs années — ce qui la rend surtout pertinente pour des loyers très anciens, restés inchangés depuis de nombreuses années sans application régulière de l'IRL.
@@ -101,7 +101,7 @@ Cette majoration se négocie soit directement avec le locataire en cours de bail
 
 ### Le cas des logements classés F ou G au DPE
 
-Depuis août 2022, les logements classés **G** au diagnostic de performance énergétique ne peuvent plus voir leur loyer augmenté, **ni en cours de bail, ni au renouvellement, ni lors d'un changement de locataire** — cette interdiction a ensuite été étendue aux logements classés **F**. Cette règle prime sur toutes les autres : ni la révision IRL classique, ni la procédure de réévaluation pour sous-évaluation ne peuvent s'appliquer tant que le logement reste dans ces classes énergétiques. Seuls des travaux de rénovation qui font sortir le logement de ces catégories permettent de retrouver la possibilité de réviser le loyer normalement.
+Depuis août 2022, les [logements classés G ou F au diagnostic de performance énergétique](/blog/dpe-passoire-thermique-que-faire) ne peuvent plus voir leur loyer augmenté, **ni en cours de bail, ni au renouvellement, ni lors d'un changement de locataire** — cette interdiction a ensuite été étendue aux logements classés **F**. Cette règle prime sur toutes les autres : ni la révision IRL classique, ni la procédure de réévaluation pour sous-évaluation ne peuvent s'appliquer tant que le logement reste dans ces classes énergétiques. Seuls des travaux de rénovation qui font sortir le logement de ces catégories permettent de retrouver la possibilité de réviser le loyer normalement.
 
 ---
 
@@ -113,7 +113,7 @@ Formulée ainsi, la question part d'un malentendu fréquent : en droit français
 2. **La reprise pour habiter**, le bailleur ou un proche (conjoint, partenaire de Pacs, concubin notoire, ascendant ou descendant du bailleur ou de son conjoint) souhaitant occuper le logement à titre de résidence principale.
 3. **Un motif légitime et sérieux**, catégorie plus rare qui recouvre par exemple des manquements répétés du locataire à ses obligations (troubles de voisinage avérés, retards de paiement chroniques sans procédure d'impayé formalisée).
 
-Le préavis à respecter est de **6 mois avant l'échéance du bail pour une location vide**, et de **3 mois pour une location meublée**. Un congé délivré hors délai, mal motivé, ou ne respectant pas le formalisme requis (lettre recommandée avec accusé de réception ou acte de commissaire de justice, mention explicite du motif) est nul — et le bail se reconduit alors tacitement, malgré l'intention du bailleur.
+Le [préavis à respecter](/blog/preavis-locataire-duree-regles) est de **6 mois avant l'échéance du bail pour une location vide**, et de **3 mois pour une location meublée**. Un congé délivré hors délai, mal motivé, ou ne respectant pas le formalisme requis (lettre recommandée avec accusé de réception ou acte de commissaire de justice, mention explicite du motif) est nul — et le bail se reconduit alors tacitement, malgré l'intention du bailleur.
 
 C'est l'un des pièges les plus fréquents : un bailleur qui envoie son congé cinq mois avant l'échéance au lieu de six, ou qui omet de motiver précisément la reprise pour habiter, voit son congé invalidé et se retrouve engagé pour un nouveau cycle complet de 3 ans (ou 1 an en meublé), sans possibilité de rattraper l'erreur avant la prochaine échéance.
 
@@ -133,7 +133,7 @@ Ces ajustements nécessitent la signature des deux parties : ils ne peuvent pas 
 
 ## Le dépôt de garantie ne bouge pas au renouvellement
 
-Un doute fréquent concerne le sort du dépôt de garantie lors d'une reconduction tacite : faut-il le restituer et en redemander un nouveau, l'actualiser au niveau du loyer révisé, ou le laisser inchangé ? La réponse est simple : **le dépôt de garantie initial reste en l'état**, sans restitution ni nouvel encaissement, tant que le même locataire reste dans les lieux dans le cadre du même bail reconduit. Il n'est ni obligatoire ni même légal de réévaluer le dépôt de garantie au rythme des révisions annuelles de loyer — son montant reste figé à celui fixé lors de la signature initiale du bail, quelle que soit l'évolution du loyer depuis.
+Un doute fréquent concerne le [sort du dépôt de garantie](/blog/depot-de-garantie-restitution-delais-retenues) lors d'une reconduction tacite : faut-il le restituer et en redemander un nouveau, l'actualiser au niveau du loyer révisé, ou le laisser inchangé ? La réponse est simple : **le dépôt de garantie initial reste en l'état**, sans restitution ni nouvel encaissement, tant que le même locataire reste dans les lieux dans le cadre du même bail reconduit. Il n'est ni obligatoire ni même légal de réévaluer le dépôt de garantie au rythme des révisions annuelles de loyer — son montant reste figé à celui fixé lors de la signature initiale du bail, quelle que soit l'évolution du loyer depuis.
 
 Ce n'est qu'en cas de signature d'un tout nouveau bail avec le même locataire (et non d'une simple reconduction tacite ou d'un avenant) que la question d'un ajustement du dépôt de garantie au nouveau loyer peut légitimement se poser.
 
@@ -188,3 +188,15 @@ Pour un bailleur en location vide, les six mois précédant l'échéance trienna
 ## Ce qu'il faut retenir
 
 La reconduction tacite est le mécanisme par défaut : sans congé régulier de l'une des parties, le bail se poursuit automatiquement pour une durée identique, sans aucune formalité côté bailleur. Le loyer, lui, reste très largement encadré même au renouvellement — la révision annuelle IRL continue de s'appliquer normalement, mais toute réévaluation plus significative suppose une procédure spécifique, longue, étalée dans le temps, et totalement fermée en zone tendue ou pour un logement classé F ou G au DPE. Le seul véritable levier du bailleur pour ne pas reconduire un bail reste le congé dans les formes et délais légaux — vente, reprise pour habiter, ou motif légitime et sérieux — et non un hypothétique "refus de renouvellement" qui n'existe pas en tant que tel dans la loi de 1989.
+
+---
+
+## Outils pratiques
+
+- [IRL : indice de référence des loyers 2026](/blog/irl-indice-reference-loyers-2026) — calculer la révision annuelle applicable
+- [Modèle de notification de révision de loyer](/modele-notification-revision-loyer) — le document à envoyer au locataire
+- [Durée et règles du préavis locataire](/blog/preavis-locataire-duree-regles) — l'autre sens du congé, quand c'est le locataire qui part
+
+---
+
+*Suivez les échéances de vos baux, les révisions IRL et les alertes de renouvellement en un seul endroit depuis l'[espace bailleur lokt.fr](/outil-gestion-locative) — pour ne jamais manquer le délai de six mois avant une échéance.*

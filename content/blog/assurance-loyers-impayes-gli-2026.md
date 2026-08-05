@@ -172,7 +172,7 @@ Vous pouvez soit trouver un autre locataire au profil compatible, soit opter pou
 
 ### La GLI couvre-t-elle les sous-locations non autorisées ?
 
-Non. Si le locataire sous-loue sans autorisation et que le sous-locataire est défaillant, la GLI peut refuser de jouer. La sous-location doit être expressément prévue et autorisée dans le bail.
+Non. Si le locataire [sous-loue sans autorisation](/blog/sous-location-non-autorisee-recours-bailleur) et que le sous-locataire est défaillant, la GLI peut refuser de jouer. La sous-location doit être expressément prévue et autorisée dans le bail.
 
 ### Y a-t-il une obligation de déclarer le sinistre dans un délai donné ?
 

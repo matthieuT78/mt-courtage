@@ -122,7 +122,7 @@ Le rendement plus élevé de la colocation meublée, combiné à l'amortissement
 
 **Assurance du locataire :** chaque colocataire doit être couvert par une assurance habitation (responsabilité civile). Demandez une attestation à chaque signataire. Certaines compagnies proposent des contrats multi-risques colocation couvrant tous les occupants sous un seul contrat.
 
-**Animaux, sous-location, travaux :** ces clauses s'appliquent à tous les colocataires solidairement. Un seul colocataire qui sous-loue sans accord engage la responsabilité de tous.
+**Animaux, sous-location, travaux :** ces clauses s'appliquent à tous les colocataires solidairement. Un seul colocataire qui [sous-loue sans accord](/blog/sous-location-non-autorisee-recours-bailleur) engage la responsabilité de tous.
 
 **Baux individuels et GLI :** si vous optez pour des baux individuels, la GLI est plus simple à souscrire (un contrat par bail). En bail unique, certains assureurs excluent la colocation ou appliquent des surprimes — vérifiez avant de signer.
 

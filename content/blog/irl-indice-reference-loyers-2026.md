@@ -122,7 +122,7 @@ Les communes soumises à l'encadrement sont listées par arrêté préfectoral. 
 Non, sauf exceptions limitées :
 
 - **Travaux d'amélioration** réalisés par le bailleur entre deux locataires ou en accord avec le locataire en cours de bail : une majoration complémentaire est possible, plafonnée et encadrée
-- **Loyer manifestement sous-évalué** : à la relocation ou au renouvellement triennal, vous pouvez proposer un loyer aligné sur le marché selon une procédure spécifique (comparaison avec 6 logements de référence)
+- **Loyer manifestement sous-évalué** : à la relocation ou au [renouvellement triennal](/blog/renouvellement-bail-reconduction-tacite), vous pouvez proposer un loyer aligné sur le marché selon une procédure spécifique (comparaison avec 6 logements de référence)
 
 En dehors de ces cas, toute hausse au-delà de l'IRL est illégale et le locataire peut en demander l'annulation.
 

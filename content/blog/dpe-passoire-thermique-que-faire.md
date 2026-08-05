@@ -28,7 +28,7 @@ Depuis le 1er janvier 2025, les logements classés G ne peuvent plus être mis e
 
 ## Gel des loyers : une sanction déjà active
 
-Depuis août 2022, les propriétaires de passoires thermiques (F et G) ne peuvent **plus augmenter leur loyer**, ni lors du renouvellement du bail, ni lors d'un changement de locataire.
+Depuis août 2022, les propriétaires de passoires thermiques (F et G) ne peuvent **plus augmenter leur loyer**, ni lors du [renouvellement du bail](/blog/renouvellement-bail-reconduction-tacite), ni lors d'un changement de locataire.
 
 Ce gel s'applique même en zone tendue et même si l'IRL augmente. Concrètement :
 

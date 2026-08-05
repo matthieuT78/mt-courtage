@@ -95,7 +95,7 @@ Cette règle change fondamentalement le rapport de force : un bailleur qui déco
 
 ### 3. Le cas spécifique des meublés de tourisme (Airbnb, Booking)
 
-Sous-louer un logement en meublé de tourisme sans autorisation du bailleur expose en plus le locataire aux sanctions propres à cette réglementation, indépendamment du litige avec le bailleur :
+Sous-louer un logement en [meublé de tourisme](/blog/meuble-tourisme-airbnb-reglementation-2026) sans autorisation du bailleur expose en plus le locataire aux sanctions propres à cette réglementation, indépendamment du litige avec le bailleur :
 
 - Dans les communes ayant instauré une procédure de changement d'usage (Paris, Lyon, Bordeaux, Nice, et la majorité des grandes villes et zones tendues), louer un logement en meublé de tourisme sans déclaration préalable en mairie est passible d'une **amende civile pouvant atteindre 50 000 € par logement**, prononcée par le tribunal judiciaire à la demande de la commune.
 - Le locataire n'étant pas propriétaire, il ne peut de toute façon jamais valablement déclarer le logement en meublé de tourisme en son nom propre sans usurper la position du bailleur — ce qui aggrave sa situation en cas de contrôle municipal.
@@ -119,7 +119,7 @@ Cette distinction a une conséquence pratique importante pour les bailleurs : h�
 
 ## Le cas particulier de la colocation : sous-location entre colocataires
 
-Dans une colocation avec un bail unique et une clause de solidarité, un problème spécifique se pose régulièrement : l'un des colocataires quitte le logement en cours de bail et "cède" sa chambre à un tiers de son choix, sans en informer le bailleur ni faire signer d'avenant.
+Dans une [colocation avec un bail unique et une clause de solidarité](/blog/colocation-bail-gestion-bailleur-2026), un problème spécifique se pose régulièrement : l'un des colocataires quitte le logement en cours de bail et "cède" sa chambre à un tiers de son choix, sans en informer le bailleur ni faire signer d'avenant.
 
 Juridiquement, cette situation constitue elle aussi une sous-location non autorisée — le nouveau venu n'a signé aucun bail avec le bailleur et n'a donc aucun droit d'occupation opposable. Deux risques en découlent :
 
@@ -151,7 +151,7 @@ Si le bailleur découvre la situation, il peut, sur le fondement de la jurisprud
 2. **Adresser une mise en demeure** au locataire par lettre recommandée avec accusé de réception, lui demandant de cesser immédiatement la sous-location et de fournir des explications sous un délai raisonnable (15 jours en pratique).
 3. **Si la clause résolutoire s'applique**, faire délivrer un commandement de cesser l'infraction par un commissaire de justice (ex-huissier). C'est un acte formel, obligatoire avant toute action judiciaire en résiliation sur ce fondement.
 4. **Sans réaction du locataire**, saisir le tribunal judiciaire du lieu du logement pour faire constater la résiliation du bail et, le cas échéant, réclamer la restitution des sommes perçues au titre de la sous-location ainsi que des dommages et intérêts pour le préjudice propre (usure, trouble de jouissance, dégradation d'image de la copropriété...).
-5. **Demander l'expulsion** si le locataire ne quitte pas les lieux volontairement une fois la résiliation prononcée, selon la procédure classique d'expulsion locative (commandement de quitter les lieux, concours de la force publique en dernier recours).
+5. **Demander l'expulsion** si le locataire ne quitte pas les lieux volontairement une fois la résiliation prononcée, selon la [procédure classique d'expulsion locative](/blog/expulsion-locataire-procedure) (commandement de quitter les lieux, concours de la force publique en dernier recours).
 
 Cette procédure prend du temps — comptez plusieurs mois entre la mise en demeure et une décision de justice définitive. C'est pourquoi la détection précoce et la solidité du dossier de preuves sont déterminantes.
 
@@ -161,8 +161,8 @@ Cette procédure prend du temps — comptez plusieurs mois entre la mise en deme
 
 La sous-location non autorisée fragilise aussi la couverture assurantielle du bailleur, sur deux plans :
 
-- **La garantie loyers impayés (GLI)** ne joue généralement pas si le locataire sous-loue sans autorisation et que c'est le sous-locataire, non couvert par le contrat souscrit sur le locataire principal, qui cesse de payer. La sous-location doit être expressément prévue et autorisée dans le bail pour que la GLI continue de s'appliquer normalement.
-- **L'assurance propriétaire non occupant (PNO)** du bailleur peut voir sa couverture contestée par l'assureur en cas de sinistre survenu pendant une période de sous-location non déclarée et non autorisée, notamment si l'usage réel du logement (meublé de tourisme à rotation rapide) diffère significativement de l'usage déclaré à la souscription du contrat.
+- **La [garantie loyers impayés (GLI)](/blog/assurance-loyers-impayes-gli-2026)** ne joue généralement pas si le locataire sous-loue sans autorisation et que c'est le sous-locataire, non couvert par le contrat souscrit sur le locataire principal, qui cesse de payer. La sous-location doit être expressément prévue et autorisée dans le bail pour que la GLI continue de s'appliquer normalement.
+- **L'[assurance propriétaire non occupant (PNO)](/blog/assurance-pno-proprietaire-non-occupant)** du bailleur peut voir sa couverture contestée par l'assureur en cas de sinistre survenu pendant une période de sous-location non déclarée et non autorisée, notamment si l'usage réel du logement (meublé de tourisme à rotation rapide) diffère significativement de l'usage déclaré à la souscription du contrat.
 
 Un sinistre survenant précisément pendant une sous-location irrégulière peut donc se solder par un double problème : un refus de prise en charge assurantielle, en plus du litige avec le locataire.
 
@@ -195,3 +195,15 @@ Pour le bailleur, il est donc utile d'aborder la première prise de contact non 
 ## Ce qu'il faut retenir
 
 La sous-location sans accord écrit du bailleur, portant sur le principe ET sur le loyer, est purement et simplement interdite — quelle que soit sa durée ou son caractère gratuit. Elle expose le locataire à la résiliation de son bail et, depuis la jurisprudence de 2019, à devoir restituer l'intégralité des sommes perçues, indépendamment du préjudice réel du bailleur. Pour l'Airbnb sans autorisation en zone réglementée, s'ajoutent des sanctions municipales pouvant atteindre 50 000 € par logement. Côté bailleur, la clé est la détection précoce, la constitution d'un dossier de preuves solide, et une clause de bail suffisamment claire pour activer une résiliation rapide en cas de manquement avéré.
+
+---
+
+## Outils pratiques
+
+- [GLI 2026 : assurance loyers impayés](/blog/assurance-loyers-impayes-gli-2026) — vérifier ce qui reste couvert (ou non) en cas de sous-location
+- [Colocation et bail unique](/blog/colocation-bail-gestion-bailleur-2026) — la clause de solidarité et ses effets sur un changement de colocataire
+- [Procédure d'expulsion locative](/blog/expulsion-locataire-procedure) — la suite si le locataire ne quitte pas les lieux après résiliation
+
+---
+
+*Suivez vos baux, vos locataires et vos alertes en un seul endroit depuis l'[espace bailleur lokt.fr](/outil-gestion-locative) — pour repérer une situation irrégulière avant qu'elle ne s'installe.*

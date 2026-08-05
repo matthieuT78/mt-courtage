@@ -32,9 +32,11 @@ La loi française protège fortement le locataire. L'expulsion n'est possible qu
 
 **Loyers impayés** : c'est le motif le plus fréquent. La clause résolutoire inscrite dans le bail permet de déclencher la procédure dès le premier impayé, mais en pratique les délais laissent du temps au locataire pour régulariser.
 
-**Fin de bail non respectée** : le locataire maintenu dans les lieux après la fin du bail sans renouvellement, malgré un congé régulier donné par le bailleur (vente, reprise pour habiter, motif légitime).
+**Fin de bail non respectée** : le locataire maintenu dans les lieux après la fin du bail sans [renouvellement](/blog/renouvellement-bail-reconduction-tacite), malgré un congé régulier donné par le bailleur (vente, reprise pour habiter, motif légitime).
 
 **Troubles de voisinage graves** : si le locataire cause des nuisances répétées et graves documentées, la résiliation judiciaire du bail est possible — mais c'est une procédure distincte, plus longue à démontrer.
+
+**[Sous-location non autorisée](/blog/sous-location-non-autorisee-recours-bailleur)** : manquement grave aux obligations du locataire, qui peut également déclencher la clause résolutoire lorsque le bail la prévoit expressément.
 
 **Occupation sans droit ni titre** : pour les squatteurs (qui n'ont jamais eu de bail), une procédure plus rapide existe depuis la loi du 27 juillet 2023 — mais elle ne s'applique pas aux locataires qui avaient un bail et sont restés.
 

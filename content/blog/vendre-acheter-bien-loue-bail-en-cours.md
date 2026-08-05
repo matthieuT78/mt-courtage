@@ -176,7 +176,7 @@ Acheter un immeuble entier occupé par plusieurs locataires multiplie les princi
 | Vous vendez un bien occupé, sans donner congé | Informer le locataire, prévoir le transfert du dépôt de garantie dans l'acte notarié |
 | Vous achetez un bien occupé | Exiger bail, dernières quittances et état des lieux d'entrée avant de signer |
 | Vous voulez vendre le logement libre | Donner congé pour vendre dans les délais légaux, en respectant le droit de préemption du locataire |
-| Le bail arrive à échéance juste après la vente | Vérifier si une reconduction tacite s'applique avant de faire vos plans |
+| Le bail arrive à échéance juste après la vente | Vérifier si une [reconduction tacite](/blog/renouvellement-bail-reconduction-tacite) s'applique avant de faire vos plans |
 | Un contentieux (impayés, dégradations) est en cours | Le faire figurer explicitement dans l'acte de vente pour éviter toute contestation ultérieure |
 
 ---
