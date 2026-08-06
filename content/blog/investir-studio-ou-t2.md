@@ -86,7 +86,7 @@ Le studio a un effort mensuel plus faible en valeur absolue — mais l'apport es
 Le studio est clairement gagnant dans les **villes étudiantes denses** avec une demande structurellement élevée toute l'année :
 
 - **Paris, Lyon, Bordeaux, Toulouse** : forte demande étudiante + jeunes actifs, peu de vacance même avec turnover
-- **Villes universitaires moyennes** : Rennes, Montpellier, Grenoble, Nancy — rendements bruts de 5-7 %
+- **Villes universitaires moyennes** : Rennes, Montpellier, Grenoble, [Nancy](/blog/investir-a-nancy-2026) — rendements bruts de 5-7 %
 - **Zones proches des transports et campus** : le studio bien placé se reloue en moins de 2 semaines
 
 Dans ces marchés, le turnover rapide est compensé par la facilité de relocation : la prochaine liste de candidats est déjà là.

@@ -326,7 +326,7 @@ Au-delà du plafond micro-BIC ou dès que vos charges + amortissements dépassen
 | LMNP classique (bail meublé à l'année) | **50 %** | 77 700 €/an |
 | Location nue (micro-foncier) | **30 %** | 15 000 €/an |
 
-La loi Le Meur a fondamentalement changé l'équation économique du meublé de tourisme. Pour les biens non classés dans les zones tendues, le modèle est beaucoup moins attractif qu'avant. Pour les biens classés en zones rurales ou touristiques hors zones tendues, l'avantage fiscal reste significatif. Dans tous les cas, comparer avec le LMNP classique et le régime réel BIC s'impose avant de maintenir ou d'adopter le modèle de courte durée.
+La loi Le Meur a fondamentalement changé l'équation économique du meublé de tourisme. Pour les biens non classés dans les zones tendues, le modèle est beaucoup moins attractif qu'avant. Pour les biens classés en zones rurales ou touristiques hors zones tendues, l'avantage fiscal reste significatif — c'est typiquement le cas d'une [destination comme Porto-Vecchio en Corse](/blog/investir-airbnb-porto-vecchio-corse), où l'enjeu principal n'est d'ailleurs pas tant la fiscalité que la saisonnalité extrême de la demande. Dans tous les cas, comparer avec le LMNP classique et le régime réel BIC s'impose avant de maintenir ou d'adopter le modèle de courte durée.
 
 ---
 

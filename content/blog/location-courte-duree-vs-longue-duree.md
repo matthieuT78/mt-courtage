@@ -125,7 +125,7 @@ Si vous externalisez (conciergerie) : comptez **20 à 30 % des revenus**. Ce qui
 
 ## Quand choisir la location courte durée ?
 
-✅ Votre bien est dans une **zone touristique forte** (bord de mer, montagne, centre historique d'une ville touristique)  
+✅ Votre bien est dans une **zone touristique forte** (bord de mer, montagne, centre historique d'une ville touristique — voir notre [analyse chiffrée d'un investissement à Porto-Vecchio](/blog/investir-airbnb-porto-vecchio-corse) pour un cas concret)  
 ✅ Vous avez **du temps ou un réseau de prestataires** fiables pour la gestion  
 ✅ Vous êtes dans une commune **sans restriction forte** ou avec les autorisations en ordre  
 ✅ La **superficie est petite** (studio, T2) — les grandes surfaces ont un taux d'occupation moins bon en courte durée  
