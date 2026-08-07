@@ -45,6 +45,14 @@
       "schedule": "0 10 * * *"
     },
     {
+      "path": "/api/cron/account-deletion-notice",
+      "schedule": "20 10 * * *"
+    },
+    {
+      "path": "/api/cron/account-deletion-execute",
+      "schedule": "40 10 * * *"
+    },
+    {
       "path": "/api/cron/lifecycle-emails",
       "schedule": "0 11 * * *"
     }
