@@ -26,6 +26,10 @@ export type Tenant = {
   notes: string | null;
   archived_at?: string | null;
   archived_reason?: string | null;
+  is_company?: boolean | null;
+  company_name?: string | null;
+  siret?: string | null;
+  legal_representative_name?: string | null;
   guarantor_type?: string | null;
   visale_number?: string | null;
   guarantor_first_name?: string | null;
@@ -133,6 +137,27 @@ function splitFullName(full?: string | null) {
   const parts = s.split(/\s+/);
   if (parts.length === 1) return { first: parts[0], last: "" };
   return { first: parts[0], last: parts.slice(1).join(" ") };
+}
+
+function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+        checked ? "bg-gradient-to-r from-[#635bff] to-[#00d4ff]" : "bg-slate-200"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+          checked ? "translate-x-[1.375rem]" : "translate-x-0.5"
+        }`}
+      />
+    </button>
+  );
 }
 
 function initials(first?: string | null, last?: string | null, fallbackFull?: string | null) {
@@ -439,6 +464,10 @@ export function SectionLocataires({
     phone: "",
     notes: "",
     archived_reason: "",
+    is_company: false,
+    company_name: "",
+    siret: "",
+    legal_representative_name: "",
     has_guarantor: false,
     guarantor_type: "" as "" | "individual" | "visale",
     visale_number: "",
@@ -476,6 +505,10 @@ export function SectionLocataires({
       phone: t.phone || "",
       notes: t.notes || "",
       archived_reason: t.archived_reason || "",
+      is_company: !!t.is_company,
+      company_name: t.company_name || "",
+      siret: t.siret || "",
+      legal_representative_name: t.legal_representative_name || "",
       has_guarantor: !!t.guarantor_type,
       guarantor_type: (t.guarantor_type as "" | "individual" | "visale") || "",
       visale_number: t.visale_number || "",
@@ -523,17 +556,23 @@ export function SectionLocataires({
       const form = isEdit ? editForms[tenantId!] : createForm;
       if (!form) throw new Error("Formulaire introuvable.");
 
-      const full_name = buildFullName(form.first_name, form.last_name) || "Locataire";
+      const full_name = form.is_company
+        ? form.company_name?.trim() || "Locataire professionnel"
+        : buildFullName(form.first_name, form.last_name) || "Locataire";
 
       const payload = {
         user_id: userId,
-        first_name: form.first_name?.trim() || null,
-        last_name: form.last_name?.trim() || null,
+        first_name: form.is_company ? null : form.first_name?.trim() || null,
+        last_name: form.is_company ? null : form.last_name?.trim() || null,
         full_name,
         email: form.email?.trim() || null,
         phone: form.phone?.trim() || null,
         notes: form.notes?.trim() || null,
         archived_reason: form.archived_reason?.trim() || null,
+        is_company: form.is_company,
+        company_name: form.is_company ? form.company_name?.trim() || null : null,
+        siret: form.is_company ? form.siret?.trim() || null : null,
+        legal_representative_name: form.is_company ? form.legal_representative_name?.trim() || null : null,
         guarantor_type: form.has_guarantor ? form.guarantor_type || null : null,
         visale_number: form.has_guarantor && form.guarantor_type === "visale" ? form.visale_number?.trim() || null : null,
         guarantor_first_name: form.has_guarantor ? form.guarantor_first_name?.trim() || null : null,
@@ -1205,25 +1244,68 @@ export function SectionLocataires({
 
               {expandedId === CREATE_ID ? (
                 <>
+                  <div className="mb-3 flex items-center gap-3">
+                    <Switch
+                      checked={createForm.is_company}
+                      onChange={(v) => setCreateForm((s) => ({ ...s, is_company: v }))}
+                      label="Locataire professionnel (personne morale)"
+                    />
+                    <span className="text-sm font-medium text-slate-700">Locataire professionnel (personne morale)</span>
+                  </div>
+
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <label className="text-[0.7rem] font-medium text-slate-600">Prénom</label>
-                      <input
-                        value={createForm.first_name}
-                        onChange={(e) => setCreateForm((s) => ({ ...s, first_name: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                        placeholder="Ex : Marie"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[0.7rem] font-medium text-slate-600">Nom</label>
-                      <input
-                        value={createForm.last_name}
-                        onChange={(e) => setCreateForm((s) => ({ ...s, last_name: e.target.value }))}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                        placeholder="Ex : Dupont"
-                      />
-                    </div>
+                    {createForm.is_company ? (
+                      <>
+                        <div className="space-y-1 sm:col-span-2">
+                          <label className="text-[0.7rem] font-medium text-slate-600">Raison sociale</label>
+                          <input
+                            value={createForm.company_name}
+                            onChange={(e) => setCreateForm((s) => ({ ...s, company_name: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                            placeholder="Ex : SARL Dupont"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[0.7rem] font-medium text-slate-600">SIRET</label>
+                          <input
+                            value={createForm.siret}
+                            onChange={(e) => setCreateForm((s) => ({ ...s, siret: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                            placeholder="14 chiffres"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[0.7rem] font-medium text-slate-600">Représentant légal</label>
+                          <input
+                            value={createForm.legal_representative_name}
+                            onChange={(e) => setCreateForm((s) => ({ ...s, legal_representative_name: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                            placeholder="Nom du signataire"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-1">
+                          <label className="text-[0.7rem] font-medium text-slate-600">Prénom</label>
+                          <input
+                            value={createForm.first_name}
+                            onChange={(e) => setCreateForm((s) => ({ ...s, first_name: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                            placeholder="Ex : Marie"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[0.7rem] font-medium text-slate-600">Nom</label>
+                          <input
+                            value={createForm.last_name}
+                            onChange={(e) => setCreateForm((s) => ({ ...s, last_name: e.target.value }))}
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                            placeholder="Ex : Dupont"
+                          />
+                        </div>
+                      </>
+                    )}
                     <div className="space-y-1">
                       <label className="text-[0.7rem] font-medium text-slate-600">Email</label>
                       <input
@@ -1245,6 +1327,15 @@ export function SectionLocataires({
                     </div>
                   </div>
 
+                  {createForm.is_company ? (
+                    <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                      Un bail loi du 6 juillet 1989 ne peut pas être conclu avec une personne morale (le logement doit être
+                      la résidence principale du locataire). Pour ce locataire, seule l&apos;importation d&apos;un bail
+                      rédigé par ailleurs sera proposée — Lokt ne génère pas de bail professionnel. Vous pourrez tout de
+                      même suivre la location (loyers, quittances, échéances) dans lokt.fr, avec ou sans bail importé.
+                    </p>
+                  ) : null}
+
                   <div className="mt-3 space-y-1">
                     <label className="text-[0.7rem] font-medium text-slate-600">Notes</label>
                     <textarea
@@ -1255,7 +1346,7 @@ export function SectionLocataires({
                     />
                   </div>
 
-                  {renderGuarantorFields(createForm, (patch) => setCreateForm((s) => ({ ...s, ...patch })))}
+                  {!createForm.is_company && renderGuarantorFields(createForm, (patch) => setCreateForm((s) => ({ ...s, ...patch })))}
 
                   <div className="mt-4 flex flex-wrap gap-2 items-center">
                     <button
@@ -1444,23 +1535,63 @@ export function SectionLocataires({
                         />
                       </div>
 
+                      <div className="mt-3 flex items-center gap-3">
+                        <Switch
+                          checked={f.is_company}
+                          onChange={(v) => setEditForms((m) => ({ ...m, [t.id]: { ...f, is_company: v } }))}
+                          label="Locataire professionnel (personne morale)"
+                        />
+                        <span className="text-sm font-medium text-slate-700">Locataire professionnel (personne morale)</span>
+                      </div>
+
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1">
-                          <label className="text-[0.7rem] text-slate-700">Prénom</label>
-                          <input
-                            value={f.first_name}
-                            onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, first_name: e.target.value } }))}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[0.7rem] text-slate-700">Nom</label>
-                          <input
-                            value={f.last_name}
-                            onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, last_name: e.target.value } }))}
-                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                          />
-                        </div>
+                        {f.is_company ? (
+                          <>
+                            <div className="space-y-1 sm:col-span-2">
+                              <label className="text-[0.7rem] text-slate-700">Raison sociale</label>
+                              <input
+                                value={f.company_name}
+                                onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, company_name: e.target.value } }))}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-700">SIRET</label>
+                              <input
+                                value={f.siret}
+                                onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, siret: e.target.value } }))}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-700">Représentant légal</label>
+                              <input
+                                value={f.legal_representative_name}
+                                onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, legal_representative_name: e.target.value } }))}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-700">Prénom</label>
+                              <input
+                                value={f.first_name}
+                                onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, first_name: e.target.value } }))}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[0.7rem] text-slate-700">Nom</label>
+                              <input
+                                value={f.last_name}
+                                onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, last_name: e.target.value } }))}
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                              />
+                            </div>
+                          </>
+                        )}
                         <div className="space-y-1">
                           <label className="text-[0.7rem] text-slate-700">Email</label>
                           <input
@@ -1493,6 +1624,16 @@ export function SectionLocataires({
                         </p>
                       ) : null}
 
+                      {f.is_company ? (
+                        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                          Un bail loi du 6 juillet 1989 ne peut pas être conclu avec une personne morale (le logement doit
+                          être la résidence principale du locataire). Pour ce locataire, seule l&apos;importation d&apos;un
+                          bail rédigé par ailleurs sera proposée — Lokt ne génère pas de bail professionnel. Vous pourrez
+                          tout de même suivre la location (loyers, quittances, échéances) dans lokt.fr, avec ou sans bail
+                          importé.
+                        </p>
+                      ) : null}
+
                       <div className="mt-3 space-y-1">
                         <label className="text-[0.7rem] text-slate-700">Notes</label>
                         <textarea
@@ -1503,7 +1644,7 @@ export function SectionLocataires({
                         />
                       </div>
 
-                      {renderGuarantorFields(f, (patch) => setEditForms((m) => ({ ...m, [t.id]: { ...f, ...patch } })))}
+                      {!f.is_company && renderGuarantorFields(f, (patch) => setEditForms((m) => ({ ...m, [t.id]: { ...f, ...patch } })))}
 
                       <div className="mt-3 flex flex-wrap gap-2 items-center">
                         <button

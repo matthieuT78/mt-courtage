@@ -72,6 +72,10 @@ export type Tenant = {
   status?: string | null;
   archived_at?: string | null;
   archived_reason?: string | null;
+  is_company?: boolean | null;
+  company_name?: string | null;
+  siret?: string | null;
+  legal_representative_name?: string | null;
   created_at: string;
   updated_at: string;
 };

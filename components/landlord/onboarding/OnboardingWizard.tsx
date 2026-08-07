@@ -219,6 +219,27 @@ function TextField({
   );
 }
 
+function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
+        checked ? "bg-gradient-to-r from-[#635bff] to-[#00d4ff]" : "bg-slate-200"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+          checked ? "translate-x-[1.375rem]" : "translate-x-0.5"
+        }`}
+      />
+    </button>
+  );
+}
+
 function ChoiceCard({
   label,
   hint,
@@ -350,6 +371,10 @@ export function OnboardingWizard({
   const [createdPropertyId, setCreatedPropertyId] = useState<string | null>(null);
 
   // Locataire
+  const [tenantIsCompany, setTenantIsCompany] = useState(false);
+  const [tenantCompanyName, setTenantCompanyName] = useState("");
+  const [tenantSiret, setTenantSiret] = useState("");
+  const [tenantLegalRepName, setTenantLegalRepName] = useState("");
   const [tenantFirstName, setTenantFirstName] = useState("");
   const [tenantLastName, setTenantLastName] = useState("");
   const [tenantEmail, setTenantEmail] = useState("");
@@ -379,6 +404,8 @@ export function OnboardingWizard({
 
   const targetPropertyId = createdPropertyId || properties[0]?.id || null;
   const targetTenantId = createdTenantId || tenants[0]?.id || null;
+  const targetTenant = tenants.find((t) => t.id === targetTenantId) || null;
+  const targetTenantIsCompany = targetTenant ? !!targetTenant.is_company : tenantIsCompany;
 
   const goToStep = (index: number) => {
     if (index < 0 || index >= STEP_DEFS.length) return;
@@ -454,7 +481,11 @@ export function OnboardingWizard({
 
   /* -------------------- Étape 3 : Locataire -------------------- */
   const submitLocataire = async () => {
-    if (!tenantFirstName.trim() || !tenantLastName.trim()) return setErr("Prénom et nom du locataire sont obligatoires.");
+    if (tenantIsCompany) {
+      if (!tenantCompanyName.trim()) return setErr("La raison sociale du locataire est obligatoire.");
+    } else if (!tenantFirstName.trim() || !tenantLastName.trim()) {
+      return setErr("Prénom et nom du locataire sont obligatoires.");
+    }
     if (tenantEmail.trim() && !isEmailLike(tenantEmail)) return setErr("Email locataire invalide.");
     if (!supabase) return setErr("Supabase non initialisé.");
     setSaving(true);
@@ -465,11 +496,15 @@ export function OnboardingWizard({
         .from("tenants")
         .insert({
           user_id: userId,
-          first_name: tenantFirstName.trim(),
-          last_name: tenantLastName.trim(),
-          full_name: buildFullName(tenantFirstName, tenantLastName) || "Locataire",
+          first_name: tenantIsCompany ? null : tenantFirstName.trim(),
+          last_name: tenantIsCompany ? null : tenantLastName.trim(),
+          full_name: tenantIsCompany ? tenantCompanyName.trim() || "Locataire professionnel" : buildFullName(tenantFirstName, tenantLastName) || "Locataire",
           email: tenantEmail.trim() || null,
           phone: tenantPhone.trim() || null,
+          is_company: tenantIsCompany,
+          company_name: tenantIsCompany ? tenantCompanyName.trim() || null : null,
+          siret: tenantIsCompany ? tenantSiret.trim() || null : null,
+          legal_representative_name: tenantIsCompany ? tenantLegalRepName.trim() || null : null,
         })
         .select("id")
         .single();
@@ -736,10 +771,30 @@ export function OnboardingWizard({
                 </>
               }
             >
-              <div className="grid gap-3 sm:grid-cols-2">
-                <TextField label="Prénom" value={tenantFirstName} onChange={setTenantFirstName} required />
-                <TextField label="Nom" value={tenantLastName} onChange={setTenantLastName} required />
+              <div className="mb-1 flex items-center gap-3">
+                <Switch checked={tenantIsCompany} onChange={setTenantIsCompany} label="Locataire professionnel (personne morale)" />
+                <span className="text-sm font-medium text-slate-700">Locataire professionnel (personne morale)</span>
               </div>
+
+              {tenantIsCompany ? (
+                <>
+                  <TextField label="Raison sociale" value={tenantCompanyName} onChange={setTenantCompanyName} required />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <TextField label="SIRET" value={tenantSiret} onChange={setTenantSiret} placeholder="14 chiffres" />
+                    <TextField label="Représentant légal" value={tenantLegalRepName} onChange={setTenantLegalRepName} placeholder="Nom du signataire" />
+                  </div>
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                    Un bail loi du 6 juillet 1989 ne peut pas être conclu avec une personne morale. lokt.fr ne génère pas de
+                    bail professionnel — vous pourrez importer un bail rédigé par ailleurs à l'étape suivante. Le suivi de
+                    la location (loyers, quittances, échéances) reste possible dans lokt.fr, avec ou sans bail importé.
+                  </p>
+                </>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <TextField label="Prénom" value={tenantFirstName} onChange={setTenantFirstName} required />
+                  <TextField label="Nom" value={tenantLastName} onChange={setTenantLastName} required />
+                </div>
+              )}
               <TextField label="Email" value={tenantEmail} onChange={setTenantEmail} type="email" placeholder="locataire@email.fr" />
               <TextField label="Téléphone" value={tenantPhone} onChange={setTenantPhone} placeholder="06 12 34 56 78" />
             </StepShell>
@@ -760,17 +815,30 @@ export function OnboardingWizard({
                     <span className="text-sm font-semibold text-slate-900">Oui, le bail existe déjà</span>
                     <span className="text-xs leading-5 text-slate-500">Je configure juste le suivi (loyer, dates) dans lokt.fr.</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setLeaseChoice("new")}
-                    className="flex flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-[#635bff]/50 hover:bg-indigo-50/40"
-                  >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-[#635bff]">
-                      <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <span className="text-sm font-semibold text-slate-900">Non, j'ai besoin de le créer</span>
-                    <span className="text-xs leading-5 text-slate-500">lokt.fr génère un vrai contrat de bail à faire signer.</span>
-                  </button>
+                  {targetTenantIsCompany ? (
+                    <div className="flex flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left opacity-70">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-200 text-slate-500">
+                        <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <span className="text-sm font-semibold text-slate-500">Non, j'ai besoin de le créer</span>
+                      <span className="text-xs leading-5 text-slate-500">
+                        Indisponible pour un locataire professionnel — le bail loi de 1989 ne s'applique pas aux personnes
+                        morales. Importez votre bail depuis l'étape "Locations" une fois l'onboarding terminé.
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setLeaseChoice("new")}
+                      className="flex flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-[#635bff]/50 hover:bg-indigo-50/40"
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-[#635bff]">
+                        <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <span className="text-sm font-semibold text-slate-900">Non, j'ai besoin de le créer</span>
+                      <span className="text-xs leading-5 text-slate-500">lokt.fr génère un vrai contrat de bail à faire signer.</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </StepShell>
