@@ -53,8 +53,9 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = Object.fromEntries(PROPERTY
 const propertyTypeMeta = (type?: string | null) => PROPERTY_TYPES.find((t) => t.key === type) || PROPERTY_TYPES[PROPERTY_TYPES.length - 1];
 
 const DPE_OPTIONS = ["", "A", "B", "C", "D", "E", "F", "G"] as const;
-// Couleurs officielles de l'étiquette énergie (DPE/GES) — le code couleur est
-// universellement reconnu, plus parlant qu'une icône générique pour ces classes.
+// Couleurs officielles de l'étiquette énergie (DPE : vert → rouge, GES : mauve
+// clair → violet foncé) — le code couleur est universellement reconnu (arrêté
+// du 22 décembre 2021), plus parlant qu'une icône générique pour ces classes.
 const DPE_COLORS: Record<string, string> = {
   A: "bg-[#00A651] text-white",
   B: "bg-[#4CB848] text-white",
@@ -64,6 +65,41 @@ const DPE_COLORS: Record<string, string> = {
   F: "bg-[#F26A21] text-white",
   G: "bg-[#ED1C24] text-white",
 };
+const GES_COLORS: Record<string, string> = {
+  A: "bg-[#EFE6F6] text-slate-900",
+  B: "bg-[#DCC7EE] text-slate-900",
+  C: "bg-[#C9A8E6] text-slate-900",
+  D: "bg-[#B389DD] text-slate-900",
+  E: "bg-[#9B68D2] text-white",
+  F: "bg-[#7F45C4] text-white",
+  G: "bg-[#5E2A99] text-white",
+};
+// Plages officielles associées à chaque classe (arrêté du 22 décembre 2021).
+const DPE_RANGES: Record<string, string> = {
+  A: "≤ 50 kWh/m²/an",
+  B: "51 à 90 kWh/m²/an",
+  C: "91 à 150 kWh/m²/an",
+  D: "151 à 230 kWh/m²/an",
+  E: "231 à 330 kWh/m²/an",
+  F: "331 à 450 kWh/m²/an",
+  G: "> 450 kWh/m²/an",
+};
+const GES_RANGES: Record<string, string> = {
+  A: "≤ 5 kg CO₂/m²/an",
+  B: "6 à 10 kg CO₂/m²/an",
+  C: "11 à 20 kg CO₂/m²/an",
+  D: "21 à 35 kg CO₂/m²/an",
+  E: "36 à 55 kg CO₂/m²/an",
+  F: "56 à 80 kg CO₂/m²/an",
+  G: "> 80 kg CO₂/m²/an",
+};
+function classPill(prefix: string, letter: string, colors: Record<string, string>) {
+  return (
+    <span className={cx("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.65rem] font-semibold", colors[letter] || "bg-slate-100 text-slate-600")}>
+      {prefix} {letter}
+    </span>
+  );
+}
 const isNew = (createdAt?: string | null) =>
   !!createdAt && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
 const SUBSCRIPTION_URL = "/tarifs";
@@ -771,6 +807,7 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
               options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
                 value: o,
                 label: `Classe ${o}`,
+                subtitle: DPE_RANGES[o],
                 badgeText: o,
                 badgeClassName: DPE_COLORS[o],
               }))}
@@ -803,8 +840,9 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
               value: o,
               label: `Classe ${o}`,
+              subtitle: GES_RANGES[o],
               badgeText: o,
-              badgeClassName: DPE_COLORS[o],
+              badgeClassName: GES_COLORS[o],
             }))}
           />
         </div>
@@ -1009,12 +1047,8 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             {p.surface_m2 ? badge("slate", `${p.surface_m2} m²`) : null}
             {p.rooms ? badge("slate", `${p.rooms} pièces`) : null}
             {pPhotos.length ? badge("emerald", `${pPhotos.length} photo(s)`) : badge("slate", "0 photo")}
-            {p.energy_class
-              ? badge(
-                  ["A", "B", "C", "D"].includes(p.energy_class) ? "emerald" : p.energy_class === "E" ? "amber" : "red",
-                  `DPE ${p.energy_class}`
-                )
-              : null}
+            {p.energy_class ? classPill("DPE", p.energy_class, DPE_COLORS) : null}
+            {p.ghg_class ? classPill("GES", p.ghg_class, GES_COLORS) : null}
           </div>
 
           <span className="mt-auto inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold text-white">
