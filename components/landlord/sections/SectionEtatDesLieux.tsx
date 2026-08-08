@@ -9,6 +9,7 @@ import {
   DocumentCheckIcon,
   ExclamationTriangleIcon,
   FolderOpenIcon,
+  HomeModernIcon,
   MapPinIcon,
   PhotoIcon,
   PencilSquareIcon,
@@ -18,6 +19,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { usePermissions } from "../../PermissionProvider";
 import { planAllowsDocumentSharing } from "../../../lib/permissions";
 import { SectionTitle } from "../UiBits";
+import { NiceSelect } from "../ui/NiceSelect";
 import type { Lease, Property, PropertyFinance, Tenant } from "../../../lib/landlord/types";
 import { isActivePropertyLike, isEDLSelectableLease } from "../../../lib/landlord/archiveFilters";
 import { propertyRequiresLmnpInventory, getLmnpItemStatus } from "../../../lib/landlord/lmnpInventory";
@@ -4516,16 +4518,17 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                       <p className="text-sm font-semibold text-slate-900">Quel bail, et entrée ou sortie ?</p>
                       <p className="text-xs text-slate-500">Le bail pré-remplit le logement et le locataire. Le rattachement peut aussi être fait plus tard.</p>
                       <div className="grid gap-2">
-                        <select
+                        <NiceSelect
+                          icon={HomeModernIcon}
                           value={selectedLeaseId}
-                          onChange={(e) => { setSelectedLeaseId(e.target.value); setCreationMode("lease"); }}
-                          className="min-h-[48px] w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm focus:border-[#635bff] focus:outline-none focus:ring-4 focus:ring-[#635bff]/10"
-                        >
-                          <option value="">— Sélectionner un bail —</option>
-                          {[...activeOnlyLeases, ...endedPendingLeases].map((l) => (
-                            <option key={l.id} value={l.id}>{leaseLabel(l)}</option>
-                          ))}
-                        </select>
+                          onChange={(id) => { setSelectedLeaseId(id); setCreationMode("lease"); }}
+                          placeholder="— Sélectionner un bail —"
+                          options={[...activeOnlyLeases, ...endedPendingLeases].map((l) => ({
+                            value: l.id,
+                            label: propertyById.get(l.property_id)?.label || "Logement",
+                            subtitle: tenantById.get(l.tenant_id)?.full_name || "Locataire",
+                          }))}
+                        />
                         {!selectedLeaseId && creationMode !== "standalone" && (
                           <button
                             type="button"
@@ -4873,16 +4876,19 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
 
         {!selectedLeaseId && !isLocked ? (
           <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-            <select
-              value={attachLeaseId}
-              onChange={(e) => setAttachLeaseId(e.target.value)}
-              className="min-h-[36px] flex-1 rounded-xl border border-amber-200 bg-white px-3 text-sm font-semibold text-slate-900"
-            >
-              <option value="">Rattacher à un bail actif…</option>
-              {activeLeases.map((lease) => (
-                <option key={lease.id} value={lease.id}>{leaseLabel(lease)}</option>
-              ))}
-            </select>
+            <div className="flex-1">
+              <NiceSelect
+                icon={HomeModernIcon}
+                value={attachLeaseId}
+                onChange={(id) => setAttachLeaseId(id)}
+                placeholder="Rattacher à un bail actif…"
+                options={activeLeases.map((lease) => ({
+                  value: lease.id,
+                  label: propertyById.get(lease.property_id)?.label || "Logement",
+                  subtitle: tenantById.get(lease.tenant_id)?.full_name || "Locataire",
+                }))}
+              />
+            </div>
             <button
               type="button"
               disabled={loading || !attachLeaseId}

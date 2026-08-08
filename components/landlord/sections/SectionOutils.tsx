@@ -13,10 +13,12 @@ import {
   DocumentTextIcon,
   EnvelopeIcon,
   EyeIcon,
+  HomeModernIcon,
   PlusIcon,
   PrinterIcon,
   Squares2X2Icon,
   TrashIcon,
+  UserIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import type { Tenant } from "../../../lib/landlord/types";
@@ -28,6 +30,7 @@ import { SectionSimulateursBailleur } from "./SectionSimulateursBailleur";
 import { xhrUploadDirect } from "../../../lib/uploadWithProgress";
 import { UploadProgressBar } from "../../UploadProgressBar";
 import AddressAutocomplete from "../../forms/AddressAutocomplete";
+import { NiceSelect } from "../ui/NiceSelect";
 
 const WATER_BUCKET = "water-tools";
 const DEFAULT_SITE_NAME = "Compteur eau principal";
@@ -508,42 +511,37 @@ function FinanceValidationModal({
         </div>
 
         <div className="grid gap-3 p-5 md:grid-cols-2">
-          <label className="space-y-1">
+          <div className="space-y-1">
             <span className="text-xs font-semibold text-slate-600">Bien rattaché</span>
-            <select
+            <NiceSelect
+              icon={HomeModernIcon}
               value={form.propertyId || ""}
-              onChange={(e) => setForm((prev) => (prev ? { ...prev, propertyId: e.target.value || null, leaseId: "" } : prev))}
-              className={toolInputClass}
-            >
-              <option value="">Aucun bien</option>
-              {activeProperties.map((property) => (
-                <option key={property.id} value={property.id}>
-                  {property.label || propertyAddress(property) || "Bien sans libellé"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="space-y-1">
+              onChange={(pid) => setForm((prev) => (prev ? { ...prev, propertyId: pid || null, leaseId: "" } : prev))}
+              placeholder="Aucun bien"
+              options={activeProperties.map((property) => ({
+                value: property.id,
+                label: property.label || propertyAddress(property) || "Bien sans libellé",
+              }))}
+            />
+          </div>
+          <div className="space-y-1">
             <span className="text-xs font-semibold text-slate-600">Bail concerné</span>
-            <select
+            <NiceSelect
+              icon={UserIcon}
               value={form.leaseId || ""}
-              onChange={(e) => setForm((prev) => (prev ? { ...prev, leaseId: e.target.value || null } : prev))}
-              className={toolInputClass}
-            >
-              <option value="">Aucun bail</option>
-              {availableLeases.map((lease) => {
+              onChange={(id) => setForm((prev) => (prev ? { ...prev, leaseId: id || null } : prev))}
+              placeholder="Aucun bail"
+              options={availableLeases.map((lease) => {
                 const prop = propById.get(lease.property_id);
                 const tenant = tenantById.get(lease.tenant_id);
-                const propLabel = prop?.label || prop?.address_line1 || "Bien";
-                const tenantLabel = tenant?.full_name || "Locataire inconnu";
-                return (
-                  <option key={lease.id} value={lease.id}>
-                    {propLabel} — {tenantLabel} (depuis {lease.start_date})
-                  </option>
-                );
+                return {
+                  value: lease.id,
+                  label: prop?.label || prop?.address_line1 || "Bien",
+                  subtitle: `${tenant?.full_name || "Locataire inconnu"} · depuis ${lease.start_date}`,
+                };
               })}
-            </select>
-          </label>
+            />
+          </div>
           <label className="space-y-1">
             <span className="text-xs font-semibold text-slate-600">Date comptable</span>
             <input type="date" value={form.occurredAt} onChange={(e) => setForm((prev) => (prev ? { ...prev, occurredAt: e.target.value } : prev))} className={toolInputClass} />
