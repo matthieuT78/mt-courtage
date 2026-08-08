@@ -60,6 +60,7 @@ function makePdf(payload: any) {
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     const d = payload.form_data || {};
+    const isProfessional = payload.contract_kind === "professional";
 
     const W = doc.page.width - 108; // usable width (2 × margin 54)
 
@@ -93,7 +94,9 @@ function makePdf(payload: any) {
     doc.font("Helvetica-Bold").fontSize(18).fillColor("#0f172a").text("CONTRAT DE LOCATION", { align: "center", characterSpacing: 1 });
     doc.moveDown(0.35).fontSize(11).fillColor("#334155").text(leaseContractKindLabels[payload.contract_kind], { align: "center" });
     doc.moveDown(0.4).font("Helvetica").fontSize(7.5).fillColor("#64748b").text(
-      "Établi conformément à la loi n°89-462 du 6 juillet 1989, à la loi ALUR du 24 mars 2014 et au décret n°2015-587 du 29 mai 2015.",
+      isProfessional
+        ? "Établi conformément à l'article 57 A de la loi n°86-1290 du 23 décembre 1986 (bail professionnel) et au droit commun des contrats (Code civil)."
+        : "Établi conformément à la loi n°89-462 du 6 juillet 1989, à la loi ALUR du 24 mars 2014 et au décret n°2015-587 du 29 mai 2015.",
       { align: "center" }
     );
     doc.moveDown(0.6);
@@ -102,7 +105,9 @@ function makePdf(payload: any) {
       .strokeColor("#e2e8f0").lineWidth(1).stroke();
     doc.moveDown(0.6);
     doc.fontSize(8).fillColor("#475569").text(
-      "Ce contrat a pleine valeur juridique une fois signé par les deux parties. La notice d’information est jointe en dernière page. Avant signature, joignez également les annexes obligatoires restantes : dossier de diagnostics techniques (dont DPE), état des lieux d’entrée, et inventaire du mobilier si location meublée. Ce modèle ne couvre pas : colocation avec baux individuels, logement conventionné APL/Anah, locataire personne morale, SCI, bail commercial.",
+      isProfessional
+        ? "Ce contrat a pleine valeur juridique une fois signé par les deux parties. Avant signature, joignez également les annexes obligatoires restantes : dossier de diagnostics techniques (dont DPE). Ce modèle ne couvre pas : bail commercial (activité commerciale, artisanale ou industrielle), colocation avec baux individuels, SCI comme locataire d'un local mixte, clauses spécifiques à l'activité réglementée exercée."
+        : "Ce contrat a pleine valeur juridique une fois signé par les deux parties. La notice d’information est jointe en dernière page. Avant signature, joignez également les annexes obligatoires restantes : dossier de diagnostics techniques (dont DPE), état des lieux d’entrée, et inventaire du mobilier si location meublée. Ce modèle ne couvre pas : colocation avec baux individuels, logement conventionné APL/Anah, locataire personne morale, SCI, bail commercial.",
       { align: "left", lineGap: 2 }
     );
 
@@ -146,8 +151,8 @@ function makePdf(payload: any) {
     if (d.other_parts) { doc.moveDown(0.4); row("Autres parties du logement", d.other_parts); }
     if (d.private_equipment) row("Équipements privatifs", d.private_equipment);
     if (d.common_equipment) row("Parties et équipements communs", d.common_equipment);
-    row("Usage", "Habitation à titre de résidence principale");
-    if (payload.contract_kind !== "empty_primary") { doc.moveDown(0.4); row("Mobilier principal", d.furniture_inventory); }
+    row("Usage", isProfessional ? (d.destination || "Usage exclusivement professionnel") : "Habitation à titre de résidence principale");
+    if (payload.contract_kind !== "empty_primary" && !isProfessional) { doc.moveDown(0.4); row("Mobilier principal", d.furniture_inventory); }
 
     // DPE & GES
     doc.moveDown(0.8);
@@ -179,10 +184,14 @@ function makePdf(payload: any) {
     } else if (payload.contract_kind === "mobility") {
       row("Motif d’éligibilité au bail mobilité", d.mobility_reason);
       doc.moveDown(0.4).text("Ce contrat est un bail mobilité au sens de l’article 25-12 de la loi n°89-462 du 6 juillet 1989. Il n’est ni renouvelable ni reconductible. Aucun dépôt de garantie ne peut être exigé. Le locataire peut donner congé à tout moment avec un préavis d’un mois.", { lineGap: 2 });
+    } else if (isProfessional) {
+      doc.text("Ce contrat est un bail professionnel au sens de l’article 57 A de la loi n°86-1290 du 23 décembre 1986. Il est conclu pour une durée minimale de six (6) ans et reconduit tacitement par périodes de six ans, sauf congé délivré par l’une des parties. Le locataire peut donner congé à tout moment, par lettre recommandée avec accusé de réception, avec un préavis de six (6) mois. Le bailleur ne peut donner congé qu’à l’échéance du contrat, avec le même préavis de six mois, sans avoir à justifier d’un motif — ce bail ne confère au locataire ni droit au renouvellement automatique ni indemnité d’éviction, à la différence d’un bail commercial.", { lineGap: 2 });
     }
     doc.moveDown(0.5);
     doc.font("Helvetica").fontSize(9.5).text(
-      "Un état des lieux contradictoire sera établi à l’entrée dans les lieux et à la sortie du locataire, conformément à l’article 3-2 de la loi du 6 juillet 1989. À défaut d’état des lieux d’entrée, le logement est présumé avoir été remis en bon état de réparations locatives.",
+      isProfessional
+        ? "Un état des lieux contradictoire sera établi à l’entrée dans les lieux et à la sortie du locataire. À défaut d’état des lieux d’entrée, le locataire est présumé avoir reçu les locaux en bon état de réparations locatives (article 1731 du Code civil)."
+        : "Un état des lieux contradictoire sera établi à l’entrée dans les lieux et à la sortie du locataire, conformément à l’article 3-2 de la loi du 6 juillet 1989. À défaut d’état des lieux d’entrée, le logement est présumé avoir été remis en bon état de réparations locatives.",
       { lineGap: 2 }
     );
 
@@ -199,21 +208,25 @@ function makePdf(payload: any) {
     if (d.previous_rent) { doc.moveDown(0.4); row("Dernier loyer du précédent locataire", euro(d.previous_rent)); }
     if (d.previous_tenant_departure_date) row("Date de départ du précédent locataire", d.previous_tenant_departure_date);
     doc.moveDown(0.4);
-    row("Révision annuelle du loyer (IRL)", yesNo(d.rent_revision_enabled));
+    row(isProfessional ? "Révision annuelle du loyer (ILAT)" : "Révision annuelle du loyer (IRL)", yesNo(d.rent_revision_enabled));
     if (d.rent_revision_enabled) {
-      row("Trimestre de référence IRL", d.irl_reference);
+      row(isProfessional ? "Référence ILAT" : "Trimestre de référence IRL", d.irl_reference);
       doc.moveDown(0.3).font("Helvetica").fontSize(9.5).text(
-        "Le loyer sera révisé chaque année à la date anniversaire du contrat selon la formule : Nouveau loyer = Loyer en cours × (Nouvel IRL / IRL de référence), conformément à l’article 17-1 de la loi du 6 juillet 1989.",
+        isProfessional
+          ? "Le loyer d’un bail professionnel est libre : cette révision résulte d’une clause d’indexation librement convenue entre les parties, et non d’une obligation légale. Elle est calculée chaque année à la date anniversaire du contrat selon la formule : Nouveau loyer = Loyer en cours × (Nouvel ILAT / ILAT de référence), l’ILAT (indice des loyers des activités tertiaires) étant publié chaque trimestre par l’INSEE."
+          : "Le loyer sera révisé chaque année à la date anniversaire du contrat selon la formule : Nouveau loyer = Loyer en cours × (Nouvel IRL / IRL de référence), conformément à l’article 17-1 de la loi du 6 juillet 1989.",
         { lineGap: 2 }
       );
     }
     doc.moveDown(0.4);
+    if (!isProfessional) {
     row("Zone soumise à encadrement des loyers", yesNo(d.rent_controlled_area));
     if (d.rent_controlled_area) {
       if (d.reference_rent) row("Loyer de référence", `${euro(d.reference_rent)} / mois`);
       row("Loyer de référence majoré", d.reference_rent_increased ? `${euro(d.reference_rent_increased)} / mois` : "");
       row("Complément de loyer", d.rent_supplement ? `${euro(d.rent_supplement)} / mois` : "Aucun");
       if (d.rent_supplement_reason) row("Justification du complément", d.rent_supplement_reason);
+    }
     }
 
     // ── 5. Clauses ───────────────────────────────────────────
@@ -222,26 +235,39 @@ function makePdf(payload: any) {
     if (d.tenant_agency_fees) row("Honoraires imputés au locataire", euro(d.tenant_agency_fees));
     if (d.tenant_inventory_fees) row("Honoraires d’état des lieux imputés au locataire", euro(d.tenant_inventory_fees));
 
-    clause(
-      "Clause résolutoire",
-      "Le contrat prévoit sa résiliation de plein droit, deux mois après un commandement de payer resté infructueux, en cas de : défaut de paiement du loyer ou des charges aux termes convenus ; non-versement du dépôt de garantie ; défaut de souscription d’une assurance des risques locatifs ; troubles de voisinage constatés par une décision de justice passée en force de chose jugée (art. 24 loi du 6 juillet 1989)."
-    );
+    if (isProfessional) {
+      clause(
+        "Clause résolutoire",
+        "Le contrat prévoit sa résiliation de plein droit en cas de défaut de paiement du loyer, des charges ou du dépôt de garantie, ou de manquement grave à une obligation essentielle du contrat, un mois après une mise en demeure restée infructueuse (résolution pour inexécution, articles 1224 et suivants du Code civil)."
+      );
+    } else {
+      clause(
+        "Clause résolutoire",
+        "Le contrat prévoit sa résiliation de plein droit, deux mois après un commandement de payer resté infructueux, en cas de : défaut de paiement du loyer ou des charges aux termes convenus ; non-versement du dépôt de garantie ; défaut de souscription d’une assurance des risques locatifs ; troubles de voisinage constatés par une décision de justice passée en force de chose jugée (art. 24 loi du 6 juillet 1989)."
+      );
+    }
 
     if (d.annual_insurance_clause !== false) {
       clause(
-        "Assurance habitation",
-        "Le locataire est tenu de souscrire une assurance contre les risques locatifs (incendie, dégâts des eaux, responsabilité civile) et de remettre une attestation au bailleur lors de la remise des clés, puis à chaque renouvellement et sur simple demande (art. 7 g) de la loi du 6 juillet 1989)."
+        isProfessional ? "Assurance des locaux professionnels" : "Assurance habitation",
+        isProfessional
+          ? "Le locataire est tenu de souscrire une assurance responsabilité civile professionnelle et une assurance couvrant les risques locatifs afférents aux locaux (incendie, dégâts des eaux), et de remettre une attestation au bailleur lors de la remise des clés, puis à chaque renouvellement et sur simple demande."
+          : "Le locataire est tenu de souscrire une assurance contre les risques locatifs (incendie, dégâts des eaux, responsabilité civile) et de remettre une attestation au bailleur lors de la remise des clés, puis à chaque renouvellement et sur simple demande (art. 7 g) de la loi du 6 juillet 1989)."
       );
     }
 
     clause(
       "Obligations d’entretien du locataire",
-      "Le locataire est tenu d’entretenir le logement en bon état et d’effectuer les réparations locatives à sa charge, telles que définies par le décret n°87-712 du 26 août 1987. Il ne peut effectuer de transformation ou travaux sans accord écrit préalable du bailleur (art. 7 b) et f) de la loi du 6 juillet 1989)."
+      isProfessional
+        ? "Le locataire est tenu d’entretenir les locaux en bon état et d’effectuer les réparations locatives à sa charge (articles 1728 et 1730 du Code civil). Il ne peut effectuer de transformation ou travaux sans accord écrit préalable du bailleur."
+        : "Le locataire est tenu d’entretenir le logement en bon état et d’effectuer les réparations locatives à sa charge, telles que définies par le décret n°87-712 du 26 août 1987. Il ne peut effectuer de transformation ou travaux sans accord écrit préalable du bailleur (art. 7 b) et f) de la loi du 6 juillet 1989)."
     );
 
     clause(
       "Sous-location et cession",
-      "Le locataire ne peut sous-louer le logement, même partiellement, ni céder le présent bail, sans l’accord écrit préalable du bailleur. En cas de sous-location autorisée, le loyer payé par le sous-locataire ne peut excéder le loyer principal (art. 8 de la loi du 6 juillet 1989)."
+      isProfessional
+        ? "Le locataire ne peut sous-louer les locaux, même partiellement, ni céder le présent bail, sans l’accord écrit préalable du bailleur (clause contractuelle dérogeant à la faculté de principe de l’article 1717 du Code civil)."
+        : "Le locataire ne peut sous-louer le logement, même partiellement, ni céder le présent bail, sans l’accord écrit préalable du bailleur. En cas de sous-location autorisée, le loyer payé par le sous-locataire ne peut excéder le loyer principal (art. 8 de la loi du 6 juillet 1989)."
     );
 
     if (d.co_tenant_name) {
@@ -251,10 +277,12 @@ function makePdf(payload: any) {
       );
     }
 
-    clause(
-      "Décence et performance énergétique",
-      "Le bailleur certifie que le logement répond aux critères de décence définis par le décret n°2002-120 du 30 janvier 2002 et respecte les exigences de performance énergétique applicables aux logements décents (loi n°2021-1104 du 22 août 2021)."
-    );
+    if (!isProfessional) {
+      clause(
+        "Décence et performance énergétique",
+        "Le bailleur certifie que le logement répond aux critères de décence définis par le décret n°2002-120 du 30 janvier 2002 et respecte les exigences de performance énergétique applicables aux logements décents (loi n°2021-1104 du 22 août 2021)."
+      );
+    }
 
     if (d.special_terms) {
       clause("Clauses particulières", d.special_terms);
@@ -266,9 +294,9 @@ function makePdf(payload: any) {
       ["Notice d’information bailleur-locataire (synthèse jointe en dernière page)", true],
       ["Dossier de diagnostic technique (dont DPE)", d.annex_diagnostics],
       ["État des lieux d’entrée", d.annex_inventory_report],
-      ["Inventaire et état détaillé du mobilier", d.annex_furniture, payload.contract_kind !== "empty_primary"],
+      ["Inventaire et état détaillé du mobilier", d.annex_furniture, payload.contract_kind !== "empty_primary" && !isProfessional],
       ["Extrait du règlement de copropriété utile au locataire", d.annex_copro],
-      ["Attestation d’assurance habitation du locataire", d.annex_insurance],
+      [isProfessional ? "Attestation d’assurance des locaux professionnels du locataire" : "Attestation d’assurance habitation du locataire", d.annex_insurance],
     ];
     for (const [label, checked, applicable = true] of annexes) {
       if (applicable) {
@@ -315,7 +343,9 @@ function makePdf(payload: any) {
     }
 
     doc.moveDown(2).fontSize(8).fillColor("#94a3b8").text(
-      "Ce document doit être complété par les annexes applicables. Pour toute situation particulière (colocation avec baux individuels, logement conventionné, locataire personne morale, clause spécifique), consultez un professionnel du droit.",
+      isProfessional
+        ? "Ce document doit être complété par les annexes applicables. Pour toute situation particulière (activité réglementée, bail commercial, clause spécifique), consultez un professionnel du droit."
+        : "Ce document doit être complété par les annexes applicables. Pour toute situation particulière (colocation avec baux individuels, logement conventionné, locataire personne morale, clause spécifique), consultez un professionnel du droit.",
       { lineGap: 2 }
     );
 
@@ -325,9 +355,13 @@ function makePdf(payload: any) {
     doc.moveDown(0.2).fontSize(12.5).fillColor("#334155").text("Notice d'information relative aux droits et obligations des locataires et des bailleurs", { align: "center" });
     doc.moveDown(0.5);
     doc.font("Helvetica-Oblique").fontSize(8).fillColor("#64748b").text(
-      "Synthèse informative rédigée par lokt.fr à partir des dispositions de la loi n°89-462 du 6 juillet 1989 et de ses textes d'application. " +
-      "Ce document ne reproduit pas le modèle officiel fixé par l'arrêté du 29 mai 2015 et ne s'y substitue pas juridiquement — il vise à informer " +
-      "les parties de leurs principaux droits et obligations. En cas de doute, consultez un professionnel du droit ou l'ADIL de votre département.",
+      isProfessional
+        ? "Synthèse informative rédigée par lokt.fr à partir de l'article 57 A de la loi n°86-1290 du 23 décembre 1986 et du droit commun des contrats (Code civil). " +
+          "Le bail professionnel laisse une large liberté contractuelle aux parties — ce document ne s'y substitue pas juridiquement et vise seulement à informer des principaux " +
+          "repères applicables. En cas de doute, consultez un professionnel du droit."
+        : "Synthèse informative rédigée par lokt.fr à partir des dispositions de la loi n°89-462 du 6 juillet 1989 et de ses textes d'application. " +
+          "Ce document ne reproduit pas le modèle officiel fixé par l'arrêté du 29 mai 2015 et ne s'y substitue pas juridiquement — il vise à informer " +
+          "les parties de leurs principaux droits et obligations. En cas de doute, consultez un professionnel du droit ou l'ADIL de votre département.",
       { align: "left", lineGap: 2 }
     );
     doc.moveDown(0.6);
@@ -340,35 +374,67 @@ function makePdf(payload: any) {
       "Le bailleur doit annexer au contrat, selon la situation du logement : le diagnostic de performance énergétique (DPE) ; le constat de risque d'exposition au plomb (CREP) pour les immeubles construits avant le 1er janvier 1949 ; un état mentionnant la présence ou l'absence de matériaux amiantés pour les permis de construire antérieurs au 1er juillet 1997 ; l'état de l'installation intérieure d'électricité et de gaz si elle a plus de 15 ans ; l'état des risques naturels, miniers et technologiques (ERP) si le logement est situé dans une zone concernée par un plan de prévention des risques ; un document informant sur les nuisances sonores aériennes le cas échéant."
     );
 
-    clause(
-      "2. Modalités de délivrance du congé",
-      "Par le locataire : à tout moment, par lettre recommandée avec accusé de réception, acte d'huissier ou remise en main propre, avec un préavis de trois mois (réduit à un mois en zone tendue, ou dans certains cas particuliers : mutation, perte d'emploi, premier emploi, raisons de santé, bénéficiaire du RSA ou de l'AAH, logement social).\nPar le bailleur : uniquement à l'échéance du contrat, pour l'un des trois motifs prévus par la loi : reprise du logement pour l'habiter lui-même ou un proche, vente du logement (le locataire bénéficie alors d'un droit de préemption), ou motif légitime et sérieux. Préavis de six mois pour une location vide, trois mois pour une location meublée."
-    );
+    if (isProfessional) {
+      clause(
+        "2. Modalités de délivrance du congé",
+        "Par le locataire : à tout moment, par lettre recommandée avec accusé de réception, avec un préavis de six mois.\nPar le bailleur : uniquement à l'échéance du contrat (ou de chaque reconduction), avec le même préavis de six mois, sans obligation de justifier d'un motif. Contrairement au bail commercial, le bail professionnel ne confère au locataire ni droit au renouvellement automatique ni indemnité d'éviction en cas de non-renouvellement."
+      );
 
-    clause(
-      "3. Dépôt de garantie",
-      "Le dépôt de garantie ne peut excéder un mois de loyer hors charges pour une location vide, deux mois pour une location meublée. Il doit être restitué dans un délai maximal d'un mois si l'état des lieux de sortie est conforme à celui d'entrée, ou de deux mois dans le cas contraire, déduction faite le cas échéant des sommes justifiées restant dues au bailleur."
-    );
+      clause(
+        "3. Dépôt de garantie",
+        "Aucun plafond légal n'encadre le dépôt de garantie d'un bail professionnel : son montant et ses modalités de restitution sont librement fixés par le contrat. L'usage courant est de deux mois de loyer hors charges."
+      );
 
-    clause(
-      "4. Colocation et clause de solidarité",
-      "En cas de pluralité de locataires, une clause de solidarité peut être insérée au contrat : chaque colocataire devient alors responsable de la totalité du loyer et des charges vis-à-vis du bailleur. La solidarité d'un colocataire sortant (et celle de son garant) prend fin à la date d'effet de son congé si un nouveau colocataire le remplace au bail ; à défaut, elle s'éteint au plus tard six mois après cette date."
-    );
+      clause(
+        "4. Colocation et clause de solidarité",
+        "En cas de pluralité de locataires (par exemple des professionnels associés), une clause de solidarité peut être insérée au contrat : chacun devient alors responsable de la totalité du loyer et des charges vis-à-vis du bailleur."
+      );
 
-    clause(
-      "5. Encadrement des loyers",
-      "Dans les zones où un dispositif d'encadrement est en vigueur, le loyer ne peut dépasser le loyer de référence majoré fixé par arrêté préfectoral, sauf complément de loyer justifié par des caractéristiques exceptionnelles du logement, précisées et motivées dans le contrat."
-    );
+      clause(
+        "5. Loyer et charges",
+        "Le loyer d'un bail professionnel est libre : aucun encadrement des loyers ni loyer de référence ne s'applique, contrairement au bail d'habitation. Les modalités de révision (le cas échéant) et de répartition des charges sont fixées librement par le contrat."
+      );
 
-    clause(
-      "6. Pièces justificatives pouvant être demandées au candidat locataire",
-      "La liste des pièces exigibles lors de la constitution du dossier de candidature est fixée par le décret n°2015-1437 du 5 novembre 2015. Le bailleur ne peut notamment pas exiger : un extrait de casier judiciaire, une photographie d'identité, la carte Vitale, un contrat de mariage ou de PACS, un dossier médical, un relevé de compte bancaire ou une attestation de bonne tenue de compte."
-    );
+      clause(
+        "6. Justificatifs pouvant être demandés au candidat locataire",
+        "Aucune liste légale ne limite les pièces exigibles pour un bail professionnel, contrairement au bail d'habitation. Le bailleur peut notamment demander un extrait Kbis ou d'immatriculation, une attestation d'inscription à l'ordre professionnel le cas échéant, un justificatif d'assurance responsabilité civile professionnelle, ou des justificatifs financiers usuels."
+      );
 
-    clause(
-      "7. Procédures de conciliation et de recours en cas de litige",
-      "En cas de litige portant sur le loyer, les charges, le dépôt de garantie, l'état des lieux ou la décence du logement, les parties peuvent saisir gratuitement la commission départementale de conciliation (CDC) territorialement compétente avant toute action en justice. L'Agence départementale d'information sur le logement (ADIL) peut également apporter un conseil gratuit et neutre. À défaut d'accord amiable, le tribunal judiciaire peut être saisi."
-    );
+      clause(
+        "7. Procédures de recours en cas de litige",
+        "En cas de litige portant sur le loyer, les charges, le dépôt de garantie ou l'état des lieux, les parties peuvent recourir à un conciliateur de justice ou à une médiation avant toute action en justice. À défaut d'accord amiable, le tribunal judiciaire est compétent."
+      );
+    } else {
+      clause(
+        "2. Modalités de délivrance du congé",
+        "Par le locataire : à tout moment, par lettre recommandée avec accusé de réception, acte d'huissier ou remise en main propre, avec un préavis de trois mois (réduit à un mois en zone tendue, ou dans certains cas particuliers : mutation, perte d'emploi, premier emploi, raisons de santé, bénéficiaire du RSA ou de l'AAH, logement social).\nPar le bailleur : uniquement à l'échéance du contrat, pour l'un des trois motifs prévus par la loi : reprise du logement pour l'habiter lui-même ou un proche, vente du logement (le locataire bénéficie alors d'un droit de préemption), ou motif légitime et sérieux. Préavis de six mois pour une location vide, trois mois pour une location meublée."
+      );
+
+      clause(
+        "3. Dépôt de garantie",
+        "Le dépôt de garantie ne peut excéder un mois de loyer hors charges pour une location vide, deux mois pour une location meublée. Il doit être restitué dans un délai maximal d'un mois si l'état des lieux de sortie est conforme à celui d'entrée, ou de deux mois dans le cas contraire, déduction faite le cas échéant des sommes justifiées restant dues au bailleur."
+      );
+
+      clause(
+        "4. Colocation et clause de solidarité",
+        "En cas de pluralité de locataires, une clause de solidarité peut être insérée au contrat : chaque colocataire devient alors responsable de la totalité du loyer et des charges vis-à-vis du bailleur. La solidarité d'un colocataire sortant (et celle de son garant) prend fin à la date d'effet de son congé si un nouveau colocataire le remplace au bail ; à défaut, elle s'éteint au plus tard six mois après cette date."
+      );
+
+      clause(
+        "5. Encadrement des loyers",
+        "Dans les zones où un dispositif d'encadrement est en vigueur, le loyer ne peut dépasser le loyer de référence majoré fixé par arrêté préfectoral, sauf complément de loyer justifié par des caractéristiques exceptionnelles du logement, précisées et motivées dans le contrat."
+      );
+
+      clause(
+        "6. Pièces justificatives pouvant être demandées au candidat locataire",
+        "La liste des pièces exigibles lors de la constitution du dossier de candidature est fixée par le décret n°2015-1437 du 5 novembre 2015. Le bailleur ne peut notamment pas exiger : un extrait de casier judiciaire, une photographie d'identité, la carte Vitale, un contrat de mariage ou de PACS, un dossier médical, un relevé de compte bancaire ou une attestation de bonne tenue de compte."
+      );
+
+      clause(
+        "7. Procédures de conciliation et de recours en cas de litige",
+        "En cas de litige portant sur le loyer, les charges, le dépôt de garantie, l'état des lieux ou la décence du logement, les parties peuvent saisir gratuitement la commission départementale de conciliation (CDC) territorialement compétente avant toute action en justice. L'Agence départementale d'information sur le logement (ADIL) peut également apporter un conseil gratuit et neutre. À défaut d'accord amiable, le tribunal judiciaire peut être saisi."
+      );
+    }
 
     doc.end();
   });

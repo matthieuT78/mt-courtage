@@ -116,7 +116,7 @@ type Props = {
 
 const CREATE_ID = "__create__";
 const SUBSCRIPTION_URL = "/tarifs";
-type LeaseKind = "furnished_primary" | "furnished_student" | "mobility" | "empty_primary" | "other";
+type LeaseKind = "furnished_primary" | "furnished_student" | "mobility" | "empty_primary" | "professional" | "other";
 
 const LEASE_STATUS_LABELS: Record<string, string> = {
   active: "Actif",
@@ -243,6 +243,15 @@ const leaseKindOptions: Array<{
     tacitRenewal: true,
     renewalLabel: "Reconduction tacite",
     note: "Bail nu classique : durée minimale de 3 ans pour un bailleur particulier.",
+  },
+  {
+    value: "professional",
+    label: "Bail professionnel",
+    short: "Professionnel 6 ans",
+    durationMonths: 72,
+    tacitRenewal: true,
+    renewalLabel: "Reconduction tacite (6 ans)",
+    note: "Locaux à usage exclusivement professionnel (profession libérale). Pas de plafond légal de dépôt de garantie, loyer libre — ce n'est pas un bail d'habitation.",
   },
   {
     value: "other",

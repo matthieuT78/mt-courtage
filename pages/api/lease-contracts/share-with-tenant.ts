@@ -127,6 +127,7 @@ function kindLabel(kind: string | null) {
     furnished_primary: "Location meublée — résidence principale",
     furnished_student: "Location meublée — étudiant 9 mois",
     mobility: "Bail mobilité",
+    professional: "Bail professionnel (profession libérale)",
   };
   return map[kind || ""] || "Contrat de location";
 }

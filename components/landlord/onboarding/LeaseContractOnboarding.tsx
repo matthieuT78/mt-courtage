@@ -12,6 +12,7 @@ const KIND_OPTIONS: Array<[string, string]> = [
   ["furnished_primary", "Meublé résidence principale"],
   ["furnished_student", "Meublé étudiant 9 mois"],
   ["mobility", "Bail mobilité"],
+  ["professional", "Bail professionnel"],
 ];
 const KIND_LABELS: Record<string, string> = Object.fromEntries(KIND_OPTIONS);
 
@@ -531,7 +532,7 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
                 set={set}
                 required={requiredFields(kind, form)}
                 invalid={invalidFields}
-                names={[["housing_nature", "Nature du logement", "select", ["Appartement", "Studio", "F1", "F2", "F3", "F4", "F5 ou plus", "Maison", "Pavillon", "Villa", "Autre"]], ["housing_type", "Type d’habitat", "select", ["Immeuble collectif", "Maison individuelle"]], ["floor", "Étage (ex : RDC, 2e…)"], ["legal_regime", "Régime juridique de l’immeuble", "select", ["Copropriété", "Monopropriété"], "Copropriété : plusieurs propriétaires se partagent l'immeuble avec un règlement commun. Monopropriété : un seul propriétaire possède tout l'immeuble."], ["lot_number", "Numéro de lot (copropriété)"], ["building_period", "Période de construction", "select", ["Avant 1949", "De 1949 à 1974", "De 1975 à 1989", "De 1989 à 2005", "Depuis 2005"], "Indiquée sur le diagnostic de performance énergétique (DPE) ou l'acte de propriété."], ["surface_m2", "Surface habitable (m²)"], ["main_rooms", "Nombre de pièces principales"], ["destination", "Destination du logement", "select", ["Usage d’habitation", "Usage mixte professionnel et habitation"], "Choisissez \"usage mixte\" si le logement sert aussi à une activité professionnelle du locataire."]]}
+                names={[["housing_nature", "Nature du logement", "select", ["Appartement", "Studio", "F1", "F2", "F3", "F4", "F5 ou plus", "Maison", "Pavillon", "Villa", "Autre"]], ["housing_type", "Type d’habitat", "select", ["Immeuble collectif", "Maison individuelle"]], ["floor", "Étage (ex : RDC, 2e…)"], ["legal_regime", "Régime juridique de l’immeuble", "select", ["Copropriété", "Monopropriété"], "Copropriété : plusieurs propriétaires se partagent l'immeuble avec un règlement commun. Monopropriété : un seul propriétaire possède tout l'immeuble."], ["lot_number", "Numéro de lot (copropriété)"], ["building_period", "Période de construction", "select", ["Avant 1949", "De 1949 à 1974", "De 1975 à 1989", "De 1989 à 2005", "Depuis 2005"], "Indiquée sur le diagnostic de performance énergétique (DPE) ou l'acte de propriété."], ["surface_m2", "Surface habitable (m²)"], ["main_rooms", "Nombre de pièces principales"], ["destination", "Destination du logement", "select", ["Usage d’habitation", "Usage mixte professionnel et habitation", "Usage exclusivement professionnel"], "Choisissez \"usage mixte\" si le logement sert aussi à une activité professionnelle du locataire, ou \"exclusivement professionnel\" pour un bail professionnel."]]}
               />
               <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Confort &amp; équipements</p>
               <Fields
@@ -647,27 +648,33 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
 
               <InfoToggle
                 title="Révision annuelle du loyer"
-                info="La clause de révision de loyer est prévue par le bail type. Elle s'applique automatiquement à la date anniversaire du bail (hors logements classés F ou G au DPE, où la révision est interdite). Vous pourrez la désactiver si vous ne souhaitez pas l'appliquer."
+                info={
+                  kind === "professional"
+                    ? "Le loyer d'un bail professionnel est libre : la révision n'est pas une obligation légale, mais une clause d'indexation contractuelle. L'indice usuel est l'ILAT (indice des loyers des activités tertiaires), publié par l'INSEE."
+                    : "La clause de révision de loyer est prévue par le bail type. Elle s'applique automatiquement à la date anniversaire du bail (hors logements classés F ou G au DPE, où la révision est interdite). Vous pourrez la désactiver si vous ne souhaitez pas l'appliquer."
+                }
                 value={form.rent_revision_enabled}
                 onChange={(v: boolean) => set("rent_revision_enabled", v)}
               >
-                <Fields form={form} set={set} required={requiredFields(kind, form)} invalid={invalidFields} names={[["irl_reference", "Trimestre de référence IRL", "text", [], "Pré-rempli à titre indicatif avec le trimestre en cours à la date de début du bail. L'INSEE publie l'indice avec un peu de retard : vérifiez la valeur exacte en vigueur à la signature sur insee.fr avant de valider."]]} />
+                <Fields form={form} set={set} required={requiredFields(kind, form)} invalid={invalidFields} names={[["irl_reference", kind === "professional" ? "Référence ILAT" : "Trimestre de référence IRL", "text", [], kind === "professional" ? "Valeur de l'indice ILAT en vigueur à la date de signature — publié chaque trimestre par l'INSEE." : "Pré-rempli à titre indicatif avec le trimestre en cours à la date de début du bail. L'INSEE publie l'indice avec un peu de retard : vérifiez la valeur exacte en vigueur à la signature sur insee.fr avant de valider."]]} />
               </InfoToggle>
 
-              <InfoToggle
-                title="Le logement est-il en zone d'encadrement des loyers ?"
-                info="Concerne : Paris, Plaine Commune, Est Ensemble, Lille, Hellemmes, Lomme, Lyon, Villeurbanne, Montpellier, Bordeaux, certaines villes du Pays Basque, et Grenoble-Alpes-Métropole. Si le bien n'est pas concerné, laissez sur Non."
-                value={form.rent_controlled_area}
-                onChange={(v: boolean) => set("rent_controlled_area", v)}
-              >
-                <Fields
-                  form={form}
-                  set={set}
-                  required={requiredFields(kind, form)}
-                  invalid={invalidFields}
-                  names={[["reference_rent", "Loyer de référence", "number", [], "Loyer de référence fixé par arrêté préfectoral pour la zone — disponible sur le site de la mairie ou de la préfecture."], ["reference_rent_increased", "Loyer de référence majoré", "number", [], "Plafond légal du loyer pour la zone : le loyer réel ne peut pas le dépasser (hors complément de loyer justifié)."]]}
-                />
-              </InfoToggle>
+              {kind !== "professional" ? (
+                <InfoToggle
+                  title="Le logement est-il en zone d'encadrement des loyers ?"
+                  info="Concerne : Paris, Plaine Commune, Est Ensemble, Lille, Hellemmes, Lomme, Lyon, Villeurbanne, Montpellier, Bordeaux, certaines villes du Pays Basque, et Grenoble-Alpes-Métropole. Si le bien n'est pas concerné, laissez sur Non."
+                  value={form.rent_controlled_area}
+                  onChange={(v: boolean) => set("rent_controlled_area", v)}
+                >
+                  <Fields
+                    form={form}
+                    set={set}
+                    required={requiredFields(kind, form)}
+                    invalid={invalidFields}
+                    names={[["reference_rent", "Loyer de référence", "number", [], "Loyer de référence fixé par arrêté préfectoral pour la zone — disponible sur le site de la mairie ou de la préfecture."], ["reference_rent_increased", "Loyer de référence majoré", "number", [], "Plafond légal du loyer pour la zone : le loyer réel ne peut pas le dépasser (hors complément de loyer justifié)."]]}
+                  />
+                </InfoToggle>
+              ) : null}
 
               <CollapsibleExtra label="Informations sur le précédent locataire (optionnel)">
                 <Fields form={form} set={set} names={[["previous_rent", "Dernier loyer appliqué", "number"], ["previous_tenant_departure_date", "Date de départ du précédent locataire", "date"]]} />
@@ -678,7 +685,7 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
               <CollapsibleExtra label="Ajouter des clauses ou informations complémentaires">
                 <Fields form={form} set={set} names={[["recent_works", "Travaux récents"], ["estimated_energy_cost", "Estimation annuelle des dépenses d’énergie", "number"], ["energy_reference_year", "Année de référence de l’estimation énergétique"], ["tenant_agency_fees", "Honoraires imputés au locataire", "number"], ["tenant_inventory_fees", "Honoraires d’état des lieux imputés au locataire", "number"], ["rent_supplement", "Complément de loyer", "number"], ["rent_supplement_reason", "Justification du complément de loyer"], ["special_terms", "Clauses particulières"]]} />
               </CollapsibleExtra>
-              <Checks form={form} set={set} names={[["annual_insurance_clause", "Clause assurance habitation annuelle (recommandée)"]]} />
+              <Checks form={form} set={set} names={[["annual_insurance_clause", kind === "professional" ? "Clause assurance des locaux professionnels annuelle (recommandée)" : "Clause assurance habitation annuelle (recommandée)"]]} />
             </SectionBlock>
 
             <SectionBlock title="Finalisation" index={7}>

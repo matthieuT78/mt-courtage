@@ -128,14 +128,13 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
         const landlord = data.landlord || {};
         setDocument(existing || null);
         setIsCompanyTenant(!!tenant.is_company);
+        // Un locataire personne morale ne peut pas signer un bail loi de 1989 (résidence
+        // principale) — mais un bail professionnel reste possible (art. 57 A loi 1986,
+        // pas de condition de résidence principale). On ne force donc l'import que si
+        // aucun bail n'a jamais été rédigé sous ce type ; le choix "Rédiger avec Lokt"
+        // reste ouvert, StepType n'y proposant alors que "Bail professionnel".
         setSourceMode(
-          existing?.document_source === "external"
-            ? "external"
-            : existing
-            ? "generated"
-            : tenant.is_company
-            ? "external"
-            : "choose"
+          existing?.document_source === "external" ? "external" : existing ? "generated" : "choose"
         );
         setPendingSignature(!!data.pendingSignature);
         setKind(existing?.contract_kind || lease.lease_kind || "furnished_primary");
@@ -360,23 +359,22 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
           {isCompanyTenant ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-              Locataire professionnel (personne morale) : un bail loi du 6 juillet 1989 ne peut pas s&apos;appliquer. Lokt
-              ne génère donc pas de bail pour ce locataire — seule l&apos;importation d&apos;un bail rédigé par ailleurs
-              est proposée.
+              Locataire professionnel (personne morale) : un bail loi du 6 juillet 1989 (résidence principale) ne peut
+              pas s&apos;appliquer. Seul un <strong>bail professionnel</strong> peut être rédigé avec Lokt pour ce
+              locataire — pour tout autre type, seule l&apos;importation d&apos;un bail rédigé par ailleurs est possible.
             </p>
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
-            {!isCompanyTenant ? (
-              <Choice
-                icon={DocumentTextIcon}
-                title="Rédiger avec Lokt"
-                description="Compléter l’assistant, générer un PDF et envoyer pour signature électronique."
-                onClick={() => {
-                  if (kind === "other") setKind("furnished_primary");
-                  setSourceMode("generated");
-                }}
-              />
-            ) : null}
+            <Choice
+              icon={DocumentTextIcon}
+              title="Rédiger avec Lokt"
+              description={isCompanyTenant ? "Bail professionnel uniquement pour ce locataire." : "Compléter l’assistant, générer un PDF et envoyer pour signature électronique."}
+              onClick={() => {
+                if (isCompanyTenant) setKind("professional");
+                else if (kind === "other" || kind === "professional") setKind("furnished_primary");
+                setSourceMode("generated");
+              }}
+            />
             <Choice
               icon={DocumentArrowUpIcon}
               title="Importer mon propre bail"
@@ -404,8 +402,9 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           {isCompanyTenant ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
               Locataire professionnel (personne morale) : un bail loi du 6 juillet 1989 ne peut pas s&apos;appliquer (le
-              logement doit être la résidence principale du locataire). Lokt ne génère donc pas de bail pour ce
-              locataire — seule l&apos;importation d&apos;un bail rédigé par ailleurs est proposée.
+              logement doit être la résidence principale du locataire). Seul un bail professionnel peut être rédigé
+              avec Lokt pour ce locataire — pour tout autre type, seule l&apos;importation d&apos;un bail rédigé par
+              ailleurs est possible.
             </p>
           ) : null}
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
@@ -420,11 +419,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           )}
         </div>
         <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
-          {isCompanyTenant ? (
-            <span />
-          ) : (
-            <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
-          )}
+          <button type="button" onClick={() => setSourceMode("choose")} className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold"><ArrowLeftIcon className="h-4 w-4"/>Changer de méthode</button>
           <div className="flex flex-wrap gap-2">
             {document?.external_pdf_url ? <a href={pdfSignedUrl ?? undefined} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold${!pdfSignedUrl ? " pointer-events-none opacity-50" : ""}`}><ArrowDownTrayIcon className="h-4 w-4"/>Ouvrir le bail importé</a> : null}
             {document?.external_pdf_url ? (
@@ -528,7 +523,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           </p>
         ) : null}
         {step > 0 ? <p className="mb-4 text-xs leading-5 text-slate-500"><span className="font-bold text-red-600">*</span> Information obligatoire pour établir le contrat de location avec ce modèle.</p> : null}
-        {step === 0 ? <StepType kind={kind} setKind={setKind} /> : null}
+        {step === 0 ? <StepType kind={kind} setKind={setKind} isCompanyTenant={isCompanyTenant} /> : null}
         {step === 1 ? (
           <>
             {form.landlord_name && form.landlord_address && form.tenant_name && !editingParties ? (
@@ -586,7 +581,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
               set={set}
               required={requiredFieldsForStep(step, kind, form)}
               invalid={invalidFields}
-              names={[["housing_nature","Nature du logement","select",["Appartement","Studio","F1","F2","F3","F4","F5 ou plus","Maison","Pavillon","Villa","Autre"]],["housing_type","Type d’habitat","select",["Immeuble collectif","Maison individuelle"]],["floor","Étage (ex : RDC, 2e…)"],["legal_regime","Régime juridique de l’immeuble","select",["Copropriété","Monopropriété"]],["lot_number","Numéro de lot (copropriété)"],["building_period","Période de construction","select",["Avant 1949","De 1949 à 1974","De 1975 à 1989","De 1989 à 2005","Depuis 2005"]],["surface_m2","Surface habitable (m²)"],["main_rooms","Nombre de pièces principales"],["destination","Destination du logement","select",["Usage d’habitation","Usage mixte professionnel et habitation"]]]}
+              names={[["housing_nature","Nature du logement","select",["Appartement","Studio","F1","F2","F3","F4","F5 ou plus","Maison","Pavillon","Villa","Autre"]],["housing_type","Type d’habitat","select",["Immeuble collectif","Maison individuelle"]],["floor","Étage (ex : RDC, 2e…)"],["legal_regime","Régime juridique de l’immeuble","select",["Copropriété","Monopropriété"]],["lot_number","Numéro de lot (copropriété)"],["building_period","Période de construction","select",["Avant 1949","De 1949 à 1974","De 1975 à 1989","De 1989 à 2005","Depuis 2005"]],["surface_m2","Surface habitable (m²)"],["main_rooms","Nombre de pièces principales"],["destination","Destination du logement","select",["Usage d’habitation","Usage mixte professionnel et habitation","Usage exclusivement professionnel"]]]}
             />
             <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Confort &amp; équipements</p>
             <Fields
@@ -704,33 +699,41 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
                   />
                   {depositCap != null ? (
                     <p className="mt-1 text-xs text-slate-500">Maximum légal pour ce type de bail : {depositCap.toLocaleString("fr-FR")} €.</p>
+                  ) : kind === "professional" ? (
+                    <p className="mt-1 text-xs text-slate-500">Pas de plafond légal pour un bail professionnel — l'usage courant est de 2 mois de loyer.</p>
                   ) : null}
                 </div>
               )}
 
               <InfoToggle
                 title="Révision annuelle du loyer"
-                info="La clause de révision de loyer est prévue par le bail type. Elle s'applique automatiquement à la date anniversaire du bail (hors logements classés F ou G au DPE, où la révision est interdite). Vous pourrez la désactiver si vous ne souhaitez pas l'appliquer."
+                info={
+                  kind === "professional"
+                    ? "Le loyer d'un bail professionnel est libre : la révision n'est pas une obligation légale, mais une clause d'indexation contractuelle. L'indice usuel est l'ILAT (indice des loyers des activités tertiaires), publié par l'INSEE."
+                    : "La clause de révision de loyer est prévue par le bail type. Elle s'applique automatiquement à la date anniversaire du bail (hors logements classés F ou G au DPE, où la révision est interdite). Vous pourrez la désactiver si vous ne souhaitez pas l'appliquer."
+                }
                 value={form.rent_revision_enabled}
                 onChange={(v: boolean) => set("rent_revision_enabled", v)}
               >
-                <Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} invalid={invalidFields} names={[["irl_reference","Trimestre de référence IRL"]]} />
+                <Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} invalid={invalidFields} names={[["irl_reference", kind === "professional" ? "Référence ILAT" : "Trimestre de référence IRL"]]} />
               </InfoToggle>
 
-              <InfoToggle
-                title="Le logement est-il en zone d'encadrement des loyers ?"
-                info="Concerne : Paris, Plaine Commune, Est Ensemble, Lille, Hellemmes, Lomme, Lyon, Villeurbanne, Montpellier, Bordeaux, certaines villes du Pays Basque, et Grenoble-Alpes-Métropole. Si le bien n'est pas concerné, laissez sur Non."
-                value={form.rent_controlled_area}
-                onChange={(v: boolean) => set("rent_controlled_area", v)}
-              >
-                <Fields
-                  form={form}
-                  set={set}
-                  required={requiredFieldsForStep(step, kind, form)}
-                  invalid={invalidFields}
-                  names={[["reference_rent","Loyer de référence","number"],["reference_rent_increased","Loyer de référence majoré","number"]]}
-                />
-              </InfoToggle>
+              {kind !== "professional" ? (
+                <InfoToggle
+                  title="Le logement est-il en zone d'encadrement des loyers ?"
+                  info="Concerne : Paris, Plaine Commune, Est Ensemble, Lille, Hellemmes, Lomme, Lyon, Villeurbanne, Montpellier, Bordeaux, certaines villes du Pays Basque, et Grenoble-Alpes-Métropole. Si le bien n'est pas concerné, laissez sur Non."
+                  value={form.rent_controlled_area}
+                  onChange={(v: boolean) => set("rent_controlled_area", v)}
+                >
+                  <Fields
+                    form={form}
+                    set={set}
+                    required={requiredFieldsForStep(step, kind, form)}
+                    invalid={invalidFields}
+                    names={[["reference_rent","Loyer de référence","number"],["reference_rent_increased","Loyer de référence majoré","number"]]}
+                  />
+                </InfoToggle>
+              ) : null}
 
               <CollapsibleExtra label="Informations sur le précédent locataire (optionnel)">
                 <Fields form={form} set={set} names={[["previous_rent","Dernier loyer appliqué","number"],["previous_tenant_departure_date","Date de départ du précédent locataire","date"]]} />
@@ -738,7 +741,7 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
             </>
           );
         })() : null}
-        {step === 5 ? <><Fields form={form} set={set} names={[["recent_works","Travaux récents"],["estimated_energy_cost","Estimation annuelle des dépenses d’énergie","number"],["energy_reference_year","Année de référence de l’estimation énergétique"],["tenant_agency_fees","Honoraires imputés au locataire","number"],["tenant_inventory_fees","Honoraires d’état des lieux imputés au locataire","number"],["rent_supplement","Complément de loyer","number"],["rent_supplement_reason","Justification du complément de loyer"],["special_terms","Clauses particulières"]]} /><Checks form={form} set={set} names={[["annual_insurance_clause","Clause assurance habitation annuelle (recommandée)"]]} /></> : null}
+        {step === 5 ? <><Fields form={form} set={set} names={[["recent_works","Travaux récents"],["estimated_energy_cost","Estimation annuelle des dépenses d’énergie","number"],["energy_reference_year","Année de référence de l’estimation énergétique"],["tenant_agency_fees","Honoraires imputés au locataire","number"],["tenant_inventory_fees","Honoraires d’état des lieux imputés au locataire","number"],["rent_supplement","Complément de loyer","number"],["rent_supplement_reason","Justification du complément de loyer"],["special_terms","Clauses particulières"]]} /><Checks form={form} set={set} names={[["annual_insurance_clause", kind === "professional" ? "Clause assurance des locaux professionnels annuelle (recommandée)" : "Clause assurance habitation annuelle (recommandée)"]]} /></> : null}
         {step === 6 ? <><AnnexChecks form={form} set={set} /><Fields form={form} set={set} required={requiredFieldsForStep(step, kind, form)} invalid={invalidFields} names={[["signature_place","Lieu de signature"],["signature_date","Date de signature","date"]]} /></> : null}
       </div>
       <div className="flex flex-wrap justify-between gap-2 border-t border-slate-200 px-5 py-4">
@@ -874,5 +877,21 @@ function CollapsibleExtra({ label, children }: any) {
 }
 function Checks({ form, set, names }: any) { return <div className="mb-4 grid gap-2 sm:grid-cols-2">{names.map(([key,title]: any[]) => <label key={key} className="inline-flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={!!form[key]} onChange={(e) => set(key,e.target.checked)}/>{title}</label>)}</div>; }
 function AnnexChecks({ form, set }: any) { const names = [["annex_notice","Notice d’information","À remettre au locataire avec le bail."],["annex_diagnostics","Diagnostics dont DPE","Coche si le dossier de diagnostics applicable sera joint."],["annex_inventory_report","État des lieux d’entrée","À joindre une fois réalisé avec le locataire."],["annex_furniture","Inventaire du mobilier","À joindre pour une location meublée."],["annex_copro","Extrait de copropriété","À joindre si le logement est en copropriété."],["annex_insurance","Assurance habitation","Attestation à récupérer auprès du locataire."]]; return <div className="mb-5"><p className="text-sm font-semibold text-slate-950">Annexes à prévoir avec le contrat</p><p className="mt-1 text-xs leading-5 text-slate-600">Ces cases servent de pense-bête avant signature. Elles n’ajoutent pas automatiquement les documents au PDF.</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{names.map(([key,title,description]) => <label key={key} className="flex items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm text-slate-700"><input type="checkbox" className="mt-1" checked={!!form[key]} onChange={(e) => set(key,e.target.checked)}/><span><span className="block font-semibold text-slate-900">{title}</span><span className="mt-0.5 block text-xs leading-5 text-slate-500">{description}</span></span></label>)}</div></div>; }
-function StepType({ kind, setKind }: any) { return <div className="grid gap-2 sm:grid-cols-2">{[["empty_primary","Location vide"],["furnished_primary","Meublé résidence principale"],["furnished_student","Meublé étudiant 9 mois"],["mobility","Bail mobilité"]].map(([value,title]) => <button key={value} type="button" onClick={() => setKind(value)} className={`rounded-xl border p-4 text-left text-sm font-semibold ${kind === value ? "border-slate-900 bg-slate-100" : "border-slate-200"}`}>{title}</button>)}</div>; }
+function StepType({ kind, setKind, isCompanyTenant }: any) {
+  const allOptions = [["empty_primary","Location vide"],["furnished_primary","Meublé résidence principale"],["furnished_student","Meublé étudiant 9 mois"],["mobility","Bail mobilité"],["professional","Bail professionnel"]];
+  const options = isCompanyTenant ? allOptions.filter(([value]) => value === "professional") : allOptions;
+  return (
+    <div className="space-y-3">
+      {isCompanyTenant ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+          Locataire professionnel (personne morale) : seul le bail professionnel est disponible (les baux d'habitation
+          loi de 1989 exigent une résidence principale, incompatible avec une personne morale).
+        </p>
+      ) : null}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map(([value,title]) => <button key={value} type="button" onClick={() => setKind(value)} className={`rounded-xl border p-4 text-left text-sm font-semibold ${kind === value ? "border-slate-900 bg-slate-100" : "border-slate-200"}`}>{title}</button>)}
+      </div>
+    </div>
+  );
+}
 function Choice({ icon: Icon, title, description, onClick }: any) { return <button type="button" onClick={onClick} className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-slate-400 hover:bg-slate-50"><Icon className="h-6 w-6 text-slate-700"/><span className="mt-3 block text-sm font-semibold text-slate-950">{title}</span><span className="mt-1 block text-xs leading-5 text-slate-600">{description}</span></button>; }
