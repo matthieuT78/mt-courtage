@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { alertCronFailures } from "../../../lib/cronAlert";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MIN_AGE_MS = DAY_MS; // relance au bout de 24h
@@ -87,6 +88,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         results.push({ userId: user.id, email: user.email, sent: false, error: e?.message || String(e) });
       }
     }
+
+    const failures = results.filter((r) => r.sent === false);
+    await alertCronFailures("signup-confirmation-reminder", failures.map((f) => ({ email: f.email, error: f.error })));
 
     return res.status(200).json({ ok: true, candidates: candidates.length, sent, skipped, results });
   } catch (e: any) {

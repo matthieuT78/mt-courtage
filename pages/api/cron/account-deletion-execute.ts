@@ -10,6 +10,7 @@ import { hasValidCronSecret } from "../../../lib/cronAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { deleteUserStorage } from "../../../lib/deleteUserStorage";
+import { alertCronFailures } from "../../../lib/cronAlert";
 import {
   buildCompteSupprimeInactiviteEmailHtml,
   buildCompteSupprimeInactiviteEmailText,
@@ -90,6 +91,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         results.push({ userId: notice.user_id, email: notice.email, deleted: false, error: e?.message || String(e) });
       }
     }
+
+    const failures = results.filter((r) => r.deleted === false);
+    await alertCronFailures("account-deletion-execute", failures.map((f) => ({ email: f.email, error: f.error })));
 
     return res.status(200).json({ ok: true, due: (dueNotices || []).length, deleted, cancelled, skipped, results });
   } catch (e: any) {

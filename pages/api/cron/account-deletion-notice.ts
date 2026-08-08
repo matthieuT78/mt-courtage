@@ -9,6 +9,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
+import { alertCronFailures } from "../../../lib/cronAlert";
 import {
   buildCompteSuppressionProgrammeeEmailHtml,
   buildCompteSuppressionProgrammeeEmailText,
@@ -142,6 +143,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         results.push({ userId: user.id, email: user.email, notified: false, error: e?.message || String(e) });
       }
     }
+
+    const failures = results.filter((r) => r.notified === false);
+    await alertCronFailures("account-deletion-notice", failures.map((f) => ({ email: f.email, error: f.error })));
 
     return res.status(200).json({ ok: true, candidates: candidates.length, notified, skipped, results });
   } catch (e: any) {
