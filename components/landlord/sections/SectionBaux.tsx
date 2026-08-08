@@ -2344,12 +2344,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-slate-900">{mode === "edit" ? "Modifier le bail" : "Assistant bail"}</p>
-            <p className="text-xs text-slate-500">Les options techniques sont rangées en avancé.</p>
-          </div>
-        </div>
+        <p className="text-sm font-semibold text-slate-900">{mode === "edit" ? "Modifier le bail" : "Assistant bail"}</p>
 
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">1 · Le bail</p>
