@@ -7,10 +7,13 @@ import {
   ArrowUpRightIcon,
   ArrowPathIcon,
   ArrowsRightLeftIcon,
+  BanknotesIcon,
   BriefcaseIcon,
   BuildingOfficeIcon,
+  CalendarDaysIcon,
   CheckCircleIcon,
   ChevronDownIcon,
+  CurrencyEuroIcon,
   DocumentTextIcon,
   HandRaisedIcon,
   HomeIcon,
@@ -2595,28 +2598,31 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
           <div className="space-y-1">
             <label className="text-[0.7rem] text-slate-700">Mode paiement</label>
-            <select
+            <NiceSelect
+              allowClear={false}
               value={form.payment_method}
-              onChange={(e) => setForm((s) => ({ ...s, payment_method: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="virement">Virement</option>
-              <option value="prelevement">Prélèvement</option>
-              <option value="cheque">Chèque</option>
-              <option value="especes">Espèces</option>
-            </select>
+              onChange={(value) => setForm((s) => ({ ...s, payment_method: value }))}
+              options={[
+                { value: "virement", label: "Virement", icon: BanknotesIcon },
+                { value: "prelevement", label: "Prélèvement", icon: ArrowPathIcon },
+                { value: "cheque", label: "Chèque", icon: DocumentTextIcon },
+                { value: "especes", label: "Espèces", icon: CurrencyEuroIcon },
+              ]}
+            />
           </div>
 
           <div className="space-y-1">
             <label className="text-[0.7rem] text-slate-700">Échéance</label>
-            <select
+            <NiceSelect
+              allowClear={false}
+              icon={CalendarDaysIcon}
               value={form.payment_type}
-              onChange={(e) => setForm((s) => ({ ...s, payment_type: e.target.value }))}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="terme_a_echoir">Début de période</option>
-              <option value="terme_echu">Fin de période</option>
-            </select>
+              onChange={(value) => setForm((s) => ({ ...s, payment_type: value }))}
+              options={[
+                { value: "terme_a_echoir", label: "Début de période", icon: CalendarDaysIcon },
+                { value: "terme_echu", label: "Fin de période", icon: CalendarDaysIcon },
+              ]}
+            />
             <p className="text-[0.7rem] text-slate-500">Début = à échoir • Fin = à échu</p>
           </div>
         </div>
