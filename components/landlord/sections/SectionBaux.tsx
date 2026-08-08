@@ -2347,23 +2347,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-900">{mode === "edit" ? "Modifier le bail" : "Assistant bail"}</p>
-            <p className="text-xs text-slate-500">4 étapes : bail, loyer, quittances, suivi. Les options techniques sont rangées en avancé.</p>
+            <p className="text-xs text-slate-500">Les options techniques sont rangées en avancé.</p>
           </div>
-        </div>
-
-        <div className="grid gap-2 md:grid-cols-4">
-          {[
-            ["1", "Le bail", "Bien, locataire, dates"],
-            ["2", "Le loyer", "Montants et échéance"],
-            ["3", "Quittances", "Manuel ou auto validé"],
-            ["4", "Suivi", "Renouvellement et clôture"],
-          ].map(([num, title, desc]) => (
-            <div key={num} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
-              <p className="text-xs font-semibold text-slate-500">{num}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-950">{title}</p>
-              <p className="text-xs text-slate-600">{desc}</p>
-            </div>
-          ))}
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">

@@ -82,6 +82,7 @@ function buildDefaultQuittanceText(params: {
   paymentMethod?: string | null;
   issuePlace?: string | null;
   issueDateISO: string;
+  isProfessional?: boolean;
 }) {
   const {
     landlordFullName,
@@ -95,6 +96,7 @@ function buildDefaultQuittanceText(params: {
     paymentMethod,
     issuePlace,
     issueDateISO,
+    isProfessional,
   } = params;
 
   const lines: string[] = [];
@@ -104,7 +106,7 @@ function buildDefaultQuittanceText(params: {
       safeStr(tenantName) || "le locataire"
     } la somme de ${euro(totalAmount)} (dont ${euro(rentAmount)} de loyer hors charges et ${euro(
       chargesAmount
-    )} de provisions sur charges), au titre du paiement du loyer et des charges pour le logement situé :`
+    )} de provisions sur charges), au titre du paiement du loyer et des charges pour ${isProfessional ? "les locaux situés" : "le logement situé"} :`
   );
   lines.push(safeStr(propertyAddressLine) || "—");
   lines.push("");
@@ -655,6 +657,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       paymentMethod: paymentMethod || null,
       issuePlace: issuePlace || null,
       issueDateISO,
+      isProfessional: lease?.lease_kind === "professional",
     });
 
     const finalText =

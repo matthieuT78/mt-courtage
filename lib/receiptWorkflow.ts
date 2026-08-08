@@ -83,9 +83,10 @@ function buildReceiptText(params: {
   charges: number;
   total: number;
   paymentMethod?: string | null;
+  isProfessional?: boolean;
 }) {
   return [
-    `Je soussigné(e), ${params.landlordName || "le bailleur"}, reconnais avoir reçu de ${params.tenantName || "le locataire"} la somme de ${euro(params.total)} (dont ${euro(params.rent)} de loyer hors charges et ${euro(params.charges)} de provisions sur charges), au titre du paiement du loyer et des charges pour le logement situé :`,
+    `Je soussigné(e), ${params.landlordName || "le bailleur"}, reconnais avoir reçu de ${params.tenantName || "le locataire"} la somme de ${euro(params.total)} (dont ${euro(params.rent)} de loyer hors charges et ${euro(params.charges)} de provisions sur charges), au titre du paiement du loyer et des charges pour ${params.isProfessional ? "les locaux situés" : "le logement situé"} :`,
     `${params.propertyAddress || "—"}`,
     ``,
     `Cette somme couvre la période du ${formatDateFR(params.periodStart)} au ${formatDateFR(params.periodEnd)}.`,
@@ -279,6 +280,7 @@ export async function confirmLeasePaymentAndSendReceipt(params: {
     charges,
     total,
     paymentMethod: lease.payment_method,
+    isProfessional: lease.lease_kind === "professional",
   });
 
   // Clean up stale draft receipts for the same period_start but a different period_end.
