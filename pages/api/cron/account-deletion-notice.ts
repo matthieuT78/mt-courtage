@@ -64,13 +64,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const { data: existing, error: existingError } = await supabaseAdmin
           .from("account_deletion_notices")
-          .select("id")
+          .select("id, scheduled_deletion_at, email_sent_at")
           .eq("user_id", user.id)
           .maybeSingle();
         if (existingError) throw existingError;
-        if (existing) {
+
+        // Déjà notifié avec succès : rien à refaire. Une ligne existante mais
+        // sans email_sent_at signifie que l'envoi avait échoué la dernière fois —
+        // on retente avec la même date déjà réservée, plutôt que d'en fixer une
+        // nouvelle chaque jour (ce qui redémarrerait le délai indéfiniment).
+        if (existing?.email_sent_at) {
           skipped++;
           continue;
+        }
+
+        const noticeId = existing?.id ?? null;
+        const scheduledDeletionAt = existing?.scheduled_deletion_at ?? new Date(now + GRACE_PERIOD_MS).toISOString();
+
+        if (!noticeId) {
+          // Réserve la ligne (et la date) avant d'envoyer quoi que ce soit, pour
+          // que l'insertion échoue plutôt que de dupliquer si deux exécutions
+          // se chevauchent (contrainte unique sur user_id).
+          const { error: insertError } = await supabaseAdmin.from("account_deletion_notices").insert({
+            user_id: user.id,
+            email: user.email,
+            notified_at: new Date(now).toISOString(),
+            scheduled_deletion_at: scheduledDeletionAt,
+          });
+          if (insertError) throw insertError;
         }
 
         const { data: profile } = await supabaseAdmin.from("profiles").select("full_name, first_name").eq("id", user.id).maybeSingle();
@@ -83,8 +104,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           email: user.email,
           options: { emailRedirectTo: `${baseUrl}/mon-compte?mode=login` },
         }).catch((e) => console.error("[cron/account-deletion-notice] resend confirmation error:", e));
-
-        const scheduledDeletionAt = new Date(now + GRACE_PERIOD_MS).toISOString();
 
         const mail = await sendEmailViaResend({
           to: user.email,
@@ -102,13 +121,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         if (!mail.ok) throw new Error(mail.error || "Échec envoi email");
 
-        const { error: insertError } = await supabaseAdmin.from("account_deletion_notices").insert({
-          user_id: user.id,
-          email: user.email,
-          notified_at: new Date(now).toISOString(),
-          scheduled_deletion_at: scheduledDeletionAt,
-        });
-        if (insertError) throw insertError;
+        const { error: markSentError } = await supabaseAdmin
+          .from("account_deletion_notices")
+          .update({ email_sent_at: new Date().toISOString() })
+          .eq("user_id", user.id);
+        if (markSentError) throw markSentError;
 
         notified++;
         results.push({ userId: user.id, email: user.email, notified: true, scheduledDeletionAt });

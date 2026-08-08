@@ -30,6 +30,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from("account_deletion_notices")
       .select("id, user_id, email")
       .is("deleted_at", null)
+      // email_sent_at prouve que l'avertissement a bien été délivré — sans ça,
+      // account-deletion-notice retentera l'envoi les jours suivants plutôt que
+      // de laisser ce cron supprimer un compte qui n'a jamais été prévenu.
+      .not("email_sent_at", "is", null)
       .lte("scheduled_deletion_at", now);
     if (dueError) throw dueError;
 

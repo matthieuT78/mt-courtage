@@ -146,6 +146,9 @@ export default function ConfidentialitePage() {
                     <strong>Données de candidature locative :</strong> les brouillons non soumis sont supprimés automatiquement après 30 jours d’inactivité. Les dossiers refusés, en liste d’attente ou abandonnés sont supprimés par le bailleur à la clôture de l’annonce. Le dossier du candidat retenu est conservé tant que le bail correspondant est actif, puis soumis aux mêmes règles que les données de gestion locative.
                   </li>
                   <li>
+                    <strong>Compte jamais confirmé :</strong> si l’adresse email n’est pas confirmée dans les 30 jours suivant l’inscription, un email d’avertissement est envoyé et le compte est supprimé automatiquement 7 jours plus tard si l’adresse n’a toujours pas été confirmée entre-temps.
+                  </li>
+                  <li>
                     <strong>Données de paiement et facturation :</strong> 10 ans à compter de l’émission de la facture, conformément aux obligations comptables légales
                     (article L. 123-22 du Code de commerce). Seuls les identifiants techniques Stripe sont conservés ; les numéros de carte ne sont jamais stockés.
                   </li>
