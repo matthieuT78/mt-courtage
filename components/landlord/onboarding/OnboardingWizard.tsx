@@ -796,9 +796,10 @@ export function OnboardingWizard({
                     <TextField label="Représentant légal" value={tenantLegalRepName} onChange={setTenantLegalRepName} placeholder="Nom du signataire" />
                   </div>
                   <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-                    Un bail loi du 6 juillet 1989 ne peut pas être conclu avec une personne morale. lokt.fr ne génère pas de
-                    bail professionnel — vous pourrez importer un bail rédigé par ailleurs à l'étape suivante. Le suivi de
-                    la location (loyers, quittances, échéances) reste possible dans lokt.fr, avec ou sans bail importé.
+                    Un bail loi du 6 juillet 1989 ne peut pas être conclu avec une personne morale. Si l'usage des locaux
+                    est professionnel (profession libérale), lokt.fr peut générer un bail professionnel à l'étape
+                    suivante. Pour tout autre cas, vous pourrez importer un bail rédigé par ailleurs. Le suivi de la
+                    location (loyers, quittances, échéances) reste possible dans lokt.fr dans tous les cas.
                   </p>
                 </>
               ) : (
@@ -827,30 +828,24 @@ export function OnboardingWizard({
                     <span className="text-sm font-semibold text-slate-900">Oui, le bail existe déjà</span>
                     <span className="text-xs leading-5 text-slate-500">Je configure juste le suivi (loyer, dates) dans lokt.fr.</span>
                   </button>
-                  {targetTenantIsCompany ? (
-                    <div className="flex flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left opacity-70">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-200 text-slate-500">
-                        <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                      <span className="text-sm font-semibold text-slate-500">Non, j'ai besoin de le créer</span>
-                      <span className="text-xs leading-5 text-slate-500">
-                        Indisponible pour un locataire professionnel — le bail loi de 1989 ne s'applique pas aux personnes
-                        morales. Importez votre bail depuis l'étape "Locations" une fois l'onboarding terminé.
-                      </span>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setLeaseChoice("new")}
-                      className="flex flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-[#635bff]/50 hover:bg-indigo-50/40"
-                    >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-[#635bff]">
-                        <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                      <span className="text-sm font-semibold text-slate-900">Non, j'ai besoin de le créer</span>
-                      <span className="text-xs leading-5 text-slate-500">lokt.fr génère un vrai contrat de bail à faire signer.</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (targetTenantIsCompany) setLeaseKind("professional");
+                      setLeaseChoice("new");
+                    }}
+                    className="flex flex-col items-start gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-[#635bff]/50 hover:bg-indigo-50/40"
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-[#635bff]">
+                      <PencilSquareIcon className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="text-sm font-semibold text-slate-900">Non, j'ai besoin de le créer</span>
+                    <span className="text-xs leading-5 text-slate-500">
+                      {targetTenantIsCompany
+                        ? "lokt.fr génère un bail professionnel (le seul type compatible avec un locataire personne morale)."
+                        : "lokt.fr génère un vrai contrat de bail à faire signer."}
+                    </span>
+                  </button>
                 </div>
               </div>
             </StepShell>
@@ -892,11 +887,17 @@ export function OnboardingWizard({
                   l'étape suivante.
                 </p>
               ) : null}
-              <div className="grid gap-2 sm:grid-cols-3">
-                {LEASE_KIND_OPTIONS.map((opt) => (
-                  <ChoiceCard key={opt.value} label={opt.label} hint={opt.hint} selected={leaseKind === opt.value} onClick={() => setLeaseKind(opt.value)} />
-                ))}
-              </div>
+              {targetTenantIsCompany ? (
+                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                  Type de bail : <strong>Bail professionnel</strong> (seul type compatible avec un locataire personne morale).
+                </p>
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {LEASE_KIND_OPTIONS.map((opt) => (
+                    <ChoiceCard key={opt.value} label={opt.label} hint={opt.hint} selected={leaseKind === opt.value} onClick={() => setLeaseKind(opt.value)} />
+                  ))}
+                </div>
+              )}
               <div className="grid gap-3 sm:grid-cols-2">
                 <TextField label="Loyer (€)" hint="Hors charges" value={rentAmount} onChange={setRentAmount} placeholder="850" required />
                 <TextField label="Charges (€)" value={chargesAmount} onChange={setChargesAmount} placeholder="50" />
@@ -923,7 +924,7 @@ export function OnboardingWizard({
                     : "Montant librement convenu avec le locataire, dans la limite prévue par la loi selon le type de bail.";
                 })()}
               />
-              <p className="text-xs text-slate-500">Options avancées (relances, révision IRL...) : à compléter ensuite depuis Locations.</p>
+              <p className="text-xs text-slate-500">Options avancées (relances, révision du loyer...) : à compléter ensuite depuis Locations.</p>
             </StepShell>
           ) : null}
         </CalculatorWizardShell>
