@@ -64,35 +64,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       try {
         const { data: existing, error: existingError } = await supabaseAdmin
           .from("account_deletion_notices")
-          .select("id, scheduled_deletion_at, email_sent_at")
+          .select("id, email_sent_at")
           .eq("user_id", user.id)
           .maybeSingle();
         if (existingError) throw existingError;
 
         // Déjà notifié avec succès : rien à refaire. Une ligne existante mais
         // sans email_sent_at signifie que l'envoi avait échoué la dernière fois —
-        // on retente avec la même date déjà réservée, plutôt que d'en fixer une
-        // nouvelle chaque jour (ce qui redémarrerait le délai indéfiniment).
+        // on retente ci-dessous, avec une date de suppression recalculée à partir
+        // de maintenant (le délai de grâce doit démarrer une fois l'email
+        // réellement délivré, pas à la première tentative infructueuse).
         if (existing?.email_sent_at) {
           skipped++;
           continue;
         }
 
         const noticeId = existing?.id ?? null;
-        const scheduledDeletionAt = existing?.scheduled_deletion_at ?? new Date(now + GRACE_PERIOD_MS).toISOString();
 
         if (!noticeId) {
-          // Réserve la ligne (et la date) avant d'envoyer quoi que ce soit, pour
-          // que l'insertion échoue plutôt que de dupliquer si deux exécutions
-          // se chevauchent (contrainte unique sur user_id).
+          // Réserve la ligne avant d'envoyer quoi que ce soit, pour que
+          // l'insertion échoue plutôt que de dupliquer si deux exécutions se
+          // chevauchent (contrainte unique sur user_id). La date posée ici est
+          // provisoire : tant qu'email_sent_at est vide, personne n'a encore
+          // été prévenu, donc elle est recalculée juste avant l'envoi ci-dessous.
           const { error: insertError } = await supabaseAdmin.from("account_deletion_notices").insert({
             user_id: user.id,
             email: user.email,
             notified_at: new Date(now).toISOString(),
-            scheduled_deletion_at: scheduledDeletionAt,
+            scheduled_deletion_at: new Date(now + GRACE_PERIOD_MS).toISOString(),
           });
           if (insertError) throw insertError;
         }
+
+        // Calculée au moment de l'envoi (pas de la réservation) : si l'envoi a
+        // échoué plusieurs jours de suite avant de réussir, le délai de grâce
+        // de 7 jours démarre bien à partir du jour où l'utilisateur est
+        // réellement prévenu, pas du premier essai infructueux.
+        const scheduledDeletionAt = new Date(now + GRACE_PERIOD_MS).toISOString();
 
         const { data: profile } = await supabaseAdmin.from("profiles").select("full_name, first_name").eq("id", user.id).maybeSingle();
         const fullName = (profile as any)?.full_name || (profile as any)?.first_name || "";
@@ -123,7 +131,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const { error: markSentError } = await supabaseAdmin
           .from("account_deletion_notices")
-          .update({ email_sent_at: new Date().toISOString() })
+          .update({ email_sent_at: new Date().toISOString(), scheduled_deletion_at: scheduledDeletionAt })
           .eq("user_id", user.id);
         if (markSentError) throw markSentError;
 
