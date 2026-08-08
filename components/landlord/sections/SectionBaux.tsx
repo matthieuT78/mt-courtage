@@ -2480,10 +2480,12 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
           <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
             <div className="space-y-1">
               <label className="text-[0.7rem] text-slate-700">Type de bail</label>
-              <select
+              <NiceSelect
+                icon={DocumentTextIcon}
+                allowClear={false}
                 value={form.lease_kind}
-                onChange={(e) => {
-                  const nextKind = e.target.value as LeaseKind;
+                onChange={(value) => {
+                  const nextKind = value as LeaseKind;
                   const nextRule = getLeaseKindRule(nextKind);
                   setForm((s) => {
                     const expected = expectedEndDate(s.start_date, nextKind);
@@ -2495,16 +2497,10 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                     };
                   });
                 }}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-              >
-                {leaseKindOptions
+                options={leaseKindOptions
                   .filter((option) => !selectedTenant?.is_company || option.value === "professional" || option.value === "other")
-                  .map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-              </select>
+                  .map((option) => ({ value: option.value, label: option.label, subtitle: option.short }))}
+              />
               {selectedTenant?.is_company ? (
                 <p className="text-[0.7rem] text-amber-700">
                   Locataire professionnel (personne morale) : les baux d&apos;habitation loi de 1989 ne s&apos;appliquent

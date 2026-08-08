@@ -25,6 +25,7 @@ export function NiceSelect({
   placeholder = "— Sélectionner —",
   icon: Icon,
   disabled,
+  allowClear = true,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -32,6 +33,7 @@ export function NiceSelect({
   placeholder?: string;
   icon?: React.ComponentType<{ className?: string }>;
   disabled?: boolean;
+  allowClear?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,17 +74,19 @@ export function NiceSelect({
 
       {open && !disabled ? (
         <div className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
-          <button
-            type="button"
-            onClick={() => {
-              onChange("");
-              setOpen(false);
-            }}
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-400 hover:bg-slate-50"
-          >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">—</span>
-            {placeholder}
-          </button>
+          {allowClear ? (
+            <button
+              type="button"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-slate-400 hover:bg-slate-50"
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400">—</span>
+              {placeholder}
+            </button>
+          ) : null}
           {options.map((opt) => (
             <button
               key={opt.value}
