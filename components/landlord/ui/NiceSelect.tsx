@@ -6,6 +6,10 @@ export type NiceSelectOption = {
   value: string;
   label: string;
   subtitle?: string;
+  // Icône spécifique à cette option (ex. un type de bail) — remplace la
+  // pastille d'initiales, qui n'a de sens que pour une entité nommée
+  // (personne, bien), pas pour une catégorie générique.
+  icon?: React.ComponentType<{ className?: string }>;
 };
 
 function initialsOf(name: string) {
@@ -100,9 +104,15 @@ export function NiceSelect({
                 opt.value === value ? "bg-[#635bff]/5" : "hover:bg-slate-50"
               )}
             >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#635bff] to-[#00d4ff] text-[0.65rem] font-bold text-white">
-                {initialsOf(opt.label)}
-              </span>
+              {opt.icon ? (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                  <opt.icon className="h-4 w-4" />
+                </span>
+              ) : (
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#635bff] to-[#00d4ff] text-[0.65rem] font-bold text-white">
+                  {initialsOf(opt.label)}
+                </span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium text-slate-900">{opt.label}</span>
                 {opt.subtitle ? <span className="block truncate text-xs text-slate-500">{opt.subtitle}</span> : null}

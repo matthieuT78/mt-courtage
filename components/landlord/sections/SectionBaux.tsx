@@ -2,14 +2,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  AcademicCapIcon,
   ArrowDownTrayIcon,
   ArrowUpRightIcon,
   ArrowPathIcon,
+  ArrowsRightLeftIcon,
+  BriefcaseIcon,
   BuildingOfficeIcon,
   CheckCircleIcon,
   ChevronDownIcon,
   DocumentTextIcon,
   HandRaisedIcon,
+  HomeIcon,
   HomeModernIcon,
   PencilSquareIcon,
   PlusIcon,
@@ -210,6 +214,7 @@ const leaseKindOptions: Array<{
   tacitRenewal: boolean;
   renewalLabel: string;
   note: string;
+  icon: React.ComponentType<{ className?: string }>;
 }> = [
   {
     value: "furnished_primary",
@@ -219,6 +224,7 @@ const leaseKindOptions: Array<{
     tacitRenewal: true,
     renewalLabel: "Reconduction tacite annuelle",
     note: "Cas LMNP classique : bail d’un an, reconduit si aucun congé n’est donné.",
+    icon: HomeModernIcon,
   },
   {
     value: "furnished_student",
@@ -228,6 +234,7 @@ const leaseKindOptions: Array<{
     tacitRenewal: false,
     renewalLabel: "Fin au terme",
     note: "Pas de tacite reconduction : si l’étudiant reste, il faut signer un nouveau bail.",
+    icon: AcademicCapIcon,
   },
   {
     value: "mobility",
@@ -237,6 +244,7 @@ const leaseKindOptions: Array<{
     tacitRenewal: false,
     renewalLabel: "Non renouvelable",
     note: "Durée de 1 à 10 mois : pas de renouvellement ni reconduction.",
+    icon: ArrowsRightLeftIcon,
   },
   {
     value: "empty_primary",
@@ -246,6 +254,7 @@ const leaseKindOptions: Array<{
     tacitRenewal: true,
     renewalLabel: "Reconduction tacite",
     note: "Bail nu classique : durée minimale de 3 ans pour un bailleur particulier.",
+    icon: HomeIcon,
   },
   {
     value: "professional",
@@ -255,11 +264,13 @@ const leaseKindOptions: Array<{
     tacitRenewal: true,
     renewalLabel: "Reconduction tacite (6 ans)",
     note: "Locaux à usage exclusivement professionnel (profession libérale). Pas de plafond légal de dépôt de garantie, loyer libre — ce n'est pas un bail d'habitation.",
+    icon: BriefcaseIcon,
   },
   {
     value: "other",
     label: "Autre / suivi libre",
     short: "Libre",
+    icon: DocumentTextIcon,
     durationMonths: null,
     tacitRenewal: false,
     renewalLabel: "À définir",
@@ -2499,7 +2510,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                 }}
                 options={leaseKindOptions
                   .filter((option) => !selectedTenant?.is_company || option.value === "professional" || option.value === "other")
-                  .map((option) => ({ value: option.value, label: option.label, subtitle: option.short }))}
+                  .map((option) => ({ value: option.value, label: option.label, subtitle: option.short, icon: option.icon }))}
               />
               {selectedTenant?.is_company ? (
                 <p className="text-[0.7rem] text-amber-700">
