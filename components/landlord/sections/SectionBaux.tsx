@@ -16,6 +16,7 @@ import {
   PowerIcon,
   ShieldCheckIcon,
   TrashIcon,
+  UserIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
@@ -2354,21 +2355,25 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <label className="text-[0.7rem] text-slate-700">Bien *</label>
-            <select
-              value={form.property_id}
-              onChange={(e) => {
-                const pid = e.target.value;
-                setForm((s) => ({ ...s, property_id: pid }));
-              }}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">— Sélectionner —</option>
-              {selectableProps.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label || "Bien"}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <HomeModernIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <select
+                value={form.property_id}
+                onChange={(e) => {
+                  const pid = e.target.value;
+                  setForm((s) => ({ ...s, property_id: pid }));
+                }}
+                className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-9 text-sm"
+              >
+                <option value="">— Sélectionner —</option>
+                {selectableProps.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label || "Bien"}
+                  </option>
+                ))}
+              </select>
+              <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            </div>
             {activeProps.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un bien actif.</p> : null}
             {form.property_id && (propertyById.get(form.property_id)?.delegated_services || []).includes("gestion_courante") ? (
               <p className="text-[0.7rem] text-sky-700">
@@ -2379,26 +2384,30 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
 
           <div className="space-y-1">
             <label className="text-[0.7rem] text-slate-700">Locataire *</label>
-            <select
-              value={form.tenant_id}
-              onChange={(e) => {
-                const tenantId = e.target.value;
-                const nextTenant = tenantById.get(tenantId);
-                setForm((s) => ({
-                  ...s,
-                  tenant_id: tenantId,
-                  tenant_receipt_email: s.tenant_receipt_email || getTenantEmail(nextTenant),
-                }));
-              }}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">— Sélectionner —</option>
-              {selectableTenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.full_name || "Locataire"}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <UserIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+              <select
+                value={form.tenant_id}
+                onChange={(e) => {
+                  const tenantId = e.target.value;
+                  const nextTenant = tenantById.get(tenantId);
+                  setForm((s) => ({
+                    ...s,
+                    tenant_id: tenantId,
+                    tenant_receipt_email: s.tenant_receipt_email || getTenantEmail(nextTenant),
+                  }));
+                }}
+                className="w-full appearance-none rounded-xl border border-slate-300 bg-white py-2 pl-9 pr-9 text-sm"
+              >
+                <option value="">— Sélectionner —</option>
+                {selectableTenants.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.full_name || "Locataire"}
+                  </option>
+                ))}
+              </select>
+              <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            </div>
             {activeTenants.length === 0 ? <p className="text-[0.7rem] text-amber-700">Ajoute d’abord un locataire actif.</p> : null}
           </div>
         </div>
