@@ -147,13 +147,13 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: 
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-        checked ? "bg-gradient-to-r from-[#635bff] to-[#00d4ff]" : "bg-slate-200"
+      className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#635bff]/30 ${
+        checked ? "border-transparent bg-gradient-to-r from-[#635bff] to-[#00d4ff]" : "border-slate-300 bg-slate-200"
       }`}
     >
       <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
-          checked ? "translate-x-[1.375rem]" : "translate-x-0.5"
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-all duration-200 ${
+          checked ? "left-[1.35rem]" : "left-0.5"
         }`}
       />
     </button>
@@ -1330,9 +1330,10 @@ export function SectionLocataires({
                   {createForm.is_company ? (
                     <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
                       Un bail loi du 6 juillet 1989 ne peut pas être conclu avec une personne morale (le logement doit être
-                      la résidence principale du locataire). Pour ce locataire, seule l&apos;importation d&apos;un bail
-                      rédigé par ailleurs sera proposée — Lokt ne génère pas de bail professionnel. Vous pourrez tout de
-                      même suivre la location (loyers, quittances, échéances) dans lokt.fr, avec ou sans bail importé.
+                      la résidence principale du locataire). Si l&apos;usage des locaux est professionnel, Lokt peut
+                      générer un bail professionnel pour ce locataire. Pour tout autre cas, vous pourrez importer un bail
+                      rédigé par ailleurs. Le suivi de la location (loyers, quittances, échéances) reste possible dans
+                      lokt.fr dans tous les cas.
                     </p>
                   ) : null}
 
@@ -1627,10 +1628,10 @@ export function SectionLocataires({
                       {f.is_company ? (
                         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
                           Un bail loi du 6 juillet 1989 ne peut pas être conclu avec une personne morale (le logement doit
-                          être la résidence principale du locataire). Pour ce locataire, seule l&apos;importation d&apos;un
-                          bail rédigé par ailleurs sera proposée — Lokt ne génère pas de bail professionnel. Vous pourrez
-                          tout de même suivre la location (loyers, quittances, échéances) dans lokt.fr, avec ou sans bail
-                          importé.
+                          être la résidence principale du locataire). Si l&apos;usage des locaux est professionnel, Lokt
+                          peut générer un bail professionnel pour ce locataire. Pour tout autre cas, vous pourrez importer
+                          un bail rédigé par ailleurs. Le suivi de la location (loyers, quittances, échéances) reste
+                          possible dans lokt.fr dans tous les cas.
                         </p>
                       ) : null}
 

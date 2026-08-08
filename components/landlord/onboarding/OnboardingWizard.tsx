@@ -227,13 +227,13 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: 
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ${
-        checked ? "bg-gradient-to-r from-[#635bff] to-[#00d4ff]" : "bg-slate-200"
+      className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#635bff]/30 ${
+        checked ? "border-transparent bg-gradient-to-r from-[#635bff] to-[#00d4ff]" : "border-slate-300 bg-slate-200"
       }`}
     >
       <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
-          checked ? "translate-x-[1.375rem]" : "translate-x-0.5"
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-md transition-all duration-200 ${
+          checked ? "left-[1.35rem]" : "left-0.5"
         }`}
       />
     </button>
