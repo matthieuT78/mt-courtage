@@ -22,6 +22,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { SectionTitle } from "../UiBits";
 import { ExpandableSection } from "../ui/ExpandableSection";
 import { badge, cx, pluralFR } from "../ui/uiHelpers";
+import { NiceSelect } from "../ui/NiceSelect";
 import { usePermissions } from "../../PermissionProvider";
 import { PropertyDpePanel } from "../PropertyDpePanel";
 import AddressAutocomplete from "../../forms/AddressAutocomplete";
@@ -52,6 +53,17 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = Object.fromEntries(PROPERTY
 const propertyTypeMeta = (type?: string | null) => PROPERTY_TYPES.find((t) => t.key === type) || PROPERTY_TYPES[PROPERTY_TYPES.length - 1];
 
 const DPE_OPTIONS = ["", "A", "B", "C", "D", "E", "F", "G"] as const;
+// Couleurs officielles de l'étiquette énergie (DPE/GES) — le code couleur est
+// universellement reconnu, plus parlant qu'une icône générique pour ces classes.
+const DPE_COLORS: Record<string, string> = {
+  A: "bg-[#00A651] text-white",
+  B: "bg-[#4CB848] text-white",
+  C: "bg-[#A0CD3C] text-slate-900",
+  D: "bg-[#FFF200] text-slate-900",
+  E: "bg-[#FBB03B] text-slate-900",
+  F: "bg-[#F26A21] text-white",
+  G: "bg-[#ED1C24] text-white",
+};
 const isNew = (createdAt?: string | null) =>
   !!createdAt && Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
 const SUBSCRIPTION_URL = "/tarifs";
@@ -752,15 +764,17 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
           </label>
           <label className="space-y-1">
             <span className="text-xs text-slate-700">DPE</span>
-            <select
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+            <NiceSelect
+              placeholder="Classe (A–G)"
               value={form.energy_class}
-              onChange={(e) => setForm((s) => ({ ...s, energy_class: e.target.value }))}
-            >
-              {DPE_OPTIONS.map((o) => (
-                <option key={o} value={o}>{o === "" ? "Classe (A–G)" : `Classe ${o}`}</option>
-              ))}
-            </select>
+              onChange={(value) => setForm((s) => ({ ...s, energy_class: value }))}
+              options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
+                value: o,
+                label: `Classe ${o}`,
+                badgeText: o,
+                badgeClassName: DPE_COLORS[o],
+              }))}
+            />
           </label>
         </div>
 
@@ -782,15 +796,17 @@ export function SectionBiens({ userId, properties, leases, tenants, photos, onRe
             />
             {fErr.energy_value ? <p className="text-xs font-medium text-red-600">{fErr.energy_value}</p> : null}
           </div>
-          <select
-            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+          <NiceSelect
+            placeholder="GES (A–G)"
             value={form.ghg_class}
-            onChange={(e) => setForm((s) => ({ ...s, ghg_class: e.target.value }))}
-          >
-            {DPE_OPTIONS.map((o) => (
-              <option key={o} value={o}>{o === "" ? "GES (A–G)" : `Classe ${o}`}</option>
-            ))}
-          </select>
+            onChange={(value) => setForm((s) => ({ ...s, ghg_class: value }))}
+            options={DPE_OPTIONS.filter((o) => o !== "").map((o) => ({
+              value: o,
+              label: `Classe ${o}`,
+              badgeText: o,
+              badgeClassName: DPE_COLORS[o],
+            }))}
+          />
         </div>
 
         {/* ── Gestion de ce bien ── */}

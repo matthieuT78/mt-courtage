@@ -10,6 +10,12 @@ export type NiceSelectOption = {
   // pastille d'initiales, qui n'a de sens que pour une entité nommée
   // (personne, bien), pas pour une catégorie générique.
   icon?: React.ComponentType<{ className?: string }>;
+  // Pastille colorée avec un court texte (ex. classe DPE "A" à "G") — pour les
+  // échelles où la couleur porte elle-même un sens (ex. vert → rouge).
+  // Prioritaire sur icon/initiales si fourni. badgeClassName attend des
+  // classes Tailwind de fond + texte (ex. "bg-emerald-500 text-white").
+  badgeText?: string;
+  badgeClassName?: string;
 };
 
 function initialsOf(name: string) {
@@ -104,7 +110,11 @@ export function NiceSelect({
                 opt.value === value ? "bg-[#635bff]/5" : "hover:bg-slate-50"
               )}
             >
-              {opt.icon ? (
+              {opt.badgeText ? (
+                <span className={cx("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold", opt.badgeClassName)}>
+                  {opt.badgeText}
+                </span>
+              ) : opt.icon ? (
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
                   <opt.icon className="h-4 w-4" />
                 </span>
