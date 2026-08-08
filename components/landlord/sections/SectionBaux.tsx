@@ -94,6 +94,7 @@ export type TenantLite = {
   email: string | null;
   status?: string | null;
   archived_at?: string | null;
+  is_company?: boolean | null;
 };
 
 type Props = {
@@ -1281,6 +1282,17 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       setForm((s) => ({ ...s, receipts_disabled: true, auto_quittance_enabled: false, auto_reminder_enabled: true }));
     }
   }, [form.property_id, form.receipts_disabled, propertyById]);
+
+  // Un locataire personne morale ne peut pas avoir de bail d'habitation loi de 1989 (résidence
+  // principale) — si le locataire sélectionné est une société et que le type de bail choisi
+  // (ou hérité par défaut) n'est pas compatible, on bascule automatiquement sur "professionnel".
+  useEffect(() => {
+    if (!form.tenant_id) return;
+    const isCompany = !!tenantById.get(form.tenant_id)?.is_company;
+    if (isCompany && form.lease_kind !== "professional" && form.lease_kind !== "other") {
+      setForm((s) => ({ ...s, lease_kind: "professional" as LeaseKind, auto_renewal_enabled: true }));
+    }
+  }, [form.tenant_id, form.lease_kind, tenantById]);
 
   const resetForm = () => {
     setForm(defaultFormValues());
@@ -2511,12 +2523,20 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                 }}
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
               >
-                {leaseKindOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
+                {leaseKindOptions
+                  .filter((option) => !selectedTenant?.is_company || option.value === "professional" || option.value === "other")
+                  .map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
               </select>
+              {selectedTenant?.is_company ? (
+                <p className="text-[0.7rem] text-amber-700">
+                  Locataire professionnel (personne morale) : les baux d&apos;habitation loi de 1989 ne s&apos;appliquent
+                  qu&apos;aux personnes physiques, ils sont donc masqués pour ce locataire.
+                </p>
+              ) : null}
               <p className="text-[0.7rem] text-slate-500">{leaseRule.note}</p>
             </div>
 
