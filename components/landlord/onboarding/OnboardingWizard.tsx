@@ -796,10 +796,9 @@ export function OnboardingWizard({
                     <TextField label="Représentant légal" value={tenantLegalRepName} onChange={setTenantLegalRepName} placeholder="Nom du signataire" />
                   </div>
                   <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
-                    Un bail loi du 6 juillet 1989 ne peut pas être conclu avec une personne morale. Si l'usage des locaux
-                    est professionnel (profession libérale), lokt.fr peut générer un bail professionnel à l'étape
-                    suivante. Pour tout autre cas, vous pourrez importer un bail rédigé par ailleurs. Le suivi de la
-                    location (loyers, quittances, échéances) reste possible dans lokt.fr dans tous les cas.
+                    Pour ce locataire, lokt.fr peut générer un bail professionnel à l'étape suivante, ou importer un bail
+                    que vous avez rédigé par ailleurs. Le suivi de la location (loyers, quittances, échéances) reste
+                    possible dans lokt.fr dans tous les cas.
                   </p>
                 </>
               ) : (

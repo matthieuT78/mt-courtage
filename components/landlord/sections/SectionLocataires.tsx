@@ -1329,11 +1329,9 @@ export function SectionLocataires({
 
                   {createForm.is_company ? (
                     <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-                      Un bail loi du 6 juillet 1989 ne peut pas être conclu avec une personne morale (le logement doit être
-                      la résidence principale du locataire). Si l&apos;usage des locaux est professionnel, Lokt peut
-                      générer un bail professionnel pour ce locataire. Pour tout autre cas, vous pourrez importer un bail
-                      rédigé par ailleurs. Le suivi de la location (loyers, quittances, échéances) reste possible dans
-                      lokt.fr dans tous les cas.
+                      Pour ce locataire, vous pourrez générer un bail professionnel avec Lokt, ou importer un bail que
+                      vous avez rédigé par ailleurs. Le suivi de la location (loyers, quittances, échéances) reste
+                      possible dans lokt.fr dans tous les cas.
                     </p>
                   ) : null}
 
@@ -1627,10 +1625,8 @@ export function SectionLocataires({
 
                       {f.is_company ? (
                         <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-                          Un bail loi du 6 juillet 1989 ne peut pas être conclu avec une personne morale (le logement doit
-                          être la résidence principale du locataire). Si l&apos;usage des locaux est professionnel, Lokt
-                          peut générer un bail professionnel pour ce locataire. Pour tout autre cas, vous pourrez importer
-                          un bail rédigé par ailleurs. Le suivi de la location (loyers, quittances, échéances) reste
+                          Pour ce locataire, vous pourrez générer un bail professionnel avec Lokt, ou importer un bail que
+                          vous avez rédigé par ailleurs. Le suivi de la location (loyers, quittances, échéances) reste
                           possible dans lokt.fr dans tous les cas.
                         </p>
                       ) : null}

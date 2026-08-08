@@ -359,9 +359,9 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
           {isCompanyTenant ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-              Locataire professionnel (personne morale) : un bail loi du 6 juillet 1989 (résidence principale) ne peut
-              pas s&apos;appliquer. Seul un <strong>bail professionnel</strong> peut être rédigé avec Lokt pour ce
-              locataire — pour tout autre type, seule l&apos;importation d&apos;un bail rédigé par ailleurs est possible.
+              Locataire professionnel (personne morale) : seul un <strong>bail professionnel</strong> peut être rédigé
+              avec Lokt pour ce locataire — pour tout autre type, seule l&apos;importation d&apos;un bail rédigé par
+              ailleurs est possible.
             </p>
           ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
@@ -401,10 +401,8 @@ export function LeaseContractWizard({ userId, leaseId, onClose }: Props) {
           </p>
           {isCompanyTenant ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-              Locataire professionnel (personne morale) : un bail loi du 6 juillet 1989 ne peut pas s&apos;appliquer (le
-              logement doit être la résidence principale du locataire). Seul un bail professionnel peut être rédigé
-              avec Lokt pour ce locataire — pour tout autre type, seule l&apos;importation d&apos;un bail rédigé par
-              ailleurs est possible.
+              Locataire professionnel (personne morale) : seul un bail professionnel peut être rédigé avec Lokt pour ce
+              locataire — pour tout autre type, seule l&apos;importation d&apos;un bail rédigé par ailleurs est possible.
             </p>
           ) : null}
           {err ? <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{err}</p> : null}
@@ -884,8 +882,7 @@ function StepType({ kind, setKind, isCompanyTenant }: any) {
     <div className="space-y-3">
       {isCompanyTenant ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-          Locataire professionnel (personne morale) : seul le bail professionnel est disponible (les baux d'habitation
-          loi de 1989 exigent une résidence principale, incompatible avec une personne morale).
+          Locataire professionnel (personne morale) : seul le bail professionnel est disponible pour ce locataire.
         </p>
       ) : null}
       <div className="grid gap-2 sm:grid-cols-2">
