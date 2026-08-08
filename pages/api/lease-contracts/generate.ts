@@ -168,7 +168,10 @@ function makePdf(payload: any) {
     doc.moveDown(0.5);
     doc.font("Helvetica").fontSize(9.5).fillColor("#1e293b");
     if (payload.contract_kind === "empty_primary") {
-      doc.text("Ce contrat est conclu pour une durée de trois (3) ans, conformément à l’article 10 de la loi n°89-462 du 6 juillet 1989. Il est reconduit tacitement par périodes de trois ans. Le bailleur souhaitant donner congé doit notifier le locataire par lettre recommandée avec accusé de réception ou acte d’huissier au moins six (6) mois avant le terme du contrat.", { lineGap: 2 });
+      const landlordIsCompany = !!d.landlord_is_company;
+      const durationWords = landlordIsCompany ? "six (6)" : "trois (3)";
+      const landlordStatus = landlordIsCompany ? "personne morale" : "personne physique";
+      doc.text(`Ce contrat est conclu pour une durée de ${durationWords} ans, le bailleur étant une ${landlordStatus} (article 10 de la loi n°89-462 du 6 juillet 1989). Il est reconduit tacitement par périodes de ${durationWords} ans. Le bailleur souhaitant donner congé doit notifier le locataire par lettre recommandée avec accusé de réception ou acte d’huissier au moins six (6) mois avant le terme du contrat.`, { lineGap: 2 });
     } else if (payload.contract_kind === "furnished_primary") {
       doc.text("Ce contrat est conclu pour une durée de un (1) an, conformément à l’article 11 de la loi n°89-462 du 6 juillet 1989. Il est reconduit tacitement par périodes d’un an. Le bailleur souhaitant donner congé doit notifier le locataire par lettre recommandée avec accusé de réception ou acte d’huissier au moins trois (3) mois avant le terme du contrat.", { lineGap: 2 });
     } else if (payload.contract_kind === "furnished_student") {

@@ -155,6 +155,9 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
         setForm({
           landlord_name: landlord.display_name || profile.full_name || "",
           landlord_address: landlord.address || [profile.address_line1, profile.postal_code, profile.city].filter(Boolean).join(", "),
+          // Pré-coché si le profil a une raison sociale renseignée, mais reste modifiable :
+          // seul le nom effectivement saisi comme bailleur ci-dessus fait foi juridiquement.
+          landlord_is_company: !!profile.company_name,
           tenant_name: tenant.full_name || "",
           tenant_email: tenant.email || "",
           property_address: [property.address_line1, property.address_line2, property.postal_code, property.city, property.country].filter(Boolean).join(", "),
@@ -491,6 +494,14 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
                   names={[["landlord_name", "Nom du bailleur"], ["landlord_address", "Adresse du bailleur"], ["tenant_name", "Nom du locataire (ou 1er locataire)"], ["tenant_email", "E-mail du locataire"]]}
                 />
               )}
+              {kind === "empty_primary" ? (
+                <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+                  <Checks form={form} set={set} names={[["landlord_is_company", "Le bailleur est une personne morale (SCI, SARL...)"]]} />
+                  <p className="text-xs leading-5 text-slate-500">
+                    La durée minimale d'un bail nu est de 3 ans pour un bailleur personne physique, 6 ans pour une personne morale (art. 10 loi du 6 juillet 1989).
+                  </p>
+                </div>
+              ) : null}
               <CollapsibleExtra label="Ajouter un co-locataire ou un mandataire (optionnel)">
                 <Fields form={form} set={set} names={[["co_tenant_name", "Co-locataire (si applicable)"], ["mandataire_name", "Mandataire / gestionnaire (si applicable)"], ["mandataire_address", "Adresse du mandataire"]]} />
               </CollapsibleExtra>

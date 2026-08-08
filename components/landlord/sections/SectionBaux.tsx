@@ -1448,6 +1448,15 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         const maxEnd = dateMinusOneDay(addMonthsLocal(startDateObj, 10));
         if (endDateObj.getTime() > maxEnd.getTime()) throw new Error("Un bail mobilité ne doit pas dépasser 10 mois.");
       }
+      if (form.lease_kind === "furnished_student") {
+        if (!endDateObj || !startDateObj) throw new Error("Le bail meublé étudiant doit avoir une date de fin.");
+        const expectedEnd = dateMinusOneDay(addMonthsLocal(startDateObj, 9));
+        if (endDateObj.getTime() !== expectedEnd.getTime()) {
+          throw new Error(
+            `Un bail meublé étudiant doit avoir une durée exacte de 9 mois, non reconductible (article 25-7 de la loi du 6 juillet 1989) — date de fin attendue : ${dateToISO(expectedEnd)}.`
+          );
+        }
+      }
 
       const paymentDayNum = clampInt(form.payment_day, 1, 31, 1);
       const reminderDayNum = clampInt(form.reminder_day_of_month, 1, 31, 1);

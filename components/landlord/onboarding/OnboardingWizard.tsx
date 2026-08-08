@@ -527,6 +527,18 @@ export function OnboardingWizard({
     if (!Number.isFinite(rent) || rent <= 0) return setErr("Le loyer doit être supérieur à 0 €.");
     const charges = chargesAmount ? Number(String(chargesAmount).replace(",", ".")) : 0;
     if (!Number.isFinite(charges) || charges < 0) return setErr("Les charges ne peuvent pas être négatives.");
+    const deposit = depositAmount ? Number(String(depositAmount).replace(",", ".")) : 0;
+    if (!Number.isFinite(deposit) || deposit < 0) return setErr("Le dépôt de garantie ne peut pas être négatif.");
+    if (deposit > 0) {
+      const cap = depositCapForKind(leaseKind, rent);
+      if (cap != null && deposit > cap) {
+        return setErr(
+          leaseKind === "empty_primary"
+            ? `Le dépôt de garantie en location nue est plafonné à 1 mois de loyer hors charges, soit ${cap.toLocaleString("fr-FR")} €.`
+            : `Le dépôt de garantie en meublé est plafonné à 2 mois de loyer hors charges, soit ${cap.toLocaleString("fr-FR")} €.`
+        );
+      }
+    }
     setSaving(true);
     setErr(null);
     setErrIsPlanLimit(false);
