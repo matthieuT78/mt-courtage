@@ -830,7 +830,7 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     "w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 shadow-sm transition " +
     "placeholder:text-slate-400 focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-100";
   const selectBase =
-    "w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm transition " +
+    "calc-select w-full min-w-0 rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-base text-slate-900 shadow-sm transition " +
     "focus:border-cyan-400 focus:outline-none focus:ring-4 focus:ring-cyan-100";
   const labelBase = "flex min-h-[1.5rem] items-center gap-1 text-sm font-semibold leading-tight text-slate-700";
 

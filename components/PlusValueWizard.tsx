@@ -479,7 +479,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
     "w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm " +
     "focus:outline-none focus:ring-1 focus:ring-emerald-500";
   const selectBase =
-    "w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm " +
+    "calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm " +
     "focus:outline-none focus:ring-1 focus:ring-emerald-500";
   const labelBase = "text-xs text-slate-700 leading-tight min-h-[2.25rem] flex items-center gap-1";
 

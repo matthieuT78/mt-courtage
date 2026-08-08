@@ -1089,7 +1089,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <select
                     value={projectUsageDb}
                     onChange={(e) => setProjectUsageDb(e.target.value as ProjectUsageDB)}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="residence_principale">Résidence principale</option>
                     <option value="residence_secondaire">Résidence secondaire</option>
@@ -1105,7 +1105,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <select
                     value={timelineDb}
                     onChange={(e) => setTimelineDb(e.target.value as ProjectTimelineDB)}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="0_3_mois">0–3 mois</option>
                     <option value="3_6_mois">3–6 mois</option>
@@ -1139,7 +1139,7 @@ const renderAnalysisBlocks = (text: string) => {
                   <select
                     value={projectType}
                     onChange={(e) => setProjectType(e.target.value as ProjectType)}
-                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="ancien">Ancien</option>
                     <option value="neuf">Neuf</option>
@@ -1166,7 +1166,7 @@ const renderAnalysisBlocks = (text: string) => {
                     Statut professionnel
                     <InfoBadge text="Le statut aide à interpréter la stabilité des revenus (ex : CDI, fonctionnaire, indépendant…)." />
                   </label>
-                  <select value={proStatus} onChange={(e) => setProStatus(e.target.value as ProStatus)} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
+                  <select value={proStatus} onChange={(e) => setProStatus(e.target.value as ProStatus)} className="calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500">
                     <option value="cdi">CDI</option>
                     <option value="fonctionnaire">Fonctionnaire</option>
                     <option value="independant">Indépendant / société</option>

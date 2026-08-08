@@ -1452,7 +1452,7 @@ const canClickUnlock =
                       <select
                         value={type}
                         onChange={(e) => handleLocationTypeChange(idx, e.target.value as LocationType)}
-                        className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="calc-select w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:px-2 sm:py-1.5 sm:text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       >
                         <option value="longue">Location longue durée (loyer mensuel)</option>
                         <option value="airbnb">Location saisonnière (type Airbnb)</option>
