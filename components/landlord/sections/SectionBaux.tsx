@@ -2327,7 +2327,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       }
       if (!guardReceiptEmailForAutomation(receiptEmail, "activer le workflow automatique", setAutoWorkflowError)) return;
       setErr(null);
-      setForm((s) => ({ ...s, auto_quittance_enabled: true, auto_reminder_enabled: true }));
+      setForm((s) => ({ ...s, auto_quittance_enabled: true, auto_reminder_enabled: true, receipts_disabled: false }));
     };
 
     return (
