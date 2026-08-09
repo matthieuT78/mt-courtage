@@ -796,8 +796,13 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     payment_method: "virement",
     payment_type: "terme_a_echoir",
     status: "active",
-    auto_quittance_enabled: canUseReceiptAutomation,
-    auto_reminder_enabled: canUseReceiptAutomation,
+    // Pas de tenant_id à la création : impossible de savoir si un email de
+    // quittance sera disponible, donc on ne peut pas prétendre le workflow
+    // automatique déjà validé (il ne l'a jamais été — enableAutoWorkflow()
+    // n'a pas encore tourné). Défaut sur Manuel, l'utilisateur active
+    // explicitement l'automatique une fois le locataire choisi.
+    auto_quittance_enabled: false,
+    auto_reminder_enabled: false,
     receipts_disabled: false,
     reminder_day_of_month: "1",
     reminder_email: userEmail || "",
@@ -1266,8 +1271,8 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     payment_method: "virement",
     payment_type: "terme_a_echoir",
     status: "active",
-    auto_quittance_enabled: canUseReceiptAutomation,
-    auto_reminder_enabled: canUseReceiptAutomation,
+    auto_quittance_enabled: false,
+    auto_reminder_enabled: false,
     receipts_disabled: false,
     reminder_day_of_month: "1",
     reminder_email: userEmail || "",
