@@ -478,25 +478,30 @@ export function OnboardingWizard({
     setErr(null);
     setErrIsPlanLimit(false);
     try {
-      const { data, error } = await supabase
-        .from("properties")
-        .insert({
-          user_id: userId,
-          type: propertyType,
-          label: propertyLabel.trim(),
-          address_line1: propertyAddress.trim(),
-          postal_code: propertyPostalCode.trim() || null,
-          city: propertyCity.trim() || null,
-          surface_m2: propertySurface.trim() ? Number(propertySurface.trim().replace(",", ".")) || null : null,
-          rooms: propertyRooms.trim() ? Number(propertyRooms.trim()) || null : null,
-          delegated_services: delegatedServices,
-          delegation_agency_name: delegationAgencyName.trim() || null,
-          status: "active",
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      setCreatedPropertyId(data?.id || null);
+      const payload = {
+        user_id: userId,
+        type: propertyType,
+        label: propertyLabel.trim(),
+        address_line1: propertyAddress.trim(),
+        postal_code: propertyPostalCode.trim() || null,
+        city: propertyCity.trim() || null,
+        surface_m2: propertySurface.trim() ? Number(propertySurface.trim().replace(",", ".")) || null : null,
+        rooms: propertyRooms.trim() ? Number(propertyRooms.trim()) || null : null,
+        delegated_services: delegatedServices,
+        delegation_agency_name: delegationAgencyName.trim() || null,
+        status: "active",
+      };
+
+      if (createdPropertyId) {
+        // Retour en arrière depuis une étape suivante : on met à jour le bien déjà
+        // créé plutôt que d'en insérer un second à chaque nouveau passage sur cette étape.
+        const { error } = await supabase.from("properties").update(payload).eq("id", createdPropertyId).eq("user_id", userId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from("properties").insert(payload).select("id").single();
+        if (error) throw error;
+        setCreatedPropertyId(data?.id || null);
+      }
       await onRefresh();
       next();
     } catch (e: any) {
@@ -519,24 +524,29 @@ export function OnboardingWizard({
     setErr(null);
     setErrIsPlanLimit(false);
     try {
-      const { data, error } = await supabase
-        .from("tenants")
-        .insert({
-          user_id: userId,
-          first_name: tenantIsCompany ? null : tenantFirstName.trim(),
-          last_name: tenantIsCompany ? null : tenantLastName.trim(),
-          full_name: tenantIsCompany ? tenantCompanyName.trim() || "Locataire professionnel" : buildFullName(tenantFirstName, tenantLastName) || "Locataire",
-          email: tenantEmail.trim() || null,
-          phone: tenantPhone.trim() || null,
-          is_company: tenantIsCompany,
-          company_name: tenantIsCompany ? tenantCompanyName.trim() || null : null,
-          siret: tenantIsCompany ? tenantSiret.trim() || null : null,
-          legal_representative_name: tenantIsCompany ? tenantLegalRepName.trim() || null : null,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      setCreatedTenantId(data?.id || null);
+      const payload = {
+        user_id: userId,
+        first_name: tenantIsCompany ? null : tenantFirstName.trim(),
+        last_name: tenantIsCompany ? null : tenantLastName.trim(),
+        full_name: tenantIsCompany ? tenantCompanyName.trim() || "Locataire professionnel" : buildFullName(tenantFirstName, tenantLastName) || "Locataire",
+        email: tenantEmail.trim() || null,
+        phone: tenantPhone.trim() || null,
+        is_company: tenantIsCompany,
+        company_name: tenantIsCompany ? tenantCompanyName.trim() || null : null,
+        siret: tenantIsCompany ? tenantSiret.trim() || null : null,
+        legal_representative_name: tenantIsCompany ? tenantLegalRepName.trim() || null : null,
+      };
+
+      if (createdTenantId) {
+        // Retour en arrière depuis une étape suivante : on met à jour le locataire déjà
+        // créé plutôt que d'en insérer un second à chaque nouveau passage sur cette étape.
+        const { error } = await supabase.from("tenants").update(payload).eq("id", createdTenantId).eq("user_id", userId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from("tenants").insert(payload).select("id").single();
+        if (error) throw error;
+        setCreatedTenantId(data?.id || null);
+      }
       await onRefresh();
       next();
     } catch (e: any) {
