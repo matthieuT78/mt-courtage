@@ -2268,12 +2268,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
       }),
     [activeLeases, completedExitLeaseIds, propertyById]
   );
-  // Uniquement les baux ayant déjà un dossier EDL réel — un bail sans EDL n'a
-  // "rien à ouvrir" et ne doit apparaître que dans le sélecteur du formulaire
-  // de création (à droite), pas ici.
+  // Tous les baux actifs, qu'ils aient déjà un dossier EDL ou non — cliquer un
+  // bail ouvre le tableau de bord entrée/sortie, qui propose "Créer" ou
+  // "Reprendre" selon le cas. Un seul point d'entrée pour choisir un bail
+  // (auparavant : cette liste ne montrait que les baux avec dossier existant,
+  // et un second sélecteur de bail redondant vivait dans le panneau de droite).
+  // Les baux déjà comptabilisés dans "EDL de sortie à finaliser" sont exclus
+  // pour ne pas les faire apparaître deux fois.
   const leaseStarterCards = useMemo(
-    () => activeOnlyLeases.filter((l) => leaseIdsWithReport.has(l.id)).slice(0, 4),
-    [activeOnlyLeases, leaseIdsWithReport]
+    () => activeOnlyLeases.filter((l) => !endedPendingLeases.some((e) => e.id === l.id)).slice(0, 8),
+    [activeOnlyLeases, endedPendingLeases]
   );
 
   /* ======================================================
@@ -4373,22 +4377,25 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                 <>
                   {leaseStarterCards.length > 0 && (
                     <div className="mt-4">
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Dossiers en cours</p>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Choisir un bail</p>
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {leaseStarterCards.map((l) => (
-                          <button
-                            key={l.id}
-                            type="button"
-                            onClick={() => setSelectedLeaseId(l.id)}
-                            className="group min-h-[72px] rounded-2xl border border-slate-200 bg-white/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md"
-                          >
-                            <span className="block text-sm font-semibold text-slate-950">{leaseLabel(l)}</span>
-                            <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#635bff]">
-                              Ouvrir ce dossier
-                              <ArrowRightIcon className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
-                            </span>
-                          </button>
-                        ))}
+                        {leaseStarterCards.map((l) => {
+                          const hasDossier = leaseIdsWithReport.has(l.id);
+                          return (
+                            <button
+                              key={l.id}
+                              type="button"
+                              onClick={() => setSelectedLeaseId(l.id)}
+                              className="group min-h-[72px] rounded-2xl border border-slate-200 bg-white/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md"
+                            >
+                              <span className="block text-sm font-semibold text-slate-950">{leaseLabel(l)}</span>
+                              <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#635bff]">
+                                {hasDossier ? "Ouvrir ce dossier" : "Créer l'état des lieux"}
+                                <ArrowRightIcon className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -4420,7 +4427,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                     ? "Aucun bail disponible. Crée d’abord un bail dans la section Baux pour préparer un état des lieux."
                     : !activeOnlyLeases.length
                     ? "Aucun bail actif disponible. Les baux définitivement archivés ne sont plus proposés ici."
-                    : "Aucun dossier commencé pour l'instant. Utilise « + Créer un état des lieux » à droite pour démarrer, en choisissant le bail concerné."}
+                    : "Aucun dossier commencé pour l'instant. Utilise « + État des lieux libre » à droite pour démarrer sans bail."}
                 </div>
               )}
 
@@ -4464,17 +4471,25 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                   resetCreationWizard();
                 }} />
 
-              {creationWizardStep === null ? (
-                /* ── État repos : bouton déclencheur ─────────────────── */
+              {creationWizardStep === null && (selectedLeaseId || selectedReportId) ? (
+                /* Un bail/dossier est déjà sélectionné à gauche : les actions
+                   (créer/reprendre) sont sur son tableau de bord, pas ici. */
+                <div className="flex h-full min-h-[120px] items-center justify-center px-2 text-center">
+                  <p className="text-xs text-slate-500">← Utilise les actions du bail sélectionné, à gauche.</p>
+                </div>
+              ) : creationWizardStep === null ? (
+                /* ── État repos : le choix d'un bail se fait dans la liste à
+                   gauche ; ce bouton ne sert que pour le cas sans bail. ── */
                 <div className="space-y-3">
-                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Nouveau</p>
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-500">Pas encore de bail ?</p>
                   <button
                     type="button"
-                    onClick={() => setCreationWizardStep(1)}
+                    onClick={() => { setCreationMode("standalone"); setCreationWizardStep(1); }}
                     className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
                   >
-                    <span className="text-base">+</span> Créer un état des lieux
+                    <span className="text-base">+</span> État des lieux libre
                   </button>
+                  <p className="text-xs text-slate-500">Sélectionne plutôt un bail à gauche si le bien concerné en a déjà un.</p>
                 </div>
               ) : (
                 /* ── Wizard actif ─────────────────────────────────────── */
@@ -4494,37 +4509,49 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                     ))}
                   </div>
 
-                  {/* ── Step 1 : bail + entrée ou sortie, en un seul écran ── */}
+                  {/* ── Step 1 : uniquement le cas "sans bail" (choisir un bail
+                       se fait normalement depuis la liste à gauche) — sauf
+                       via "Changer" à l'étape 2, qui revient ici en mode
+                       "lease" pour permettre de sélectionner un autre bail. ── */}
                   {creationWizardStep === 1 && (
                     <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-900">Quel bail, et entrée ou sortie ?</p>
-                      <p className="text-xs text-slate-500">Le bail pré-remplit le logement et le locataire. Le rattachement peut aussi être fait plus tard.</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {creationMode === "lease" ? "Quel bail ?" : "État des lieux sans bail"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {creationMode === "lease"
+                          ? "Le bail pré-remplit le logement et le locataire."
+                          : "Le logement et le locataire seront à préciser. Le rattachement à un bail peut aussi être fait plus tard."}
+                      </p>
                       <div className="grid gap-2">
-                        <NiceSelect
-                          icon={HomeModernIcon}
-                          value={selectedLeaseId}
-                          onChange={(id) => { setSelectedLeaseId(id); setCreationMode("lease"); }}
-                          placeholder="— Sélectionner un bail —"
-                          options={[...activeOnlyLeases, ...endedPendingLeases].map((l) => ({
-                            value: l.id,
-                            label: propertyById.get(l.property_id)?.label || "Logement",
-                            subtitle: tenantById.get(l.tenant_id)?.full_name || "Locataire",
-                          }))}
-                        />
-                        {!selectedLeaseId && creationMode !== "standalone" && (
-                          <button
-                            type="button"
-                            onClick={() => setCreationMode("standalone")}
-                            className="inline-flex min-h-[46px] w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                          >
-                            Continuer sans bail (rattacher plus tard)
-                          </button>
-                        )}
-                        {creationMode === "standalone" && !selectedLeaseId && (
+                        {creationMode === "lease" ? (
+                          <>
+                            <NiceSelect
+                              icon={HomeModernIcon}
+                              value={selectedLeaseId}
+                              onChange={(id) => { setSelectedLeaseId(id); setCreationMode("lease"); }}
+                              placeholder="— Sélectionner un bail —"
+                              options={[...activeOnlyLeases, ...endedPendingLeases].map((l) => ({
+                                value: l.id,
+                                label: propertyById.get(l.property_id)?.label || "Logement",
+                                subtitle: tenantById.get(l.tenant_id)?.full_name || "Locataire",
+                              }))}
+                            />
+                            {!selectedLeaseId && (
+                              <button
+                                type="button"
+                                onClick={() => setCreationMode("standalone")}
+                                className="inline-flex min-h-[46px] w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                              >
+                                Continuer sans bail (rattacher plus tard)
+                              </button>
+                            )}
+                          </>
+                        ) : (
                           <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                             <span className="text-xs text-slate-700">État des lieux libre, sans bail</span>
                             <button type="button" onClick={() => setCreationMode("lease")} className="ml-2 shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
-                              Choisir un bail
+                              Choisir un bail existant
                             </button>
                           </div>
                         )}
