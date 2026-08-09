@@ -163,6 +163,8 @@ Oui, pour la fiscalité uniquement. Si vous êtes en bail vide mais en micro-fon
 - Vous êtes prêt à investir dans le mobilier (5 000 à 15 000 € selon la surface)
 - Vous souhaitez plus de flexibilité pour récupérer le bien
 
+**À noter :** ces deux régimes supposent que le logement constitue la résidence principale du locataire. Si vous louez à un professionnel (médecin, avocat, consultant...) qui utilise le local exclusivement pour son activité, c'est un régime distinct — le [bail professionnel](/blog/bail-professionnel-guide-2026) — qui s'applique, avec des règles de durée, de loyer et de congé très différentes.
+
 ---
 
 ## Questions fréquentes
