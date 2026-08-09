@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, DocumentArrowUpIcon, DocumentTextIcon, InformationCircleIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { AcademicCapIcon, ArrowDownTrayIcon, ArrowLeftIcon, ArrowRightIcon, ArrowsRightLeftIcon, BriefcaseIcon, DocumentArrowUpIcon, DocumentTextIcon, HomeIcon, HomeModernIcon, InformationCircleIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { supabase } from "../../lib/supabaseClient";
 import { xhrUploadToSignedUrl } from "../../lib/uploadWithProgress";
 import { UploadProgressBar } from "../UploadProgressBar";
@@ -876,8 +876,14 @@ function CollapsibleExtra({ label, children }: any) {
 function Checks({ form, set, names }: any) { return <div className="mb-4 grid gap-2 sm:grid-cols-2">{names.map(([key,title]: any[]) => <label key={key} className="inline-flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={!!form[key]} onChange={(e) => set(key,e.target.checked)}/>{title}</label>)}</div>; }
 function AnnexChecks({ form, set }: any) { const names = [["annex_notice","Notice d’information","À remettre au locataire avec le bail."],["annex_diagnostics","Diagnostics dont DPE","Coche si le dossier de diagnostics applicable sera joint."],["annex_inventory_report","État des lieux d’entrée","À joindre une fois réalisé avec le locataire."],["annex_furniture","Inventaire du mobilier","À joindre pour une location meublée."],["annex_copro","Extrait de copropriété","À joindre si le logement est en copropriété."],["annex_insurance","Assurance habitation","Attestation à récupérer auprès du locataire."]]; return <div className="mb-5"><p className="text-sm font-semibold text-slate-950">Annexes à prévoir avec le contrat</p><p className="mt-1 text-xs leading-5 text-slate-600">Ces cases servent de pense-bête avant signature. Elles n’ajoutent pas automatiquement les documents au PDF.</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{names.map(([key,title,description]) => <label key={key} className="flex items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm text-slate-700"><input type="checkbox" className="mt-1" checked={!!form[key]} onChange={(e) => set(key,e.target.checked)}/><span><span className="block font-semibold text-slate-900">{title}</span><span className="mt-0.5 block text-xs leading-5 text-slate-500">{description}</span></span></label>)}</div></div>; }
 function StepType({ kind, setKind, isCompanyTenant }: any) {
-  const allOptions = [["empty_primary","Location vide"],["furnished_primary","Meublé résidence principale"],["furnished_student","Meublé étudiant 9 mois"],["mobility","Bail mobilité"],["professional","Bail professionnel"]];
-  const options = isCompanyTenant ? allOptions.filter(([value]) => value === "professional") : allOptions;
+  const allOptions = [
+    { value: "empty_primary", title: "Location vide", desc: "Résidence principale, non meublé — 3 ans", icon: HomeIcon },
+    { value: "furnished_primary", title: "Meublé résidence principale", desc: "Cas LMNP classique — 1 an reconduit tacitement", icon: HomeModernIcon },
+    { value: "furnished_student", title: "Meublé étudiant", desc: "9 mois, non reconductible", icon: AcademicCapIcon },
+    { value: "mobility", title: "Bail mobilité", desc: "1 à 10 mois, sans dépôt de garantie", icon: ArrowsRightLeftIcon },
+    { value: "professional", title: "Bail professionnel", desc: "Profession libérale — locaux exclusivement professionnels", icon: BriefcaseIcon },
+  ];
+  const options = isCompanyTenant ? allOptions.filter((o) => o.value === "professional") : allOptions;
   return (
     <div className="space-y-3">
       {isCompanyTenant ? (
@@ -885,8 +891,25 @@ function StepType({ kind, setKind, isCompanyTenant }: any) {
           Locataire professionnel (personne morale) : seul le bail professionnel est disponible pour ce locataire.
         </p>
       ) : null}
-      <div className="grid gap-2 sm:grid-cols-2">
-        {options.map(([value,title]) => <button key={value} type="button" onClick={() => setKind(value)} className={`rounded-xl border p-4 text-left text-sm font-semibold ${kind === value ? "border-slate-900 bg-slate-100" : "border-slate-200"}`}>{title}</button>)}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {options.map(({ value, title, desc, icon: Icon }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setKind(value)}
+            className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${
+              kind === value ? "border-[#635bff] bg-[#635bff]/5 ring-1 ring-[#635bff]/20" : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+            }`}
+          >
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${kind === value ? "bg-gradient-to-br from-[#635bff] to-[#00d4ff] text-white" : "bg-slate-100 text-slate-500"}`}>
+              <Icon className="h-5 w-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-slate-950">{title}</span>
+              <span className="mt-0.5 block text-xs leading-5 text-slate-500">{desc}</span>
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );
