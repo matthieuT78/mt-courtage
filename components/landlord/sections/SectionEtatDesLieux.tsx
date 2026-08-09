@@ -3355,31 +3355,13 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                                         className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 sm:w-auto sm:rounded-full sm:text-xs"
                                       >
                                         <CheckCircleIcon className="h-5 w-5" aria-hidden="true" />
-                                        Compléter la checklist
+                                        Tout est en bon état
                                       </button>
                                       <p className="mt-1 text-[0.68rem] text-slate-500">
-                                        {currentRoomMissingTemplateCount} élément(s) standard manquant(s) — état neutre
+                                        Ajoute {currentRoomMissingTemplateCount} élément(s) standard de cette pièce (sol, murs...), tous en bon état.
                                       </p>
                                     </div>
                                   )}
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      openAddForRoom(currentRoom.id, {
-                                        category: "Défaut",
-                                        label: "",
-                                        condition: "moyen",
-                                        wear_level: 3,
-                                        is_clean: false,
-                                        is_functional: true,
-                                        severity: 3,
-                                      })
-                                    }
-                                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 sm:rounded-full sm:text-xs"
-                                  >
-                                    <ExclamationTriangleIcon className="h-5 w-5" aria-hidden="true" />
-                                    Ajouter un dégât
-                                  </button>
                                   <button
                                     type="button"
                                     onClick={() => openAddForRoom(currentRoom.id)}
