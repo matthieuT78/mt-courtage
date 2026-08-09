@@ -133,6 +133,31 @@ function buildFullName(first?: string | null, last?: string | null) {
   return [first?.trim(), last?.trim()].filter(Boolean).join(" ");
 }
 
+type SiretCheckResult = { tone: "ok" | "warn" | "error"; message: string; companyName?: string };
+async function checkSiret(siret: string): Promise<SiretCheckResult> {
+  const clean = String(siret || "").replace(/\s+/g, "");
+  if (!/^\d{14}$/.test(clean)) return { tone: "error", message: "Le SIRET doit contenir 14 chiffres." };
+  try {
+    const headers = await authJsonHeaders();
+    const res = await fetch(`/api/company/lookup-siret?siret=${clean}`, { headers });
+    const data = await res.json();
+    if (!data.ok) return { tone: "warn", message: data.error || "Vérification indisponible pour le moment." };
+    if (!data.found) return { tone: "warn", message: "SIRET introuvable — vérifiez la saisie." };
+    if (!data.establishmentActive) return { tone: "error", message: `Établissement fermé (${data.companyName || "société"}).` };
+    if (!data.companyActive) return { tone: "error", message: `Société radiée (${data.companyName || "société"}).` };
+    return { tone: "ok", message: `${data.companyName} — SIRET vérifié, société active.`, companyName: data.companyName };
+  } catch {
+    return { tone: "warn", message: "Vérification indisponible pour le moment." };
+  }
+}
+function siretCheckClass(tone: SiretCheckResult["tone"]) {
+  return tone === "ok"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+    : tone === "warn"
+    ? "border-amber-200 bg-amber-50 text-amber-800"
+    : "border-red-200 bg-red-50 text-red-700";
+}
+
 function isEmailLike(v: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 }
@@ -374,6 +399,8 @@ export function OnboardingWizard({
   const [tenantIsCompany, setTenantIsCompany] = useState(false);
   const [tenantCompanyName, setTenantCompanyName] = useState("");
   const [tenantSiret, setTenantSiret] = useState("");
+  const [tenantSiretCheck, setTenantSiretCheck] = useState<SiretCheckResult | null>(null);
+  const [tenantSiretChecking, setTenantSiretChecking] = useState(false);
   const [tenantLegalRepName, setTenantLegalRepName] = useState("");
   const [tenantFirstName, setTenantFirstName] = useState("");
   const [tenantLastName, setTenantLastName] = useState("");
@@ -792,7 +819,38 @@ export function OnboardingWizard({
                 <>
                   <TextField label="Raison sociale" value={tenantCompanyName} onChange={setTenantCompanyName} required />
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <TextField label="SIRET" value={tenantSiret} onChange={setTenantSiret} placeholder="14 chiffres" />
+                    <label className="block space-y-1">
+                      <span className="text-xs font-semibold text-slate-700">SIRET</span>
+                      <div className="flex gap-1.5">
+                        <input
+                          value={tenantSiret}
+                          onChange={(e) => { setTenantSiretCheck(null); setTenantSiret(e.target.value); }}
+                          placeholder="14 chiffres"
+                          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                        />
+                        <button
+                          type="button"
+                          disabled={tenantSiretChecking || !tenantSiret.trim()}
+                          onClick={async () => {
+                            setTenantSiretChecking(true);
+                            const result = await checkSiret(tenantSiret);
+                            setTenantSiretCheck(result);
+                            if (result.tone === "ok" && result.companyName && !tenantCompanyName.trim()) {
+                              setTenantCompanyName(result.companyName);
+                            }
+                            setTenantSiretChecking(false);
+                          }}
+                          className="shrink-0 whitespace-nowrap rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-50"
+                        >
+                          {tenantSiretChecking ? "…" : "Vérifier"}
+                        </button>
+                      </div>
+                      {tenantSiretCheck ? (
+                        <span className={`block rounded-lg border px-2 py-1.5 text-[0.7rem] leading-4 ${siretCheckClass(tenantSiretCheck.tone)}`}>
+                          {tenantSiretCheck.message}
+                        </span>
+                      ) : null}
+                    </label>
                     <TextField label="Représentant légal" value={tenantLegalRepName} onChange={setTenantLegalRepName} placeholder="Nom du signataire" />
                   </div>
                   <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">

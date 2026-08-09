@@ -283,6 +283,34 @@ export function SectionLocataires({
     return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   };
 
+  type SiretCheckResult = { tone: "ok" | "warn" | "error"; message: string; companyName?: string };
+  const checkSiret = async (siret: string): Promise<SiretCheckResult> => {
+    const clean = String(siret || "").replace(/\s+/g, "");
+    if (!/^\d{14}$/.test(clean)) return { tone: "error", message: "Le SIRET doit contenir 14 chiffres." };
+    try {
+      const headers = await portalAuthHeaders();
+      const res = await fetch(`/api/company/lookup-siret?siret=${clean}`, { headers });
+      const data = await res.json();
+      if (!data.ok) return { tone: "warn", message: data.error || "Vérification indisponible pour le moment." };
+      if (!data.found) return { tone: "warn", message: "SIRET introuvable — vérifiez la saisie." };
+      if (!data.establishmentActive) return { tone: "error", message: `Établissement fermé (${data.companyName || "société"}).` };
+      if (!data.companyActive) return { tone: "error", message: `Société radiée (${data.companyName || "société"}).` };
+      return { tone: "ok", message: `${data.companyName} — SIRET vérifié, société active.`, companyName: data.companyName };
+    } catch {
+      return { tone: "warn", message: "Vérification indisponible pour le moment." };
+    }
+  };
+  const [createSiretCheck, setCreateSiretCheck] = useState<SiretCheckResult | null>(null);
+  const [createSiretChecking, setCreateSiretChecking] = useState(false);
+  const [editSiretChecks, setEditSiretChecks] = useState<Record<string, SiretCheckResult>>({});
+  const [editSiretChecking, setEditSiretChecking] = useState<Set<string>>(new Set());
+  const siretCheckClass = (tone: SiretCheckResult["tone"]) =>
+    tone === "ok"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+      : tone === "warn"
+      ? "border-amber-200 bg-amber-50 text-amber-800"
+      : "border-red-200 bg-red-50 text-red-700";
+
   useEffect(() => {
     if (!supabase || !userId) return;
     supabase
@@ -1267,12 +1295,38 @@ export function SectionLocataires({
                         </div>
                         <div className="space-y-1">
                           <label className="text-[0.7rem] font-medium text-slate-600">SIRET</label>
-                          <input
-                            value={createForm.siret}
-                            onChange={(e) => setCreateForm((s) => ({ ...s, siret: e.target.value }))}
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
-                            placeholder="14 chiffres"
-                          />
+                          <div className="flex gap-1.5">
+                            <input
+                              value={createForm.siret}
+                              onChange={(e) => {
+                                setCreateSiretCheck(null);
+                                setCreateForm((s) => ({ ...s, siret: e.target.value }));
+                              }}
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm transition focus:border-indigo-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                              placeholder="14 chiffres"
+                            />
+                            <button
+                              type="button"
+                              disabled={createSiretChecking || !createForm.siret.trim()}
+                              onClick={async () => {
+                                setCreateSiretChecking(true);
+                                const result = await checkSiret(createForm.siret);
+                                setCreateSiretCheck(result);
+                                if (result.tone === "ok" && result.companyName && !createForm.company_name.trim()) {
+                                  setCreateForm((s) => ({ ...s, company_name: result.companyName! }));
+                                }
+                                setCreateSiretChecking(false);
+                              }}
+                              className="shrink-0 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-50"
+                            >
+                              {createSiretChecking ? "…" : "Vérifier"}
+                            </button>
+                          </div>
+                          {createSiretCheck ? (
+                            <p className={cx("rounded-lg border px-2 py-1.5 text-[0.7rem] leading-4", siretCheckClass(createSiretCheck.tone))}>
+                              {createSiretCheck.message}
+                            </p>
+                          ) : null}
                         </div>
                         <div className="space-y-1">
                           <label className="text-[0.7rem] font-medium text-slate-600">Représentant légal</label>
@@ -1556,11 +1610,37 @@ export function SectionLocataires({
                             </div>
                             <div className="space-y-1">
                               <label className="text-[0.7rem] text-slate-700">SIRET</label>
-                              <input
-                                value={f.siret}
-                                onChange={(e) => setEditForms((m) => ({ ...m, [t.id]: { ...f, siret: e.target.value } }))}
-                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                              />
+                              <div className="flex gap-1.5">
+                                <input
+                                  value={f.siret}
+                                  onChange={(e) => {
+                                    setEditSiretChecks((m) => { const next = { ...m }; delete next[t.id]; return next; });
+                                    setEditForms((m) => ({ ...m, [t.id]: { ...f, siret: e.target.value } }));
+                                  }}
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                                />
+                                <button
+                                  type="button"
+                                  disabled={editSiretChecking.has(t.id) || !f.siret?.trim()}
+                                  onClick={async () => {
+                                    setEditSiretChecking((s) => new Set(s).add(t.id));
+                                    const result = await checkSiret(f.siret || "");
+                                    setEditSiretChecks((m) => ({ ...m, [t.id]: result }));
+                                    if (result.tone === "ok" && result.companyName && !f.company_name?.trim()) {
+                                      setEditForms((m) => ({ ...m, [t.id]: { ...f, company_name: result.companyName! } }));
+                                    }
+                                    setEditSiretChecking((s) => { const next = new Set(s); next.delete(t.id); return next; });
+                                  }}
+                                  className="shrink-0 whitespace-nowrap rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700 disabled:opacity-50"
+                                >
+                                  {editSiretChecking.has(t.id) ? "…" : "Vérifier"}
+                                </button>
+                              </div>
+                              {editSiretChecks[t.id] ? (
+                                <p className={cx("rounded-lg border px-2 py-1.5 text-[0.7rem] leading-4", siretCheckClass(editSiretChecks[t.id].tone))}>
+                                  {editSiretChecks[t.id].message}
+                                </p>
+                              ) : null}
                             </div>
                             <div className="space-y-1">
                               <label className="text-[0.7rem] text-slate-700">Représentant légal</label>
