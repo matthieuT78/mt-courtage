@@ -4381,6 +4381,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                       <div className="grid gap-2 sm:grid-cols-2">
                         {leaseStarterCards.map((l) => {
                           const hasDossier = leaseIdsWithReport.has(l.id);
+                          const isDelegatedEdl = !!propertyById.get(l.property_id)?.delegated_services?.includes("bail_edl");
                           return (
                             <button
                               key={l.id}
@@ -4388,9 +4389,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                               onClick={() => setSelectedLeaseId(l.id)}
                               className="group min-h-[72px] rounded-2xl border border-slate-200 bg-white/90 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[#635bff]/30 hover:shadow-md"
                             >
-                              <span className="block text-sm font-semibold text-slate-950">{leaseLabel(l)}</span>
+                              <span className="flex items-center gap-1.5">
+                                <span className="block text-sm font-semibold text-slate-950">{leaseLabel(l)}</span>
+                                {isDelegatedEdl && !hasDossier && (
+                                  <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-700">
+                                    Agence
+                                  </span>
+                                )}
+                              </span>
                               <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#635bff]">
-                                {hasDossier ? "Ouvrir ce dossier" : "Créer l'état des lieux"}
+                                {hasDossier ? "Ouvrir ce dossier" : isDelegatedEdl ? "Importer le PDF de l'agence" : "Créer l'état des lieux"}
                                 <ArrowRightIcon className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden="true" />
                               </span>
                             </button>
