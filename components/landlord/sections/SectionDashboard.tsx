@@ -12,6 +12,7 @@ import { getLeasePaymentDueDate } from "../../../lib/rentSchedule";
 import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
 import { isLmnpItemCompliant, propertyRequiresLmnpInventory } from "../../../lib/landlord/lmnpInventory";
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
+import { computeLeaseWatchDate } from "../../../lib/landlord/leaseRenewal";
 import { TransitionPanel, isInTransition } from "./TransitionPanel";
 
 type DashboardAlert = {
@@ -255,10 +256,12 @@ export function SectionDashboard({
         }
       }
 
-      // Bail à durée déterminée expirant bientôt
-      if (l.end_date) {
-        const end  = new Date(l.end_date + "T00:00:00");
-        const days = Math.ceil((end.getTime() - now.getTime()) / 86400000);
+      // Bail approchant son échéance réelle (reconduction tacite déroulée —
+      // sinon un bail déjà reconduit plusieurs fois, dont la date de fin
+      // d'origine reste dans le passé, n'apparaîtrait jamais ici).
+      const watchDate = computeLeaseWatchDate(l, now);
+      if (watchDate) {
+        const days = Math.ceil((watchDate.getTime() - now.getTime()) / 86400000);
         if (days >= 0 && days <= 90) {
           events.push({ type: "expiring", leaseId: l.id, tenantName, propertyLabel, days, urgency: days <= 30 ? "high" : "medium" });
         }
@@ -817,7 +820,12 @@ export function SectionDashboard({
       const rentPeriod = getLeaseRentPeriod(lease, currentMonth);
       const total = Number(rentPeriod?.total || 0);
       const endDate = normalizeDate(lease.end_date);
-      const leaseEndingSoon = !!endDate && endDate <= in90Days;
+      // Échéance réelle à surveiller (déroule la reconduction tacite) plutôt
+      // que la date de fin brute, figée sur le contrat d'origine et jamais
+      // avancée par les renouvellements silencieux — sinon un bail reconduit
+      // depuis longtemps reste signalé "à surveiller" indéfiniment.
+      const watchDate = computeLeaseWatchDate(lease, now);
+      const leaseEndingSoon = !!watchDate && watchDate <= in90Days;
       const paymentState = paymentStatusForLease(lease, currentMonth, payment);
       const dueDate = getLeasePaymentDueDate(lease, currentMonth);
       const paymentStatus =
@@ -841,6 +849,7 @@ export function SectionDashboard({
         hasReceipt: !!receipt,
         receiptSent: !!receipt?.sent_at,
         leaseEndingSoon,
+        watchDate,
         endDate,
       };
     });
@@ -992,12 +1001,12 @@ export function SectionDashboard({
       actions.push({
         tone: "amber",
         title: `${endingSoonCards.length} bail${endingSoonCards.length > 1 ? "s" : ""} à surveiller`,
-        desc: "Décidez si le bail continue, s’il faut un avenant, ou si vous devez préparer une sortie.",
+        desc: "Par défaut le bail se reconduit tacitement sans action de votre part. Décidez si vous laissez reconduire, proposez un avenant, ou préparez un congé.",
         details: endingSoonCards
           .slice(0, 3)
-          .map((card) => `${card.propertyLabel} · ${card.tenantName} · fin ${fmtDate(card.lease.end_date)}`),
+          .map((card) => `${card.propertyLabel} · ${card.tenantName} · échéance ${card.watchDate ? fmtDate(toISODate(card.watchDate)) : "—"}`),
         target: "locataires",
-        cta: "Préparer les départs",
+        cta: "Voir les baux concernés",
       });
     }
 
@@ -2043,7 +2052,7 @@ export function SectionDashboard({
                     <p className="truncate font-semibold text-slate-900">{card.propertyLabel}</p>
                     <p className="truncate text-xs text-slate-600">{card.tenantName}</p>
                     {card.leaseEndingSoon ? (
-                      <p className="mt-1 text-xs font-semibold text-amber-700">Fin à surveiller : {fmtDate(card.lease.end_date)}</p>
+                      <p className="mt-1 text-xs font-semibold text-amber-700">Échéance à surveiller : {card.watchDate ? fmtDate(toISODate(card.watchDate)) : "—"}</p>
                     ) : null}
                   </div>
                   <div>

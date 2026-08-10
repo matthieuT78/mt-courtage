@@ -37,6 +37,7 @@ import { LeaseContractWizard } from "../LeaseContractWizard";
 import { IrlRevisionPanel } from "./SectionRevision";
 import type { RentPayment, RentReceipt } from "../../../lib/landlord/types";
 import { includeSelected, isActivePropertyLike, isActiveTenantLike } from "../../../lib/landlord/archiveFilters";
+import { computeLeaseWatchInfo } from "../../../lib/landlord/leaseRenewal";
 
 /* ======================================================
    TYPES
@@ -319,12 +320,11 @@ function leaseRenewalInfo(lease: Partial<Lease>, now = parisNow()) {
   const rule = getLeaseKindRule(lease.lease_kind);
   const start = parseISODateLocal(lease.start_date);
   const contractualEnd = parseISODateLocal(lease.end_date) || parseISODateLocal(expectedEndDate(lease.start_date, rule.value));
-  const renewalEnabled = rule.tacitRenewal && lease.auto_renewal_enabled !== false;
 
   if (!start || !contractualEnd) {
     return {
       rule,
-      renewalEnabled,
+      renewalEnabled: rule.tacitRenewal && lease.auto_renewal_enabled !== false,
       title: rule.short,
       status: "Date de fin à compléter",
       detail: rule.note,
@@ -334,37 +334,34 @@ function leaseRenewalInfo(lease: Partial<Lease>, now = parisNow()) {
     };
   }
 
-  if (!renewalEnabled) {
-    const days = daysUntil(contractualEnd, now);
+  // Le calcul du cycle en cours (reconduction tacite déroulée) est partagé
+  // avec le cockpit et le panneau de transition — voir lib/landlord/leaseRenewal.ts
+  // pour ne pas dupliquer cette logique à trois endroits.
+  const watchInfo = computeLeaseWatchInfo(
+    { start_date: dateToISO(start), end_date: dateToISO(contractualEnd), lease_kind: lease.lease_kind, auto_renewal_enabled: lease.auto_renewal_enabled },
+    now
+  );
+  const cycleEnd = watchInfo.watchDate!;
+  const days = daysUntil(cycleEnd, now);
+
+  if (!watchInfo.renewalEnabled) {
     const isPast = days < 0;
     return {
       rule,
-      renewalEnabled,
+      renewalEnabled: false,
       title: rule.short,
-      status: isPast ? "Bail arrivé à terme" : `Fin prévue ${fmtFR(contractualEnd)}`,
+      status: isPast ? "Bail arrivé à terme" : `Fin prévue ${fmtFR(cycleEnd)}`,
       detail: rule.renewalLabel,
       tone: isPast ? ("red" as const) : days <= 60 ? ("amber" as const) : ("slate" as const),
-      currentEnd: contractualEnd,
+      currentEnd: cycleEnd,
       nextAction: isPast ? "Clôture le bail ou signe un nouveau bail si le locataire reste." : "Prépare la sortie ou le nouveau bail avant l’échéance.",
     };
   }
 
-  const durationMonths = rule.durationMonths || 12;
-  let cycleStart = new Date(start);
-  let cycleEnd = new Date(contractualEnd);
-  let renewalCount = 0;
-
-  while (cycleEnd.getTime() < now.getTime() && renewalCount < 30) {
-    cycleStart = new Date(cycleEnd);
-    cycleStart.setDate(cycleStart.getDate() + 1);
-    cycleEnd = dateMinusOneDay(addMonthsLocal(cycleStart, durationMonths));
-    renewalCount += 1;
-  }
-
-  const days = daysUntil(cycleEnd, now);
+  const renewalCount = watchInfo.renewalCount;
   return {
     rule,
-    renewalEnabled,
+    renewalEnabled: true,
     title: rule.short,
     status: renewalCount > 0 ? `Reconduit jusqu’au ${fmtFR(cycleEnd)}` : `Fin de période ${fmtFR(cycleEnd)}`,
     detail: renewalCount > 0 ? `${renewalCount} reconduction${renewalCount > 1 ? "s" : ""} suivie${renewalCount > 1 ? "s" : ""}` : rule.renewalLabel,

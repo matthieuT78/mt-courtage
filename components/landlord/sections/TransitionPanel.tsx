@@ -9,6 +9,7 @@ import { supabase } from "../../../lib/supabaseClient";
 import { cx } from "../ui/uiHelpers";
 import type { Lease, Property, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
+import { computeLeaseWatchDate } from "../../../lib/landlord/leaseRenewal";
 
 type Props = {
   leases: Lease[];
@@ -73,8 +74,13 @@ export function isInTransition(lease: Lease, allLeases: Lease[], propertyById: M
   const property = propertyById.get(lease.property_id);
   if (String(property?.status || "").toLowerCase() === "archived") return false;
 
-  const endDate = new Date(lease.end_date + "T00:00:00");
   const now = new Date();
+  // Échéance réelle (reconduction tacite déroulée) pour un bail encore actif —
+  // sinon un bail reconduit depuis longtemps, dont la date de fin d'origine
+  // reste dans le passé, ne serait jamais détecté ici même si son échéance
+  // courante approche vraiment. Un bail "ended" a une fin définitive : pas de
+  // reconduction à dérouler.
+  const endDate = status === "active" ? computeLeaseWatchDate(lease, now)! : new Date(lease.end_date + "T00:00:00");
   const sixMonthsAhead = new Date(now.getFullYear(), now.getMonth() + 6, now.getDate());
   const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400000);
 
