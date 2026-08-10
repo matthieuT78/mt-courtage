@@ -524,6 +524,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   useEffect(() => {
     if (!deepLink?.openCreate) return;
     setTab("finance");
+    setFinancePanelForceOpen(true);
     setHighlightFinanceConfig(true);
     setTimeout(() => {
       document.getElementById("finance-pilotage")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -536,6 +537,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     if (!propertyId) return;
     setTab("finance");
     setAnalysisPropertyId(propertyId);
+    setFinancePanelForceOpen(true);
     setOpenFinanceProps((prev) => (prev.has(propertyId) ? prev : new Set(prev).add(propertyId)));
     setTimeout(() => {
       document.getElementById(`finance-property-${propertyId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -600,8 +602,27 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     [activePropertyOptions, pf]
   );
   const financeAllConfigured = activePropertyOptions.length > 0 && financeConfiguredCount === activePropertyOptions.length;
-  const financePanelVisible = activePropertyOptions.length === 0 || !financeAllConfigured || financePanelForceOpen;
+  const financePanelVisible = activePropertyOptions.length === 0 || financePanelForceOpen;
   const activePropertyIdSet = useMemo(() => new Set(activePropertyOptions.map((property) => property.id)), [activePropertyOptions]);
+
+  const focusFinanceConfig = () => {
+    const incompleteIds = activePropertyOptions
+      .filter((p) => { const f = pf.get(p.id); return !f?.purchase_price || !f?.loan_rate_percent; })
+      .map((p) => p.id);
+    if (incompleteIds.length) {
+      setOpenFinanceProps((prev) => {
+        const next = new Set(prev);
+        incompleteIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+    setFinancePanelForceOpen(true);
+    setHighlightFinanceConfig(true);
+    setTimeout(() => {
+      document.getElementById("finance-pilotage")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    setTimeout(() => setHighlightFinanceConfig(false), 2500);
+  };
 
   const leasePropertyById = useMemo(() => {
     const map = new Map<string, string>();
@@ -2060,7 +2081,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           </button>
         </div>
       ) : activePropertyOptions.length > 0 ? (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-4">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-white">
               <BanknotesIcon className="h-4 w-4" />
@@ -2075,6 +2096,13 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
               </p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => (financePanelForceOpen ? setFinancePanelForceOpen(false) : focusFinanceConfig())}
+            className="shrink-0 rounded-full border border-indigo-300 bg-white px-4 py-1.5 text-xs font-semibold text-indigo-800 hover:bg-indigo-100"
+          >
+            {financePanelForceOpen ? "Réduire" : "Compléter maintenant ↓"}
+          </button>
         </div>
       ) : null}
 
