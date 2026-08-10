@@ -60,6 +60,7 @@ export default function ConfidentialitePage() {
                   <li>données bailleur : biens, adresses ou localisations, surfaces, montants de loyers, charges, dépôts de garantie ;</li>
                   <li>données locataires et contacts : noms, emails, téléphones, informations utiles à la gestion locative ;</li>
                   <li>données de candidature locative : informations déclarées par les candidats à un logement (prénom, nom, email, téléphone, date de naissance, situation professionnelle, revenus nets mensuels) et pièces justificatives jointes (CNI, fiche de paie, avis d’imposition, justificatif de domicile) — collectées uniquement dans le cadre d’une annonce active et transmises au bailleur concerné ;</li>
+                  <li>données de réservation de visite : prénom, nom, email et téléphone du candidat associés au créneau de visite choisi, utilisés pour confirmer le rendez-vous par email (avec invitation calendrier) et informer le bailleur ;</li>
                   <li>données de documents : quittances, états des lieux, inventaires, fichiers PDF, photos ou notes ajoutées par l’utilisateur ;</li>
                   <li>données financières de gestion : recettes, dépenses, exports, périodes analysées ;</li>
                   <li>données d’emailing opérationnel : destinataires, objet, statut d’envoi, erreurs techniques ;</li>
@@ -144,6 +145,9 @@ export default function ConfidentialitePage() {
                   </li>
                   <li>
                     <strong>Données de candidature locative :</strong> les brouillons non soumis sont supprimés automatiquement après 30 jours d’inactivité. Les dossiers refusés, en liste d’attente ou abandonnés sont supprimés par le bailleur à la clôture de l’annonce. Le dossier du candidat retenu est conservé tant que le bail correspondant est actif, puis soumis aux mêmes règles que les données de gestion locative.
+                  </li>
+                  <li>
+                    <strong>Données de réservation de visite :</strong> supprimées automatiquement à la clôture de l’annonce, quel que soit le candidat retenu.
                   </li>
                   <li>
                     <strong>Compte jamais confirmé :</strong> si l’adresse email n’est pas confirmée dans les 30 jours suivant l’inscription, un email d’avertissement est envoyé et le compte est supprimé automatiquement 7 jours plus tard si l’adresse n’a toujours pas été confirmée entre-temps.
@@ -233,7 +237,7 @@ export default function ConfidentialitePage() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">Dernière mise à jour : 28 juin 2026</p>
+              <p className="text-xs text-slate-500">Dernière mise à jour : 10 août 2026</p>
               <Link href="/cgu" className="text-sm font-semibold text-slate-700 underline">
                 Voir les CGU/CGV
               </Link>

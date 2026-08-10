@@ -49,6 +49,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (deleteError) return res.status(500).json({ error: deleteError.message });
 
+  // Agenda de visite de l'annonce : plus aucune utilité une fois l'annonce
+  // clôturée, quel que soit le candidat retenu ou non. Supprime les créneaux
+  // (candidature_visit_bookings suit par ON DELETE CASCADE) — cf. politique
+  // de confidentialité.
+  const { error: visitSlotsError } = await supabaseAdmin
+    .from("candidature_visit_slots")
+    .delete()
+    .eq("listing_id", listing_id);
+
+  if (visitSlotsError) return res.status(500).json({ error: visitSlotsError.message });
+
   // Clôturer l'annonce
   const { error: closeError } = await supabaseAdmin
     .from("rental_listings")

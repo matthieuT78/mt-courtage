@@ -63,6 +63,7 @@ export default function CGUPage() {
                 <ul className="list-disc space-y-1 pl-5">
                   <li>des simulateurs immobiliers : capacité d’emprunt, prêt relais, rentabilité locative, plus-value, analyse de parc ;</li>
                   <li>un espace bailleur pour gérer biens, locataires, baux, quittances, finances, états des lieux, inventaire et documents ;</li>
+                  <li>un module de candidature locative : dépôt de dossier en ligne via un lien dédié, scoring automatique, et agenda de visite permettant aux candidats de réserver un créneau (confirmation par email avec invitation calendrier) ;</li>
                   <li>des workflows d’automatisation, d’alertes et d’aide à la déclaration selon l’offre souscrite ;</li>
                   <li>un cockpit de pilotage : score de gestion, alertes météo sur les biens, widget d’actualité immobilière et indicateurs financiers ;</li>
                   <li>un portail locataire permettant d’accéder aux documents partagés par le bailleur.</li>
@@ -229,7 +230,7 @@ export default function CGUPage() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-slate-500">Dernière mise à jour : 22 juin 2026</p>
+              <p className="text-xs text-slate-500">Dernière mise à jour : 10 août 2026</p>
               <Link href="/" className="text-sm font-semibold text-slate-700 underline">
                 Retour à l’accueil
               </Link>

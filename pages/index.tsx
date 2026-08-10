@@ -965,6 +965,7 @@ export default function Home() {
                   <ul className="mt-4 space-y-1.5">
                     {[
                       "Lien dédié par annonce — aucune saisie manuelle",
+                      "Agenda de visite intégré — le candidat réserve un créneau",
                       "Scoring automatique : revenus, stabilité, garant",
                       "Données des candidats non retenus supprimées (RGPD)",
                       "Dossier retenu pré-remplit le bail automatiquement",
