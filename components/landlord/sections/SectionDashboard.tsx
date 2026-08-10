@@ -839,6 +839,7 @@ export function SectionDashboard({
         incompletePayment: paymentState.incomplete,
         dueDate,
         hasReceipt: !!receipt,
+        receiptSent: !!receipt?.sent_at,
         leaseEndingSoon,
         endDate,
       };
@@ -2051,8 +2052,24 @@ export function SectionDashboard({
                     </Pill>
                   </div>
                   <div>
-                    <Pill tone={card.hasReceipt ? "emerald" : card.paymentStatus === "Encaissé" ? "amber" : "slate"}>
-                      {card.hasReceipt ? "Prête" : card.paymentStatus === "Encaissé" ? "À générer" : "Après paiement"}
+                    <Pill
+                      tone={
+                        card.hasReceipt
+                          ? card.receiptSent
+                            ? "emerald"
+                            : "indigo"
+                          : card.paymentStatus === "Encaissé"
+                          ? "amber"
+                          : "slate"
+                      }
+                    >
+                      {card.hasReceipt
+                        ? card.receiptSent
+                          ? "Prête & envoyée"
+                          : "Prête"
+                        : card.paymentStatus === "Encaissé"
+                        ? "À générer"
+                        : "Après paiement"}
                     </Pill>
                   </div>
                   <p className="text-right font-semibold text-slate-900">{formatEuro(card.total)}</p>
