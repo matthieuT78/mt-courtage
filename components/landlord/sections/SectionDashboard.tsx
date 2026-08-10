@@ -2074,9 +2074,13 @@ export function SectionDashboard({
                   </div>
                   <p className="text-right font-semibold text-slate-900">{formatEuro(card.total)}</p>
                   {card.leaseEndingSoon ? (
-                    <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
-                      En transition
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onPrepareDeparture?.(card.lease.tenant_id)}
+                      className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                    >
+                      Échéance proche
+                    </button>
                   ) : (
                     <button
                       type="button"
