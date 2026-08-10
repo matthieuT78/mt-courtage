@@ -723,9 +723,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   const [photos, setPhotos] = useState<InventoryPhoto[]>([]);
   const [photoBusyItemId, setPhotoBusyItemId] = useState<string | null>(null);
   const [photoFeedback, setPhotoFeedback] = useState<Record<string, { tone: "error" | "success"; message: string }>>({});
+  const [optimisticItemPhotoUrl, setOptimisticItemPhotoUrl] = useState<Record<string, string>>({});
   const [counterPhotoBusyKey, setCounterPhotoBusyKey] = useState<string | null>(null);
   const [counterPhotoFeedback, setCounterPhotoFeedback] = useState<Record<string, { tone: "error" | "success"; message: string }>>({});
   const [counterPhotoUrls, setCounterPhotoUrls] = useState<Record<string, string>>({});
+  const [optimisticCounterPhotoUrl, setOptimisticCounterPhotoUrl] = useState<Record<string, string>>({});
 
   const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<string | null>(null);
   // Éléments repliés par défaut (résumé seulement) : évite qu'un clic sur
@@ -1604,7 +1606,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
   // ce qui ne correspond pas à un relevé de compteur. Le bucket storage accepte déjà
   // n'importe quel chemin sous `${userId}/...` (policy RLS basée sur le dossier, pas sur
   // l'existence d'un item), donc aucune migration n'est nécessaire.
-  const uploadCounterPhoto = async (key: string, file: File) => {
+  const uploadCounterPhoto = async (key: string, file: File, localPreviewUrl?: string) => {
     if (!supabase || !userId || !selectedReportId) return;
     if (isLocked) {
       setCounterPhotoFeedback((prev) => ({ ...prev, [key]: { tone: "error", message: "Ce document est verrouillé : les photos ne peuvent plus être modifiées." } }));
@@ -1639,6 +1641,14 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
       setCounterPhotoFeedback((prev) => ({ ...prev, [key]: { tone: "error", message: e?.message || "Impossible d’ajouter la photo." } }));
     } finally {
       setCounterPhotoBusyKey(null);
+      if (localPreviewUrl) {
+        URL.revokeObjectURL(localPreviewUrl);
+        setOptimisticCounterPhotoUrl((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      }
     }
   };
 
@@ -1823,7 +1833,7 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
     }
   };
 
-  const uploadItemPhoto = async (itemId: string, file: File) => {
+  const uploadItemPhoto = async (itemId: string, file: File, localPreviewUrl?: string) => {
     if (!supabase || !userId || !selectedReportId) return;
     if (isLocked) {
       setPhotoFeedback((prev) => ({ ...prev, [itemId]: { tone: "error", message: "Ce document est verrouillé : les photos ne peuvent plus être modifiées." } }));
@@ -1872,6 +1882,14 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
       setPhotoFeedback((prev) => ({ ...prev, [itemId]: { tone: "error", message: e?.message || "Impossible d’ajouter la photo." } }));
     } finally {
       setPhotoBusyItemId(null);
+      if (localPreviewUrl) {
+        URL.revokeObjectURL(localPreviewUrl);
+        setOptimisticItemPhotoUrl((prev) => {
+          const next = { ...prev };
+          delete next[itemId];
+          return next;
+        });
+      }
     }
   };
 
@@ -3765,8 +3783,16 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                                       </div>
                                     ) : null}
 
-                                    {(photosByItemId.get(it.id) || []).length ? (
+                                    {(photosByItemId.get(it.id) || []).length || optimisticItemPhotoUrl[it.id] ? (
                                       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                        {optimisticItemPhotoUrl[it.id] ? (
+                                          <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                                            <img src={optimisticItemPhotoUrl[it.id]} alt="Envoi en cours" className="aspect-[4/3] w-full object-cover opacity-60" />
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                              <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                            </div>
+                                          </div>
+                                        ) : null}
                                         {(photosByItemId.get(it.id) || []).map((photo) => (
                                           <div key={photo.id} className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                                             {photo.preview_url ? (
@@ -3809,7 +3835,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                                           onChange={(e) => {
                                             const file = e.currentTarget.files?.[0];
                                             e.currentTarget.value = "";
-                                            if (file) void uploadItemPhoto(it.id, file);
+                                            if (file) {
+                                              const localUrl = URL.createObjectURL(file);
+                                              setOptimisticItemPhotoUrl((prev) => ({ ...prev, [it.id]: localUrl }));
+                                              void uploadItemPhoto(it.id, file, localUrl);
+                                            }
                                           }}
                                         />
                                       </label>
@@ -3973,6 +4003,13 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                                           </button>
                                         ) : null}
                                       </div>
+                                    ) : optimisticCounterPhotoUrl[key] ? (
+                                      <div className="relative inline-block h-12 w-12 overflow-hidden rounded-lg border border-slate-200">
+                                        <img src={optimisticCounterPhotoUrl[key]} alt="Envoi en cours" className="h-full w-full object-cover opacity-60" />
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                                        </div>
+                                      </div>
                                     ) : !isLocked ? (
                                       <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2.5 py-1.5 text-[0.68rem] font-semibold text-slate-700 hover:bg-slate-50">
                                         <PhotoIcon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -3986,7 +4023,11 @@ export function SectionEtatDesLieux({ userId, leases, properties, tenants, prope
                                           onChange={(e) => {
                                             const file = e.currentTarget.files?.[0];
                                             e.currentTarget.value = "";
-                                            if (file) void uploadCounterPhoto(key, file);
+                                            if (file) {
+                                              const localUrl = URL.createObjectURL(file);
+                                              setOptimisticCounterPhotoUrl((prev) => ({ ...prev, [key]: localUrl }));
+                                              void uploadCounterPhoto(key, file, localUrl);
+                                            }
                                           }}
                                         />
                                       </label>
