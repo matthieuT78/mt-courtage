@@ -13,6 +13,7 @@ import { isActivePropertyLike } from "../../../lib/landlord/archiveFilters";
 import { isLmnpItemCompliant, propertyRequiresLmnpInventory } from "../../../lib/landlord/lmnpInventory";
 import { computeOnboardingStatus } from "../../../lib/landlord/onboardingStatus";
 import { computeLeaseWatchDate } from "../../../lib/landlord/leaseRenewal";
+import { DONNEES_IMMO_FALLBACK } from "../../../lib/donnees-reference";
 import { TransitionPanel, isInTransition } from "./TransitionPanel";
 
 type DashboardAlert = {
@@ -375,6 +376,11 @@ export function SectionDashboard({
   const [lmnpInventoryCompliance, setLmnpInventoryCompliance] = useState<
     Array<{ propertyId: string; compliance: number; missingCount: number }>
   >([]);
+  // Taux moyens marché (crédit immobilier) — table publique mise à jour
+  // manuellement chaque trimestre, fallback local si Supabase indisponible.
+  const [marketLoanRates, setMarketLoanRates] = useState<Array<{ duree_ans: number; taux_moyen: number }>>(
+    DONNEES_IMMO_FALLBACK.taux_credit_immobilier.donnees
+  );
   const scoreHoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onScoreEnter = () => { if (scoreHoverTimeout.current) clearTimeout(scoreHoverTimeout.current); setScoreHovered(true); };
   const onScoreLeave = () => { scoreHoverTimeout.current = setTimeout(() => setScoreHovered(false), 180); };
@@ -400,6 +406,25 @@ export function SectionDashboard({
       .then((data) => { if (!cancelled) setNews(Array.isArray(data) ? data : []); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setNewsLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("donnees_reference")
+          .select("data")
+          .eq("key", "taux_credit_immobilier")
+          .maybeSingle();
+        const donnees = (data?.data as any)?.donnees;
+        if (!cancelled && Array.isArray(donnees) && donnees.length > 0) setMarketLoanRates(donnees);
+      } catch {
+        // fallback local déjà en place
+      }
+    })();
     return () => { cancelled = true; };
   }, []);
 
@@ -880,6 +905,54 @@ export function SectionDashboard({
     [leaseCards]
   );
 
+  // ── Radar de renégociation de crédit ──────────────────────────────────
+  // Estimation indicative : capital restant dû et nouvelle mensualité
+  // recalculés par la formule d'annuité standard à partir de la mensualité,
+  // du taux et de la durée restante déclarés en Finance — pas un chiffre
+  // certifié (frais de rachat, assurance et éligibilité du bailleur ne sont
+  // pas pris en compte).
+  const loanRenegotiationOpportunities = useMemo(() => {
+    if (!marketLoanRates.length) return [];
+    const activePropertyIds = new Set(
+      (properties || []).filter((p) => String(p.status || "").toLowerCase() !== "archived").map((p) => p.id)
+    );
+    const RATE_GAP_THRESHOLD = 0.6; // points, écart jugé pertinent pour envisager une renégociation
+    const MIN_REMAINING_MONTHS = 24; // en dessous, les frais de rachat rognent le gain
+    const MIN_MONTHLY_SAVING = 20; // € — sous ce seuil, pas assez significatif pour alerter
+
+    const opportunities: Array<{ propertyId: string; label: string; currentRate: number; marketRate: number; termYears: number; monthlySaving: number }> = [];
+
+    for (const fin of propertyFinance || []) {
+      if (!activePropertyIds.has(fin.property_id)) continue;
+      const rate = Number(fin.loan_rate_percent || 0);
+      const monthly = Number(fin.loan_monthly || 0);
+      const remainingMonths = Number(fin.loan_remaining_months || 0);
+      if (!rate || !monthly || remainingMonths < MIN_REMAINING_MONTHS) continue;
+
+      const remainingYears = remainingMonths / 12;
+      const bucket = marketLoanRates.reduce((closest, d) =>
+        Math.abs(d.duree_ans - remainingYears) < Math.abs(closest.duree_ans - remainingYears) ? d : closest,
+        marketLoanRates[0]
+      );
+      const marketRate = Number(bucket?.taux_moyen || 0);
+      if (!marketRate || rate - marketRate < RATE_GAP_THRESHOLD) continue;
+
+      const i = rate / 100 / 12;
+      const iMarket = marketRate / 100 / 12;
+      const n = remainingMonths;
+      const capital = i > 0 ? (monthly * (1 - Math.pow(1 + i, -n))) / i : monthly * n;
+      const newMonthly = iMarket > 0 ? (capital * iMarket) / (1 - Math.pow(1 + iMarket, -n)) : capital / n;
+      const monthlySaving = monthly - newMonthly;
+      if (monthlySaving < MIN_MONTHLY_SAVING) continue;
+
+      const property = propertyById.get(fin.property_id);
+      const label = (property as any)?.label || (property as any)?.address_line1 || "Bien";
+      opportunities.push({ propertyId: fin.property_id, label, currentRate: rate, marketRate, termYears: bucket.duree_ans, monthlySaving });
+    }
+
+    return opportunities.sort((a, b) => b.monthlySaving - a.monthlySaving);
+  }, [propertyFinance, properties, propertyById, marketLoanRates]);
+
   const { priorityActions, snoozedActions } = useMemo(() => {
     const actions: Array<{
       id?: string;
@@ -1075,6 +1148,24 @@ export function SectionDashboard({
       });
     }
 
+    // ── Radar de renégociation de crédit ────────────────────────────────
+    if (loanRenegotiationOpportunities.length > 0) {
+      const shown = loanRenegotiationOpportunities.slice(0, 3);
+      const remaining = loanRenegotiationOpportunities.length - shown.length;
+      actions.push({
+        tone: "indigo",
+        title: `${loanRenegotiationOpportunities.length} crédit${loanRenegotiationOpportunities.length > 1 ? "s" : ""} potentiellement à renégocier`,
+        desc: "Écart estimé avec le taux moyen marché (Observatoire Crédit Logement/CSA, mis à jour trimestriellement). Estimation indicative à partir de vos données Finance — ne tient pas compte des frais de rachat ni de votre éligibilité personnelle.",
+        details: [
+          ...shown.map((o) => `${o.label} · ${o.currentRate}% vs ${o.marketRate}% marché (${o.termYears} ans) · ~${formatEuro(o.monthlySaving)}/mois estimé`),
+          ...(remaining > 0 ? [`+ ${remaining} autre${remaining > 1 ? "s" : ""} bien${remaining > 1 ? "s" : ""}`] : []),
+        ],
+        target: "finance",
+        cta: "Voir mes crédits",
+        snoozable: true,
+      });
+    }
+
     for (const alert of alerts) {
       // Cas particulier : ne correspond à aucune section interne, direction
       // la page tarifs plutôt que d'être silencieusement ignorée.
@@ -1134,6 +1225,7 @@ export function SectionDashboard({
     leaseCards,
     leaseIdsWithContract,
     leases,
+    loanRenegotiationOpportunities,
     monthlyExpected,
     onNavigateDeep,
     onboarding.doneCount,
