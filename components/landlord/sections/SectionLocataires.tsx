@@ -998,14 +998,15 @@ export function SectionLocataires({
           archived ? "border-slate-200 bg-white opacity-90" : "border-slate-200 bg-white hover:border-slate-300"
         )}
       >
-        <div className={cx("relative flex h-28 w-full shrink-0 items-center justify-center", archived ? "bg-slate-300" : avatarColor(displayName(t)))}>
-          <span className="text-3xl font-bold text-white/90">{initials(t.first_name, t.last_name, t.full_name)}</span>
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-3">
+        <div className={cx("relative flex h-28 w-full shrink-0 items-end overflow-hidden", archived ? "bg-slate-300" : avatarColor(displayName(t)))}>
+          <span className="pointer-events-none absolute -right-1 -top-3 select-none text-7xl font-black leading-none text-white/20">
+            {initials(t.first_name, t.last_name, t.full_name)}
+          </span>
+          <div className="relative inset-x-0 bottom-0 w-full bg-gradient-to-t from-black/70 via-black/20 to-transparent p-3">
             <div className="flex items-baseline gap-1.5 min-w-0">
               <p className="truncate text-sm font-semibold text-white">{displayName(t)}</p>
               {isNew(t.created_at) && <em className="shrink-0 text-[0.65rem] font-medium text-indigo-200">new</em>}
             </div>
-            <p className="truncate text-xs text-white/85">{t.email || t.phone || "Aucun contact"}</p>
           </div>
         </div>
 
