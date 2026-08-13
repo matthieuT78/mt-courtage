@@ -14,7 +14,7 @@ export type BlogFrontmatter = {
   category?: string;
   tags?: string[];
   relatedCalculators?: string[]; // e.g. ["capacite", "investissement"]
-  coverImage?: string;
+  coverImage?: string | null;
   faq?: Array<{ q: string; a: string }>;
 };
 
@@ -38,7 +38,7 @@ const PUBLIC_DIR = path.join(process.cwd(), "public");
 function resolveFrontmatter(data: BlogFrontmatter): BlogFrontmatter {
   if (!data.coverImage) return data;
   const filePath = path.join(PUBLIC_DIR, data.coverImage);
-  return fs.existsSync(filePath) ? data : { ...data, coverImage: undefined };
+  return fs.existsSync(filePath) ? data : { ...data, coverImage: null };
 }
 
 function computeReadingTime(rawContent: string): number {
