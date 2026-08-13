@@ -51,7 +51,7 @@ La combinaison baisse des prix + hausse des loyers a mécaniquement amélioré l
 
 ### La fin du Pinel et du marketing fiscal
 
-Depuis le **1er janvier 2025**, il n'est plus possible de souscrire un investissement Pinel ou Pinel+. Les dispositifs de réduction d'impôt sur les logements neufs ont définitivement disparu. L'investisseur de 2026 joue donc sur la rentabilité intrinsèque du bien — ce qui est une excellente nouvelle : les biens Pinel s'étaient souvent révélés surpayés de 15 à 25 % par rapport au marché, leur rendement net étant médiocre une fois les frais de gestion et la convention de loyer plafonnée pris en compte.
+Depuis le **1er janvier 2025**, il n'est plus possible de souscrire un investissement Pinel ou Pinel+. Les dispositifs de réduction d'impôt sur les logements neufs ont définitivement disparu. L'investisseur de 2026 joue donc sur la rentabilité intrinsèque du bien — ce qui est une excellente nouvelle : les biens Pinel s'étaient souvent révélés surpayés de 15 à 25 % par rapport au marché, leur rendement net étant médiocre une fois les frais de gestion et la convention de loyer plafonnée pris en compte. Il reste toutefois des dispositifs de défiscalisation actifs en 2026 — voir notre [guide sur ce qui remplace le Pinel](/blog/defiscalisation-immobiliere-apres-pinel-denormandie-loc-avantage) (Denormandie, Loc'Avantage) pour les cas où ils gardent un intérêt réel.
 
 ---
 

@@ -71,7 +71,7 @@ L'absence d'un élément peut suffire à requalifier le bail en location vide, a
 | Plus-value à la revente | Régime des particuliers (très favorable) | Régime des professionnels |
 | Inscription | SIRET obligatoire (pas RCS) | RCS obligatoire |
 
-Pour la très grande majorité des investisseurs particuliers, le **LMNP est le statut optimal** : fiscalité douce, pas de charges sociales, plus-values dans le régime favorable des particuliers.
+Pour la très grande majorité des investisseurs particuliers, le **LMNP est le statut optimal** : fiscalité douce, pas de charges sociales, plus-values dans le régime favorable des particuliers. Si vos recettes locatives approchent ces seuils, notre [guide complet LMNP vs LMP](/blog/lmnp-vs-lmp-statut-loueur-professionnel) détaille précisément ce qui change au basculement — cotisations sociales, imputation des déficits, plus-value professionnelle — et comment l'anticiper.
 
 ---
 
