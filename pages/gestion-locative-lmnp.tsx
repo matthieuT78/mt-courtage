@@ -417,6 +417,33 @@ export default function GestionLocativeLmnpPage() {
               </div>
             </section>
 
+            {/* ── Argument économique : agence vs lokt ── */}
+            <section className="overflow-hidden rounded-[1.5rem] border border-[#635bff]/20 bg-gradient-to-br from-[#635bff]/5 to-[#00d4ff]/5 p-5 shadow-sm sm:rounded-[2rem] sm:p-8">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Pourquoi payer un abonnement plutôt qu'une agence ?</p>
+              <h3 className="mt-1 text-xl font-semibold leading-tight text-slate-950 sm:text-2xl">0 % de commission sur votre loyer.</h3>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                Pour un loyer meublé de 800 €/mois, une agence facture en moyenne 7 à 8 % de frais de gestion courante (encaissement, quittances, relances), sans compter le suivi de l'inventaire spécifique au meublé. lokt.fr ne prend jamais de commission sur votre loyer : un abonnement fixe, quel que soit le montant encaissé.
+              </p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Agence (gestion courante)</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">~700 à 800 € / an</p>
+                  <p className="mt-1 text-xs text-slate-500">7 à 8 % du loyer annuel, en plus des frais de mise en location facturés à part.</p>
+                </div>
+                <div className="rounded-2xl border border-[#635bff]/30 bg-white p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#4f46e5]">lokt·plus, engagement annuel</p>
+                  <p className="mt-2 text-2xl font-semibold text-slate-950">119 € / an</p>
+                  <p className="mt-1 text-xs text-slate-600">Prix fixe, sans commission, inventaire et fiscalité LMNP inclus.</p>
+                </div>
+              </div>
+              <Link
+                href="/mon-compte?mode=register&redirect=/espace-bailleur"
+                className="mt-5 inline-flex min-h-11 items-center justify-center rounded-full bg-[#635bff] px-6 text-sm font-semibold text-white hover:bg-[#4f46e5]"
+              >
+                Créer mon espace bailleur gratuit →
+              </Link>
+            </section>
+
             {/* ── Section éditoriale C : Obligations légales ── */}
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm sm:rounded-[2rem] sm:p-8 space-y-5">
               <div>
@@ -472,6 +499,20 @@ export default function GestionLocativeLmnpPage() {
               <p className="text-xs text-slate-500">
                 Sources : loi ALUR, décret n°2015-981 du 31 juillet 2015, Service-Public.fr. Ces informations sont indicatives — consultez un professionnel pour votre situation.
               </p>
+            </section>
+
+            {/* ── Rappel CTA ── */}
+            <section className="flex flex-col items-start justify-between gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-950 p-5 shadow-sm sm:flex-row sm:items-center sm:rounded-[2rem] sm:p-8">
+              <div>
+                <p className="text-sm font-semibold text-white">Prêt à centraliser votre gestion LMNP ?</p>
+                <p className="mt-1 text-xs text-slate-400">Bail, inventaire, quittances et finance dans un seul espace — 1 logement gratuit, sans carte bancaire.</p>
+              </div>
+              <Link
+                href="/mon-compte?mode=register&redirect=/espace-bailleur"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-slate-950 hover:bg-slate-100"
+              >
+                Créer mon espace gratuit →
+              </Link>
             </section>
 
             {/* ── Section éditoriale D : Gestion de location meublée ── */}
