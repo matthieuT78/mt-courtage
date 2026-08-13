@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
+import { alertCronFailures } from "../../../lib/cronAlert";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { sendTenantPaymentReminder, type TenantPaymentReminderChannel, type TenantPaymentReminderReason } from "../../../lib/tenantPaymentReminder";
@@ -103,6 +104,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
     }
+    const failures = results.filter((r) => !!r.error);
+    await alertCronFailures("tenant-payment-reminders", failures.map((f) => ({ error: `lease ${f.leaseId}: ${f.error}` })));
+
     return res.status(200).json({ ok: true, sent, skipped, results });
   } catch (error: any) {
     console.error("[cron/tenant-payment-reminders] error:", error);

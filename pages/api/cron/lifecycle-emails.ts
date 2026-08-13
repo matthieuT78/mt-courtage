@@ -3,6 +3,7 @@ import { hasValidCronSecret } from "../../../lib/cronAuth";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { buildNoPropertyEmail, buildNoLeaseEmail } from "../../../lib/lifecycleEmails";
+import { alertCronFailures } from "../../../lib/cronAlert";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MIN_AGE_MS = 5 * DAY_MS;
@@ -108,6 +109,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         results.push({ userId: user.id, email: user.email, sent: false, error: e?.message || String(e) });
       }
     }
+
+    const failures = results.filter((r) => r.sent === false);
+    await alertCronFailures("lifecycle-emails", failures.map((f) => ({ email: f.email, error: f.error })));
 
     return res.status(200).json({ ok: true, candidates: candidates.length, sent, skipped, ...(debug ? { results } : {}) });
   } catch (e: any) {

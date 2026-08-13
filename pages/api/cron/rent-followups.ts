@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { buildRentReminderOwnerEmail } from "../../../lib/rentReminderEmail";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
+import { alertCronFailures } from "../../../lib/cronAlert";
 import { getLeaseRentPeriodFromDate } from "../../../lib/rentPeriod";
 import { sendEmailViaResend } from "../../../lib/mailer/resend";
 import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
@@ -154,6 +155,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         results.push({ tokenId: token.id, leaseId: token.lease_id, sent: false, error: e?.message || String(e) });
       }
     }
+
+    const failures = results.filter((r) => r.sent === false);
+    await alertCronFailures("rent-followups", failures.map((f) => ({ error: `lease ${f.leaseId}: ${f.error}` })));
 
     return res.status(200).json({ ok: true, followupDay: FOLLOWUP_DAY, sent, skipped, results });
   } catch (e: any) {

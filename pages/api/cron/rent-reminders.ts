@@ -6,6 +6,7 @@ import { userCanUseReceiptAutomation } from "../../../lib/serverPermissions";
 import { buildRentReminderOwnerEmail } from "../../../lib/rentReminderEmail";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
+import { alertCronFailures } from "../../../lib/cronAlert";
 
 type Json = Record<string, any>;
 
@@ -76,6 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     let sent = 0;
     let skipped = 0;
     const debugResults: any[] = [];
+    const failures: Array<{ email?: string | null; error: string }> = [];
 
     for (const l of leases || []) {
       const canUseAutomation = await userCanUseReceiptAutomation(String(l.user_id || ""));
@@ -160,7 +162,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         html: email.html,
       });
 
-      if (!mail.ok) { skipped++; continue; }
+      if (!mail.ok) { skipped++; failures.push({ email: to, error: mail.error || "send_failed" }); continue; }
 
       // 3) marquer “envoyé” pour ce mois (anti-spam)
       await supabaseAdmin
@@ -171,6 +173,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       sent++;
       if (debug) debugResults.push({ leaseId: l.id, sent: true, to });
     }
+
+    await alertCronFailures("rent-reminders", failures);
 
     return res.status(200).json({ ok: true, sent, skipped, ...(debug ? { debug: debugResults } : {}) });
   } catch (e: any) {

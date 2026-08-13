@@ -28,26 +28,12 @@ const enableJobs = process.argv.includes("--enable");
 if (!apiKey) throw new Error("CRON_JOB_ORG_API_KEY manquante dans .env.local.");
 if (!cronSecret) throw new Error("CRON_SECRET manquante dans .env.local.");
 
+// Uniquement les crons qui n'ont pas d'équivalent dans vercel.json — les
+// autres (rent-reminders, rent-followups, landlord-alerts,
+// signup-confirmation-reminder) tournaient en double (Vercel Cron +
+// cron-job.org) sans casse grâce à leurs gardes d'idempotence, mais c'était
+// une redondance inutile. Retirés le 2026-08-13.
 const jobs = [
-  {
-    title: "lokt - validation mensuelle des loyers",
-    url: `${siteUrl}/api/cron/rent-reminders`,
-    hours: [9],
-    minutes: [0],
-  },
-  {
-    title: "lokt - contrôle des alertes bailleur",
-    legacyTitles: ["lokt - alertes bailleur quotidiennes"],
-    url: `${siteUrl}/api/cron/landlord-alerts`,
-    hours: [9],
-    minutes: [30],
-  },
-  {
-    title: "lokt - relance validation loyer J+1",
-    url: `${siteUrl}/api/cron/rent-followups`,
-    hours: [9],
-    minutes: [15],
-  },
   {
     title: "lokt - relance amiable locataire J+3",
     url: `${siteUrl}/api/cron/tenant-payment-reminders`,
@@ -59,12 +45,6 @@ const jobs = [
     url: `${siteUrl}/api/cron/telegram-alerts`,
     hours: [-1],
     minutes: [0, 10, 20, 30, 40, 50],
-  },
-  {
-    title: "lokt - relance validation email inscription J+1",
-    url: `${siteUrl}/api/cron/signup-confirmation-reminder`,
-    hours: [9],
-    minutes: [25],
   },
 ];
 

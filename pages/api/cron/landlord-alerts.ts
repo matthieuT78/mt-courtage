@@ -9,6 +9,7 @@ import {
   type LandlordAlertPreferences,
 } from "../../../lib/landlordAlertPreferences";
 import { getServerUserPlan } from "../../../lib/serverPermissions";
+import { alertCronFailures } from "../../../lib/cronAlert";
 import { getLeaseRentPeriod } from "../../../lib/rentPeriod";
 
 type AlertTone = "red" | "amber" | "slate";
@@ -308,6 +309,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const results: any[] = [];
+    const allFailures: Array<{ email?: string | null; error: string }> = [];
 
     for (const [userId, userLeaseList] of userLeases.entries()) {
       const userPreferences = preferencesByUserId.get(userId) || normalizeLandlordAlertPreferences();
@@ -612,6 +614,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
         if (!mail.ok) {
           failed.push({ key: alert.key, error: mail.error });
+          allFailures.push({ email: to, error: `${alert.key}: ${mail.error}` });
           continue;
         }
         await markSent(userId, alert);
@@ -619,6 +622,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       results.push({ userId, to, sent, skipped, failed });
     }
+
+    await alertCronFailures("landlord-alerts", allFailures);
 
     return res.status(200).json({
       ok: true,
