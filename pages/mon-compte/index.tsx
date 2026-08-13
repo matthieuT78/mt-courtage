@@ -6,7 +6,6 @@ import Link from "next/link";
 import AppHeader from "../../components/AppHeader";
 import AppFooter from "../../components/AppFooter";
 import AccountLayout from "../../components/account/AccountLayout";
-import AddressAutocomplete from "../../components/forms/AddressAutocomplete";
 import { StorageUsagePanel } from "../../components/account/StorageUsagePanel";
 import { supabase } from "../../lib/supabaseClient";
 import { supabaseTenant } from "../../lib/supabaseTenantClient";
@@ -147,19 +146,6 @@ export default function MonCompteIndexPage() {
   const [lastName, setLastName] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [phone, setPhone] = useState("");
-
-  const [address1, setAddress1] = useState("");
-  const [address2, setAddress2] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const [city, setCity] = useState("");
-  const [country, setCountry] = useState("FR");
-
-  const [billingSame, setBillingSame] = useState(true);
-  const [billAddress1, setBillAddress1] = useState("");
-  const [billAddress2, setBillAddress2] = useState("");
-  const [billPostalCode, setBillPostalCode] = useState("");
-  const [billCity, setBillCity] = useState("");
-  const [billCountry, setBillCountry] = useState("FR");
 
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [refCode, setRefCode] = useState("");
@@ -304,20 +290,6 @@ export default function MonCompteIndexPage() {
       full_name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" ") || null,
       phone: phone.trim() || null,
       birth_date: birthDate ? birthDate : null,
-
-      address_line1: address1.trim() || null,
-      address_line2: address2.trim() || null,
-      postal_code: postalCode.trim() || null,
-      city: city.trim() || null,
-      country: (country || "FR").trim() || "FR",
-
-      billing_same_as_main: !!billingSame,
-      billing_address_line1: billingSame ? null : (billAddress1.trim() || null),
-      billing_address_line2: billingSame ? null : (billAddress2.trim() || null),
-      billing_postal_code: billingSame ? null : (billPostalCode.trim() || null),
-      billing_city: billingSame ? null : (billCity.trim() || null),
-      billing_country: billingSame ? "FR" : ((billCountry || "FR").trim() || "FR"),
-
       marketing_opt_in: !!marketingOptIn,
       updated_at: new Date().toISOString(),
     };
@@ -340,14 +312,6 @@ export default function MonCompteIndexPage() {
     if (regPassword.length < 8) return setAuthError("Le mot de passe doit contenir au moins 8 caractères.");
     if (regPassword !== regPassword2) return setAuthError("Les mots de passe ne correspondent pas.");
     if (!firstName.trim() || !lastName.trim()) return setAuthError("Merci de renseigner votre prénom et votre nom.");
-    if (!address1.trim() || !postalCode.trim() || !city.trim()) {
-      return setAuthError("Merci de renseigner l’adresse du propriétaire : elle sert à préremplir les quittances et documents.");
-    }
-    if (!billingSame) {
-      if (!billAddress1.trim() || !billPostalCode.trim() || !billCity.trim()) {
-        return setAuthError("Merci de renseigner l’adresse de facturation ou coche “identique”.");
-      }
-    }
 
     setAuthLoading(true);
     try {
@@ -882,124 +846,6 @@ export default function MonCompteIndexPage() {
                         />
                       </div>
                     </div>
-                  </section>
-
-                  {/* Adresse */}
-                  <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold text-slate-900">Adresse du propriétaire</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      Utilisée pour préremplir vos quittances, états des lieux et documents bailleur. Vous pourrez la modifier à tout moment.
-                    </p>
-
-                    <div className="mt-3">
-                      <AddressAutocomplete
-                        id="reg_address1"
-                        label="Adresse (ligne 1) *"
-                        addressLine1={address1}
-                        postalCode={postalCode}
-                        city={city}
-                        onAddressLine1Change={setAddress1}
-                        onPostalCodeChange={setPostalCode}
-                        onCityChange={setCity}
-                      />
-                    </div>
-
-                    <div className="mt-3 space-y-1">
-                      <label htmlFor="reg_address2" className="text-xs text-slate-700">
-                        Adresse (ligne 2)
-                      </label>
-                      <input
-                        id="reg_address2"
-                        name="address_line2"
-                        autoComplete="address-line2"
-                        value={address2}
-                        onChange={(e) => setAddress2(e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                      />
-                    </div>
-
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label htmlFor="reg_country" className="text-xs text-slate-700">
-                          Pays
-                        </label>
-                        <select
-                          id="reg_country"
-                          name="country"
-                          autoComplete="country"
-                          value={country}
-                          onChange={(e) => setCountry(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                          <option value="FR">France</option>
-                          <option value="BE">Belgique</option>
-                          <option value="CH">Suisse</option>
-                          <option value="LU">Luxembourg</option>
-                        </select>
-                      </div>
-
-                      <label className="mt-6 inline-flex items-center gap-2 text-sm text-slate-800">
-                        <input
-                          id="reg_bill_same"
-                          name="billing_same_as_main"
-                          type="checkbox"
-                          checked={billingSame}
-                          onChange={(e) => setBillingSame(e.target.checked)}
-                          className="h-4 w-4 rounded border-slate-300"
-                        />
-                        <span>Adresse de facturation identique</span>
-                      </label>
-                    </div>
-
-                    {!billingSame ? (
-                      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                        <p className="text-xs font-semibold text-slate-900">Adresse de facturation</p>
-
-                        <div className="mt-3">
-                          <AddressAutocomplete
-                            id="bill_address1"
-                            label="Adresse (ligne 1) *"
-                            addressLine1={billAddress1}
-                            postalCode={billPostalCode}
-                            city={billCity}
-                            onAddressLine1Change={setBillAddress1}
-                            onPostalCodeChange={setBillPostalCode}
-                            onCityChange={setBillCity}
-                          />
-                        </div>
-
-                        <div className="mt-3 space-y-1">
-                          <label htmlFor="bill_address2" className="text-xs text-slate-700">
-                            Adresse (ligne 2)
-                          </label>
-                          <input
-                            id="bill_address2"
-                            name="billing_address_line2"
-                            value={billAddress2}
-                            onChange={(e) => setBillAddress2(e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                          />
-                        </div>
-
-                        <div className="mt-3 space-y-1">
-                          <label htmlFor="bill_country" className="text-xs text-slate-700">
-                            Pays
-                          </label>
-                          <select
-                            id="bill_country"
-                            name="billing_country"
-                            value={billCountry}
-                            onChange={(e) => setBillCountry(e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                          >
-                            <option value="FR">France</option>
-                            <option value="BE">Belgique</option>
-                            <option value="CH">Suisse</option>
-                            <option value="LU">Luxembourg</option>
-                          </select>
-                        </div>
-                      </div>
-                    ) : null}
                   </section>
 
                   {/* Compte */}
