@@ -131,6 +131,8 @@ La GLI va plus loin que la simple assurance PNO — elle couvre aussi les **impa
 4. Votre PNO couvre votre part de responsabilité, celle du locataire couvre la sienne
 5. Les travaux sont pris en charge selon les expertises
 
+Pour le détail de cette procédure — délais légaux, expertise, convention IRSI qui accélère l'indemnisation des sinistres courants — voir notre [guide complet sur le dégât des eaux](/blog/degat-des-eaux-procedure-declaration-assurance).
+
 ### Si le locataire n'est pas assuré
 
 1. Le sinistre survient

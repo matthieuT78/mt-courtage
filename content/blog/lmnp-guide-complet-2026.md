@@ -256,7 +256,7 @@ Le LMNP s'applique aussi aux **résidences gérées** : résidences étudiantes,
 - Marché secondaire illiquide (difficile de revendre si l'exploitant change)
 - Rendements souvent surestimés dans la brochure commerciale
 
-Plusieurs faillites d'exploitants ont laissé des investisseurs sans loyer pendant des mois. La résidence gérée reste pertinente dans des réseaux solides (grands groupes) et des localisations fortes — avec une due diligence rigoureuse sur la santé financière de l'exploitant.
+Plusieurs faillites d'exploitants ont laissé des investisseurs sans loyer pendant des mois. La résidence gérée reste pertinente dans des réseaux solides (grands groupes) et des localisations fortes — avec une due diligence rigoureuse sur la santé financière de l'exploitant. Pour le détail des clauses du bail commercial à vérifier, le mécanisme de la TVA récupérable et ce qui se passe concrètement en cas de défaillance de l'exploitant, voir notre [guide complet sur la résidence de services](/blog/residence-de-services-lmnp-gere-investir).
 
 ---
 
