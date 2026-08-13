@@ -15,7 +15,7 @@ type Mark = "yes" | "no" | "partial";
 
 // Ordre des colonnes : Excel, Rentila, Smovin, BailFacile, Gererseul, Homii, lokt.fr
 const criteria: { label: string; marks: Mark[] }[] = [
-  { label: "Gratuit pour démarrer",                              marks: ["yes",     "yes",     "no",      "yes",     "yes",     "partial", "yes"]     },
+  { label: "Gratuit pour démarrer",                              marks: ["yes",     "yes",     "no",      "no",      "yes",     "partial", "yes"]     },
   { label: "Pensé pour 1 à 10 biens",                           marks: ["partial", "yes",     "partial", "yes",     "partial", "yes",     "yes"]     },
   { label: "Quittances PDF automatiques",                        marks: ["no",      "yes",     "yes",     "yes",     "yes",     "yes",     "yes"]     },
   { label: "Suivi des paiements et retards",                     marks: ["partial", "yes",     "yes",     "partial", "partial", "yes",     "yes"]     },
@@ -103,22 +103,23 @@ const tools = [
   {
     name: "BailFacile",
     icon: "📄",
-    price: "Gratuit (limité) · ~6 €/mois pour les fonctionnalités avancées",
-    ideal: "Bailleur cherchant un outil simple et gratuit pour générer baux et quittances",
+    price: "7 jours d'essai gratuit · Abonnement mensuel, trimestriel ou annuel selon le nombre de biens (pas d'offre gratuite permanente)",
+    ideal: "Bailleur cherchant un outil simple pour générer baux et quittances, prêt à s'abonner dès le premier bien",
     pros: [
-      "Offre gratuite généreuse pour commencer sans engagement",
+      "Essai gratuit de 7 jours sans engagement pour tester l'outil",
       "Génération de baux et quittances bien exécutée et conforme",
       "Interface simple et rapide à prendre en main",
       "Modèles de documents à jour avec la législation en vigueur",
     ],
     cons: [
+      "Aucune offre gratuite permanente : abonnement obligatoire à l'issue des 7 jours d'essai",
       "Suivi financier limité : pas de grand livre ni de vision cashflow par bien",
       "Alertes et relances automatiques absentes ou très basiques",
       "Aucun dossier de candidature intégré : sélection locataire entièrement manuelle",
       "Pas de simulateurs : analyse d'investissement impossible depuis l'outil",
       "Peu adapté dès que vous avez plusieurs biens et voulez piloter votre parc",
     ],
-    verdict: "BailFacile est l'option idéale pour un premier bien si votre seul besoin est de générer des baux et des quittances conformes. Dès que vous cherchez à suivre vos finances ou à sélectionner des candidats en ligne, ses limites deviennent vite bloquantes.",
+    verdict: "BailFacile reste une option pour générer des baux et des quittances conformes, mais contrairement à Rentila ou lokt.fr, aucun usage n'est possible gratuitement au-delà de 7 jours. Dès que vous cherchez à suivre vos finances ou à sélectionner des candidats en ligne, ses limites deviennent vite bloquantes.",
   },
   {
     name: "Gererseul",
@@ -339,7 +340,7 @@ export default function ComparatifPage() {
           <div className="mt-6 rounded-2xl border border-[#635bff]/20 bg-[#635bff]/5 p-5">
             <p className="text-sm font-semibold text-slate-900">En résumé</p>
             <p className="mt-1.5 text-sm leading-6 text-slate-600">
-              Pour un bailleur particulier gérant 1 à 10 biens, <strong>lokt.fr</strong> est l'option la plus complète : gestion quotidienne, simulateurs immobiliers et dossiers de candidature intégrés — sans frais d'agence ni abonnement élevé. <strong>Rentila</strong> et <strong>BailFacile</strong> sont des alternatives gratuites correctes pour un premier bien, sans la sélection en ligne ni les simulateurs. <strong>Smovin</strong> vise les bailleurs professionnels gérant plus de 5 biens. <strong>Gererseul</strong> reste fonctionnel mais vieillissant. <strong>Homii</strong> offre une interface moderne mais sans plan gratuit.
+              Pour un bailleur particulier gérant 1 à 10 biens, <strong>lokt.fr</strong> est l'option la plus complète : gestion quotidienne, simulateurs immobiliers et dossiers de candidature intégrés — sans frais d'agence ni abonnement élevé. <strong>Rentila</strong> est une alternative gratuite correcte pour un premier bien, sans la sélection en ligne ni les simulateurs. <strong>BailFacile</strong> propose un essai de 7 jours mais aucune offre gratuite permanente. <strong>Smovin</strong> vise les bailleurs professionnels gérant plus de 5 biens. <strong>Gererseul</strong> reste fonctionnel mais vieillissant. <strong>Homii</strong> offre une interface moderne mais sans plan gratuit.
             </p>
           </div>
         </header>
