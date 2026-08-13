@@ -258,34 +258,6 @@ export default function MonCompteIndexPage() {
     }
   };
 
-  const upsertProfileForUser = async (userId: string) => {
-    if (!supabase) throw new Error("Supabase indisponible.");
-
-    // Code de parrainage déterministe basé sur l'UUID
-    const referralCode = userId.replace(/-/g, "").slice(0, 8).toUpperCase();
-    // Code parrain : champ du formulaire en priorité, sinon localStorage
-    const refInput = refCode.trim().toUpperCase();
-    let referredBy: string | null = null;
-    try {
-      const stored = localStorage.getItem("lokt:ref") || "";
-      const candidate = refInput || stored;
-      if (candidate && candidate !== referralCode) referredBy = candidate;
-      localStorage.removeItem("lokt:ref");
-    } catch {}
-
-    const payload: any = {
-      id: userId,
-      email: normalizeEmail(regEmail) || null,
-      referral_code: referralCode,
-      ...(referredBy ? { referred_by: referredBy } : {}),
-      marketing_opt_in: !!marketingOptIn,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { error } = await supabase.from("profiles").upsert(payload, { onConflict: "id" });
-    if (error) throw error;
-  };
-
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -312,13 +284,31 @@ export default function MonCompteIndexPage() {
         return;
       }
 
+      // Code parrain : champ du formulaire en priorité, sinon un ?ref= mémorisé en
+      // localStorage lors d'une visite antérieure. La validation (auto-parrainage,
+      // existence du code) se fait côté serveur — le trigger sur auth.users est le
+      // seul endroit fiable pour cette écriture, avant même la confirmation email.
+      let referredByInput: string | null = null;
+      try {
+        const stored = localStorage.getItem("lokt:ref") || "";
+        referredByInput = (refCode.trim() || stored).trim().toUpperCase() || null;
+      } catch {}
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password: regPassword,
         options: {
           emailRedirectTo: authRedirectUrl(redirectPath),
+          data: {
+            referred_by_input: referredByInput,
+            marketing_opt_in: !!marketingOptIn,
+          },
         },
       });
+
+      try {
+        localStorage.removeItem("lokt:ref");
+      } catch {}
 
       if (error) {
         const msg = error.message || "Erreur inscription.";
@@ -330,15 +320,6 @@ export default function MonCompteIndexPage() {
         }
         setAuthError(msg);
         return;
-      }
-
-      const newUserId = data.user?.id;
-      if (newUserId) {
-        try {
-          await upsertProfileForUser(newUserId);
-        } catch (e: any) {
-          console.warn("[register] profile upsert failed:", e?.message || e);
-        }
       }
 
       if (data.session?.user?.id) {
