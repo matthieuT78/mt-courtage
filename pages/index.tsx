@@ -1248,6 +1248,12 @@ export default function Home() {
                 <p className="mt-4 text-xs font-semibold text-emerald-700">
                   Soit environ 600 à 700 € d'économie par an sur ce seul poste, pour un logement.
                 </p>
+                <p className="mt-3 text-xs text-slate-500">
+                  Vous hésitez avec un autre logiciel de gestion locative ?{" "}
+                  <Link href="/comparatif-logiciel-gestion-locative" className="font-semibold text-[#635bff] underline underline-offset-2 hover:text-[#4f46e5]">
+                    Voir le comparatif détaillé →
+                  </Link>
+                </p>
               </div>
             </div>
 
