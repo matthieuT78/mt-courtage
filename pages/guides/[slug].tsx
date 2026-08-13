@@ -10,6 +10,7 @@ import {
   ClipboardDocumentListIcon,
   DocumentTextIcon,
   ExclamationTriangleIcon,
+  QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 import AppFooter from "../../components/AppFooter";
 import AppHeader from "../../components/AppHeader";
@@ -99,6 +100,19 @@ export default function GuideArticlePage({ guide }: Props) {
                   { "@type": "ListItem", position: 3, name: guide.title, item: pageUrl },
                 ],
               },
+              ...(guide.faq && guide.faq.length > 0
+                ? [
+                    {
+                      "@context": "https://schema.org",
+                      "@type": "FAQPage",
+                      mainEntity: guide.faq.map((item) => ({
+                        "@type": "Question",
+                        name: item.q,
+                        acceptedAnswer: { "@type": "Answer", text: item.a },
+                      })),
+                    },
+                  ]
+                : []),
             ]),
           }}
         />
@@ -223,6 +237,24 @@ export default function GuideArticlePage({ guide }: Props) {
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {/* FAQ */}
+          {guide.faq && guide.faq.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <div className="flex items-center gap-3">
+                <QuestionMarkCircleIcon className="h-5 w-5 text-indigo-700" />
+                <h2 className="text-base font-semibold text-slate-950 sm:text-lg">Questions fréquentes</h2>
+              </div>
+              <div className="mt-4 space-y-4">
+                {guide.faq.map((item) => (
+                  <div key={item.q} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0">
+                    <p className="text-sm font-semibold text-slate-900">{item.q}</p>
+                    <p className="mt-1.5 text-sm leading-6 text-slate-600">{item.a}</p>
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 

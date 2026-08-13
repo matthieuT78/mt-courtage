@@ -281,7 +281,7 @@ export const VILLES_DATA: VilleData[] = [
       "Concurrence frontalière avec l'Allemagne pour certains profils de locataires",
     ],
     population: "290 000 habitants (Eurométropole 500 000)",
-    villesProches: ["nancy", "metz", "lille"],
+    villesProches: ["nancy", "metz", "mulhouse"],
   },
   {
     slug: "lille",
@@ -319,7 +319,7 @@ export const VILLES_DATA: VilleData[] = [
       "Bâti ancien souvent énergivore — DPE à vérifier impérativement",
     ],
     population: "240 000 habitants (Métropole 1,2M)",
-    villesProches: ["strasbourg", "metz", "nancy"],
+    villesProches: ["roubaix", "strasbourg", "metz"],
   },
   {
     slug: "montpellier",
@@ -433,7 +433,7 @@ export const VILLES_DATA: VilleData[] = [
       "La correction nationale n'a pas vraiment touché Angers",
     ],
     population: "155 000 habitants (métropole 300 000)",
-    villesProches: ["nantes", "rennes", "clermont-ferrand"],
+    villesProches: ["nantes", "rennes", "le-mans"],
   },
   {
     slug: "clermont-ferrand",
@@ -625,6 +625,158 @@ export const VILLES_DATA: VilleData[] = [
     ],
     population: "2 200 000 habitants",
     villesProches: ["lille", "lyon", "bordeaux"],
+  },
+  {
+    slug: "le-mans",
+    name: "Le Mans",
+    region: "Pays de la Loire",
+    prixM2: 1900,
+    loyerM2: 11.5,
+    rendementBrut: 7.3,
+    tensionLocative: "modérée",
+    descriptionMarche:
+      "Le Mans combine des prix parmi les plus bas de l'Ouest et une desserte TGV vers Paris en 1h05 qui attire une population de pendulaires. Cette double dynamique — locataires locaux à revenus modestes et actifs travaillant à Paris — soutient un marché locatif stable avec des rendements bruts parmi les plus élevés des villes moyennes françaises.",
+    analyses: [
+      "La proximité TGV avec Paris (55 allers-retours quotidiens, trajet à 1h05) a changé la donne pour Le Mans depuis une dizaine d'années : une partie croissante des actifs locataires travaille à Paris tout en vivant au Mans, où le coût du logement reste 3 à 4 fois inférieur à la capitale. Ce profil de locataire, aux revenus parisiens mais au loyer provincial, est particulièrement solvable. En parallèle, l'Université du Maine et les écoles d'ingénieurs (ENSIM, ESIEA) apportent une demande étudiante stable d'environ 10 000 étudiants, concentrée près du campus de Ruaudin et du centre-ville.",
+      "Les prix manceaux ont très peu bougé depuis 2020, ce qui a permis aux rendements de rester élevés pendant que d'autres villes voyaient les leurs se comprimer par la hausse des prix. En 2026, un T2 de 40 m² bien placé s'achète autour de 75 000 à 95 000 € et se loue 480 à 550 €/mois. La stratégie la plus efficace reste le T2/T3 dans les quartiers proches de la gare TGV (Gare-Pré, Saint-Benoît) pour capter la clientèle de pendulaires, ou près du campus universitaire pour la clientèle étudiante — deux profils de locataires distincts à ne pas mélanger dans le choix d'un bien.",
+    ],
+    biensPerformants: [
+      { type: "T2 proche gare TGV", detail: "Cible les actifs travaillant à Paris, loyers stables, forte demande de mobilité." },
+      { type: "Studio étudiant campus", detail: "10 000 étudiants (Université du Maine, ENSIM), demande concentrée sur septembre." },
+      { type: "T3 familial quartiers résidentiels", detail: "Faible turnover, profil familial stable, entretien limité." },
+    ],
+    quartiers: [
+      { nom: "Gare-Pré / Saint-Benoît", note: "Proximité immédiate de la gare TGV, cible pendulaires vers Paris, valorisation en hausse." },
+      { nom: "Centre-ville / Cité Plantagenêt", note: "Cœur historique classé, cachet architectural, demande locative qualitative." },
+      { nom: "Ruaudin / campus universitaire", note: "Proximité Université du Maine, forte densité étudiante, rendements élevés." },
+      { nom: "Pontlieue", note: "Quartier résidentiel accessible, prix bas, demande familiale stable." },
+    ],
+    avantages: [
+      "Rendement brut parmi les plus élevés des villes moyennes desservies par le TGV",
+      "Liaison TGV Paris en 1h05 — bassin de locataires pendulaires solvables",
+      "Prix d'entrée très accessibles, ticket d'investissement réduit",
+    ],
+    vigilances: [
+      "Marché à la revente moins liquide que dans les grandes métropoles",
+      "Dynamique économique locale plus modeste hors effet TGV",
+      "Vacance plus sensible hors quartiers gare et campus — sélection d'emplacement déterminante",
+    ],
+    population: "145 000 habitants (agglomération 210 000)",
+    villesProches: ["angers", "nantes"],
+  },
+  {
+    slug: "mulhouse",
+    name: "Mulhouse",
+    region: "Grand Est",
+    prixM2: 1600,
+    loyerM2: 11,
+    rendementBrut: 8.3,
+    tensionLocative: "modérée",
+    descriptionMarche:
+      "Mulhouse cumule les prix les plus bas des grandes agglomérations françaises et une position frontalière avec la Suisse (Bâle à 30 minutes) qui génère une demande de travailleurs transfrontaliers à hauts revenus suisses mais logement français. Cette combinaison produit l'un des rendements bruts les plus élevés du pays.",
+    analyses: [
+      "La proximité de Bâle (30 minutes en voiture, ligne de tram-train directe) place Mulhouse dans une dynamique frontalière comparable à celle de Metz avec le Luxembourg : des travailleurs employés en Suisse, où les salaires sont 2 à 3 fois supérieurs à la moyenne française, choisissent de se loger côté français pour un coût de la vie très inférieur. Ce profil de locataire frontalier est solvable et recherché par les investisseurs avertis de la région. Mulhouse conserve par ailleurs un tissu industriel actif (Stellantis, industrie chimique) et une université (UHA, 10 000 étudiants) qui diversifient la base locative.",
+      "Les prix mulhousiens comptent parmi les plus bas de toutes les villes de plus de 100 000 habitants en France, résultat d'une histoire industrielle marquée par les restructurations des décennies 1990-2000, dont le marché immobilier ne s'est jamais totalement remis en valeur malgré une économie locale aujourd'hui stabilisée. En 2026, un T2 rénové s'achète encore souvent sous 70 000 €, pour un loyer de 450 à 500 €/mois — un rapport prix/loyer rarement observé ailleurs en France métropolitaine. La contrepartie : une sélection de quartier rigoureuse est indispensable, l'écart de qualité entre les meilleurs secteurs et les zones les plus fragiles étant important.",
+    ],
+    biensPerformants: [
+      { type: "T2/T3 pour frontaliers", detail: "Salariés en Suisse, revenus élevés, loyers payés rigoureusement." },
+      { type: "Studio étudiant centre-ville", detail: "Université de Haute-Alsace, 10 000 étudiants, forte rotation." },
+      { type: "T2 rénové quartiers résidentiels", detail: "Rapport prix d'achat/loyer parmi les meilleurs de France." },
+    ],
+    quartiers: [
+      { nom: "Centre-ville historique", note: "Cachet architectural, bonne desserte tram, valeur locative la plus stable." },
+      { nom: "Rebberg", note: "Quartier résidentiel prisé, villas et beaux appartements, familles aisées." },
+      { nom: "Dornach / Bourtzwiller", note: "Prix très bas, rendements élevés, sélection de l'immeuble à faire avec rigueur." },
+      { nom: "Illberg / secteur universitaire", note: "Proximité campus UHA, demande étudiante constante." },
+    ],
+    avantages: [
+      "Prix au m² parmi les plus bas de toutes les grandes villes françaises",
+      "Demande de travailleurs frontaliers suisses — profil de locataires à hauts revenus",
+      "Rendements bruts souvent supérieurs à 8 % dans les secteurs bien choisis",
+    ],
+    vigilances: [
+      "Hétérogénéité forte entre quartiers — écart de qualité important à anticiper",
+      "Marché à la revente peu liquide hors secteurs premium",
+      "Image de la ville encore marquée par son passé industriel, à intégrer dans la stratégie de sortie",
+    ],
+    population: "108 000 habitants (agglomération 275 000)",
+    villesProches: ["strasbourg", "metz"],
+  },
+  {
+    slug: "roubaix",
+    name: "Roubaix",
+    region: "Hauts-de-France",
+    prixM2: 1400,
+    loyerM2: 11,
+    rendementBrut: 9.4,
+    tensionLocative: "modérée",
+    descriptionMarche:
+      "Roubaix affiche les rendements bruts les plus élevés de ce comparatif, portés par des prix d'achat parmi les plus bas de France et son intégration à la métropole lilloise (15 minutes de Lille en métro). L'ancienne capitale textile connaît une rénovation urbaine active depuis plus d'une décennie, mais reste un marché qui exige une sélection de quartier particulièrement rigoureuse.",
+    analyses: [
+      "Roubaix fait partie de la Métropole Européenne de Lille et bénéficie d'une desserte en métro (ligne 2) qui la place à 15-20 minutes du centre de Lille et de ses pôles universitaires — une partie non négligeable des étudiants et jeunes actifs lillois, refoulés par des prix lillois en hausse, se logent désormais à Roubaix pour un budget très inférieur. La ville a également bénéficié de programmes de rénovation urbaine (ANRU) sur plus d'une décennie, avec une requalification progressive de plusieurs quartiers et un patrimoine industriel textile classé qui attire une frange de population en quête de grands volumes à prix accessible (lofts, anciennes usines réhabilitées).",
+      "Les prix roubaisiens restent parmi les plus bas de toute la France pour une ville de cette taille intégrée à une grande métropole, avec des T2 accessibles sous 60 000 € dans plusieurs secteurs. Cette accessibilité explique des rendements bruts qui dépassent fréquemment 9 à 10 % dans les zones les mieux desservies. La contrepartie, qu'il serait malhonnête de passer sous silence : Roubaix reste une ville marquée par une pauvreté élevée et des poches de dégradation du bâti significatives, où le choix précis de la rue et de l'immeuble compte davantage que dans n'importe quelle autre ville de ce comparatif. Un investisseur qui ne connaît pas finement le terrain a tout intérêt à s'appuyer sur un professionnel local avant d'acheter.",
+    ],
+    biensPerformants: [
+      { type: "T2 proche métro ligne 2", detail: "Cible étudiants et jeunes actifs travaillant à Lille, trajet 15-20 minutes." },
+      { type: "Loft en ancienne usine textile réhabilitée", detail: "Grands volumes, patrimoine industriel, clientèle en quête d'atypique." },
+      { type: "T3 familial quartiers rénovés ANRU", detail: "Secteurs requalifiés, bâti amélioré, demande familiale en hausse." },
+    ],
+    quartiers: [
+      { nom: "Centre-ville / Grand'Place", note: "Secteur le plus valorisé, commerces, patrimoine Art déco, meilleure liquidité à la revente." },
+      { nom: "Épeule / Pile", note: "Quartiers en rénovation ANRU, prix bas, potentiel mais sélection rigoureuse requise." },
+      { nom: "Barbieux", note: "Quartier résidentiel le plus prisé, proche du parc Barbieux, familles aisées." },
+      { nom: "Fresnoy-Mackellerie", note: "Proximité métro, en cours de requalification, rendements élevés à ce jour." },
+    ],
+    avantages: [
+      "Rendements bruts parmi les plus élevés de toutes les grandes agglomérations françaises",
+      "Intégration à la Métropole Européenne de Lille — métro direct vers les pôles universitaires et d'emploi",
+      "Ticket d'entrée très accessible, effet de levier maximal pour un premier investissement",
+    ],
+    vigilances: [
+      "Pauvreté et dégradation du bâti significatives dans plusieurs quartiers — sélection de rue indispensable",
+      "Risque de vacance et d'impayés plus élevé que la moyenne nationale hors secteurs recherchés",
+      "S'appuyer sur une connaissance fine du terrain ou un professionnel local avant l'achat, plus que dans toute autre ville de ce comparatif",
+    ],
+    population: "100 000 habitants (Métropole Européenne de Lille : 1,2 million)",
+    villesProches: ["lille"],
+  },
+  {
+    slug: "limoges",
+    name: "Limoges",
+    region: "Nouvelle-Aquitaine",
+    prixM2: 1750,
+    loyerM2: 10.5,
+    rendementBrut: 7.2,
+    tensionLocative: "modérée",
+    descriptionMarche:
+      "Limoges combine des prix d'achat très accessibles, une position centrale entre Paris, Toulouse et Bordeaux, et un marché locatif porté par ses 18 000 étudiants et son statut de préfecture régionale. Longtemps marquée par une croissance démographique atone, la ville affiche depuis quelques années une stabilisation qui rassure les investisseurs sur la durée.",
+    analyses: [
+      "Le marché limougeaud repose sur une base locative diversifiée : environ 18 000 étudiants (Université de Limoges, École Nationale Supérieure de Céramique Industrielle) concentrés autour du campus de Vanteaux et du centre-ville, complétés par les fonctionnaires et employés des administrations régionales et hospitalières (le CHU de Limoges est l'un des principaux employeurs de la région). Cette diversification protège la ville d'une dépendance excessive à un seul profil de locataire, contrairement à certaines villes universitaires plus petites.",
+      "Après plusieurs décennies de croissance démographique quasi nulle qui ont limité la pression sur les prix, Limoges connaît depuis le début des années 2020 une légère reprise portée par l'exode urbain post-Covid et la recherche de villes moyennes à taille humaine. Les prix restent néanmoins très inférieurs à la moyenne nationale : un T2 de 45 m² bien situé s'achète autour de 80 000 à 100 000 € pour un loyer de 470 à 530 €/mois. La stratégie la plus solide consiste à cibler le centre-ville et les abords du campus de Vanteaux, où la demande locative est la plus constante, plutôt que les communes périphériques où la vacance peut être plus significative.",
+    ],
+    biensPerformants: [
+      { type: "Studio étudiant campus Vanteaux", detail: "18 000 étudiants, Université de Limoges, ENSCI — demande stable en rentrée." },
+      { type: "T2/T3 centre-ville", detail: "Cible fonctionnaires et personnel du CHU, faible turnover." },
+      { type: "T3 familial quartiers résidentiels", detail: "Prix d'achat accessibles, demande familiale stable sur le temps long." },
+    ],
+    quartiers: [
+      { nom: "Centre-ville / Cité", note: "Cœur historique, bonne desserte, demande locative la plus qualitative de la ville." },
+      { nom: "Vanteaux", note: "Proximité campus universitaire, forte densité étudiante, rendements attractifs." },
+      { nom: "Beaubreuil", note: "Prix très bas, quartier en rénovation urbaine, sélection à faire avec attention." },
+      { nom: "Landouge / Beaune-les-Mines", note: "Secteurs résidentiels périphériques, prix accessibles, demande familiale." },
+    ],
+    avantages: [
+      "Prix d'achat très accessibles pour une préfecture régionale",
+      "Base locative diversifiée : étudiants, fonctionnaires, personnel hospitalier",
+      "Position centrale (Paris, Toulouse, Bordeaux à 2-3h) qui limite l'isolement économique",
+    ],
+    vigilances: [
+      "Dynamique démographique et économique plus modeste que les grandes métropoles régionales",
+      "Marché à la revente moins liquide, délais de vente potentiellement plus longs",
+      "Écarts significatifs entre quartiers centraux et périphériques — sélection d'emplacement déterminante",
+    ],
+    population: "130 000 habitants (agglomération 205 000)",
+    villesProches: ["bordeaux", "toulouse"],
   },
 ];
 

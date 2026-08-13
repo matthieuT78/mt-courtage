@@ -16,6 +16,7 @@ export type GuideArticle = {
   }>;
   checklist?: string[];
   sources: Array<{ label: string; href: string }>;
+  faq?: Array<{ q: string; a: string }>;
 };
 
 export const GUIDE_CATEGORIES: Array<{ key: GuideCategory; label: string; description: string }> = [
@@ -162,6 +163,11 @@ export const GUIDES: GuideArticle[] = [
       "Dossier de gestion créé",
       "Échéances notées (IRL, diagnostics, charges)",
     ],
+    faq: [
+      { q: "Combien de temps faut-il pour mettre un logement en location dans les règles ?", a: "Comptez généralement 2 à 4 semaines entre la décision de louer et la remise des clés : le temps de réunir le dossier de diagnostic technique (DPE, éventuellement plomb, gaz, électricité), de choisir le type de bail adapté, de fixer un loyer défendable et de sélectionner un locataire. Les diagnostics doivent être prêts avant même de publier l'annonce, pas au moment de la signature." },
+      { q: "Peut-on rédiger son propre contrat de bail plutôt que d'utiliser un modèle type ?", a: "Les baux d'habitation vide et meublée sont soumis à des modèles types réglementaires (décrets fixant les clauses obligatoires). Un contrat rédigé librement qui omet une mention obligatoire ou intègre une clause abusive peut être partiellement invalidé. Il est recommandé de partir d'un modèle conforme plutôt que de rédiger de zéro." },
+      { q: "Que se passe-t-il si un diagnostic n'est pas prêt au moment de signer le bail ?", a: "Le bail reste valable, mais le bailleur engage sa responsabilité en cas de sinistre ou de litige lié à l'absence du document. Certains diagnostics (DPE notamment) doivent en principe figurer dès l'annonce ; les remettre en retard expose à une contestation du locataire et retarde la remise en conformité du dossier." },
+    ],
     sources: [
       { label: "Service-Public : obligations du propriétaire bailleur", href: "https://www.service-public.fr/particuliers/vosdroits/N31059" },
       { label: "ANIL : diagnostics obligatoires", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/diagnostics/" },
@@ -258,6 +264,11 @@ export const GUIDES: GuideArticle[] = [
       "DDT complet annexé au bail signé",
       "Copies archivées avec dates d'expiration",
       "Anomalies connues signalées au locataire",
+    ],
+    faq: [
+      { q: "Un logement classé DPE G peut-il encore être loué en 2026 ?", a: "Non pour un nouveau bail : l'interdiction de mise en location des logements classés G s'applique depuis le 1er janvier 2025. Un bail G déjà en cours peut se poursuivre, mais ne pourra pas être reconduit ou reloué sans travaux de rénovation énergétique." },
+      { q: "Un DPE réalisé il y a quelques années est-il encore valable ?", a: "Cela dépend de sa date de réalisation, pas seulement de son âge apparent. Les DPE réalisés entre 2013 et 2017 sont caducs depuis le 1er janvier 2023, et ceux réalisés entre 2018 et juin 2021 sont caducs depuis le 31 décembre 2024, même si la durée de validité théorique de 10 ans n'est pas écoulée. Vérifiez systématiquement la date de réalisation avant de vous y fier." },
+      { q: "Le diagnostic électricité ou gaz oblige-t-il à faire des travaux immédiatement ?", a: "Pas automatiquement. Le bailleur n'est pas tenu de réaliser immédiatement les travaux liés à une anomalie détectée, sauf si elle présente un risque grave et immédiat (anomalie de niveau 1 : risque de choc électrique ou d'incendie), auquel cas une intervention rapide est fortement recommandée avant la mise en location. Dans tous les cas, le locataire doit être informé du risque connu." },
     ],
     sources: [
       { label: "Service-Public : diagnostics à fournir en location", href: "https://www.service-public.fr/particuliers/vosdroits/F33463" },
@@ -386,6 +397,11 @@ export const GUIDES: GuideArticle[] = [
       "Expert-comptable contacté si réel choisi",
       "Dossier fiscal séparé créé",
     ],
+    faq: [
+      { q: "Que risque-t-on si un seul élément du mobilier obligatoire manque ?", a: "Le locataire peut demander au tribunal judiciaire la requalification du bail meublé en bail vide (durée de 3 ans, dépôt de garantie limité à 1 mois, fiscalité en revenus fonciers au lieu du BIC) si un seul des 11 catégories d'équipements listées par le décret du 31 juillet 2015 est absent. C'est pourquoi l'inventaire photographié et daté est indispensable." },
+      { q: "Dans quel délai faut-il déclarer le début d'activité LMNP ?", a: "Dans les 15 jours suivant le premier jour de location, via le guichet unique des formalités des entreprises (formalites.entreprises.gouv.fr, formulaire P0i). Cette déclaration génère le numéro SIRET nécessaire pour toute déclaration fiscale ultérieure, notamment la liasse 2031 au régime réel." },
+      { q: "Micro-BIC ou régime réel : lequel choisir en LMNP ?", a: "Le régime réel devient presque toujours plus avantageux dès que vous avez un crédit immobilier en cours, car il permet de déduire les charges réelles et d'amortir le bien et le mobilier — un mécanisme qui efface souvent l'imposition sur les loyers pendant 10 à 20 ans. Le micro-BIC (abattement forfaitaire de 50 %) reste pertinent si vos charges réelles restent inférieures à la moitié de vos recettes." },
+    ],
     sources: [
       { label: "Impots.gouv.fr : location meublée", href: "https://www.impots.gouv.fr/particulier/location-meublee" },
       { label: "Guichet formalités des entreprises", href: "https://formalites.entreprises.gouv.fr" },
@@ -500,6 +516,11 @@ export const GUIDES: GuideArticle[] = [
           "Ville universitaire + logement libéré l'été → bail étudiant 9 mois.",
         ],
       },
+    ],
+    faq: [
+      { q: "Peut-on utiliser un bail mobilité pour n'importe quel locataire souhaitant une courte durée ?", a: "Non. Le bail mobilité est réservé à des profils précis justifiant d'une situation de mobilité (formation, études supérieures, stage, apprentissage, mission temporaire, mutation professionnelle). Si le locataire ne remplit pas ces conditions, le juge peut requalifier le contrat en bail meublé classique d'un an, avec toutes les conséquences que cela implique (préavis, dépôt de garantie possible)." },
+      { q: "Quelle est la vraie différence de fiscalité entre location vide et location meublée ?", a: "La location vide relève des revenus fonciers (abattement micro-foncier de 30 %, ou régime réel avec déficit foncier imputable jusqu'à 10 700 €/an). La location meublée relève des BIC (abattement micro-BIC de 50 %, ou régime réel avec amortissement du bien et du mobilier). Avec un crédit immobilier en cours, le meublé au régime réel efface le plus souvent l'imposition sur les loyers pendant 10 à 20 ans, ce que la location vide ne permet pas." },
+      { q: "Peut-on changer de type de bail en cours de location avec le même locataire ?", a: "Non, le type de bail (vide, meublé, mobilité, étudiant) est fixé à la signature et ne peut pas être modifié unilatéralement en cours de contrat. Un changement suppose la résiliation du bail existant et la signature d'un nouveau contrat, ce qui n'est possible qu'avec l'accord du locataire ou à l'échéance normale du bail." },
     ],
     sources: [
       { label: "Service-Public : rédaction du bail d'habitation vide", href: "https://www.service-public.fr/particuliers/vosdroits/F35109/0_0?idFicheParent=F920" },
@@ -660,6 +681,11 @@ export const GUIDES: GuideArticle[] = [
       "Candidat retenu confirmé par écrit avant refus des autres",
       "Candidats non retenus informés par email avec motif objectif",
     ],
+    faq: [
+      { q: "Peut-on demander un relevé de compte bancaire pour vérifier la solvabilité d'un candidat ?", a: "Non, c'est expressément interdit par le décret du 5 novembre 2015 et passible d'une amende de 3 000 € (personne physique) à 15 000 € (personne morale). Les seules pièces autorisées pour la situation professionnelle sont le contrat de travail, les 3 derniers bulletins de salaire et le dernier avis d'imposition — jamais de RIB, relevé bancaire ou attestation de bonne tenue de compte." },
+      { q: "La règle des 3 fois le loyer est-elle une obligation légale ?", a: "Non, c'est un usage professionnel largement répandu, pas une règle imposée par la loi. Elle sert de repère (revenus nets ≥ 3 × loyer charges comprises) mais doit être nuancée selon la stabilité des revenus : un retraité avec une pension stable peut être plus fiable qu'un CDI en période d'essai à revenus supérieurs." },
+      { q: "Peut-on cumuler une garantie loyers impayés (GLI) et un garant personne physique ?", a: "Non, sauf si le locataire est étudiant ou apprenti. La loi interdit le cumul d'une GLI avec une caution solidaire d'une personne physique pour tous les autres profils — il faut choisir l'une ou l'autre avant de recevoir les candidatures." },
+    ],
     sources: [
       { label: "Légifrance : décret pièces justificatives (5 novembre 2015)", href: "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000031444493" },
       { label: "Service-Public : choisir son locataire", href: "https://www.service-public.fr/particuliers/vosdroits/F1169" },
@@ -764,6 +790,11 @@ export const GUIDES: GuideArticle[] = [
       "Clés, badges et télécommandes comptés et remis",
       "Canal de contact et modalités de paiement expliqués",
       "Rappels de gestion créés (IRL, charges, assurance)",
+    ],
+    faq: [
+      { q: "Peut-on remettre les clés sans l'attestation d'assurance habitation du locataire ?", a: "Vous n'êtes pas obligé de le faire : le bailleur a le droit de conditionner la remise des clés à la fourniture d'une attestation d'assurance couvrant les risques locatifs, obligation légale du locataire depuis l'article 7 de la loi du 6 juillet 1989. Mieux vaut vérifier ce document avant le rendez-vous plutôt que le jour même." },
+      { q: "L'état des lieux d'entrée peut-il être fait sans la présence du locataire ?", a: "Ce n'est pas recommandé : un état des lieux non contradictoire (réalisé sans le locataire ni huissier) a une valeur probante bien plus faible en cas de litige. Si le locataire ne peut être présent, il est préférable de faire appel à un huissier de justice, dont les frais sont alors partagés entre les deux parties." },
+      { q: "Comment calculer le premier loyer si le locataire entre en cours de mois ?", a: "Le loyer est proratisé au nombre de jours restants dans le mois. Exemple : pour une entrée le 15 juin dans un logement à 900 €/mois, le calcul est 900 € × (16 jours restants / 30 jours) = 480 €. Précisez ce calcul dans le bail ou sur la première quittance pour éviter toute ambiguïté." },
     ],
     sources: [
       { label: "ANIL : état des lieux d'entrée et de sortie", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/location-vide/etat-des-lieux/" },
@@ -880,6 +911,11 @@ export const GUIDES: GuideArticle[] = [
         ],
         note: "Pour tout litige sur les travaux ou la répartition des réparations, votre ADIL (Agence Départementale d'Information sur le Logement) offre des conseils gratuits.",
       },
+    ],
+    faq: [
+      { q: "Qui paie le remplacement d'une chaudière individuelle en panne ?", a: "Cela dépend de la cause. Si la panne résulte de l'usure normale ou de la vétusté de l'appareil (chaudière ayant dépassé sa durée de vie théorique de 15-20 ans), le remplacement est à la charge du bailleur. Si elle résulte d'un défaut d'entretien courant du locataire (absence d'entretien annuel obligatoire), la responsabilité peut lui incomber." },
+      { q: "Comment calculer la part de vétusté à déduire d'une réparation ?", a: "Chaque équipement a une durée de vie théorique (peintures 7 ans, moquette 7 ans, parquet stratifié 15 ans, électroménager 10 ans). La part imputable au locataire diminue proportionnellement à la durée d'occupation. Exemple : un parquet de 15 ans de durée de vie théorique, occupé 5 ans, a 33 % de vétusté — sur un remplacement à 600 €, seuls 400 € (600 € × 67 %) sont imputables au locataire." },
+      { q: "Le locataire peut-il refuser l'accès au logement pour des travaux ?", a: "Il ne peut pas s'y opposer sans motif légitime, le locataire étant tenu de laisser l'accès pour les travaux d'entretien et d'amélioration. En cas de refus injustifié et persistant, le bailleur peut mettre le locataire en demeure par lettre recommandée puis, si nécessaire, saisir le juge des référés pour obtenir une autorisation d'accès sous astreinte." },
     ],
     sources: [
       { label: "Service-Public : réparations locatives", href: "https://www.service-public.fr/particuliers/vosdroits/F31697" },
@@ -998,6 +1034,11 @@ export const GUIDES: GuideArticle[] = [
       "Retenues calculées avec grille de vétusté et justificatifs",
       "Décompte transmis dans les délais",
       "Bail archivé",
+    ],
+    faq: [
+      { q: "À partir de quand court le délai de préavis du locataire ?", a: "À compter de la date de réception du congé, pas de sa date de rédaction ou d'envoi. Conservez l'accusé de réception ou l'enveloppe : c'est cette date qui fait foi pour calculer la fin du bail." },
+      { q: "Le locataire peut-il imputer le dépôt de garantie sur son dernier loyer ?", a: "Non. Le dépôt de garantie est une garantie de fin de bail, pas un pré-paiement : le locataire reste redevable du loyer jusqu'à la date officielle de fin de bail, même s'il quitte les lieux avant cette date. S'il part avant l'échéance sans accord écrit sur une relocation anticipée, il doit continuer à payer." },
+      { q: "Peut-on réaliser l'état des lieux de sortie sans le locataire présent ?", a: "Oui, mais uniquement en faisant appel à un huissier de justice (commissaire de justice), dont les frais sont partagés entre les deux parties. Un état des lieux réalisé unilatéralement, sans le locataire ni huissier, a une valeur probante très affaiblie en cas de contestation." },
     ],
     sources: [
       { label: "Service-Public : congé donné par le locataire", href: "https://www.service-public.fr/particuliers/vosdroits/F1168" },
@@ -1118,6 +1159,11 @@ export const GUIDES: GuideArticle[] = [
       "Décompte transmis par email ou LRAR",
       "Dossier archivé (3 ans minimum)",
     ],
+    faq: [
+      { q: "Quel est le délai légal pour restituer le dépôt de garantie ?", a: "1 mois à compter de la remise des clés si l'état des lieux de sortie est conforme à celui d'entrée (aucun écart constaté), ou 2 mois si des retenues sont justifiées par des écarts documentés. La date de référence est celle de la remise des clés, pas celle de l'état des lieux." },
+      { q: "Que risque un bailleur qui restitue le dépôt en retard ?", a: "Le dépôt est majoré automatiquement de 10 % du loyer mensuel par mois de retard entamé (soit 120 % par an), sans que le locataire ait à le réclamer. Passé ce stade, le locataire peut saisir gratuitement la Commission Départementale de Conciliation, puis le tribunal judiciaire." },
+      { q: "Peut-on retenir le coût du ménage sur le dépôt de garantie ?", a: "Seulement si le logement n'est manifestement pas rendu dans un état de propreté normal. Facturer un ménage systématique alors que le logement est rendu propre est l'une des retenues les plus fréquemment contestées et annulées par la Commission Départementale de Conciliation." },
+    ],
     sources: [
       { label: "Service-Public : dépôt de garantie", href: "https://www.service-public.fr/particuliers/vosdroits/F31269" },
       { label: "ANIL : restitution du dépôt de garantie", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/location-vide/depot-de-garantie/" },
@@ -1223,6 +1269,11 @@ export const GUIDES: GuideArticle[] = [
       "Paiements archivés mois par mois",
       "Quittances émises avec toutes les mentions légales",
       "Retards formalisés par email",
+    ],
+    faq: [
+      { q: "Peut-on appliquer la révision IRL rétroactivement si on l'a oubliée l'année dernière ?", a: "Non, la révision oubliée à sa date anniversaire n'est en principe pas récupérable rétroactivement — la jurisprudence sur ce point reste mitigée. La meilleure pratique est de poser un rappel annuel à la date anniversaire du bail plutôt que de compter sur une régularisation ultérieure." },
+      { q: "Est-on obligé de délivrer une quittance chaque mois ?", a: "La quittance n'est obligatoire que si le locataire la demande, mais elle doit alors être délivrée gratuitement — la facturer est un manquement. En pratique, l'émettre systématiquement chaque mois est une bonne pratique : elle sert de preuve de bonne foi en cas de litige ultérieur sur les paiements." },
+      { q: "Comment calculer la révision IRL d'un loyer ?", a: "La formule est : nouveau loyer = loyer actuel × (IRL du trimestre de référence actuel / IRL du même trimestre de l'année précédente). Exemple : loyer à 850 €, IRL T1 2026 = 145,47, IRL T1 2025 = 140,18 → nouveau loyer = 850 × (145,47/140,18) ≈ 882 €. Le bail doit comporter une clause de révision, sinon le loyer reste gelé toute la durée du contrat." },
     ],
     sources: [
       { label: "INSEE : Indice de Référence des Loyers (IRL)", href: "https://www.insee.fr/fr/statistiques/serie/001515333" },
@@ -1346,6 +1397,11 @@ export const GUIDES: GuideArticle[] = [
       "Délai légal respecté (1 mois avant régularisation)",
       "Provisions ajustées pour l'année suivante",
       "Justificatifs conservés 6 mois après envoi",
+    ],
+    faq: [
+      { q: "Peut-on facturer un forfait charges en location vide ?", a: "Non, le forfait charges est interdit en location vide : les charges y sont obligatoirement gérées par provisions avec régularisation annuelle. Le forfait n'est possible qu'en location meublée, au choix, à mentionner dans le bail dès la signature." },
+      { q: "Quelles charges ne peuvent jamais être refacturées au locataire ?", a: "Les frais de gestion (agence, comptabilité), les honoraires du syndic, l'assurance de l'immeuble et les gros travaux restent définitivement à la charge du bailleur, même s'il les a payés. Seules les charges listées de façon limitative par le décret 87-713 sont récupérables — en cas de doute, une charge non listée reste à la charge du bailleur." },
+      { q: "Combien de temps avant la régularisation faut-il transmettre le décompte de charges au locataire ?", a: "Au moins 1 mois avant la date de régularisation, pour lui laisser le temps de vérifier. Les justificatifs (décompte de copropriété ou factures) doivent ensuite rester à sa disposition pendant 6 mois après l'envoi du décompte." },
     ],
     sources: [
       { label: "Légifrance : décret 87-713 (charges récupérables)", href: "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000512060" },
@@ -1482,6 +1538,11 @@ export const GUIDES: GuideArticle[] = [
       "Historique des paiements archivé",
       "Trêve hivernale vérifiée avant toute procédure d'expulsion",
     ],
+    faq: [
+      { q: "Peut-on couper l'électricité ou l'eau pour faire partir un locataire qui ne paie plus ?", a: "Non, jamais. Couper l'électricité, l'eau ou le gaz, changer la serrure ou expulser soi-même le locataire constitue une 'voie de fait', un délit passible de 3 ans d'emprisonnement et 30 000 € d'amende (article 226-4-2 du code pénal). Seule une décision de justice suivie du concours de la force publique permet une expulsion légale." },
+      { q: "Combien de temps dure une procédure d'expulsion pour impayés en France ?", a: "En moyenne 6 à 18 mois selon les juridictions, entre le commandement de payer (délai de 2 mois laissé au locataire), la saisine du tribunal judiciaire, le jugement de résiliation, et enfin l'expulsion effective — qui reste par ailleurs impossible pendant la trêve hivernale (1er novembre au 31 mars), sauf exceptions." },
+      { q: "À quel moment faut-il déclarer un impayé à l'assurance GLI ou activer le garant ?", a: "Dès le premier mois de retard complet pour la GLI (le délai contractuel de déclaration, souvent 30 à 45 jours, est à vérifier dans votre contrat pour éviter la déchéance de garantie). Pour un garant en caution solidaire, la mise en demeure par lettre recommandée peut être envoyée immédiatement, sans attendre d'avoir mis en demeure le locataire au préalable." },
+    ],
     sources: [
       { label: "Service-Public : loyer impayé et procédure d'expulsion", href: "https://www.service-public.fr/particuliers/vosdroits/F1169" },
       { label: "ANIL : impayés de loyer", href: "https://www.anil.org/votre-projet/vous-etes-proprietaire/bailleur/impayes-de-loyer/" },
@@ -1602,6 +1663,11 @@ export const GUIDES: GuideArticle[] = [
       "Bail : loyer HC, charges et dépôt mentionnés séparément",
       "Clause de révision IRL et trimestre de référence inclus dans le bail",
       "Complément de loyer justifié si applicable",
+    ],
+    faq: [
+      { q: "Comment savoir si mon logement est soumis à l'encadrement des loyers ?", a: "Vérifiez si votre commune fait partie de la liste des villes en encadrement (Paris depuis 2019, Lille depuis 2020, Lyon et Villeurbanne depuis 2021, Bordeaux et Montpellier depuis 2022, et d'autres communes qui rejoignent le dispositif). Chaque ville publie ses loyers de référence par quartier via un portail officiel — dépasser le loyer de référence majoré expose à une mise en conformité forcée et au remboursement du trop-perçu." },
+      { q: "Peut-on augmenter librement le loyer en changeant de locataire ?", a: "Pas en zone tendue (environ 1 149 communes) : le loyer de relocation est en principe plafonné au loyer payé par le précédent locataire, sauf exceptions limitées (vacance de plus de 18 mois, travaux représentant au moins 6 mois de loyer dans les 6 derniers mois, ou loyer manifestement sous-évalué et documenté)." },
+      { q: "Qu'est-ce que le complément de loyer et quand peut-on l'appliquer ?", a: "C'est la seule exception légale au plafond du loyer de référence majoré, réservée aux logements présentant des caractéristiques exceptionnelles par rapport aux biens comparables du quartier (vue remarquable, terrasse privative, équipements haut de gamme). Il doit être justifié et mentionné dans le bail, et peut être contesté par le locataire dans les 3 mois suivant la signature." },
     ],
     sources: [
       { label: "Service-Public : encadrement des loyers", href: "https://www.service-public.fr/particuliers/vosdroits/F1519" },
@@ -1757,6 +1823,11 @@ export const GUIDES: GuideArticle[] = [
       "En LMNP réel : liasse 2031 préparée et déposée au SIE avant la déclaration personnelle.",
       "Dossier transmis à l'expert-comptable si situation complexe (déficit, indivision, SCI).",
       "Déclaration soumise et accusé de réception conservé.",
+    ],
+    faq: [
+      { q: "Le Pinel existe-t-il encore pour un nouvel investissement en 2026 ?", a: "Non, il n'est plus possible de souscrire un nouvel investissement Pinel ou Pinel+ depuis le 1er janvier 2025. Seuls les engagements pris avant cette date continuent de produire leurs effets fiscaux jusqu'à leur terme (6, 9 ou 12 ans), avec les mêmes obligations de loyer plafonné et de ressources du locataire à respecter." },
+      { q: "lokt.fr peut-il transmettre directement ma déclaration à l'administration fiscale ?", a: "Non. lokt.fr aide à préparer votre déclaration (centralisation des loyers, charges et documents, estimation de base imposable et de déficit) mais n'est pas un logiciel de déclaration agréé et ne transmet aucune donnée à l'administration. Les numéros de case indiqués sont fournis à titre indicatif et doivent être vérifiés sur impots.gouv.fr avant toute soumission." },
+      { q: "Faut-il un expert-comptable pour déclarer des revenus locatifs ?", a: "Ce n'est obligatoire qu'en LMNP au régime réel, où une liasse fiscale (formulaire 2031) doit être déposée auprès du service des impôts des entreprises. En micro-foncier ou micro-BIC, la déclaration reste simple et gérable seul. Un accompagnement professionnel est en revanche fortement recommandé dès qu'il y a un déficit élevé, une indivision, une SCI ou une transmission en jeu." },
     ],
     sources: [
       { label: "impots.gouv.fr : revenus fonciers et BIC", href: "https://www.impots.gouv.fr/particulier/la-location-immobiliere" },
