@@ -4,14 +4,8 @@ import { useScrollReveal } from "../hooks/useScrollReveal";
 import {
   ArchiveBoxIcon,
   BanknotesIcon,
-  BellAlertIcon,
-  CalendarDaysIcon,
-  ChartBarSquareIcon,
   ClipboardDocumentCheckIcon,
   DocumentTextIcon,
-  EnvelopeIcon,
-  HomeModernIcon,
-  KeyIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
 import AppHeader from "../components/AppHeader";
@@ -266,92 +260,13 @@ export default function GestionLocativeLmnpPage() {
                 </div>
               </div>
 
-              <div className="rounded-[1.5rem] border border-slate-200 bg-white p-1.5 shadow-xl shadow-[#635bff]/10 sm:rounded-[2rem] sm:p-2 sm:shadow-2xl sm:shadow-[#635bff]/10">
-                <div className="overflow-hidden rounded-[1.25rem] border border-white/60 bg-white sm:rounded-[1.55rem]">
-                  <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-[#ff5f57] sm:h-2.5 sm:w-2.5" />
-                      <span className="h-2 w-2 rounded-full bg-[#ffbd2e] sm:h-2.5 sm:w-2.5" />
-                      <span className="h-2 w-2 rounded-full bg-[#28c840] sm:h-2.5 sm:w-2.5" />
-                    </div>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.68rem] font-semibold text-slate-600">Dossier meublé</span>
-                  </div>
-                  <div className="p-3 sm:p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Dossier LMNP</p>
-                        <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Un cockpit pensé pour le meublé</h2>
-                        <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
-                          Bail, locataire, mobilier, loyers et pièces utiles restent reliés au même logement.
-                        </p>
-                      </div>
-                      <span className="hidden rounded-full bg-emerald-50 px-3 py-1 text-[0.68rem] font-semibold text-emerald-700 ring-1 ring-emerald-200 sm:inline-flex">
-                        1 logement gratuit
-                      </span>
-                    </div>
-
-                    <div className="mt-4 grid gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-3">
-                      {[
-                        [KeyIcon, "Locataire en place", "Bail actif · dépôt 1 200 €"],
-                        [ArchiveBoxIcon, "Inventaire LMNP", "34 éléments · 2 à remplacer"],
-                        [EnvelopeIcon, "Quittance", "Paiement confirmé · PDF prêt"],
-                        [BellAlertIcon, "Relance", "Loyer incomplet à traiter"],
-                      ].map(([Icon, titleCard, textCard]) => {
-                        const TypedIcon = Icon as typeof HomeModernIcon;
-                        return (
-                          <div key={String(titleCard)} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
-                            <div className="flex items-start gap-3">
-                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#635bff] ring-1 ring-slate-200">
-                                <TypedIcon className="h-5 w-5" />
-                              </span>
-                              <div>
-                                <p className="text-sm font-semibold text-slate-950">{String(titleCard)}</p>
-                                <p className="mt-1 text-xs leading-5 text-slate-600">{String(textCard)}</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-[1fr,0.9fr] sm:gap-3">
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
-                        <div className="flex items-center gap-2">
-                          <ChartBarSquareIcon className="h-5 w-5 text-emerald-700" />
-                          <p className="text-sm font-semibold text-emerald-950">Résultat mensuel</p>
-                        </div>
-                        <div className="mt-3 space-y-2 text-xs text-emerald-900">
-                          <div className="flex justify-between gap-3">
-                            <span>Loyers encaissés</span>
-                            <strong>2 480 €</strong>
-                          </div>
-                          <div className="flex justify-between gap-3">
-                            <span>Charges classées</span>
-                            <strong>-640 €</strong>
-                          </div>
-                          <div className="flex justify-between gap-3 border-t border-emerald-200 pt-2">
-                            <span>Solde net</span>
-                            <strong>+1 840 €</strong>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-3 sm:p-4">
-                        <div className="flex items-center gap-2">
-                          <CalendarDaysIcon className="h-5 w-5 text-indigo-700" />
-                          <p className="text-sm font-semibold text-indigo-950">À conserver</p>
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {["Bail", "EDL", "Inventaire", "Quittances", "Charges"].map((tag) => (
-                            <span key={tag} className="rounded-full bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-indigo-900 ring-1 ring-indigo-100">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <div className="relative rounded-[1.5rem] overflow-hidden shadow-2xl shadow-[#635bff]/10 sm:rounded-[2rem] ring-1 ring-slate-200">
+                <img
+                  src="/cockpit-bailleur-lokt.png"
+                  alt="Cockpit bailleur lokt.fr — tableau de bord gestion locative"
+                  className="w-full h-auto block"
+                  loading="eager"
+                />
               </div>
             </div>
           </div>
