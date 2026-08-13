@@ -158,7 +158,7 @@ Négocier un délai de signature chez le notaire plus long (5-6 mois au lieu de 
 
 ## Simulez votre prêt relais
 
-Le coût total d'un prêt relais dépend du montant, du taux, de la durée et des charges sur le nouveau crédit. **Utilisez la calculette prêt relais lokt** pour modéliser votre situation : montant du relais calculé automatiquement selon votre CRD, intérêts intercalaires sur la durée que vous estimez, et taux d'endettement global.
+Le coût total d'un prêt relais dépend du montant, du taux, de la durée et des charges sur le nouveau crédit. Utilisez la **[calculette prêt relais lokt](/pret-relais)** pour modéliser votre situation : montant du relais calculé automatiquement selon votre CRD, intérêts intercalaires sur la durée que vous estimez, et taux d'endettement global.
 
 ---
 
