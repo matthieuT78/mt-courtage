@@ -9,7 +9,7 @@ const metaTitle = "Comparatif logiciels gestion locative 2026 | lokt.fr";
 const metaDesc =
   "Comparatif complet des meilleurs logiciels de gestion locative en 2026 : Rentila, BailFacile, Smovin, Gererseul, Homii et lokt.fr. Tableau de fonctionnalités, tarifs, workflow de mise en location et dossiers de candidature — pour les bailleurs indépendants.";
 const pageUrl = `${siteUrl}/comparatif-logiciel-gestion-locative`;
-const updatedAt = "Juillet 2026";
+const updatedAt = "Août 2026";
 
 type Mark = "yes" | "no" | "partial";
 
@@ -60,10 +60,11 @@ const tools = [
   {
     name: "Rentila",
     icon: "🏠",
-    price: "Gratuit (limité) · ~9 €/mois au-delà",
+    price: "Gratuit (1 lot) · 4,90 €/mois (2-5 biens) · 9,90 €/mois (illimité)",
     ideal: "Bailleur débutant souhaitant un outil simple et gratuit",
     pros: [
-      "Offre gratuite pour démarrer avec 1 à 2 biens",
+      "Offre gratuite pour démarrer, limitée à 1 bien",
+      "Palier intermédiaire à 4,90 €/mois pour 2 à 5 biens, moins cher que la plupart des concurrents payants",
       "Interface claire et accessible sans formation",
       "Génération de quittances et gestion des baux incluse",
       "Bonne notoriété, communauté d'utilisateurs active",
@@ -159,6 +160,27 @@ const tools = [
     ],
     verdict: "Homii est un bon choix si vous cherchez une interface moderne sans la complexité de Smovin, et que vous n'avez pas besoin de dossiers de candidature ni de simulateurs. Le tarif mensuel dès le premier bien le rend moins compétitif que lokt.fr pour démarrer.",
   },
+  {
+    name: "lokt.fr",
+    icon: "🔑",
+    price: "Gratuit (1 logement) · 6,90 €/mois (lokt·one, 2 logements) · 11,90 €/mois (lokt·plus, 5 logements)",
+    ideal: "Bailleur particulier avec 1 à 10 biens cherchant gestion, sélection locataire et simulateurs dans un seul outil",
+    pros: [
+      "Seul outil du comparatif avec dossiers de candidature en ligne (lien, scoring automatique, RGPD)",
+      "Simulateurs immobiliers intégrés (rentabilité, capacité d'emprunt, prêt relais, plus-value)",
+      "LMNP complet : inventaire obligatoire, charges meublées, suivi des recettes",
+      "Zéro commission sur les loyers, tarif fixe",
+      "Mise en place en moins de 10 minutes, gratuit jusqu'à 1 logement sans carte bancaire",
+      "Cockpit de performance du parc (score de gestion, occupation, encaissement)",
+    ],
+    cons: [
+      "Plus récent que Rentila ou Gererseul : moins de recul et de communauté d'utilisateurs établie",
+      "Pas d'application mobile native — l'interface web est optimisée mobile mais reste un site, pas une app à installer",
+      "Pas d'import automatique depuis un autre outil : la migration se fait manuellement, bien par bien",
+      "Signature électronique et portail locataire réservés aux offres payantes",
+    ],
+    verdict: "Le choix le plus complet pour un bailleur particulier qui veut piloter tout le cycle — candidature, gestion, investissement — sans multiplier les outils. Si vous cherchez avant tout une application mobile native ou l'historique d'un éditeur installé depuis longtemps, Rentila ou Smovin restent des alternatives valables.",
+  },
 ];
 
 const candidatureSteps = [
@@ -239,7 +261,7 @@ const schemas = [
     name: metaTitle,
     description: metaDesc,
     url: pageUrl,
-    dateModified: "2026-07-04",
+    dateModified: "2026-08-13",
   },
   {
     "@context": "https://schema.org",
@@ -382,12 +404,19 @@ export default function ComparatifPage() {
         <section className="mb-14">
           <h2 className="mb-6 text-2xl font-bold text-slate-950">Analyse détaillée de chaque outil</h2>
           <div className="space-y-5">
-            {tools.map(({ name, icon, price, ideal, pros, cons, verdict }) => (
-              <div key={name} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="flex flex-wrap items-start gap-4 border-b border-slate-100 px-6 py-5">
+            {tools.map(({ name, icon, price, ideal, pros, cons, verdict }) => {
+              const isLoktCard = name === "lokt.fr";
+              return (
+              <div key={name} className={"overflow-hidden rounded-2xl border bg-white shadow-sm " + (isLoktCard ? "border-[#635bff]/30 ring-1 ring-[#635bff]/10" : "border-slate-200")}>
+                <div className={"flex flex-wrap items-start gap-4 border-b px-6 py-5 " + (isLoktCard ? "border-[#635bff]/10 bg-[#635bff]/5" : "border-slate-100")}>
                   <span className="text-3xl">{icon}</span>
                   <div className="flex-1">
-                    <h3 className="text-base font-bold text-slate-900">{name}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-900">{name}</h3>
+                      {isLoktCard && (
+                        <span className="rounded-full bg-[#635bff] px-2 py-0.5 text-[0.6rem] font-bold text-white">Notre choix</span>
+                      )}
+                    </div>
                     <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
                       <span className="font-medium text-slate-700">{price}</span>
                       <span>·</span>
@@ -426,7 +455,8 @@ export default function ComparatifPage() {
                   </p>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
