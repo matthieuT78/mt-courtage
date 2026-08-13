@@ -141,12 +141,6 @@ export default function MonCompteIndexPage() {
   const [regPassword2, setRegPassword2] = useState("");
 
   // register (profile)
-  const [civility, setCivility] = useState<string>("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [phone, setPhone] = useState("");
-
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [refCode, setRefCode] = useState("");
 
@@ -284,12 +278,6 @@ export default function MonCompteIndexPage() {
       email: normalizeEmail(regEmail) || null,
       referral_code: referralCode,
       ...(referredBy ? { referred_by: referredBy } : {}),
-      civility: civility || null,
-      first_name: firstName.trim() || null,
-      last_name: lastName.trim() || null,
-      full_name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" ") || null,
-      phone: phone.trim() || null,
-      birth_date: birthDate ? birthDate : null,
       marketing_opt_in: !!marketingOptIn,
       updated_at: new Date().toISOString(),
     };
@@ -311,7 +299,6 @@ export default function MonCompteIndexPage() {
     if (!regPassword) return setAuthError("Merci de renseigner un mot de passe.");
     if (regPassword.length < 8) return setAuthError("Le mot de passe doit contenir au moins 8 caractères.");
     if (regPassword !== regPassword2) return setAuthError("Les mots de passe ne correspondent pas.");
-    if (!firstName.trim() || !lastName.trim()) return setAuthError("Merci de renseigner votre prénom et votre nom.");
 
     setAuthLoading(true);
     try {
@@ -330,11 +317,6 @@ export default function MonCompteIndexPage() {
         password: regPassword,
         options: {
           emailRedirectTo: authRedirectUrl(redirectPath),
-          data: {
-            full_name: [firstName.trim(), lastName.trim()].filter(Boolean).join(" "),
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-          },
         },
       });
 
@@ -763,91 +745,6 @@ export default function MonCompteIndexPage() {
                 </form>
               ) : (
                 <form onSubmit={handleRegister} className="space-y-5" autoComplete="on">
-                  {/* Identité */}
-                  <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold text-slate-900">Identité</p>
-
-                    <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                      <div className="space-y-1">
-                        <label htmlFor="reg_civility" className="text-xs text-slate-700">
-                          Civilité
-                        </label>
-                        <select
-                          id="reg_civility"
-                          name="civility"
-                          value={civility}
-                          onChange={(e) => setCivility(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        >
-                          <option value="">—</option>
-                          <option value="M.">M.</option>
-                          <option value="Mme">Mme</option>
-                          <option value="Mx">Mx</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label htmlFor="reg_first_name" className="text-xs text-slate-700">
-                          Prénom *
-                        </label>
-                        <input
-                          id="reg_first_name"
-                          name="first_name"
-                          autoComplete="given-name"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          required
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label htmlFor="reg_last_name" className="text-xs text-slate-700">
-                          Nom *
-                        </label>
-                        <input
-                          id="reg_last_name"
-                          name="last_name"
-                          autoComplete="family-name"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          required
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label htmlFor="reg_birth_date" className="text-xs text-slate-700">
-                          Date de naissance
-                        </label>
-                        <input
-                          id="reg_birth_date"
-                          name="birth_date"
-                          type="date"
-                          value={birthDate}
-                          onChange={(e) => setBirthDate(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label htmlFor="reg_phone" className="text-xs text-slate-700">
-                          Téléphone
-                        </label>
-                        <input
-                          id="reg_phone"
-                          name="phone"
-                          autoComplete="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-                        />
-                      </div>
-                    </div>
-                  </section>
-
                   {/* Compte */}
                   <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs font-semibold text-slate-900">Compte</p>
