@@ -29,6 +29,17 @@ export type BlogPost = {
 };
 
 const BLOG_DIR = path.join(process.cwd(), "content", "blog");
+const PUBLIC_DIR = path.join(process.cwd(), "public");
+
+// Un article peut être écrit avant que son image de couverture ne soit
+// uploadée (cf. workflow de rédaction) — on ne renvoie coverImage que si le
+// fichier existe réellement, pour retomber sur le dégradé placeholder côté
+// UI plutôt qu'une icône d'image cassée.
+function resolveFrontmatter(data: BlogFrontmatter): BlogFrontmatter {
+  if (!data.coverImage) return data;
+  const filePath = path.join(PUBLIC_DIR, data.coverImage);
+  return fs.existsSync(filePath) ? data : { ...data, coverImage: undefined };
+}
 
 function computeReadingTime(rawContent: string): number {
   const words = rawContent.trim().split(/\s+/).length;
@@ -72,7 +83,7 @@ export function getAllPostsMeta(): Array<{ slug: string; frontmatter: BlogFrontm
       const filePath = path.join(BLOG_DIR, `${slug}.md`);
       const file = fs.readFileSync(filePath, "utf8");
       const { data, content } = matter(file);
-      return { slug, frontmatter: data as BlogFrontmatter, readingTime: computeReadingTime(content) };
+      return { slug, frontmatter: resolveFrontmatter(data as BlogFrontmatter), readingTime: computeReadingTime(content) };
     })
     .sort((a, b) => (b.frontmatter.date || "").localeCompare(a.frontmatter.date || ""));
 }
@@ -90,7 +101,7 @@ export async function getPostBySlug(slug: string): Promise<BlogPost> {
 
   return {
     slug,
-    frontmatter: (data || {}) as BlogFrontmatter,
+    frontmatter: resolveFrontmatter((data || {}) as BlogFrontmatter),
     contentHtml,
     readingTime,
     toc,

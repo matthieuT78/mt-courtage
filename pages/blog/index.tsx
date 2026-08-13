@@ -31,10 +31,22 @@ function formatDateFR(dateStr?: string) {
   return new Intl.DateTimeFormat("fr-FR", { year: "numeric", month: "short", day: "2-digit" }).format(d);
 }
 
+function formatMonthYearFR(dateStr?: string) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (!Number.isFinite(d.getTime())) return "";
+  return new Intl.DateTimeFormat("fr-FR", { year: "numeric", month: "long" }).format(d);
+}
+
 const FILTERS = ["Tous", "Investissement locatif", "Gestion locative", "Crédit immobilier", "Fiscalité locative", "Capacité d'emprunt"];
 
 export default function BlogIndex({ posts }: any) {
   const [activeFilter, setActiveFilter] = useState("Tous");
+
+  const latestUpdateDate = posts.reduce((latest: string, p: any) => {
+    const d = p.frontmatter.updatedAt || p.frontmatter.date || "";
+    return d > latest ? d : latest;
+  }, "");
 
   const pageUrl = `${SITE_URL}/blog`;
   const title = "Blog immobilier 2026 : guides investissement, gestion locative et crédit | lokt.fr";
@@ -144,7 +156,7 @@ export default function BlogIndex({ posts }: any) {
                 <p className="mt-0.5 text-xs text-slate-500">simulateurs gratuits</p>
               </div>
               <div className="col-span-2 rounded-xl border border-[#635bff]/15 bg-[#635bff]/5 p-4">
-                <p className="text-xs font-semibold text-[#635bff]">Mis à jour — juillet 2026</p>
+                <p className="text-xs font-semibold text-[#635bff]">Mis à jour — {formatMonthYearFR(latestUpdateDate)}</p>
                 <p className="mt-1 text-xs leading-5 text-slate-500">Chiffres, barèmes et exemples actualisés pour l&apos;année en cours.</p>
               </div>
               <div className="col-span-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
