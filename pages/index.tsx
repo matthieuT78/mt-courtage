@@ -543,15 +543,8 @@ export default function Home() {
       url: siteUrl,
     };
 
-    const organization = {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      name: "lokt.fr",
-      url: siteUrl,
-      logo: ogImage,
-      email: "contact@lokt.fr",
-    };
-
+    // Pas de bloc Organization ici : _app.tsx en injecte déjà un globalement
+    // (toutes pages) — un second bloc sur la home créerait un schema dupliqué.
     const softwareApplication = {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
@@ -580,8 +573,8 @@ export default function Home() {
       })),
     };
 
-    return [webSite, organization, softwareApplication, faqPage];
-  }, [faqData, ogImage, siteUrl]);
+    return [webSite, softwareApplication, faqPage];
+  }, [faqData, siteUrl]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
@@ -1035,8 +1028,8 @@ export default function Home() {
                     ))}
                   </ul>
                   <div className="mt-5">
-                    <Link href="/tarifs" className="inline-flex h-9 items-center justify-center rounded-full bg-[#635bff] px-5 text-xs font-semibold text-white hover:opacity-90 transition">
-                      Disponible en lokt·one · 6,90 €/mois
+                    <Link href="/espace-bailleur" className="inline-flex h-9 items-center justify-center rounded-full bg-[#635bff] px-5 text-xs font-semibold text-white hover:opacity-90 transition">
+                      Gratuit, sur tous les plans →
                     </Link>
                   </div>
                 </div>
@@ -1060,7 +1053,7 @@ export default function Home() {
             </div>
 
             <div data-scroll-reveal className="mt-5 flex flex-col gap-3 rounded-[1.75rem] border border-slate-200 bg-white px-6 py-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-600">Gratuit pour 1 logement. lokt·one débloque quittances auto, signature électronique, candidatures et portail locataire.</p>
+              <p className="text-sm text-slate-600">Gratuit pour 1 logement — bail, état des lieux et signature électronique inclus. lokt·one débloque quittances auto, candidatures et portail locataire.</p>
               <Link href="/espace-bailleur" className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white hover:bg-slate-800">
                 Essayer l’espace bailleur →
               </Link>
@@ -1242,7 +1235,7 @@ export default function Home() {
                   <div className="rounded-2xl border border-[#635bff]/30 bg-[#635bff]/5 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-[#4f46e5]">lokt·plus, engagement annuel</p>
                     <p className="mt-2 text-2xl font-semibold text-slate-950">119 € / an</p>
-                    <p className="mt-1 text-xs text-slate-600">Prix fixe, sans commission, quel que soit le loyer encaissé.</p>
+                    <p className="mt-1 text-xs text-slate-600">Soit 2 mois offerts vs 11,90 €/mois sans engagement. Toujours sans commission, quel que soit le loyer encaissé.</p>
                   </div>
                 </div>
                 <p className="mt-4 text-xs font-semibold text-emerald-700">
@@ -1276,7 +1269,7 @@ export default function Home() {
                   price: "6,90 €",
                   cadence: "/ mois · 2 logements",
                   desc: "Automatisation complète + portail locataire + partage de documents.",
-                  features: ["Quittances automatiques", "Signature électronique bail & EDL", "Portail locataire activé", "Toutes les alertes", "Accusé de réception"],
+                  features: ["Quittances automatiques", "Candidatures en ligne & scoring", "Portail locataire activé", "Toutes les alertes", "Accusé de réception"],
                   cta: "Souscrire",
                   href: "/tarifs",
                   card: "border-[#635bff]/30 bg-white ring-2 ring-[#635bff]/10",
