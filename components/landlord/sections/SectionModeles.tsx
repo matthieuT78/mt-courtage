@@ -20,7 +20,7 @@ type Template = {
   id: string;
   title: string;
   subtitle: string;
-  category: "courrier" | "bail" | "gestion";
+  category: "courrier" | "gestion";
   status: "available" | "soon";
   seoPath?: string;
 };
@@ -59,17 +59,16 @@ export const TEMPLATES: Template[] = [
     seoPath: "/modele-restitution-depot-garantie",
   },
   {
-    id: "signature-electronique",
-    title: "Signature électronique du bail",
-    subtitle: "Envoi par email, signature en ligne des deux parties, PDF signé conservé",
-    category: "bail",
-    status: "soon",
+    id: "regularisation-charges",
+    title: "Régularisation des charges locatives",
+    subtitle: "Provisions vs charges réelles — art. 23 loi 89-462, décret 87-713",
+    category: "gestion",
+    status: "available",
   },
 ];
 
 const CATEGORY_LABEL: Record<Template["category"], string> = {
   courrier: "Courrier",
-  bail: "Bail",
   gestion: "Gestion",
 };
 
@@ -1151,6 +1150,312 @@ ${form.landlordName || "[Signature]"}`;
   );
 }
 
+// ── Formulaire régularisation des charges locatives ─────────
+type ChargeLine = { id: number; motif: string; amount: string };
+
+function RegularisationChargesForm({ onBack }: { userId: string; onBack: () => void }) {
+  const inpBase = "rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-[#635bff] focus:outline-none focus:ring-1 focus:ring-[#635bff]/30";
+  const inp = `w-full ${inpBase}`;
+  const lbl = "block space-y-1 text-xs font-semibold text-slate-700";
+
+  const [form, setForm] = useState({
+    landlordName: "",
+    landlordAddress: "",
+    tenantName: "",
+    propertyAddress: "",
+    periodStart: "",
+    periodEnd: "",
+    provisionsRaw: "",
+    estCopropriete: true as boolean,
+    signaturePlace: "",
+    signatureDate: new Date().toISOString().slice(0, 10),
+  });
+  const [charges, setCharges] = useState<ChargeLine[]>([{ id: 1, motif: "", amount: "" }]);
+  const [showLetter, setShowLetter] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
+
+  const provisions = Math.max(0, parseFloat(form.provisionsRaw.replace(",", ".")) || 0);
+  const totalCharges = charges.reduce((s, c) => s + Math.max(0, parseFloat(c.amount.replace(",", ".")) || 0), 0);
+  const regularisation = Math.round((totalCharges - provisions) * 100) / 100;
+
+  const addCharge = () => setCharges((cs) => [...cs, { id: Date.now(), motif: "", amount: "" }]);
+  const removeCharge = (id: number) => setCharges((cs) => cs.filter((c) => c.id !== id));
+  const setCharge = (id: number, k: keyof ChargeLine, v: string) =>
+    setCharges((cs) => cs.map((c) => (c.id === id ? { ...c, [k]: v } : c)));
+
+  const letter = useMemo(() => {
+    const today = new Date(form.signatureDate + "T00:00:00").toLocaleDateString("fr-FR");
+    const place = form.signaturePlace || "[Ville]";
+    const periodLabel =
+      form.periodStart && form.periodEnd ? `du ${fmtDate(form.periodStart)} au ${fmtDate(form.periodEnd)}` : "[période à préciser]";
+
+    const chargesBlock =
+      charges.filter((c) => c.motif || c.amount).length > 0
+        ? charges
+            .filter((c) => c.motif)
+            .map((c) => `  - ${c.motif} : ${euro(parseFloat(c.amount.replace(",", ".")) || 0)}`)
+            .join("\n")
+        : "  [détail des postes de charges à compléter]";
+
+    const base = form.estCopropriete
+      ? "selon le décompte de charges de copropriété établi par le syndic"
+      : "selon les factures réelles de la période";
+
+    const resultBlock =
+      regularisation > 0
+        ? `Solde restant dû par le locataire : ${euro(regularisation)}. Je vous remercie de bien vouloir régulariser cette somme dans les meilleurs délais.`
+        : regularisation < 0
+        ? `Trop-perçu à vous rembourser : ${euro(Math.abs(regularisation))}. Ce montant vous sera restitué dans les meilleurs délais.`
+        : "Les provisions versées correspondent exactement aux charges réelles de la période : aucune somme n'est due de part et d'autre.";
+
+    return `${place}, le ${today}
+
+${form.landlordName || "[Nom du bailleur]"}
+${form.landlordAddress || "[Adresse du bailleur]"}
+
+À l'attention de ${form.tenantName || "[Nom du locataire]"}
+${form.propertyAddress || "[Adresse du logement]"}
+
+Objet : Régularisation annuelle des charges locatives — période ${periodLabel}
+
+Madame, Monsieur,
+
+Conformément à l'article 23 de la loi n° 89-462 du 6 juillet 1989 et au décret n° 87-713 du 26 août 1987, je procède à la régularisation annuelle des charges locatives du logement situé ${form.propertyAddress || "[adresse du logement]"}, pour la période ${periodLabel}.
+
+Provisions sur charges encaissées sur la période : ${euro(provisions)}
+
+Charges réelles récupérables (${base}) :
+${chargesBlock}
+
+Total des charges réelles récupérables : ${euro(totalCharges)}
+
+${resultBlock}
+
+Conformément à la loi, les justificatifs (décompte de charges de copropriété et/ou factures) sont tenus à votre disposition et vous seront communiqués sur simple demande pendant une durée de 6 mois à compter de l'envoi du présent décompte.
+
+Veuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées.
+
+${place}, le ${today}
+
+
+___________________________
+${form.landlordName || "[Signature]"}`;
+  }, [form, charges, provisions, totalCharges, regularisation]);
+
+  function copyLetter() {
+    navigator.clipboard.writeText(letter).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  }
+
+  const canGenerate = !!form.landlordName && !!form.tenantName && !!form.propertyAddress && (provisions > 0 || totalCharges > 0);
+
+  return (
+    <div className="space-y-5">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900"
+      >
+        <ChevronLeftIcon className="h-4 w-4" />
+        Retour aux modèles
+      </button>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-[0.7rem] font-semibold uppercase tracking-widest text-[#635bff]">Gestion</p>
+        <h2 className="mt-1 text-xl font-semibold text-slate-950">Régularisation des charges locatives</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Comparez provisions encaissées et charges réelles récupérables. Le complément à réclamer ou le trop-perçu à rembourser est calculé automatiquement.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+        {/* Bailleur */}
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Bailleur</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={lbl}>
+              Nom complet
+              <input className={inp} value={form.landlordName} onChange={(e) => set("landlordName", e.target.value)} placeholder="Prénom Nom" />
+            </label>
+            <label className={lbl}>
+              Adresse
+              <input className={inp} value={form.landlordAddress} onChange={(e) => set("landlordAddress", e.target.value)} placeholder="12 rue des Lilas, 75010 Paris" />
+            </label>
+          </div>
+        </div>
+
+        {/* Locataire */}
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Locataire & logement</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={lbl}>
+              Nom du locataire
+              <input className={inp} value={form.tenantName} onChange={(e) => set("tenantName", e.target.value)} placeholder="Prénom Nom" />
+            </label>
+            <label className={lbl}>
+              Adresse du logement
+              <input className={inp} value={form.propertyAddress} onChange={(e) => set("propertyAddress", e.target.value)} placeholder="5 av. Victor Hugo, 69001 Lyon" />
+            </label>
+          </div>
+        </div>
+
+        {/* Période */}
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Période de régularisation</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className={lbl}>
+              Début de période
+              <input type="date" className={inp} value={form.periodStart} onChange={(e) => set("periodStart", e.target.value)} />
+            </label>
+            <label className={lbl}>
+              Fin de période
+              <input type="date" className={inp} value={form.periodEnd} onChange={(e) => set("periodEnd", e.target.value)} />
+            </label>
+            <label className={lbl}>
+              Provisions encaissées (€)
+              <input className={inp} inputMode="decimal" value={form.provisionsRaw} onChange={(e) => set("provisionsRaw", e.target.value)} placeholder="960" />
+            </label>
+          </div>
+
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <input
+              id="estCopropriete"
+              type="checkbox"
+              checked={form.estCopropriete}
+              onChange={(e) => set("estCopropriete", e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label htmlFor="estCopropriete" className="text-sm text-slate-700 cursor-pointer select-none">
+              Logement en copropriété (décompte du syndic)
+              <span className="ml-2 text-slate-400 text-xs">sinon : factures réelles (maison, eau individuelle…)</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Charges réelles */}
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Charges réelles récupérables</p>
+            <button
+              type="button"
+              onClick={addCharge}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+              Ajouter un poste
+            </button>
+          </div>
+          <div className="space-y-2">
+            {charges.map((c, idx) => (
+              <div key={c.id} className="flex items-center gap-2">
+                <input
+                  className={`${inpBase} min-w-0 flex-1`}
+                  value={c.motif}
+                  onChange={(e) => setCharge(c.id, "motif", e.target.value)}
+                  placeholder={idx === 0 ? "ex : Eau froide, chauffage collectif, TEOM…" : "ex : Entretien parties communes"}
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className={`${inpBase} w-32 shrink-0`}
+                  value={c.amount}
+                  onChange={(e) => setCharge(c.id, "amount", e.target.value)}
+                  placeholder="Montant €"
+                />
+                {charges.length > 1 ? (
+                  <button type="button" onClick={() => removeCharge(c.id)} className="shrink-0 text-slate-400 hover:text-red-500">
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <span className="w-4 shrink-0" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {(provisions > 0 || totalCharges > 0) && (
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <div className="rounded-xl bg-slate-50 px-3 py-2.5 text-center">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">Provisions encaissées</p>
+                <p className="mt-1 text-base font-bold text-slate-700">{euro(provisions)}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 px-3 py-2.5 text-center">
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">Charges réelles</p>
+                <p className="mt-1 text-base font-bold text-slate-700">{euro(totalCharges)}</p>
+              </div>
+              <div className={`rounded-xl px-3 py-2.5 text-center ${regularisation > 0 ? "border border-amber-100 bg-amber-50" : regularisation < 0 ? "border border-emerald-100 bg-emerald-50" : "border border-slate-100 bg-slate-50"}`}>
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">
+                  {regularisation > 0 ? "Complément dû" : regularisation < 0 ? "Trop-perçu à rembourser" : "Solde"}
+                </p>
+                <p className={`mt-1 text-base font-bold ${regularisation > 0 ? "text-amber-700" : regularisation < 0 ? "text-emerald-700" : "text-slate-700"}`}>
+                  {euro(Math.abs(regularisation))}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Signature */}
+        <div>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Signature</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={lbl}>
+              Lieu
+              <input className={inp} value={form.signaturePlace} onChange={(e) => set("signaturePlace", e.target.value)} placeholder="Paris" />
+            </label>
+            <label className={lbl}>
+              Date
+              <input type="date" className={inp} value={form.signatureDate} onChange={(e) => set("signatureDate", e.target.value)} />
+            </label>
+          </div>
+        </div>
+
+        {/* Rappel légal */}
+        <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
+          <strong>Décret n° 87-713 ·</strong> Seules les charges listées de façon limitative sont récupérables. Transmettez le décompte au moins
+          1 mois avant la régularisation et tenez les justificatifs à disposition du locataire pendant 6 mois. En location meublée au forfait,
+          aucune régularisation n'est due.
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            disabled={!canGenerate}
+            onClick={() => setShowLetter((v) => !v)}
+            className="text-sm font-semibold text-indigo-600 underline underline-offset-2 hover:text-indigo-800 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {showLetter ? "Masquer le courrier" : "Aperçu du courrier"}
+          </button>
+          <button
+            type="button"
+            disabled={!canGenerate}
+            onClick={copyLetter}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {copied ? (
+              <><CheckIcon className="h-4 w-4" />Copié !</>
+            ) : (
+              <><ClipboardDocumentIcon className="h-4 w-4" />Copier le courrier</>
+            )}
+          </button>
+        </div>
+
+        {showLetter && canGenerate && (
+          <pre className="whitespace-pre-wrap rounded-xl border border-slate-100 bg-slate-50 p-4 font-mono text-[0.7rem] leading-[1.6] text-slate-700">
+            {letter}
+          </pre>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Composant principal ──────────────────────────────────────
 export function SectionModeles({ userId }: Props) {
   const [activeTemplate, setActiveTemplateRaw] = useState<string | null>(null);
@@ -1173,6 +1478,10 @@ export function SectionModeles({ userId }: Props) {
 
   if (activeTemplate === "restitution-depot") {
     return <RestitutionDepotForm userId={userId} onBack={() => setActiveTemplate(null)} />;
+  }
+
+  if (activeTemplate === "regularisation-charges") {
+    return <RegularisationChargesForm userId={userId} onBack={() => setActiveTemplate(null)} />;
   }
 
   return (
