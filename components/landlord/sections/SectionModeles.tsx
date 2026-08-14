@@ -64,6 +64,7 @@ export const TEMPLATES: Template[] = [
     subtitle: "Provisions vs charges réelles — art. 23 loi 89-462, décret 87-713",
     category: "gestion",
     status: "available",
+    seoPath: "/modele-regularisation-charges-locatives",
   },
 ];
 

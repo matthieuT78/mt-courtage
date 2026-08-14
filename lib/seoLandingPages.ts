@@ -1228,6 +1228,152 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       },
     ],
   },
+  {
+    slug: "modele-regularisation-charges-locatives",
+    title: "Modèle de régularisation des charges locatives 2026 — Calcul et courrier",
+    metaTitle: "Régularisation charges locatives 2026 : modèle de courrier | lokt.fr",
+    description:
+      "Régularisez les charges locatives sans litige : charges récupérables, calcul provisions vs charges réelles, délais légaux. Modèle conforme art. 23 loi 1989 et décret 87-713.",
+    eyebrow: "Charges locatives",
+    h1: "Régularisation des charges locatives 2026 : calcul et modèle de courrier",
+    intro:
+      "Les charges locatives sont, avec le dépôt de garantie, la première source de litige entre bailleurs et locataires. Le bailleur peut récupérer certaines dépenses auprès du locataire — mais uniquement celles listées de façon limitative par le décret n° 87-713 du 26 août 1987 — et doit justifier chaque année le calcul de la régularisation. Un décompte flou, tardif ou non justifié peut être contesté et annulé devant la commission départementale de conciliation. Ce modèle calcule automatiquement le complément dû ou le trop-perçu à rembourser et génère un courrier conforme.",
+    primaryCta: "Générer mon courrier de régularisation",
+    secondaryCta: { label: "Accéder aux modèles de lettres", href: "/espace-bailleur" },
+    updatedAt: today,
+    intent: "Requête cible : régularisation charges locatives, décompte de charges locataire modèle lettre",
+    sections: [
+      {
+        title: "1. Provisions ou forfait : ce que la loi impose selon le bail",
+        body: [
+          "En location vide, les charges sont obligatoirement gérées par provisions avec régularisation annuelle : le forfait charges y est interdit. En location meublée, le bailleur choisit entre provisions régularisées (comme en vide) ou forfait charges — un montant fixe mensuel, jamais régularisé, à mentionner dans le bail dès la signature.",
+          "Le forfait est plus simple à gérer au quotidien mais plus risqué : si les charges réelles dépassent le forfait, le bailleur ne peut réclamer aucun complément. À l'inverse, si elles sont inférieures, il n'a rien à rembourser. Le choix entre les deux régimes ne peut pas être changé en cours de bail sans avenant signé des deux parties.",
+        ],
+        bullets: [
+          "Location vide : provisions avec régularisation obligatoire, forfait interdit",
+          "Location meublée : provisions régularisées ou forfait, au choix, mentionné dans le bail",
+          "Forfait meublé : aucune régularisation possible, dans un sens comme dans l'autre",
+          "Changement de régime en cours de bail : nécessite un avenant",
+        ],
+      },
+      {
+        title: "2. Les charges récupérables listées par le décret 87-713",
+        body: [
+          "Le décret n° 87-713 du 26 août 1987 fixe une liste limitative des charges récupérables sur le locataire. Tout poste absent de cette liste reste définitivement à la charge du bailleur, même s'il l'a effectivement payé — le facturer expose à devoir rembourser les sommes perçues, majorées le cas échéant de dommages et intérêts.",
+          "Les postes les plus courants concernent l'eau (froide et chaude, parties communes et logement si compteur individuel), les équipements collectifs (ascenseur, chauffage collectif : combustible, entretien, petites réparations), l'entretien des parties communes et espaces verts, et la taxe d'enlèvement des ordures ménagères (TEOM), récupérable en totalité.",
+        ],
+        bullets: [
+          "Eau froide et chaude des parties communes et du logement",
+          "Chauffage collectif : combustible, contrat d'entretien, petites réparations",
+          "Ascenseur : électricité, entretien courant",
+          "Taxe d'enlèvement des ordures ménagères (TEOM), récupérable à 100 %",
+          "Entretien des parties communes et des espaces verts",
+          "Jamais récupérables : frais de gestion, honoraires de syndic, assurance de l'immeuble, gros travaux",
+        ],
+      },
+      {
+        title: "3. Calculer la régularisation : méthode et exemple",
+        body: [
+          "La régularisation compare les provisions encaissées sur la période aux charges réelles récupérables. Si les provisions dépassent les charges réelles, le trop-perçu doit être remboursé au locataire. Si les charges réelles dépassent les provisions, le bailleur peut réclamer le complément par écrit, justificatifs à l'appui.",
+          "En copropriété, la base de calcul est le décompte annuel du syndic, ventilé entre charges récupérables et charges non récupérables (frais de gestion, gros travaux). Pour un logement individuel, la base est le montant des factures réelles de la période (eau, ordures, entretien).",
+          "Exemple : provisions mensuelles de 80 € sur 12 mois = 960 € encaissés. Charges récupérables réelles selon le décompte de copropriété = 1 120 €. Régularisation = 1 120 − 960 = 160 € à réclamer au locataire. Si les charges réelles avaient été de 820 €, le bailleur devrait rembourser 140 €.",
+        ],
+        bullets: [
+          "Régularisation = charges réelles récupérables − provisions versées",
+          "Résultat positif : complément à réclamer par écrit, justificatifs joints",
+          "Résultat négatif : trop-perçu à rembourser au locataire",
+          "Copropriété : décompte annuel du syndic — logement individuel : factures réelles",
+        ],
+      },
+      {
+        title: "4. Délais légaux et justificatifs à transmettre",
+        body: [
+          "La régularisation doit intervenir au moins une fois par an, généralement dans le mois suivant la clôture de l'exercice de copropriété (souvent entre mars et juillet). Aucune date précise n'est imposée par la loi, mais un retard excessif et répété peut être interprété comme une renonciation tacite au complément.",
+          "Le décompte de charges (ou les factures pour un logement individuel) doit être transmis au locataire au moins un mois avant la régularisation, pour lui laisser le temps de le vérifier. Les pièces justificatives doivent ensuite rester disponibles pendant six mois après l'envoi du décompte — le locataire peut les réclamer à tout moment durant cette période.",
+        ],
+        bullets: [
+          "Régularisation : au moins une fois par an",
+          "Décompte transmis : au moins 1 mois avant la régularisation",
+          "Justificatifs disponibles : 6 mois après l'envoi du décompte",
+          "Ajuster les provisions de l'année suivante après chaque régularisation",
+        ],
+      },
+      {
+        title: "5. Erreurs fréquentes et risques de contestation",
+        body: [
+          "Les litiges naissent le plus souvent d'une confusion entre charges récupérables et charges bailleur (frais de gestion, assurance immeuble, honoraires de syndic, gros travaux), d'un décompte transmis sans justificatifs, ou d'une régularisation trop tardive.",
+          "Un locataire qui reçoit un complément sans pièces justificatives est en droit de le contester. La commission départementale de conciliation peut être saisie gratuitement ; une régularisation non justifiée y sera généralement annulée. Sur plusieurs biens d'une même copropriété, la ventilation des charges doit respecter les tantièmes de chaque lot — pas une répartition arbitraire entre locataires.",
+        ],
+        bullets: [
+          "Ne jamais inclure frais de gestion, assurance immeuble, honoraires de syndic ou gros travaux",
+          "Toujours joindre les justificatifs en cas de complément réclamé",
+          "Ventilation entre logements d'une même copropriété : selon les tantièmes",
+          "Régularisation tardive répétée : affaiblit la position du bailleur en cas de litige",
+        ],
+      },
+      {
+        title: "6. Générer son courrier de régularisation avec lokt.fr",
+        body: [
+          "L'outil lokt.fr calcule automatiquement la régularisation à partir des provisions encaissées et du détail des charges réelles saisies poste par poste. Le complément à réclamer ou le trop-perçu à rembourser s'affiche instantanément, et le courrier — conforme à l'article 23 de la loi de 1989 et au décret 87-713 — est prêt à copier.",
+          "Une case à cocher permet de préciser si le logement est en copropriété (décompte du syndic) ou individuel (factures réelles), ce qui adapte automatiquement la formulation du courrier. Le rappel du délai de transmission et de conservation des justificatifs figure directement dans le document.",
+        ],
+        bullets: [
+          "Calcul automatique du complément dû ou du trop-perçu",
+          "Détail des charges réelles poste par poste, autant de lignes que nécessaire",
+          "Formulation adaptée copropriété ou logement individuel",
+          "Courrier prêt à copier avec les mentions légales obligatoires",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Peut-on appliquer un forfait charges en location vide ?",
+        a: "Non. En location vide, les charges sont obligatoirement gérées par provisions avec régularisation annuelle. Le forfait charges, non régularisable, n'est autorisé qu'en location meublée, à condition d'être mentionné dans le bail dès la signature.",
+      },
+      {
+        q: "Quelles charges ne peuvent jamais être refacturées au locataire ?",
+        a: "Les frais de gestion (agence, comptabilité), les honoraires de syndic, l'assurance de l'immeuble et les gros travaux (article 606 du Code civil) restent définitivement à la charge du bailleur, même s'il les a payés. Seules les charges listées par le décret 87-713 sont récupérables.",
+      },
+      {
+        q: "Combien de temps avant la régularisation faut-il transmettre le décompte ?",
+        a: "Au moins un mois avant la date de régularisation, pour laisser au locataire le temps de le vérifier. Les justificatifs doivent ensuite rester à sa disposition pendant six mois à compter de l'envoi du décompte.",
+      },
+      {
+        q: "Le locataire peut-il contester une régularisation de charges ?",
+        a: "Oui, notamment si le décompte n'est pas accompagné de justificatifs ou inclut des charges non récupérables. Il peut saisir gratuitement la commission départementale de conciliation ; les régularisations mal documentées y sont fréquemment annulées.",
+      },
+      {
+        q: "Y a-t-il un délai de prescription pour réclamer un complément de charges ?",
+        a: "Oui, trois ans à compter de la date à laquelle le bailleur aurait dû connaître les faits lui permettant de régulariser (article 7-1 de la loi de 1989). Passé ce délai, le complément ne peut plus être réclamé, même justifié.",
+      },
+      {
+        q: "Que faire si le bailleur a sous-estimé le forfait charges en meublé ?",
+        a: "Rien ne peut être réclamé en cours de bail : le forfait n'est jamais régularisable, dans un sens comme dans l'autre. Le bailleur peut en revanche ajuster le montant du forfait pour le bail suivant, ou proposer un avenant au locataire actuel pour basculer vers des provisions régularisées.",
+      },
+    ],
+    links: [
+      {
+        label: "Espace bailleur lokt.fr",
+        href: "/espace-bailleur",
+        text: "Gérer vos baux, loyers, quittances et documents depuis un seul espace.",
+      },
+      {
+        label: "Guide complet charges locatives",
+        href: "/guides/charges-regularisation-annuelle",
+        text: "Charges récupérables, provisions vs forfait et pièges à éviter en détail.",
+      },
+      {
+        label: "Restitution du dépôt de garantie",
+        href: "/modele-restitution-depot-garantie",
+        text: "Modèle de courrier avec calcul automatique des retenues.",
+      },
+      {
+        label: "Mise en demeure loyer impayé",
+        href: "/modele-mise-en-demeure-loyer-impaye",
+        text: "Courrier formel avant procédure en cas de loyers impayés.",
+      },
+    ],
+  },
 ];
 
 export function getSeoLandingPage(slug: string) {
