@@ -1240,7 +1240,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
       "Les charges locatives sont, avec le dépôt de garantie, la première source de litige entre bailleurs et locataires. Le bailleur peut récupérer certaines dépenses auprès du locataire — mais uniquement celles listées de façon limitative par le décret n° 87-713 du 26 août 1987 — et doit justifier chaque année le calcul de la régularisation. Un décompte flou, tardif ou non justifié peut être contesté et annulé devant la commission départementale de conciliation. Ce modèle calcule automatiquement le complément dû ou le trop-perçu à rembourser et génère un courrier conforme.",
     primaryCta: "Générer mon courrier de régularisation",
     secondaryCta: { label: "Accéder aux modèles de lettres", href: "/espace-bailleur" },
-    updatedAt: today,
+    updatedAt: "2026-08-14",
     intent: "Requête cible : régularisation charges locatives, décompte de charges locataire modèle lettre",
     sections: [
       {
