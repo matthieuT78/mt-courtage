@@ -115,16 +115,26 @@ function daysSince(today: Date, value?: string | null) {
   return Math.max(0, daysBetween(new Date(date.getFullYear(), date.getMonth(), date.getDate()), today));
 }
 
+// Au-delà de ce délai, une relance non résolue passe de hebdo à mensuelle —
+// sans plafond, une alerte comme "état des lieux d'entrée manquant" peut
+// nager indéfiniment (cas réel observé en base : relances hebdo depuis plus
+// de 2 ans sur un bail actif). Mensuel garde le rappel vivant sans
+// contribuer à la fatigue d'alerte.
+const STALE_AFTER_DAYS = 180;
+const STALE_REPEAT_DAYS = 28;
+
 function recurringScheduleKey(prefix: string, daysElapsed: number, firstDays: number[], repeatEveryDays?: number) {
   if (firstDays.includes(daysElapsed)) return `${prefix}:day-${daysElapsed}`;
   const repeatFrom = firstDays[firstDays.length - 1];
-  if (repeatEveryDays && daysElapsed > repeatFrom && daysElapsed % repeatEveryDays === 0) {
-    return `${prefix}:day-${daysElapsed}`;
-  }
-  return null;
+  if (!repeatEveryDays || daysElapsed <= repeatFrom) return null;
+  const interval = daysElapsed > STALE_AFTER_DAYS ? STALE_REPEAT_DAYS : repeatEveryDays;
+  return daysElapsed % interval === 0 ? `${prefix}:day-${daysElapsed}` : null;
 }
 
-function weeklyScheduleKey(prefix: string, today: Date) {
+function weeklyScheduleKey(prefix: string, today: Date, daysElapsed?: number | null) {
+  if (daysElapsed != null && daysElapsed > STALE_AFTER_DAYS) {
+    return `${prefix}:month-${today.getFullYear()}-${pad2(today.getMonth() + 1)}`;
+  }
   const monday = new Date(today);
   const day = monday.getDay() || 7;
   monday.setDate(monday.getDate() - day + 1);
@@ -165,34 +175,60 @@ async function ownerEmailForUser(userId: string, leases: LeaseRow[]) {
   return userRes?.data?.user?.email || null;
 }
 
-function renderEmail(alert: AlertItem) {
+function renderAlertCard(alert: AlertItem) {
   const baseUrl = appUrl();
   const color = alert.tone === "red" ? "#b91c1c" : alert.tone === "amber" ? "#92400e" : "#334155";
   const bg = alert.tone === "red" ? "#fef2f2" : alert.tone === "amber" ? "#fffbeb" : "#f8fafc";
   const actionable = alert.actionable !== false;
-
-  const intro = actionable
-    ? "Une action nécessite votre attention dans votre espace bailleur."
-    : "Voici un rappel concernant votre espace bailleur — rien à traiter pour l'instant.";
   const linkLabel = actionable ? "Traiter cette action sur lokt.fr" : "Consulter dans lokt.fr";
-  const footer = actionable
-    ? "Cet email automatique suit l'échéancier métier de cette alerte. Il disparaît dès que l'action est traitée."
-    : "Cet email automatique est un simple rappel préventif. Aucune action n'est requise tant que l'échéance n'est pas dépassée.";
+
+  return `
+      <div style="padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:${bg};margin-bottom:12px;">
+        <p style="margin:0 0 4px;font-weight:700;color:${color}">${alert.title}</p>
+        <p style="margin:0 0 10px;color:#334155;font-size:14px;line-height:1.45">${alert.detail}</p>
+        <a href="${baseUrl}${alert.href}" style="font-size:13px;color:#0f172a;font-weight:700">${linkLabel}</a>
+      </div>`;
+}
+
+// Un seul email par bailleur et par run, quel que soit le nombre d'alertes
+// dues ce jour-là — avant, chaque alerte partait dans un email séparé (un
+// bailleur avec 3 problèmes simultanés recevait 3 emails d'un coup), ce que
+// le nom "digest_enabled" du réglage ne laissait pas du tout deviner.
+function renderDigestEmail(alerts: AlertItem[]) {
+  const anyActionable = alerts.some((a) => a.actionable !== false);
+  const allActionable = alerts.every((a) => a.actionable !== false);
+
+  const intro =
+    alerts.length === 1
+      ? alerts[0].actionable !== false
+        ? "Une action nécessite votre attention dans votre espace bailleur."
+        : "Voici un rappel concernant votre espace bailleur — rien à traiter pour l'instant."
+      : anyActionable
+      ? `${alerts.length} points nécessitent votre attention dans votre espace bailleur.`
+      : `${alerts.length} rappels concernant votre espace bailleur — rien d'urgent à traiter.`;
+
+  const footer = allActionable
+    ? "Cet email automatique suit l'échéancier métier de chaque alerte. Chacune disparaît dès que l'action correspondante est traitée."
+    : "Cet email automatique regroupe vos rappels du jour. Aucune action n'est requise pour les points marqués comme préventifs.";
 
   return `
     <div style="font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.5;color:#0f172a">
       <p>Bonjour,</p>
       <p>${intro}</p>
-      <div style="padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:${bg}">
-        <p style="margin:0 0 4px;font-weight:700;color:${color}">${alert.title}</p>
-        <p style="margin:0 0 10px;color:#334155;font-size:14px;line-height:1.45">${alert.detail}</p>
-        <a href="${baseUrl}${alert.href}" style="font-size:13px;color:#0f172a;font-weight:700">${linkLabel}</a>
-      </div>
-      <p style="margin-top:16px;font-size:12px;color:#64748b">
+      ${alerts.map(renderAlertCard).join("")}
+      <p style="margin-top:4px;font-size:12px;color:#64748b">
         ${footer}
       </p>
     </div>
   `;
+}
+
+function digestSubject(alerts: AlertItem[]) {
+  if (alerts.length === 1) return `lokt.fr - ${alerts[0].title}`;
+  const urgent = alerts.filter((a) => a.tone === "red").length;
+  return urgent > 0
+    ? `lokt.fr - ${alerts.length} alertes sur votre espace bailleur (${urgent} urgente${urgent > 1 ? "s" : ""})`
+    : `lokt.fr - ${alerts.length} alertes sur votre espace bailleur`;
 }
 
 async function alreadySent(userId: string, alertKey: string) {
@@ -408,7 +444,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           if (!lease.receipts_disabled && !lease.tenant_receipt_email && !tenantsById.get(lease.tenant_id)?.email) {
             alerts.push({
-              key: weeklyScheduleKey(`tenant-email:${lease.id}`, today),
+              key: weeklyScheduleKey(`tenant-email:${lease.id}`, today, leaseStart ? daysBetween(leaseStart, today) : null),
               preferenceKey: "tenant_email_missing",
               tone: "amber",
               title: `Email locataire manquant - ${labels.property}`,
@@ -445,7 +481,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
           if (!lease.reminder_email) {
             alerts.push({
-              key: weeklyScheduleKey(`owner-email:${lease.id}`, today),
+              key: weeklyScheduleKey(`owner-email:${lease.id}`, today, leaseStart ? daysBetween(leaseStart, today) : null),
               preferenceKey: "owner_email_missing",
               tone: "slate",
               title: `Email bailleur manquant - ${labels.property}`,
@@ -461,7 +497,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           const daysAfterStart = daysBetween(leaseStart, today);
           if (daysAfterStart >= 7) {
             alerts.push({
-              key: weeklyScheduleKey(`deposit-not-collected:${lease.id}`, today),
+              key: weeklyScheduleKey(`deposit-not-collected:${lease.id}`, today, daysAfterStart),
               preferenceKey: "deposit_not_collected",
               tone: "amber",
               title: `Caution non encaissee - ${labels.property}`,
@@ -599,28 +635,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         continue;
       }
 
-      const sent: string[] = [];
       const skipped: string[] = [];
-      const failed: { key: string; error: string }[] = [];
+      const dueAlerts: AlertItem[] = [];
       for (const alert of uniqueAlerts) {
         if (!force && (await alreadySent(userId, alert.key))) {
           skipped.push(alert.key);
           continue;
         }
-        const mail = await sendEmailViaResend({
-          to,
-          subject: `lokt.fr - ${alert.title}`,
-          html: renderEmail(alert),
-        });
-        if (!mail.ok) {
-          failed.push({ key: alert.key, error: mail.error });
-          allFailures.push({ email: to, error: `${alert.key}: ${mail.error}` });
-          continue;
-        }
-        await markSent(userId, alert);
-        sent.push(alert.key);
+        dueAlerts.push(alert);
       }
-      results.push({ userId, to, sent, skipped, failed });
+
+      if (dueAlerts.length === 0) {
+        results.push({ userId, to, sent: [], skipped, failed: [] });
+        continue;
+      }
+
+      const mail = await sendEmailViaResend({
+        to,
+        subject: digestSubject(dueAlerts),
+        html: renderDigestEmail(dueAlerts),
+      });
+
+      if (!mail.ok) {
+        const failed = dueAlerts.map((a) => ({ key: a.key, error: mail.error }));
+        allFailures.push({ email: to, error: `digest (${dueAlerts.length} alerte${dueAlerts.length > 1 ? "s" : ""}) : ${mail.error}` });
+        results.push({ userId, to, sent: [], skipped, failed });
+        continue;
+      }
+
+      for (const alert of dueAlerts) await markSent(userId, alert);
+      results.push({ userId, to, sent: dueAlerts.map((a) => a.key), skipped, failed: [] });
     }
 
     await alertCronFailures("landlord-alerts", allFailures);
