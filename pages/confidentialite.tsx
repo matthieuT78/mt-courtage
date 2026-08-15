@@ -105,6 +105,9 @@ export default function ConfidentialitePage() {
                     <strong>Google LLC</strong> via Google Analytics 4 — mesure d’audience du site public, chargée uniquement après votre consentement (voir section 8). L’adresse IP est anonymisée avant traitement statistique. Aucun cookie publicitaire n’est utilisé.
                   </li>
                   <li>
+                    <strong>Microsoft Corporation</strong> via Microsoft Clarity — cartes de chaleur et enregistrements de session anonymisés pour comprendre les points de blocage du site public, chargés uniquement après votre consentement (voir section 8). Aucune donnée à des fins publicitaires.
+                  </li>
+                  <li>
                     <strong>Open-Meteo</strong> — prévisions météorologiques à partir des coordonnées géographiques des communes où se situent vos biens. Seule la localité (ville) est transmise, sans donnée nominative.
                   </li>
                   <li>
@@ -180,7 +183,7 @@ export default function ConfidentialitePage() {
                     <strong>Fonctionnement :</strong> session, authentification, préférences d’interface (mode sombre, menu réduit), sauvegarde temporaire de formulaires.
                   </li>
                   <li>
-                    <strong>Mesure d’audience (soumise à consentement) :</strong> Google Analytics 4 dépose des cookies pour mesurer la fréquentation du site public (pages vues, source de trafic) — uniquement si vous cliquez sur "Accepter" dans le bandeau proposé lors de votre première visite. Les adresses IP sont anonymisées ; aucune donnée n’est utilisée à des fins publicitaires. Vous pouvez modifier votre choix à tout moment via le lien "Gérer les cookies" en bas de page.
+                    <strong>Mesure d’audience (soumise à consentement) :</strong> Google Analytics 4 et Microsoft Clarity déposent des cookies pour mesurer la fréquentation du site public et identifier les points de friction du parcours (pages vues, source de trafic, cartes de chaleur, enregistrements de session anonymisés) — uniquement si vous activez cette catégorie dans le bandeau de cookies proposé lors de votre première visite. Les adresses IP sont anonymisées ; aucune donnée n’est utilisée à des fins publicitaires. Vous pouvez modifier votre choix à tout moment via le lien "Gérer les cookies" en bas de page.
                   </li>
                 </ul>
                 <p>Aucun cookie publicitaire tiers ou de reciblage n’est utilisé.</p>

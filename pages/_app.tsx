@@ -10,6 +10,9 @@ import { PermissionProvider } from "../components/PermissionProvider";
 import CookieConsent, { getStoredCookieConsent } from "../components/CookieConsent";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || "G-0J8NXZ3SBD";
+// Vide tant que le projet Microsoft Clarity n'est pas créé — le script ne se
+// charge alors simplement pas (pas d'ID à fournir en dur ni de faux ID).
+const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID || "";
 
 declare global {
   interface Window {
@@ -36,8 +39,8 @@ export default function App({ Component, pageProps }: AppProps) {
   const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
 
   useEffect(() => {
-    setAnalyticsAllowed(getStoredCookieConsent() === "accepted");
-    const onChange = (e: Event) => setAnalyticsAllowed((e as CustomEvent).detail === "accepted");
+    setAnalyticsAllowed(getStoredCookieConsent()?.analytics === true);
+    const onChange = (e: Event) => setAnalyticsAllowed((e as CustomEvent).detail?.analytics === true);
     window.addEventListener("lokt:cookie-consent-change", onChange);
     return () => window.removeEventListener("lokt:cookie-consent-change", onChange);
   }, []);
@@ -102,7 +105,8 @@ export default function App({ Component, pageProps }: AppProps) {
         />
       </Head>
 
-      {/* Google Analytics — chargé uniquement après consentement (RGPD) */}
+      {/* Mesure d'audience (Google Analytics + Microsoft Clarity) — chargée
+          uniquement après consentement (RGPD), même catégorie dans le bandeau. */}
       {analyticsAllowed && (
         <>
           <Script
@@ -117,6 +121,17 @@ export default function App({ Component, pageProps }: AppProps) {
               gtag('config', '${GA_ID}', { anonymize_ip: true });
             `}
           </Script>
+          {CLARITY_ID && (
+            <Script id="clarity" strategy="afterInteractive">
+              {`
+                (function(c,l,a,r,i,t,y){
+                  c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                  t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+                })(window, document, "clarity", "script", "${CLARITY_ID}");
+              `}
+            </Script>
+          )}
         </>
       )}
 
