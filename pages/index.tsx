@@ -346,7 +346,7 @@ function ToolPickerModal({ open, onClose }: { open: boolean; onClose: () => void
     title: string;
     oneLiner: string;
     href: string;
-    icon: "loan" | "bridge" | "yield" | "portfolio" | "sale";
+    icon: "loan" | "bridge" | "yield" | "portfolio" | "sale" | "bailleur";
     badge?: string;
   }> = [
     // ✅ badge "Gratuit" supprimé
@@ -355,6 +355,7 @@ function ToolPickerModal({ open, onClose }: { open: boolean; onClose: () => void
     { title: "Rentabilité locative", oneLiner: "Cash-flow & rendement.", href: "/investissement", icon: "yield" },
     { title: "Parc immobilier", oneLiner: "Vision consolidée multi-biens.", href: "/parc-immobilier", icon: "portfolio" },
     { title: "Plus-value immobilière", oneLiner: "Estimer le cash net.", href: "/plus-value-vente-immobiliere", icon: "sale" },
+    { title: "Acheter ou louer", oneLiner: "Comparer les deux scénarios.", href: "/acheter-ou-louer", icon: "bailleur" },
   ];
 
   return (
@@ -780,7 +781,7 @@ export default function Home() {
               <div data-scroll-reveal data-reveal-delay="120" className="flex flex-col rounded-[1.75rem] border border-[#635bff]/20 bg-white p-8">
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[#635bff]">Simulateurs immobiliers</p>
                 <h3 className="mt-2 text-2xl font-semibold text-slate-950">Décidez avant d’agir</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">5 calculettes pour investisseurs et propriétaires. Gratuits, sans compte, résultats instantanés avec score de viabilité.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">6 calculettes pour investisseurs et propriétaires. Gratuits, sans compte, résultats instantanés avec score de viabilité.</p>
 
                 <div className="mt-6 flex-1 grid gap-2">
                   {[
@@ -789,9 +790,10 @@ export default function Home() {
                     ["/pret-relais", "Prêt relais", "Acheter avant de vendre", "bridge" as const],
                     ["/plus-value-vente-immobiliere", "Plus-value immobilière", "Cash net estimé après impôt", "sale" as const],
                     ["/parc-immobilier", "Parc immobilier", "Vision consolidée multi-biens", "portfolio" as const],
+                    ["/acheter-ou-louer", "Acheter ou louer", "Comparer les deux scénarios", "bailleur" as const],
                   ].map(([href, name, desc, icon]) => (
                     <Link key={href} href={String(href)} className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-[#635bff]/30 hover:bg-[#635bff]/5">
-                      <Sticker kind={icon as "loan" | "bridge" | "yield" | "portfolio" | "sale"} className="h-9 w-9 shrink-0" />
+                      <Sticker kind={icon as "loan" | "bridge" | "yield" | "portfolio" | "sale" | "bailleur"} className="h-9 w-9 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-slate-950">{name}</p>
                         <p className="text-[0.68rem] text-slate-500">{desc}</p>
@@ -1138,7 +1140,7 @@ export default function Home() {
               <div>
                 <p data-scroll-reveal className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">Simulateurs immobiliers</p>
                 <h2 data-scroll-reveal data-reveal-delay="100" className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 sm:text-4xl">
-                  Cinq calculettes. Un score de viabilité.
+                  Six calculettes. Un score de viabilité.
                 </h2>
                 <p data-scroll-reveal data-reveal-delay="200" className="mt-4 text-sm leading-7 text-slate-600">
                   Chaque simulateur donne un résultat chiffré — et un score lokt.fr de 0 à 100 qui résume si le projet tient la route. Gratuit, sans compte.
@@ -1193,10 +1195,11 @@ export default function Home() {
                   { href: "/pret-relais", icon: "bridge" as const, name: "Prêt relais", desc: "Financer l’achat avant la vente sans blocage de trésorerie", color: "from-cyan-500 to-blue-400" },
                   { href: "/plus-value-vente-immobiliere", icon: "sale" as const, name: "Plus-value immobilière", desc: "Cash net estimé après impôt sur cession", color: "from-amber-500 to-orange-400" },
                   { href: "/parc-immobilier", icon: "portfolio" as const, name: "Parc immobilier", desc: "Rendement global et performance de l’ensemble de vos biens", color: "from-violet-500 to-purple-400" },
+                  { href: "/acheter-ou-louer", icon: "bailleur" as const, name: "Acheter ou louer", desc: "Comparer le coût réel des deux scénarios sur la durée", color: "from-slate-500 to-slate-400" },
                 ].map((sim, i) => (
                   <Link key={sim.href} href={sim.href} data-scroll-reveal data-reveal-delay={String(i * 70)} className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md hover:border-slate-300">
                     <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${sim.color}`}>
-                      <Icon name={sim.icon === "loan" ? "loan" : sim.icon === "yield" ? "yield" : sim.icon === "bridge" ? "bridge" : sim.icon === "sale" ? "sale" : "portfolio"} className="h-5 w-5 text-white" />
+                      <Icon name={sim.icon === "loan" ? "loan" : sim.icon === "yield" ? "yield" : sim.icon === "bridge" ? "bridge" : sim.icon === "sale" ? "sale" : sim.icon === "bailleur" ? "bailleur" : "portfolio"} className="h-5 w-5 text-white" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-950">{sim.name}</p>
