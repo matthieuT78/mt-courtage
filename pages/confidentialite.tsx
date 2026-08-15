@@ -147,7 +147,7 @@ export default function ConfidentialitePage() {
                     relatives aux locataires et baux peuvent être conservées jusqu’à 3 ans après la fin du bail à des fins de preuve.
                   </li>
                   <li>
-                    <strong>Données de candidature locative :</strong> les brouillons non soumis sont supprimés automatiquement après 30 jours d’inactivité. Les dossiers refusés, en liste d’attente ou abandonnés sont supprimés par le bailleur à la clôture de l’annonce. Le dossier du candidat retenu est conservé tant que le bail correspondant est actif, puis soumis aux mêmes règles que les données de gestion locative.
+                    <strong>Données de candidature locative :</strong> les brouillons non soumis sont supprimés automatiquement après 30 jours d’inactivité. Les dossiers refusés ou en liste d’attente sont supprimés par le bailleur à la clôture de l’annonce, et automatiquement au plus tard 60 jours après la décision si l’annonce n’a pas été clôturée entre-temps. Le dossier du candidat retenu est conservé tant que le bail correspondant est actif, puis soumis aux mêmes règles que les données de gestion locative.
                   </li>
                   <li>
                     <strong>Données de réservation de visite :</strong> supprimées automatiquement à la clôture de l’annonce, quel que soit le candidat retenu.
