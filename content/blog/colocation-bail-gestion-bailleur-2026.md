@@ -154,3 +154,4 @@ Pour gérer une colocation — baux, quittances, alertes de loyer et suivi des c
 ## Outils pratiques
 
 - [Inventaire location meublée](/inventaire-location-meublee) — gérez l'inventaire du mobilier pour votre colocation meublée
+- [Louer à un étudiant](/blog/louer-a-un-etudiant-bail-garanties-rentree-locative) — bail étudiant, bail mobilité et garantie Visale, fréquents en colocation étudiante

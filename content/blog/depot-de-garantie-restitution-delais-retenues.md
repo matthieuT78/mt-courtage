@@ -358,6 +358,7 @@ Le dépôt de garantie n'est ni une cagnotte à disposition du bailleur, ni un d
 
 - [Dépôt de garantie location meublée](/depot-garantie-location-meublee) — règles spécifiques au bail meublé (montant, délais)
 - [Modèle de lettre de restitution de dépôt de garantie](/modele-restitution-depot-garantie) — document à envoyer avec ou sans retenues
+- [Louer à un étudiant](/blog/louer-a-un-etudiant-bail-garanties-rentree-locative) — le bail mobilité interdit tout dépôt de garantie, à la différence du bail étudiant classique
 
 
 *Gérez vos états des lieux, dépôts de garantie et clôtures de bail depuis votre [espace bailleur lokt.fr](/outil-gestion-locative) — avec un suivi documenté de chaque étape.*
