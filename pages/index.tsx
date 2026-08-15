@@ -375,7 +375,7 @@ function ToolPickerModal({ open, onClose }: { open: boolean; onClose: () => void
               <div className="rounded-[2rem] border border-white/60 bg-white/88 p-6 shadow-2xl shadow-slate-900/10 backdrop-blur sm:p-8">
                 <p className="text-[0.7rem] uppercase tracking-[0.18em] text-slate-500">Démarrer</p>
                 <h3 className="mt-1 text-lg sm:text-xl font-semibold text-slate-900">Choisir une calculette</h3>
-                <p className="mt-1 text-sm text-slate-600">Sélectionnez l’outil adapté à votre situation.</p>
+                <p className="mt-1 text-sm text-slate-600">Sélectionnez l’outil adapté à votre situation. Gratuit, sans compte.</p>
               </div>
               <button
                 onClick={onClose}
@@ -478,7 +478,7 @@ export default function Home() {
   const title =
     "lokt.fr : gestion locative gratuite et simulateurs";
   const description =
-    "Gérez vos locations sans agence : quittances, baux et finance automatisés. Simulez rentabilité et capacité d’emprunt. Essai gratuit.";
+    "Gérez vos locations sans agence : quittances, baux et finance automatisés. Simulez rentabilité et capacité d’emprunt. Gratuit, sans limite de durée.";
   const ogImage = `${siteUrl}/lokt-logo.jpg`;
 
   const faqData = useMemo(
@@ -711,6 +711,12 @@ export default function Home() {
                     Lancer une simulation →
                   </button>
                 </div>
+
+                {!isLoggedIn && (
+                  <p className="anim-fadeUp d-3 mt-3 text-xs text-white/70">
+                    Gratuit pour 1 logement, sans limite de durée.
+                  </p>
+                )}
               </div>
 
               <div className="anim-fadeUp d-4">
