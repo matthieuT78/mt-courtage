@@ -5,8 +5,9 @@ import type { AppProps } from "next/app";
 import Script from "next/script";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PermissionProvider } from "../components/PermissionProvider";
+import CookieConsent, { getStoredCookieConsent } from "../components/CookieConsent";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || "G-0J8NXZ3SBD";
 
@@ -32,6 +33,14 @@ function logClientError(message: string, stack?: string, extra?: object) {
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
+  const [analyticsAllowed, setAnalyticsAllowed] = useState(false);
+
+  useEffect(() => {
+    setAnalyticsAllowed(getStoredCookieConsent() === "accepted");
+    const onChange = (e: Event) => setAnalyticsAllowed((e as CustomEvent).detail === "accepted");
+    window.addEventListener("lokt:cookie-consent-change", onChange);
+    return () => window.removeEventListener("lokt:cookie-consent-change", onChange);
+  }, []);
 
   useEffect(() => {
     const handleRouteChange = (url: string) => {
@@ -93,24 +102,30 @@ export default function App({ Component, pageProps }: AppProps) {
         />
       </Head>
 
-      {/* Google Analytics */}
-      <Script
-        src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-        strategy="afterInteractive"
-      />
-      <Script id="ga4" strategy="afterInteractive">
-        {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', '${GA_ID}', { anonymize_ip: true });
-        `}
-      </Script>
+      {/* Google Analytics — chargé uniquement après consentement (RGPD) */}
+      {analyticsAllowed && (
+        <>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+            strategy="afterInteractive"
+          />
+          <Script id="ga4" strategy="afterInteractive">
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_ID}', { anonymize_ip: true });
+            `}
+          </Script>
+        </>
+      )}
 
       {/* Permissions globales */}
       <PermissionProvider>
         <Component {...pageProps} />
       </PermissionProvider>
+
+      <CookieConsent />
     </>
   );
 }

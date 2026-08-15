@@ -19,6 +19,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { hasValidCronSecret } from "../../../lib/cronAuth";
+import { alertCronFailures } from "../../../lib/cronAlert";
 
 function budgetBucket(amount: number | null): string | null {
   if (!amount || amount <= 0) return null;
@@ -118,14 +119,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     { consent_contact: false, created_at_lt: cutoff(12) },
     now
   );
-  if (r1.error) return res.status(500).json({ ok: false, error: r1.error });
+  if (r1.error) {
+    await alertCronFailures("anonymize-leads", [{ error: `batch sans consentement : ${r1.error}` }]);
+    return res.status(500).json({ ok: false, error: r1.error });
+  }
 
   // 2. Avec consentement contact → 36 mois
   const r2 = await anonymizeBatch(
     { consent_contact: true, created_at_lt: cutoff(36) },
     now
   );
-  if (r2.error) return res.status(500).json({ ok: false, error: r2.error });
+  if (r2.error) {
+    await alertCronFailures("anonymize-leads", [{ error: `batch avec consentement : ${r2.error}` }]);
+    return res.status(500).json({ ok: false, error: r2.error });
+  }
 
   const count = r1.count + r2.count;
   console.log(`[anonymize-leads] ${count} leads anonymisés (${r1.count} sans consent, ${r2.count} avec consent)`);

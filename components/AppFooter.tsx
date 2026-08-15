@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { reopenCookieConsent } from "./CookieConsent";
 
 function BadgeStripe() {
   return (
@@ -90,6 +91,9 @@ export default function AppFooter() {
         <Link href="/confidentialite" className="underline hover:text-slate-700">
           Confidentialité (RGPD)
         </Link>
+        <button type="button" onClick={() => reopenCookieConsent()} className="underline hover:text-slate-700">
+          Gérer les cookies
+        </button>
         <a href="mailto:contact@lokt.fr" className="underline hover:text-slate-700">
           Contact
         </a>

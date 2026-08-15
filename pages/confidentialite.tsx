@@ -102,7 +102,7 @@ export default function ConfidentialitePage() {
                     <strong>Resend</strong> — envoi des emails opérationnels (quittances, alertes, rappels, confirmations) à destination des bailleurs et locataires.
                   </li>
                   <li>
-                    <strong>Google LLC</strong> via Google Analytics 4 — mesure d’audience anonymisée du site public. Les adresses IP sont masquées côté serveur avant tout traitement. Aucun cookie publicitaire n’est utilisé.
+                    <strong>Google LLC</strong> via Google Analytics 4 — mesure d’audience du site public, chargée uniquement après votre consentement (voir section 8). L’adresse IP est anonymisée avant traitement statistique. Aucun cookie publicitaire n’est utilisé.
                   </li>
                   <li>
                     <strong>Open-Meteo</strong> — prévisions météorologiques à partir des coordonnées géographiques des communes où se situent vos biens. Seule la localité (ville) est transmise, sans donnée nominative.
@@ -180,7 +180,7 @@ export default function ConfidentialitePage() {
                     <strong>Fonctionnement :</strong> session, authentification, préférences d’interface (mode sombre, menu réduit), sauvegarde temporaire de formulaires.
                   </li>
                   <li>
-                    <strong>Mesure d’audience :</strong> Google Analytics 4 dépose des cookies pour mesurer la fréquentation du site public (pages vues, source de trafic). Les adresses IP sont anonymisées ; aucune donnée n’est utilisée à des fins publicitaires.
+                    <strong>Mesure d’audience (soumise à consentement) :</strong> Google Analytics 4 dépose des cookies pour mesurer la fréquentation du site public (pages vues, source de trafic) — uniquement si vous cliquez sur "Accepter" dans le bandeau proposé lors de votre première visite. Les adresses IP sont anonymisées ; aucune donnée n’est utilisée à des fins publicitaires. Vous pouvez modifier votre choix à tout moment via le lien "Gérer les cookies" en bas de page.
                   </li>
                 </ul>
                 <p>Aucun cookie publicitaire tiers ou de reciblage n’est utilisé.</p>
