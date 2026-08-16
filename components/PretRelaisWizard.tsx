@@ -52,6 +52,22 @@ function toInt(v: string, fallback = 0) {
   return Number.isFinite(x) ? x : fallback;
 }
 
+/** autorise chiffres + un seul séparateur "." (on remplace "," par ".") —
+ * garde la valeur en texte pour ne pas perdre le "." ou "," en cours de
+ * frappe (un number ne peut pas représenter "3," en attente du chiffre
+ * suivant, donc le champ se réinitialisait à chaque frappe). */
+function onlyNumberLike(s: string) {
+  const cleaned = s.replace(",", ".").replace(/[^0-9.]/g, "");
+  const parts = cleaned.split(".");
+  if (parts.length <= 1) return cleaned;
+  return parts[0] + "." + parts.slice(1).join("");
+}
+
+function toFloat(v: string, fallback = 0) {
+  const x = parseFloat(v);
+  return Number.isFinite(x) ? x : fallback;
+}
+
 function parseEditableNumber(value: string) {
   if (value === "") return Number.NaN;
   const parsed = parseFloat(value);
@@ -377,21 +393,23 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   const [autresMensualites, setAutresMensualites] = useState(0);
   const [mensualiteCreditLocatif, setMensualiteCreditLocatif] = useState(0);
   const [loyerPercuLocatif, setLoyerPercuLocatif] = useState(0);
-  const [tauxEndettement, setTauxEndettement] = useState(35);
+  // ✅ texte, pas number : permet de taper un "." ou "," sans que le champ
+  // se réinitialise en cours de frappe (voir onlyNumberLike/toFloat).
+  const [tauxEndettement, setTauxEndettement] = useState<string>("35");
 
   // ---------------------------
   // Inputs — Bien actuel à vendre
   // ---------------------------
   const [valeurBienActuel, setValeurBienActuel] = useState(400000);
   const [crdActuel, setCrdActuel] = useState(200000);
-  const [pctRetenu, setPctRetenu] = useState(70);
-  const [tauxRelais, setTauxRelais] = useState(4);
+  const [pctRetenu, setPctRetenu] = useState<string>("70");
+  const [tauxRelais, setTauxRelais] = useState<string>("4");
 
   // ---------------------------
   // Inputs — Nouveau projet
   // ---------------------------
   const [apportPerso, setApportPerso] = useState(30000);
-  const [tauxNouveau, setTauxNouveau] = useState(3.5);
+  const [tauxNouveau, setTauxNouveau] = useState<string>("3.5");
   const [dureeNouveau, setDureeNouveau] = useState(25);
   const [prixCible, setPrixCible] = useState(450000);
 
@@ -572,14 +590,18 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
     // ✅ garde-fous : des valeurs saisies incohérentes (ex : % retenu à 500,
     // CRD négatif) ne doivent pas produire un relais/budget max silencieusement
     // absurde.
-    const endettementMax = Math.min(Math.max(tauxEndettement || 35, 1), 100) / 100;
+    const tauxEndettementNum = toFloat(tauxEndettement, 35);
+    const pctRetenuNum = toFloat(pctRetenu, 70);
+    const tauxRelaisNum = toFloat(tauxRelais, 4);
+    const tauxNouveauNum = toFloat(tauxNouveau, 3.5);
+    const endettementMax = Math.min(Math.max(tauxEndettementNum || 35, 1), 100) / 100;
 
     const valeur = valeurBienActuel || 0;
     const crd = Math.max(crdActuel || 0, 0);
-    const pct = Math.min(Math.max(pctRetenu || 70, 0), 100) / 100;
+    const pct = Math.min(Math.max(pctRetenuNum || 70, 0), 100) / 100;
 
     const apport = apportPerso || 0;
-    const tNouveauAnnuel = (tauxNouveau || 0) / 100;
+    const tNouveauAnnuel = (tauxNouveauNum || 0) / 100;
     const tNouveauMensuel = tNouveauAnnuel / 12;
     const nMois = (dureeNouveau || 0) * 12;
 
@@ -651,7 +673,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
           ...(mensCreditLocatif > 0
             ? [`Crédit immobilier locatif en cours : ${formatEuro(mensCreditLocatif)}/mois.`]
             : []),
-          `Endettement cible : ${tauxEndettement.toFixed(0)} % → plafond ≈ ${formatEuro(plafondEndettement)}/mois.`,
+          `Endettement cible : ${tauxEndettementNum.toFixed(0)} % → plafond ≈ ${formatEuro(plafondEndettement)}/mois.`,
           `Endettement actuel : ~${formatPct(tauxActuel)}.`,
         ].join("\n"),
         "",
@@ -685,7 +707,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
         tauxEndettementAvecProjet: tauxAvecProjet,
       };
 
-      const assessmentFail = computeBankabilityScore(resumeFail, tauxEndettement);
+      const assessmentFail = computeBankabilityScore(resumeFail, tauxEndettementNum);
 
       return { ok: false as const, resume: resumeFail, texte: msg, assessment: assessmentFail };
     }
@@ -719,7 +741,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
         ...(mensCreditLocatif > 0
           ? [`Crédit immobilier locatif en cours : ${formatEuro(mensCreditLocatif)}/mois.`]
           : []),
-        `Endettement cible : ${tauxEndettement.toFixed(0)} % → plafond ≈ ${formatEuro(plafondEndettement)}/mois.`,
+        `Endettement cible : ${tauxEndettementNum.toFixed(0)} % → plafond ≈ ${formatEuro(plafondEndettement)}/mois.`,
         `Mensualité disponible (plafond théorique) : ${formatEuro(mensualiteNouveauMax)}.`,
         `Lecture lokt.fr (prudente) : on ne retient que ~${Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de cette mensualité (${formatEuro(mensualiteLokt)}) pour estimer le capital empruntable et l'endettement projeté — une marge de sécurité pour le passage en banque.`,
         `Endettement actuel : ~${formatPct(tauxActuel)} ; endettement projeté (lokt.fr) : ~${formatPct(tauxAvecProjet)}.`,
@@ -729,14 +751,14 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
         "2) Estimation du prêt relais",
         `Valeur estimée du bien actuel : ${formatEuro(valeur)}.`,
         `Capital restant dû : ${formatEuro(crd)}.`,
-        `Part retenue par la banque : ${pctRetenu.toFixed(0)} %.`,
+        `Part retenue par la banque : ${pctRetenuNum.toFixed(0)} %.`,
         `Montant théorique du prêt relais : ${formatEuro(montantRelais)}.`,
-        `Taux indicatif relais : ${formatPct(tauxRelais)} (coût non intégré dans la capacité).`,
+        `Taux indicatif relais : ${formatPct(tauxRelaisNum)} (coût non intégré dans la capacité).`,
       ].join("\n"),
       "",
       [
         "3) Nouveau prêt immobilier",
-        `Sur ${dureeNouveau.toFixed(0)} ans à ${formatPct(tauxNouveau)}, sur la base de la mensualité prudente lokt.fr, capital empruntable ≈ ${formatEuro(capitalNouveau)}.`,
+        `Sur ${dureeNouveau.toFixed(0)} ans à ${formatPct(tauxNouveauNum)}, sur la base de la mensualité prudente lokt.fr, capital empruntable ≈ ${formatEuro(capitalNouveau)}.`,
       ].join("\n"),
       "",
       [
@@ -765,7 +787,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       tauxEndettementAvecProjet: tauxAvecProjet,
     };
 
-    const assessment = computeBankabilityScore(resumeOk, tauxEndettement);
+    const assessment = computeBankabilityScore(resumeOk, tauxEndettementNum);
 
     return { ok: true as const, resume: resumeOk, texte: message, assessment };
   };
@@ -781,8 +803,8 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
     setBankabilityLabel(computed.assessment?.label ?? "");
     setBankabilityComment(computed.assessment?.comment ?? "");
 
-    const items = buildRelaisActionPlan(computed.resume, computed.assessment, tauxEndettement, {
-      pctRetenu, tauxRelais, prixCible, timelineDb, proStatus,
+    const items = buildRelaisActionPlan(computed.resume, computed.assessment, toFloat(tauxEndettement, 35), {
+      pctRetenu: toFloat(pctRetenu, 70), tauxRelais: toFloat(tauxRelais, 4), prixCible, timelineDb, proStatus,
       ageEmprunteur, ageCoEmprunteur, nbAdultes, dureeNouveau,
       mensCreditLocatif: mensualiteCreditLocatif || 0,
       loyerLocatifPondere: (loyerPercuLocatif || 0) * 0.7,
@@ -846,15 +868,15 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       setAutresMensualites(saved.autresMensualites ?? 0);
       setMensualiteCreditLocatif(saved.mensualiteCreditLocatif ?? 0);
       setLoyerPercuLocatif(saved.loyerPercuLocatif ?? 0);
-      setTauxEndettement(saved.tauxEndettement ?? 35);
+      setTauxEndettement(saved.tauxEndettement !== undefined ? String(saved.tauxEndettement) : "35");
 
       setValeurBienActuel(saved.valeurBienActuel ?? 400000);
       setCrdActuel(saved.crdActuel ?? 200000);
-      setPctRetenu(saved.pctRetenu ?? 70);
-      setTauxRelais(saved.tauxRelais ?? 4);
+      setPctRetenu(saved.pctRetenu !== undefined ? String(saved.pctRetenu) : "70");
+      setTauxRelais(saved.tauxRelais !== undefined ? String(saved.tauxRelais) : "4");
 
       setApportPerso(saved.apportPerso ?? 30000);
-      setTauxNouveau(saved.tauxNouveau ?? 3.5);
+      setTauxNouveau(saved.tauxNouveau !== undefined ? String(saved.tauxNouveau) : "3.5");
       setDureeNouveau(saved.dureeNouveau ?? 25);
       setPrixCible(saved.prixCible ?? 450000);
 
@@ -1253,7 +1275,7 @@ const renderAnalysisBlocks = (text: string) => {
                     Endettement cible (%)
                     <InfoBadge text="La part maximale de vos revenus que la banque accepte en mensualités (souvent 35%)." />
                   </label>
-                  <input inputMode="decimal" value={editableNumberValue(tauxEndettement)} onChange={(e) => setTauxEndettement(parseEditableNumber(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
+                  <input inputMode="decimal" value={tauxEndettement} onChange={(e) => setTauxEndettement(onlyNumberLike(e.target.value))} className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500" />
                 </div>
               </div>
 
@@ -1359,8 +1381,8 @@ const renderAnalysisBlocks = (text: string) => {
                     </label>
                     <input
                       inputMode="decimal"
-                      value={editableNumberValue(pctRetenu)}
-                      onChange={(e) => setPctRetenu(parseEditableNumber(e.target.value))}
+                      value={pctRetenu}
+                      onChange={(e) => setPctRetenu(onlyNumberLike(e.target.value))}
                       className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -1374,8 +1396,8 @@ const renderAnalysisBlocks = (text: string) => {
                     </label>
                     <input
                       inputMode="decimal"
-                      value={editableNumberValue(tauxRelais)}
-                      onChange={(e) => setTauxRelais(parseEditableNumber(e.target.value))}
+                      value={tauxRelais}
+                      onChange={(e) => setTauxRelais(onlyNumberLike(e.target.value))}
                       className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
@@ -1405,8 +1427,8 @@ const renderAnalysisBlocks = (text: string) => {
                   <label className={labelBase}>Taux du nouveau crédit (annuel, %)</label>
                   <input
                     inputMode="decimal"
-                    value={editableNumberValue(tauxNouveau)}
-                    onChange={(e) => setTauxNouveau(parseEditableNumber(e.target.value))}
+                    value={tauxNouveau}
+                    onChange={(e) => setTauxNouveau(onlyNumberLike(e.target.value))}
                     className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
@@ -1539,7 +1561,7 @@ const renderAnalysisBlocks = (text: string) => {
                     <p className="text-[0.65rem] text-slate-500 uppercase tracking-[0.14em]">Capital nouveau prêt</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">{formatEuro(resume!.capitalNouveau)}</p>
                     <p className="mt-1 text-[0.7rem] text-slate-500">
-                      {dureeNouveau} ans à ~{formatPct(tauxNouveau)}.
+                      {dureeNouveau} ans à ~{formatPct(toFloat(tauxNouveau, 3.5))}.
                     </p>
                   </div>
 
