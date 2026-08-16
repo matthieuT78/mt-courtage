@@ -776,6 +776,35 @@ export default function AcheterOuLouerWizard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, phone: leadPhone.trim() || null, payload: emailPayload }),
       }).catch(() => {});
+
+      // ✅ enregistre aussi le lead en base (jusqu'ici seul l'email était
+      // envoyé — aucune trace en base si Resend échoue, et le lead
+      // n'apparaissait jamais dans pages/admin/leads.tsx).
+      if (supabase) {
+        const budgetTarget = Math.round(toNum(form.prix_rp) || toNum(form.prix_locatif)) || null;
+        supabase
+          .rpc("upsert_lead_v1", {
+            p_tool: "acheter-ou-louer",
+            p_email: email,
+            p_payload: emailPayload,
+            p_postal_code: form.villePostal || null,
+            p_city: form.villeNom || null,
+            p_phone: leadPhone.trim() || null,
+            p_source: "acheter_ou_louer_wizard",
+            p_utm: null,
+            p_lead_age: null,
+            p_project_property_kind: null,
+            p_project_usage: null,
+            p_project_timeline: null,
+            p_project_budget_target: budgetTarget,
+          })
+          .then(({ error }) => {
+            if (error) {
+              // eslint-disable-next-line no-console
+              console.warn("[rpc upsert_lead_v1] acheter-ou-louer capture error:", error);
+            }
+          });
+      }
     } catch {}
     // Unlock immédiatement sans attendre la réponse email
     setUnlocked(true);
@@ -1027,7 +1056,11 @@ export default function AcheterOuLouerWizard() {
                           <MonthlyRow
                             label="Locatif + rester locataire"
                             amount={monthly.cout_net_locatif - toNum(form.loyer_actuel)}
-                            sub={`Loyer actuel ${fmtEuro(toNum(form.loyer_actuel))}/mois − cashflow net ${fmtEuro(Math.max(0, monthly.cashflow_net))}/mois`}
+                            sub={
+                              monthly.cashflow_net >= 0
+                                ? `Cashflow locatif net : +${fmtEuro(monthly.cashflow_net)}/mois — l'investissement s'autofinance, en plus de votre loyer actuel de ${fmtEuro(toNum(form.loyer_actuel))}/mois.`
+                                : `Cashflow locatif net : ${fmtEuro(monthly.cashflow_net)}/mois à couvrir, en plus de votre loyer actuel de ${fmtEuro(toNum(form.loyer_actuel))}/mois.`
+                            }
                             highlight={verdict === "locatif"}
                             icon={BuildingOffice2Icon}
                           />
@@ -1063,13 +1096,15 @@ export default function AcheterOuLouerWizard() {
                     </div>
                   )}
 
-                  {/* Scores détaillés */}
+                  {/* Scores détaillés — seuil "défavorables" aligné à 40, le plancher
+                      réel de getVerdict, pour qu'un verdict positif ne puisse jamais
+                      s'afficher à côté d'un sous-libellé "défavorables"/"difficiles". */}
                   <div className={`grid gap-3 ${showLocatif ? "sm:grid-cols-2" : ""}`}>
                     <div>
                       <ScoreBar
                         score={scores.rp.score}
                         label="Score — Résidence principale"
-                        sublabel={scores.rp.score >= 65 ? "Conditions favorables" : scores.rp.score >= 50 ? "Conditions moyennes" : "Conditions défavorables"}
+                        sublabel={scores.rp.score >= 65 ? "Conditions favorables" : scores.rp.score >= 40 ? "Conditions moyennes" : "Conditions défavorables"}
                         color="emerald"
                       />
                       <div className="mt-2 space-y-1.5 px-1">
@@ -1094,7 +1129,7 @@ export default function AcheterOuLouerWizard() {
                         <ScoreBar
                           score={scores.locatif.score}
                           label="Score — Investissement locatif"
-                          sublabel={scores.locatif.score >= 65 ? "Profil adapté à l'investissement" : scores.locatif.score >= 50 ? "Faisable avec vigilance" : "Conditions difficiles"}
+                          sublabel={scores.locatif.score >= 65 ? "Profil adapté à l'investissement" : scores.locatif.score >= 40 ? "Faisable avec vigilance" : "Conditions difficiles"}
                           color="indigo"
                         />
                         <div className="mt-2 space-y-1.5 px-1">
