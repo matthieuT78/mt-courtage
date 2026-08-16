@@ -1326,8 +1326,8 @@ const renderAnalysisBlocks = (text: string) => {
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Crédit immobilier locatif en cours (€ / mois)
-                    <InfoBadge text="Mensualité d'un crédit immobilier déjà en cours sur un bien loué (autre que celui mis en vente ci-dessous, le cas échéant)." />
+                    Crédit(s) immobilier(s) locatif(s) en cours (€ / mois)
+                    <InfoBadge text="Mensualité d'un crédit immobilier déjà en cours sur un bien loué (autre que celui mis en vente ci-dessous, le cas échéant). Si vous en avez plusieurs, additionnez toutes les mensualités dans ce champ — le résultat est identique à une saisie ligne par ligne." />
                   </label>
                   <input
                     inputMode="decimal"
@@ -1338,8 +1338,8 @@ const renderAnalysisBlocks = (text: string) => {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Loyer perçu sur ce bien (€ / mois)
-                    <InfoBadge text="70 % de ce loyer sera intégré à vos revenus pour le calcul, comme le font la plupart des banques." />
+                    Loyer(s) perçu(s) sur ce(s) bien(s) (€ / mois)
+                    <InfoBadge text="70 % de ce loyer sera intégré à vos revenus pour le calcul, comme le font la plupart des banques. Plusieurs biens loués ? Additionnez aussi les loyers ici — 70 % du total équivaut à 70 % de chaque loyer pris séparément." />
                   </label>
                   <input
                     inputMode="decimal"
