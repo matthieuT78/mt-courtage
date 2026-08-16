@@ -129,6 +129,13 @@ export default function App({ Component, pageProps }: AppProps) {
                   t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
                   y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
                 })(window, document, "clarity", "script", "${CLARITY_ID}");
+                // ✅ certains projets Clarity attendent un signal de consentement
+                // explicite avant de collecter quoi que ce soit, même une fois le
+                // script chargé — on ne charge déjà ce script qu'après consentement
+                // (bandeau cookies), donc ce signal est toujours légitime ici.
+                // try/catch plutôt qu'un typeof strict : selon le timing, le
+                // stub peut déjà avoir été remplacé par le vrai objet Clarity.
+                try { window.clarity("consent"); } catch (e) {}
               `}
             </Script>
           )}
