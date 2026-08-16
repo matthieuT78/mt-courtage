@@ -123,9 +123,10 @@ function buildRelaisActionPlan(
     pctRetenu: number; tauxRelais: number; prixCible: number;
     timelineDb: ProjectTimelineDB; proStatus: ProStatus;
     ageEmprunteur: number; ageCoEmprunteur: number; nbAdultes: number; dureeNouveau: number;
+    mensCreditLocatif: number; loyerLocatifPondere: number;
   }
 ): ActionPlanItem[] {
-  const { pctRetenu, tauxRelais, prixCible, timelineDb, proStatus, ageEmprunteur, ageCoEmprunteur, nbAdultes, dureeNouveau } = ctx;
+  const { pctRetenu, tauxRelais, prixCible, timelineDb, proStatus, ageEmprunteur, ageCoEmprunteur, nbAdultes, dureeNouveau, mensCreditLocatif, loyerLocatifPondere } = ctx;
   const items: ActionPlanItem[] = [];
 
   const depassement = resume.tauxEndettementAvecProjet - tauxEndettementCible;
@@ -145,6 +146,14 @@ function buildRelaisActionPlan(
   }
 
   // ── WARNINGS ───────────────────────────────────────────────────────
+  if (pctRetenu > 85) {
+    items.push({ type: "warning", title: "% retenu supérieur aux pratiques bancaires courantes",
+      body: `Vous avez saisi ${pctRetenu}% de valeur retenue. La plupart des banques plafonnent entre 60 et 80% (rarement plus de 85%). Le montant du relais estimé ici est probablement optimiste — vérifiez ce taux avec votre banque avant de vous fier au budget max affiché.` });
+  }
+  if (tauxEndettementCible > 40) {
+    items.push({ type: "warning", title: "Endettement cible au-dessus des standards HCSF",
+      body: `Vous avez fixé une cible d'endettement à ${tauxEndettementCible}%, au-dessus des ~35% généralement admis (recommandation HCSF, dérogations possibles au cas par cas). Le budget affiché suppose que votre banque accepte ce dépassement — à confirmer avant de vous engager.` });
+  }
   if (depassement > 2) {
     items.push({ type: "warning", title: "Endettement au-dessus de la cible bancaire",
       body: `Avec le projet, votre taux d'endettement atteint ~${formatPct(resume.tauxEndettementAvecProjet)}, soit ${formatPct(depassement)} au-dessus de la cible à ${tauxEndettementCible}%. Pour revenir dans les clous : allonger la durée du nouveau prêt, revoir le prix visé à la baisse, ou renforcer l'apport personnel.` });
@@ -210,6 +219,14 @@ function buildRelaisActionPlan(
   if (ageCoEmprunteur === 0 && nbAdultes <= 1 && assessment.score < 75) {
     items.push({ type: "tip", title: "Un co-emprunteur pourrait changer la donne",
       body: `Vous simulez seul. Intégrer un co-emprunteur cumule les revenus, réduit le taux d'endettement projeté, et rassure la banque sur le risque global. C'est l'un des leviers les plus puissants pour améliorer la solidité du dossier.` });
+  }
+
+  if (mensCreditLocatif > 0 && loyerLocatifPondere === 0) {
+    items.push({ type: "tip", title: "Renseignez le loyer perçu sur votre bien locatif",
+      body: `Vous avez indiqué ${formatEuro(mensCreditLocatif)}/mois de crédit immobilier locatif en cours, sans loyer perçu associé. Si ce bien est loué, ajoutez le loyer : 70% en seront intégrés à vos revenus (pratique bancaire courante), ce qui améliore votre taux d'endettement projeté.` });
+  } else if (mensCreditLocatif > 0 && loyerLocatifPondere > 0) {
+    items.push({ type: "positive", title: "Le loyer locatif compense une partie de ce crédit",
+      body: `${formatEuro(loyerLocatifPondere)}/mois de revenu locatif (70% du loyer déclaré) sont intégrés à vos revenus pris en compte, ce qui allège d'autant le poids de votre crédit immobilier locatif existant dans le calcul.` });
   }
 
   return items;
@@ -533,7 +550,9 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   const loktScoreLabel = useMemo(() => {
     if (bankabilityScore === null) return "Score lokt.fr";
     if (bankabilityScore >= 85) return "Score lokt.fr — Très solide";
-    if (bankabilityScore >= 70) return "Score lokt.fr — Solide";
+    // ✅ score=70 correspond à "Limite acceptable" (voir computeBankabilityScore) :
+    // un seuil strict évite d'afficher "Solide" au-dessus d'un commentaire d'alerte.
+    if (bankabilityScore > 70) return "Score lokt.fr — Solide";
     if (bankabilityScore >= 55) return "Score lokt.fr — À optimiser";
     return "Score lokt.fr — Sous tension";
   }, [bankabilityScore]);
@@ -550,11 +569,14 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
     const loyerLocatifPondere = (loyerPercuLocatif || 0) * 0.7;
     const revenus = revenusBase + loyerLocatifPondere;
     const autresMens = (autresMensualites || 0) + mensCreditLocatif;
-    const endettementMax = (tauxEndettement || 35) / 100;
+    // ✅ garde-fous : des valeurs saisies incohérentes (ex : % retenu à 500,
+    // CRD négatif) ne doivent pas produire un relais/budget max silencieusement
+    // absurde.
+    const endettementMax = Math.min(Math.max(tauxEndettement || 35, 1), 100) / 100;
 
     const valeur = valeurBienActuel || 0;
-    const crd = crdActuel || 0;
-    const pct = (pctRetenu || 70) / 100;
+    const crd = Math.max(crdActuel || 0, 0);
+    const pct = Math.min(Math.max(pctRetenu || 70, 0), 100) / 100;
 
     const apport = apportPerso || 0;
     const tNouveauAnnuel = (tauxNouveau || 0) / 100;
@@ -645,6 +667,9 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
           "• Augmenter l'apport si possible.",
           "• Ajuster la durée (dans la limite des pratiques bancaires).",
           "• Revoir les crédits existants (conso/auto) avant de relancer.",
+          ...(mensCreditLocatif > 0
+            ? [`• Vérifier le crédit immobilier locatif en cours (${formatEuro(mensCreditLocatif)}/mois) — un loyer perçu renseigné peut en compenser une partie (70% pris en compte).`]
+            : []),
         ].join("\n"),
       ].join("\n");
 
@@ -665,12 +690,15 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       return { ok: false as const, resume: resumeFail, texte: msg, assessment: assessmentFail };
     }
 
+    // ✅ on calcule le capital empruntable sur la mensualité prudente (buffer
+    // lokt.fr à 90%), pas sur le plafond théorique — sinon le budget max
+    // affiché contredit le score/les conseils, qui eux supposent ce buffer.
     let capitalNouveau = 0;
     if (tNouveauMensuel === 0) {
-      capitalNouveau = mensualiteNouveauMax * nMois;
+      capitalNouveau = mensualiteLokt * nMois;
     } else {
       const facteur = Math.pow(1 + tNouveauMensuel, nMois);
-      capitalNouveau = mensualiteNouveauMax * ((facteur - 1) / (tNouveauMensuel * facteur));
+      capitalNouveau = mensualiteLokt * ((facteur - 1) / (tNouveauMensuel * facteur));
     }
 
     const budgetMax = montantRelais + capitalNouveau + apport;
@@ -692,8 +720,8 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
           ? [`Crédit immobilier locatif en cours : ${formatEuro(mensCreditLocatif)}/mois.`]
           : []),
         `Endettement cible : ${tauxEndettement.toFixed(0)} % → plafond ≈ ${formatEuro(plafondEndettement)}/mois.`,
-        `Mensualité disponible estimée : ${formatEuro(mensualiteNouveauMax)}.`,
-        `Lecture lokt.fr (prudente) : on retient ~${Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de la mensualité disponible pour estimer l'endettement projeté.`,
+        `Mensualité disponible (plafond théorique) : ${formatEuro(mensualiteNouveauMax)}.`,
+        `Lecture lokt.fr (prudente) : on ne retient que ~${Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de cette mensualité (${formatEuro(mensualiteLokt)}) pour estimer le capital empruntable et l'endettement projeté — une marge de sécurité pour le passage en banque.`,
         `Endettement actuel : ~${formatPct(tauxActuel)} ; endettement projeté (lokt.fr) : ~${formatPct(tauxAvecProjet)}.`,
       ].join("\n"),
       "",
@@ -708,7 +736,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       "",
       [
         "3) Nouveau prêt immobilier",
-        `Sur ${dureeNouveau.toFixed(0)} ans à ${formatPct(tauxNouveau)}, capital empruntable ≈ ${formatEuro(capitalNouveau)}.`,
+        `Sur ${dureeNouveau.toFixed(0)} ans à ${formatPct(tauxNouveau)}, sur la base de la mensualité prudente lokt.fr, capital empruntable ≈ ${formatEuro(capitalNouveau)}.`,
       ].join("\n"),
       "",
       [
@@ -756,6 +784,8 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
     const items = buildRelaisActionPlan(computed.resume, computed.assessment, tauxEndettement, {
       pctRetenu, tauxRelais, prixCible, timelineDb, proStatus,
       ageEmprunteur, ageCoEmprunteur, nbAdultes, dureeNouveau,
+      mensCreditLocatif: mensualiteCreditLocatif || 0,
+      loyerLocatifPondere: (loyerPercuLocatif || 0) * 0.7,
     });
     setActionItems(items);
 
@@ -948,6 +978,8 @@ function buildEmailComputed() {
       nbEnfants,
       revMensuels,
       autresMensualites,
+      mensualiteCreditLocatif,
+      loyerPercuLocatif,
       tauxEndettement,
       valeurBienActuel,
       crdActuel,
