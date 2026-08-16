@@ -417,6 +417,9 @@ function computeLoktScore(params: {
   else if (dtiRatio <= 0.9) s_dti = 100 - ((dtiRatio - 0.7) / 0.2) * 15;
   else if (dtiRatio <= 1.0) s_dti = 85 - ((dtiRatio - 0.9) / 0.1) * 15;
   else if (dtiRatio <= 1.15) s_dti = 70 - ((dtiRatio - 1.0) / 0.15) * 25;
+  // ✅ pas de chute brutale de 45 à 15 : on prolonge la dégradation
+  // progressive au-delà de 1.15 avant de plafonner à 15.
+  else if (dtiRatio <= 1.4) s_dti = 45 - ((dtiRatio - 1.15) / 0.25) * 30;
   else s_dti = 15;
 
   let s_rav = 55;
@@ -635,6 +638,14 @@ function buildActionPlan(
       type: "warning",
       title: "Vous êtes à la limite — les détails comptent",
       body: `Votre taux projeté (~${formatPct(resume.tauxEndettementAvecProjet)}) est très proche de la cible (${formatPct(tauxEndettementCible)}). Ici c'est la qualité du dossier qui fait la différence : tenue des comptes irréprochable, justificatifs clairs, apport couvrant les frais.`,
+    });
+  }
+
+  if (tauxEndettementCible > 40) {
+    items.push({
+      type: "warning",
+      title: "Endettement cible au-dessus des standards HCSF",
+      body: `Vous avez fixé une cible d'endettement à ${formatPct(tauxEndettementCible)}, au-dessus des ~35% généralement admis (recommandation HCSF, dérogations possibles au cas par cas). Les montants affichés supposent que votre banque accepte ce dépassement — à confirmer avant de vous engager.`,
     });
   }
 
@@ -872,7 +883,6 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
 
   /* ======================== Résultats ======================== */
   const [resumeCapacite, setResumeCapacite] = useState<ResumeCapacite | null>(null);
-  const [resultCapaciteTexte, setResultCapaciteTexte] = useState<string>("");
   const [bankability, setBankability] = useState<BankabilityAssessment | null>(null);
   const [actionItems, setActionItems] = useState<ActionPlanItem[]>([]);
 
@@ -1069,10 +1079,14 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     const adultes = Math.max(1, toInt(nbAdultes, 1));
     const enfants = Math.max(0, toInt(nbEnfants, 0));
 
-    const tauxEndettement = toFloat(tauxEndettementCible, 35);
-    const tauxCredit = toFloat(tauxCreditCible, 3.5);
-    const tauxAssurance = toFloat(tauxAssuranceCible, 0.3);
-    const dureeCredit = toInt(dureeCreditCible, 25);
+    // ✅ garde-fous : une saisie incohérente (endettement à 200%, taux crédit
+    // à 40%, durée à 0) ne doit pas produire un résultat silencieusement
+    // absurde. Les seuils réalistes (ex : cible > 40%) restent signalés par
+    // un avertissement dédié dans buildActionPlan plutôt que d'être bloqués ici.
+    const tauxEndettement = Math.min(Math.max(toFloat(tauxEndettementCible, 35), 1), 100);
+    const tauxCredit = Math.min(Math.max(toFloat(tauxCreditCible, 3.5), 0), 20);
+    const tauxAssurance = Math.min(Math.max(toFloat(tauxAssuranceCible, 0.3), 0), 5);
+    const dureeCredit = Math.min(Math.max(toInt(dureeCreditCible, 25), 1), 35);
 
     const mensualitesNums = mensualitesCredits.map((v) => toInt(v, 0));
     const resteAnneesNums = resteAnneesCredits.map((v) => toInt(v, 0));
@@ -1310,7 +1324,6 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     setComputedAll(computed);
 
     setResumeCapacite(computed.resume);
-    setResultCapaciteTexte(computed.texte);
     setBankability(computed.assessment);
     setActionItems(computed.actionItems);
 
@@ -1577,72 +1590,17 @@ export default function CapaciteWizard({ showSaveButton = true }: CapaciteWizard
     }
   };
 
-    /* ======================== Render helpers ======================== */
-  const renderRichText = (text: string) => {
-    const parts = text
-      .split("\n\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    return (
-      <div className="space-y-3">
-        {parts.map((block, idx) => {
-          if (block.startsWith("### ")) {
-            const title = block.replace(/^###\s+/, "");
-            return (
-              <h4 key={idx} className="text-[0.8rem] font-semibold text-slate-900">
-                {title}
-              </h4>
-            );
-          }
-
-          const lines = block.split("\n");
-          const hasBullets = lines.some((l) => l.trim().startsWith("- "));
-          if (hasBullets) {
-            const before = lines
-              .filter((l) => !l.trim().startsWith("- "))
-              .join(" ")
-              .trim();
-            const bullets = lines
-              .filter((l) => l.trim().startsWith("- "))
-              .map((l) => l.replace(/^\-\s+/, "").trim());
-
-            return (
-              <div key={idx} className="space-y-2">
-                {before ? (
-                  <p className="text-[0.75rem] text-slate-700 leading-relaxed">{before}</p>
-                ) : null}
-                <ul className="list-disc pl-5 space-y-1">
-                  {bullets.map((b, i) => (
-                    <li key={i} className="text-[0.75rem] text-slate-700 leading-relaxed">
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          }
-
-          return (
-            <p key={idx} className="text-[0.75rem] text-slate-700 leading-relaxed">
-              {block}
-            </p>
-          );
-        })}
-      </div>
-    );
-  };
-
+  // ✅ la couleur suit le libellé (pas un seuil de score dupliqué) pour
+  // éviter tout risque de désaccord entre les deux, comme "Solide" affiché
+  // en ambre ou "À optimiser" affiché en rouge.
   const scoreColor =
     !bankability
       ? "text-slate-900"
-      : bankability.label === "Refus probable"
+      : bankability.label === "Refus probable" || bankability.label === "Sous tension"
       ? "text-red-200"
-      : bankability.score >= 80
-      ? "text-emerald-300"
-      : bankability.score >= 60
+      : bankability.label === "À optimiser"
       ? "text-amber-200"
-      : "text-red-200";
+      : "text-emerald-300";
 
   const loktScoreLabel = useMemo(() => {
     if (!bankability) return "Score lokt.fr";
