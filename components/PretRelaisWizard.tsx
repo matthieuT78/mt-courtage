@@ -139,10 +139,10 @@ function buildRelaisActionPlan(
     pctRetenu: number; tauxRelais: number; prixCible: number;
     timelineDb: ProjectTimelineDB; proStatus: ProStatus;
     ageEmprunteur: number; ageCoEmprunteur: number; nbAdultes: number; dureeNouveau: number;
-    mensCreditLocatif: number; loyerLocatifPondere: number;
+    mensCreditLocatif: number; loyerLocatifPondere: number; autresMensualitesConso: number;
   }
 ): ActionPlanItem[] {
-  const { pctRetenu, tauxRelais, prixCible, timelineDb, proStatus, ageEmprunteur, ageCoEmprunteur, nbAdultes, dureeNouveau, mensCreditLocatif, loyerLocatifPondere } = ctx;
+  const { pctRetenu, tauxRelais, prixCible, timelineDb, proStatus, ageEmprunteur, ageCoEmprunteur, nbAdultes, dureeNouveau, mensCreditLocatif, loyerLocatifPondere, autresMensualitesConso } = ctx;
   const items: ActionPlanItem[] = [];
 
   const depassement = resume.tauxEndettementAvecProjet - tauxEndettementCible;
@@ -243,6 +243,11 @@ function buildRelaisActionPlan(
   } else if (mensCreditLocatif > 0 && loyerLocatifPondere > 0) {
     items.push({ type: "positive", title: "Le loyer locatif compense une partie de ce crédit",
       body: `${formatEuro(loyerLocatifPondere)}/mois de revenu locatif (70% du loyer déclaré) sont intégrés à vos revenus pris en compte, ce qui allège d'autant le poids de votre crédit immobilier locatif existant dans le calcul.` });
+  }
+
+  if (autresMensualitesConso > 100 && (depassement > 0 || marge < 5)) {
+    items.push({ type: "tip", title: "Un rachat de crédits pourrait libérer de la capacité",
+      body: `Vos crédits conso/auto représentent ${formatEuro(autresMensualitesConso)}/mois, un poids qui compte directement dans votre taux d'endettement projeté. Un regroupement de crédits peut réduire cette mensualité (en allongeant la durée), ce qui libère de la capacité pour le projet immobilier — mais cela augmente le coût total du crédit sur la durée. À étudier avec un courtier au cas par cas, ce n'est pas systématiquement avantageux.` });
   }
 
   return items;
@@ -808,6 +813,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       ageEmprunteur, ageCoEmprunteur, nbAdultes, dureeNouveau,
       mensCreditLocatif: mensualiteCreditLocatif || 0,
       loyerLocatifPondere: (loyerPercuLocatif || 0) * 0.7,
+      autresMensualitesConso: autresMensualites || 0,
     });
     setActionItems(items);
 
