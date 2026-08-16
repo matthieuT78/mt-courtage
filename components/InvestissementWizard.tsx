@@ -253,6 +253,10 @@ export default function InvestissementWizard() {
 
   const [prixBien, setPrixBien] = useState<string>("200000");
   const [prixBienError, setPrixBienError] = useState<string | null>(null);
+  // ✅ affiché près du bouton "Calculer ma rentabilité" — contrairement à
+  // resultRendementTexte, qui n'est jamais rendu dans le JSX (utilisé
+  // uniquement pour le payload email/lead).
+  const [calculError, setCalculError] = useState<string | null>(null);
 
   const [fraisNotaire, setFraisNotaire] = useState<string>(String(Math.round(200000 * 0.075)));
   const [notaireCustom, setNotaireCustom] = useState(false);
@@ -660,7 +664,10 @@ export default function InvestissementWizard() {
       p_project_property_kind: null,
       p_project_usage: null,
       p_project_timeline: null,
-      p_project_budget_target: prixBien || null,
+      // ✅ prixBien est un texte (accepte la virgule) — envoyer la chaîne
+      // brute à un paramètre numérique Postgres fait planter le RPC dès
+      // qu'un prix contient une virgule décimale (ex : "250000,50").
+      p_project_budget_target: Math.round(toFloat(prixBien, 0)) || null,
     });
 
     if (error) throw new Error(error.message || "Erreur RPC");
@@ -668,6 +675,7 @@ export default function InvestissementWizard() {
 
   /* ======================== Calcul principal ======================== */
   const handleCalculRendement = async () => {
+    setCalculError(null);
     setOpportunityScore(null);
     setOpportunityComment("");
     setOpportunityImprovements([]);
@@ -681,12 +689,15 @@ export default function InvestissementWizard() {
     const copro = toFloat(chargesCopro, 0);
     const tax = toFloat(taxeFonc, 0);
     const assurPNO = toFloat(assurance, 0);
-    const gestionPct = toFloat(tauxGestion, 0) / 100;
+    // ✅ garde-fous : un taux saisi de façon incohérente (ex : 500% de
+    // frais de gestion) ne doit pas produire un résultat silencieusement
+    // absurde.
+    const gestionPct = clamp(toFloat(tauxGestion, 0), 0, 100) / 100;
 
     const apportVal = toFloat(apport, 0);
-    const tAnnuelCred = toFloat(tauxCredLoc, 0) / 100;
+    const tAnnuelCred = clamp(toFloat(tauxCredLoc, 0), 0, 20) / 100;
     const nMensualites = Math.round(toFloat(dureeCredLoc, 0) * 12);
-    const tAssEmp = toFloat(tauxAssuranceEmp, 0) / 100;
+    const tAssEmp = clamp(toFloat(tauxAssuranceEmp, 0), 0, 10) / 100;
 
     const coutTotal = prix + notaire + trvx + agence;
 
@@ -700,9 +711,11 @@ export default function InvestissementWizard() {
       } else {
         const prixNuit = toFloat(airbnbNuitees[i] ?? "", 0);
         const occRaw = (airbnbOccupation[i] ?? "").trim();
-        const occ = occRaw
-          ? toFloat(occRaw, DEFAULT_AIRBNB_OCCUPATION)
-          : DEFAULT_AIRBNB_OCCUPATION;
+        const occ = clamp(
+          occRaw ? toFloat(occRaw, DEFAULT_AIRBNB_OCCUPATION) : DEFAULT_AIRBNB_OCCUPATION,
+          0,
+          100
+        );
 
         const tauxOcc = occ / 100;
         const revenuAnnuelAirbnb = prixNuit * tauxOcc * 365;
@@ -714,9 +727,24 @@ export default function InvestissementWizard() {
     const loyersAnnuels = loyerTotalMensuel * 12;
 
     if (coutTotal <= 0 || loyersAnnuels <= 0) {
-      setResultRendementTexte(
-        "Merci de renseigner un prix, des frais et des loyers cohérents pour au moins un appartement."
-      );
+      const msg = "Merci de renseigner un prix, des frais et des loyers cohérents pour au moins un appartement.";
+      setResultRendementTexte(msg);
+      setCalculError(msg);
+      setGraphData(null);
+      setResumeRendement(null);
+      return;
+    }
+
+    // ✅ si un crédit est nécessaire (apport < coût total) mais la durée est
+    // vide/à 0, le remboursement du capital serait silencieusement annulé
+    // (mensualité = 0) tout en gardant l'assurance emprunteur active — cash-
+    // flow artificiellement optimiste et capital restant dû qui augmente au
+    // lieu de diminuer dans la projection. On bloque plutôt qu'on ne laisse
+    // passer un résultat incohérent.
+    if (coutTotal - (apportVal || 0) > 0 && nMensualites <= 0) {
+      const msg = "Merci de renseigner une durée de crédit (en années) pour financer le montant emprunté, ou augmentez l'apport pour couvrir tout le projet sans crédit.";
+      setResultRendementTexte(msg);
+      setCalculError(msg);
       setGraphData(null);
       setResumeRendement(null);
       return;
@@ -998,8 +1026,10 @@ export default function InvestissementWizard() {
           email,
           payload: buildLeadPayload(),
         });
-      } catch {
-        // silence
+      } catch (e) {
+        // ne bloque pas l'UX, mais on garde une trace pour le débogage
+        // eslint-disable-next-line no-console
+        console.warn("[rpc upsert_lead_v1] auto-capture error:", e);
       }
     }
   };
@@ -1069,8 +1099,10 @@ export default function InvestissementWizard() {
           email,
           payload: buildLeadPayload(),
         });
-      } catch {
-        // on ne bloque pas l'UX si RPC indispo
+      } catch (e) {
+        // on ne bloque pas l'UX si RPC indispo, mais on garde une trace
+        // eslint-disable-next-line no-console
+        console.warn("[rpc upsert_lead_v1] unlock capture error:", e);
       }
 
       if (typeof window !== "undefined") {
@@ -1654,6 +1686,7 @@ const canClickUnlock =
     />
   </div>
 </div>
+          {calculError && <p className="text-[0.75rem] text-red-600">{calculError}</p>}
           <div className="flex justify-between pt-2">
             <button type="button" onClick={goPrev} className={secondaryNavButtonClass}>← Retour</button>
             <button type="button" onClick={handleGoToResults} className={primaryNavButtonClass}>
