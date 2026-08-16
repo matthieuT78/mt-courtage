@@ -358,6 +358,8 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   // Inputs — Charges & crédits (hors projet)
   // ---------------------------
   const [autresMensualites, setAutresMensualites] = useState(0);
+  const [mensualiteCreditLocatif, setMensualiteCreditLocatif] = useState(0);
+  const [loyerPercuLocatif, setLoyerPercuLocatif] = useState(0);
   const [tauxEndettement, setTauxEndettement] = useState(35);
 
   // ---------------------------
@@ -540,8 +542,14 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
   // Calcul
   // ---------------------------
   const computeAll = () => {
-    const revenus = toInt(revMensuels, 0);
-    const autresMens = autresMensualites || 0;
+    const revenusBase = toInt(revMensuels, 0);
+    const mensCreditLocatif = mensualiteCreditLocatif || 0;
+    // ✅ règle des 70% : le loyer perçu sur un bien déjà loué compense en partie
+    // sa mensualité de crédit, comme en pratique bancaire (même logique que
+    // la calculette Capacité d'emprunt).
+    const loyerLocatifPondere = (loyerPercuLocatif || 0) * 0.7;
+    const revenus = revenusBase + loyerLocatifPondere;
+    const autresMens = (autresMensualites || 0) + mensCreditLocatif;
     const endettementMax = (tauxEndettement || 35) / 100;
 
     const valeur = valeurBienActuel || 0;
@@ -565,7 +573,7 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
     capitalNouveau: 0,
     budgetMax: (apportPerso || 0),
     revenusPrisEnCompte: revenus,
-    mensualitesExistantes: autresMensualites || 0,
+    mensualitesExistantes: autresMens,
     chargesHorsCredits: 0,
     tauxEndettementActuel: 0,
     tauxEndettementAvecProjet: 999, // volontairement "catastrophique"
@@ -613,8 +621,14 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
         "",
         [
           "1) Revenus et endettement",
-          `Revenus nets mensuels : ${formatEuro(revenus)}.`,
-          `Autres mensualités de crédits : ${formatEuro(autresMens)}.`,
+          `Revenus nets mensuels : ${formatEuro(revenusBase)}.`,
+          ...(loyerLocatifPondere > 0
+            ? [`Revenus pris en compte (dont 70 % du loyer locatif existant, ${formatEuro(loyerLocatifPondere)}) : ${formatEuro(revenus)}.`]
+            : []),
+          `Crédits à la consommation (auto, conso, etc.) : ${formatEuro(autresMensualites || 0)}.`,
+          ...(mensCreditLocatif > 0
+            ? [`Crédit immobilier locatif en cours : ${formatEuro(mensCreditLocatif)}/mois.`]
+            : []),
           `Endettement cible : ${tauxEndettement.toFixed(0)} % → plafond ≈ ${formatEuro(plafondEndettement)}/mois.`,
           `Endettement actuel : ~${formatPct(tauxActuel)}.`,
         ].join("\n"),
@@ -669,8 +683,14 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       "",
       [
         "1) Revenus et endettement",
-        `Revenus nets mensuels : ${formatEuro(revenus)}.`,
-        `Autres mensualités de crédits : ${formatEuro(autresMens)}.`,
+        `Revenus nets mensuels : ${formatEuro(revenusBase)}.`,
+        ...(loyerLocatifPondere > 0
+          ? [`Revenus pris en compte (dont 70 % du loyer locatif existant, ${formatEuro(loyerLocatifPondere)}) : ${formatEuro(revenus)}.`]
+          : []),
+        `Crédits à la consommation (auto, conso, etc.) : ${formatEuro(autresMensualites || 0)}.`,
+        ...(mensCreditLocatif > 0
+          ? [`Crédit immobilier locatif en cours : ${formatEuro(mensCreditLocatif)}/mois.`]
+          : []),
         `Endettement cible : ${tauxEndettement.toFixed(0)} % → plafond ≈ ${formatEuro(plafondEndettement)}/mois.`,
         `Mensualité disponible estimée : ${formatEuro(mensualiteNouveauMax)}.`,
         `Lecture lokt.fr (prudente) : on retient ~${Math.round(LOKT_MENSUALITE_BUFFER * 100)}% de la mensualité disponible pour estimer l'endettement projeté.`,
@@ -752,6 +772,8 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
         nbEnfants,
         revMensuels,
         autresMensualites,
+        mensualiteCreditLocatif,
+        loyerPercuLocatif,
         tauxEndettement,
         valeurBienActuel,
         crdActuel,
@@ -792,6 +814,8 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
 
       setRevMensuels(saved.revMensuels !== undefined ? String(saved.revMensuels) : "4500");
       setAutresMensualites(saved.autresMensualites ?? 0);
+      setMensualiteCreditLocatif(saved.mensualiteCreditLocatif ?? 0);
+      setLoyerPercuLocatif(saved.loyerPercuLocatif ?? 0);
       setTauxEndettement(saved.tauxEndettement ?? 35);
 
       setValeurBienActuel(saved.valeurBienActuel ?? 400000);
@@ -862,6 +886,8 @@ export default function PretRelaisWizard(_props: PretRelaisWizardProps) {
       input: {
         revMensuels,
         autresMensualites,
+        mensualiteCreditLocatif,
+        loyerPercuLocatif,
         tauxEndettement,
         valeurBienActuel,
         crdActuel,
@@ -1218,8 +1244,8 @@ const renderAnalysisBlocks = (text: string) => {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="text-xs text-slate-700 flex items-center gap-1">
-                    Autres mensualités de crédits (€ / mois)
-                    <InfoBadge text="Total de vos crédits actuels (auto, conso, etc.). Cela réduit la mensualité disponible pour le nouveau projet." />
+                    Crédits à la consommation (€ / mois)
+                    <InfoBadge text="Crédits conso, auto, etc. — hors crédit immobilier locatif (renseigné séparément ci-dessous). Cela réduit la mensualité disponible pour le nouveau projet." />
                   </label>
                   <input
                     inputMode="decimal"
@@ -1234,6 +1260,33 @@ const renderAnalysisBlocks = (text: string) => {
                   <p className="mt-1 text-[0.8rem] text-slate-700">
                     Si la mensualité disponible est faible, le relais ne suffit pas : il faudra ajuster prix/durée/apport.
                   </p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                    Crédit immobilier locatif en cours (€ / mois)
+                    <InfoBadge text="Mensualité d'un crédit immobilier déjà en cours sur un bien loué (autre que celui mis en vente ci-dessous, le cas échéant)." />
+                  </label>
+                  <input
+                    inputMode="decimal"
+                    value={editableNumberValue(mensualiteCreditLocatif)}
+                    onChange={(e) => setMensualiteCreditLocatif(parseEditableNumber(e.target.value))}
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-700 flex items-center gap-1">
+                    Loyer perçu sur ce bien (€ / mois)
+                    <InfoBadge text="70 % de ce loyer sera intégré à vos revenus pour le calcul, comme le font la plupart des banques." />
+                  </label>
+                  <input
+                    inputMode="decimal"
+                    value={editableNumberValue(loyerPercuLocatif)}
+                    onChange={(e) => setLoyerPercuLocatif(parseEditableNumber(e.target.value))}
+                    className="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 sm:rounded-lg sm:py-2 sm:text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
                 </div>
               </div>
 
