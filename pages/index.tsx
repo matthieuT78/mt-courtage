@@ -1342,8 +1342,8 @@ export default function Home() {
                 </h2>
               </div>
               <p className="max-w-3xl text-sm leading-7 text-slate-600">
-                Les pages guides structurent les sujets de gestion locative et les simulateurs publics. Elles servent de porte d’entrée SEO,
-                mais aussi de documentation simple pour le bailleur.
+                Des explications claires sur les sujets qui reviennent tout le temps — LMNP, quittance de loyer, état des lieux, capacité d’emprunt —
+                pour comprendre avant de vous lancer, sans jargon juridique.
               </p>
             </div>
             <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
