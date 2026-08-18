@@ -140,6 +140,10 @@ const ACTION_ITEM_CONFIG: Record<
   tip:      { Icon: LightBulbIcon,          badge: "Conseil",      bg: "bg-indigo-50",  border: "border-indigo-200",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  titleText: "text-indigo-900",  badgeCls: "bg-indigo-100 text-indigo-700" },
 };
 
+function actionItemsToString(items: ActionPlanItem[]): string {
+  return items.map((it) => `### [${it.type.toUpperCase()}] ${it.title}\n${it.body}`).join("\n\n");
+}
+
 /* ======================== Small UI ======================== */
 function InfoBadge({ text }: { text: string }) {
   return (
@@ -612,6 +616,7 @@ export default function InvestissementWizard() {
           comment: opportunityComment,
           improvements: opportunityImprovements,
         },
+        actionPlan: actionItemsToString(actionItems),
       },
       tracking: {
         source: getSourceLabel(),

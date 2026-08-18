@@ -288,6 +288,10 @@ const ACTION_ITEM_CONFIG: Record<
   tip:      { Icon: LightBulbIcon,          badge: "Conseil",      bg: "bg-indigo-50",  border: "border-indigo-200",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  titleText: "text-indigo-900",  badgeCls: "bg-indigo-100 text-indigo-700" },
 };
 
+function actionItemsToString(items: ActionPlanItem[]): string {
+  return items.map((it) => `### [${it.type.toUpperCase()}] ${it.title}\n${it.body}`).join("\n\n");
+}
+
 function buildPlusValueActionPlan(
   r: PVResult,
   ctx: { residenceType: ResidenceType; yearsHeld: number; applySurtax: string }
@@ -930,6 +934,7 @@ export default function PlusValueWizard({ showSaveButton = true }: PlusValueWiza
       output: {
         result: params.result,
         displayResult: params.displayResult,
+        actionPlan: actionItemsToString(actionItems),
       },
     };
   }

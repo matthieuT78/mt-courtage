@@ -131,6 +131,10 @@ const ACTION_ITEM_CONFIG: Record<
   tip:      { Icon: LightBulbIcon,          badge: "Conseil",       bg: "bg-indigo-50",  border: "border-indigo-200",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  titleText: "text-indigo-900",  badgeCls: "bg-indigo-100 text-indigo-700" },
 };
 
+function actionItemsToString(items: ActionPlanItem[]): string {
+  return items.map((it) => `### [${it.type.toUpperCase()}] ${it.title}\n${it.body}`).join("\n\n");
+}
+
 function buildRelaisActionPlan(
   resume: ResumeRelais,
   assessment: BankabilityAssessment,
@@ -1021,6 +1025,7 @@ function buildEmailComputed() {
     output: {
       resume,
       texteDetail,
+      actionPlan: actionItemsToString(actionItems),
       bankability:
         bankabilityScore !== null
           ? { score: bankabilityScore, label: bankabilityLabel, comment: bankabilityComment }

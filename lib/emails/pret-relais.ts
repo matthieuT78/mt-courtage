@@ -1,4 +1,5 @@
 // lib/emails/pret-relais.ts
+import { renderActionPlanHtml, renderActionPlanTextLines } from "./actionPlanFormat";
 
 type ResumeRelais = {
   montantRelais: number;
@@ -23,6 +24,7 @@ type PretRelaisComputed = {
     resume?: ResumeRelais | null;
     texteDetail?: string | null;
     texte?: string | null;
+    actionPlan?: string | null;
     bankability?: Bankability | null;
   } | null;
 
@@ -30,6 +32,7 @@ type PretRelaisComputed = {
   resume?: ResumeRelais | null;
   texteDetail?: string | null;
   texte?: string | null;
+  actionPlan?: string | null;
   bankability?: Bankability | null;
 };
 
@@ -67,7 +70,9 @@ function pickOutput(computedAny: any) {
   const texteDetail =
     (c.output?.texteDetail || c.output?.texte || c.texteDetail || c.texte || "") as string;
 
-  return { resume, bankability, texteDetail };
+  const actionPlan = (c.output?.actionPlan || c.actionPlan || "") as string;
+
+  return { resume, bankability, texteDetail, actionPlan };
 }
 
 /**
@@ -117,7 +122,7 @@ function analysisToBlocks(analysis: string) {
 }
 
 export function buildPretRelaisEmailText(computedAny: any) {
-  const { resume, bankability, texteDetail } = pickOutput(computedAny);
+  const { resume, bankability, texteDetail, actionPlan } = pickOutput(computedAny);
 
   const parts: string[] = [];
   parts.push("VOTRE RAPPORT DE PRÊT RELAIS — lokt.fr");
@@ -153,6 +158,11 @@ export function buildPretRelaisEmailText(computedAny: any) {
     }
   }
 
+  if (actionPlan) {
+    parts.push("Plan d’action :");
+    parts.push(...renderActionPlanTextLines(actionPlan));
+  }
+
   parts.push("Relire / refaire la simulation : https://lokt.fr/pret-relais");
   parts.push("");
   parts.push("Calculs indicatifs. Ne constitue pas une offre de prêt.");
@@ -163,7 +173,7 @@ export function buildPretRelaisEmailText(computedAny: any) {
 }
 
 export function buildPretRelaisEmailHtml(computedAny: any) {
-  const { resume, bankability, texteDetail } = pickOutput(computedAny);
+  const { resume, bankability, texteDetail, actionPlan } = pickOutput(computedAny);
 
   const siteUrl = "https://lokt.fr";
   const logoUrl = `${siteUrl}/lokt-logo-small.jpg`;
@@ -196,6 +206,7 @@ export function buildPretRelaisEmailHtml(computedAny: any) {
 
   const analysis = analysisToBlocks(texteDetail || "");
   const analysisHtml = analysis.html;
+  const actionPlanHtml = renderActionPlanHtml(actionPlan || "");
 
   return `
 <div style="background:#f1f5f9;padding:18px 0;">
@@ -240,6 +251,17 @@ export function buildPretRelaisEmailHtml(computedAny: any) {
             Relire / refaire la simulation
           </a>
         </div>
+
+        ${
+          actionPlanHtml
+            ? `
+          <div style="margin-top:18px;padding-top:4px;">
+            <h2 style="margin:0 0 8px;font-size:15px;color:#0f172a;">Plan d’action</h2>
+            ${actionPlanHtml}
+          </div>
+        `
+            : ``
+        }
 
         ${
           analysisHtml

@@ -1,4 +1,5 @@
 // lib/emails/acheter-ou-louer.ts
+import { renderActionPlanHtml, renderActionPlanTextLines } from "./actionPlanFormat";
 
 type Verdict = "rp" | "locatif" | "attendre";
 
@@ -24,6 +25,7 @@ type AcheterOuLouerPayload = {
   cout_net_locatif?: number;
   rendement_brut?: number;
   score_locatif?: number;
+  actionPlan?: string;
 };
 
 function fmtEuro(n: number | undefined) {
@@ -147,6 +149,14 @@ export function buildAcheterOuLouerEmailHtml(p: AcheterOuLouerPayload): string {
     </div>
     ` : ""}
 
+    ${p.actionPlan ? `
+    <!-- Plan d'action -->
+    <div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:20px;margin-bottom:16px;">
+      <p style="margin:0 0 12px;font-size:10px;font-weight:700;letter-spacing:0.16em;color:#64748b;text-transform:uppercase;">Plan d'action</p>
+      ${renderActionPlanHtml(p.actionPlan)}
+    </div>
+    ` : ""}
+
     <!-- CTA -->
     <div style="background:linear-gradient(135deg,#1e293b,#334155);border-radius:12px;padding:20px;margin-bottom:16px;text-align:center;">
       <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#e2e8f0;">Vous voulez aller plus loin ?</p>
@@ -184,6 +194,11 @@ export function buildAcheterOuLouerEmailText(p: AcheterOuLouerPayload): string {
   if (p.score_rp !== undefined) text += `\n--- SCORES ---\nRésidence principale : ${p.score_rp}/100\n`;
   if (p.score_locatif !== undefined) text += `Investissement locatif : ${p.score_locatif}/100\n`;
   if (p.rendement_brut) text += `\nRendement locatif brut : ${fmtPct(p.rendement_brut)}\n`;
+  if (p.actionPlan) {
+    text += `\n--- PLAN D'ACTION ---\n`;
+    text += renderActionPlanTextLines(p.actionPlan).join("\n");
+    text += "\n";
+  }
   text += `\nRelancez votre simulation : https://lokt.fr/acheter-ou-louer\n`;
   text += `\nRésultats indicatifs. lokt.fr\n`;
   return text;

@@ -1,4 +1,6 @@
 // lib/emails/capaciteEmail.ts
+import { renderActionPlanHtml, renderActionPlanTextLines } from "./actionPlanFormat";
+
 type ComputeAllResult = {
   resume: {
     mensualiteMax: number;
@@ -42,28 +44,6 @@ function escapeHtml(s: string) {
     .replace(/"/g, "&quot;");
 }
 
-// Les blocs du plan d'action viennent formatés en
-// "### [TYPE] Titre\nCorps" (voir actionItemsToString dans
-// CapaciteWizard.tsx) — même convention que les badges colorés affichés
-// dans l'app (ACTION_ITEM_CONFIG), à répliquer ici pour que l'email ait le
-// même rendu que l'interface plutôt que d'afficher le tag brut.
-type ActionBlockType = "blocking" | "warning" | "positive" | "tip";
-
-const ACTION_TYPE_LABELS: Record<ActionBlockType, string> = {
-  blocking: "Bloquant",
-  warning: "À surveiller",
-  positive: "Atout",
-  tip: "Conseil",
-};
-
-function parseActionBlock(rawBlock: string): { type: ActionBlockType | null; title: string; body: string } {
-  const block = rawBlock.replace(/^###\s*/, "").trim();
-  const match = block.match(/^\[(BLOCKING|WARNING|POSITIVE|TIP)\]\s*([^\n]*)\n?([\s\S]*)$/);
-  if (!match) return { type: null, title: "", body: block };
-  const [, rawType, title, body] = match;
-  return { type: rawType.toLowerCase() as ActionBlockType, title: title.trim(), body: body.trim() };
-}
-
 export function buildCapaciteEmailText(computed: ComputeAllResult) {
   const r = computed.resume;
   const b = computed.assessment;
@@ -92,22 +72,7 @@ export function buildCapaciteEmailText(computed: ComputeAllResult) {
 
   if (computed.actionPlan) {
     parts.push("Plan d’action :");
-    const blocks = computed.actionPlan
-      .split("\n\n")
-      .map((x) => x.trim())
-      .filter(Boolean)
-      .slice(0, 10);
-
-    for (const raw of blocks) {
-      const { type, title, body } = parseActionBlock(raw);
-      if (type) {
-        parts.push(`[${ACTION_TYPE_LABELS[type]}] ${title}`);
-        parts.push(body);
-      } else {
-        parts.push(raw.replace(/^###\s*/gm, "").replace(/\n/g, " "));
-      }
-      parts.push("");
-    }
+    parts.push(...renderActionPlanTextLines(computed.actionPlan));
   }
 
   parts.push("Relire / refaire la simulation : https://lokt.fr/capacite");
@@ -134,34 +99,7 @@ export function buildCapaciteEmailHtml(computed: ComputeAllResult) {
     </td>
   `;
 
-  const ACTION_TYPE_STYLES: Record<ActionBlockType, { bg: string; border: string; text: string }> = {
-    blocking: { bg: "#fef2f2", border: "#fecaca", text: "#991b1b" },
-    warning: { bg: "#fffbeb", border: "#fde68a", text: "#92400e" },
-    positive: { bg: "#ecfdf5", border: "#a7f3d0", text: "#065f46" },
-    tip: { bg: "#eef2ff", border: "#c7d2fe", text: "#3730a3" },
-  };
-
-  const actionBlocks = (computed.actionPlan || "")
-    .split("\n\n")
-    .map((x) => x.trim())
-    .filter(Boolean)
-    .slice(0, 12)
-    .map((raw) => {
-      const { type, title, body } = parseActionBlock(raw);
-      if (!type) {
-        const safe = escapeHtml(raw.replace(/^###\s*/, "")).replace(/\n/g, "<br/>");
-        return `<p style="margin:0 0 10px;color:#0f172a;line-height:1.55;font-size:13px;">${safe}</p>`;
-      }
-      const style = ACTION_TYPE_STYLES[type];
-      return `
-        <div style="margin:0 0 10px;padding:12px 14px;border:1px solid ${style.border};border-radius:12px;background:${style.bg};">
-          <span style="display:inline-block;margin-bottom:6px;padding:2px 8px;border-radius:999px;background:${style.border};color:${style.text};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">${ACTION_TYPE_LABELS[type]}</span>
-          <div style="font-size:13px;font-weight:700;color:${style.text};margin:0 0 4px;">${escapeHtml(title)}</div>
-          <div style="font-size:13px;color:#334155;line-height:1.55;">${escapeHtml(body).replace(/\n/g, "<br/>")}</div>
-        </div>
-      `;
-    })
-    .join("");
+  const actionBlocks = renderActionPlanHtml(computed.actionPlan || "");
 
   return `
 <div style="background:#f1f5f9;padding:18px 0;">

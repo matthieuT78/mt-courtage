@@ -5,6 +5,7 @@
 // 2) Mapping robuste car `computed` varie selon versions du wizard
 // 3) Signature attendue par /pages/api/tools/investissement/send.ts :
 //    buildInvestissementEmailHtml(computed) et buildInvestissementEmailText(computed)
+import { renderActionPlanHtml, renderActionPlanTextLines } from "./actionPlanFormat";
 
 type AnyObj = Record<string, any>;
 
@@ -355,6 +356,13 @@ function extractKpis(computed: AnyObj) {
   const marketRentM2 = asNumber(firstDefined(market, ["referenceRentM2", "rentM2"]));
   const marketSource = asString(firstDefined(market, ["source"]));
 
+  // Plan d'action typé (badges warning/positive/tip) — voir actionItemsToString
+  // dans InvestissementWizard.tsx, distinct des "improvements" (simple liste
+  // à puces déjà gérée ci-dessus).
+  const actionPlan = asString(
+    firstDefined(c, ["actionPlan", "output.actionPlan", "output.opportunity.actionPlan"])
+  );
+
   return {
     cashflowMensuel,
     resultatNetAnnuel,
@@ -374,6 +382,7 @@ function extractKpis(computed: AnyObj) {
     marketPriceM2,
     marketRentM2,
     marketSource,
+    actionPlan,
   };
 }
 
@@ -432,6 +441,11 @@ export function buildInvestissementEmailText(computed: any) {
     parts.push("");
   }
 
+  if (k.actionPlan) {
+    parts.push("Plan d’action :");
+    parts.push(...renderActionPlanTextLines(k.actionPlan));
+  }
+
   parts.push("Relire / refaire la simulation : https://lokt.fr/investissement");
   parts.push("");
   parts.push("Calculs indicatifs. Ne constitue pas une offre de prêt.");
@@ -474,6 +488,8 @@ export function buildInvestissementEmailHtml(computed: any) {
         )
         .join("")
     : "";
+
+  const actionPlanBlocks = k.actionPlan ? renderActionPlanHtml(k.actionPlan) : "";
 
   const analysisBlocks = k.analysisText
     ? k.analysisText
@@ -590,6 +606,17 @@ export function buildInvestissementEmailHtml(computed: any) {
             Relire / refaire la simulation
           </a>
         </div>
+
+        ${
+          actionPlanBlocks
+            ? `
+          <div style="margin-top:18px;padding-top:4px;">
+            <h2 style="margin:0 0 8px;font-size:15px;color:#0f172a;">Plan d’action</h2>
+            ${actionPlanBlocks}
+          </div>
+        `
+            : ``
+        }
 
         ${
           recoBlocks

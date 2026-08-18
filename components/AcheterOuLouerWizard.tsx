@@ -42,6 +42,10 @@ const ACTION_ITEM_CONFIG: Record<
   tip:      { Icon: LightBulbIcon,          badge: "Conseil",      bg: "bg-indigo-50",  border: "border-indigo-200",  iconBg: "bg-indigo-100",  iconText: "text-indigo-600",  titleText: "text-indigo-900",  badgeCls: "bg-indigo-100 text-indigo-700" },
 };
 
+function actionItemsToString(items: ActionPlanItem[]): string {
+  return items.map((it) => `### [${it.type.toUpperCase()}] ${it.title}\n${it.body}`).join("\n\n");
+}
+
 function buildAcheterOuLouerActionPlan(
   verdict: "rp" | "locatif" | "attendre",
   scores: { rp: { score: number }; locatif: { score: number } },
@@ -769,6 +773,7 @@ export default function AcheterOuLouerWizard() {
         cout_net_locatif:   monthly.cout_net_locatif,
         rendement_brut:     monthly.rendement_brut,
         score_locatif:      scores.locatif.score,
+        actionPlan:         actionItemsToString(actionItems),
       };
       // Fire and forget — don't block unlock on email error
       fetch("/api/tools/acheter-ou-louer/send", {
@@ -813,7 +818,7 @@ export default function AcheterOuLouerWizard() {
     } catch {}
     setUnlockMsg("Analyse débloquée ! Votre rapport arrive par email.");
     setUnlocking(false);
-  }, [leadEmail, form, verdict, monthly, scores]);
+  }, [leadEmail, form, verdict, monthly, scores, actionItems]);
 
   const verdictConfig = {
     rp:      { label: "Acheter votre résidence principale", color: "text-emerald-700", border: "border-emerald-200", bg: "bg-emerald-50",  badge: "bg-emerald-600 text-white" },

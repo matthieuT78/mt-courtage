@@ -1,4 +1,6 @@
 // lib/emails/plus-value-vente-immobiliere.ts
+import { renderActionPlanHtml, renderActionPlanTextLines } from "./actionPlanFormat";
+
 type PVResult = {
   grossGain: number;
   totalTax: number;
@@ -35,6 +37,7 @@ type PlusValueComputed = {
   output?: {
     result?: PVResult | null;
     displayResult?: PVResult | null;
+    actionPlan?: string | null;
   } | null;
 };
 
@@ -171,7 +174,13 @@ export function buildPlusValueEmailText(computed: any) {
     ].join("\n")
   );
 
-  parts.push("Plan d’action :");
+  const actionPlan = (computed?.output?.actionPlan || "") as string;
+  if (actionPlan) {
+    parts.push("Plan d’action :");
+    parts.push(...renderActionPlanTextLines(actionPlan));
+  }
+
+  parts.push("Analyse :");
   for (const block of actionPlanBlocks) {
     parts.push(block.replace(/^###\s*/gm, "").replace(/\n/g, " "));
     parts.push("");
@@ -276,15 +285,21 @@ export function buildPlusValueEmailHtml(computed: any) {
       ].join("\n")
     );
 
+    // Chaque bloc est "### Titre\nligne1\nligne2..." — le titre (1ère ligne)
+    // doit devenir un <h3> séparé du corps, sinon tout le bloc (titre +
+    // corps) se retrouve fondu dans un seul <h3> en gras sans retour à la
+    // ligne (même bug que capacité avant correction).
     const actionBlocks = blocks
       .map((block) => {
-        if (block.startsWith("###")) {
-          return `<h3 style="margin:14px 0 6px;font-size:14px;color:#0f172a;">${escapeHtml(
-            block.replace(/^###\s*/, "")
-          )}</h3>`;
-        }
-        const safe = escapeHtml(block).replace(/\n/g, "<br/>");
-        return `<p style="margin:0 0 10px;color:#0f172a;line-height:1.55;font-size:13px;">${safe}</p>`;
+        const withoutHash = block.replace(/^###\s*/, "");
+        const lines = withoutHash.split("\n").filter(Boolean);
+        const title = lines[0] || "";
+        const body = lines.slice(1).join("\n");
+        const h = `<h3 style="margin:14px 0 6px;font-size:14px;color:#0f172a;">${escapeHtml(title)}</h3>`;
+        const p = body
+          ? `<p style="margin:0 0 10px;color:#0f172a;line-height:1.55;font-size:13px;">${escapeHtml(body).replace(/\n/g, "<br/>")}</p>`
+          : "";
+        return h + p;
       })
       .join("");
 
@@ -292,6 +307,7 @@ export function buildPlusValueEmailHtml(computed: any) {
   };
 
   const actionBlocks = buildActionPlan(out);
+  const actionPlanHtml = renderActionPlanHtml((computed?.output?.actionPlan || "") as string);
 
   // Score : plus-value n’a pas de score, donc on ne met PAS le bloc dark.
   // On garde la même structure : header + table + CTA + plan d’action + footer.
@@ -341,6 +357,17 @@ export function buildPlusValueEmailHtml(computed: any) {
             Relire / refaire la simulation
           </a>
         </div>
+
+        ${
+          actionPlanHtml
+            ? `
+          <div style="margin-top:18px;padding-top:4px;">
+            <h2 style="margin:0 0 8px;font-size:15px;color:#0f172a;">Plan d’action</h2>
+            ${actionPlanHtml}
+          </div>
+        `
+            : ``
+        }
 
         ${
           actionBlocks
