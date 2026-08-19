@@ -1,7 +1,7 @@
 ---
 title: "Encadrement des loyers 2026 : guide complet"
 h1: "Encadrement des loyers 2026 : villes concernées, loyer de référence et complément de loyer"
-description: "Encadrement des loyers 2026 : les 72 communes concernées, comment calculer le loyer de référence majoré, les règles du complément de loyer et les sanctions applicables au bailleur."
+description: "Encadrement des loyers 2026 : les 72 communes concernées, comment calculer le loyer de référence majoré, les règles du complément de loyer et les sanctions."
 date: "2026-07-23"
 updatedAt: "2026-07-23"
 category: "Gestion locative"

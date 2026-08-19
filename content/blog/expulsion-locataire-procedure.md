@@ -265,4 +265,4 @@ Avant d'engager une procédure longue et coûteuse, explorez ces alternatives :
 
 ---
 
-*Gérez vos loyers, vos alertes d'impayés et vos baux en un seul endroit depuis l'[espace bailleur lokt.fr](/gestion-locative) — pour agir dès le premier signal, avant d'en arriver à la procédure.*
+*Gérez vos loyers, vos alertes d'impayés et vos baux en un seul endroit depuis l'[espace bailleur lokt.fr](/outil-gestion-locative) — pour agir dès le premier signal, avant d'en arriver à la procédure.*

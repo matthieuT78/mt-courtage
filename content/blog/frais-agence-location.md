@@ -1,7 +1,7 @@
 ---
 title: "Frais d'agence location 2026 : qui paye quoi"
 h1: "Frais d'agence location 2026 : qui paye quoi ? Le guide complet"
-description: "Frais d'agence location : plafonds légaux par zone, ce que paye le locataire, ce que paye le bailleur, et ce que l'agence ne peut pas facturer. Guide complet loi Alur 2026."
+description: "Frais d'agence location : plafonds légaux par zone, ce que paye le locataire, ce que paye le bailleur, et ce que l'agence ne peut pas facturer en 2026."
 date: "2026-07-15"
 category: "Gestion locative"
 coverImage: "/blog/frais-agence-location.jpg"
@@ -253,7 +253,7 @@ La gestion directe a été facilitée par des outils numériques qui permettent 
 - **Candidatures en ligne** : collecte des dossiers avec vérification des justificatifs
 - **Révision IRL** : calcul automatique du nouveau loyer à la date anniversaire
 
-Notre [outil de gestion locative gratuit](/gestion-locative) permet de gérer jusqu'à un bien actif sans abonnement. La [gestion locative LMNP](/gestion-locative-lmnp) est également disponible pour les bailleurs en meublé.
+Notre [outil de gestion locative gratuit](/outil-gestion-locative) permet de gérer jusqu'à un bien actif sans abonnement. La [gestion locative LMNP](/gestion-locative-lmnp) est également disponible pour les bailleurs en meublé.
 
 ---
 
@@ -269,4 +269,4 @@ Notre [outil de gestion locative gratuit](/gestion-locative) permet de gérer ju
 
 ---
 
-*Comparez les [logiciels de gestion locative](/comparatif-logiciel-gestion-locative) disponibles en 2026 ou démarrez directement avec l'[espace bailleur lokt.fr](/gestion-locative) — sans agence, sans frais fixes.*
+*Comparez les [logiciels de gestion locative](/comparatif-logiciel-gestion-locative) disponibles en 2026 ou démarrez directement avec l'[espace bailleur lokt.fr](/outil-gestion-locative) — sans agence, sans frais fixes.*

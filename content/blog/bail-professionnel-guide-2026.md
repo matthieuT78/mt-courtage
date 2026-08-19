@@ -1,7 +1,7 @@
 ---
-title: "Bail professionnel 2026 : guide complet pour louer des locaux à usage professionnel"
+title: "Bail professionnel 2026 : durée, loyer, congé, dépôt"
 h1: "Bail professionnel : le guide pour louer des locaux à une profession libérale"
-description: "Durée, loyer libre, congé, dépôt de garantie, TVA sur option : tout ce qu'un bailleur doit savoir sur le bail professionnel (art. 57 A loi de 1986), et en quoi il diffère du bail d'habitation et du bail commercial."
+description: "Durée, loyer libre, congé, dépôt de garantie : tout savoir sur le bail professionnel (art. 57 A, loi 1986) et ses différences avec le bail commercial."
 date: "2026-08-09"
 updatedAt: "2026-08-09"
 category: "Réglementation"

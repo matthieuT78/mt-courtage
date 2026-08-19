@@ -1,7 +1,7 @@
 ---
 title: "Dépôt de garantie 2026 : restitution et litiges"
 h1: "Dépôt de garantie : délais de restitution, retenues autorisées et litiges 2026"
-description: "Tout savoir sur le dépôt de garantie locatif : montants légaux, délai de restitution (1 ou 2 mois), ce que le bailleur peut retenir, la vétusté et les recours en cas de litige."
+description: "Tout savoir sur le dépôt de garantie locatif : montants légaux, délai de restitution, ce que le bailleur peut retenir, vétusté et recours en cas de litige."
 date: "2026-07-01"
 updatedAt: "2026-07-01"
 category: "Gestion locative"

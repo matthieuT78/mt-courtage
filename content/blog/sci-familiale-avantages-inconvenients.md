@@ -1,6 +1,6 @@
 ---
 title: "SCI familiale : avantages, inconvénients 2026"
-description: "La SCI familiale est souvent présentée comme l'outil idéal pour investir à plusieurs. Voici ce qu'elle change vraiment : fiscalité, transmission, gestion et cas où elle ne sert à rien."
+description: "La SCI familiale est souvent présentée comme l'outil idéal pour investir à plusieurs. Ce qu'elle change vraiment : fiscalité, transmission et gestion."
 date: "2026-06-23"
 category: "Investissement locatif"
 tags: ["SCI familiale", "SCI", "investissement immobilier", "transmission patrimoine", "impôt"]

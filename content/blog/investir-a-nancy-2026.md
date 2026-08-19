@@ -1,7 +1,7 @@
 ---
 title: "Investir à Nancy en 2026 : notre analyse complète"
 h1: "Investir à Nancy en 2026 : le marché, les quartiers, et pour qui c'est fait"
-description: "Nancy affiche le meilleur rendement brut des grandes villes universitaires françaises en 2026. Analyse par quartier, simulation chiffrée, profils d'investisseurs adaptés et pièges à éviter."
+description: "Nancy affiche le meilleur rendement brut des grandes villes universitaires françaises en 2026. Analyse par quartier, simulation chiffrée et pièges à éviter."
 date: "2026-08-06"
 updatedAt: "2026-08-06"
 category: "Investissement locatif"

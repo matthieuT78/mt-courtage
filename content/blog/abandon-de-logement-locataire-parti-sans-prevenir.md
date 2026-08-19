@@ -1,7 +1,7 @@
 ---
 title: "Abandon de logement 2026 : locataire parti sans prévenir"
 h1: "Locataire parti sans prévenir : la procédure légale d'abandon de logement"
-description: "Votre locataire a disparu sans donner de nouvelles, sans payer, sans rendre les clés ? Voici la procédure légale d'abandon de logement (art. 14-1 loi Alur) — ce qu'il faut faire, ce qu'il ne faut surtout pas faire, et le sort des meubles laissés sur place."
+description: "Locataire disparu sans payer ni rendre les clés ? La procédure légale d'abandon de logement (art. 14-1 loi Alur) et le sort des meubles laissés sur place."
 date: "2026-08-06"
 updatedAt: "2026-08-06"
 category: "Gestion locative"

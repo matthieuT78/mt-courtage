@@ -1,6 +1,6 @@
 ---
 title: "Prêt relais : fonctionnement et pièges à éviter"
-description: "Tout ce qu'il faut savoir sur le prêt relais en 2026 : comment ça marche, ce que ça coûte vraiment, les alternatives et les erreurs classiques des vendeurs-acheteurs."
+description: "Tout savoir sur le prêt relais en 2026 : comment ça marche, ce que ça coûte vraiment, les alternatives et les erreurs classiques des vendeurs-acheteurs."
 date: "2026-06-12"
 category: "Crédit immobilier"
 tags: ["prêt relais", "crédit immobilier", "vente achat simultané", "intérêts intercalaires"]

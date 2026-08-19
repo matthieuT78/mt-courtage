@@ -1,7 +1,7 @@
 ---
-title: "Dégât des eaux dans un logement loué : la procédure complète 2026"
+title: "Dégât des eaux en logement loué : procédure complète 2026"
 h1: "Dégât des eaux en cours de bail : la procédure étape par étape"
-description: "Déclaration, délais, expertise, convention IRSI, indemnisation : ce que le bailleur doit faire concrètement en cas de dégât des eaux, et comment ça se règle réellement entre assureurs."
+description: "Déclaration, délais, expertise, convention IRSI : ce que le bailleur doit faire en cas de dégât des eaux, et comment ça se règle réellement entre assureurs."
 date: "2026-08-13"
 updatedAt: "2026-08-13"
 category: "Gestion locative"

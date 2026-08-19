@@ -1,7 +1,7 @@
 ---
-title: "Squatteurs 2026 : procédure d'expulsion accélérée (loi anti-squat)"
+title: "Squatteurs 2026 : la procédure d'expulsion accélérée"
 h1: "Expulser un squatteur en 2026 : la procédure accélérée de la loi anti-squat"
-description: "Squat de votre logement : procédure administrative accélérée depuis la loi du 27 juillet 2023, délais réels, sanctions et différences avec l'expulsion d'un locataire impayé."
+description: "Squat de votre logement : procédure accélérée depuis la loi du 27 juillet 2023, délais réels, sanctions et différences avec l'expulsion d'un locataire impayé."
 date: "2026-07-31"
 category: "Réglementation"
 coverImage: "/blog/expulsion-squatteur-loi-anti-squat-2026.jpg"
@@ -208,4 +208,4 @@ Ces textes évoluent par décrets d'application et jurisprudence : en cas de dou
 
 ---
 
-*Gardez une trace claire de chaque bien, de ses périodes de vacance et de ses locataires successifs depuis l'[espace bailleur lokt.fr](/gestion-locative) — un historique à jour est souvent la première pièce demandée en cas de litige, squat compris.*
+*Gardez une trace claire de chaque bien, de ses périodes de vacance et de ses locataires successifs depuis l'[espace bailleur lokt.fr](/outil-gestion-locative) — un historique à jour est souvent la première pièce demandée en cas de litige, squat compris.*

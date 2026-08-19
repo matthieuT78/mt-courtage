@@ -1,7 +1,7 @@
 ---
-title: "LMNP vs LMP 2026 : basculer en Loueur Meublé Professionnel, avantages et pièges"
+title: "LMNP vs LMP 2026 : basculer en loueur meublé professionnel"
 h1: "LMNP vs LMP : ce qui change vraiment quand vous devenez loueur professionnel"
-description: "Seuils de basculement, cotisations sociales, imputation des déficits, exonération de plus-value : le guide complet du statut LMP en 2026 et de ce qu'il change par rapport au LMNP."
+description: "Seuils de basculement, cotisations sociales, imputation des déficits, exonération de plus-value : ce que change le statut LMP en 2026 par rapport au LMNP."
 date: "2026-08-13"
 updatedAt: "2026-08-13"
 category: "Investissement locatif"

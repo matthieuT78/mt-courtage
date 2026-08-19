@@ -16,6 +16,7 @@ const CATEGORY_CONFIG: Record<string, { color: string; bg: string }> = {
   "Crédit immobilier":      { color: "text-indigo-700",  bg: "bg-indigo-50" },
   "Achat immobilier":       { color: "text-sky-700",     bg: "bg-sky-50" },
   "Capacité d'emprunt":     { color: "text-[#635bff]",  bg: "bg-[#635bff]/10" },
+  "Réglementation":         { color: "text-rose-700",   bg: "bg-rose-50" },
 };
 
 const DEFAULT_CAT = { color: "text-[#635bff]", bg: "bg-[#635bff]/10" };
@@ -38,7 +39,7 @@ function formatMonthYearFR(dateStr?: string) {
   return new Intl.DateTimeFormat("fr-FR", { year: "numeric", month: "long" }).format(d);
 }
 
-const FILTERS = ["Tous", "Investissement locatif", "Gestion locative", "Crédit immobilier", "Fiscalité locative", "Capacité d'emprunt"];
+const FILTERS = ["Tous", "Investissement locatif", "Gestion locative", "Crédit immobilier", "Fiscalité locative", "Capacité d'emprunt", "Plus-value immobilière", "Achat immobilier", "Réglementation"];
 
 export default function BlogIndex({ posts }: any) {
   const [activeFilter, setActiveFilter] = useState("Tous");

@@ -1,12 +1,12 @@
 ---
 title: "Logiciel gestion locative : comment choisir 2026"
 h1: "Comment choisir son logiciel de gestion locative en 2026"
-description: "Rentila, BailFacile, Smovin, Gererseul, Homii ou lokt.fr : comment choisir le bon outil de gestion locative selon votre profil ? Comparatif complet, critères clés et questions à se poser avant de s'engager."
+description: "Rentila, BailFacile, Smovin, Gererseul ou lokt.fr : comment choisir le bon outil de gestion locative selon votre profil ? Comparatif et critères clés."
 date: "2026-07-04"
 category: "Gestion locative"
 tags: ["logiciel gestion locative", "Rentila", "BailFacile", "Smovin", "gestion locative particulier", "dossier candidature locataire"]
 relatedCalculators: ["investissement", "parc-immobilier"]
-coverImage: "/blog/choisir-logiciel-gestion-locative.png"
+coverImage: "/blog/choisir-logiciel-gestion-locative.jpg"
 faq:
   - q: "Faut-il utiliser un logiciel de gestion locative si on a un seul bien ?"
     a: "Oui, dès le premier bien. Même avec un seul logement, un outil dédié vous fait gagner plusieurs heures par mois : génération automatique des quittances, suivi des paiements, alertes en cas de retard. Le temps économisé chaque mois dépasse largement le coût d'un abonnement."

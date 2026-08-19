@@ -1,10 +1,10 @@
 ---
 title: "Gestion locative sans agence 2026 : guide"
 h1: "Gestion locative sans agence : mode d'emploi complet 2026"
-description: "Trouver un locataire, rédiger le bail, émettre les quittances, réviser le loyer à l'IRL : tout ce qu'il faut savoir pour gérer seul et économiser 1 500 à 2 000 €/an. 15 à 20 min par mois avec un bon outil."
+description: "Trouver un locataire, rédiger le bail, émettre les quittances, réviser le loyer à l'IRL : tout pour gérer seul et économiser 1 500 à 2 000 €/an."
 date: "2026-06-26"
 updatedAt: "2026-07-01"
-category: "Investissement locatif"
+category: "Gestion locative"
 tags: ["gestion locative", "sans agence", "bailleur particulier", "quittances", "loyer", "LMNP"]
 relatedCalculators: ["investissement", "parc-immobilier"]
 coverImage: "/blog/gestion-locative-sans-agence.jpg"

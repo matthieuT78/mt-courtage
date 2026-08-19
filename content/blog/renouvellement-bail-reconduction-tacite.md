@@ -1,7 +1,7 @@
 ---
 title: "Renouvellement de bail et reconduction tacite 2026"
 h1: "Renouvellement de bail : reconduction tacite, révision du loyer et ce que peut faire le bailleur"
-description: "Que se passe-t-il quand un bail arrive à échéance sans que personne ne réagisse ? Reconduction tacite, révision du loyer sous-évalué, cas des zones tendues et des DPE F/G — guide complet 2026 pour les bailleurs."
+description: "Que se passe-t-il quand un bail arrive à échéance sans réaction du bailleur ni du locataire ? Reconduction tacite, révision du loyer sous-évalué, DPE F/G."
 date: "2026-08-05"
 updatedAt: "2026-08-05"
 category: "Gestion locative"

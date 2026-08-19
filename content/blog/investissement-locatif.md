@@ -1,7 +1,7 @@
 ---
 title: "Rendement locatif réel 2026 : cash-flow et calcul"
 h1: "Investissement locatif : calculer la rentabilité et le cash-flow en 2026"
-description: "Comment calculer le vrai rendement d'un investissement locatif : formules brut, net et net-net, cash-flow réel, comparatif LMNP vs revenus fonciers et exemples chiffrés."
+description: "Comment calculer le vrai rendement d'un investissement locatif : formules brut, net et net-net, cash-flow réel et comparatif LMNP vs revenus fonciers."
 date: "2026-06-26"
 category: "Investissement locatif"
 tags: ["investissement locatif", "rendement locatif", "cash-flow", "LMNP", "fiscalité immobilière"]

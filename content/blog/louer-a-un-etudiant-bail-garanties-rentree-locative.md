@@ -1,7 +1,7 @@
 ---
-title: "Louer à un étudiant en 2026 : bail, garanties et checklist pour la rentrée"
+title: "Louer à un étudiant en 2026 : bail et garanties à connaître"
 h1: "Louer à un étudiant : le guide bailleur pour la rentrée locative"
-description: "Bail étudiant, bail mobilité ou bail classique, garantie Visale, dépôt de garantie, décalage des APL : tout ce qu'un bailleur doit anticiper avant de louer à un étudiant."
+description: "Bail étudiant, bail mobilité, garantie Visale, dépôt de garantie, décalage des APL : ce qu'un bailleur doit anticiper avant de louer à un étudiant en 2026."
 date: "2026-08-15"
 updatedAt: "2026-08-15"
 category: "Gestion locative"

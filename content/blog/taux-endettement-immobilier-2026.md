@@ -1,13 +1,12 @@
 ---
 title: "Taux d'endettement 2026 : règle des 35 %"
 h1: "Taux d'endettement immobilier 2026 : règle des 35 %, calcul exact et leviers pour emprunter plus"
-description: "Comment calculer votre taux d'endettement, pourquoi la règle HCSF fixe le plafond à 35 % et les 5 leviers légaux pour augmenter votre capacité d'emprunt sans toucher à vos revenus."
+description: "Comment calculer votre taux d'endettement, pourquoi la règle HCSF fixe le plafond à 35 % et les leviers légaux pour augmenter votre capacité d'emprunt."
 date: "2026-07-08"
 updatedAt: "2026-07-08"
 category: "Crédit immobilier"
 tags: ["taux d'endettement", "capacité d'emprunt", "règle HCSF", "crédit immobilier", "emprunt immobilier 2026"]
 relatedCalculators: ["capacite", "acheter-ou-louer"]
-coverImage: "/blog/pret-relais.jpg"
 faq:
   - q: "Quel est le taux d'endettement maximum autorisé en 2026 ?"
     a: "Le taux d'endettement maximum recommandé par le HCSF est de 35 %, assurance emprunteur comprise. Les banques peuvent déroger à cette règle pour 20 % de leur production de crédit, principalement pour les primo-accédants et les résidences principales."

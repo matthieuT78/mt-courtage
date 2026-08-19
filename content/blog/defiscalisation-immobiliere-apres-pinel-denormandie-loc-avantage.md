@@ -1,7 +1,7 @@
 ---
-title: "Défiscalisation immobilière locative 2026 : les dispositifs après la fin du Pinel"
+title: "Défiscalisation immobilière 2026 : que reste-t-il du Pinel"
 h1: "Défiscalisation immobilière locative en 2026 : que reste-t-il après le Pinel ?"
-description: "Denormandie, Loc'Avantage, Malraux, monuments historiques : le point complet sur les dispositifs de défiscalisation locative encore actifs en 2026, leurs conditions réelles et si ça vaut encore le coup face au LMNP."
+description: "Denormandie, Loc'Avantage, Malraux : le point sur les dispositifs de défiscalisation locative actifs en 2026, leurs conditions et l'intérêt face au LMNP."
 date: "2026-08-13"
 updatedAt: "2026-08-13"
 category: "Investissement locatif"

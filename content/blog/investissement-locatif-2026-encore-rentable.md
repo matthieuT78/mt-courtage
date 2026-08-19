@@ -1,12 +1,12 @@
 ---
 title: "Investissement locatif 2026 : encore rentable ?"
 h1: "Investissement locatif en 2026 : encore rentable ? Rendements, villes et stratégies"
-description: "Taux à 3,40 %, prix corrigés, fin du Pinel, LMNP en tête — le point complet sur la rentabilité de l'investissement locatif en 2026 : chiffres réels, meilleures villes et stratégies selon votre profil."
+description: "Taux à 3,40 %, prix corrigés, fin du Pinel, LMNP en tête : le point sur la rentabilité de l'investissement locatif en 2026, chiffres réels et meilleures villes."
 date: "2026-07-04"
 updatedAt: "2026-07-04"
 category: "Investissement locatif"
 tags: ["investissement locatif", "rentabilité 2026", "rendement locatif", "LMNP", "villes investissement", "marché immobilier 2026", "cash-flow", "DPE", "financement investissement"]
-coverImage: "/blog/investissement-locatif-2026-encore-rentable.png"
+coverImage: "/blog/investissement-locatif-2026-encore-rentable.jpg"
 relatedCalculators: ["investissement", "capacite", "parc-immobilier"]
 faq:
   - q: "L'investissement locatif est-il encore rentable en 2026 ?"

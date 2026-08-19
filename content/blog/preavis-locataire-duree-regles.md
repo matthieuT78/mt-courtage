@@ -1,7 +1,7 @@
 ---
 title: "Préavis locataire 2026 : 1 ou 3 mois, calcul"
 h1: "Préavis de départ locataire : durée, zones tendues et lettre type 2026"
-description: "Quand le préavis est réduit à 1 mois (zone tendue, mutation, perte d'emploi, RSA…) et quand il reste 3 mois. Comment calculer la date de fin exacte, le loyer du dernier mois et que faire si le locataire ne libère pas les lieux."
+description: "Quand le préavis est réduit à 1 mois (zone tendue, mutation, perte d'emploi, RSA…) et quand il reste 3 mois. Comment calculer la date de fin exacte du bail."
 date: "2026-06-27"
 updatedAt: "2026-07-01"
 category: "Gestion locative"

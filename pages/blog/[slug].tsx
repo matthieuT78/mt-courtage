@@ -15,6 +15,7 @@ const CATEGORY_CONFIG: Record<string, { color: string; bg: string; gradient: str
   "Crédit immobilier":     { color: "text-indigo-700",  bg: "bg-indigo-50",    gradient: "from-indigo-800/60 via-indigo-600/25 to-transparent" },
   "Achat immobilier":      { color: "text-sky-700",     bg: "bg-sky-50",       gradient: "from-sky-800/60 via-sky-600/25 to-transparent" },
   "Capacité d'emprunt":    { color: "text-[#635bff]",  bg: "bg-[#635bff]/10", gradient: "from-[#635bff]/50 via-[#007ba7]/30 to-[#00a97b]/10" },
+  "Réglementation":        { color: "text-rose-700",   bg: "bg-rose-50",     gradient: "from-rose-800/60 via-rose-600/25 to-transparent" },
 };
 const DEFAULT_CAT = { color: "text-[#635bff]", bg: "bg-[#635bff]/10", gradient: "from-[#635bff]/50 via-[#007ba7]/30 to-[#00a97b]/15" };
 function getCat(category?: string) { return (category && CATEGORY_CONFIG[category]) || DEFAULT_CAT; }
@@ -34,6 +35,22 @@ const CALCULATOR_MAP: Record<string, { href: string; label: string }> = {
 };
 
 const DEFAULT_CALCULATORS = ["capacite", "investissement", "pret-relais"];
+
+// Détecte un vrai titre de section FAQ dans le corps de l'article (pour ne
+// pas dupliquer l'accordéon généré depuis le frontmatter). Un simple
+// /fréquentes|questions/i sur le texte du titre matchait aussi "Les erreurs
+// les plus fréquentes" ou "Les 5 questions à se poser" — masquant à tort la
+// FAQ frontmatter (et son JSON-LD FAQPage devenait alors désaligné avec le
+// contenu réellement visible). On ne matche plus que les formulations qui
+// désignent réellement une FAQ.
+function isFaqHeading(text: string): boolean {
+  const normalized = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
+  return normalized === "faq" || normalized.includes("questions frequentes");
+}
 
 function formatDateFR(dateStr?: string) {
   if (!dateStr) return "";
@@ -374,7 +391,7 @@ export default function BlogPostPage({ post, slug: postSlug, related }: Props) {
             )}
 
             {/* FAQ accordion — only rendered when FAQ is NOT already in the markdown body */}
-            {frontmatter.faq && frontmatter.faq.length > 0 && !toc.some(e => /fréquentes|questions/i.test(e.text)) && (
+            {frontmatter.faq && frontmatter.faq.length > 0 && !toc.some(e => isFaqHeading(e.text)) && (
               <section className="mt-12 border-t border-slate-200 pt-8">
                 <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-500">Questions fréquentes</p>
                 <div className="mt-4 space-y-4">

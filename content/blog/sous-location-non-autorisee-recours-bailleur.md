@@ -1,7 +1,7 @@
 ---
 title: "Sous-location non autorisée : recours du bailleur 2026"
 h1: "Sous-location non autorisée : que faire quand son locataire sous-loue sans accord"
-description: "Votre locataire sous-loue son logement sans votre accord (Airbnb, colocataire non déclaré) ? Cadre légal, sanctions, procédure de résiliation et récupération des loyers perçus illégalement — guide complet 2026."
+description: "Votre locataire sous-loue sans accord (Airbnb, colocataire non déclaré) ? Cadre légal, sanctions, procédure de résiliation et récupération des loyers perçus."
 date: "2026-08-05"
 updatedAt: "2026-08-05"
 category: "Gestion locative"

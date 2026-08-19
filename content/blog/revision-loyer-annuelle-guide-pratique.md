@@ -1,7 +1,7 @@
 ---
 title: "Révision de loyer 2026 : guide pratique bailleur"
 h1: "Révision de loyer 2026 : comment l'appliquer légalement, à la bonne date et sans erreur"
-description: "Guide complet pour réviser son loyer en 2026 : clause de bail, formule IRL, délai légal, notification au locataire, cas particuliers (DPE, encadrement) et erreurs à éviter."
+description: "Guide pratique pour réviser son loyer en 2026 : clause de bail, formule IRL, délai légal, notification au locataire et cas particuliers (DPE, encadrement)."
 date: "2026-07-15"
 category: "Gestion locative"
 tags: ["révision loyer", "IRL 2026", "augmentation loyer", "bailleur", "indice référence loyers"]

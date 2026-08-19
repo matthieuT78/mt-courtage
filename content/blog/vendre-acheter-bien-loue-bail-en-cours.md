@@ -1,7 +1,7 @@
 ---
-title: "Acheter ou vendre un bien loué en 2026 : bail en cours, ce qui change"
+title: "Acheter ou vendre un bien loué en 2026 : bail en cours"
 h1: "Acheter ou vendre un bien loué : que devient le bail en cours ?"
-description: "Vendre ou acheter un logement occupé par un locataire : le bail continue automatiquement, le dépôt de garantie se transfère, et le droit de préemption ne s'applique presque jamais. Guide complet 2026."
+description: "Vendre ou acheter un logement occupé : le bail continue, le dépôt de garantie se transfère, et le droit de préemption ne s'applique presque jamais."
 date: "2026-07-31"
 category: "Investissement locatif"
 coverImage: "/blog/vendre-acheter-bien-loue-bail-en-cours.jpg"

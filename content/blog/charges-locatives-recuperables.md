@@ -1,7 +1,7 @@
 ---
 title: "Charges récupérables 2026 : liste décret 87-713"
 h1: "Charges locatives récupérables : liste complète et régularisation 2026"
-description: "Eau froide, chauffage collectif, ascenseur, espaces verts… La liste légale complète selon le décret 87-713. Régularisation annuelle obligatoire, calcul des provisions et délai de prescription de 3 ans."
+description: "Eau froide, chauffage collectif, ascenseur : la liste légale complète du décret 87-713. Régularisation annuelle, calcul des provisions et prescription de 3 ans."
 date: "2026-06-27"
 updatedAt: "2026-07-01"
 category: "Gestion locative"

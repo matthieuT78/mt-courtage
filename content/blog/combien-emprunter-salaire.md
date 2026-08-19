@@ -1,7 +1,7 @@
 ---
 title: "Capacité d'emprunt par salaire : tableau 2026"
 h1: "Combien puis-je emprunter selon mon salaire ? Tableau 2026"
-description: "Capacité d'emprunt par tranche de salaire : 1 500, 2 000, 2 500, 3 000, 3 500, 4 000 et 5 000 €/mois. Tableau complet par durée, impact des crédits en cours et villes accessibles en 2026."
+description: "Capacité d'emprunt par tranche de salaire : 1 500 à 5 000 €/mois. Tableau complet par durée, impact des crédits en cours et villes accessibles en 2026."
 date: "2026-07-05"
 category: "Capacité d'emprunt"
 tags: ["capacité d'emprunt", "crédit immobilier", "salaire", "budget achat immobilier", "tableau emprunt"]

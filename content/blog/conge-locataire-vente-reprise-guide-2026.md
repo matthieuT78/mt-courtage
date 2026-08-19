@@ -1,7 +1,7 @@
 ---
-title: "Congé pour vente ou pour reprise 2026 : guide complet du bailleur"
+title: "Congé pour vente ou reprise 2026 : guide du bailleur"
 h1: "Donner congé à son locataire pour vendre ou reprendre le logement : mode d'emploi 2026"
-description: "Délais, formalisme, droit de préemption du locataire, bénéficiaires de la reprise, locataires protégés : tout ce qu'un bailleur doit savoir avant d'envoyer un congé pour vente ou pour reprise, sous peine de nullité."
+description: "Délais, formalisme, droit de préemption, locataires protégés : ce qu'un bailleur doit savoir avant d'envoyer un congé pour vente ou reprise."
 date: "2026-08-19"
 updatedAt: "2026-08-19"
 category: "Gestion locative"

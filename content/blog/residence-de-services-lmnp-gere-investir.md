@@ -1,7 +1,7 @@
 ---
-title: "Résidence de services 2026 : LMNP géré, ce qu'il faut vérifier avant de signer"
+title: "Résidence de services 2026 : LMNP géré, ce qu'il faut savoir"
 h1: "Investir en résidence de services : ce que le LMNP géré cache vraiment"
-description: "TVA récupérable, bail commercial, garantie de loyer, risque de faillite de l'exploitant : le guide complet pour comprendre le LMNP en résidence de services avant de signer."
+description: "TVA récupérable, bail commercial, garantie de loyer, risque de faillite de l'exploitant : l'essentiel sur le LMNP en résidence de services avant de signer."
 date: "2026-08-13"
 updatedAt: "2026-08-13"
 category: "Investissement locatif"

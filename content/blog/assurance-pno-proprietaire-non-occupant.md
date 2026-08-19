@@ -1,7 +1,7 @@
 ---
 title: "Assurance PNO 2026 : guide propriétaire bailleur"
 h1: "Assurance PNO obligatoire 2026 : ce que doit savoir tout propriétaire bailleur"
-description: "Obligatoire si votre bien est en copropriété (loi Alur 2014), non obligatoire en maison individuelle — mais indispensable. Prix : 80 à 200 €/an, déductible en totalité des revenus fonciers ou BIC. Ce qu'elle couvre que l'assurance de votre locataire ne couvre pas."
+description: "Obligatoire en copropriété (loi Alur 2014), pas en maison individuelle mais indispensable. Prix 80 à 200 €/an, déductible, et ce qu'elle couvre en plus."
 date: "2026-07-01"
 updatedAt: "2026-07-01"
 category: "Gestion locative"

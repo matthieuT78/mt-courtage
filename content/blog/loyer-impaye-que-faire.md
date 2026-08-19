@@ -1,8 +1,8 @@
 ---
 title: "Loyer impayé 2026 : que faire étape par étape"
-description: "Locataire qui ne paie plus ? Voici la procédure complète : de la première relance amiable à l'expulsion, avec les délais réels, les erreurs à éviter et comment activer vos garanties."
+description: "Locataire qui ne paie plus ? La procédure complète : de la première relance amiable à l'expulsion, avec les délais réels et comment activer vos garanties."
 date: "2026-06-26"
-category: "Investissement locatif"
+category: "Gestion locative"
 tags: ["loyer impayé", "impayé locataire", "expulsion locataire", "GLI", "procédure loyer impayé"]
 relatedCalculators: ["parc-immobilier"]
 coverImage: "/blog/loyer-impaye.jpg"

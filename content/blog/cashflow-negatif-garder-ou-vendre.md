@@ -1,7 +1,7 @@
 ---
 title: "Cashflow négatif : garder ou vendre son bien 2026"
 h1: "Cashflow négatif en immobilier : garder ou vendre son bien locatif ? Le vrai calcul"
-description: "Votre bien vous coûte 200–500 €/mois ? Pas forcément une erreur. Comment calculer le vrai coût d'opportunité, le seuil de retournement et décider de garder ou vendre."
+description: "Votre bien vous coûte 200 à 500 €/mois ? Pas forcément une erreur : comment calculer le seuil de retournement et décider de garder ou vendre votre bien locatif."
 date: "2026-06-15"
 category: "Investissement locatif"
 tags: ["cashflow négatif", "investissement locatif", "rentabilité", "vendre ou garder"]

@@ -1,7 +1,7 @@
 ---
 title: "Calculer le rendement locatif 2026 : brut, net"
 h1: "Calcul rendement locatif 2026 : formules, tableaux et exemples complets"
-description: "Formules rendement brut, net et net-net après impôts, tableau de référence par prix et loyer, 3 exemples chiffrés complets, impact travaux et fiscalité. Calculez en 5 minutes."
+description: "Formules rendement brut, net et net-net, tableau de référence par prix et loyer, 3 exemples chiffrés, impact travaux et fiscalité. Calculez en 5 minutes."
 date: "2026-07-07"
 category: "Investissement locatif"
 tags: ["rendement locatif", "calcul rendement locatif", "formule rendement brut", "rendement net locatif", "rentabilité immobilière", "simuler rendement"]

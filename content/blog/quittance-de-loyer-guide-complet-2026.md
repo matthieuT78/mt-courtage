@@ -1,7 +1,7 @@
 ---
 title: "Quittance de loyer 2026 : guide complet"
 h1: "Quittance de loyer : mentions obligatoires, modèle et obligations légales 2026"
-description: "Tout savoir sur la quittance de loyer : cadre légal, mentions obligatoires, différence avec le reçu, quittance électronique, colocation, sanctions en cas de refus et archivage."
+description: "Tout savoir sur la quittance de loyer : cadre légal, mentions obligatoires, différence avec le reçu, quittance électronique et sanctions en cas de refus."
 date: "2026-07-23"
 updatedAt: "2026-07-23"
 category: "Gestion locative"

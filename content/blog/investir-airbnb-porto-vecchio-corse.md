@@ -1,7 +1,7 @@
 ---
 title: "Investir en Airbnb à Porto-Vecchio et en Corse en 2026"
 h1: "Investir en location saisonnière à Porto-Vecchio : ce que rapporte vraiment un Airbnb en Corse"
-description: "Villa ou T3 loué en Airbnb à Porto-Vecchio : prix d'achat, saisonnalité extrême, charges de conciergerie, fiscalité LMNP et réglementation spécifique à la Corse. Une analyse chiffrée, sans enjolivement, pour savoir si le calcul tient vraiment."
+description: "Villa ou T3 loué en Airbnb à Porto-Vecchio : prix d'achat, saisonnalité extrême, conciergerie, fiscalité LMNP et réglementation corse. Analyse chiffrée."
 date: "2026-08-06"
 updatedAt: "2026-08-06"
 category: "Investissement locatif"

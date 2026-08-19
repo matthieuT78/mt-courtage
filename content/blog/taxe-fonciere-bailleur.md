@@ -1,7 +1,7 @@
 ---
 title: "Taxe foncière 2026 : déduire et contester"
 h1: "Taxe foncière 2026 : qui paye, comment la déduire et comment la contester"
-description: "La taxe foncière est à la charge du propriétaire, pas du locataire. Mais elle peut être déduite fiscalement. Guide complet : calcul, déductibilité selon le régime, et recours en cas d'erreur."
+description: "La taxe foncière est à la charge du propriétaire, pas du locataire, mais elle peut être déduite fiscalement. Calcul, déductibilité et recours en cas d'erreur."
 date: "2026-06-27"
 category: "Investissement locatif"
 tags: ["taxe foncière", "taxe foncière 2026", "déduction taxe foncière", "contester taxe foncière", "TEOM"]
