@@ -73,6 +73,7 @@ export type Lease = {
   auto_reminder_enabled: boolean | null;
   auto_quittance_enabled: boolean | null;
   receipts_disabled?: boolean | null;
+  entry_edl_not_required?: boolean | null;
   reminder_day_of_month: number | null;
   reminder_email: string | null;
   tenant_receipt_email: string | null;
@@ -801,6 +802,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     auto_quittance_enabled: false,
     auto_reminder_enabled: false,
     receipts_disabled: false,
+    entry_edl_not_required: false,
     reminder_day_of_month: "1",
     reminder_email: userEmail || "",
     tenant_receipt_email: "",
@@ -1271,6 +1273,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
     auto_quittance_enabled: false,
     auto_reminder_enabled: false,
     receipts_disabled: false,
+    entry_edl_not_required: false,
     reminder_day_of_month: "1",
     reminder_email: userEmail || "",
     tenant_receipt_email: "",
@@ -1380,6 +1383,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
       auto_quittance_enabled: canUseReceiptAutomation && !!lease.auto_quittance_enabled,
       auto_reminder_enabled: canUseReceiptAutomation && !!lease.auto_reminder_enabled,
       receipts_disabled: !!lease.receipts_disabled,
+      entry_edl_not_required: !!lease.entry_edl_not_required,
       reminder_day_of_month: lease.reminder_day_of_month != null ? String(lease.reminder_day_of_month) : "1",
       reminder_email: lease.reminder_email || "",
       tenant_receipt_email: lease.tenant_receipt_email || "",
@@ -1574,6 +1578,7 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
         // paiement (Finance) reste indépendamment réglable via sa propre case à cocher.
         auto_reminder_enabled: canUseReceiptAutomation ? !!form.auto_reminder_enabled : false,
         receipts_disabled: !!form.receipts_disabled,
+        entry_edl_not_required: !!form.entry_edl_not_required,
         reminder_day_of_month: reminderDayNum,
         reminder_email: ownerEmail || null,
         tenant_receipt_email: receiptEmail || null,
@@ -2839,6 +2844,21 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
                 </select>
               </div>
             </div>
+
+            <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={!!form.entry_edl_not_required}
+                onChange={(e) => setForm((s) => ({ ...s, entry_edl_not_required: e.target.checked }))}
+              />
+              <span>
+                <span className="block font-semibold text-slate-900">Pas d’état des lieux d’entrée pour ce bail</span>
+                <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+                  Coupe uniquement l’alerte « État des lieux d’entrée manquant » sur ce bail — les autres baux ne sont pas concernés.
+                </span>
+              </span>
+            </label>
           </div>
         </details>
 

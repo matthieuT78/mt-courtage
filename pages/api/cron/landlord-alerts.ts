@@ -454,7 +454,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
           }
 
-          if (!hasPreparedEntryEdl && leaseStart) {
+          if (!hasPreparedEntryEdl && leaseStart && !lease.entry_edl_not_required) {
             const daysToStart = daysBetween(today, leaseStart);
             // Avant/le jour du début du bail : deux rappels ponctuels de préparation.
             // Après le début : relance hebdomadaire tant que l'EDL n'est pas fait
