@@ -3613,6 +3613,12 @@ function PropertyFinanceForm({
               onChange={(v) => setS((p) => ({ ...p, loan_end_year: v == null ? null : Math.round(v) }))}
               error={fieldErrors.loan_end_year}
             />
+          </div>
+          {/* Mensualité + date de prise en compte regroupées : la date ne concerne
+              que cette mensualité dans ce panneau — la taxe foncière, l'assurance,
+              la copro etc. se saisissent via Nouvelle écriture (grand livre), qui a
+              sa propre gestion de la récurrence. */}
+          <div className="mt-3 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2 sm:max-w-xl">
             <Field
               label="Mensualité crédit + assurance (€)"
               value={s.loan_monthly ?? null}
@@ -3621,7 +3627,7 @@ function PropertyFinanceForm({
               error={fieldErrors.loan_monthly}
             />
             <div className="space-y-1">
-              <label className="text-xs text-slate-600">Charges récurrentes depuis le</label>
+              <label className="text-xs text-slate-600">Mensualité prise en compte depuis le</label>
               <input
                 type="date"
                 value={s.recurring_since ?? ""}
@@ -3629,10 +3635,12 @@ function PropertyFinanceForm({
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               />
             </div>
+            <p className="text-[0.68rem] leading-4 text-slate-500 sm:col-span-2">
+              Laissez vide si ce crédit court depuis le début de la période affichée. Renseignez cette date si vous avez commencé à le rembourser en cours d'année, pour ne pas fausser l'historique.
+            </p>
           </div>
           <p className="mt-2 text-[0.68rem] leading-4 text-slate-400">
-            Utilisé pour le calcul de rentabilité. Pour le suivi des paiements mois par mois, créez aussi une Charge récurrente dans le grand livre.
-            Laissez « Charges récurrentes depuis le » vide si le crédit s'applique sur toute la période affichée — renseignez-le si vous avez démarré en cours d'année pour ne pas fausser l'historique.
+            Utilisé pour le calcul de rentabilité et de trésorerie.
           </p>
         </div>
 
