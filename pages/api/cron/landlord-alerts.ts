@@ -182,11 +182,24 @@ function renderAlertCard(alert: AlertItem) {
   const actionable = alert.actionable !== false;
   const linkLabel = actionable ? "Traiter cette action sur lokt.fr" : "Consulter dans lokt.fr";
 
+  // Seule alerte pour laquelle un bailleur peut avoir fait un choix délibéré
+  // (pas d'EDL par choix) plutôt qu'un simple oubli — on le renvoie vers le
+  // réglage par bail plutôt que de laisser croire que la seule option est
+  // de couper l'alerte globalement dans les préférences.
+  const optOutNote =
+    alert.preferenceKey === "entry_inventory_missing"
+      ? `<p style="margin:8px 0 0;color:#64748b;font-size:12px;line-height:1.45">
+          Vous ne comptez pas faire d'état des lieux d'entrée pour ce bail ? Ouvrez-le, cliquez sur « Modifier », puis « Options avancées »,
+          et cochez « Pas d'état des lieux d'entrée pour ce bail » — cette alerte ne sera plus envoyée pour cette location précise (vos autres baux ne sont pas concernés).
+        </p>`
+      : "";
+
   return `
       <div style="padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:${bg};margin-bottom:12px;">
         <p style="margin:0 0 4px;font-weight:700;color:${color}">${alert.title}</p>
         <p style="margin:0 0 10px;color:#334155;font-size:14px;line-height:1.45">${alert.detail}</p>
         <a href="${baseUrl}${alert.href}" style="font-size:13px;color:#0f172a;font-weight:700">${linkLabel}</a>
+        ${optOutNote}
       </div>`;
 }
 
