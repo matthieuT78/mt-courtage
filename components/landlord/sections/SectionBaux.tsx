@@ -2380,7 +2380,24 @@ export function SectionBaux({ userId, userEmail, leases, properties, tenants, pa
             <NiceSelect
               icon={HomeModernIcon}
               value={form.property_id}
-              onChange={(pid) => setForm((s) => ({ ...s, property_id: pid }))}
+              onChange={(pid) => {
+                // Le useEffect plus haut force receipts_disabled à true en arrivant
+                // sur un bien délégué, mais ne le remettait jamais à false en
+                // repartant vers un bien non délégué — le bail restait alors
+                // coincé sur "Géré par agence" après un changement de bien dans
+                // ce même formulaire. On ne défait que ce cas précis (transition
+                // délégué → non délégué) : un choix "Géré par agence" fait
+                // manuellement sur un bien non délégué n'est jamais touché ici.
+                const prevDelegated = form.property_id
+                  ? (propertyById.get(form.property_id)?.delegated_services || []).includes("gestion_courante")
+                  : false;
+                const nextDelegated = (propertyById.get(pid)?.delegated_services || []).includes("gestion_courante");
+                setForm((s) => ({
+                  ...s,
+                  property_id: pid,
+                  receipts_disabled: prevDelegated && !nextDelegated ? false : s.receipts_disabled,
+                }));
+              }}
               options={selectableProps.map((p) => ({
                 value: p.id,
                 label: p.label || "Bien",

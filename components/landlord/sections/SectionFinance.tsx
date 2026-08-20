@@ -3620,9 +3620,19 @@ function PropertyFinanceForm({
               onChange={(v) => setS((p) => ({ ...p, loan_monthly: v }))}
               error={fieldErrors.loan_monthly}
             />
+            <div className="space-y-1">
+              <label className="text-xs text-slate-600">Charges récurrentes depuis le</label>
+              <input
+                type="date"
+                value={s.recurring_since ?? ""}
+                onChange={(e) => setS((p) => ({ ...p, recurring_since: e.target.value || null }))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+              />
+            </div>
           </div>
           <p className="mt-2 text-[0.68rem] leading-4 text-slate-400">
             Utilisé pour le calcul de rentabilité. Pour le suivi des paiements mois par mois, créez aussi une Charge récurrente dans le grand livre.
+            Laissez « Charges récurrentes depuis le » vide si le crédit s'applique sur toute la période affichée — renseignez-le si vous avez démarré en cours d'année pour ne pas fausser l'historique.
           </p>
         </div>
 
