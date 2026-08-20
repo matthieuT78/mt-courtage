@@ -770,6 +770,13 @@ type PropertyRow = {
   ledgerIncome: number;
   expense: number;
   recurring: number;
+  // Phase 0 (plan de remédiation) : somme/moyenne des charges structurelles calculée mois
+  // par mois sur la période sélectionnée, en respectant recurring_since à chaque mois —
+  // contrairement à `recurring` (taux courant, réutilisé par 40+ calculs "état actuel" :
+  // amortissement, renégociation, alertes). N'existe que pour migrer, phase par phase, les
+  // consommateurs réellement liés à la période (cashflow, donut) sans toucher aux autres.
+  recurringPeriodTotal: number;
+  recurringPeriodAvg: number;
   cashflow: number;
   investment: number;
   netYield: number | null;
@@ -1039,12 +1046,58 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           Number(fin?.maintenance_monthly || 0) +
           Number(fin?.rental_tax_monthly || 0);
         const recurring = loanMonthly + finOtherMonthly + otherTx;
+
+        // Phase 0 : version mois par mois de `recurring`, correcte même quand une charge
+        // démarre en cours de période (contrairement à `recurring` ci-dessus, qui l'applique
+        // à taux plein sur toute la période dès qu'elle a démarré au moins un jour avant la
+        // fin). N'alimente rien pour l'instant — additif, zéro risque sur l'existant.
+        let recurringPeriodTotal = 0;
+        {
+          const rtx = recurringParentTxByProperty.get(id) || [];
+          for (let cursor = new Date(pStart.getFullYear(), pStart.getMonth(), 1); cursor <= pEnd; cursor = addMonths(cursor, 1)) {
+            const monthTxs = rtx.filter((t) => {
+              const since = t.recurrence_since ? normalizeDate(t.recurrence_since) : null;
+              const end = t.recurrence_end_date ? normalizeDate(t.recurrence_end_date) : null;
+              if (since && cursor < new Date(since.getFullYear(), since.getMonth(), 1)) return false;
+              if (end && cursor > new Date(end.getFullYear(), end.getMonth(), 1)) return false;
+              return true;
+            });
+            let mLoanTx = 0, mOtherTx = 0;
+            let mHasLoanTx = false, mHasTaxTx = false, mHasInsuranceTx = false, mHasCoproTx = false;
+            for (const t of monthTxs) {
+              const divisor = t.recurrence_frequency === "quarterly" ? 3 : t.recurrence_frequency === "yearly" ? 12 : 1;
+              const monthlyAmt = (t.amount / divisor) * (t.direction === "out" ? 1 : -1);
+              if (t.category === "loan") { mLoanTx += monthlyAmt; mHasLoanTx = true; }
+              else if (t.category === "tax") { mOtherTx += monthlyAmt; mHasTaxTx = true; }
+              else if (t.category === "insurance") { mOtherTx += monthlyAmt; mHasInsuranceTx = true; }
+              else if (t.category === "copro") { mOtherTx += monthlyAmt; mHasCoproTx = true; }
+              else mOtherTx += monthlyAmt;
+            }
+            const mFinActive = !finSince || cursor >= new Date(finSince.getFullYear(), finSince.getMonth(), 1);
+            const mLoan = mHasLoanTx ? mLoanTx : mFinActive ? Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0) : 0;
+            const mOther = !mFinActive ? 0 :
+              (mHasTaxTx ? 0 : Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12) +
+              Number(fin?.fixed_charges_monthly || 0) +
+              (mHasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
+              (mHasCoproTx ? 0 : Number(fin?.copro_charges_monthly || 0)) +
+              Number(fin?.bank_fees_monthly || 0) +
+              Number(fin?.maintenance_monthly || 0) +
+              Number(fin?.rental_tax_monthly || 0);
+            recurringPeriodTotal += mLoan + mOther + mOtherTx;
+          }
+        }
+        const recurringPeriodAvg = monthCount > 0 ? recurringPeriodTotal / monthCount : 0;
+
         const incomeBase = Math.max(received, ledgerIncome);
         const incomeMonthly = monthCount > 1 ? incomeBase / monthCount : incomeBase;
         const expenseMonthly = monthCount > 1 ? expense / monthCount : expense;
-        const cashflow = incomeMonthly - expenseMonthly - recurring;
+        // Phase 1 (plan de remédiation) : cashflow et rendement net utilisent désormais la
+        // moyenne mois par mois (recurringPeriodAvg), pas le taux courant brut — un seul point
+        // de calcul par métrique, donc tous leurs consommateurs (comparatif par bien, "biens en
+        // cashflow négatif", scénarios) héritent du correctif sans y être touchés un par un.
+        const cashflow = incomeMonthly - expenseMonthly - recurringPeriodAvg;
         const investment = investmentAmount(fin);
-        const netYield = investment > 0 ? ((incomeMonthly - recurring) * 12 * 100) / investment : null;
+        const netYield = investment > 0 ? ((incomeMonthly - recurringPeriodAvg) * 12 * 100) / investment : null;
         const occupancy = computeOccupancySignals(safeLeases, id);
         const loanRemainingMonths = remainingLoanMonths(fin);
         const loanRatePct = fin?.loan_rate_percent == null ? null : Number(fin.loan_rate_percent);
@@ -1104,6 +1157,8 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           ledgerIncome,
           expense,
           recurring,
+          recurringPeriodTotal,
+          recurringPeriodAvg,
           cashflow,
           investment,
           netYield,
@@ -1386,8 +1441,11 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
   }, [chartDrillKey, propertyRows, recurringParentTxByProperty, finance]);
 
   const totals = useMemo(() => {
-    const recurring = sum(propertyRows.map((row) => row.recurring));
-    return { recurring };
+    // Phase 2 (plan de remédiation) : somme des totaux déjà calculés mois par mois sur la
+    // période (recurringPeriodTotal), pas du taux courant multiplié par monthCount — sinon
+    // une charge démarrée en cours de période est comptée comme si elle avait toujours existé.
+    const recurringPeriodTotal = sum(propertyRows.map((row) => row.recurringPeriodTotal));
+    return { recurringPeriodTotal };
   }, [propertyRows]);
 
   const { monthCount } = selectedPeriod;
@@ -1536,13 +1594,13 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
       if (!rowDate || rowDate < selectedPeriod.start || rowDate > selectedPeriod.end) continue;
       byCategory.set(row.category || "other", (byCategory.get(row.category || "other") || 0) + Number(row.amount || 0));
     }
-    const recurring = totals.recurring * selectedPeriod.monthCount;
+    const recurring = totals.recurringPeriodTotal;
     if (recurring > 0) byCategory.set("Charges récurrentes", (byCategory.get("Charges récurrentes") || 0) + recurring);
     return Array.from(byCategory.entries())
       .map(([category, amount]) => ({ category, label: CATEGORY_LABELS[category] || category, amount }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 6);
-  }, [selectedPeriod, propertyId, totals.recurring, tx]);
+  }, [selectedPeriod, propertyId, totals.recurringPeriodTotal, tx]);
 
   const expenseChartData = useMemo(
     () => ({
