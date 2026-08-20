@@ -341,6 +341,66 @@ const isIncomeReceived = (row: Pick<Transaction, "direction" | "status" | "categ
 const isRecurringFlow = (row: Pick<Transaction, "is_recurring" | "recurrence_parent_id">) =>
   Boolean(row.is_recurring || row.recurrence_parent_id);
 
+type StructuralChargesForMonth = {
+  loan: number;
+  fixed: number;
+  taxM: number;
+  total: number;
+  hasLoanTx: boolean;
+  hasTaxTx: boolean;
+  hasInsuranceTx: boolean;
+  hasCoproTx: boolean;
+  activeTxs: Transaction[];
+};
+
+// Source unique pour "quelles charges structurelles s'appliquent sur tel bien, pour tel mois" :
+// une charge récurrente du grand livre (bornée par recurrence_since/recurrence_end_date) remplace
+// son équivalent property_finance si elle existe (évite le double-comptage) ; sinon on retombe sur
+// property_finance, mais seulement à partir de son recurring_since (un crédit démarré en cours
+// d'année ne doit pas apparaître sur les mois antérieurs). Utilisé par le graphe, son détail par
+// mois et le calcul de cashflow/rendement par bien — trois vues qui doivent rester cohérentes.
+const computeStructuralChargesForMonth = (
+  recurringTxs: Transaction[],
+  fin: PropertyFinance | null | undefined,
+  monthStart: Date
+): StructuralChargesForMonth => {
+  const activeTxs = recurringTxs.filter((t) => {
+    const since = t.recurrence_since ? new Date(t.recurrence_since) : null;
+    const end = t.recurrence_end_date ? new Date(t.recurrence_end_date) : null;
+    if (since && monthStart < new Date(since.getFullYear(), since.getMonth(), 1)) return false;
+    if (end && monthStart > new Date(end.getFullYear(), end.getMonth(), 1)) return false;
+    return true;
+  });
+
+  let loan = 0, taxM = 0, fixed = 0;
+  let hasLoanTx = false, hasTaxTx = false, hasInsuranceTx = false, hasCoproTx = false;
+  for (const t of activeTxs) {
+    const divisor = t.recurrence_frequency === "quarterly" ? 3 : t.recurrence_frequency === "yearly" ? 12 : 1;
+    const monthlyAmt = (t.amount / divisor) * (t.direction === "out" ? 1 : -1);
+    if (t.category === "loan") { loan += monthlyAmt; hasLoanTx = true; }
+    else if (t.category === "tax") { taxM += monthlyAmt; hasTaxTx = true; }
+    else if (t.category === "insurance") { fixed += monthlyAmt; hasInsuranceTx = true; }
+    else if (t.category === "copro") { fixed += monthlyAmt; hasCoproTx = true; }
+    else fixed += monthlyAmt;
+  }
+
+  const since = fin?.recurring_since ? new Date(fin.recurring_since) : null;
+  const finActive = !since || monthStart >= new Date(since.getFullYear(), since.getMonth(), 1);
+  if (finActive) {
+    if (!hasLoanTx) loan += Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
+    if (!hasTaxTx) taxM += Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12;
+    fixed +=
+      Number(fin?.fixed_charges_monthly || 0) +
+      (hasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
+      (hasCoproTx ? 0 : Number(fin?.copro_charges_monthly || 0)) +
+      Number(fin?.bank_fees_monthly || 0) +
+      Number(fin?.maintenance_monthly || 0) +
+      Number(fin?.rental_tax_monthly || 0);
+  }
+
+  return { loan, fixed, taxM, total: loan + fixed + taxM, hasLoanTx, hasTaxTx, hasInsuranceTx, hasCoproTx, activeTxs };
+};
+
 type FinancePropertyRow = {
   propertyId: string;
   label: string;
@@ -658,41 +718,16 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       .sort((a, b) => (a.property_id || "").localeCompare(b.property_id || "") || (a.recurrence_since || a.occurred_at).localeCompare(b.recurrence_since || b.occurred_at));
   }, [tx]);
 
+  // Taux "récurrent aujourd'hui" par bien — utilisé pour l'affichage du TOTAL/MOIS courant
+  // dans le panneau Financement (indépendant de la période sélectionnée dans le graphe).
   const monthlyRecurringByProperty = useMemo(() => {
+    const currentMonthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const map = new Map<string, { loan: number; fixed: number; taxM: number; total: number }>();
     for (const propertyId of analysisPropertyIds) {
       const recurringTxs = recurringParentTxByProperty.get(propertyId) || [];
       const fin = pf.get(propertyId) || null;
-
-      // Charges récurrentes du grand livre, regroupées par catégorie.
-      // "loan", "tax", "insurance" et "copro" remplacent leur équivalent property_finance
-      // si une transaction récurrente de cette catégorie existe (évite le double-comptage).
-      let loanTx = 0, taxTx = 0, fixedTx = 0;
-      let hasLoanTx = false, hasTaxTx = false, hasInsuranceTx = false, hasCoproTx = false;
-      for (const tx of recurringTxs) {
-        const divisor = tx.recurrence_frequency === "quarterly" ? 3 : tx.recurrence_frequency === "yearly" ? 12 : 1;
-        const monthlyAmt = (tx.amount / divisor) * (tx.direction === "out" ? 1 : -1);
-        if (tx.category === "loan") { loanTx += monthlyAmt; hasLoanTx = true; }
-        else if (tx.category === "tax") { taxTx += monthlyAmt; hasTaxTx = true; }
-        else if (tx.category === "insurance") { fixedTx += monthlyAmt; hasInsuranceTx = true; }
-        else if (tx.category === "copro") { fixedTx += monthlyAmt; hasCoproTx = true; }
-        else fixedTx += monthlyAmt;
-      }
-
-      const loan = hasLoanTx ? loanTx : Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
-      const taxM = hasTaxTx
-        ? taxTx
-        : Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12;
-      const fixed =
-        fixedTx +
-        Number(fin?.fixed_charges_monthly || 0) +
-        (hasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
-        (hasCoproTx ? 0 : Number(fin?.copro_charges_monthly || 0)) +
-        Number(fin?.bank_fees_monthly || 0) +
-        Number(fin?.maintenance_monthly || 0) +
-        Number(fin?.rental_tax_monthly || 0);
-
-      map.set(propertyId, { loan, fixed, taxM, total: loan + fixed + taxM });
+      const result = computeStructuralChargesForMonth(recurringTxs, fin, currentMonthStart);
+      map.set(propertyId, { loan: result.loan, fixed: result.fixed, taxM: result.taxM, total: result.total });
     }
     return map;
   }, [analysisPropertyIds, pf, recurringParentTxByProperty]);
@@ -1132,6 +1167,29 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   };
 
 
+  // Somme, mois par mois, des charges structurelles sur toute la période sélectionnée.
+  // Contrairement à monthlyRecurringByProperty (taux du mois courant, pour l'affichage
+  // TOTAL/MOIS), respecte le recurring_since de chaque bien même si la période couvre des
+  // mois antérieurs à son démarrage — nécessaire pour un cashflow/rendement justes sur
+  // "Année"/"6 mois" quand un crédit ou une charge a démarré en cours de période.
+  const periodRecurringByProperty = useMemo(() => {
+    const map = new Map<string, { loan: number; fixed: number; taxM: number; total: number }>();
+    const { start, end } = selectedPeriod;
+    for (const propertyId of analysisPropertyIds) {
+      const recurringTxs = recurringParentTxByProperty.get(propertyId) || [];
+      const fin = pf.get(propertyId) || null;
+      let loan = 0, fixed = 0, taxM = 0;
+      for (let cursor = new Date(start.getFullYear(), start.getMonth(), 1); cursor <= end; cursor = addMonths(cursor, 1)) {
+        const result = computeStructuralChargesForMonth(recurringTxs, fin, cursor);
+        loan += result.loan;
+        fixed += result.fixed;
+        taxM += result.taxM;
+      }
+      map.set(propertyId, { loan, fixed, taxM, total: loan + fixed + taxM });
+    }
+    return map;
+  }, [analysisPropertyIds, pf, recurringParentTxByProperty, selectedPeriod]);
+
   // ========= Per property: cashflow & rendement =========
   const perProperty = useMemo<FinancePropertyRow[]>(() => {
     const by = new Map<string, { income: number; expense: number; net: number }>();
@@ -1173,15 +1231,15 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
           }).length;
       const incomeBase = v.income;
 
-      const recurring = propertyId === "—" ? { loan: 0, fixed: 0, taxM: 0, total: 0 } : monthlyRecurringByProperty.get(propertyId) || { loan: 0, fixed: 0, taxM: 0, total: 0 };
+      // periodRecurringByProperty : déjà sommé mois par mois sur la période sélectionnée
+      // (respecte recurring_since), donc ces valeurs ne se multiplient plus par monthCount.
+      const recurring = propertyId === "—" ? { loan: 0, fixed: 0, taxM: 0, total: 0 } : periodRecurringByProperty.get(propertyId) || { loan: 0, fixed: 0, taxM: 0, total: 0 };
       const loan = recurring.loan;
       const fixed = recurring.fixed;
       const taxM = recurring.taxM;
-      // fixed et taxM viennent de monthlyRecurringByProperty qui applique déjà les guards
-      // insurance/copro/tax — plus fiable que de re-lire property_finance brut
       const lmnpRecurring = recurring.fixed + recurring.taxM;
 
-      const cashflow = incomeBase - v.expense - recurring.total * selectedPeriod.monthCount;
+      const cashflow = incomeBase - v.expense - recurring.total;
 
       const invest =
         Number(fin?.purchase_price || 0) +
@@ -1213,7 +1271,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     });
 
     return rows.sort((a, b) => b.cashflow - a.cashflow);
-  }, [analysisPropertyIds, expectedRentByPropertyMonth, monthlyRecurringByProperty, periodLedger.rows, propsById, pf, safeLeases, selectedPeriod]);
+  }, [analysisPropertyIds, expectedRentByPropertyMonth, periodRecurringByProperty, periodLedger.rows, propsById, pf, safeLeases, selectedPeriod]);
 
   const attachDocumentToTransaction = async (transaction: Pick<Transaction, "id" | "property_id">, file: File) => {
     if (!supabase || !userId) return;
@@ -1653,7 +1711,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
   const periodLabel = selectedPeriod.label;
 
   const totalCashflow = sum(perProperty.map((p) => p.cashflow));
-  const recurringPeriodTotal = sum(perProperty.map((p) => (p.loan + p.fixed + p.taxM) * selectedPeriod.monthCount));
+  const recurringPeriodTotal = sum(perProperty.map((p) => p.loan + p.fixed + p.taxM));
   const weakProperties = perProperty.filter((p) => p.cashflow < 0);
   const bestProperty = perProperty[0] || null;
 
@@ -1661,7 +1719,7 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
     const actions: FinanceAction[] = [];
 
     for (const property of perProperty) {
-      const recurringTotal = (property.loan + property.fixed + property.taxM) * selectedPeriod.monthCount;
+      const recurringTotal = property.loan + property.fixed + property.taxM;
 
       if (property.activeLeaseCount === 0) {
         actions.push({
@@ -1749,40 +1807,8 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       let total = 0;
       for (const propertyId of analysisPropertyIds) {
         const recurringTxs = recurringParentTxByProperty.get(propertyId) || [];
-        const activeTxs = recurringTxs.filter((tx) => {
-          const since = tx.recurrence_since ? new Date(tx.recurrence_since) : null;
-          const end = tx.recurrence_end_date ? new Date(tx.recurrence_end_date) : null;
-          if (since && monthStart < new Date(since.getFullYear(), since.getMonth(), 1)) return false;
-          if (end && monthStart > new Date(end.getFullYear(), end.getMonth(), 1)) return false;
-          return true;
-        });
-
-        let hasLoanTx = false, hasTaxTx = false, hasInsuranceTx = false, hasCoproTx = false;
-        for (const tx of activeTxs) {
-          const divisor = tx.recurrence_frequency === "quarterly" ? 3 : tx.recurrence_frequency === "yearly" ? 12 : 1;
-          total += (tx.amount / divisor) * (tx.direction === "out" ? 1 : -1);
-          if (tx.category === "loan") hasLoanTx = true;
-          else if (tx.category === "tax") hasTaxTx = true;
-          else if (tx.category === "insurance") hasInsuranceTx = true;
-          else if (tx.category === "copro") hasCoproTx = true;
-        }
-
-        // Fallback property_finance par catégorie — remplacé si une transaction récurrente
-        // de même catégorie existe (évite le double-comptage).
         const fin = pf.get(propertyId);
-        const since = fin?.recurring_since ? new Date(fin.recurring_since) : null;
-        const finActive = !since || monthStart >= new Date(since.getFullYear(), since.getMonth(), 1);
-        if (finActive) {
-          if (!hasLoanTx) total += Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
-          if (!hasTaxTx) total += Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12;
-          total +=
-            Number(fin?.fixed_charges_monthly || 0) +
-            (hasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
-            (hasCoproTx ? 0 : Number(fin?.copro_charges_monthly || 0)) +
-            Number(fin?.bank_fees_monthly || 0) +
-            Number(fin?.maintenance_monthly || 0) +
-            Number(fin?.rental_tax_monthly || 0);
-        }
+        total += computeStructuralChargesForMonth(recurringTxs, fin, monthStart).total;
       }
       return total;
     };
@@ -1832,45 +1858,22 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
     for (const pid of analysisPropertyIds) {
       const recurringTxs = recurringParentTxByProperty.get(pid) || [];
-      let hasLoanTx = false, hasTaxTx = false, hasInsuranceTx = false, hasCoproTx = false;
+      const fin = pf.get(pid);
+      const result = computeStructuralChargesForMonth(recurringTxs, fin, monthStart);
 
-      const activeTxs = recurringTxs.filter((t) => {
-        const since = t.recurrence_since ? new Date(t.recurrence_since) : null;
-        const end = t.recurrence_end_date ? new Date(t.recurrence_end_date) : null;
-        if (since && monthStart < new Date(since.getFullYear(), since.getMonth(), 1)) return false;
-        if (end && monthStart > new Date(end.getFullYear(), end.getMonth(), 1)) return false;
-        return true;
-      });
-
-      for (const t of activeTxs) {
+      for (const t of result.activeTxs) {
         const divisor = t.recurrence_frequency === "quarterly" ? 3 : t.recurrence_frequency === "yearly" ? 12 : 1;
         rows.push({ id: t.id, label: t.label || categoryLabel(t.category), category: t.category, amount: t.amount / divisor, direction: t.direction, property_id: pid });
-        if (t.category === "loan") hasLoanTx = true;
-        else if (t.category === "tax") hasTaxTx = true;
-        else if (t.category === "insurance") hasInsuranceTx = true;
-        else if (t.category === "copro") hasCoproTx = true;
       }
 
-      const fin = pf.get(pid);
-      const since = fin?.recurring_since ? new Date(fin.recurring_since) : null;
-      const finActive = !since || monthStart >= new Date(since.getFullYear(), since.getMonth(), 1);
-      if (fin && finActive) {
-        if (!hasLoanTx) {
-          const amt = Number(fin.loan_monthly || 0) + Number(fin.loan_insurance_monthly || 0);
-          if (amt > 0) rows.push({ id: `pf-loan-${pid}`, label: "Crédit + assurance", category: "loan", amount: amt, direction: "out", property_id: pid });
-        }
-        if (!hasTaxTx) {
-          const amt = Number(fin.property_tax_yearly || 0) / 12 + Number(fin.cfe_yearly || 0) / 12;
-          if (amt > 0) rows.push({ id: `pf-tax-${pid}`, label: "Taxes (foncière/CFE)", category: "tax", amount: amt, direction: "out", property_id: pid });
-        }
-        const fixed =
-          Number(fin.fixed_charges_monthly || 0) +
-          (hasInsuranceTx ? 0 : Number(fin.pno_insurance_monthly || 0)) +
-          (hasCoproTx ? 0 : Number(fin.copro_charges_monthly || 0)) +
-          Number(fin.bank_fees_monthly || 0) +
-          Number(fin.maintenance_monthly || 0) +
-          Number(fin.rental_tax_monthly || 0);
-        if (fixed > 0) rows.push({ id: `pf-fixed-${pid}`, label: "Charges fixes", category: "fees", amount: fixed, direction: "out", property_id: pid });
+      if (!result.hasLoanTx && result.loan > 0) {
+        rows.push({ id: `pf-loan-${pid}`, label: "Crédit + assurance", category: "loan", amount: result.loan, direction: "out", property_id: pid });
+      }
+      if (!result.hasTaxTx && result.taxM > 0) {
+        rows.push({ id: `pf-tax-${pid}`, label: "Taxes (foncière/CFE)", category: "tax", amount: result.taxM, direction: "out", property_id: pid });
+      }
+      if (result.fixed > 0) {
+        rows.push({ id: `pf-fixed-${pid}`, label: "Charges fixes", category: "fees", amount: result.fixed, direction: "out", property_id: pid });
       }
     }
 
