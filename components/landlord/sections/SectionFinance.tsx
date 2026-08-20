@@ -1266,6 +1266,22 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
 
       const isRecurring = form.is_recurring && !!form.recurrence_since;
 
+      if (form.category === "rent" && form.lease_id) {
+        const targetMonth = (isRecurring ? form.recurrence_since : form.occurred_at || "").slice(0, 7);
+        const dup = tx.find(
+          (t) => t.lease_id === form.lease_id && t.category === "rent" && (t.occurred_at || "").slice(0, 7) === targetMonth
+        );
+        if (dup) {
+          const proceed = window.confirm(
+            `Un loyer existe déjà pour ce bail sur ${fmtMonthFR(targetMonth)} (${formatEuro(Number(dup.amount || 0))}, le ${fmtDateFR(dup.occurred_at)}${dup.receipt_id ? ", via quittance" : ""}).\n\nAjouter cette écriture en plus va compter le loyer deux fois dans les recettes. Continuer quand même ?`
+          );
+          if (!proceed) {
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       const basePayload = {
         user_id: userId,
         property_id: form.property_id || null,
