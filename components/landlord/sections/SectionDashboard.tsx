@@ -806,11 +806,13 @@ export function SectionDashboard({
           else if (t.category === "tax") { taxTx += amt; hasTaxTx = true; }
           else fixedTx += amt;
         }
-        total += hasLoanTx ? loanTx : Number(fin.loan_monthly || 0) + Number(fin.loan_insurance_monthly || 0);
-        total += hasTaxTx ? taxTx : Number(fin.property_tax_yearly || 0) / 12 + Number(fin.cfe_yearly || 0) / 12;
-        total += fixedTx + Number(fin.fixed_charges_monthly || 0) + Number(fin.pno_insurance_monthly || 0) +
+        const finSince = fin.recurring_since ? normalizeDate(fin.recurring_since) : null;
+        const finActive = !finSince || monthStart >= new Date(finSince.getFullYear(), finSince.getMonth(), 1);
+        total += hasLoanTx ? loanTx : finActive ? Number(fin.loan_monthly || 0) + Number(fin.loan_insurance_monthly || 0) : 0;
+        total += hasTaxTx ? taxTx : finActive ? Number(fin.property_tax_yearly || 0) / 12 + Number(fin.cfe_yearly || 0) / 12 : 0;
+        total += fixedTx + (finActive ? Number(fin.fixed_charges_monthly || 0) + Number(fin.pno_insurance_monthly || 0) +
           Number(fin.copro_charges_monthly || 0) + Number(fin.loan_interest_monthly || 0) +
-          Number(fin.bank_fees_monthly || 0) + Number(fin.maintenance_monthly || 0) + Number(fin.rental_tax_monthly || 0);
+          Number(fin.bank_fees_monthly || 0) + Number(fin.maintenance_monthly || 0) + Number(fin.rental_tax_monthly || 0) : 0);
       }
       return total;
     };

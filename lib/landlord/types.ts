@@ -58,6 +58,7 @@ export type PropertyFinance = {
   bank_fees_monthly?: number | null;
   maintenance_monthly?: number | null;
   rental_tax_monthly?: number | null;
+  recurring_since?: string | null;
   created_at?: string;
   updated_at?: string;
 };

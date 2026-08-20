@@ -70,6 +70,7 @@ type PropertyFinance = {
   bank_fees_monthly?: number | null;
   maintenance_monthly?: number | null;
   rental_tax_monthly?: number | null;
+  recurring_since?: string | null;
 };
 
 type NavigateLink = {
@@ -1019,12 +1020,17 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           else if (t.category === "copro") { otherTx += monthlyAmt; hasCoproTx = true; }
           else otherTx += monthlyAmt;
         }
-        const loanMonthly = hasLoanTx ? loanTx : Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
+        // Comme pour les écritures récurrentes ci-dessus : si le repli property_finance n'a
+        // pas encore démarré (recurring_since après la fin de la période), il ne doit rien
+        // ajouter — sinon un crédit pas encore en cours fausse la moyenne de la période.
+        const finSince = fin?.recurring_since ? normalizeDate(fin.recurring_since) : null;
+        const finActive = !finSince || finSince <= pEnd;
+        const loanMonthly = hasLoanTx ? loanTx : finActive ? Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0) : 0;
         // Part hors-assurance de la mensualité (approximative si le crédit vient d'une écriture récurrente
         // unique, car elle ne distingue pas assurance et capital+intérêts) — sert au calcul d'amortissement.
-        const loanMonthlyPI = hasLoanTx ? loanTx : Number(fin?.loan_monthly || 0);
-        const loanInsuranceMonthly = hasLoanTx ? 0 : Number(fin?.loan_insurance_monthly || 0);
-        const finOtherMonthly =
+        const loanMonthlyPI = hasLoanTx ? loanTx : finActive ? Number(fin?.loan_monthly || 0) : 0;
+        const loanInsuranceMonthly = hasLoanTx ? 0 : finActive ? Number(fin?.loan_insurance_monthly || 0) : 0;
+        const finOtherMonthly = !finActive ? 0 :
           (hasTaxTx ? 0 : Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12) +
           Number(fin?.fixed_charges_monthly || 0) +
           (hasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
@@ -1189,15 +1195,19 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
           else if (t.category === "copro") hasCoproTx = true;
         }
 
-        if (!hasLoanTx) total += Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
-        total +=
-          (hasTaxTx ? 0 : Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12) +
-          Number(fin?.fixed_charges_monthly || 0) +
-          (hasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
-          (hasCoproTx ? 0 : Number(fin?.copro_charges_monthly || 0)) +
-          Number(fin?.bank_fees_monthly || 0) +
-          Number(fin?.maintenance_monthly || 0) +
-          Number(fin?.rental_tax_monthly || 0);
+        const finSince = fin?.recurring_since ? normalizeDate(fin.recurring_since) : null;
+        const finActive = !finSince || monthStart >= new Date(finSince.getFullYear(), finSince.getMonth(), 1);
+        if (finActive) {
+          if (!hasLoanTx) total += Number(fin?.loan_monthly || 0) + Number(fin?.loan_insurance_monthly || 0);
+          total +=
+            (hasTaxTx ? 0 : Number(fin?.property_tax_yearly || 0) / 12 + Number(fin?.cfe_yearly || 0) / 12) +
+            Number(fin?.fixed_charges_monthly || 0) +
+            (hasInsuranceTx ? 0 : Number(fin?.pno_insurance_monthly || 0)) +
+            (hasCoproTx ? 0 : Number(fin?.copro_charges_monthly || 0)) +
+            Number(fin?.bank_fees_monthly || 0) +
+            Number(fin?.maintenance_monthly || 0) +
+            Number(fin?.rental_tax_monthly || 0);
+        }
       }
       return total;
     };
@@ -1350,7 +1360,9 @@ export function SectionPerformance({ userId, leases, payments, propertyById, onN
       }
 
       const fin = finance.get(pid);
-      if (fin) {
+      const finSince = fin?.recurring_since ? new Date(fin.recurring_since) : null;
+      const finActive = !finSince || monthStart >= new Date(finSince.getFullYear(), finSince.getMonth(), 1);
+      if (fin && finActive) {
         if (!hasLoanTx) {
           const amt = Number(fin.loan_monthly || 0) + Number(fin.loan_insurance_monthly || 0);
           if (amt > 0) rows.push({ id: `pf-loan-${pid}`, label: "Crédit + assurance", category: "loan", amount: amt, direction: "out", property_id: pid });
