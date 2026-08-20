@@ -1852,7 +1852,9 @@ export function SectionFinance({ userId, leases, payments, receipts, propertyByI
       }
 
       const fin = pf.get(pid);
-      if (fin) {
+      const since = fin?.recurring_since ? new Date(fin.recurring_since) : null;
+      const finActive = !since || monthStart >= new Date(since.getFullYear(), since.getMonth(), 1);
+      if (fin && finActive) {
         if (!hasLoanTx) {
           const amt = Number(fin.loan_monthly || 0) + Number(fin.loan_insurance_monthly || 0);
           if (amt > 0) rows.push({ id: `pf-loan-${pid}`, label: "Crédit + assurance", category: "loan", amount: amt, direction: "out", property_id: pid });
