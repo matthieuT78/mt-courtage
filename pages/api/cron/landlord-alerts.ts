@@ -175,12 +175,74 @@ async function ownerEmailForUser(userId: string, leases: LeaseRow[]) {
   return userRes?.data?.user?.email || null;
 }
 
+// Pourquoi cette alerte compte, et quoi faire concrètement — affiché sous
+// chaque carte d'alerte. Écrit une fois ici plutôt que de laisser deviner
+// au bailleur le sens métier de chaque titre technique.
+const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; how: string }>> = {
+  late_payment: {
+    why: "Un loyer non réglé à l'échéance doit être traité vite : plus l'inaction dure, plus les démarches ultérieures (relance, mise en demeure, procédure) prennent du retard.",
+    how: "Contactez d'abord le locataire pour un rappel amiable. Si le retard persiste, passez à une relance formelle puis à une mise en demeure par lettre recommandée.",
+  },
+  due_soon: {
+    why: "Rappel préventif — le loyer n'est pas encore en retard, rien ne vous est encore demandé.",
+    how: "Aucune action pour l'instant. L'alerte suivante (retard de paiement) ne se déclenchera que si le paiement n'est toujours pas confirmé après l'échéance.",
+  },
+  receipt_to_finalize: {
+    why: "Le paiement est confirmé mais la quittance n'a pas été générée ni envoyée — le locataire n'a donc pas de preuve de paiement officielle.",
+    how: "Générez et envoyez la quittance depuis l'onglet Quittances.",
+  },
+  rent_revision_due: {
+    why: "Sans révision à la date anniversaire, le loyer reste figé alors que la clause de révision (indexée sur l'IRL) vous permet de suivre l'inflation — chaque année sautée est un manque à gagner qui ne se rattrape pas rétroactivement.",
+    how: "Vérifiez la clause de révision du bail, la classe DPE (loyer gelé si F ou G) et l'IRL applicable, puis envoyez la notification de révision au locataire.",
+  },
+  tenant_email_missing: {
+    why: "Sans email locataire, l'envoi automatique des quittances est impossible — vous repassez en gestion manuelle sans vous en rendre compte.",
+    how: "Ajoutez l'adresse email du locataire depuis sa fiche.",
+  },
+  entry_inventory_missing: {
+    why: "Sans état des lieux d'entrée, impossible de prouver l'état du logement à l'arrivée du locataire — en cas de litige au départ, vous n'avez aucune référence pour justifier une retenue sur le dépôt de garantie.",
+    how: "Planifiez et réalisez l'état des lieux d'entrée avec le locataire, puis finalisez-le dans lokt.fr.",
+  },
+  owner_email_missing: {
+    why: "Sans email de notification, vous ne recevez plus les validations de paiement ni les alertes automatiques — vous perdez en visibilité sur vos baux.",
+    how: "Renseignez un email de notification dans les réglages du bail.",
+  },
+  deposit_not_collected: {
+    why: "Le dépôt de garantie protège contre d'éventuelles dégradations ou impayés en fin de bail — sans lui, vous êtes exposé sans filet en cas de litige au départ.",
+    how: "Réclamez le dépôt de garantie au locataire et confirmez son encaissement dans lokt.fr.",
+  },
+  deposit_return_overdue: {
+    why: "La loi impose un délai strict pour restituer la caution — 1 mois si l'état des lieux de sortie est conforme à celui d'entrée, 2 mois sinon. Passé ce délai, une pénalité de 10 % du loyer mensuel hors charges est due par mois de retard commencé (art. 22, loi du 6 juillet 1989).",
+    how: "Comparez les états des lieux d'entrée et de sortie, déduisez les retenues justifiées, et restituez le solde au locataire sans tarder.",
+  },
+  expired_active_lease: {
+    why: "La date de fin du bail est dépassée mais il reste marqué actif — ça fausse le suivi (alertes, reconduction, finance) et cache souvent un oubli de clôture ou une date mal saisie.",
+    how: "Clôturez le bail si le locataire est parti, ou corrigez la date de fin si elle est erronée.",
+  },
+  lease_end: {
+    why: "À l'approche de l'échéance, il faut choisir entre laisser reconduire tacitement, renouveler, ou donner congé — et un congé pour vente ou reprise doit respecter un délai de 6 mois (location vide) ou 3 mois (meublé) avant l'échéance.",
+    how: "Décidez si vous laissez reconduire, renouvelez, ou donnez congé — et si c'est un congé, envoyez-le suffisamment tôt pour respecter le délai légal.",
+  },
+  exit_inventory_to_prepare: {
+    why: "Sans état des lieux de sortie signé, impossible de justifier une retenue sur le dépôt de garantie en cas de dégradations, et le délai légal de restitution de la caution ne peut pas être respecté correctement.",
+    how: "Planifiez et réalisez l'état des lieux de sortie avec le locataire, puis finalisez-le dans lokt.fr.",
+  },
+};
+
 function renderAlertCard(alert: AlertItem) {
   const baseUrl = appUrl();
   const color = alert.tone === "red" ? "#b91c1c" : alert.tone === "amber" ? "#92400e" : "#334155";
   const bg = alert.tone === "red" ? "#fef2f2" : alert.tone === "amber" ? "#fffbeb" : "#f8fafc";
   const actionable = alert.actionable !== false;
   const linkLabel = actionable ? "Traiter cette action sur lokt.fr" : "Consulter dans lokt.fr";
+
+  const guidance = ALERT_GUIDANCE[alert.preferenceKey];
+  const guidanceNote = guidance
+    ? `<p style="margin:8px 0 0;color:#334155;font-size:12px;line-height:1.5">
+        <strong>Pourquoi :</strong> ${guidance.why}<br/>
+        <strong>Comment traiter :</strong> ${guidance.how}
+      </p>`
+    : "";
 
   // Seule alerte pour laquelle un bailleur peut avoir fait un choix délibéré
   // (pas d'EDL par choix) plutôt qu'un simple oubli — on le renvoie vers le
@@ -199,6 +261,7 @@ function renderAlertCard(alert: AlertItem) {
         <p style="margin:0 0 4px;font-weight:700;color:${color}">${alert.title}</p>
         <p style="margin:0 0 10px;color:#334155;font-size:14px;line-height:1.45">${alert.detail}</p>
         <a href="${baseUrl}${alert.href}" style="font-size:13px;color:#0f172a;font-weight:700">${linkLabel}</a>
+        ${guidanceNote}
         ${optOutNote}
       </div>`;
 }
