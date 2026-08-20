@@ -143,7 +143,6 @@ function weeklyScheduleKey(prefix: string, today: Date, daysElapsed?: number | n
 
 const ALERT_SERVICE_MAP: Partial<Record<LandlordAlertPreferenceKey, string>> = {
   late_payment:            "gestion_courante",
-  due_soon:                "gestion_courante",
   receipt_to_finalize:     "gestion_courante",
   rent_revision_due:       "gestion_courante",
   tenant_email_missing:    "gestion_courante",
@@ -182,10 +181,6 @@ const ALERT_GUIDANCE: Partial<Record<LandlordAlertPreferenceKey, { why: string; 
   late_payment: {
     why: "Un loyer non réglé à l'échéance doit être traité vite : plus l'inaction dure, plus les démarches ultérieures (relance, mise en demeure, procédure) prennent du retard.",
     how: "Contactez d'abord le locataire pour un rappel amiable. Si le retard persiste, passez à une relance formelle puis à une mise en demeure par lettre recommandée.",
-  },
-  due_soon: {
-    why: "Rappel préventif — le loyer n'est pas encore en retard, rien ne vous est encore demandé.",
-    how: "Aucune action pour l'instant. L'alerte suivante (retard de paiement) ne se déclenchera que si le paiement n'est toujours pas confirmé après l'échéance.",
   },
   receipt_to_finalize: {
     why: "Le paiement est confirmé mais la quittance n'a pas été générée ni envoyée — le locataire n'a donc pas de preuve de paiement officielle.",
@@ -468,19 +463,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 propertyId: lease.property_id,
               });
             }
-          } else if (!paid && daysToDue === 3) {
-            // Rappel unique et anticipé : inutile de relancer par email à J-1 et J-0,
-            // ça ne devient une vraie action à traiter que si le loyer passe en retard.
-            alerts.push({
-              key: `due-soon:${lease.id}:${period.start}:day-${daysToDue}`,
-              preferenceKey: "due_soon",
-              tone: "amber",
-              title: `Loyer bientôt exigible - ${labels.property}`,
-              detail: `${labels.tenant} doit régler le loyer d'ici ${daysToDue} jours.`,
-              href: "/espace-bailleur",
-              propertyId: lease.property_id,
-              actionable: false,
-            });
           }
 
           if (paid && (!receipt?.pdf_url || !receipt?.sent_at) && !lease.receipts_disabled) {

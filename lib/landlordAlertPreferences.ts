@@ -1,6 +1,5 @@
 export const LANDLORD_ALERT_PREFERENCE_KEYS = [
   "late_payment",
-  "due_soon",
   "receipt_to_finalize",
   "rent_revision_due",
   "lease_end",
@@ -37,7 +36,6 @@ export function planAllowsLandlordAlert(plan: Plan, key: LandlordAlertPreference
 export const DEFAULT_LANDLORD_ALERT_PREFERENCES: LandlordAlertPreferences = {
   digest_enabled: true,
   late_payment: true,
-  due_soon: true,
   receipt_to_finalize: true,
   rent_revision_due: true,
   lease_end: true,

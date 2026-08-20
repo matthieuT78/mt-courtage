@@ -43,14 +43,6 @@ const ALERTS: AlertConfig[] = [
     level: "Urgent",
   },
   {
-    key: "due_soon",
-    title: "Loyer à venir",
-    desc: "Votre date d'encaissement approche. Un rappel préventif, sans action requise.",
-    schedule: "Un seul rappel, 3 jours avant l'échéance",
-    group: "Paiements et loyers",
-    level: "Anticipation",
-  },
-  {
     key: "receipt_to_finalize",
     title: "Quittance non envoyée",
     desc: "Le paiement est confirmé mais la quittance n'a pas encore été envoyée au locataire.",
