@@ -15,34 +15,23 @@ faq:
     a: "Non. Le rendement brut ignore les charges, la fiscalité et la vacance locative — utilisez un simulateur de rentabilité locative pour obtenir le rendement net et net-net réel avant de comparer deux villes ou deux biens."
 ---
 
-Vingt villes, un même calcul, des écarts qui vont du simple au triple. Ce baromètre compile le rendement locatif brut moyen observé dans vingt grandes villes françaises, à partir du prix moyen au m² et du loyer moyen au m² pratiqués sur chaque marché. Il est mis à jour et librement citable — voir les conditions de reprise en fin d'article.
+Vingt villes, un même calcul, des écarts qui vont du simple au triple. Ce baromètre s'appuie sur le rendement locatif brut moyen observé dans vingt grandes villes françaises, à partir du prix moyen au m² et du loyer moyen au m² pratiqués sur chaque marché — la donnée complète, mise à jour en continu, vit sur la page dédiée [rendement locatif par ville](https://lokt.fr/rendement-locatif).
 
-## Le classement complet
+## Le podium... et le bas du classement
 
-| Rang | Ville | Région | Prix moyen /m² | Loyer moyen /m² | Rendement brut |
-|---|---|---|---|---|---|
-| 1 | Roubaix | Hauts-de-France | 1 400 € | 11,0 € | **9,4 %** |
-| 2 | Mulhouse | Grand Est | 1 600 € | 11,0 € | **8,3 %** |
-| 3 | Le Mans | Pays de la Loire | 1 900 € | 11,5 € | **7,3 %** |
-| 4 | Limoges | Nouvelle-Aquitaine | 1 750 € | 10,5 € | **7,2 %** |
-| 5 | Nancy | Grand Est | 2 000 € | 11,0 € | **6,6 %** |
-| 6 | Clermont-Ferrand | Auvergne-Rhône-Alpes | 1 900 € | 10,0 € | **6,3 %** |
-| 7 | Metz | Grand Est | 2 100 € | 10,5 € | **6,0 %** |
-| 8 | Grenoble | Auvergne-Rhône-Alpes | 2 600 € | 12,0 € | **5,5 %** |
-| 9 | Lille | Hauts-de-France | 3 000 € | 13,0 € | **5,2 %** |
-| 10 | Marseille | Provence-Alpes-Côte d'Azur | 2 900 € | 12,0 € | **5,0 %** |
-| 10 | Strasbourg | Grand Est | 3 100 € | 13,0 € | **5,0 %** |
-| 12 | Angers | Pays de la Loire | 2 700 € | 11,0 € | **4,9 %** |
-| 13 | Toulouse | Occitanie | 3 400 € | 13,0 € | **4,6 %** |
-| 14 | Montpellier | Occitanie | 3 500 € | 13,0 € | **4,5 %** |
-| 15 | Rennes | Bretagne | 3 700 € | 13,0 € | **4,2 %** |
-| 16 | Nantes | Pays de la Loire | 3 800 € | 13,0 € | **4,1 %** |
-| 17 | Bordeaux | Nouvelle-Aquitaine | 4 000 € | 13,0 € | **3,9 %** |
-| 18 | Nice | Provence-Alpes-Côte d'Azur | 5 200 € | 16,0 € | **3,7 %** |
-| 19 | Paris | Île-de-France | 9 600 € | 29,0 € | **3,6 %** |
-| 20 | Lyon | Auvergne-Rhône-Alpes | 4 800 € | 14,0 € | **3,5 %** |
+| Rang | Ville | Rendement brut |
+|---|---|---|
+| 1 | Roubaix | **9,4 %** |
+| 2 | Mulhouse | **8,3 %** |
+| 3 | Le Mans | **7,3 %** |
+| … | … | … |
+| 18 | Nice | **3,7 %** |
+| 19 | Paris | **3,6 %** |
+| 20 | Lyon | **3,5 %** |
 
 *Rendement brut = (loyer mensuel × 12) ÷ prix d'achat × 100. Données de marché lokt.fr, mises à jour 2026.*
+
+Le classement complet des 20 villes, avec le détail prix/loyer au m² et l'analyse de chaque marché (quartiers, profils de locataires, points de vigilance), est disponible sur la page [rendement locatif par ville](https://lokt.fr/rendement-locatif) — c'est la version de référence de cette donnée, mise à jour en continu.
 
 ## Deux logiques de marché, pas un seul classement
 
@@ -58,8 +47,8 @@ Pour aller du rendement brut affiché ici au rendement net-net réel d'un projet
 
 ## Méthodologie
 
-Les prix moyens au m² et loyers moyens au m² sont établis à partir des données de marché observées sur chaque ville par lokt.fr, consolidées et mises à jour pour 2026. Le rendement brut est calculé selon la formule standard (loyer annuel ÷ prix d'achat × 100), sans intégration des charges, de la fiscalité ni de la vacance locative — un indicateur de comparaison rapide entre marchés, pas une estimation de rendement net. Le classement complet, ville par ville, avec l'analyse détaillée de chaque marché (quartiers, profils de locataires, points de vigilance), est disponible sur la page [rendement locatif par ville](https://lokt.fr/rendement-locatif).
+Les prix moyens au m² et loyers moyens au m² sont établis à partir des données de marché observées sur chaque ville par lokt.fr, consolidées et mises à jour pour 2026. Le rendement brut est calculé selon la formule standard (loyer annuel ÷ prix d'achat × 100), sans intégration des charges, de la fiscalité ni de la vacance locative — un indicateur de comparaison rapide entre marchés, pas une estimation de rendement net.
 
 ## Utiliser ces données
 
-Ce baromètre est librement citable par la presse et les créateurs de contenu, à condition de mentionner lokt.fr comme source avec un lien vers cet article. Pour toute demande de données complémentaires, d'interview ou de déclinaison sur une ville non listée ici, contactez la rédaction à [contact@lokt.fr](mailto:contact@lokt.fr).
+Le classement complet et son détail méthodologique sont maintenus à jour sur la page [rendement locatif par ville](https://lokt.fr/rendement-locatif) — c'est cette page qu'il convient de citer et de lier pour toute reprise presse. Pour une demande de données complémentaires ou d'interview, contactez la rédaction à [contact@lokt.fr](mailto:contact@lokt.fr).

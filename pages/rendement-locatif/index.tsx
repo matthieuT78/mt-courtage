@@ -209,6 +209,15 @@ export default function RendementLocatifIndex() {
             <p className="mt-3 text-xs text-slate-400">Données indicatives 2026 — non certifiées. Consultez le simulateur pour un calcul précis sur votre bien.</p>
           </section>
 
+          {/* ── CITATION PRESSE ── */}
+          <section className="rounded-xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+            <h2 className="text-base font-semibold text-slate-900">Utiliser ces données</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Ce comparatif est librement citable par la presse et les créateurs de contenu, à condition de mentionner lokt.fr comme source avec un lien vers cette page. Pour une demande de données complémentaires ou d'interview, contactez la rédaction à{" "}
+              <a href="mailto:contact@lokt.fr" className="underline">contact@lokt.fr</a>.
+            </p>
+          </section>
+
           {/* ── CTA ── */}
           <section className="rounded-2xl bg-slate-900 text-white p-6 sm:p-8 relative overflow-hidden">
             <div className="absolute -top-20 -right-20 h-56 w-56 rounded-full opacity-25 blur-3xl bg-cyan-500" />
