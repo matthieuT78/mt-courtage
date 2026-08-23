@@ -124,7 +124,7 @@ export default function BlogIndex({ posts }: any) {
 
             {/* Texte gauche */}
             <div className="flex-1">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#635bff]">
+              <p className="text-lg font-extrabold uppercase tracking-wide text-[#635bff] sm:text-xl">
                 Blog immobilier
               </p>
               <h1 className="mt-3 max-w-2xl text-3xl font-bold leading-tight text-slate-950 sm:text-4xl">
