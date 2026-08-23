@@ -353,7 +353,7 @@ export default function BlogIndex({ posts }: any) {
   );
 }
 
-const FEATURED_SLUG = "charges-locatives-recuperables";
+const FEATURED_SLUG = "barometre-rendement-locatif-villes-2026";
 
 export async function getStaticProps() {
   const posts = getAllPostsMeta();
