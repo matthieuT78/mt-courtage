@@ -1,10 +1,10 @@
 ---
-title: "Baromètre 2026 : rendement locatif par ville en France"
-h1: "Baromètre lokt.fr 2026 : le classement du rendement locatif par ville en France"
-description: "Classement 2026 du rendement locatif brut dans 20 grandes villes françaises : prix au m², loyers moyens et rentabilité, de Roubaix à Lyon."
+title: "Pourquoi le rendement locatif varie du simple au triple"
+h1: "Pourquoi le rendement locatif varie du simple au triple selon la ville"
+description: "9,4 % à Roubaix, 3,5 % à Lyon : pourquoi un tel écart de rendement locatif entre villes françaises, et ce que ce chiffre brut ne montre pas avant d'investir."
 date: "2026-08-23"
 category: "Investissement locatif"
-tags: ["rendement locatif par ville", "baromètre immobilier 2026", "meilleure ville investissement locatif", "rentabilité locative France", "classement rendement locatif"]
+tags: ["pourquoi le rendement locatif varie", "écart rendement locatif villes", "rendement brut vs net", "baromètre immobilier 2026", "rentabilité locative France"]
 relatedCalculators: ["investissement", "parc-immobilier"]
 faq:
   - q: "Quelle ville offre le meilleur rendement locatif en France en 2026 ?"
@@ -15,9 +15,9 @@ faq:
     a: "Non. Le rendement brut ignore les charges, la fiscalité et la vacance locative — utilisez un simulateur de rentabilité locative pour obtenir le rendement net et net-net réel avant de comparer deux villes ou deux biens."
 ---
 
-Vingt villes, un même calcul, des écarts qui vont du simple au triple. Ce baromètre s'appuie sur le rendement locatif brut moyen observé dans vingt grandes villes françaises, à partir du prix moyen au m² et du loyer moyen au m² pratiqués sur chaque marché — la donnée complète, mise à jour en continu, vit sur la page dédiée [rendement locatif par ville](https://lokt.fr/rendement-locatif).
+9,4 % à Roubaix, 3,5 % à Lyon : un même calcul de rendement locatif brut, un écart du simple au triple selon la ville. Cet écart n'est pas un accident statistique — il reflète deux logiques de marché immobilier différentes, et il cache autant qu'il ne montre. Voici pourquoi le chiffre varie autant, et ce qu'il faut vérifier avant de choisir une ville sur ce seul critère.
 
-## Le podium... et le bas du classement
+## Deux villes, deux extrêmes
 
 | Rang | Ville | Rendement brut |
 |---|---|---|
@@ -33,13 +33,13 @@ Vingt villes, un même calcul, des écarts qui vont du simple au triple. Ce baro
 
 Le classement complet des 20 villes, avec le détail prix/loyer au m² et l'analyse de chaque marché (quartiers, profils de locataires, points de vigilance), est disponible sur la page [rendement locatif par ville](https://lokt.fr/rendement-locatif) — c'est la version de référence de cette donnée, mise à jour en continu.
 
-## Deux logiques de marché, pas un seul classement
+## Deux logiques de marché expliquent l'écart
 
 Le rendement brut seul raconte une histoire incomplète. Les villes en tête du classement — Roubaix, Mulhouse, Le Mans, Limoges — partagent un point commun : un prix d'achat bas, hérité d'un passé industriel ou d'une démographie moins tendue, pour un loyer au m² qui reste proche de la moyenne nationale. Le rendement y est élevé, mais la liquidité à la revente et le potentiel de plus-value y sont structurellement plus faibles.
 
 À l'inverse, les métropoles en bas de tableau — Lyon, Paris, Nice, Bordeaux — combinent un prix au m² élevé et un rendement brut mécaniquement compressé, mais une demande locative dense, une vacance quasi nulle et un marché de revente profond. Ce ne sont pas deux niveaux de qualité d'investissement, mais deux stratégies différentes : cash-flow immédiat d'un côté, constitution de patrimoine et plus-value de l'autre.
 
-## Ce que ce classement ne montre pas
+## Ce que ce chiffre ne montre pas
 
 Le rendement brut ignore trois éléments qui peuvent faire basculer un investissement de rentable à déficitaire : les charges (copropriété, taxe foncière, gestion), la fiscalité applicable selon le régime choisi (micro-foncier, réel, LMNP), et la vacance locative réelle du bien visé. Un rendement brut de 9 % à Roubaix peut se transformer en 4 % net-net selon le profil fiscal de l'investisseur et l'état du bien acheté — l'écart inverse est tout aussi vrai pour un rendement affiché plus modeste dans une métropole.
 
