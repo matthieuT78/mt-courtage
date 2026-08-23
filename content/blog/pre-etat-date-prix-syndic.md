@@ -3,6 +3,7 @@ title: "Pré-état daté : ce que vous payez vraiment en 2026"
 h1: "Pré-état daté : ce que vous payez vraiment en vendant votre lot"
 description: "Vendeur en copropriété ? Ce que le syndic peut facturer, ce que dit l'État, et comment obtenir le document pour 24,99 € au lieu de 380 €."
 date: "2026-08-23"
+coverImage: "/blog/pre-etat-date-prix-syndic.jpg"
 category: "Réglementation"
 tags: ["pré-état daté", "état daté copropriété", "vente appartement copropriété", "tarif syndic vente", "loi ALUR"]
 relatedCalculators: ["plus-value", "parc-immobilier"]
