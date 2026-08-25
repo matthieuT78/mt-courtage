@@ -373,6 +373,9 @@ export function SectionDashboard({
   const [newsLoading, setNewsLoading] = useState(true);
   const [weatherAlerts, setWeatherAlerts] = useState<import("../../../pages/api/weather/alerts").WeatherAlert[]>([]);
   const [weatherLoaded, setWeatherLoaded] = useState(false);
+  // Replié par défaut : les risques météo sont utiles mais pas l'essentiel du cockpit,
+  // surtout avec plusieurs biens où la liste peut devenir longue.
+  const [weatherExpanded, setWeatherExpanded] = useState(false);
   const [lmnpInventoryCompliance, setLmnpInventoryCompliance] = useState<
     Array<{ propertyId: string; compliance: number; missingCount: number }>
   >([]);
@@ -1646,13 +1649,90 @@ export function SectionDashboard({
         </div>
       )}
 
+      {/* ── Alertes (déplacées juste au-dessus de la météo : c'est le cœur du cockpit) ── */}
+      {priorityActions.length > 0 && (
+        <div className="space-y-2">
+          {priorityActions.map((action, index) => (
+            <div
+              key={`${action.title}-${index}`}
+              className="group relative overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
+            >
+              <button type="button" onClick={() => { if (action.onClick) { action.onClick(); } else if (action.target) { onGo(action.target); } }} disabled={!action.target && !action.onClick}
+                className={"block w-full rounded-2xl px-3 py-3 text-left " + (action.target || action.onClick ? "cursor-pointer" : "cursor-default")}>
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:pr-20 md:pr-24">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className={
+                      "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
+                      (action.tone === "red" ? "bg-red-50 text-red-700" : action.tone === "amber" ? "bg-amber-50 text-amber-700" : action.tone === "indigo" ? "bg-[#635bff]/10 text-[#4f46e5]" : "bg-emerald-50 text-emerald-700")
+                    }>!</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="text-[0.62rem] font-semibold uppercase tracking-[0.13em] text-slate-500">Alerte</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300" />
+                        <p className="text-sm font-semibold tracking-tight text-slate-950">{action.title}</p>
+                      </div>
+                      <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600">{action.desc}</p>
+                      {action.details?.length ? (
+                        <ul className="mt-1.5 space-y-0.5">
+                          {action.details.map((d, i) => (
+                            <li key={i} className="break-words text-xs font-semibold text-slate-500">{d}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  </div>
+                  {action.cta ? (
+                    <span className="hidden shrink-0 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white md:inline-flex">{action.cta}</span>
+                  ) : null}
+                </div>
+              </button>
+              {action.snoozable !== false && action.id ? (
+                <div className="px-3 pb-3 sm:absolute sm:right-3 sm:top-1/2 sm:z-20 sm:-translate-y-1/2 sm:px-0 sm:pb-0">
+                  <div className="relative" data-alert-snooze-menu>
+                    <button type="button" onClick={() => setOpenAlertMenuId(openAlertMenuId === action.id ? null : action.id)}
+                      className="inline-flex min-h-8 items-center justify-center rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 opacity-100 shadow-sm transition hover:border-red-300 hover:bg-red-100 md:opacity-0 md:group-hover:opacity-100"
+                      aria-expanded={openAlertMenuId === action.id}>
+                      Masquer
+                    </button>
+                    {openAlertMenuId === action.id && (
+                      <div className="absolute right-0 top-10 z-20 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] lg:w-72">
+                        <div className="px-2 pb-2 pt-1">
+                          <p className="text-sm font-semibold text-slate-950">Masquer cette alerte</p>
+                          <p className="mt-0.5 text-xs leading-5 text-slate-500">Choisissez si elle doit revenir demain ou disparaître de ce cockpit.</p>
+                        </div>
+                        <div className="grid gap-1">
+                          <button type="button" onClick={() => snoozePriorityAction(action.id!, "tomorrow")}
+                            className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-[#635bff]/5 hover:text-[#4f46e5]">
+                            <BellIcon className="h-4 w-4 text-[#635bff]" aria-hidden="true" /> Me le rappeler demain
+                          </button>
+                          <button type="button" onClick={() => snoozePriorityAction(action.id!, "forever")}
+                            className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-red-50 hover:text-red-700">
+                            <NoSymbolIcon className="h-4 w-4 text-slate-500" aria-hidden="true" /> Ignorer définitivement
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Alertes météo biens ──────────────────────────────── */}
-      {/* Risques climatiques sur les biens — toujours visible après chargement */}
+      {/* Risques climatiques sur les biens — toujours visible après chargement, mais réductible :
+          avec plusieurs biens la liste peut devenir longue alors que ce n'est pas l'essentiel du cockpit. */}
       {weatherLoaded && (
         weatherAlerts.length > 0 ? (
           /* ── État alerte ── */
           <div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 shadow-sm">
-            <div className="flex items-center gap-3 border-b border-amber-200/70 px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setWeatherExpanded((v) => !v)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left"
+              aria-expanded={weatherExpanded}
+            >
               {/* Icône météo composée — nuage + éclair */}
               <span className="relative shrink-0">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100">
@@ -1669,8 +1749,10 @@ export function SectionDashboard({
               <span className="ml-auto shrink-0 rounded-full bg-amber-200 px-2.5 py-0.5 text-[0.65rem] font-bold text-amber-800">
                 {weatherAlerts.length} risque{weatherAlerts.length > 1 ? "s" : ""}
               </span>
-            </div>
-            <div className="divide-y divide-amber-100">
+              <ChevronDownIcon className={`h-4 w-4 shrink-0 text-amber-600 transition-transform ${weatherExpanded ? "rotate-180" : ""}`} aria-hidden="true" />
+            </button>
+            {weatherExpanded && (
+            <div className="divide-y divide-amber-100 border-t border-amber-200/70">
               {weatherAlerts.map((a) => {
                 const dayLabel = a.day === "today" ? "Aujourd'hui" : a.day === "tomorrow" ? "Demain" : "Après-demain";
                 return (
@@ -1692,6 +1774,7 @@ export function SectionDashboard({
                 );
               })}
             </div>
+            )}
           </div>
         ) : (
           /* ── État calme ── */
@@ -1903,75 +1986,6 @@ export function SectionDashboard({
             {transactionsLoading && <p className="mt-2 text-[0.65rem] text-slate-400">Chargement des écritures…</p>}
             {transactionsError && <p className="mt-2 text-[0.65rem] text-red-600">{transactionsError}</p>}
           </section>
-
-          {/* ── Alertes (col 1, row 2 si loyers présents, sinon row 1) ── */}
-          <div className={`space-y-2 lg:col-start-1 ${leaseCards.length > 0 ? "lg:row-start-2" : "lg:row-start-1"}`}>
-            {priorityActions.map((action, index) => (
-              <div
-                key={`${action.title}-${index}`}
-                className="group relative overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
-              >
-                <button type="button" onClick={() => { if (action.onClick) { action.onClick(); } else if (action.target) { onGo(action.target); } }} disabled={!action.target && !action.onClick}
-                  className={"block w-full rounded-2xl px-3 py-3 text-left " + (action.target || action.onClick ? "cursor-pointer" : "cursor-default")}>
-                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:pr-20 md:pr-24">
-                    <div className="flex min-w-0 items-start gap-3">
-                      <span className={
-                        "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
-                        (action.tone === "red" ? "bg-red-50 text-red-700" : action.tone === "amber" ? "bg-amber-50 text-amber-700" : action.tone === "indigo" ? "bg-[#635bff]/10 text-[#4f46e5]" : "bg-emerald-50 text-emerald-700")
-                      }>!</span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                          <span className="text-[0.62rem] font-semibold uppercase tracking-[0.13em] text-slate-500">Alerte</span>
-                          <span className="h-1 w-1 rounded-full bg-slate-300" />
-                          <p className="text-sm font-semibold tracking-tight text-slate-950">{action.title}</p>
-                        </div>
-                        <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600">{action.desc}</p>
-                        {action.details?.length ? (
-                          <ul className="mt-1.5 space-y-0.5">
-                            {action.details.map((d, i) => (
-                              <li key={i} className="break-words text-xs font-semibold text-slate-500">{d}</li>
-                            ))}
-                          </ul>
-                        ) : null}
-                      </div>
-                    </div>
-                    {action.cta ? (
-                      <span className="hidden shrink-0 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white md:inline-flex">{action.cta}</span>
-                    ) : null}
-                  </div>
-                </button>
-                {action.snoozable !== false && action.id ? (
-                  <div className="px-3 pb-3 sm:absolute sm:right-3 sm:top-1/2 sm:z-20 sm:-translate-y-1/2 sm:px-0 sm:pb-0">
-                    <div className="relative" data-alert-snooze-menu>
-                      <button type="button" onClick={() => setOpenAlertMenuId(openAlertMenuId === action.id ? null : action.id)}
-                        className="inline-flex min-h-8 items-center justify-center rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 opacity-100 shadow-sm transition hover:border-red-300 hover:bg-red-100 md:opacity-0 md:group-hover:opacity-100"
-                        aria-expanded={openAlertMenuId === action.id}>
-                        Masquer
-                      </button>
-                      {openAlertMenuId === action.id && (
-                        <div className="absolute right-0 top-10 z-20 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.16)] lg:w-72">
-                          <div className="px-2 pb-2 pt-1">
-                            <p className="text-sm font-semibold text-slate-950">Masquer cette alerte</p>
-                            <p className="mt-0.5 text-xs leading-5 text-slate-500">Choisissez si elle doit revenir demain ou disparaître de ce cockpit.</p>
-                          </div>
-                          <div className="grid gap-1">
-                            <button type="button" onClick={() => snoozePriorityAction(action.id!, "tomorrow")}
-                              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-[#635bff]/5 hover:text-[#4f46e5]">
-                              <BellIcon className="h-4 w-4 text-[#635bff]" aria-hidden="true" /> Me le rappeler demain
-                            </button>
-                            <button type="button" onClick={() => snoozePriorityAction(action.id!, "forever")}
-                              className="flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-800 transition hover:bg-red-50 hover:text-red-700">
-                              <NoSymbolIcon className="h-4 w-4 text-slate-500" aria-hidden="true" /> Ignorer définitivement
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
 
           {/* ── Ressources lokt (col 2, row 2) ─────────────────── */}
           <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:col-start-2 lg:row-start-2">
