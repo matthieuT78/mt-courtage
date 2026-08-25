@@ -1,7 +1,7 @@
 // components/landlord/sections/SectionDashboard.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { ArrowTopRightOnSquareIcon, ArrowTrendingUpIcon, ArrowUturnLeftIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, InformationCircleIcon, LinkIcon, NoSymbolIcon, UserCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { ArrowTrendingUpIcon, ArrowUturnLeftIcon, BellIcon, CalendarDaysIcon, CheckCircleIcon, ChevronDownIcon, HomeModernIcon, InformationCircleIcon, LinkIcon, NoSymbolIcon, UserCircleIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { KpiCard, SectionTitle, formatEuro, fmtDate, Pill } from "../UiBits";
 import type { Lease, Property, PropertyFinance, RentPayment, RentReceipt, Tenant } from "../../../lib/landlord/types";
 import type { LandlordSectionKey } from "../SidebarNav";
@@ -369,8 +369,6 @@ export function SectionDashboard({
     setDeclarationBannerDismissed(true);
     try { window.localStorage.setItem(declarationBannerStorageKey, "1"); } catch { /* noop */ }
   };
-  const [news, setNews] = useState<import("../../../pages/api/content/lokt-feed").LoktFeedItem[]>([]);
-  const [newsLoading, setNewsLoading] = useState(true);
   const [weatherAlerts, setWeatherAlerts] = useState<import("../../../pages/api/weather/alerts").WeatherAlert[]>([]);
   const [weatherLoaded, setWeatherLoaded] = useState(false);
   // Replié par défaut : les risques météo sont utiles mais pas l'essentiel du cockpit,
@@ -401,16 +399,6 @@ export function SectionDashboard({
       setAlertSnoozes({});
     }
   }, [alertSnoozeStorageKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/content/lokt-feed")
-      .then((r) => r.json())
-      .then((data) => { if (!cancelled) setNews(Array.isArray(data) ? data : []); })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setNewsLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -1985,74 +1973,6 @@ export function SectionDashboard({
             </div>
             {transactionsLoading && <p className="mt-2 text-[0.65rem] text-slate-400">Chargement des écritures…</p>}
             {transactionsError && <p className="mt-2 text-[0.65rem] text-red-600">{transactionsError}</p>}
-          </section>
-
-          {/* ── Ressources lokt (col 2, row 2) ─────────────────── */}
-          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:col-start-2 lg:row-start-2">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 pb-2 pt-3.5">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#635bff] to-[#00b4d8] text-sm shadow-sm">📚</span>
-                <div>
-                  <p className="text-[0.72rem] font-bold text-slate-900">Ressources lokt</p>
-                  <p className="text-[0.6rem] text-slate-400 leading-tight">Articles & guides pour bailleurs</p>
-                </div>
-              </div>
-              <a href="/blog" target="_blank" rel="noopener noreferrer"
-                className="text-[0.6rem] font-semibold text-[#635bff] hover:underline">
-                Tout voir →
-              </a>
-            </div>
-
-            {/* Skeleton */}
-            {newsLoading && (
-              <div className="space-y-px px-3 pb-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="flex items-start gap-3 rounded-xl px-1 py-2.5">
-                    <div className="mt-0.5 h-4 w-10 shrink-0 animate-pulse rounded-full bg-slate-100" />
-                    <div className="flex-1 space-y-1.5">
-                      <div className="h-3 animate-pulse rounded-full bg-slate-100" />
-                      <div className="h-3 w-4/5 animate-pulse rounded-full bg-slate-100" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Feed */}
-            {!newsLoading && news.length > 0 && (
-              <div className="divide-y divide-slate-100 px-3 pb-3">
-                {news.map((item, i) => {
-                  const isBlog = item.type === "blog";
-                  return (
-                    <a key={item.url + i} href={item.url} target="_blank" rel="noopener noreferrer"
-                      className="group flex items-start gap-2.5 py-2.5 transition hover:opacity-80">
-                      {/* Badge type */}
-                      <span className={`mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[0.58rem] font-bold uppercase tracking-wide ${
-                        isBlog
-                          ? "bg-[#635bff]/10 text-[#635bff]"
-                          : "bg-emerald-50 text-emerald-700"
-                      }`}>
-                        {isBlog ? "Article" : "Guide"}
-                      </span>
-                      {/* Text */}
-                      <div className="min-w-0 flex-1">
-                        <p className="line-clamp-2 text-[0.73rem] font-semibold leading-snug text-slate-900 group-hover:text-[#635bff]">
-                          {item.title}
-                        </p>
-                        <p className="mt-0.5 text-[0.62rem] text-slate-400">{item.category}</p>
-                      </div>
-                      <ArrowTopRightOnSquareIcon className="mt-0.5 h-3 w-3 shrink-0 text-slate-200 transition group-hover:text-[#635bff]" aria-hidden="true" />
-                    </a>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Empty */}
-            {!newsLoading && news.length === 0 && (
-              <p className="px-4 pb-4 text-xs text-slate-400">Aucun contenu disponible.</p>
-            )}
           </section>
 
       </div>
