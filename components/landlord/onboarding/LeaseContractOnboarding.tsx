@@ -144,6 +144,7 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
         const existing = data.document;
         const lease = data.lease || {};
         const property = data.property || {};
+        const lot = data.lot || null;
         const tenant = data.tenant || {};
         const profile = data.profile || {};
         const landlord = data.landlord || {};
@@ -161,19 +162,19 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
           landlord_is_company: !!profile.company_name,
           tenant_name: tenant.full_name || "",
           tenant_email: tenant.email || "",
-          property_address: [property.address_line1, property.address_line2, property.postal_code, property.city, property.country].filter(Boolean).join(", "),
+          property_address: [property.address_line1, lot?.label || property.address_line2, property.postal_code, property.city, property.country].filter(Boolean).join(", "),
           property_address_line1: property.address_line1 || "",
-          property_address_line2: property.address_line2 || "",
+          property_address_line2: lot?.label || property.address_line2 || "",
           property_postal_code: property.postal_code || "",
           property_city: property.city || "",
           property_country: property.country || "FR",
-          housing_nature: ({ apartment: "Appartement", house: "Maison" } as Record<string, string>)[property.type] || "",
+          housing_nature: ({ apartment: "Appartement", house: "Maison" } as Record<string, string>)[property.type] || (lot ? "Appartement" : ""),
           housing_type: property.type === "house" ? "Maison individuelle" : "Immeuble collectif",
           legal_regime: "",
           floor: "",
           lot_number: "",
-          surface_m2: property.surface_m2 != null ? String(property.surface_m2) : "",
-          main_rooms: property.rooms != null ? String(property.rooms) : "",
+          surface_m2: (lot?.surface_m2 ?? property.surface_m2) != null ? String(lot?.surface_m2 ?? property.surface_m2) : "",
+          main_rooms: (lot?.rooms ?? property.rooms) != null ? String(lot?.rooms ?? property.rooms) : "",
           other_parts: "",
           private_equipment: "",
           common_equipment: "",
@@ -183,9 +184,9 @@ export function LeaseContractOnboarding({ userId, leaseId, onComplete, onBack }:
           heating_method: "",
           hot_water_method: "",
           fiscal_property_id: "",
-          dpe_class: property.energy_class || "",
-          ges_class: property.ghg_class || "",
-          energy_kwh_sqm: property.energy_value != null ? String(property.energy_value) : "",
+          dpe_class: lot?.energy_class || property.energy_class || "",
+          ges_class: lot?.ghg_class || property.ghg_class || "",
+          energy_kwh_sqm: (lot?.energy_value ?? property.energy_value) != null ? String(lot?.energy_value ?? property.energy_value) : "",
           ges_kgco2_sqm: "",
           furniture_inventory: "",
           start_date: lease.start_date || "",

@@ -738,13 +738,27 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
     }
   };
 
-  const [newLotLabel, setNewLotLabel] = useState<Record<string, string>>({});
+  const EMPTY_NEW_LOT = {
+    label: "",
+    surface_m2: "",
+    rooms: "",
+    energy_class: "",
+    ghg_class: "",
+    energy_value: "",
+    description: "",
+  };
+  const [addLotOpenFor, setAddLotOpenFor] = useState<string | null>(null);
+  const [newLotForm, setNewLotForm] = useState<Record<string, typeof EMPTY_NEW_LOT>>({});
   const [lotBusyId, setLotBusyId] = useState<string | null>(null);
   const [expandedLotId, setExpandedLotId] = useState<string | null>(null);
   const [lotNumDrafts, setLotNumDrafts] = useState<Record<string, { surface_m2?: string; rooms?: string; energy_value?: string }>>({});
 
+  // Un lot est un bien à part entière : on lui demande les mêmes caractéristiques
+  // qu'un appartement classique (surface, pièces, DPE, GES, description) dès sa
+  // création — pas seulement un nom à compléter plus tard.
   const addLot = async (propertyId: string) => {
-    const label = (newLotLabel[propertyId] || "").trim();
+    const form = newLotForm[propertyId] || EMPTY_NEW_LOT;
+    const label = form.label.trim();
     if (!label) return;
     setErr(null);
     setOk(null);
@@ -768,10 +782,18 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
         property_id: propertyId,
         user_id: userId,
         label,
+        surface_m2: form.surface_m2 ? toNumOrNull(form.surface_m2) : null,
+        rooms: form.rooms ? Math.round(toNumOrNull(form.rooms) ?? 0) : null,
+        energy_class: form.energy_class || null,
+        ghg_class: form.ghg_class || null,
+        energy_value: form.energy_value ? toNumOrNull(form.energy_value) : null,
+        description: form.description.trim() || null,
         sort_order: existing.length,
       });
       if (error) throw error;
-      setNewLotLabel((prev) => ({ ...prev, [propertyId]: "" }));
+      // Le formulaire reste ouvert, vidé, pour enchaîner rapidement l'ajout des
+      // lots suivants d'un même immeuble sans avoir à rouvrir le bloc à chaque fois.
+      setNewLotForm((prev) => ({ ...prev, [propertyId]: EMPTY_NEW_LOT }));
       await safeRefresh();
     } catch (e: any) {
       setErr(e?.message || "Impossible d’ajouter ce lot.");
@@ -1150,6 +1172,18 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
                             />
                           </label>
                         </div>
+                        <label className="block max-w-md space-y-1">
+                          <span className="text-xs text-slate-700">Description (étage, balcon, etc.)</span>
+                          <textarea
+                            className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                            rows={2}
+                            defaultValue={lot.description || ""}
+                            onBlur={(e) => {
+                              const value = e.target.value.trim() || null;
+                              if (value !== (lot.description || null)) updateLot(lot.id, { description: value });
+                            }}
+                          />
+                        </label>
                         <PropertyDpePanel propertyId={propertyId} lotId={lot.id} propertyLabel={lot.label} />
                       </div>
                     ) : null}
@@ -1158,22 +1192,94 @@ export function SectionBiens({ userId, properties, propertyLots, leases, tenants
               })}
             </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                placeholder="Ex : Lot 1, Appt 2B, Rez-de-chaussée…"
-                value={newLotLabel[propertyId] || ""}
-                onChange={(e) => setNewLotLabel((prev) => ({ ...prev, [propertyId]: e.target.value }))}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLot(propertyId); } }}
-              />
+            {addLotOpenFor === propertyId ? (
+              <div className="rounded-xl border-2 border-dashed border-[#635bff]/40 bg-indigo-50/30 p-3 space-y-2">
+                <p className="text-xs font-semibold text-slate-700">Nouveau lot — mêmes infos qu’un bien classique, sauf l’adresse (héritée de l’immeuble)</p>
+                <input
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                  placeholder="Nom du lot * — Ex : Lot 1, Appt 2B, Rez-de-chaussée…"
+                  value={newLotForm[propertyId]?.label ?? ""}
+                  onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), label: e.target.value } }))}
+                  onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addLot(propertyId); } }}
+                />
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <input
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                    placeholder="Surface (m²)"
+                    inputMode="decimal"
+                    value={newLotForm[propertyId]?.surface_m2 ?? ""}
+                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), surface_m2: e.target.value } }))}
+                  />
+                  <input
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                    placeholder="Pièces"
+                    inputMode="numeric"
+                    value={newLotForm[propertyId]?.rooms ?? ""}
+                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), rooms: e.target.value } }))}
+                  />
+                  <select
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                    value={newLotForm[propertyId]?.energy_class ?? ""}
+                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), energy_class: e.target.value } }))}
+                  >
+                    <option value="">DPE —</option>
+                    {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
+                      <option key={o} value={o}>DPE {o}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                    value={newLotForm[propertyId]?.ghg_class ?? ""}
+                    onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), ghg_class: e.target.value } }))}
+                  >
+                    <option value="">GES —</option>
+                    {DPE_OPTIONS.filter((o) => o !== "").map((o) => (
+                      <option key={o} value={o}>GES {o}</option>
+                    ))}
+                  </select>
+                </div>
+                <input
+                  className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                  placeholder="kWh/m²/an"
+                  inputMode="decimal"
+                  value={newLotForm[propertyId]?.energy_value ?? ""}
+                  onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), energy_value: e.target.value } }))}
+                />
+                <textarea
+                  className="w-full rounded-lg border border-slate-200 px-2 py-1.5 text-xs text-slate-700"
+                  rows={2}
+                  placeholder="Description (étage, balcon, etc.)"
+                  value={newLotForm[propertyId]?.description ?? ""}
+                  onChange={(e) => setNewLotForm((prev) => ({ ...prev, [propertyId]: { ...(prev[propertyId] || EMPTY_NEW_LOT), description: e.target.value } }))}
+                />
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => addLot(propertyId)}
+                    disabled={!(newLotForm[propertyId]?.label ?? "").trim()}
+                    className="rounded-xl bg-slate-950 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+                  >
+                    Créer ce lot
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAddLotOpenFor(null)}
+                    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Terminer
+                  </button>
+                </div>
+              </div>
+            ) : (
               <button
                 type="button"
-                onClick={() => addLot(propertyId)}
-                className="shrink-0 rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700"
+                onClick={() => { setAddLotOpenFor(propertyId); setNewLotForm((prev) => ({ ...prev, [propertyId]: prev[propertyId] || EMPTY_NEW_LOT })); }}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white px-3 py-3 text-sm font-semibold text-slate-600 hover:border-[#635bff]/50 hover:bg-indigo-50/40 hover:text-[#635bff]"
               >
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
                 Ajouter un lot
               </button>
-            </div>
+            )}
           </div>
         ) : null}
 

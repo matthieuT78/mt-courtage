@@ -476,6 +476,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (pr.data) property = pr.data;
     }
 
+    // Un bail sur un lot d'immeuble doit voir le nom du lot apparaître sur la
+    // quittance en plus de l'adresse du bâtiment — sinon rien ne distingue les
+    // quittances des différents locataires du même immeuble.
+    let lot: any = null;
+    if (lease.lot_id) {
+      const lr = await supabaseAdmin.from("property_lots").select("*").eq("id", lease.lot_id).maybeSingle();
+      if (lr.data) lot = lr.data;
+    }
+
     let tenant: any = null;
     if (lease.tenant_id) {
       const tr = await supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).maybeSingle();
@@ -631,7 +640,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const propertyAddressLine =
       [
         safeStr(property?.address_line1),
-        safeStr(property?.address_line2),
+        safeStr(lot?.label) || safeStr(property?.address_line2),
         [safeStr(property?.postal_code), safeStr(property?.city)].filter(Boolean).join(" "),
         safeStr(property?.country || "FR"),
       ]

@@ -8,12 +8,17 @@ async function loadContext(userId: string, leaseId: string) {
   if (!supabaseAdmin) throw new Error("Supabase admin non configuré.");
   const { data: lease } = await supabaseAdmin.from("leases").select("*").eq("id", leaseId).eq("user_id", userId).maybeSingle();
   if (!lease) throw new Error("Bail introuvable.");
-  const [{ data: property }, { data: tenant }, { data: landlord }, { data: profile }, { data: document }] = await Promise.all([
+  const [{ data: property }, { data: tenant }, { data: landlord }, { data: profile }, { data: document }, { data: lot }] = await Promise.all([
     supabaseAdmin.from("properties").select("*").eq("id", lease.property_id).maybeSingle(),
     supabaseAdmin.from("tenants").select("*").eq("id", lease.tenant_id).maybeSingle(),
     supabaseAdmin.from("landlords").select("*").eq("user_id", userId).maybeSingle(),
     supabaseAdmin.from("profiles").select("*").eq("id", userId).maybeSingle(),
     supabaseAdmin.from("lease_contract_documents").select("*").eq("lease_id", leaseId).maybeSingle(),
+    // Un bail sur un lot d'immeuble porte ses propres caractéristiques (surface,
+    // pièces, DPE...) — le bien "immeuble" ne les a plus depuis qu'elles sont par lot.
+    lease.lot_id
+      ? supabaseAdmin.from("property_lots").select("*").eq("id", lease.lot_id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
   // Une demande de signature encore en cours devient invalide si le PDF est
   // régénéré entre-temps (le hash ne correspondra plus) — on le signale au
@@ -28,7 +33,7 @@ async function loadContext(userId: string, leaseId: string) {
       .maybeSingle();
     pendingSignature = !!sigReq;
   }
-  return { lease, property, tenant, landlord, profile, document, pendingSignature };
+  return { lease, property, lot, tenant, landlord, profile, document, pendingSignature };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
